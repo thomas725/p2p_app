@@ -14,7 +14,8 @@ panic = 'abort'   # Abort on panic
 [dependencies]
 
 # ORM mapper we use to access our SQLite database
-diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
+diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono"] }
+# feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
 # libsqlite3-sys = { version = "0.30", features = ["bundled"] }
@@ -47,3 +48,5 @@ tracing-subscriber = { version = "=0.3.20" }
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }
+chrono = "0.4.41"
+libp2p-identity = "0.2.12"

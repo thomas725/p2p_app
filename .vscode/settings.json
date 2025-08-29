@@ -1,9 +1,22 @@
 {
     "cSpell.words": [
+        "AUTOINCREMENT",
+        "behaviour",
+        "binstall",
+        "chrono",
+        "dotenv",
         "dotenvy",
+        "gossipsub",
+        "Insertable",
+        "keypair",
         "libp2p",
         "libsqlite",
+        "mdns",
+        "multiaddr",
+        "protobuf",
+        "quic",
         "sqlite",
-        "tokio"
+        "tokio",
+        "yamux"
     ]
 }

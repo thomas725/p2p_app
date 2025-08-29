@@ -5,6 +5,7 @@ use libp2p::{
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
 };
+use p2p_app::get_libp2p_identity;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -21,7 +22,7 @@ struct MyBehaviour {
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
-    
+
     // libp2p uses the tracing library which helps to understand complex async flows
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
@@ -30,7 +31,7 @@ async fn main() -> Result<()> {
         .map_err(|e| println!("failed to init tracing subscriber: {e}"))
         .ok();
 
-    let mut swarm = libp2p::SwarmBuilder::with_new_identity()
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity())
         .with_tokio()
         .with_tcp(
             tcp::Config::default(),
