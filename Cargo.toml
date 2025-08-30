@@ -11,14 +11,20 @@ lto = true        # Enable link-time optimization
 codegen-units = 1 # Reduce parallel codegen units to increase optimizations
 panic = 'abort'   # Abort on panic
 
+[features]
+basic = []
+
 [dependencies]
 
 # ORM mapper we use to access our SQLite database
-diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono"] }
+diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 # feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
 # libsqlite3-sys = { version = "0.30", features = ["bundled"] }
+
+# for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
+diesel_migrations = { version = "=2.2.0" }
 
 # this library allows us to load environment variables from a .env file.
 # This allows users a second way to specify the path to the database (with variable name: "DATABASE_URL")

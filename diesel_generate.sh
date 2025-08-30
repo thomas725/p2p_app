@@ -1,5 +1,9 @@
 
 # cargo binstall diesel_cli
+
+# add new migration = database version = empty set of up.sql + down.sql
+diesel migration generate description
+
 # generates schema.rs:
 diesel migration run
 

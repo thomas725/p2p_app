@@ -1,4 +1,3 @@
-use color_eyre::Result;
 use libp2p::{
     futures::StreamExt as _,
     gossipsub, mdns, noise,
@@ -20,7 +19,7 @@ struct MyBehaviour {
     mdns: mdns::tokio::Behaviour,
 }
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     // libp2p uses the tracing library which helps to understand complex async flows
@@ -31,7 +30,7 @@ async fn main() -> Result<()> {
         .map_err(|e| println!("failed to init tracing subscriber: {e}"))
         .ok();
 
-    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity())
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity()?)
         .with_tokio()
         .with_tcp(
             tcp::Config::default(),
