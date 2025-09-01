@@ -18,6 +18,7 @@ strip = false
 
 [features]
 basic = []
+sqlite_bundled = [ "dep:libsqlite3-sys" ]
 
 [dependencies]
 
@@ -26,7 +27,7 @@ diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sql
 # feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
-libsqlite3-sys = { version = "0.35.0", features = ["bundled"] }
+libsqlite3-sys = { version = "0.35.0", features = ["bundled"], optional = true }
 
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
 diesel_migrations = { version = "=2.2.0" }

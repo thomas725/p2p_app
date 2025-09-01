@@ -85,3 +85,20 @@ fi
 #49568564 ->  10329136
 
 # target=aarch64-unknown-linux-gnu features=basic ./build_release.sh
+
+# 2025-09-02 00:12 with bundled libsqlite3-sys:
+# target=x86_64-unknown-linux-gnu features=basic ./build_release.sh
+# 4429560 = 4,3M   ->   1690308 = 1,7M
+
+# 2025-09-02 00:14 without bundled libsqlite3-sys:
+# 3403840 = 3,3M   ->   1238336 = 1,2M
+
+# without bundled libsqlite3-sys:
+# target=armv7-unknown-linux-musleabihf features=basic ./build_release.sh
+# fails to build: GLIBC_2.32, GLIBC_2.33, GLIBC_2.34 & GLIBC_2.39 not found
+
+# with bundled libsqlite3-sys:
+# target=armv7-unknown-linux-musleabihf features=sqlite_bundled ./build_release.sh
+# 3461632 = 3,4M   ->   1465792 = 1,4M
+# 3461632 = 3,4M   ->   1465512 = 1,4M
+
