@@ -11,6 +11,11 @@ lto = true        # Enable link-time optimization
 codegen-units = 1 # Reduce parallel codegen units to increase optimizations
 panic = 'abort'   # Abort on panic
 
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false
+
 [features]
 basic = []
 
@@ -21,7 +26,7 @@ diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sql
 # feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
-# libsqlite3-sys = { version = "0.30", features = ["bundled"] }
+libsqlite3-sys = { version = "0.35.0", features = ["bundled"] }
 
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
 diesel_migrations = { version = "=2.2.0" }

@@ -76,8 +76,14 @@ async fn main() -> color_eyre::Result<()> {
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
     // Listen on all interfaces and whatever port the OS assigns
-    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+    swarm
+        .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
+        .map_err(|e| tracing::warn!("failed to listen to udp+quick: {e}"))
+        .ok();
+    swarm
+        .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
+        .map_err(|e| tracing::warn!("failed to listen to tcp: {e}"))
+        .ok();
 
     println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
 

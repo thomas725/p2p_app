@@ -1,22 +1,30 @@
 {
     "cSpell.words": [
+        "armv7-unknown-linux-musleabihf",
         "AUTOINCREMENT",
         "behaviour",
         "binstall",
         "chrono",
+        "debuginfo",
         "dotenv",
         "dotenvy",
         "gossipsub",
+        "insertable",
         "Insertable",
         "keypair",
         "libp2p",
         "libsqlite",
+        "lzma",
         "mdns",
         "multiaddr",
         "protobuf",
         "quic",
+        "Roborock",
+        "RUSTFLAGS",
         "sqlite",
         "tokio",
-        "yamux"
+        "yamux",
+        "Zfmt-debug",
+        "Zlocation-detail"
     ]
 }

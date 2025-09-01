@@ -1,8 +1,8 @@
-pub mod models_generated;
-pub mod models_manual;
+pub mod models_insertable;
+pub mod models_queryable;
 pub mod schema;
 use crate::schema::identities::dsl::identities;
-use crate::{models_generated::Identity, models_manual::NewIdentity};
+use crate::{models_queryable::Identity, models_insertable::NewIdentity};
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
     Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection,
@@ -18,8 +18,7 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     let database_url = env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned());
     let mut conn = SqliteConnection::establish(&database_url)
         .wrap_err_with(|| format!("Error connecting to {database_url}"))?;
-    conn
-        .run_pending_migrations(MIGRATIONS)
+    conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| eyre!(format!("Error executing migrations on {database_url}: {e}")))?;
     Ok(conn)
 }

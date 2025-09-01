@@ -4,7 +4,8 @@ this is my p2p playground, as of now it's not much more than a modified copy of 
 
 ## todo
 
-* use ratatiu crate to start building a better user interface
+* build for and run on various embedded Linux devices like OpenWRT
+* use Ratatiu crate to start building a better user interface
 * store contacts in database + allow to pick & change usernames + autogenerate them
 
 ## done

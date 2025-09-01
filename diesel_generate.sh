@@ -10,5 +10,11 @@ diesel migration run
 # verify up.sql + down.sql symmetry
 #diesel migration redo
 
-# cargo install --git "https://github.com/LukasLohmar/diesel_cli_ext" --branch dev
-diesel_ext --import-types "crate::schema::*" --add-table-name --struct-attribute "#[diesel(check_for_backend(diesel::sqlite::Sqlite))]" --derive "Queryable, Selectable, Debug" > src/models_generated.rs
+# feature sets of LukasLohmar & abbychau merged:
+#cargo install --git "https://github.com/thomas725/diesel_cli_ext" --branch master
+
+#cargo install --git "https://github.com/LukasLohmar/diesel_cli_ext" --branch dev
+diesel_ext --import-types "crate::schema::*" --add-table-name --struct-attribute "#[diesel(check_for_backend(diesel::sqlite::Sqlite))]" --derive "Queryable, Selectable, Debug" > src/models_queryable.rs
+
+#cargo install diesel_cli_ext
+diesel_ext --import-types "crate::schema::*" --import-types "diesel::Insertable" --insertable > src/models_insertable.rs
