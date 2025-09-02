@@ -15,14 +15,10 @@ variables:
   ENABLE_SAST: 'true'
 
 stages:
-- secret-detection
-- test
-
-sast:
-  stage: test
-  artifacts:
-    reports:
-      sast: gl-sast-report.json
+- scan
 
 secret_detection:
-  stage: secret-detection
+  stage: scan
+
+sast:
+  stage: scan
