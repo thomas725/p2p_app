@@ -1,0 +1,64 @@
+[package]
+name = "p2p_app"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+## https://github.com/johnthagen/min-sized-rust
+strip = true      # Strip symbols from binary*
+opt-level = 'z'   # Optimize for size
+lto = true        # Enable link-time optimization
+codegen-units = 1 # Reduce parallel codegen units to increase optimizations
+panic = 'abort'   # Abort on panic
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false
+
+[features]
+basic = []
+sqlite_bundled = [ "dep:libsqlite3-sys" ]
+
+[dependencies]
+
+# ORM mapper we use to access our SQLite database
+diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
+# feature "chrono" used for TIMESTAMP columns
+# by default we dynamically link to SQLite installed in your system.
+# to instead bundle SQLite, you could uncomment the next line:
+libsqlite3-sys = { version = "0.35.0", features = ["bundled"], optional = true }
+
+# for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
+diesel_migrations = { version = "=2.2.0" }
+
+# this library allows us to load environment variables from a .env file.
+# This allows users a second way to specify the path to the database (with variable name: "DATABASE_URL")
+dotenvy = {version = "=0.15.7" }
+
+# feature set copied from chat example
+libp2p = { version = "=0.56.0", features = [
+    "tokio",
+    "gossipsub",
+    "mdns",
+    "noise",
+    "macros",
+    "tcp",
+    "yamux",
+    "quic",
+] }
+
+# async runtime also used for libp2p
+tokio = { version = "=1.47.1", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }
+# features needed for tokio::main macro: "rt-core" & "macros"
+# feature "io-util" is used for AsyncBufReadExt
+# feature "io-std" gives us io::stdin()
+
+# libp2p uses tracing crate to log events - subscriber can help to debug issues
+tracing = "=0.1.41"
+tracing-subscriber = { version = "=0.3.20" }
+
+# nice error handing
+color-eyre ={ version = "=0.6.5" }
+chrono = "0.4.41"
+libp2p-identity = "0.2.12"
