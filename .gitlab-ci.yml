@@ -12,7 +12,7 @@ include:
 
 variables:
   SECRET_DETECTION_ENABLED: 'true'
-  ENABLE_SAST: 'true'
+  ENABLE_SAST: 'true' # rust is not supported, so it's skipped quietly!
 
 stages:
   - scan
@@ -28,3 +28,9 @@ sast:
   when: manual
   script:
     - echo "Running SAST analysis"
+
+# LLVM suggested alternative to Gitlab SAST: Rust-specific security tools
+cargo_audit:
+  stage: scan
+  script:
+    - cargo audit --database url https://github.com/RustSec/rustsec-index.git
