@@ -19,10 +19,12 @@ stages:
 
 secret_detection:
   stage: scan
+  when: manual
   script:
     - echo "Running secret detection"
 
 sast:
   stage: scan
+  when: manual
   script:
     - echo "Running SAST analysis"
