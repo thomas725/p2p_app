@@ -49,7 +49,7 @@ ls -al target/$target/$profile/$project
 ls -alh target/$target/$profile/$project
 if [ -z ${skip_upx+x} ] || [ $skip_upx -ne 1 ]; then
   # upx version 5 outputs binaries that don't work on legacy system:
-  # > UPX-5.0 wants memfd_create(), or needs /dev/shm(,O_TMPFILE,)
+  # > UPX-5.0 wants mead_create(), or needs /dev/shm(,O_TMPFILE,)
   # so we use latest version 4 instead:
   # cd /opt ; wget https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz ; tar xf upx-4.2.4-amd64_linux.tar.xz
   /opt/upx-4.2.4-amd64_linux/upx --best --lzma target/$target/$profile/$project
@@ -73,10 +73,10 @@ fi
 # skip_upx=1 target=armv7-unknown-linux-musleabihf features=basic ./build_release.sh
 #3445368 -> 1458072 # can't use UPX:
 # > UPX-5.0 wants memfd_create(), or needs /dev/shm(,O_TMPFILE,)
-#uncompressed 3,4MiB binary fails becuase of some protocol not being supported, I believe it's about quic:
+#uncompressed 3,4MiB binary fails because of some protocol not being supported, I believe it's about quic:
 # INFO quinn_udp::imp::gso: GSO disabled: kernel too old (3.4.39); need 4.18+
 # Error: Protocol not available (os error 92)
-#removed quic to find siginficant smaller binary size:
+#removed quic to find significant smaller binary size:
 #2583120 ->   112959 and a different error message:
 # Error: Multiaddr is not supported: /ip4/0.0.0.0/udp/0/quic-v1
 
