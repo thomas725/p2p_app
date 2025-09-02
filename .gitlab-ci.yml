@@ -28,4 +28,5 @@ cargo_audit:
   stage: scan
   when: manual
   script:
-    - cargo audit --database url https://github.com/RustSec/rustsec-index.git
+    - cargo install cargo-audit
+    - cargo audit
