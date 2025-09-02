@@ -19,6 +19,9 @@ stages:
 
 sast:
   stage: test
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
 
 secret_detection:
   stage: secret-detection
