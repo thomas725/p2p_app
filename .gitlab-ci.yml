@@ -12,10 +12,11 @@ include:
 
 variables:
   SECRET_DETECTION_ENABLED: 'true'
+  ENABLE_SAST: 'true'
 
 stages:
-- test
 - secret-detection
+- test
 
 sast:
   stage: test
