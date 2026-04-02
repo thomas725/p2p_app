@@ -102,3 +102,23 @@ fi
 # 3461632 = 3,4M   ->   1465792 = 1,4M
 # 3461632 = 3,4M   ->   1465512 = 1,4M
 
+# without bundled libsqlite3-sys:
+# target=mipsel-unknown-linux-gnu features=basic ./build_release.sh
+# fails to build: GLIBC_2.32, GLIBC_2.33, GLIBC_2.34 & GLIBC_2.39 not found
+
+# with bundled libsqlite3-sys:
+# target=mipsel-unknown-linux-gnu features=sqlite_bundled ./build_release.sh
+# 5110952 = 4,9M   ->   1641332 = 1,6M
+# doesn't start, output:
+# /usr/bin/p2p_chat_example: line 1: EL@�g4p4: not found
+# /usr/bin/p2p_chat_example: line 2: :��=1VZ,%5IN.P��2��H�a�d��U�3@�9�qk+gh�.��K�6���������E@��FR�0����L��8L�nW�N40: not found
+# /usr/bin/p2p_chat_example: /usr/bin/p2p_chat_example: line 2: line 2: �ަ�~��O��5Eq���6�Vyc
+# ���jO�^��G��S�������k�r�٪>5��(&��|���▒�w�D߈��̽��:!*?Ĺ�[�<t�}Gr���Z1ԭ�D<p���0>&óF�+d�CI-��D
+# ���m�!�L��▒▒�: not found
+# syntax error: unexpected word (expecting ")")
+
+# with bundled libsqlite3-sys + stable compiler:
+# stable=1 target=mipsel-unknown-linux-gnu features=sqlite_bundled ./build_release.sh
+# zerocopy v0.8.26 fails to build: GLIBC_2.32, GLIBC_2.33, GLIBC_2.34 & GLIBC_2.39 not found
+
+# stable=1 target=mips-unknown-linux-gnu features=sqlite_bundled ./build_release.sh
