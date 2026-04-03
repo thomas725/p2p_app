@@ -93,14 +93,18 @@ async fn main() -> color_eyre::Result<()> {
     loop {
         tokio::select! {
             Ok(Some(line)) = stdin.next_line() => {
+                let line = line.trim();
                 if line.starts_with("/connect ") {
                     let addr = line.trim_start_matches("/connect ");
                     match addr.parse::<Multiaddr>() {
                         Ok(multiaddr) => {
+                            println!("Dialing {multiaddr}...");
                             swarm.dial(multiaddr).map_err(|e| println!("Dial error: {e:?}")).ok();
                         }
                         Err(e) => println!("Invalid address: {e}"),
                     }
+                } else if line.is_empty() {
+                    continue;
                 } else {
                     swarm
                         .behaviour_mut()
