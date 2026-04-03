@@ -20,7 +20,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              pkgs.rustup
+              rustup
               pkg-config
               openssl
               udev
@@ -33,12 +33,11 @@
             RUST_BACKTRACE = "1";
 
             shellHook = ''
-              # Initialize rustup if not already done
-              if [ ! -f "$HOME/.rustup/bin/rustup" ]; then
-                echo "Initializing rustup..."
-                rustup init --default-toolchain none 2>/dev/null || true
+              # Source rustup environment if available
+              if [ -f "$HOME/.rustup/bin/rustup" ]; then
+                source "$HOME/.rustup/bin/rustup-init.sh" 2>/dev/null || true
               fi
-              export PATH="$HOME/.rustup/bin:$PATH"
+              rustup show 2>/dev/null || rustup install stable
             '';
           };
         }
