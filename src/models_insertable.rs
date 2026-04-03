@@ -7,3 +7,26 @@ use diesel::Insertable;
 pub struct NewIdentity {
     pub key: Vec<u8>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_identity_debug() {
+        let new_identity = NewIdentity {
+            key: vec![1, 2, 3, 4],
+        };
+        let debug_str = format!("{:?}", new_identity);
+        assert!(debug_str.contains("key:"));
+    }
+
+    #[test]
+    fn test_new_identity_from_bytes() {
+        let key_bytes = vec![0u8; 32];
+        let new_identity = NewIdentity {
+            key: key_bytes.clone(),
+        };
+        assert_eq!(new_identity.key, key_bytes);
+    }
+}

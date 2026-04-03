@@ -13,3 +13,31 @@ pub struct Identity {
     pub key: Vec<u8>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[allow(deprecated)]
+    #[test]
+    fn test_identity_debug() {
+        let identity = Identity {
+            id: 1,
+            created_at: NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+            key: vec![1, 2, 3],
+        };
+        let debug_str = format!("{:?}", identity);
+        assert!(debug_str.contains("id: 1"));
+    }
+
+    #[allow(deprecated)]
+    #[test]
+    fn test_identity_default_values() {
+        let identity = Identity {
+            id: 0,
+            created_at: NaiveDateTime::from_timestamp_opt(0, 0).unwrap(),
+            key: vec![],
+        };
+        assert_eq!(identity.id, 0);
+        assert!(identity.key.is_empty());
+    }
+}
