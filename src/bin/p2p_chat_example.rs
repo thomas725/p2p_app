@@ -1,4 +1,5 @@
 use libp2p::{
+    Multiaddr,
     futures::StreamExt as _,
     gossipsub, mdns, noise,
     swarm::{NetworkBehaviour, SwarmEvent},
@@ -52,7 +53,7 @@ async fn main() -> color_eyre::Result<()> {
                 .validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message signing)
                 .message_id_fn(message_id_fn) // content-address messages. No two messages of the same content will be propagated.
                 .build()
-                .map_err(|msg| io::Error::new(io::ErrorKind::Other, msg))?; // Temporary hack because `build` does not return a proper `std::error::Error`.
+                .map_err(|msg| io::Error::other(msg))?; // Temporary hack because `build` does not return a proper `std::error::Error`.
 
             // build a gossipsub network behaviour
             let gossipsub = gossipsub::Behaviour::new(
@@ -94,7 +95,7 @@ async fn main() -> color_eyre::Result<()> {
             Ok(Some(line)) = stdin.next_line() => {
                 if line.starts_with("/connect ") {
                     let addr = line.trim_start_matches("/connect ");
-                    match addr.parse() {
+                    match addr.parse::<Multiaddr>() {
                         Ok(multiaddr) => {
                             swarm.dial(multiaddr).map_err(|e| println!("Dial error: {e:?}")).ok();
                         }
