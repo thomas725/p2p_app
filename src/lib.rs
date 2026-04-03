@@ -2,7 +2,7 @@ pub mod models_insertable;
 pub mod models_queryable;
 pub mod schema;
 use crate::schema::identities::dsl::identities;
-use crate::{models_queryable::Identity, models_insertable::NewIdentity};
+use crate::{models_insertable::NewIdentity, models_queryable::Identity};
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
     Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection,
@@ -52,4 +52,76 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         Err(e) => tracing::error!("failed to query sqlite for identities: {e}"),
     };
     Ok(keypair)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_connection() -> SqliteConnection {
+        let mut conn =
+            SqliteConnection::establish(":memory:").expect("Failed to create in-memory database");
+        conn.run_pending_migrations(MIGRATIONS)
+            .expect("Failed to run migrations");
+        conn
+    }
+
+    #[test]
+    fn test_migrations_run_successfully() {
+        let mut conn = test_connection();
+        let result = schema::identities::table
+            .select(schema::identities::id)
+            .load::<i32>(&mut conn);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_insert_and_retrieve_identity() {
+        let mut conn = test_connection();
+        let keypair = libp2p_identity::Keypair::generate_ed25519();
+        let key = keypair.to_protobuf_encoding().expect("encode keypair");
+
+        diesel::insert_into(schema::identities::table)
+            .values(NewIdentity { key: key.clone() })
+            .execute(&mut conn)
+            .expect("Failed to insert identity");
+
+        let rows = identities
+            .select(Identity::as_select())
+            .load::<Identity>(&mut conn)
+            .expect("Failed to load identities");
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].key, key);
+    }
+
+    #[test]
+    fn test_get_libp2p_identity_generates_new() {
+        let database_url = ":memory:";
+        let mut conn =
+            SqliteConnection::establish(database_url).expect("Failed to create in-memory database");
+        conn.run_pending_migrations(MIGRATIONS)
+            .expect("Failed to run migrations");
+
+        let keypair = libp2p_identity::Keypair::generate_ed25519();
+        let key = keypair.to_protobuf_encoding().expect("encode keypair");
+        diesel::insert_into(schema::identities::table)
+            .values(NewIdentity { key })
+            .execute(&mut conn)
+            .expect("Failed to insert identity");
+
+        let rows = identities
+            .select(Identity::as_select())
+            .load::<Identity>(&mut conn)
+            .expect("Failed to load identities");
+        assert_eq!(rows.len(), 1);
+    }
+
+    #[test]
+    fn test_keypair_serialization_roundtrip() {
+        let original = libp2p_identity::Keypair::generate_ed25519();
+        let encoded = original.to_protobuf_encoding().expect("encode");
+        let decoded = libp2p_identity::Keypair::from_protobuf_encoding(&encoded).expect("decode");
+        assert_eq!(encoded, decoded.to_protobuf_encoding().expect("re-encode"));
+    }
 }
