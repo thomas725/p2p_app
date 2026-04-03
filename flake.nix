@@ -28,6 +28,7 @@
               openssl
               udev
               systemd
+              sqlite
             ];
 
             RUST_BACKTRACE = "1";
