@@ -86,17 +86,28 @@ async fn main() -> color_eyre::Result<()> {
         .ok();
 
     println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
+    println!("Or connect to another peer manually: /connect <multiaddr>");
 
     // Kick it off
     loop {
         tokio::select! {
             Ok(Some(line)) = stdin.next_line() => {
-                swarm
-                    .behaviour_mut()
-                    .gossipsub
-                    .publish(topic.clone(), line.as_bytes())
-                    .map_err(|e| println!("Publish error: {e:?}"))
-                    .ok();
+                if line.starts_with("/connect ") {
+                    let addr = line.trim_start_matches("/connect ");
+                    match addr.parse() {
+                        Ok(multiaddr) => {
+                            swarm.dial(multiaddr).map_err(|e| println!("Dial error: {e:?}")).ok();
+                        }
+                        Err(e) => println!("Invalid address: {e}"),
+                    }
+                } else {
+                    swarm
+                        .behaviour_mut()
+                        .gossipsub
+                        .publish(topic.clone(), line.as_bytes())
+                        .map_err(|e| println!("Publish error: {e:?}"))
+                        .ok();
+                }
             }
             event = swarm.select_next_some() => match event {
                 SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
@@ -121,6 +132,10 @@ async fn main() -> color_eyre::Result<()> {
                     ),
                 SwarmEvent::NewListenAddr { address, .. } => {
                     println!("Local node is listening on {address}");
+                }
+                SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                    println!("Connected to peer: {peer_id}");
+                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                 }
                 other => {
                     println!("Other swarm event: {other:?}");
