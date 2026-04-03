@@ -1,2 +1,5 @@
 /target
 *.db
+
+# NixOS dev dependencies direnv temp folder
+.direnv
