@@ -28,6 +28,11 @@
               sqlite
               cargo-cross
               upx
+              lld
+              clang
+              binutils
+              bashInteractive
+              gcc
             ];
 
             RUST_BACKTRACE = "1";
