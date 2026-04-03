@@ -3,13 +3,9 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    rustup = {
-      url = "github:rust-lang/rustup";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, rustup }:
+  outputs = { self, nixpkgs }:
     let
       forAllSystems = nixpkgs.lib.genAttrs [
         "x86_64-linux"
@@ -24,7 +20,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              rustup
+              pkgs.rustup
               pkg-config
               openssl
               udev
@@ -35,6 +31,15 @@
             ];
 
             RUST_BACKTRACE = "1";
+
+            shellHook = ''
+              # Initialize rustup if not already done
+              if [ ! -f "$HOME/.rustup/bin/rustup" ]; then
+                echo "Initializing rustup..."
+                rustup init --default-toolchain none 2>/dev/null || true
+              fi
+              export PATH="$HOME/.rustup/bin:$PATH"
+            '';
           };
         }
       );
