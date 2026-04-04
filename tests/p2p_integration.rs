@@ -50,6 +50,10 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
 
     let mut mdns_config = mdns::Config::default();
     mdns_config.query_interval = Duration::from_secs(1);
+    eprintln!(
+        "Creating mDNS with config: query_interval={:?}",
+        mdns_config.query_interval
+    );
     let mdns = mdns::tokio::Behaviour::new(mdns_config, peer_id)?;
 
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
