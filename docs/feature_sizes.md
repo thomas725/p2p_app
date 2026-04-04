@@ -25,7 +25,6 @@ This document shows the binary sizes for different feature combinations.
 | `quic,tracing` | 3.8MB | 1.4MB |
 | `quic,mdns,tracing` | 4.1MB | 1.5MB |
 | `sqlite_bundled` | 3.3MB | 1.2MB |
-| `basic,sqlite_bundled` | 3.3MB | 1.2MB |
 | `mdns,sqlite_bundled` | 3.6MB | 1.3MB |
 | `tracing,sqlite_bundled` | 3.5MB | 1.3MB |
 | `quic,sqlite_bundled` | 4.4MB | 1.7MB |
