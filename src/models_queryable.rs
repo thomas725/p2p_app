@@ -13,6 +13,18 @@ pub struct Identity {
     pub key: Vec<u8>,
 }
 
+#[derive(Queryable, Selectable, Debug)]
+#[diesel(table_name = messages)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct Message {
+    pub id: i32,
+    pub created_at: NaiveDateTime,
+    pub content: String,
+    pub peer_id: Option<String>,
+    pub topic: String,
+    pub sent: i32,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
