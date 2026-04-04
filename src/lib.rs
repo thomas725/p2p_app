@@ -16,6 +16,7 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned());
+    println!("Using database: {database_url}");
     let mut conn = SqliteConnection::establish(&database_url)
         .wrap_err_with(|| format!("Error connecting to {database_url}"))?;
     conn.run_pending_migrations(MIGRATIONS)
