@@ -135,7 +135,10 @@ async fn connect_nodes(
     .await;
 
     if !a_connected || !b_connected {
-        let msg = format!("Failed to establish connection: a_connected={}, b_connected={}", a_connected, b_connected);
+        let msg = format!(
+            "Failed to establish connection: a_connected={}, b_connected={}",
+            a_connected, b_connected
+        );
         return Err(msg.into());
     }
 
