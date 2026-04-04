@@ -18,7 +18,7 @@ debug = true
 strip = false
 
 [features]
-default = [ "basic", "mdns", "tracing" ]
+default = [ "mdns", "tracing", "quic" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
