@@ -10,12 +10,14 @@ This document shows the binary sizes for different feature combinations.
 | `mdns` | Local network peer discovery |
 | `quic` | UDP-based QUIC transport |
 | `tracing` | Debug logging and tracing support |
+| `sqlite_bundled` | Embed SQLite library (no system dependency) |
 
 ## Size Table
 
 | Features | Uncompressed | Compressed (UPX) |
 |----------|--------------|------------------|
 | `basic` | 2.3MB | 741KB |
+| `basic,sqlite_bundled` | 3.3MB | 1.2MB |
 | `mdns` | 2.6MB | 841KB |
 | `tracing` | 2.6MB | 825KB |
 | `mdns,tracing` | 3.0MB | 930KB |
