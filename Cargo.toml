@@ -5,11 +5,12 @@ edition = "2024"
 
 [profile.release]
 ## https://github.com/johnthagen/min-sized-rust
-strip = true      # Strip symbols from binary*
+strip = true      # Strip symbols from binary
 opt-level = 'z'   # Optimize for size
-lto = true        # Enable link-time optimization
+lto = 'fat'       # Enable fat link-time optimization
 codegen-units = 1 # Reduce parallel codegen units to increase optimizations
 panic = 'abort'   # Abort on panic
+overflow-checks = false # Disable runtime integer overflow checks
 
 [profile.release-with-debug]
 inherits = "release"
@@ -18,10 +19,12 @@ strip = false
 
 [features]
 default = [ "basic" ]
-basic = []
+basic = [ "dep:libp2p" ]
 sqlite_bundled = [ "dep:libsqlite3-sys" ]
+quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 
 [dependencies]
+libp2p-quic = { version = "=0.13.0", optional = true }
 
 # ORM mapper we use to access our SQLite database
 diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
@@ -48,7 +51,7 @@ libp2p = { version = "=0.56.0", features = [
     "tcp",
     "yamux",
     "quic",
-] }
+], optional = true }
 
 # async runtime also used for libp2p
 tokio = { version = "=1.47.1", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }

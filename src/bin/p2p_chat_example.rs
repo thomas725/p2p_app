@@ -13,12 +13,37 @@ use std::{
 };
 use tokio::{io, io::AsyncBufReadExt};
 
-// We create a custom network behaviour that combines Gossipsub and Mdns.
 #[derive(NetworkBehaviour)]
 struct MyBehaviour {
     gossipsub: gossipsub::Behaviour,
     mdns: mdns::tokio::Behaviour,
 }
+
+fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
+    let message_id_fn = |message: &gossipsub::Message| {
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        gossipsub::MessageId::from(s.finish().to_string())
+    };
+
+    let gossipsub_config = gossipsub::ConfigBuilder::default()
+        .heartbeat_interval(Duration::from_secs(10))
+        .validation_mode(gossipsub::ValidationMode::Strict)
+        .message_id_fn(message_id_fn)
+        .build()
+        .expect("gossipsub config should be valid");
+
+    let gossipsub = gossipsub::Behaviour::new(
+        gossipsub::MessageAuthenticity::Signed(key.clone()),
+        gossipsub_config,
+    )
+    .expect("gossipsub should be created");
+
+    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())
+        .expect("mdns should be created");
+    MyBehaviour { gossipsub, mdns }
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -31,42 +56,30 @@ async fn main() -> color_eyre::Result<()> {
         .map_err(|e| println!("failed to init tracing subscriber: {e}"))
         .ok();
 
-    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity()?)
-        .with_tokio()
-        .with_tcp(
-            tcp::Config::default(),
-            noise::Config::new,
-            yamux::Config::default,
-        )?
-        .with_quic()
-        .with_behaviour(|key| {
-            // To content-address message, we can take the hash of message and use it as an ID.
-            let message_id_fn = |message: &gossipsub::Message| {
-                let mut s = DefaultHasher::new();
-                message.data.hash(&mut s);
-                gossipsub::MessageId::from(s.finish().to_string())
-            };
-
-            // Set a custom gossipsub configuration
-            let gossipsub_config = gossipsub::ConfigBuilder::default()
-                .heartbeat_interval(Duration::from_secs(10)) // This is set to aid debugging by not cluttering the log space
-                .validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message signing)
-                .message_id_fn(message_id_fn) // content-address messages. No two messages of the same content will be propagated.
-                .build()
-                .map_err(|msg| io::Error::other(msg))?; // Temporary hack because `build` does not return a proper `std::error::Error`.
-
-            // build a gossipsub network behaviour
-            let gossipsub = gossipsub::Behaviour::new(
-                gossipsub::MessageAuthenticity::Signed(key.clone()),
-                gossipsub_config,
+    let mut swarm = {
+        let base = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity()?)
+            .with_tokio()
+            .with_tcp(
+                tcp::Config::default(),
+                noise::Config::new,
+                yamux::Config::default,
             )?;
 
-            let mdns =
-                mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
-            Ok(MyBehaviour { gossipsub, mdns })
-        })?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-        .build();
+        #[cfg(feature = "quic")]
+        let swarm = base
+            .with_quic()
+            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .build();
+
+        #[cfg(not(feature = "quic"))]
+        let swarm = base
+            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .build();
+
+        swarm
+    };
 
     // Create a Gossipsub topic
     let topic = gossipsub::IdentTopic::new("test-net");
@@ -77,10 +90,13 @@ async fn main() -> color_eyre::Result<()> {
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
     // Listen on all interfaces and whatever port the OS assigns
-    swarm
-        .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
-        .map_err(|e| tracing::warn!("failed to listen to udp+quick: {e}"))
-        .ok();
+    #[cfg(feature = "quic")]
+    {
+        swarm
+            .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
+            .map_err(|e| tracing::warn!("failed to listen to quic: {e}"))
+            .ok();
+    }
     swarm
         .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
         .map_err(|e| tracing::warn!("failed to listen to tcp: {e}"))

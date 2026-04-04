@@ -5,14 +5,14 @@
 #debug=1
 
 project="p2p_chat_example"
-z0="build-std=std,panic_unwind"
 z1="build-std=std,panic_abort"
-z2="build-std-features=panic_immediate_abort"
+
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
   # -Zfmt-debug=none # don't use because it breaks debug printing structs which we use a lot! also, doesn't save that much..
   if [ -z ${stable+x} ] || [ $stable -ne 1 ]; then
     # error: the option `Z` is only accepted on the nightly compiler
     RUSTFLAGS="-Zlocation-detail=none"
+    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc
   else
     RUSTFLAGS=""
   fi
@@ -33,7 +33,7 @@ fi
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
   profile='release'
   if [ -z ${stable+x} ] || [ $stable -ne 1 ]; then
-    RUSTFLAGS="$RUSTFLAGS" $bin +nightly build -Z $z1 -Z $z2 --target $target --release --no-default-features -F $features
+    RUSTFLAGS="$RUSTFLAGS" $bin +nightly build -Z $z1 --target $target --release --no-default-features -F $features
   else
     # nightly sometimes doesn't work. especially with cross compiling. if it doesn't, set environment stable=1 flag for:
     RUSTFLAGS="$RUSTFLAGS" $bin build --target $target --release --no-default-features -F $features
@@ -52,7 +52,8 @@ if [ -z ${skip_upx+x} ] || [ $skip_upx -ne 1 ]; then
   # > UPX-5.0 wants mead_create(), or needs /dev/shm(,O_TMPFILE,)
   # so we use latest version 4 instead:
   # cd /opt ; wget https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz ; tar xf upx-4.2.4-amd64_linux.tar.xz
-  /opt/upx-4.2.4-amd64_linux/upx --best --lzma target/$target/$profile/$project
+  # /opt/upx-4.2.4-amd64_linux/
+  upx --best --lzma target/$target/$profile/$project
   ls -al target/$target/$profile/$project
   ls -alh target/$target/$profile/$project
 fi
@@ -122,3 +123,23 @@ fi
 # zerocopy v0.8.26 fails to build: GLIBC_2.32, GLIBC_2.33, GLIBC_2.34 & GLIBC_2.39 not found
 
 # stable=1 target=mips-unknown-linux-gnu features=sqlite_bundled ./build_release.sh
+
+## 2026-04-03
+# rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+# target=x86_64-unknown-linux-gnu features=basic ./build_release.sh
+
+# $ stable=1 target=x86_64-unknown-linux-gnu features=basic bash build_release.sh
+# Finished `release` profile [optimized] target(s) in 42.21s
+# -rwxr-xr-x 2 user users 4770784 Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
+# -rwxr-xr-x 2 user users 4.6M Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
+#                        Ultimate Packer for eXecutables
+#                           Copyright (C) 1996 - 2025
+# UPX 5.0.2       Markus Oberhumer, Laszlo Molnar & John Reiser   Jul 20th 2025
+# 
+#         File size         Ratio      Format      Name
+#    --------------------   ------   -----------   -----------
+#    4770784 ->   1618124   33.92%   linux/amd64   p2p_chat_example              
+# 
+# Packed 1 file.
+# -rwxr-xr-x 1 user users 1618124 Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
+# -rwxr-xr-x 1 user users 1.6M Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example

@@ -2202,6 +2202,7 @@ dependencies = [
  "dotenvy",
  "libp2p",
  "libp2p-identity",
+ "libp2p-quic",
  "libsqlite3-sys",
  "tokio",
  "tracing",
