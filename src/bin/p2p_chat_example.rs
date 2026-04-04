@@ -147,15 +147,16 @@ async fn main() -> color_eyre::Result<()> {
             event = swarm.select_next_some() => match event {
                 #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                    for (peer_id, _multiaddr) in list {
-                        println!("mDNS discovered a new peer: {peer_id}");
+                    for (peer_id, multiaddr) in list {
+                        println!("mDNS discovered peer: {} at {}", peer_id, multiaddr);
+                        let _ = swarm.dial(multiaddr.clone());
                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     }
                 },
                 #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                    for (peer_id, _multiaddr) in list {
-                        println!("mDNS discover peer has expired: {peer_id}");
+                    for (peer_id, multiaddr) in list {
+                        println!("mDNS peer expired: {} at {}", peer_id, multiaddr);
                         swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
                     }
                 },
