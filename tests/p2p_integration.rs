@@ -276,8 +276,8 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     let mut node_a = create_node().await?;
     let mut node_b = create_node().await?;
 
-    node_a.swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
-    node_b.swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
+    node_a.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+    node_b.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 
     let peer_a = node_a.peer_id;
     let peer_b = node_b.peer_id;
