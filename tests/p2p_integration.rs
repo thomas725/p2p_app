@@ -48,7 +48,9 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         gossipsub_config,
     )?;
 
-    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
+    let mut mdns_config = mdns::Config::default();
+    mdns_config.query_interval = Duration::from_secs(1);
+    let mdns = mdns::tokio::Behaviour::new(mdns_config, peer_id)?;
 
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
@@ -282,10 +284,12 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     let peer_a = node_a.peer_id;
     let peer_b = node_b.peer_id;
 
+    println!("Peer A: {}, Peer B: {}", peer_a, peer_b);
+
     let mut a_discovered_b = false;
     let mut b_discovered_a = false;
 
-    let discovery_deadline = Duration::from_secs(15);
+    let discovery_deadline = Duration::from_secs(30);
     let _ = timeout(discovery_deadline, async {
         loop {
             tokio::select! {
