@@ -43,8 +43,10 @@ fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
     .expect("gossipsub should be created");
 
     #[cfg(feature = "mdns")]
-    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())
-        .expect("mdns should be created");
+    let mut mdns_config = mdns::Config::default();
+    mdns_config.query_interval = Duration::from_secs(1);
+    let mdns = mdns::tokio::Behaviour::new(mdns_config, key.public().to_peer_id())
+        .expect("mDNS should be created");
     MyBehaviour {
         gossipsub,
         #[cfg(feature = "mdns")]
