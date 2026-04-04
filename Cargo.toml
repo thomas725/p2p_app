@@ -23,7 +23,7 @@ basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p", "dep:libp2p-quic" ]
-tracing = [ "dep:tracing", "dep:tracing-subscriber" ]
+tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
