@@ -1,7 +1,7 @@
 use libp2p::{
     Multiaddr,
     futures::StreamExt as _,
-    gossipsub, identity,
+    gossipsub, identity, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
 };
@@ -17,6 +17,7 @@ const TEST_TOPIC: &str = "test-integration";
 #[derive(NetworkBehaviour)]
 struct TestBehaviour {
     gossipsub: gossipsub::Behaviour,
+    mdns: mdns::tokio::Behaviour,
 }
 
 struct TestNode {
@@ -47,6 +48,8 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         gossipsub_config,
     )?;
 
+    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
+
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
         .with_tcp(
@@ -55,7 +58,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
             yamux::Config::default,
         )?
         .with_quic()
-        .with_behaviour(|_| Ok(TestBehaviour { gossipsub }))?
+        .with_behaviour(|_| Ok(TestBehaviour { gossipsub, mdns }))?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
         .build();
 
@@ -264,6 +267,88 @@ async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>>
 
     assert!(messages.contains(&"Message from A".to_string()));
     assert!(messages.contains(&"Message from B".to_string()));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>> {
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
+
+    node_a.swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
+    node_b.swarm.listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?;
+
+    let peer_a = node_a.peer_id;
+    let peer_b = node_b.peer_id;
+
+    let mut a_discovered_b = false;
+    let mut b_discovered_a = false;
+
+    let discovery_deadline = Duration::from_secs(15);
+    let _ = timeout(discovery_deadline, async {
+        loop {
+            tokio::select! {
+                event = node_a.swarm.select_next_some() => {
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) = event {
+                        for (peer_id, _multiaddr) in list {
+                            if peer_id == peer_b {
+                                println!("Node A discovered node B via mDNS");
+                                node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                a_discovered_b = true;
+                            }
+                        }
+                    }
+                }
+                event = node_b.swarm.select_next_some() => {
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) = event {
+                        for (peer_id, _multiaddr) in list {
+                            if peer_id == peer_a {
+                                println!("Node B discovered node A via mDNS");
+                                node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                b_discovered_a = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if a_discovered_b && b_discovered_a {
+                break;
+            }
+        }
+    })
+    .await;
+
+    if !a_discovered_b || !b_discovered_a {
+        return Err("mDNS peer discovery timed out".into());
+    }
+
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+    let message = b"Hello via mDNS discovery!";
+
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic.clone(), message)?;
+
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break String::from_utf8_lossy(&message.data).to_string();
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Timeout waiting for message")?;
+
+    assert_eq!(received, "Hello via mDNS discovery!");
 
     Ok(())
 }
