@@ -18,17 +18,21 @@ debug = true
 strip = false
 
 [features]
-default = [ "mdns", "tracing", "quic" ]
+default = [ "mdns", "tracing", "quic", "tui" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
+tui = [ "dep:ratatui", "dep:crossterm", "dep:atty" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
 tracing = { version = "=0.1.44", optional = true }
 tracing-subscriber = { version = "=0.3.23", optional = true }
+ratatui = { version = "=0.28", optional = true }
+crossterm = { version = "=0.5", optional = true }
+atty = { version = "=0.2", optional = true }
 
 # ORM mapper we use to access our SQLite database
 diesel = { version = "=2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
