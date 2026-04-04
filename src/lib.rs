@@ -31,11 +31,17 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
                 Ok(i) => {
                     return Ok(i);
                 }
-                Err(e) => tracing::error!("invalid identity stored: {row:?} - {e}"),
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("invalid identity stored: {row:?} - {e}");
+                }
             }
         }
     }
-    tracing::warn!("no valid identity found in database, generating and storing new one");
+    {
+        #[cfg(feature = "tracing")]
+        tracing::warn!("no valid identity found in database, generating and storing new one");
+    }
     let keypair = libp2p_identity::Keypair::generate_ed25519();
     match keypair.to_protobuf_encoding() {
         Ok(key) => {
@@ -45,11 +51,20 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
                 .returning(Identity::as_returning())
                 .get_result(conn)
             {
-                Ok(i) => tracing::info!("inserted new identity: {i:?}"),
-                Err(e) => tracing::error!("failed to insert identity {i:?}: {e}"),
+                Ok(i) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!("inserted new identity: {i:?}");
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("failed to insert identity {i:?}: {e}");
+                }
             }
         }
-        Err(e) => tracing::error!("failed to query sqlite for identities: {e}"),
+        Err(e) => {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to query sqlite for identities: {e}");
+        }
     };
     Ok(keypair)
 }

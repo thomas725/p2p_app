@@ -18,13 +18,17 @@ debug = true
 strip = false
 
 [features]
-default = [ "basic" ]
+default = [ "basic", "mdns", "tracing" ]
 basic = [ "dep:libp2p" ]
+mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p", "dep:libp2p-quic" ]
+tracing = [ "dep:tracing", "dep:tracing-subscriber" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
+tracing = { version = "=0.1.41", optional = true }
+tracing-subscriber = { version = "=0.3.20", optional = true }
 
 # ORM mapper we use to access our SQLite database
 diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
@@ -45,7 +49,6 @@ dotenvy = {version = "=0.15.7" }
 libp2p = { version = "=0.56.0", features = [
     "tokio",
     "gossipsub",
-    "mdns",
     "noise",
     "macros",
     "tcp",
@@ -60,8 +63,7 @@ tokio = { version = "=1.47.1", features = [ "macros", "rt-multi-thread", "io-uti
 # feature "io-std" gives us io::stdin()
 
 # libp2p uses tracing crate to log events - subscriber can help to debug issues
-tracing = "=0.1.41"
-tracing-subscriber = { version = "=0.3.20" }
+# enable with "tracing" feature
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }

@@ -1,7 +1,9 @@
+#[cfg(feature = "mdns")]
+use libp2p::mdns;
 use libp2p::{
     Multiaddr,
     futures::StreamExt as _,
-    gossipsub, mdns, noise,
+    gossipsub, noise,
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
 };
@@ -16,6 +18,7 @@ use tokio::{io, io::AsyncBufReadExt};
 #[derive(NetworkBehaviour)]
 struct MyBehaviour {
     gossipsub: gossipsub::Behaviour,
+    #[cfg(feature = "mdns")]
     mdns: mdns::tokio::Behaviour,
 }
 
@@ -39,9 +42,14 @@ fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
     )
     .expect("gossipsub should be created");
 
+    #[cfg(feature = "mdns")]
     let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())
         .expect("mdns should be created");
-    MyBehaviour { gossipsub, mdns }
+    MyBehaviour {
+        gossipsub,
+        #[cfg(feature = "mdns")]
+        mdns,
+    }
 }
 
 #[tokio::main]
@@ -49,9 +57,9 @@ async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     // libp2p uses the tracing library which helps to understand complex async flows
+    #[cfg(feature = "tracing")]
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
-        // .with_target(false) // this hides the src crate
         .try_init()
         .map_err(|e| println!("failed to init tracing subscriber: {e}"))
         .ok();
@@ -94,12 +102,18 @@ async fn main() -> color_eyre::Result<()> {
     {
         swarm
             .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
-            .map_err(|e| tracing::warn!("failed to listen to quic: {e}"))
+            .map_err(|e| {
+                #[cfg(feature = "tracing")]
+                tracing::warn!("failed to listen to quic: {e}");
+            })
             .ok();
     }
     swarm
         .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
-        .map_err(|e| tracing::warn!("failed to listen to tcp: {e}"))
+        .map_err(|e| {
+            #[cfg(feature = "tracing")]
+            tracing::warn!("failed to listen to tcp: {e}");
+        })
         .ok();
 
     println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
@@ -131,12 +145,14 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
             event = swarm.select_next_some() => match event {
+                #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                     for (peer_id, _multiaddr) in list {
                         println!("mDNS discovered a new peer: {peer_id}");
                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     }
                 },
+                #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                     for (peer_id, _multiaddr) in list {
                         println!("mDNS discover peer has expired: {peer_id}");

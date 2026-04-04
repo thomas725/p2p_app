@@ -7,6 +7,10 @@
 project="p2p_chat_example"
 z1="build-std=std,panic_abort"
 
+if [ -z "$features" ]; then
+  features="default"
+fi
+
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
   # -Zfmt-debug=none # don't use because it breaks debug printing structs which we use a lot! also, doesn't save that much..
   if [ -z ${stable+x} ] || [ $stable -ne 1 ]; then
