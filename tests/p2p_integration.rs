@@ -303,7 +303,8 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                             for (peer_id, multiaddr) in list {
                                 println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
                                 if peer_id == peer_b {
-                                    println!("Node A discovered node B via mDNS");
+                                    println!("Node A discovered node B via mDNS, dialing...");
+                                    let _ = node_a.swarm.dial(multiaddr.clone());
                                     node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     a_discovered_b = true;
                                 }
@@ -322,7 +323,8 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                             for (peer_id, multiaddr) in list {
                                 println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
                                 if peer_id == peer_a {
-                                    println!("Node B discovered node A via mDNS");
+                                    println!("Node B discovered node A via mDNS, dialing...");
+                                    let _ = node_b.swarm.dial(multiaddr.clone());
                                     node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     b_discovered_a = true;
                                 }
@@ -343,7 +345,86 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
         return Err("mDNS peer discovery timed out".into());
     }
 
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    println!("Waiting for connections to be established...");
+
+    let mut connected = false;
+    let connection_deadline = Duration::from_secs(10);
+    let _ = timeout(connection_deadline, async {
+        loop {
+            tokio::select! {
+                event = node_a.swarm.select_next_some() => {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
+                        if peer_id == peer_b {
+                            println!("Node A connected to Node B");
+                            connected = true;
+                        }
+                    }
+                }
+                event = node_b.swarm.select_next_some() => {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
+                        if peer_id == peer_a {
+                            println!("Node B connected to Node A");
+                            connected = true;
+                        }
+                    }
+                }
+            }
+            if connected {
+                break;
+            }
+        }
+    })
+    .await;
+
+    println!("Adding explicit peers for gossipsub...");
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .add_explicit_peer(&peer_b);
+    node_b
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .add_explicit_peer(&peer_a);
+    println!("Explicit peers added");
+
+    println!("Waiting for gossipsub subscriptions...");
+    let mut subscribed_a = false;
+    let mut subscribed_b = false;
+    let subscribe_deadline = Duration::from_secs(10);
+    let _ = timeout(subscribe_deadline, async {
+        loop {
+            tokio::select! {
+                event = node_a.swarm.select_next_some() => {
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) = event {
+                        println!("Node A received subscription from {}", peer_id);
+                        if peer_id == peer_b {
+                            subscribed_a = true;
+                        }
+                    }
+                }
+                event = node_b.swarm.select_next_some() => {
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) = event {
+                        println!("Node B received subscription from {}", peer_id);
+                        if peer_id == peer_a {
+                            subscribed_b = true;
+                        }
+                    }
+                }
+            }
+            if subscribed_a && subscribed_b {
+                break;
+            }
+        }
+    })
+    .await;
+
+    if !subscribed_a || !subscribed_b {
+        return Err("Gossipsub subscription timed out".into());
+    }
+
+    println!("Both nodes subscribed, publishing message...");
 
     let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
     let message = b"Hello via mDNS discovery!";
