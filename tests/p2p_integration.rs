@@ -17,7 +17,7 @@ const TEST_TOPIC: &str = "test-integration";
 #[derive(NetworkBehaviour)]
 struct TestBehaviour {
     gossipsub: gossipsub::Behaviour,
-    mdns: mdns::tokio::Behaviour,
+    mdns: mdns::Behaviour,
 }
 
 struct TestNode {
@@ -48,7 +48,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         gossipsub_config,
     )?;
 
-    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
+    let mdns = mdns::Behaviour::new(mdns::Config::default(), peer_id)?;
 
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
@@ -290,25 +290,41 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
         loop {
             tokio::select! {
                 event = node_a.swarm.select_next_some() => {
-                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) = event {
-                        for (peer_id, _multiaddr) in list {
-                            if peer_id == peer_b {
-                                println!("Node A discovered node B via mDNS");
-                                node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                                a_discovered_b = true;
+                    match event {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            println!("Node A listening on {}", address);
+                        }
+                        SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                            println!("Node A mDNS discovered: {:?}", list);
+                            for (peer_id, multiaddr) in list {
+                                println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
+                                if peer_id == peer_b {
+                                    println!("Node A discovered node B via mDNS");
+                                    node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                    a_discovered_b = true;
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
                 event = node_b.swarm.select_next_some() => {
-                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) = event {
-                        for (peer_id, _multiaddr) in list {
-                            if peer_id == peer_a {
-                                println!("Node B discovered node A via mDNS");
-                                node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                                b_discovered_a = true;
+                    match event {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            println!("Node B listening on {}", address);
+                        }
+                        SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                            println!("Node B mDNS discovered: {:?}", list);
+                            for (peer_id, multiaddr) in list {
+                                println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
+                                if peer_id == peer_a {
+                                    println!("Node B discovered node A via mDNS");
+                                    node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                    b_discovered_a = true;
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
             }
