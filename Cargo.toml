@@ -21,25 +21,25 @@ strip = false
 default = [ "basic", "mdns", "tracing" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
-sqlite_bundled = [ "dep:libsqlite3-sys" ]
+sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
-tracing = { version = "=0.1.41", optional = true }
-tracing-subscriber = { version = "=0.3.20", optional = true }
+tracing = { version = "=0.1.44", optional = true }
+tracing-subscriber = { version = "=0.3.23", optional = true }
 
 # ORM mapper we use to access our SQLite database
-diesel = { version = "=2.2.12", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
+diesel = { version = "=2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 # feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
-libsqlite3-sys = { version = "0.35.0", features = ["bundled"], optional = true }
+libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }
 #libsqlite3-sys = "0.35.0"
 
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
-diesel_migrations = { version = "=2.2.0" }
+diesel_migrations = { version = "=2.3.1" }
 
 # this library allows us to load environment variables from a .env file.
 # This allows users a second way to specify the path to the database (with variable name: "DATABASE_URL")
@@ -57,7 +57,7 @@ libp2p = { version = "=0.56.0", features = [
 ], optional = true }
 
 # async runtime also used for libp2p
-tokio = { version = "=1.47.1", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }
+tokio = { version = "=1.51.0", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }
 # features needed for tokio::main macro: "rt-core" & "macros"
 # feature "io-util" is used for AsyncBufReadExt
 # feature "io-std" gives us io::stdin()
@@ -67,5 +67,5 @@ tokio = { version = "=1.47.1", features = [ "macros", "rt-multi-thread", "io-uti
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }
-chrono = "0.4.41"
-libp2p-identity = "0.2.12"
+chrono = "0.4.44"
+libp2p-identity = "0.2.13"
