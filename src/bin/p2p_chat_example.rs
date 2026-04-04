@@ -1,19 +1,14 @@
 #[cfg(feature = "mdns")]
 use libp2p::mdns;
-use libp2p::{
-    Multiaddr,
-    futures::StreamExt as _,
-    gossipsub, noise,
-    swarm::{NetworkBehaviour, SwarmEvent},
-    tcp, yamux,
-};
-use p2p_app::get_libp2p_identity;
+use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     time::Duration,
 };
-use tokio::{io, io::AsyncBufReadExt};
+
+#[cfg(not(feature = "tui"))]
+use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
 
 #[derive(NetworkBehaviour)]
 struct MyBehaviour {
@@ -43,10 +38,14 @@ fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
     .expect("gossipsub should be created");
 
     #[cfg(feature = "mdns")]
-    let mut mdns_config = mdns::Config::default();
-    mdns_config.query_interval = Duration::from_secs(1);
-    let mdns = mdns::tokio::Behaviour::new(mdns_config, key.public().to_peer_id())
-        .expect("mDNS should be created");
+    let mdns = mdns::tokio::Behaviour::new(
+        mdns::Config {
+            query_interval: Duration::from_secs(1),
+            ..Default::default()
+        },
+        key.public().to_peer_id(),
+    )
+    .expect("mDNS should be created");
     MyBehaviour {
         gossipsub,
         #[cfg(feature = "mdns")]
@@ -54,20 +53,363 @@ fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
     }
 }
 
+#[cfg(feature = "tui")]
+mod tui {
+    use super::MyBehaviour;
+    use libp2p::Swarm;
+    #[cfg(feature = "mdns")]
+    use libp2p::mdns;
+    use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
+    use p2p_app::{get_unsent_messages, load_messages, mark_message_sent, save_message};
+    use ratatui::crossterm::{
+        event::{Event, KeyCode, KeyModifiers, read},
+        execute,
+        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    };
+    use ratatui::{
+        Terminal,
+        backend::CrosstermBackend,
+        layout::{Constraint, Direction, Layout},
+        style::{Color, Style},
+        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+    };
+    use std::collections::VecDeque;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    const MAX_MESSAGES: usize = 1000;
+    const MAX_LOGS: usize = 1000;
+
+    fn format_naive_datetime(time: chrono::NaiveDateTime) -> String {
+        let secs = time.and_utc().timestamp();
+        let hours = (secs / 3600) % 24;
+        let mins = (secs / 60) % 60;
+        let s = secs % 60;
+        format!("{:02}:{:02}:{:02}", hours, mins, s)
+    }
+
+    fn format_system_time(time: SystemTime) -> String {
+        let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
+        let secs = duration.as_secs();
+        let hours = (secs / 3600) % 24;
+        let mins = (secs / 60) % 60;
+        let s = secs % 60;
+        format!("{:02}:{:02}:{:02}", hours, mins, s)
+    }
+
+    pub async fn run_tui(
+        mut swarm: Swarm<MyBehaviour>,
+        topic_str: String,
+    ) -> color_eyre::Result<()> {
+        let is_tty = atty::is(atty::Stream::Stdout);
+        if !is_tty {
+            return run_noninteractive_mode(swarm).await;
+        }
+
+        match Terminal::new(CrosstermBackend::new(std::io::stdout())) {
+            Ok(mut terminal) => {
+                execute!(std::io::stdout(), EnterAlternateScreen)?;
+                enable_raw_mode()?;
+
+                let mut messages: VecDeque<String> = VecDeque::new();
+                let mut logs: VecDeque<String> = VecDeque::new();
+                let mut active_tab = 0;
+                let mut input_buffer = String::new();
+
+                logs.push_back("TUI started".to_string());
+
+                if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
+                    for msg in db_messages.iter().rev() {
+                        let ts = format_naive_datetime(msg.created_at);
+                        let sender = msg
+                            .peer_id
+                            .as_ref()
+                            .map(|p| format!("[{}]", &p[..8.min(p.len())]))
+                            .unwrap_or_else(|| "[You]".to_string());
+                        messages.push_back(format!("{} {} {}", ts, sender, msg.content));
+                    }
+                    logs.push_back(format!(
+                        "Loaded {} messages from database",
+                        db_messages.len()
+                    ));
+                } else {
+                    logs.push_back("Failed to load messages from database".to_string());
+                }
+
+                let tab_titles = vec!["Chat", "Debug"];
+
+                loop {
+                    tokio::select! {
+                        biased;
+
+                        event = swarm.select_next_some() => {
+                            match event {
+                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Gossipsub(
+                                    gossipsub::Event::Message {
+                                        propagation_source: peer_id,
+                                        message,
+                                        ..
+                                    },
+                                )) => {
+                                    let peer_id_str = peer_id.to_string();
+                                    let content = String::from_utf8_lossy(&message.data).to_string();
+                                    let ts = format_system_time(SystemTime::now());
+                                    let msg = format!("{} [{}] {}", ts, &peer_id_str[..8], content);
+                                    messages.push_back(msg.clone());
+                                    if messages.len() > MAX_MESSAGES {
+                                        messages.pop_front();
+                                    }
+                                    if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str) {
+                                        logs.push_back(format!("Failed to save message: {}", e));
+                                    }
+                                }
+                                #[cfg(feature = "mdns")]
+                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(
+                                    mdns::Event::Discovered(list),
+                                )) => {
+                                    for (peer_id, multiaddr) in list {
+                                        let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
+                                        logs.push_back(log);
+                                        let _ = swarm.dial(multiaddr.clone());
+                                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                    }
+                                }
+                                #[cfg(feature = "mdns")]
+                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(
+                                    mdns::Event::Expired(list),
+                                )) => {
+                                    for (peer_id, multiaddr) in list {
+                                        let log = format!("mDNS expired: {} at {}", peer_id, multiaddr);
+                                        logs.push_back(log);
+                                        swarm
+                                            .behaviour_mut()
+                                            .gossipsub
+                                            .remove_explicit_peer(&peer_id);
+                                    }
+                                }
+                                SwarmEvent::NewListenAddr { address, .. } => {
+                                    let log = format!("Listening on: {}", address);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::ConnectionEstablished { peer_id, connection_id, .. } => {
+                                    let log = format!("Connected to: {} (conn: {:?})", peer_id, connection_id);
+                                    logs.push_back(log);
+                                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+
+                                    if let Ok(unsent) = get_unsent_messages(&topic_str)
+                                        && !unsent.is_empty()
+                                    {
+                                        logs.push_back(format!("Retrying {} unsent messages", unsent.len()));
+                                        for msg in unsent {
+                                            let topic = gossipsub::IdentTopic::new("test-net");
+                                            if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, msg.content.as_bytes()) {
+                                                logs.push_back(format!("Retry publish failed: {:?}", e));
+                                            } else {
+                                                let _ = mark_message_sent(msg.id);
+                                                let ts = format_system_time(SystemTime::now());
+                                                let retry_msg = format!("{} [You] {} (sent)", ts, msg.content);
+                                                messages.push_back(retry_msg);
+                                            }
+                                        }
+                                    }
+                                }
+                                SwarmEvent::ConnectionClosed {
+                                    peer_id, cause, connection_id, ..
+                                } => {
+                                    let log = format!("Disconnected from: {} (conn: {:?}, cause: {:?})", peer_id, connection_id, cause);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::Dialing { peer_id: Some(pid), .. } => {
+                                    let log = format!("Dialing: {}", pid);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::ExpiredListenAddr { address, .. } => {
+                                    let log = format!("Expired listen addr: {}", address);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::ListenerError { listener_id, error } => {
+                                    let log = format!("Listener error: {:?} - {:?}", listener_id, error);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
+                                    let log = format!("Listener closed: {:?} - {:?} ({:?})", listener_id, reason, addresses);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::IncomingConnection { connection_id, local_addr, .. } => {
+                                    let log = format!("Incoming connection: {:?} from {:?}", connection_id, local_addr);
+                                    logs.push_back(log);
+                                }
+                                SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, peer_id, error } => {
+                                    let log = format!("Incoming connection error: {:?} from {:?} to {:?} (peer: {:?}): {:?}",
+                                        connection_id, local_addr, send_back_addr, peer_id, error);
+                                    logs.push_back(log);
+                                }
+                                _ => {}
+                            }
+
+                            if logs.len() > MAX_LOGS {
+                                logs.pop_front();
+                            }
+                        }
+
+                        _ = tokio::time::sleep(Duration::from_millis(16)) => {
+                            if let Ok(event) = read()
+                                && let Event::Key(key) = event {
+                                    match key.code {
+                                        KeyCode::Tab => {
+                                            active_tab = (active_tab + 1) % 2;
+                                        }
+                                        KeyCode::Enter => {
+                                            if !input_buffer.is_empty() && active_tab == 0 {
+                                                let ts = format_system_time(SystemTime::now());
+                                                let msg_str = format!("{} [You] {}", ts, input_buffer);
+                                                messages.push_back(msg_str.clone());
+
+                                                let publish_result = swarm.behaviour_mut().gossipsub.publish(
+                                                    gossipsub::IdentTopic::new("test-net"),
+                                                    input_buffer.as_bytes(),
+                                                );
+
+                                                if let Err(e) = publish_result {
+                                                    logs.push_back(format!("Publish error: {:?}", e));
+                                                }
+
+                                                if let Err(e) = save_message(&input_buffer, None, &topic_str) {
+                                                    logs.push_back(format!("Failed to save message: {}", e));
+                                                }
+
+                                                input_buffer.clear();
+                                            }
+                                        }
+                                        KeyCode::Char(c) => {
+                                            input_buffer.push(c);
+                                            if key.modifiers.contains(KeyModifiers::CONTROL) && c == 'q' {
+                                                execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+                                                disable_raw_mode().ok();
+                                                return Ok(());
+                                            }
+                                        }
+                                        KeyCode::Backspace => {
+                                            input_buffer.pop();
+                                        }
+                                        KeyCode::Esc => {
+                                            execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+                                            disable_raw_mode().ok();
+                                            return Ok(());
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                        }
+                    }
+
+                    terminal.draw(|f| {
+                        let chunks = Layout::default()
+                            .direction(Direction::Vertical)
+                            .constraints([
+                                Constraint::Length(3),
+                                Constraint::Min(0),
+                                Constraint::Length(3),
+                                Constraint::Length(1),
+                            ])
+                            .split(f.area());
+
+                        let tabs = Tabs::new(tab_titles.clone())
+                            .style(Style::default().fg(Color::Cyan))
+                            .select(active_tab);
+                        f.render_widget(tabs, chunks[0]);
+
+                        match active_tab {
+                            0 => {
+                                let chat_items: Vec<ListItem> =
+                                    messages.iter().map(|m| ListItem::new(m.clone())).collect();
+                                let chat_list = List::new(chat_items)
+                                    .block(Block::default().title("Messages").borders(Borders::ALL))
+                                    .style(Style::default().fg(Color::White));
+                                f.render_widget(chat_list, chunks[1]);
+                            }
+                            1 => {
+                                let log_items: Vec<ListItem> =
+                                    logs.iter().map(|l| ListItem::new(l.clone())).collect();
+                                let log_list = List::new(log_items)
+                                    .block(
+                                        Block::default().title("Debug Logs").borders(Borders::ALL),
+                                    )
+                                    .style(Style::default().fg(Color::White));
+                                f.render_widget(log_list, chunks[1]);
+                            }
+                            _ => {}
+                        }
+
+                        let input_display = if active_tab == 0 {
+                            format!("> {}", input_buffer)
+                        } else {
+                            "(Input disabled in Debug tab)".to_string()
+                        };
+                        let input_line = Paragraph::new(input_display)
+                            .style(Style::default().fg(Color::Yellow))
+                            .block(Block::default().title("Input").borders(Borders::ALL));
+                        f.render_widget(input_line, chunks[2]);
+
+                        let help = Paragraph::new(
+                            "Tab: switch | Type message and Enter to send | Ctrl+Q: quit",
+                        )
+                        .style(Style::default().fg(Color::DarkGray));
+                        f.render_widget(help, chunks[3]);
+                    })?;
+                }
+            }
+            Err(_e) => run_noninteractive_mode(swarm).await,
+        }
+    }
+
+    async fn run_noninteractive_mode(mut swarm: Swarm<MyBehaviour>) -> color_eyre::Result<()> {
+        println!("Running in non-interactive mode");
+        println!("Press Ctrl+C to exit");
+
+        loop {
+            tokio::select! {
+                event = swarm.select_next_some() => {
+                    match event {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            eprintln!("Listening on: {}", address);
+                        }
+                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                            eprintln!("Connected to: {}", peer_id);
+                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                        }
+                        SwarmEvent::Behaviour(super::MyBehaviourEvent::Gossipsub(
+                            gossipsub::Event::Message { propagation_source, message, .. }
+                        )) => {
+                            eprintln!(
+                                "[{}] {}",
+                                &propagation_source.to_string()[..8],
+                                String::from_utf8_lossy(&message.data)
+                            );
+                        }
+                        #[cfg(feature = "mdns")]
+                        SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                            for (peer_id, multiaddr) in list {
+                                eprintln!("mDNS discovered: {} at {}", peer_id, multiaddr);
+                                let _ = swarm.dial(multiaddr.clone());
+                                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ = tokio::time::sleep(Duration::from_secs(3600)) => {}
+            }
+        }
+    }
+}
+
+#[cfg(feature = "tui")]
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    // libp2p uses the tracing library which helps to understand complex async flows
-    #[cfg(feature = "tracing")]
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .try_init()
-        .map_err(|e| println!("failed to init tracing subscriber: {e}"))
-        .ok();
-
     let mut swarm = {
-        let base = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity()?)
+        let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
             .with_tokio()
             .with_tcp(
                 tcp::Config::default(),
@@ -91,15 +433,61 @@ async fn main() -> color_eyre::Result<()> {
         swarm
     };
 
-    // Create a Gossipsub topic
     let topic = gossipsub::IdentTopic::new("test-net");
-    // subscribes to our topic
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
-    // Read full lines from stdin
-    let mut stdin = io::BufReader::new(io::stdin()).lines();
+    #[cfg(feature = "quic")]
+    {
+        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+    }
+    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
 
-    // Listen on all interfaces and whatever port the OS assigns
+    tui::run_tui(swarm, topic.to_string()).await
+}
+
+#[cfg(not(feature = "tui"))]
+#[tokio::main]
+async fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+
+    // libp2p uses the tracing library which helps to understand complex async flows
+    #[cfg(feature = "tracing")]
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .try_init()
+        .map_err(|e| println!("failed to init tracing subscriber: {e}"))
+        .ok();
+
+    let mut swarm = {
+        let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
+            .with_tokio()
+            .with_tcp(
+                tcp::Config::default(),
+                noise::Config::new,
+                yamux::Config::default,
+            )?;
+
+        #[cfg(feature = "quic")]
+        let swarm = base
+            .with_quic()
+            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .build();
+
+        #[cfg(not(feature = "quic"))]
+        let swarm = base
+            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .build();
+
+        swarm
+    };
+
+    let topic = gossipsub::IdentTopic::new("test-net");
+    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+
+    let mut stdin = BufReader::new(stdin()).lines();
+
     #[cfg(feature = "quic")]
     {
         swarm
@@ -121,7 +509,6 @@ async fn main() -> color_eyre::Result<()> {
     println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
     println!("Or connect to another peer manually: /connect <multiaddr>");
 
-    // Kick it off
     loop {
         tokio::select! {
             Ok(Some(line)) = stdin.next_line() => {
@@ -133,7 +520,9 @@ async fn main() -> color_eyre::Result<()> {
                             println!("Dialing {multiaddr}...");
                             swarm.dial(multiaddr).map_err(|e| println!("Dial error: {e:?}")).ok();
                         }
-                        Err(e) => println!("Invalid address: {e}"),
+                        Err(e) => {
+                            println!("Failed to parse multiaddr: {e}");
+                        }
                     }
                 } else if line.is_empty() {
                     continue;
