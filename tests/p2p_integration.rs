@@ -17,7 +17,7 @@ const TEST_TOPIC: &str = "test-integration";
 #[derive(NetworkBehaviour)]
 struct TestBehaviour {
     gossipsub: gossipsub::Behaviour,
-    mdns: mdns::Behaviour,
+    mdns: mdns::tokio::Behaviour,
 }
 
 struct TestNode {
@@ -48,7 +48,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         gossipsub_config,
     )?;
 
-    let mdns = mdns::Behaviour::new(mdns::Config::default(), peer_id)?;
+    let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?;
 
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
