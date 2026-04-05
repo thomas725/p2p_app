@@ -720,7 +720,7 @@ async fn main() -> color_eyre::Result<()> {
         let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
             .with_tokio()
             .with_tcp(
-                tcp::Config::default().nodelay(true),
+                tcp::Config::default().nodelay(true).port_reuse(true),
                 noise::Config::new,
                 yamux::Config::default,
             )?;
