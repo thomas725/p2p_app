@@ -346,8 +346,8 @@ mod tui {
                             if let Ok(event) = read()
                                 && let Event::Key(key) = event {
                                     match key.code {
-                                        KeyCode::Tab => {
-                                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                        KeyCode::Tab | KeyCode::BackTab => {
+                                            if key.code == KeyCode::BackTab {
                                                 active_tab = if active_tab == 0 { 3 } else { active_tab - 1 };
                                             } else {
                                                 active_tab = (active_tab + 1) % 4;
