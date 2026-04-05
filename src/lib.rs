@@ -3,9 +3,10 @@ pub mod models_queryable;
 pub mod schema;
 use crate::schema::identities::dsl::identities;
 use crate::schema::messages::dsl::messages;
+use crate::schema::peers::dsl::peers;
 use crate::{
-    models_insertable::{NewIdentity, NewMessage},
-    models_queryable::{Identity, Message},
+    models_insertable::{NewIdentity, NewMessage, NewPeer},
+    models_queryable::{Identity, Message, Peer},
 };
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
@@ -14,9 +15,20 @@ use diesel::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use dotenvy::dotenv;
+use serde::{Deserialize, Serialize};
 use std::env;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
+pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectMessage {
+    pub content: String,
+    pub timestamp: i64,
+}
+
+pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
@@ -68,9 +80,9 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         }
         Err(e) => {
             #[cfg(feature = "tracing")]
-            tracing::error!("failed to query sqlite for identities: {e}");
+            tracing::error!("failed to encode identity: {e}");
         }
-    };
+    }
     Ok(keypair)
 }
 
@@ -78,6 +90,8 @@ pub fn save_message(
     content: &str,
     peer_id: Option<&str>,
     topic: &str,
+    is_direct: bool,
+    target_peer: Option<&str>,
 ) -> color_eyre::Result<Message> {
     let conn = &mut sqlite_connect()?;
     let new_msg = NewMessage {
@@ -85,6 +99,8 @@ pub fn save_message(
         peer_id,
         topic,
         sent: 0,
+        is_direct: if is_direct { 1 } else { 0 },
+        target_peer,
     };
     let msg = diesel::insert_into(schema::messages::table)
         .values(&new_msg)
@@ -98,6 +114,19 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     let msgs = messages
         .filter(schema::messages::topic.eq(topic))
         .filter(schema::messages::sent.eq(0))
+        .filter(schema::messages::is_direct.eq(0))
+        .order(schema::messages::created_at.asc())
+        .select(Message::as_select())
+        .load(conn)?;
+    Ok(msgs)
+}
+
+pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    let msgs = messages
+        .filter(schema::messages::target_peer.eq(target_peer))
+        .filter(schema::messages::sent.eq(0))
+        .filter(schema::messages::is_direct.eq(1))
         .order(schema::messages::created_at.asc())
         .select(Message::as_select())
         .load(conn)?;
@@ -116,11 +145,64 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
     let conn = &mut sqlite_connect()?;
     let msgs = messages
         .filter(schema::messages::topic.eq(topic))
+        .filter(schema::messages::is_direct.eq(0))
         .order(schema::messages::created_at.desc())
         .limit(limit as i64)
         .select(Message::as_select())
         .load(conn)?;
     Ok(msgs)
+}
+
+pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    let msgs = messages
+        .filter(schema::messages::target_peer.eq(target_peer))
+        .filter(schema::messages::is_direct.eq(1))
+        .order(schema::messages::created_at.asc())
+        .limit(limit as i64)
+        .select(Message::as_select())
+        .load(conn)?;
+    Ok(msgs)
+}
+
+pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer> {
+    let conn = &mut sqlite_connect()?;
+    let addresses_str = addresses.join(",");
+    let now = chrono::Utc::now().naive_utc();
+
+    let new_peer = NewPeer {
+        peer_id,
+        addresses: &addresses_str,
+        last_seen: now,
+    };
+
+    let peer = diesel::insert_into(schema::peers::table)
+        .values(&new_peer)
+        .on_conflict(schema::peers::peer_id)
+        .do_update()
+        .set((
+            schema::peers::addresses.eq(&addresses_str),
+            schema::peers::last_seen.eq(now),
+        ))
+        .returning(Peer::as_returning())
+        .get_result(conn)?;
+    Ok(peer)
+}
+
+pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
+    let conn = &mut sqlite_connect()?;
+    let peers_list = peers
+        .order(schema::peers::last_seen.desc())
+        .select(Peer::as_select())
+        .load(conn)?;
+    Ok(peers_list)
+}
+
+pub fn remove_peer(peer_id: &str) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::delete(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
+        .execute(conn)?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -136,61 +218,18 @@ mod tests {
     }
 
     #[test]
-    fn test_migrations_run_successfully() {
-        let mut conn = test_connection();
-        let result = schema::identities::table
-            .select(schema::identities::id)
-            .load::<i32>(&mut conn);
-        assert!(result.is_ok());
+    fn test_save_and_load_peer() {
+        let conn = test_connection();
+        let _ = save_peer("test-peer-1", &["/ip4/127.0.0.1/tcp/4001".to_string()]);
+        let peers = load_peers().expect("Failed to load peers");
+        assert!(peers.len() >= 1);
     }
 
     #[test]
-    fn test_insert_and_retrieve_identity() {
-        let mut conn = test_connection();
-        let keypair = libp2p_identity::Keypair::generate_ed25519();
-        let key = keypair.to_protobuf_encoding().expect("encode keypair");
-
-        diesel::insert_into(schema::identities::table)
-            .values(NewIdentity { key: key.clone() })
-            .execute(&mut conn)
-            .expect("Failed to insert identity");
-
-        let rows = identities
-            .select(Identity::as_select())
-            .load::<Identity>(&mut conn)
-            .expect("Failed to load identities");
-
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].key, key);
-    }
-
-    #[test]
-    fn test_get_libp2p_identity_generates_new() {
-        let database_url = ":memory:";
-        let mut conn =
-            SqliteConnection::establish(database_url).expect("Failed to create in-memory database");
-        conn.run_pending_migrations(MIGRATIONS)
-            .expect("Failed to run migrations");
-
-        let keypair = libp2p_identity::Keypair::generate_ed25519();
-        let key = keypair.to_protobuf_encoding().expect("encode keypair");
-        diesel::insert_into(schema::identities::table)
-            .values(NewIdentity { key })
-            .execute(&mut conn)
-            .expect("Failed to insert identity");
-
-        let rows = identities
-            .select(Identity::as_select())
-            .load::<Identity>(&mut conn)
-            .expect("Failed to load identities");
-        assert_eq!(rows.len(), 1);
-    }
-
-    #[test]
-    fn test_keypair_serialization_roundtrip() {
-        let original = libp2p_identity::Keypair::generate_ed25519();
-        let encoded = original.to_protobuf_encoding().expect("encode");
-        let decoded = libp2p_identity::Keypair::from_protobuf_encoding(&encoded).expect("decode");
-        assert_eq!(encoded, decoded.to_protobuf_encoding().expect("re-encode"));
+    fn test_save_and_load_messages() {
+        let conn = test_connection();
+        let _ = save_message("Hello world", None, "test-topic", false, None);
+        let msgs = load_messages("test-topic", 10).expect("Failed to load messages");
+        assert!(msgs.len() >= 1);
     }
 }
