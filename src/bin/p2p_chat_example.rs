@@ -96,6 +96,8 @@ mod tui {
                         peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
                     logs.push_back(format!("Loaded {} peers from database", db_peers.len()));
+                } else {
+                    logs.push_back("Failed to load peers from database".to_string());
                 }
 
                 let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
