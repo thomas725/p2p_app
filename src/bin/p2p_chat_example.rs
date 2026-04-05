@@ -158,9 +158,9 @@ mod tui {
                                             };
                                             let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
                                         }
-                                        libp2p::request_response::Message::Response { request_id, response: _ } => {
+                                        libp2p::request_response::Message::Response { request_id, response } => {
                                             let _ = request_id;
-                                            logs.push_back("DM sent successfully".to_string());
+                                            logs.push_back(format!("DM response received: {}", response.content));
                                         }
                                     }
                                 }
@@ -346,6 +346,7 @@ mod tui {
                                                 let ts = format_system_time(SystemTime::now());
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
                                                 direct_messages.push_back(msg_str.clone());
+                                                logs.push_back(format!("Sending DM to {}", target));
 
                                                 let peer_id: libp2p::PeerId = match target.parse() {
                                                     Ok(pid) => pid,
@@ -362,6 +363,7 @@ mod tui {
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
+                                                logs.push_back(format!("DM request sent to {}", target));
 
                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(target)) {
                                                     logs.push_back(format!("Failed to save DM: {}", e));

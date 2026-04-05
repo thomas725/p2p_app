@@ -58,7 +58,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair) -> AppBehaviour {
             libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
             libp2p::request_response::ProtocolSupport::Full,
         )],
-        request_response::Config::default(),
+        request_response::Config::default().with_request_timeout(Duration::from_secs(5)),
     );
 
     AppBehaviour {
