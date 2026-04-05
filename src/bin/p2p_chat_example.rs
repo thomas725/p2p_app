@@ -27,36 +27,24 @@ mod tui {
         widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     };
     use std::collections::VecDeque;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime};
 
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
 
-    fn format_naive_datetime(time: chrono::NaiveDateTime) -> String {
-        let secs = time.and_utc().timestamp();
-        let hours = (secs / 3600) % 24;
-        let mins = (secs / 60) % 60;
-        let s = secs % 60;
-        format!("{:02}:{:02}:{:02}", hours, mins, s)
+    fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
+        let local = time.and_utc().with_timezone(&chrono::Local);
+        local.format("%Y-%m-%d %H:%M:%S %z").to_string()
     }
 
     fn now_timestamp() -> String {
-        let now = SystemTime::now();
-        let duration = now.duration_since(UNIX_EPOCH).unwrap_or_default();
-        let secs = duration.as_secs();
-        let hours = (secs / 3600) % 24;
-        let mins = (secs / 60) % 60;
-        let s = secs % 60;
-        format!("{:02}:{:02}:{:02}", hours, mins, s)
+        let local = chrono::Local::now();
+        local.format("%Y-%m-%d %H:%M:%S %z").to_string()
     }
 
     fn format_system_time(time: SystemTime) -> String {
-        let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
-        let secs = duration.as_secs();
-        let hours = (secs / 3600) % 24;
-        let mins = (secs / 60) % 60;
-        let s = secs % 60;
-        format!("{:02}:{:02}:{:02}", hours, mins, s)
+        let local: chrono::DateTime<chrono::Local> = time.into();
+        local.format("%H:%M:%S").to_string()
     }
 
     pub async fn run_tui(
@@ -85,7 +73,7 @@ mod tui {
 
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
-                        let ts = format_naive_datetime(msg.created_at);
+                        let ts = format_peer_datetime(msg.created_at);
                         let sender = msg
                             .peer_id
                             .as_ref()
@@ -103,8 +91,8 @@ mod tui {
 
                 if let Ok(db_peers) = load_peers() {
                     for peer in db_peers.iter() {
-                        let first_seen = format_naive_datetime(peer.first_seen);
-                        let last_seen = format_naive_datetime(peer.last_seen);
+                        let first_seen = format_peer_datetime(peer.first_seen);
+                        let last_seen = format_peer_datetime(peer.last_seen);
                         peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
                     logs.push_back(format!("Loaded {} peers from database", db_peers.len()));
@@ -162,10 +150,7 @@ mod tui {
 
                                             let response = DirectMessage {
                                                 content: "ok".to_string(),
-                                                timestamp: SystemTime::now()
-                                                    .duration_since(UNIX_EPOCH)
-                                                    .map(|d| d.as_secs() as i64)
-                                                    .unwrap_or(0),
+                                                timestamp: chrono::Utc::now().timestamp(),
                                             };
                                             let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
                                         }
@@ -216,8 +201,8 @@ mod tui {
                                     let addresses = vec![peer_id_str.clone()];
                                     match save_peer(&peer_id_str, &addresses) {
                                         Ok(peer) => {
-                                            let first_seen = format_naive_datetime(peer.first_seen);
-                                            let last_seen = format_naive_datetime(peer.last_seen);
+                                            let first_seen = format_peer_datetime(peer.first_seen);
+                                            let last_seen = format_peer_datetime(peer.last_seen);
                                             if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
                                                 peers.push_back((peer_id_str, first_seen, last_seen));
                                             }
@@ -325,7 +310,7 @@ mod tui {
                                                     direct_messages.clear();
                                                     if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
                                                         for msg in msgs {
-                                                            let ts = format_naive_datetime(msg.created_at);
+                                                            let ts = format_peer_datetime(msg.created_at);
                                                             let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
                                                             direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
                                                         }
@@ -348,10 +333,7 @@ mod tui {
 
                                                 let dm = DirectMessage {
                                                     content: input_buffer.clone(),
-                                                    timestamp: SystemTime::now()
-                                                        .duration_since(UNIX_EPOCH)
-                                                        .map(|d| d.as_secs() as i64)
-                                                        .unwrap_or(0),
+                                                    timestamp: chrono::Utc::now().timestamp(),
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);

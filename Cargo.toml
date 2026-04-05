@@ -76,7 +76,7 @@ tokio = { version = "=1.51.0", features = [ "macros", "rt-multi-thread", "io-uti
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }
-chrono = "0.4.44"
+chrono = { version = "0.4.44", features = ["clock"] }
 libp2p-identity = "0.2.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
