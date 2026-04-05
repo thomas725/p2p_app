@@ -11,9 +11,10 @@ mod tui {
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
-        AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, get_database_url, get_network_size,
-        get_unsent_messages, init_logging, load_direct_messages, load_messages, load_peers,
-        mark_message_sent, p2plog_error, p2plog_info, save_message, save_peer, save_peer_session,
+        AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, format_peer_datetime,
+        get_database_url, get_network_size, get_unsent_messages, init_logging,
+        load_direct_messages, load_messages, load_peers, mark_message_sent, now_timestamp,
+        p2plog_error, p2plog_info, save_message, save_peer, save_peer_session,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -36,6 +37,7 @@ mod tui {
     const MAX_LOGS: usize = 1000;
 
     mod tracing_writer {
+        use p2p_app::strip_ansi_codes;
         use std::collections::VecDeque;
         use std::sync::{Arc, Mutex};
         use std::time::SystemTime;
@@ -43,23 +45,6 @@ mod tui {
         fn format_system_time(time: SystemTime) -> String {
             let local: chrono::DateTime<chrono::Local> = time.into();
             local.format("%H:%M:%S.%3f").to_string()
-        }
-
-        fn strip_ansi_codes(s: &str) -> String {
-            let mut result = String::with_capacity(s.len());
-            let mut in_escape = false;
-            for c in s.chars() {
-                if c == '\x1b' {
-                    in_escape = true;
-                } else if in_escape {
-                    if c == 'm' {
-                        in_escape = false;
-                    }
-                } else {
-                    result.push(c);
-                }
-            }
-            result
         }
 
         #[derive(Clone)]
@@ -96,16 +81,6 @@ mod tui {
                 Ok(())
             }
         }
-    }
-
-    fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
-        let local = time.and_utc().with_timezone(&chrono::Local);
-        local.format("%Y-%m-%d %H:%M:%S %z").to_string()
-    }
-
-    fn now_timestamp() -> String {
-        let local = chrono::Local::now();
-        local.format("%Y-%m-%d %H:%M:%S %z").to_string()
     }
 
     fn format_system_time(time: SystemTime) -> String {

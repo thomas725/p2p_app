@@ -53,6 +53,53 @@ pub fn init_logging() {
     LOGS.get_or_init(|| std::sync::Mutex::new(VecDeque::new()));
 }
 
+pub fn strip_ansi_codes(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut in_escape = false;
+    for c in s.chars() {
+        if c == '\x1b' {
+            in_escape = true;
+        } else if in_escape {
+            if c == 'm' {
+                in_escape = false;
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
+    let local = time.and_utc().with_timezone(&chrono::Local);
+    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
+}
+
+pub fn now_timestamp() -> String {
+    let local = chrono::Local::now();
+    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
+}
+
+pub fn push_log(message: impl Into<String>) {
+    let ts = chrono::Local::now().format("%H:%M:%S.%3f");
+    let formatted = format!("[{}] {}", ts, message.into());
+    let has_callback = LOG_TUI_CALLBACK.get().is_some();
+    if let Some(callback) = LOG_TUI_CALLBACK.get() {
+        (callback)(formatted.clone());
+    }
+    if let Some(logs) = LOGS.get() {
+        if let Ok(mut l) = logs.lock() {
+            l.push_back(formatted.clone());
+            if l.len() > 1000 {
+                l.pop_front();
+            }
+        }
+    }
+    if !has_callback {
+        eprintln!("{}", formatted);
+    }
+}
+
 pub fn set_tui_log_callback<F>(callback: F)
 where
     F: Fn(String) + Send + Sync + 'static,
