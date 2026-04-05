@@ -193,7 +193,7 @@ mod tui {
                                             Ok(_) => logs.push_back(format!("Dial initiated: {}", peer_id)),
                                             Err(e) => logs.push_back(format!("Dial failed: {} - {}", peer_id, e)),
                                         }
-                                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                        let _ = swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
                                 }
                                 #[cfg(feature = "mdns")]
@@ -551,7 +551,7 @@ async fn main() -> color_eyre::Result<()> {
         let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
             .with_tokio()
             .with_tcp(
-                tcp::Config::default(),
+                tcp::Config::default().nodelay(true),
                 noise::Config::new,
                 yamux::Config::default,
             )?;
@@ -601,7 +601,7 @@ async fn main() -> color_eyre::Result<()> {
         let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
             .with_tokio()
             .with_tcp(
-                tcp::Config::default(),
+                tcp::Config::default().nodelay(true),
                 noise::Config::new,
                 yamux::Config::default,
             )?;
