@@ -103,7 +103,7 @@ mod tui {
     ) -> color_eyre::Result<()> {
         let is_tty = atty::is(atty::Stream::Stdout);
         if !is_tty {
-            return run_noninteractive_mode(swarm).await;
+            return run_headless_mode(swarm).await;
         }
 
         match Terminal::new(CrosstermBackend::new(std::io::stdout())) {
@@ -646,11 +646,11 @@ mod tui {
                     })?;
                 }
             }
-            Err(_e) => run_noninteractive_mode(swarm).await,
+            Err(_e) => run_headless_mode(swarm).await,
         }
     }
 
-    async fn run_noninteractive_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
+    async fn run_headless_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
         init_logging();
         p2plog_info("Starting non-interactive mode".to_string());
         p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
