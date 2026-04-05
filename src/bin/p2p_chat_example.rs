@@ -347,7 +347,11 @@ mod tui {
                                 && let Event::Key(key) = event {
                                     match key.code {
                                         KeyCode::Tab => {
-                                            active_tab = (active_tab + 1) % 4;
+                                            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                                                active_tab = if active_tab == 0 { 3 } else { active_tab - 1 };
+                                            } else {
+                                                active_tab = (active_tab + 1) % 4;
+                                            }
                                         }
                                         KeyCode::Enter => {
                                             if !input_buffer.is_empty() && active_tab == 0 {
