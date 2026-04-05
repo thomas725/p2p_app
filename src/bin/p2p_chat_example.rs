@@ -116,6 +116,7 @@ mod tui {
                                         ..
                                     },
                                 )) => {
+                                    logs.push_back(format!("Gossipsub message from: {}", peer_id));
                                     let peer_id_str = peer_id.to_string();
                                     let content = String::from_utf8_lossy(&message.data).to_string();
                                     let ts = format_system_time(SystemTime::now());
@@ -304,13 +305,17 @@ mod tui {
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
                                                 messages.push_back(msg_str.clone());
 
+                                                let topic = gossipsub::IdentTopic::new("test-net");
+                                                logs.push_back(format!("Publishing to gossipsub topic: {}", topic));
                                                 let publish_result = swarm.behaviour_mut().gossipsub.publish(
-                                                    gossipsub::IdentTopic::new("test-net"),
+                                                    topic,
                                                     input_buffer.as_bytes(),
                                                 );
 
                                                 if let Err(e) = publish_result {
                                                     logs.push_back(format!("Publish error: {:?}", e));
+                                                } else {
+                                                    logs.push_back("Message published successfully".to_string());
                                                 }
 
                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
@@ -483,6 +488,7 @@ mod tui {
     async fn run_noninteractive_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
         println!("Running in non-interactive mode");
         println!("Press Ctrl+C to exit");
+        println!("Our peer ID: {}", swarm.local_peer_id());
 
         loop {
             tokio::select! {
