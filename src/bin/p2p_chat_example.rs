@@ -122,6 +122,17 @@ mod tui {
                         &logs,
                         format!("Loaded {} peers from database", db_peers.len()),
                     );
+                    for peer in db_peers.iter() {
+                        for addr_str in peer.addresses.split(',') {
+                            if let Ok(addr) = addr_str.trim().parse::<libp2p::Multiaddr>() {
+                                log_debug(
+                                    &logs,
+                                    format!("Dialing known peer: {} at {}", peer.peer_id, addr),
+                                );
+                                swarm.dial(addr).ok();
+                            }
+                        }
+                    }
                 } else {
                     log_debug(&logs, "Failed to load peers from database".to_string());
                 }
@@ -217,7 +228,6 @@ mod tui {
                                 SwarmEvent::Behaviour(AppEv::Mdns(
                                     mdns::Event::Discovered(list),
                                 )) => {
-                                    let mut dialed_peers = std::collections::HashSet::new();
                                     for (peer_id, multiaddr) in list {
                                         let peer_id_str = peer_id.to_string();
                                         log_debug(&logs, format!("mDNS discovered: {} at {}", peer_id, multiaddr));
@@ -237,15 +247,8 @@ mod tui {
                                                 log_debug(&logs, format!("Failed to save peer: {}", e));
                                             }
                                         }
-                                        if !dialed_peers.contains(&peer_id) {
-                                            dialed_peers.insert(peer_id);
-                                            log_debug(&logs, format!("Attempting to dial: {}", peer_id));
-                                            match swarm.dial(multiaddr.clone()) {
-                                                Ok(_) => log_debug(&logs, format!("Dial initiated: {}", peer_id)),
-                                                Err(e) => log_debug(&logs, format!("Dial failed: {} - {}", peer_id, e)),
-                                            }
-                                            let _ = swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                                        }
+                                        swarm.dial(multiaddr.clone()).ok();
+                                        let _ = swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
                                 }
                                 #[cfg(feature = "mdns")]
