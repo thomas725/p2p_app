@@ -22,6 +22,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    peer_sessions (id) {
+        id -> Integer,
+        concurrent_peers -> Integer,
+        recorded_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     peers (id) {
         id -> Integer,
         created_at -> Timestamp,
@@ -35,4 +43,4 @@ diesel::table! {
 diesel::joinable!(messages -> identities (id));
 diesel::joinable!(peers -> identities (id));
 
-diesel::allow_tables_to_appear_in_same_query!(identities, messages, peers,);
+diesel::allow_tables_to_appear_in_same_query!(identities, messages, peer_sessions, peers,);

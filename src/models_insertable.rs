@@ -32,3 +32,9 @@ pub struct NewPeer<'a> {
     pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
 }
+
+#[derive(Insertable)]
+#[diesel(table_name = peer_sessions)]
+pub struct NewPeerSession {
+    pub concurrent_peers: i32,
+}

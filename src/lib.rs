@@ -83,7 +83,7 @@ pub struct AppBehaviour {
     pub mdns: mdns::tokio::Behaviour,
 }
 
-pub fn build_behaviour(key: &libp2p_identity::Keypair) -> AppBehaviour {
+pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     use std::time::Duration;
@@ -94,10 +94,20 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair) -> AppBehaviour {
         gossipsub::MessageId::from(s.finish().to_string())
     };
 
+    let (heartbeat_interval, gossip_lazy, mesh_n, mesh_n_low, mesh_n_high) = match network_size {
+        NetworkSize::Small => (Duration::from_millis(500), 1, 3, 2, 4),
+        NetworkSize::Medium => (Duration::from_secs(1), 3, 6, 4, 8),
+        NetworkSize::Large => (Duration::from_secs(2), 6, 8, 6, 12),
+    };
+
     let gossipsub_config = gossipsub::ConfigBuilder::default()
-        .heartbeat_interval(Duration::from_secs(10))
+        .heartbeat_interval(heartbeat_interval)
         .validation_mode(gossipsub::ValidationMode::Strict)
         .message_id_fn(message_id_fn)
+        .gossip_lazy(gossip_lazy)
+        .mesh_n(mesh_n)
+        .mesh_n_low(mesh_n_low)
+        .mesh_n_high(mesh_n_high)
         .build()
         .expect("gossipsub config should be valid");
 
@@ -136,13 +146,13 @@ use crate::schema::identities::dsl::identities;
 use crate::schema::messages::dsl::messages;
 use crate::schema::peers::dsl::peers;
 use crate::{
-    models_insertable::{NewIdentity, NewMessage, NewPeer},
+    models_insertable::{NewIdentity, NewMessage, NewPeer, NewPeerSession},
     models_queryable::{Identity, Message, Peer},
 };
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
-    Connection as _, ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
-    SqliteConnection,
+    Connection as _, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
+    SelectableHelper as _, SqliteConnection,
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use dotenvy::dotenv;
@@ -338,6 +348,59 @@ pub fn remove_peer(peer_id: &str) -> color_eyre::Result<()> {
     diesel::delete(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
         .execute(conn)?;
     Ok(())
+}
+
+pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    let new_session = NewPeerSession { concurrent_peers };
+    diesel::insert_into(schema::peer_sessions::table)
+        .values(&new_session)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn get_average_peer_count() -> color_eyre::Result<f64> {
+    let conn = &mut sqlite_connect()?;
+    let sessions = schema::peer_sessions::table
+        .select(schema::peer_sessions::concurrent_peers)
+        .load::<i32>(conn)?;
+    if sessions.is_empty() {
+        return Ok(0.0);
+    }
+    let sum: i64 = sessions.iter().map(|&c| c as i64).sum();
+    Ok(sum as f64 / sessions.len() as f64)
+}
+
+pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
+    let conn = &mut sqlite_connect()?;
+    let last = schema::peer_sessions::table
+        .select(schema::peer_sessions::concurrent_peers)
+        .order(schema::peer_sessions::recorded_at.desc())
+        .first::<i32>(conn)
+        .optional()?;
+    Ok(last.unwrap_or(0))
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetworkSize {
+    Small,
+    Medium,
+    Large,
+}
+
+impl NetworkSize {
+    pub fn from_peer_count(avg: f64) -> Self {
+        match avg as i32 {
+            0..=3 => NetworkSize::Small,
+            4..=15 => NetworkSize::Medium,
+            _ => NetworkSize::Large,
+        }
+    }
+}
+
+pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
+    let avg = get_average_peer_count()?;
+    Ok(NetworkSize::from_peer_count(avg))
 }
 
 #[cfg(test)]

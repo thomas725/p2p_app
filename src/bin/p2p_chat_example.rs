@@ -11,9 +11,9 @@ mod tui {
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
-        AppBehaviourEvent as AppEv, DirectMessage, get_database_url, get_unsent_messages,
-        init_logging, load_direct_messages, load_messages, load_peers, mark_message_sent,
-        p2plog_debug, p2plog_error, p2plog_info, save_message, save_peer,
+        AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, get_database_url, get_network_size,
+        get_unsent_messages, init_logging, load_direct_messages, load_messages, load_peers,
+        mark_message_sent, p2plog_error, p2plog_info, save_message, save_peer, save_peer_session,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -78,6 +78,7 @@ mod tui {
                 let mut active_tab = 0;
                 let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
+                let mut concurrent_peers: usize = 0;
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -122,6 +123,30 @@ mod tui {
                     );
                 } else {
                     log_debug(&logs, "Failed to load peers from database".to_string());
+                }
+
+                match get_network_size() {
+                    Ok(NetworkSize::Small) => {
+                        log_debug(
+                            &logs,
+                            "Network size: Small (0-3 peers avg) - optimized for low latency",
+                        );
+                    }
+                    Ok(NetworkSize::Medium) => {
+                        log_debug(
+                            &logs,
+                            "Network size: Medium (4-15 peers avg) - balanced settings",
+                        );
+                    }
+                    Ok(NetworkSize::Large) => {
+                        log_debug(
+                            &logs,
+                            "Network size: Large (16+ peers avg) - optimized for bandwidth",
+                        );
+                    }
+                    Err(e) => {
+                        log_debug(&logs, format!("Could not determine network size: {}", e));
+                    }
                 }
 
                 let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
@@ -234,7 +259,9 @@ mod tui {
                                     log_debug(&logs, format!("Listening on: {}", address));
                                 }
                                 SwarmEvent::ConnectionEstablished { peer_id, connection_id, .. } => {
+                                    concurrent_peers += 1;
                                     log_debug(&logs, format!("Connection established: {} (conn: {:?})", peer_id, connection_id));
+                                    log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
                                     let peer_id_str = peer_id.to_string();
@@ -275,7 +302,14 @@ mod tui {
                                 SwarmEvent::ConnectionClosed {
                                     peer_id, cause, connection_id, ..
                                 } => {
+                                    if concurrent_peers > 0 {
+                                        concurrent_peers -= 1;
+                                    }
                                     log_debug(&logs, format!("Disconnected from: {} (conn: {:?}, cause: {:?})", peer_id, connection_id, cause));
+                                    log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
+                                    if let Err(e) = save_peer_session(concurrent_peers as i32) {
+                                        log_debug(&logs, format!("Failed to save peer session: {}", e));
+                                    }
                                 }
                                 SwarmEvent::Dialing { peer_id: Some(pid), .. } => {
                                     log_debug(&logs, format!("Dialing: {}", pid));
@@ -520,6 +554,8 @@ mod tui {
         p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
         p2plog_info("Press Ctrl+C to exit".to_string());
 
+        let mut concurrent_peers: usize = 0;
+
         loop {
             tokio::select! {
                 event = swarm.select_next_some() => {
@@ -528,8 +564,18 @@ mod tui {
                             p2plog_info(format!("Listening on: {}", address));
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            p2plog_info(format!("Connected to: {}", peer_id));
+                            concurrent_peers += 1;
+                            p2plog_info(format!("Connected to: {} (peers: {})", peer_id, concurrent_peers));
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                        }
+                        SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                            if concurrent_peers > 0 {
+                                concurrent_peers -= 1;
+                            }
+                            p2plog_info(format!("Disconnected from: {} (peers: {})", peer_id, concurrent_peers));
+                            if let Err(e) = save_peer_session(concurrent_peers as i32) {
+                                p2plog_error(format!("Failed to save peer session: {}", e));
+                            }
                         }
                         SwarmEvent::Dialing { peer_id, .. } => {
                             p2plog_info(format!("Dialing: {:?}", peer_id));
@@ -584,6 +630,20 @@ async fn main() -> color_eyre::Result<()> {
 
     let topic = gossipsub::IdentTopic::new("test-net");
 
+    let network_size = match p2p_app::get_network_size() {
+        Ok(size) => {
+            eprintln!("Network size detected: {:?}", size);
+            size
+        }
+        Err(e) => {
+            eprintln!(
+                "Could not determine network size, defaulting to Small: {}",
+                e
+            );
+            p2p_app::NetworkSize::Small
+        }
+    };
+
     let mut swarm = {
         let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
             .with_tokio()
@@ -596,13 +656,13 @@ async fn main() -> color_eyre::Result<()> {
         #[cfg(feature = "quic")]
         let swarm = base
             .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
         #[cfg(not(feature = "quic"))]
         let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
@@ -651,13 +711,13 @@ async fn main() -> color_eyre::Result<()> {
         #[cfg(feature = "quic")]
         let swarm = base
             .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
         #[cfg(not(feature = "quic"))]
         let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 

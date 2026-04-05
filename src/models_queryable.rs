@@ -38,3 +38,11 @@ pub struct Peer {
     pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
 }
+
+#[derive(Queryable, Selectable, Debug)]
+#[diesel(table_name = peer_sessions)]
+pub struct PeerSession {
+    pub id: i32,
+    pub concurrent_peers: i32,
+    pub recorded_at: NaiveDateTime,
+}
