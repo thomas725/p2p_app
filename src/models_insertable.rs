@@ -29,5 +29,6 @@ pub struct NewMessage<'a> {
 pub struct NewPeer<'a> {
     pub peer_id: &'a str,
     pub addresses: &'a str,
+    pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
 }

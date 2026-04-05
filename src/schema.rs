@@ -27,6 +27,7 @@ diesel::table! {
         created_at -> Timestamp,
         peer_id -> Text,
         addresses -> Text,
+        first_seen -> Timestamp,
         last_seen -> Timestamp,
     }
 }

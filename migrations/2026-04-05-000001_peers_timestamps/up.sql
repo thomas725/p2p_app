@@ -1,0 +1,2 @@
+-- first_seen column is already added by the peers migration
+-- This migration is a no-op

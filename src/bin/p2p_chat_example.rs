@@ -102,6 +102,16 @@ mod tui {
         format!("{:02}:{:02}:{:02}", hours, mins, s)
     }
 
+    fn now_timestamp() -> String {
+        let now = SystemTime::now();
+        let duration = now.duration_since(UNIX_EPOCH).unwrap_or_default();
+        let secs = duration.as_secs();
+        let hours = (secs / 3600) % 24;
+        let mins = (secs / 60) % 60;
+        let s = secs % 60;
+        format!("{:02}:{:02}:{:02}", hours, mins, s)
+    }
+
     fn format_system_time(time: SystemTime) -> String {
         let duration = time.duration_since(UNIX_EPOCH).unwrap_or_default();
         let secs = duration.as_secs();
@@ -128,7 +138,7 @@ mod tui {
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut direct_messages: VecDeque<String> = VecDeque::new();
                 let mut logs: VecDeque<String> = VecDeque::new();
-                let mut peers: VecDeque<String> = VecDeque::new();
+                let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
                 let mut active_tab = 0;
                 let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
@@ -155,7 +165,9 @@ mod tui {
 
                 if let Ok(db_peers) = load_peers() {
                     for peer in db_peers.iter() {
-                        peers.push_back(peer.peer_id.to_string());
+                        let first_seen = format_naive_datetime(peer.first_seen);
+                        let last_seen = format_naive_datetime(peer.last_seen);
+                        peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
                     logs.push_back(format!("Loaded {} peers from database", db_peers.len()));
                 }
@@ -233,7 +245,7 @@ mod tui {
                                         let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
                                         logs.push_back(log);
                                         let peer_id_str = peer_id.to_string();
-                                        peers.push_back(peer_id_str);
+                                        peers.push_back((peer_id_str, now_timestamp(), now_timestamp()));
                                         let _ = swarm.dial(multiaddr.clone());
                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
@@ -261,10 +273,17 @@ mod tui {
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
                                     let peer_id_str = peer_id.to_string();
-                                    peers.push_back(peer_id_str.clone());
                                     let addresses = vec![peer_id_str.clone()];
-                                    if let Err(e) = save_peer(&peer_id_str, &addresses) {
-                                        logs.push_back(format!("Failed to save peer: {}", e));
+                                    match save_peer(&peer_id_str, &addresses) {
+                                        Ok(peer) => {
+                                            let first_seen = format_naive_datetime(peer.first_seen);
+                                            let last_seen = format_naive_datetime(peer.last_seen);
+                                            peers.push_back((peer_id_str, first_seen, last_seen));
+                                        }
+                                        Err(e) => {
+                                            peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                            logs.push_back(format!("Failed to save peer: {}", e));
+                                        }
                                     }
 
                                     if let Ok(unsent) = get_unsent_messages(&topic_str)
@@ -352,10 +371,11 @@ mod tui {
                                                 input_buffer.clear();
                                             } else if active_tab == 1 && !peers.is_empty() {
                                                 if let Some(first_peer) = peers.front().cloned() {
-                                                    selected_peer = Some(first_peer.clone());
+                                                    let (peer_id, _, _) = first_peer;
+                                                    selected_peer = Some(peer_id.clone());
                                                     active_tab = 2;
                                                     direct_messages.clear();
-                                                    if let Ok(msgs) = load_direct_messages(&first_peer, MAX_MESSAGES) {
+                                                    if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
                                                         for msg in msgs {
                                                             let ts = format_naive_datetime(msg.created_at);
                                                             let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
@@ -443,8 +463,15 @@ mod tui {
                                 f.render_widget(chat_list, chunks[1]);
                             }
                             1 => {
-                                let peer_items: Vec<ListItem> =
-                                    peers.iter().map(|p| ListItem::new(p.clone())).collect();
+                                let peer_items: Vec<ListItem> = peers
+                                    .iter()
+                                    .map(|(peer_id, first_seen, last_seen)| {
+                                        ListItem::new(format!(
+                                            "{} | First: {} | Last: {}",
+                                            peer_id, first_seen, last_seen
+                                        ))
+                                    })
+                                    .collect();
                                 let peer_list = List::new(peer_items)
                                     .block(
                                         Block::default()

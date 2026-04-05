@@ -35,5 +35,6 @@ pub struct Peer {
     pub created_at: NaiveDateTime,
     pub peer_id: String,
     pub addresses: String,
+    pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
 }

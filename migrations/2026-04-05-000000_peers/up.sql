@@ -1,8 +1,11 @@
+-- Peers table may already exist from manual setup
+-- This migration handles both fresh databases and existing ones
 CREATE TABLE IF NOT EXISTS peers (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     peer_id TEXT NOT NULL UNIQUE,
     addresses TEXT NOT NULL,
+    first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

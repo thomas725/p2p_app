@@ -173,6 +173,7 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
     let new_peer = NewPeer {
         peer_id,
         addresses: &addresses_str,
+        first_seen: now,
         last_seen: now,
     };
 
