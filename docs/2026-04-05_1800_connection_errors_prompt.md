@@ -105,3 +105,145 @@ Other(Right(Connection(ConnectionError(ConnectionClosed(ConnectionClose { error_
 ```
 
 Also a nice feature you could add would be sorting the peers list by last seen timestamp showning latest ones first.
+
+----
+
+nice one! next we'll need to add the ability to scroll the debug tab output and we need to improve the formatting, maybe filter out or unsubscribe from irrelevant libp2p tracing events or remove duplicate manual logging we have added in our own code but can now see in the libp2p events anyway:
+
+```log
+[19:52:40.428] Using database: peer1.db
+[19:52:40.428] Our peer ID: 12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:40.429] Loaded 17 messages from database
+[19:52:40.429] Loaded 1 peers from database (dialing top 10 by last_seen)
+[19:52:40.429] Network size: Small (0-3 peers avg) - optimized for low latency
+[19:52:40.430]  INFO+0200 [0m Swarm::poll:         libp2p_mdns::behaviour::iface:                 creating instance on iface address address=10.201.0.2
+[19:52:40.430] DEBUG+0200 [0m Swarm::poll:         libp2p_tcp:                 New listen address address=/ip4/127.0.0.1/tcp/44137
+[19:52:40.430] DEBUG+0200 [0m Swarm::poll:gs       libp2p_swarm:                 New listener address listener=ListenerId(2)                 address=/ip4/127.0.0.1/tcp/44137
+[19:52:40.430] Listening on: /ip4/127.0.0.1/tcp/44137
+[19:52:40.440] DEBUG+0200 [0m Swarm::poll:         libp2p_tcp:                 New listen address address=/ip4/10.201.0.2/tcp/44137
+[19:52:40.441] DEBUG+0200 [0m Swarm::poll:gf       libp2p_swarm:                 New listener address listener=ListenerId(2)                 address=/ip4/10.201.0.2/tcp/44137
+[19:52:40.441] Listening on: /ip4/10.201.0.2/tcp/44137
+[19:52:40.446] DEBUG+0200 [0m Swarm::poll:234      libp2p_quic::transport:                 New listen address address=/ip4/127.0.0.1/udp/55352/quic-v1
+[19:52:40.446] DEBUG+0200 [0m Swarm::poll:         libp2p_swarm:                 New listener address listener=ListenerId(1)                 address=/ip4/127.0.0.1/udp/55352/quic-v1
+[19:52:40.446] Listening on: /ip4/127.0.0.1/udp/55352/quic-v1
+[19:52:40.451] DEBUG+0200 [0m Swarm::poll:2 0924   libp2p_quic::transport:                 New listen address address=/ip4/10.201.0.2/udp/55352/quic-v1
+[19:52:40.451] DEBUG+0200 [0m Swarm::poll:4        libp2p_swarm:                 New listener address listener=ListenerId(1)                 address=/ip4/10.201.0.2/udp/55352/quic-v1
+[19:52:40.451] Listening on: /ip4/10.201.0.2/udp/55352/quic-v1
+[19:52:43.497]       INFO     Swarm::poll:         libp2p_mdns::behaviour:                 discovered peer on address peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+address=/ip4/10.201.0.2/tcp/46125/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.497]       INFO     Swarm::poll:         libp2p_mdns::behaviour:                 discovered peer on address peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+address=/ip4/10.201.0.2/udp/52206/quic-v1/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.497] mDNS discovered: 12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3 at /ip4/10.201.0.2/tcp/46125/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.524] DEBUG          libp2p_swarm:                 discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=1
+discarded_addresses_count=2
+[19:52:43.524] DEBUG          libp2p_tcp:                 dialing address address=10.201.0.2:46125
+[19:52:43.524] DEBUG          libp2p_gossipsub::behaviour:                 Adding explicit peer peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.524] DEBUG          libp2p_gossipsub::behaviour:                 Connecting to explicit peer peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.524] mDNS discovered: 12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3 at /ip4/10.201.0.2/udp/52206/quic-v1/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.524] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Proposed protocol: /noise
+address=/ip4/10.201.0.2/tcp/46125/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.524] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Expecting proposed protocol: /noise
+address=/ip4/10.201.0.2/tcp/46125/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.532] DEBUG          libp2p_swarm:                 discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=3
+discarded_addresses_count=2
+[19:52:43.532] DEBUG          libp2p_core::transport::choice:                 Failed to dial using libp2p_core::transport::map::Map<libp2p_quic::transport::GenTransport<libp2p_quic::provider::tokio::Provider>, libp2p::builder::phase::quic::<impl  
+libp2p::builder::SwarmBuilder<libp2p::builder::phase::provider::Tokio,
+libp2p::builder::phase::quic::QuicPhase<libp2p_core::transport::map::Map<libp2p_core::transport::upgrade::Multiplexed<libp2p_core::transport::and_then::AndThen<libp2p_core::transport::and_then::AndThen<libp2p_tcp::Transport<libp2p_tcp::provider::t
+okio::Tcp>, libp2p_core::transport::upgrade::Builder<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>>::authenticate<libp2p_tcp::provider::tokio::TcpStream,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Config, libp2p_noise::Error>::{{closure}}>,
+libp2p_core::transport::upgrade::Authenticated<libp2p_core::transport::and_then::AndThen<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>,
+libp2p_core::transport::upgrade::Builder<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>>::authenticate<libp2p_tcp::provider::tokio::TcpStream,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Config,
+libp2p_noise::Error>::{{closure}}>>::multiplex<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>,
+libp2p_yamux::Muxer<multistream_select::negotiated::Negotiated<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>>>, libp2p_yamux::Config, std::io::error::Error>::{{closure}}>>,
+libp2p::builder::phase::tcp::<impl libp2p::builder::SwarmBuilder<libp2p::builder::phase::provider::Tokio, libp2p::builder::phase::tcp::TcpPhase>>::with_tcp<libp2p_noise::Config::new,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Error, <libp2p_yamux::Config as core::default::Default>::default,
+libp2p_yamux::Muxer<multistream_select::negotiated::Negotiated<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>>>,
+std::io::error::Error>::{{closure}}>>>>::with_quic_config<core::convert::identity<libp2p_quic::config::Config>>::{{closure}}> address=/ip4/10.201.0.2/udp/52206/quic-v1/p2p/12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.532] DEBUG          libp2p_gossipsub::behaviour:                 Adding explicit peer peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.532] DEBUG          libp2p_gossipsub::behaviour:                 Connecting to explicit peer peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:43.553] DEBUG          Swarm::poll:         libp2p_tcp:                 Incoming connection from remote at local remote_address=/ip4/10.201.0.2/tcp/45742                 local_address=/ip4/10.201.0.2/tcp/44137
+[19:52:43.553] Incoming connection ConnectionId(5) from /ip4/10.201.0.2/tcp/44137
+[19:52:43.554] DEBUG          new_incoming_connection:         multistream_select::listener_select:                 Listener: confirming protocol: /noise remote_addr=/ip4/10.201.0.2/tcp/45742                     id=5
+[19:52:43.554] DEBUG          new_incoming_connection:         multistream_select::listener_select:                 Listener: sent confirmed protocol: /noise remote_addr=/ip4/10.201.0.2/tcp/45742                     id=5
+[19:52:43.561] Incoming connection ConnectionId(6) from /ip4/0.0.0.0/udp/55352/quic-v1
+[19:52:46.507] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 HEARTBEAT: Mesh low. Topic contains: 0 needs: 1 topic=test-net
+[19:52:46.507] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 RANDOM PEERS: Got 0 peers
+[19:52:46.507] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 Updating mesh, new mesh: {}
+[19:52:46.508] DEBUG          Swarm::poll:         libp2p_swarm:                 Connection established peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3                 endpoint=Listener                 { local_addr:
+/ip4/0.0.0.0/udp/55352/quic-v1, send_back_addr: /ip4/10.201.0.2/udp/52206/quic-v1 } total_peers=1
+[19:52:46.508] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 New peer connected peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:46.508] Connection established: 12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3 (conn: ConnectionId(6))
+[19:52:46.508] Concurrent peers: 1
+[19:52:46.508] DEBUG          libp2p_gossipsub::behaviour:                 Adding explicit peer peer=12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:46.508] DEBUG          new_established_connection:Connection::poll:                 multistream_select::dialer_select:                 Dialer: Proposed protocol: /meshsub/1.2.0
+
+--------------
+
+[19:52:42.008] Using database: peer2.db
+[19:52:42.008] Our peer ID: 12D3KooWRGLthXYB1JWz1kttzeV4W8pgNcUvT65gSSRZAVAFwVd3
+[19:52:42.009] Loaded 23 messages from database
+[19:52:42.010] Loaded 2 peers from database (dialing top 10 by last_seen)
+[19:52:42.010] Network size: Small (0-3 peers avg) - optimized for low latency
+[19:52:42.010]  INFO+0200 [0m Swarm::poll:         libp2p_mdns::behaviour::iface:                 creating instance on iface address address=10.201.0.2
+[19:52:42.011] DEBUG+0200 [0m Swarm::poll:         libp2p_tcp:                 New listen address address=/ip4/127.0.0.1/tcp/46125
+[19:52:42.011] 6:34mDEBUG [0m Swarm::poll:         libp2p_swarm:                 New listener address listener=ListenerId(2)                 address=/ip4/127.0.0.1/tcp/46125
+[19:52:42.011] Listening on: /ip4/127.0.0.1/tcp/46125
+[19:52:42.018] 6:32m INFO [0m Swarm::poll:56       libp2p_mdns::behaviour:                 discovered peer on address peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+address=/ip4/10.207 +0200 [L7VYTKV1.0.2/udp/55352/quic-v1/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.018] 6:32m INFO [0m Swarm::poll:         libp2p_mdns::behaviour:                 discovered peer on address peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+address=/ip4/10.207 +0200 [L7VYTKV1.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.018] mDNS discovered: 12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1 at /ip4/10.201.0.2/udp/55352/quic-v1/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.025] DEBUG+0200 [0m libp2p_swarm:                 discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=1
+discarded_addresses_count=2You] test 2 0924
+[19:52:42.025] DEBUG+0200 [0m libp2p_core::transport::choice:                 Failed to dial using libp2p_core::transport::map::Map<libp2p_quic::transport::GenTransport<libp2p_quic::provider::tokio::Provider>, libp2p::builder::phase::quic::<impl  
+libp2p::builder::SwarmBuilder<libp2p::builder::phase::provider::Tokio,
+libp2p::builder::phase::quic::QuicPhase<libp2p_core::transport::map::Map<libp2p_core::transport::upgrade::Multiplexed<libp2p_core::transport::and_then::AndThen<libp2p_core::transport::and_then::AndThen<libp2p_tcp::Transport<libp2p_tcp::provider::t
+okio::Tcp>, libp2p_core::transport::upgrade::Builder<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>>::authenticate<libp2p_tcp::provider::tokio::TcpStream,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Config, libp2p_noise::Error>::{{closure}}>,
+libp2p_core::transport::upgrade::Authenticated<libp2p_core::transport::and_then::AndThen<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>,
+libp2p_core::transport::upgrade::Builder<libp2p_tcp::Transport<libp2p_tcp::provider::tokio::Tcp>>::authenticate<libp2p_tcp::provider::tokio::TcpStream,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Config,
+libp2p_noise::Error>::{{closure}}>>::multiplex<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>,
+libp2p_yamux::Muxer<multistream_select::negotiated::Negotiated<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>>>, libp2p_yamux::Config, std::io::error::Error>::{{closure}}>>,
+libp2p::builder::phase::tcp::<impl libp2p::builder::SwarmBuilder<libp2p::builder::phase::provider::Tokio, libp2p::builder::phase::tcp::TcpPhase>>::with_tcp<libp2p_noise::Config::new,
+libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>, libp2p_noise::Error, <libp2p_yamux::Config as core::default::Default>::default,
+libp2p_yamux::Muxer<multistream_select::negotiated::Negotiated<libp2p_noise::io::Output<multistream_select::negotiated::Negotiated<libp2p_tcp::provider::tokio::TcpStream>>>>,
+std::io::error::Error>::{{closure}}>>>>::with_quic_config<core::convert::identity<libp2p_quic::config::Config>>::{{closure}}> address=/ip4/10.201.0.2/udp/55352/quic-v1/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.025] DEBUG          libp2p_gossipsub::behaviour:                 Adding explicit peer peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.025] DEBUG          libp2p_gossipsub::behaviour:                 Connecting to explicit peer peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.025] mDNS discovered: 12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1 at /ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.034] DEBUG          libp2p_swarm:                 discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=3
+discarded_addresses_count=2
+[19:52:42.034] DEBUG          libp2p_tcp:                 dialing address address=10.201.0.2:44137
+[19:52:42.034] DEBUG          libp2p_gossipsub::behaviour:                 Adding explicit peer peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.034] DEBUG          libp2p_gossipsub::behaviour:                 Connecting to explicit peer peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.035] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Proposed protocol: /noise
+address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.035] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Expecting proposed protocol: /noise
+address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:42.050] DEBUG          Swarm::poll:         libp2p_tcp:                 New listen address address=/ip4/10.201.0.2/tcp/46125
+[19:52:42.050] DEBUG          Swarm::poll:         libp2p_swarm:                 New listener address listener=ListenerId(2)                 address=/ip4/10.201.0.2/tcp/46125
+[19:52:42.050] Listening on: /ip4/10.201.0.2/tcp/46125
+[19:52:42.055] DEBUG          Swarm::poll:         libp2p_quic::transport:                 New listen address address=/ip4/127.0.0.1/udp/52206/quic-v1
+[19:52:42.055] DEBUG          Swarm::poll:         libp2p_swarm:                 New listener address listener=ListenerId(1)                 address=/ip4/127.0.0.1/udp/52206/quic-v1
+[19:52:42.055] Listening on: /ip4/127.0.0.1/udp/52206/quic-v1
+[19:52:42.060] DEBUG          Swarm::poll:         libp2p_quic::transport:                 New listen address address=/ip4/10.201.0.2/udp/52206/quic-v1
+[19:52:42.060] DEBUG          Swarm::poll:         libp2p_swarm:                 New listener address listener=ListenerId(1)                 address=/ip4/10.201.0.2/udp/52206/quic-v1
+[19:52:42.060] Listening on: /ip4/10.201.0.2/udp/52206/quic-v1
+[19:52:43.554] DEBUG          Transport::dial:         multistream_select::negotiated:                 Negotiated: Received confirmation for protocol: /noise
+address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:43.562] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Proposed protocol: /yamux/1.0.0
+address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:43.562] DEBUG          Transport::dial:         multistream_select::dialer_select:                 Dialer: Expecting proposed protocol: /yamux/1.0.0
+address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:43.562] DEBUG          Transport::dial:         yamux::connection:                 new connection: 75cb6380 (Client) address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:51.533] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 HEARTBEAT: Mesh low. Topic contains: 0 needs: 1 topic=test-net
+[19:52:51.533] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 RANDOM PEERS: Got 0 peers
+[19:52:51.533] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 Updating mesh, new mesh: {}
+[19:52:51.534] DEBUG          Swarm::poll:         libp2p_swarm:                 Connection established peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1                 endpoint=Dialer                 { address:
+/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1, role_override: Dialer, port_use: Reuse } total_peers=1
+[19:52:51.534] DEBUG          Swarm::poll:         libp2p_gossipsub::behaviour:                 New peer connected peer=12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1
+[19:52:51.534] Connection established: 12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1 (conn: ConnectionId(3))
+[19:52:51.534] Concurrent peers: 1
+```

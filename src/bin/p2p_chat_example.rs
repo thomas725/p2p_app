@@ -45,6 +45,23 @@ mod tui {
             local.format("%H:%M:%S.%3f").to_string()
         }
 
+        fn strip_ansi_codes(s: &str) -> String {
+            let mut result = String::with_capacity(s.len());
+            let mut in_escape = false;
+            for c in s.chars() {
+                if c == '\x1b' {
+                    in_escape = true;
+                } else if in_escape {
+                    if c == 'm' {
+                        in_escape = false;
+                    }
+                } else {
+                    result.push(c);
+                }
+            }
+            result
+        }
+
         #[derive(Clone)]
         pub struct TracingWriter {
             logs: Arc<Mutex<VecDeque<String>>>,
@@ -59,7 +76,8 @@ mod tui {
         impl std::io::Write for TracingWriter {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
                 if let Ok(s) = std::str::from_utf8(buf) {
-                    let trimmed = s.trim();
+                    let cleaned = strip_ansi_codes(s);
+                    let trimmed = cleaned.trim();
                     if !trimmed.is_empty() {
                         let ts = format_system_time(SystemTime::now());
                         let formatted = format!("[{}] {}", ts, trimmed);
@@ -126,6 +144,7 @@ mod tui {
                 let mut input_buffer = String::new();
                 let mut concurrent_peers: usize = 0;
                 let mut peer_selection: usize = 0;
+                let mut debug_scroll_offset: usize = 0;
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -146,7 +165,20 @@ mod tui {
                         tracing_writer::TracingWriter::new(logs_for_tracing.clone())
                     })
                     .compact()
-                    .with_filter(tracing_subscriber::filter::LevelFilter::DEBUG);
+                    .with_filter({
+                        use tracing_subscriber::filter::{LevelFilter, Targets};
+                        Targets::new()
+                            .with_target("multistream_select", LevelFilter::OFF)
+                            .with_target("yamux::connection", LevelFilter::OFF)
+                            .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
+                            .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
+                            .with_target("libp2p_swarm", LevelFilter::DEBUG)
+                            .with_target("libp2p_gossipsub::behaviour", LevelFilter::DEBUG)
+                            .with_target("libp2p_tcp", LevelFilter::DEBUG)
+                            .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
+                            .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
+                            .with_default(LevelFilter::WARN)
+                    });
                 let _ = tracing_subscriber::registry().with(trace_layer).try_init();
                 log_debug(&logs, format!("Using database: {}", get_database_url()));
                 log_debug(&logs, format!("Our peer ID: {}", swarm.local_peer_id()));
@@ -310,7 +342,6 @@ mod tui {
                                 )) => {
                                     for (peer_id, multiaddr) in list {
                                         let peer_id_str = peer_id.to_string();
-                                        log_debug(&logs, format!("mDNS discovered: {} at {}", peer_id, multiaddr));
                                         let addresses = vec![multiaddr.to_string()];
                                         match save_peer(&peer_id_str, &addresses) {
                                             Ok(peer) => {
@@ -343,12 +374,9 @@ mod tui {
                                             .remove_explicit_peer(&peer_id);
                                     }
                                 }
-                                SwarmEvent::NewListenAddr { address, .. } => {
-                                    log_debug(&logs, format!("Listening on: {}", address));
-                                }
-                                SwarmEvent::ConnectionEstablished { peer_id, connection_id, .. } => {
+                                SwarmEvent::NewListenAddr { .. } => {}
+                                SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                                     concurrent_peers += 1;
-                                    log_debug(&logs, format!("Connection established: {} (conn: {:?})", peer_id, connection_id));
                                     log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
@@ -388,19 +416,17 @@ mod tui {
                                     }
                                 }
                                 SwarmEvent::ConnectionClosed {
-                                    peer_id, cause, connection_id, ..
+                                    peer_id, cause: _, ..
                                 } => {
                                     if concurrent_peers > 0 {
                                         concurrent_peers -= 1;
                                     }
-                                    log_debug(&logs, format!("Disconnected from: {} (conn: {:?}, cause: {:?})", peer_id, connection_id, cause));
-                                    log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
+                                    log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, &peer_id.to_string()[peer_id.to_string().len().saturating_sub(8)..]));
                                     if let Err(e) = save_peer_session(concurrent_peers as i32) {
                                         log_debug(&logs, format!("Failed to save peer session: {}", e));
                                     }
                                 }
-                                SwarmEvent::Dialing { peer_id: Some(pid), .. } => {
-                                    log_debug(&logs, format!("Dialing: {}", pid));
+                                SwarmEvent::Dialing { peer_id: Some(_pid), .. } => {
                                 }
                                 SwarmEvent::ExpiredListenAddr { address, .. } => {
                                     log_debug(&logs, format!("Expired listen addr: {}", address));
@@ -411,14 +437,10 @@ mod tui {
                                 SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
                                     log_debug(&logs, format!("Listener {:?} closed: {:?} ({:?})", listener_id, reason, addresses));
                                 }
-                                SwarmEvent::IncomingConnection { connection_id, local_addr, .. } => {
-                                    log_debug(&logs, format!("Incoming connection {:?} from {:?}", connection_id, local_addr));
-                                }
+                                SwarmEvent::IncomingConnection { .. } => {}
                                 SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
                                     let err_str = format!("{}", error);
                                     if err_str.contains("ConnectionClosed") || err_str.contains("TimedOut") {
-                                        log_debug(&logs, format!("Connection {:?} failed (expected): {} from {:?} to {:?}",
-                                            connection_id, error, local_addr, send_back_addr));
                                     } else {
                                         log_debug(&logs, format!("Connection {:?} error: {} from {:?} to {:?}",
                                             connection_id, error, local_addr, send_back_addr));
@@ -537,11 +559,17 @@ mod tui {
                                          KeyCode::Up => {
                                              if active_tab == 1 && !peers.is_empty() {
                                                  peer_selection = peer_selection.saturating_sub(1);
+                                             } else if active_tab == 3 {
+                                                 debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
                                              }
                                          }
                                          KeyCode::Down => {
                                              if active_tab == 1 && !peers.is_empty() {
                                                  peer_selection = (peer_selection + 1).min(peers.len() - 1);
+                                             } else if active_tab == 3 {
+                                                 if let Ok(l) = logs.lock() {
+                                                     debug_scroll_offset = (debug_scroll_offset + 1).min(l.len().saturating_sub(1));
+                                                 }
                                              }
                                          }
                                          _ => {}
@@ -616,16 +644,20 @@ mod tui {
                                 f.render_widget(dm_list, chunks[1]);
                             }
                             3 => {
-                                let log_text = logs
-                                    .lock()
-                                    .unwrap()
+                                let log_vec = logs.lock().unwrap().clone();
+                                let total = log_vec.len();
+                                let debug_title =
+                                    format!("Debug Logs [{}/{}]", debug_scroll_offset + 1, total);
+                                let visible_logs: Vec<String> = log_vec
                                     .iter()
-                                    .map(|l| l.clone())
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
+                                    .skip(debug_scroll_offset)
+                                    .take(50)
+                                    .cloned()
+                                    .collect();
+                                let log_text = visible_logs.join("\n");
                                 let log_paragraph = Paragraph::new(log_text)
                                     .block(
-                                        Block::default().title("Debug Logs").borders(Borders::ALL),
+                                        Block::default().title(debug_title).borders(Borders::ALL),
                                     )
                                     .style(Style::default().fg(Color::White))
                                     .wrap(Wrap::default());
