@@ -128,7 +128,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
     #[cfg(feature = "mdns")]
     let mdns = mdns::tokio::Behaviour::new(
         mdns::Config {
-            query_interval: Duration::from_secs(1),
+            query_interval: Duration::from_millis(500),
             ..Default::default()
         },
         key.public().to_peer_id(),
