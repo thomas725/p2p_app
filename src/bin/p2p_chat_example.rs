@@ -1,5 +1,6 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::{AppBehaviour, build_behaviour};
+use p2p_app::{AppBehaviour, build_behaviour, init_logging};
+use std::collections::VecDeque;
 use std::time::Duration;
 
 #[cfg(feature = "tui")]
@@ -11,8 +12,8 @@ mod tui {
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
         AppBehaviourEvent as AppEv, DirectMessage, get_database_url, get_unsent_messages,
-        load_direct_messages, load_messages, load_peers, mark_message_sent, save_message,
-        save_peer,
+        init_logging, load_direct_messages, load_messages, load_peers, mark_message_sent,
+        p2plog_debug, p2plog_error, p2plog_info, save_message, save_peer,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -27,6 +28,7 @@ mod tui {
         widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Wrap},
     };
     use std::collections::VecDeque;
+    use std::sync::{Arc, Mutex};
     use std::time::{Duration, SystemTime};
 
     const MAX_MESSAGES: usize = 1000;
@@ -44,17 +46,21 @@ mod tui {
 
     fn format_system_time(time: SystemTime) -> String {
         let local: chrono::DateTime<chrono::Local> = time.into();
-        local.format("%H:%M:%S").to_string()
+        local.format("%H:%M:%S.%3f").to_string()
     }
 
-    fn log_debug(logs: &mut VecDeque<String>, message: String) {
+    fn log_debug(logs: &Mutex<VecDeque<String>>, message: impl Into<String>) {
         let ts = format_system_time(SystemTime::now());
-        logs.push_back(format!("[{}] {}", ts, message));
+        let formatted = format!("[{}] {}", ts, message.into());
+        if let Ok(mut l) = logs.lock() {
+            l.push_back(formatted);
+        }
     }
 
     pub async fn run_tui(
         mut swarm: Swarm<AppBehaviour>,
         topic_str: String,
+        logs: Arc<Mutex<VecDeque<String>>>,
     ) -> color_eyre::Result<()> {
         let is_tty = atty::is(atty::Stream::Stdout);
         if !is_tty {
@@ -68,14 +74,23 @@ mod tui {
 
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut direct_messages: VecDeque<String> = VecDeque::new();
-                let mut logs: VecDeque<String> = VecDeque::new();
                 let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
                 let mut active_tab = 0;
                 let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
 
-                logs.push_back(format!("Using database: {}", get_database_url()));
-                logs.push_back(format!("Our peer ID: {}", swarm.local_peer_id()));
+                init_logging();
+                let logs_for_callback = logs.clone();
+                p2p_app::set_tui_log_callback(move |msg| {
+                    if let Ok(mut l) = logs_for_callback.lock() {
+                        l.push_back(msg);
+                        if l.len() > 1000 {
+                            l.pop_front();
+                        }
+                    }
+                });
+                log_debug(&logs, format!("Using database: {}", get_database_url()));
+                log_debug(&logs, format!("Our peer ID: {}", swarm.local_peer_id()));
 
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
@@ -87,12 +102,12 @@ mod tui {
                             .unwrap_or_else(|| "[You]".to_string());
                         messages.push_back(format!("{} {} {}", ts, sender, msg.content));
                     }
-                    logs.push_back(format!(
-                        "Loaded {} messages from database",
-                        db_messages.len()
-                    ));
+                    log_debug(
+                        &logs,
+                        format!("Loaded {} messages from database", db_messages.len()),
+                    );
                 } else {
-                    logs.push_back("Failed to load messages from database".to_string());
+                    log_debug(&logs, "Failed to load messages from database".to_string());
                 }
 
                 if let Ok(db_peers) = load_peers() {
@@ -101,9 +116,12 @@ mod tui {
                         let last_seen = format_peer_datetime(peer.last_seen);
                         peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
-                    logs.push_back(format!("Loaded {} peers from database", db_peers.len()));
+                    log_debug(
+                        &logs,
+                        format!("Loaded {} peers from database", db_peers.len()),
+                    );
                 } else {
-                    logs.push_back("Failed to load peers from database".to_string());
+                    log_debug(&logs, "Failed to load peers from database".to_string());
                 }
 
                 let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
@@ -121,7 +139,7 @@ mod tui {
                                         ..
                                     },
                                 )) => {
-                                    logs.push_back(format!("Gossipsub message from: {}", peer_id));
+                                     log_debug(&logs, format!("Gossipsub message from: {}", peer_id));
                                     let peer_id_str = peer_id.to_string();
                                     let content = String::from_utf8_lossy(&message.data).to_string();
                                     let ts = format_system_time(SystemTime::now());
@@ -130,9 +148,9 @@ mod tui {
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
                                     }
-                                    if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
-                                        logs.push_back(format!("Failed to save message: {}", e));
-                                    }
+                                     if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
+                                         log_debug(&logs, format!("Failed to save message: {}", e));
+                                     }
                                 }
                                 SwarmEvent::Behaviour(AppEv::RequestResponse(
                                     libp2p::request_response::Event::Message { peer, message, .. },
@@ -150,11 +168,11 @@ mod tui {
                                                     direct_messages.pop_front();
                                                 }
                                             } else {
-                                                log_debug(&mut logs, format!("Received DM from {}: {}", &peer_id_str[..8.min(peer_id_str.len())], content));
+                                                 log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[..8.min(peer_id_str.len())], content));
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
-                                                logs.push_back(format!("Failed to save DM: {}", e));
+                                                 log_debug(&logs, format!("Failed to save DM: {}", e));
                                             }
 
                                             let response = DirectMessage {
@@ -165,7 +183,7 @@ mod tui {
                                         }
                                         libp2p::request_response::Message::Response { request_id, response } => {
                                             let _ = request_id;
-                                            log_debug(&mut logs, format!("DM response received: {}", response.content));
+                                             log_debug(&logs, format!("DM response received: {}", response.content));
                                         }
                                     }
                                 }
@@ -174,8 +192,7 @@ mod tui {
                                     mdns::Event::Discovered(list),
                                 )) => {
                                     for (peer_id, multiaddr) in list {
-                                        let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
-                                        logs.push_back(log);
+                                        log_debug(&logs, format!("mDNS discovered: {} at {}", peer_id, multiaddr));
                                         let peer_id_str = peer_id.to_string();
                                         let addresses = vec![multiaddr.to_string()];
                                         match save_peer(&peer_id_str, &addresses) {
@@ -190,13 +207,13 @@ mod tui {
                                                 if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
                                                     peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
                                                 }
-                                                logs.push_back(format!("Failed to save peer: {}", e));
+                                                log_debug(&logs, format!("Failed to save peer: {}", e));
                                             }
                                         }
-                                        logs.push_back(format!("Attempting to dial: {}", peer_id));
+                                        log_debug(&logs, format!("Attempting to dial: {}", peer_id));
                                         match swarm.dial(multiaddr.clone()) {
-                                            Ok(_) => logs.push_back(format!("Dial initiated: {}", peer_id)),
-                                            Err(e) => logs.push_back(format!("Dial failed: {} - {}", peer_id, e)),
+                                            Ok(_) => log_debug(&logs, format!("Dial initiated: {}", peer_id)),
+                                            Err(e) => log_debug(&logs, format!("Dial failed: {} - {}", peer_id, e)),
                                         }
                                         let _ = swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
@@ -204,10 +221,9 @@ mod tui {
                                 #[cfg(feature = "mdns")]
                                 SwarmEvent::Behaviour(AppEv::Mdns(
                                     mdns::Event::Expired(list),
-                                )) => {
+                                    )) => {
                                     for (peer_id, multiaddr) in list {
-                                        let log = format!("mDNS expired: {} at {}", peer_id, multiaddr);
-                                        logs.push_back(log);
+                                        log_debug(&logs, format!("mDNS expired: {} at {}", peer_id, multiaddr));
                                         swarm
                                             .behaviour_mut()
                                             .gossipsub
@@ -215,12 +231,10 @@ mod tui {
                                     }
                                 }
                                 SwarmEvent::NewListenAddr { address, .. } => {
-                                    let log = format!("Listening on: {}", address);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Listening on: {}", address));
                                 }
                                 SwarmEvent::ConnectionEstablished { peer_id, connection_id, .. } => {
-                                    let log = format!("Connection established: {} (conn: {:?})", peer_id, connection_id);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Connection established: {} (conn: {:?})", peer_id, connection_id));
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
                                     let peer_id_str = peer_id.to_string();
@@ -237,18 +251,18 @@ mod tui {
                                             if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
                                                 peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
                                             }
-                                            logs.push_back(format!("Failed to save peer: {}", e));
+                                            log_debug(&logs, format!("Failed to save peer: {}", e));
                                         }
                                     }
 
                                     if let Ok(unsent) = get_unsent_messages(&topic_str)
                                         && !unsent.is_empty()
                                     {
-                                        logs.push_back(format!("Retrying {} unsent messages", unsent.len()));
+                                        log_debug(&logs, format!("Retrying {} unsent messages", unsent.len()));
                                         for msg in unsent {
                                             let topic = gossipsub::IdentTopic::new("test-net");
                                             if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, msg.content.as_bytes()) {
-                                                logs.push_back(format!("Retry publish failed: {:?}", e));
+                                                log_debug(&logs, format!("Retry publish failed: {:?}", e));
                                             } else {
                                                 let _ = mark_message_sent(msg.id);
                                                 let ts = format_system_time(SystemTime::now());
@@ -261,39 +275,37 @@ mod tui {
                                 SwarmEvent::ConnectionClosed {
                                     peer_id, cause, connection_id, ..
                                 } => {
-                                    let log = format!("Disconnected from: {} (conn: {:?}, cause: {:?})", peer_id, connection_id, cause);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Disconnected from: {} (conn: {:?}, cause: {:?})", peer_id, connection_id, cause));
                                 }
                                 SwarmEvent::Dialing { peer_id: Some(pid), .. } => {
-                                    let log = format!("Dialing: {}", pid);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Dialing: {}", pid));
                                 }
                                 SwarmEvent::ExpiredListenAddr { address, .. } => {
-                                    let log = format!("Expired listen addr: {}", address);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Expired listen addr: {}", address));
                                 }
                                 SwarmEvent::ListenerError { listener_id, error } => {
-                                    let log = format!("Listener error: {:?} - {:?}", listener_id, error);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Listener error: {:?} - {:?}", listener_id, error));
                                 }
                                 SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
-                                    let log = format!("Listener closed: {:?} - {:?} ({:?})", listener_id, reason, addresses);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Listener closed: {:?} - {:?} ({:?})", listener_id, reason, addresses));
                                 }
                                 SwarmEvent::IncomingConnection { connection_id, local_addr, .. } => {
-                                    let log = format!("Incoming connection: {:?} from {:?}", connection_id, local_addr);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Incoming connection: {:?} from {:?}", connection_id, local_addr));
                                 }
                                 SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, peer_id, error } => {
-                                    let log = format!("Incoming connection error: {:?} from {:?} to {:?} (peer: {:?}): {:?}",
-                                        connection_id, local_addr, send_back_addr, peer_id, error);
-                                    logs.push_back(log);
+                                    log_debug(&logs, format!("Incoming connection error: {:?} from {:?} to {:?} (peer: {:?}): {:?}",
+                                        connection_id, local_addr, send_back_addr, peer_id, error));
                                 }
                                 _ => {}
                             }
 
-                            if logs.len() > MAX_LOGS {
-                                logs.pop_front();
+                            if let Ok(l) = logs.lock() {
+                                if l.len() > MAX_LOGS {
+                                    drop(l);
+                                    if let Ok(mut l) = logs.lock() {
+                                        l.pop_front();
+                                    }
+                                }
                             }
                         }
 
@@ -315,20 +327,20 @@ mod tui {
                                                 messages.push_back(msg_str.clone());
 
                                                 let topic = gossipsub::IdentTopic::new("test-net");
-                                                logs.push_back(format!("Publishing to gossipsub topic: {}", topic));
+                                                log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
                                                 let publish_result = swarm.behaviour_mut().gossipsub.publish(
                                                     topic,
                                                     input_buffer.as_bytes(),
                                                 );
 
                                                 if let Err(e) = publish_result {
-                                                    logs.push_back(format!("Publish error: {:?}", e));
+                                                    log_debug(&logs, format!("Publish error: {:?}", e));
                                                 } else {
-                                                    logs.push_back("Message published successfully".to_string());
+                                                    log_debug(&logs, "Message published successfully".to_string());
                                                 }
 
                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
-                                                    logs.push_back(format!("Failed to save message: {}", e));
+                                                    log_debug(&logs, format!("Failed to save message: {}", e));
                                                 }
 
                                                 input_buffer.clear();
@@ -351,12 +363,12 @@ mod tui {
                                                 let ts = format_system_time(SystemTime::now());
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
                                                 direct_messages.push_back(msg_str.clone());
-                                                log_debug(&mut logs, format!("Sending DM to {}", target));
+                                                log_debug(&logs, format!("Sending DM to {}", target));
 
                                                 let peer_id: libp2p::PeerId = match target.parse() {
                                                     Ok(pid) => pid,
                                                     Err(e) => {
-                                                        logs.push_back(format!("Invalid peer ID: {}", e));
+                                                        log_debug(&logs, format!("Invalid peer ID: {}", e));
                                                         input_buffer.clear();
                                                         continue;
                                                     }
@@ -368,10 +380,10 @@ mod tui {
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
-                                                log_debug(&mut logs, format!("DM request sent to {}", target));
+                                                log_debug(&logs, format!("DM request sent to {}", target));
 
                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(&peer_id.to_string())) {
-                                                    logs.push_back(format!("Failed to save DM: {}", e));
+                                                    log_debug(&logs, format!("Failed to save DM: {}", e));
                                                 }
 
                                                 input_buffer.clear();
@@ -463,6 +475,8 @@ mod tui {
                             }
                             3 => {
                                 let log_text = logs
+                                    .lock()
+                                    .unwrap()
                                     .iter()
                                     .map(|l| l.clone())
                                     .collect::<Vec<_>>()
@@ -501,40 +515,41 @@ mod tui {
     }
 
     async fn run_noninteractive_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
-        println!("Running in non-interactive mode");
-        println!("Press Ctrl+C to exit");
-        println!("Our peer ID: {}", swarm.local_peer_id());
+        init_logging();
+        p2plog_info("Starting non-interactive mode".to_string());
+        p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
+        p2plog_info("Press Ctrl+C to exit".to_string());
 
         loop {
             tokio::select! {
                 event = swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            eprintln!("Listening on: {}", address);
+                            p2plog_info(format!("Listening on: {}", address));
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            eprintln!("Connected to: {}", peer_id);
+                            p2plog_info(format!("Connected to: {}", peer_id));
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                         }
                         SwarmEvent::Dialing { peer_id, .. } => {
-                            eprintln!("Dialing: {:?}", peer_id);
+                            p2plog_info(format!("Dialing: {:?}", peer_id));
                         }
                         SwarmEvent::Behaviour(AppEv::Gossipsub(
                             gossipsub::Event::Message { propagation_source, message, .. }
                         )) => {
-                            eprintln!(
+                            p2plog_info(format!(
                                 "[{}] {}",
                                 &propagation_source.to_string()[..8],
                                 String::from_utf8_lossy(&message.data)
-                            );
+                            ));
                         }
                         #[cfg(feature = "mdns")]
                         SwarmEvent::Behaviour(AppEv::Mdns(mdns::Event::Discovered(list))) => {
                             for (peer_id, multiaddr) in list {
-                                eprintln!("mDNS discovered: {} at {}", peer_id, multiaddr);
+                                p2plog_info(format!("mDNS discovered: {} at {}", peer_id, multiaddr));
                                 let addresses = vec![multiaddr.to_string()];
                                 if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
-                                    eprintln!("Failed to save peer: {}", e);
+                                    p2plog_error(format!("Failed to save peer: {}", e));
                                 }
                                 let _ = swarm.dial(multiaddr.clone());
                                 swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
@@ -553,6 +568,21 @@ mod tui {
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
+    init_logging();
+
+    // Set up TUI logging callback early to capture all logs
+    let logs = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
+    let logs_callback = logs.clone();
+    p2p_app::set_tui_log_callback(move |msg| {
+        if let Ok(mut l) = logs_callback.lock() {
+            l.push_back(msg);
+            if l.len() > 1000 {
+                l.pop_front();
+            }
+        }
+    });
+
+    let topic = gossipsub::IdentTopic::new("test-net");
 
     let mut swarm = {
         let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
@@ -579,7 +609,6 @@ async fn main() -> color_eyre::Result<()> {
         swarm
     };
 
-    let topic = gossipsub::IdentTopic::new("test-net");
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
     #[cfg(feature = "quic")]
@@ -588,20 +617,26 @@ async fn main() -> color_eyre::Result<()> {
     }
     swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
 
-    tui::run_tui(swarm, topic.to_string()).await
+    // Clone logs for the TUI function
+    let tui_logs = logs.clone();
+    tui::run_tui(swarm, topic.to_string(), tui_logs).await
 }
 
 #[cfg(not(feature = "tui"))]
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
+    init_logging();
+    p2plog_info("Starting non-interactive mode".to_string());
 
     // libp2p uses the tracing library which helps to understand complex async flows
     #[cfg(feature = "tracing")]
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .try_init()
-        .map_err(|e| println!("failed to init tracing subscriber: {e}"))
+        .map_err(|e| {
+            p2plog_error(format!("failed to init tracing subscriber: {e}"));
+        })
         .ok();
 
     let mut swarm = {
@@ -640,7 +675,7 @@ async fn main() -> color_eyre::Result<()> {
             .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
             .map_err(|e| {
                 #[cfg(feature = "tracing")]
-                tracing::warn!("failed to listen to quic: {e}");
+                p2plog_warn(format!("failed to listen to quic: {e}"));
             })
             .ok();
     }
@@ -648,12 +683,15 @@ async fn main() -> color_eyre::Result<()> {
         .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
         .map_err(|e| {
             #[cfg(feature = "tracing")]
-            tracing::warn!("failed to listen to tcp: {e}");
+            p2plog_warn(format!("failed to listen to tcp: {e}"));
         })
         .ok();
 
-    println!("Enter messages via STDIN and they will be sent to connected peers using Gossipsub");
-    println!("Or connect to another peer manually: /connect <multiaddr>");
+    p2plog_info(
+        "Enter messages via STDIN and they will be sent to connected peers using Gossipsub"
+            .to_string(),
+    );
+    p2plog_info("Or connect to another peer manually: /connect <multiaddr>".to_string());
 
     loop {
         tokio::select! {
@@ -663,11 +701,11 @@ async fn main() -> color_eyre::Result<()> {
                     let addr = line.trim_start_matches("/connect ");
                     match addr.parse::<Multiaddr>() {
                         Ok(multiaddr) => {
-                            println!("Dialing {multiaddr}...");
-                            swarm.dial(multiaddr).map_err(|e| println!("Dial error: {e:?}")).ok();
+                            p2plog_info(format!("Dialing {multiaddr}"));
+                            swarm.dial(multiaddr).map_err(|e| p2plog_error(format!("Dial error: {e:?}"))).ok();
                         }
                         Err(e) => {
-                            println!("Failed to parse multiaddr: {e}");
+                            p2plog_error(format!("Failed to parse multiaddr: {e}"));
                         }
                     }
                 } else if line.is_empty() {
@@ -677,7 +715,7 @@ async fn main() -> color_eyre::Result<()> {
                         .behaviour_mut()
                         .gossipsub
                         .publish(topic.clone(), line.as_bytes())
-                        .map_err(|e| println!("Publish error: {e:?}"))
+                        .map_err(|e| p2plog_error(format!("Publish error: {e:?}")))
                         .ok();
                 }
             }
@@ -685,7 +723,7 @@ async fn main() -> color_eyre::Result<()> {
                 #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                     for (peer_id, multiaddr) in list {
-                        println!("mDNS discovered peer: {} at {}", peer_id, multiaddr);
+                        p2plog_info(format!("mDNS discovered peer: {} at {}", peer_id, multiaddr));
                         let _ = swarm.dial(multiaddr.clone());
                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     }
@@ -693,7 +731,7 @@ async fn main() -> color_eyre::Result<()> {
                 #[cfg(feature = "mdns")]
                 SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                     for (peer_id, multiaddr) in list {
-                        println!("mDNS peer expired: {} at {}", peer_id, multiaddr);
+                        p2plog_info(format!("mDNS peer expired: {} at {}", peer_id, multiaddr));
                         swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
                     }
                 },
@@ -701,19 +739,19 @@ async fn main() -> color_eyre::Result<()> {
                     propagation_source: peer_id,
                     message_id: id,
                     message,
-                })) => println!(
-                        "Got message: '{}' with id: {id} from peer: {peer_id}",
-                        String::from_utf8_lossy(&message.data),
-                    ),
+                })) => p2plog_info(format!(
+                    "Got message: '{}' with id: {id} from peer: {peer_id}",
+                    String::from_utf8_lossy(&message.data),
+                )),
                 SwarmEvent::NewListenAddr { address, .. } => {
-                    println!("Local node is listening on {address}");
+                    p2plog_info(format!("Local node is listening on {address}"));
                 }
                 SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                    println!("Connected to peer: {peer_id}");
+                    p2plog_info(format!("Connected to peer: {peer_id}"));
                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                 }
                 other => {
-                    println!("Other swarm event: {other:?}");
+                    p2plog_debug(format!("Other swarm event: {other:?}"));
                 }
             }
         }

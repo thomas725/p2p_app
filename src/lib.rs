@@ -6,10 +6,74 @@ pub mod schema;
 use libp2p::mdns;
 use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
 
+use std::collections::VecDeque;
+use std::sync::OnceLock;
+
 pub const CHAT_TOPIC: &str = "test-net";
 pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 
 pub type P2pAppBehaviour = AppBehaviour;
+
+static LOG_TUI_CALLBACK: OnceLock<Box<dyn Fn(String) + Send + Sync>> = OnceLock::new();
+static LOGS: OnceLock<std::sync::Mutex<VecDeque<String>>> = OnceLock::new();
+
+pub fn init_logging() {
+    LOGS.get_or_init(|| std::sync::Mutex::new(VecDeque::new()));
+}
+
+pub fn set_tui_log_callback<F>(callback: F)
+where
+    F: Fn(String) + Send + Sync + 'static,
+{
+    let _ = LOG_TUI_CALLBACK.set(Box::new(callback));
+}
+
+pub fn get_tui_logs() -> VecDeque<String> {
+    LOGS.get()
+        .map(|m| m.lock().unwrap().clone())
+        .unwrap_or_default()
+}
+
+#[allow(dead_code)]
+pub fn p2plog(level: &str, msg: String) {
+    let ts = chrono::Local::now().format("%H:%M:%S").to_string();
+    let formatted = format!("[{}] [{}] {}", ts, level, msg);
+
+    if let Some(callback) = LOG_TUI_CALLBACK.get() {
+        (callback)(formatted.clone());
+    }
+
+    if let Some(logs) = LOGS.get() {
+        if let Ok(mut l) = logs.lock() {
+            l.push_back(formatted.clone());
+            if l.len() > 1000 {
+                l.pop_front();
+            }
+        }
+    }
+
+    // Only print to stderr if TUI is not active (no callback set)
+    if LOG_TUI_CALLBACK.get().is_none() {
+        eprintln!("{}", formatted);
+    }
+}
+
+#[allow(dead_code)]
+pub fn p2plog_debug(msg: String) {
+    p2plog("DEBUG", msg);
+}
+#[allow(dead_code)]
+pub fn p2plog_info(msg: String) {
+    p2plog("INFO", msg);
+}
+#[allow(dead_code)]
+pub fn p2plog_warn(msg: String) {
+    p2plog("WARN", msg);
+}
+#[allow(dead_code)]
+pub fn p2plog_error(msg: String) {
+    p2plog("ERROR", msg);
+}
 
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
