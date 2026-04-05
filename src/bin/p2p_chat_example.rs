@@ -79,6 +79,7 @@ mod tui {
                 let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
                 let mut concurrent_peers: usize = 0;
+                let mut peer_selection: usize = 0;
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -99,7 +100,7 @@ mod tui {
                         let sender = msg
                             .peer_id
                             .as_ref()
-                            .map(|p| format!("[{}]", &p[..8.min(p.len())]))
+                            .map(|p| format!("[{}]", &p[p.len().saturating_sub(8.min(p.len()))..]))
                             .unwrap_or_else(|| "[You]".to_string());
                         messages.push_back(format!("{} {} {}", ts, sender, msg.content));
                     }
@@ -168,7 +169,7 @@ mod tui {
                                     let peer_id_str = peer_id.to_string();
                                     let content = String::from_utf8_lossy(&message.data).to_string();
                                     let ts = format_system_time(SystemTime::now());
-                                    let msg = format!("{} [{}] {}", ts, &peer_id_str[..8], content);
+                                    let msg = format!("{} [{}] {}", ts, &peer_id_str[peer_id_str.len().saturating_sub(8)..], content);
                                     messages.push_back(msg.clone());
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
@@ -193,7 +194,7 @@ mod tui {
                                                     direct_messages.pop_front();
                                                 }
                                             } else {
-                                                 log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[..8.min(peer_id_str.len())], content));
+                                                 log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content));
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
@@ -354,45 +355,46 @@ mod tui {
                                                 active_tab = (active_tab + 1) % 4;
                                             }
                                         }
-                                        KeyCode::Enter => {
-                                            if !input_buffer.is_empty() && active_tab == 0 {
-                                                let ts = format_system_time(SystemTime::now());
-                                                let msg_str = format!("{} [You] {}", ts, input_buffer);
-                                                messages.push_back(msg_str.clone());
+                                         KeyCode::Enter => {
+                                             if !input_buffer.is_empty() && active_tab == 0 {
+                                                 let ts = format_system_time(SystemTime::now());
+                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
+                                                 messages.push_back(msg_str.clone());
 
-                                                let topic = gossipsub::IdentTopic::new("test-net");
-                                                log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
-                                                let publish_result = swarm.behaviour_mut().gossipsub.publish(
-                                                    topic,
-                                                    input_buffer.as_bytes(),
-                                                );
+                                                 let topic = gossipsub::IdentTopic::new("test-net");
+                                                 log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
+                                                 let publish_result = swarm.behaviour_mut().gossipsub.publish(
+                                                     topic,
+                                                     input_buffer.as_bytes(),
+                                                 );
 
-                                                if let Err(e) = publish_result {
-                                                    log_debug(&logs, format!("Publish error: {:?}", e));
-                                                } else {
-                                                    log_debug(&logs, "Message published successfully".to_string());
-                                                }
+                                                 if let Err(e) = publish_result {
+                                                     log_debug(&logs, format!("Publish error: {:?}", e));
+                                                 } else {
+                                                     log_debug(&logs, "Message published successfully".to_string());
+                                                 }
 
-                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
-                                                    log_debug(&logs, format!("Failed to save message: {}", e));
-                                                }
+                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
+                                                     log_debug(&logs, format!("Failed to save message: {}", e));
+                                                 }
 
-                                                input_buffer.clear();
-                                            } else if active_tab == 1 && !peers.is_empty() {
-                                                if let Some(first_peer) = peers.front().cloned() {
-                                                    let (peer_id, _, _) = first_peer;
-                                                    selected_peer = Some(peer_id.clone());
-                                                    active_tab = 2;
-                                                    direct_messages.clear();
-                                                    if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
-                                                        for msg in msgs {
-                                                            let ts = format_peer_datetime(msg.created_at);
-                                                            let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
-                                                            direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
-                                                        }
-                                                    }
-                                                }
-                                            } else if !input_buffer.is_empty() && active_tab == 2 {
+                                                 input_buffer.clear();
+                                             } else if active_tab == 1 && !peers.is_empty() {
+                                                 let idx = peer_selection.min(peers.len() - 1);
+                                                 if let Some(peer) = peers.iter().nth(idx).cloned() {
+                                                     let (peer_id, _, _) = peer;
+                                                     selected_peer = Some(peer_id.clone());
+                                                     active_tab = 2;
+                                                     direct_messages.clear();
+                                                     if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
+                                                         for msg in msgs {
+                                                             let ts = format_peer_datetime(msg.created_at);
+                                                             let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                             direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                         }
+                                                     }
+                                                 }
+                                             } else if !input_buffer.is_empty() && active_tab == 2 {
                                                 let Some(target) = selected_peer.as_ref() else { continue; };
                                                 let ts = format_system_time(SystemTime::now());
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
@@ -434,12 +436,22 @@ mod tui {
                                         KeyCode::Backspace => {
                                             input_buffer.pop();
                                         }
-                                        KeyCode::Esc => {
-                                            execute!(std::io::stdout(), LeaveAlternateScreen).ok();
-                                            disable_raw_mode().ok();
-                                            return Ok(());
-                                        }
-                                        _ => {}
+                                         KeyCode::Esc => {
+                                             execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+                                             disable_raw_mode().ok();
+                                             return Ok(());
+                                         }
+                                         KeyCode::Up => {
+                                             if active_tab == 1 && !peers.is_empty() {
+                                                 peer_selection = peer_selection.saturating_sub(1);
+                                             }
+                                         }
+                                         KeyCode::Down => {
+                                             if active_tab == 1 && !peers.is_empty() {
+                                                 peer_selection = (peer_selection + 1).min(peers.len() - 1);
+                                             }
+                                         }
+                                         _ => {}
                                     }
                                 }
                         }
@@ -473,17 +485,20 @@ mod tui {
                             1 => {
                                 let peer_items: Vec<ListItem> = peers
                                     .iter()
-                                    .map(|(peer_id, first_seen, last_seen)| {
+                                    .enumerate()
+                                    .map(|(i, (peer_id, first_seen, last_seen))| {
+                                        let prefix =
+                                            if i == peer_selection { ">> " } else { "   " };
                                         ListItem::new(format!(
-                                            "{} | First: {} | Last: {}",
-                                            peer_id, first_seen, last_seen
+                                            "{}{} | First: {} | Last: {}",
+                                            prefix, peer_id, first_seen, last_seen
                                         ))
                                     })
                                     .collect();
                                 let peer_list = List::new(peer_items)
                                     .block(
                                         Block::default()
-                                            .title("Peers - Press Enter to open DM")
+                                            .title("Peers - Up/Down to select, Enter to open DM")
                                             .borders(Borders::ALL),
                                     )
                                     .style(Style::default().fg(Color::White));
@@ -492,7 +507,7 @@ mod tui {
                             2 => {
                                 let peer_name = selected_peer
                                     .as_ref()
-                                    .map(|p| &p[..8.min(p.len())])
+                                    .map(|p| &p[p.len().saturating_sub(8.min(p.len()))..])
                                     .unwrap_or("None");
                                 let dm_items: Vec<ListItem> = direct_messages
                                     .iter()
@@ -583,9 +598,11 @@ mod tui {
                         SwarmEvent::Behaviour(AppEv::Gossipsub(
                             gossipsub::Event::Message { propagation_source, message, .. }
                         )) => {
+                            let ps = propagation_source.to_string();
+                            let suffix = &ps[ps.len().saturating_sub(8)..];
                             p2plog_info(format!(
                                 "[{}] {}",
-                                &propagation_source.to_string()[..8],
+                                suffix,
                                 String::from_utf8_lossy(&message.data)
                             ));
                         }
