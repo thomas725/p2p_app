@@ -96,7 +96,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
 
     let (heartbeat_interval, gossip_lazy, mesh_n, mesh_n_low, mesh_n_high, flood_publish) =
         match network_size {
-            NetworkSize::Small => (Duration::from_millis(500), 1, 3, 2, 4, true),
+            NetworkSize::Small => (Duration::from_millis(500), 1, 1, 1, 2, true),
             NetworkSize::Medium => (Duration::from_secs(1), 3, 6, 4, 8, false),
             NetworkSize::Large => (Duration::from_secs(2), 6, 8, 6, 12, false),
         };

@@ -700,137 +700,160 @@ async fn main() -> color_eyre::Result<()> {
 }
 
 #[cfg(not(feature = "tui"))]
-#[tokio::main]
-async fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    init_logging();
-    p2plog_info("Starting non-interactive mode".to_string());
-
-    // libp2p uses the tracing library which helps to understand complex async flows
-    #[cfg(feature = "tracing")]
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .try_init()
-        .map_err(|e| {
-            p2plog_error(format!("failed to init tracing subscriber: {e}"));
-        })
-        .ok();
-
-    let mut swarm = {
-        let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
-            .with_tokio()
-            .with_tcp(
-                tcp::Config::default().nodelay(true).port_reuse(true),
-                noise::Config::new,
-                yamux::Config::default,
-            )?;
-
-        #[cfg(feature = "quic")]
-        let swarm = base
-            .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        #[cfg(not(feature = "quic"))]
-        let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        swarm
+mod headless {
+    use super::AppBehaviour;
+    use libp2p::{
+        Multiaddr, futures::StreamExt, gossipsub, mdns, noise, swarm::SwarmEvent, tcp, yamux,
     };
+    use p2p_app::{
+        AppBehaviourEvent, NetworkSize, build_behaviour, init_logging, p2plog_debug, p2plog_error,
+        p2plog_info, p2plog_warn, save_peer,
+    };
+    use std::time::Duration;
+    use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
 
-    let topic = gossipsub::IdentTopic::new("test-net");
-    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+    pub async fn run() -> color_eyre::Result<()> {
+        color_eyre::install()?;
+        init_logging();
+        p2plog_info("Starting non-interactive mode".to_string());
 
-    let mut stdin = BufReader::new(stdin()).lines();
-
-    #[cfg(feature = "quic")]
-    {
-        swarm
-            .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
+        // libp2p uses the tracing library which helps to understand complex async flows
+        #[cfg(feature = "tracing")]
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init()
             .map_err(|e| {
-                #[cfg(feature = "tracing")]
-                p2plog_warn(format!("failed to listen to quic: {e}"));
+                p2plog_error(format!("failed to init tracing subscriber: {e}"));
             })
             .ok();
-    }
-    swarm
-        .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
-        .map_err(|e| {
-            #[cfg(feature = "tracing")]
-            p2plog_warn(format!("failed to listen to tcp: {e}"));
-        })
-        .ok();
 
-    p2plog_info(
-        "Enter messages via STDIN and they will be sent to connected peers using Gossipsub"
-            .to_string(),
-    );
-    p2plog_info("Or connect to another peer manually: /connect <multiaddr>".to_string());
+        let mut swarm = {
+            let base =
+                libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
+                    .with_tokio()
+                    .with_tcp(
+                        tcp::Config::default().nodelay(true),
+                        noise::Config::new,
+                        yamux::Config::default,
+                    )?;
 
-    loop {
-        tokio::select! {
-            Ok(Some(line)) = stdin.next_line() => {
-                let line = line.trim();
-                if line.starts_with("/connect ") {
-                    let addr = line.trim_start_matches("/connect ");
-                    match addr.parse::<Multiaddr>() {
-                        Ok(multiaddr) => {
-                            p2plog_info(format!("Dialing {multiaddr}"));
-                            swarm.dial(multiaddr).map_err(|e| p2plog_error(format!("Dial error: {e:?}"))).ok();
+            #[cfg(feature = "quic")]
+            let swarm = base
+                .with_quic()
+                .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
+                .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+                .build();
+
+            #[cfg(not(feature = "quic"))]
+            let swarm = base
+                .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
+                .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+                .build();
+
+            swarm
+        };
+
+        let topic = gossipsub::IdentTopic::new("test-net");
+        swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+
+        let mut stdin = BufReader::new(stdin()).lines();
+
+        #[cfg(feature = "quic")]
+        {
+            swarm
+                .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
+                .map_err(|e| {
+                    #[cfg(feature = "tracing")]
+                    p2plog_warn(format!("failed to listen to quic: {e}"));
+                })
+                .ok();
+        }
+        swarm
+            .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
+            .map_err(|e| {
+                #[cfg(feature = "tracing")]
+                p2plog_warn(format!("failed to listen to tcp: {e}"));
+            })
+            .ok();
+
+        p2plog_info(
+            "Enter messages via STDIN and they will be sent to connected peers using Gossipsub"
+                .to_string(),
+        );
+        p2plog_info("Or connect to another peer manually: /connect <multiaddr>".to_string());
+
+        loop {
+            tokio::select! {
+                Ok(Some(line)) = stdin.next_line() => {
+                    let line = line.trim().to_string();
+                    if line.starts_with("/connect ") {
+                        let addr = line.trim_start_matches("/connect ");
+                        match addr.parse::<Multiaddr>() {
+                            Ok(multiaddr) => {
+                                p2plog_info(format!("Dialing {multiaddr}"));
+                                swarm.dial(multiaddr).map_err(|e| p2plog_error(format!("Dial error: {e:?}"))).ok();
+                            }
+                            Err(e) => {
+                                p2plog_error(format!("Failed to parse multiaddr: {e}"));
+                            }
                         }
-                        Err(e) => {
-                            p2plog_error(format!("Failed to parse multiaddr: {e}"));
-                        }
+                    } else if line.is_empty() {
+                        continue;
+                    } else {
+                        swarm
+                            .behaviour_mut()
+                            .gossipsub
+                            .publish(topic.clone(), line.as_bytes())
+                            .map_err(|e| p2plog_error(format!("Publish error: {e:?}")))
+                            .ok();
                     }
-                } else if line.is_empty() {
-                    continue;
-                } else {
-                    swarm
-                        .behaviour_mut()
-                        .gossipsub
-                        .publish(topic.clone(), line.as_bytes())
-                        .map_err(|e| p2plog_error(format!("Publish error: {e:?}")))
-                        .ok();
                 }
-            }
-            event = swarm.select_next_some() => match event {
-                #[cfg(feature = "mdns")]
-                SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                    for (peer_id, multiaddr) in list {
-                        p2plog_info(format!("mDNS discovered peer: {} at {}", peer_id, multiaddr));
-                        let _ = swarm.dial(multiaddr.clone());
+                event = swarm.select_next_some() => match event {
+                    #[cfg(feature = "mdns")]
+                    SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                        for (peer_id, multiaddr) in list {
+                            p2plog_info(format!("mDNS discovered peer: {} at {}", peer_id, multiaddr));
+                            let addresses = vec![multiaddr.to_string()];
+                            if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
+                                p2plog_error(format!("Failed to save peer: {}", e));
+                            }
+                            let _ = swarm.dial(multiaddr.clone());
+                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                        }
+                    },
+                    #[cfg(feature = "mdns")]
+                    SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+                        for (peer_id, multiaddr) in list {
+                            p2plog_info(format!("mDNS peer expired: {} at {}", peer_id, multiaddr));
+                            swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
+                        }
+                    },
+                    SwarmEvent::Behaviour(AppBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                        propagation_source: peer_id,
+                        message_id: id,
+                        message,
+                    })) => p2plog_info(format!(
+                        "Got message: '{}' with id: {id} from peer: {peer_id}",
+                        String::from_utf8_lossy(&message.data),
+                    )),
+                    SwarmEvent::NewListenAddr { address, .. } => {
+                        p2plog_info(format!("Local node is listening on {address}"));
+                    }
+                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                        p2plog_info(format!("Connected to peer: {peer_id}"));
                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     }
-                },
-                #[cfg(feature = "mdns")]
-                SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                    for (peer_id, multiaddr) in list {
-                        p2plog_info(format!("mDNS peer expired: {} at {}", peer_id, multiaddr));
-                        swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
+                    other => {
+                        p2plog_debug(format!("Other swarm event: {other:?}"));
                     }
-                },
-                SwarmEvent::Behaviour(AppBehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                    propagation_source: peer_id,
-                    message_id: id,
-                    message,
-                })) => p2plog_info(format!(
-                    "Got message: '{}' with id: {id} from peer: {peer_id}",
-                    String::from_utf8_lossy(&message.data),
-                )),
-                SwarmEvent::NewListenAddr { address, .. } => {
-                    p2plog_info(format!("Local node is listening on {address}"));
-                }
-                SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                    p2plog_info(format!("Connected to peer: {peer_id}"));
-                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                }
-                other => {
-                    p2plog_debug(format!("Other swarm event: {other:?}"));
                 }
             }
         }
     }
+}
+
+#[cfg(not(feature = "tui"))]
+#[tokio::main]
+async fn main() -> color_eyre::Result<()> {
+    headless::run().await
 }
