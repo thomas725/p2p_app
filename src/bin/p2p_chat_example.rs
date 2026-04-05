@@ -145,7 +145,7 @@ mod tui {
                                                     direct_messages.pop_front();
                                                 }
                                             } else {
-                                                logs.push_back(format!("Received DM from {}: {}", &peer_id_str[..8.min(peer_id_str.len())], content));
+                                                logs.push_back(format!("[{}] Received DM from {}: {}", format_system_time(SystemTime::now()), &peer_id_str[..8.min(peer_id_str.len())], content));
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
@@ -160,7 +160,7 @@ mod tui {
                                         }
                                         libp2p::request_response::Message::Response { request_id, response } => {
                                             let _ = request_id;
-                                            logs.push_back(format!("DM response received: {}", response.content));
+                                            logs.push_back(format!("[{}] DM response received: {}", format_system_time(SystemTime::now()), response.content));
                                         }
                                     }
                                 }
@@ -346,7 +346,7 @@ mod tui {
                                                 let ts = format_system_time(SystemTime::now());
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
                                                 direct_messages.push_back(msg_str.clone());
-                                                logs.push_back(format!("Sending DM to {}", target));
+                                                logs.push_back(format!("[{}] Sending DM to {}", format_system_time(SystemTime::now()), target));
 
                                                 let peer_id: libp2p::PeerId = match target.parse() {
                                                     Ok(pid) => pid,
@@ -363,9 +363,9 @@ mod tui {
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
-                                                logs.push_back(format!("DM request sent to {}", target));
+                                                logs.push_back(format!("[{}] DM request sent to {}", format_system_time(SystemTime::now()), target));
 
-                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(target)) {
+                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(&peer_id.to_string())) {
                                                     logs.push_back(format!("Failed to save DM: {}", e));
                                                 }
 
