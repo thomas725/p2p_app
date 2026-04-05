@@ -188,7 +188,11 @@ mod tui {
                                                 logs.push_back(format!("Failed to save peer: {}", e));
                                             }
                                         }
-                                        let _ = swarm.dial(multiaddr.clone());
+                                        logs.push_back(format!("Attempting to dial: {}", peer_id));
+                                        match swarm.dial(multiaddr.clone()) {
+                                            Ok(_) => logs.push_back(format!("Dial initiated: {}", peer_id)),
+                                            Err(e) => logs.push_back(format!("Dial failed: {} - {}", peer_id, e)),
+                                        }
                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
                                 }
@@ -210,7 +214,7 @@ mod tui {
                                     logs.push_back(log);
                                 }
                                 SwarmEvent::ConnectionEstablished { peer_id, connection_id, .. } => {
-                                    let log = format!("Connected to: {} (conn: {:?})", peer_id, connection_id);
+                                    let log = format!("Connection established: {} (conn: {:?})", peer_id, connection_id);
                                     logs.push_back(log);
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
@@ -500,6 +504,9 @@ mod tui {
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                             eprintln!("Connected to: {}", peer_id);
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                        }
+                        SwarmEvent::Dialing { peer_id, .. } => {
+                            eprintln!("Dialing: {:?}", peer_id);
                         }
                         SwarmEvent::Behaviour(AppEv::Gossipsub(
                             gossipsub::Event::Message { propagation_source, message, .. }
