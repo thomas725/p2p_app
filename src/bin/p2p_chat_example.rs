@@ -171,8 +171,21 @@ mod tui {
                                         let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
                                         logs.push_back(log);
                                         let peer_id_str = peer_id.to_string();
-                                        if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                            peers.push_back((peer_id_str, now_timestamp(), now_timestamp()));
+                                        let addresses = vec![multiaddr.to_string()];
+                                        match save_peer(&peer_id_str, &addresses) {
+                                            Ok(peer) => {
+                                                let first_seen = format_peer_datetime(peer.first_seen);
+                                                let last_seen = format_peer_datetime(peer.last_seen);
+                                                if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                    peers.push_back((peer_id_str.clone(), first_seen, last_seen));
+                                                }
+                                            }
+                                            Err(e) => {
+                                                if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                    peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                                }
+                                                logs.push_back(format!("Failed to save peer: {}", e));
+                                            }
                                         }
                                         let _ = swarm.dial(multiaddr.clone());
                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
