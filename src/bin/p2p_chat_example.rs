@@ -30,9 +30,55 @@ mod tui {
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, SystemTime};
+    use tracing_subscriber::prelude::*;
 
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
+
+    mod tracing_writer {
+        use std::collections::VecDeque;
+        use std::sync::{Arc, Mutex};
+        use std::time::SystemTime;
+
+        fn format_system_time(time: SystemTime) -> String {
+            let local: chrono::DateTime<chrono::Local> = time.into();
+            local.format("%H:%M:%S.%3f").to_string()
+        }
+
+        #[derive(Clone)]
+        pub struct TracingWriter {
+            logs: Arc<Mutex<VecDeque<String>>>,
+        }
+
+        impl TracingWriter {
+            pub fn new(logs: Arc<Mutex<VecDeque<String>>>) -> Self {
+                Self { logs }
+            }
+        }
+
+        impl std::io::Write for TracingWriter {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                if let Ok(s) = std::str::from_utf8(buf) {
+                    let trimmed = s.trim();
+                    if !trimmed.is_empty() {
+                        let ts = format_system_time(SystemTime::now());
+                        let formatted = format!("[{}] {}", ts, trimmed);
+                        if let Ok(mut l) = self.logs.lock() {
+                            l.push_back(formatted);
+                            if l.len() > 2000 {
+                                l.pop_front();
+                            }
+                        }
+                    }
+                }
+                Ok(buf.len())
+            }
+
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+    }
 
     fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
         let local = time.and_utc().with_timezone(&chrono::Local);
@@ -91,6 +137,17 @@ mod tui {
                         }
                     }
                 });
+
+                let logs_for_tracing = logs.clone();
+                let trace_layer = tracing_subscriber::fmt::layer()
+                    .with_target(true)
+                    .without_time()
+                    .with_writer(move || {
+                        tracing_writer::TracingWriter::new(logs_for_tracing.clone())
+                    })
+                    .compact()
+                    .with_filter(tracing_subscriber::filter::LevelFilter::DEBUG);
+                let _ = tracing_subscriber::registry().with(trace_layer).try_init();
                 log_debug(&logs, format!("Using database: {}", get_database_url()));
                 log_debug(&logs, format!("Our peer ID: {}", swarm.local_peer_id()));
 
