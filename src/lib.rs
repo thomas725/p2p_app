@@ -9,6 +9,38 @@ use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
 use std::collections::VecDeque;
 use std::sync::OnceLock;
 
+/// Build a tracing `Targets` filter that denies noisy internal modules
+/// and keeps useful networking events at DEBUG level.
+///
+/// Denylist (set to OFF):
+/// - `multistream_select` - protocol negotiation internals
+/// - `yamux::connection` - stream multiplexing pings/RTT
+/// - `libp2p_core::transport::choice` - unreadable type names on dial failure
+/// - `libp2p_mdns::behaviour::iface` - startup-only noise
+///
+/// Kept at DEBUG:
+/// - `libp2p_swarm` - connection lifecycle, listener addresses
+/// - `libp2p_gossipsub::behaviour` - mesh changes, heartbeats, peer subs
+/// - `libp2p_tcp` - dial attempts, listen addresses
+/// - `libp2p_quic::transport` - listen addresses
+/// - `libp2p_mdns::behaviour` - peer discovery events
+///
+/// Default level for everything else: WARN
+pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
+    use tracing_subscriber::filter::{LevelFilter, Targets};
+    Targets::new()
+        .with_target("multistream_select", LevelFilter::OFF)
+        .with_target("yamux::connection", LevelFilter::OFF)
+        .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
+        .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
+        .with_target("libp2p_swarm", LevelFilter::DEBUG)
+        .with_target("libp2p_gossipsub::behaviour", LevelFilter::DEBUG)
+        .with_target("libp2p_tcp", LevelFilter::DEBUG)
+        .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
+        .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
+        .with_default(LevelFilter::WARN)
+}
+
 pub const CHAT_TOPIC: &str = "test-net";
 pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 

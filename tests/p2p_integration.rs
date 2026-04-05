@@ -11,8 +11,20 @@ use std::{
     time::Duration,
 };
 use tokio::time::timeout;
+use tracing_subscriber::prelude::*;
 
 const TEST_TOPIC: &str = "test-integration";
+
+fn init_test_tracing() {
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_target(true)
+        .with_writer(std::io::stderr)
+        .compact();
+    let _ = tracing_subscriber::registry()
+        .with(fmt_layer)
+        .with(p2p_app::tracing_filter())
+        .try_init();
+}
 
 #[derive(NetworkBehaviour)]
 struct TestBehaviour {
@@ -205,6 +217,7 @@ async fn connect_nodes(
 
 #[tokio::test]
 async fn test_p2p_message_transfer() -> Result<(), Box<dyn std::error::Error>> {
+    init_test_tracing();
     let mut node_a = create_node().await?;
     let mut node_b = create_node().await?;
 
@@ -240,6 +253,7 @@ async fn test_p2p_message_transfer() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>> {
+    init_test_tracing();
     let mut node_a = create_node().await?;
     let mut node_b = create_node().await?;
 
@@ -298,6 +312,7 @@ async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>>
 
 #[tokio::test]
 async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>> {
+    init_test_tracing();
     let mut node_a = create_node().await?;
     let mut node_b = create_node().await?;
 

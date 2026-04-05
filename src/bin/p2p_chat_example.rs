@@ -165,20 +165,7 @@ mod tui {
                         tracing_writer::TracingWriter::new(logs_for_tracing.clone())
                     })
                     .compact()
-                    .with_filter({
-                        use tracing_subscriber::filter::{LevelFilter, Targets};
-                        Targets::new()
-                            .with_target("multistream_select", LevelFilter::OFF)
-                            .with_target("yamux::connection", LevelFilter::OFF)
-                            .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
-                            .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
-                            .with_target("libp2p_swarm", LevelFilter::DEBUG)
-                            .with_target("libp2p_gossipsub::behaviour", LevelFilter::DEBUG)
-                            .with_target("libp2p_tcp", LevelFilter::DEBUG)
-                            .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
-                            .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
-                            .with_default(LevelFilter::WARN)
-                    });
+                    .with_filter(p2p_app::tracing_filter());
                 let _ = tracing_subscriber::registry().with(trace_layer).try_init();
                 log_debug(&logs, format!("Using database: {}", get_database_url()));
                 log_debug(&logs, format!("Our peer ID: {}", swarm.local_peer_id()));
