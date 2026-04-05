@@ -94,20 +94,28 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         gossipsub::MessageId::from(s.finish().to_string())
     };
 
-    let (heartbeat_interval, gossip_lazy, mesh_n, mesh_n_low, mesh_n_high) = match network_size {
-        NetworkSize::Small => (Duration::from_millis(500), 1, 3, 2, 4),
-        NetworkSize::Medium => (Duration::from_secs(1), 3, 6, 4, 8),
-        NetworkSize::Large => (Duration::from_secs(2), 6, 8, 6, 12),
-    };
+    let (heartbeat_interval, gossip_lazy, mesh_n, mesh_n_low, mesh_n_high, flood_publish) =
+        match network_size {
+            NetworkSize::Small => (Duration::from_millis(500), 1, 3, 2, 4, true),
+            NetworkSize::Medium => (Duration::from_secs(1), 3, 6, 4, 8, false),
+            NetworkSize::Large => (Duration::from_secs(2), 6, 8, 6, 12, false),
+        };
 
-    let gossipsub_config = gossipsub::ConfigBuilder::default()
+    let mut config_builder = gossipsub::ConfigBuilder::default();
+    config_builder
         .heartbeat_interval(heartbeat_interval)
         .validation_mode(gossipsub::ValidationMode::Strict)
         .message_id_fn(message_id_fn)
         .gossip_lazy(gossip_lazy)
         .mesh_n(mesh_n)
         .mesh_n_low(mesh_n_low)
-        .mesh_n_high(mesh_n_high)
+        .mesh_n_high(mesh_n_high);
+
+    if flood_publish {
+        config_builder.flood_publish(true);
+    }
+
+    let gossipsub_config = config_builder
         .build()
         .expect("gossipsub config should be valid");
 
