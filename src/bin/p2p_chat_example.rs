@@ -1,6 +1,7 @@
 #[cfg(feature = "mdns")]
 use libp2p::mdns;
-use libp2p::{gossipsub, noise, swarm::NetworkBehaviour, tcp, yamux};
+use libp2p::{gossipsub, noise, request_response, swarm::NetworkBehaviour, tcp, yamux};
+use p2p_app::ChatCodec;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -13,6 +14,7 @@ use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
 #[derive(NetworkBehaviour)]
 struct MyBehaviour {
     gossipsub: gossipsub::Behaviour,
+    request_response: request_response::Behaviour<ChatCodec>,
     #[cfg(feature = "mdns")]
     mdns: mdns::tokio::Behaviour,
 }
@@ -46,8 +48,18 @@ fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
         key.public().to_peer_id(),
     )
     .expect("mDNS should be created");
+
+    let request_response = request_response::Behaviour::<p2p_app::ChatCodec>::new(
+        vec![(
+            libp2p::StreamProtocol::new(p2p_app::DM_PROTOCOL_NAME),
+            libp2p::request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default(),
+    );
+
     MyBehaviour {
         gossipsub,
+        request_response,
         #[cfg(feature = "mdns")]
         mdns,
     }
@@ -60,7 +72,10 @@ mod tui {
     #[cfg(feature = "mdns")]
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
-    use p2p_app::{get_unsent_messages, load_messages, mark_message_sent, save_message};
+    use p2p_app::{
+        DirectMessage, get_unsent_messages, load_direct_messages, load_messages, load_peers,
+        mark_message_sent, save_message, save_peer,
+    };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
         execute,
@@ -111,8 +126,11 @@ mod tui {
                 enable_raw_mode()?;
 
                 let mut messages: VecDeque<String> = VecDeque::new();
+                let mut direct_messages: VecDeque<String> = VecDeque::new();
                 let mut logs: VecDeque<String> = VecDeque::new();
+                let mut peers: VecDeque<String> = VecDeque::new();
                 let mut active_tab = 0;
+                let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
 
                 logs.push_back("TUI started".to_string());
@@ -135,7 +153,14 @@ mod tui {
                     logs.push_back("Failed to load messages from database".to_string());
                 }
 
-                let tab_titles = vec!["Chat", "Debug"];
+                if let Ok(db_peers) = load_peers() {
+                    for peer in db_peers.iter() {
+                        peers.push_back(peer.peer_id.to_string());
+                    }
+                    logs.push_back(format!("Loaded {} peers from database", db_peers.len()));
+                }
+
+                let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
 
                 loop {
                     tokio::select! {
@@ -158,8 +183,46 @@ mod tui {
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
                                     }
-                                    if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str) {
+                                    if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
                                         logs.push_back(format!("Failed to save message: {}", e));
+                                    }
+                                }
+                                SwarmEvent::Behaviour(super::MyBehaviourEvent::RequestResponse(
+                                    libp2p::request_response::Event::Message { message, .. },
+                                )) => {
+                                    match message {
+                                        libp2p::request_response::Message::Request { request, channel, .. } => {
+                                            let peer_id_str = "unknown".to_string();
+                                            let content = request.content.clone();
+                                            let ts = format_system_time(SystemTime::now());
+
+                                            if selected_peer.clone() == Some(peer_id_str.clone()) {
+                                                let msg = format!("{} [Peer] {}", ts, content);
+                                                direct_messages.push_back(msg.clone());
+                                                if direct_messages.len() > MAX_MESSAGES {
+                                                    direct_messages.pop_front();
+                                                }
+                                            } else {
+                                                logs.push_back(format!("Received DM from unknown: {}", content));
+                                            }
+
+                                            if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
+                                                logs.push_back(format!("Failed to save DM: {}", e));
+                                            }
+
+                                            let response = DirectMessage {
+                                                content: "ok".to_string(),
+                                                timestamp: SystemTime::now()
+                                                    .duration_since(UNIX_EPOCH)
+                                                    .map(|d| d.as_secs() as i64)
+                                                    .unwrap_or(0),
+                                            };
+                                            let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
+                                        }
+                                        libp2p::request_response::Message::Response { request_id, response: _ } => {
+                                            let _ = request_id;
+                                            logs.push_back("DM sent successfully".to_string());
+                                        }
                                     }
                                 }
                                 #[cfg(feature = "mdns")]
@@ -169,6 +232,8 @@ mod tui {
                                     for (peer_id, multiaddr) in list {
                                         let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
                                         logs.push_back(log);
+                                        let peer_id_str = peer_id.to_string();
+                                        peers.push_back(peer_id_str);
                                         let _ = swarm.dial(multiaddr.clone());
                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
@@ -194,6 +259,13 @@ mod tui {
                                     let log = format!("Connected to: {} (conn: {:?})", peer_id, connection_id);
                                     logs.push_back(log);
                                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+
+                                    let peer_id_str = peer_id.to_string();
+                                    peers.push_back(peer_id_str.clone());
+                                    let addresses = vec![peer_id_str.clone()];
+                                    if let Err(e) = save_peer(&peer_id_str, &addresses) {
+                                        logs.push_back(format!("Failed to save peer: {}", e));
+                                    }
 
                                     if let Ok(unsent) = get_unsent_messages(&topic_str)
                                         && !unsent.is_empty()
@@ -256,7 +328,7 @@ mod tui {
                                 && let Event::Key(key) = event {
                                     match key.code {
                                         KeyCode::Tab => {
-                                            active_tab = (active_tab + 1) % 2;
+                                            active_tab = (active_tab + 1) % 4;
                                         }
                                         KeyCode::Enter => {
                                             if !input_buffer.is_empty() && active_tab == 0 {
@@ -273,8 +345,51 @@ mod tui {
                                                     logs.push_back(format!("Publish error: {:?}", e));
                                                 }
 
-                                                if let Err(e) = save_message(&input_buffer, None, &topic_str) {
+                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
                                                     logs.push_back(format!("Failed to save message: {}", e));
+                                                }
+
+                                                input_buffer.clear();
+                                            } else if active_tab == 1 && !peers.is_empty() {
+                                                if let Some(first_peer) = peers.front().cloned() {
+                                                    selected_peer = Some(first_peer.clone());
+                                                    active_tab = 2;
+                                                    direct_messages.clear();
+                                                    if let Ok(msgs) = load_direct_messages(&first_peer, MAX_MESSAGES) {
+                                                        for msg in msgs {
+                                                            let ts = format_naive_datetime(msg.created_at);
+                                                            let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                            direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                        }
+                                                    }
+                                                }
+                                            } else if !input_buffer.is_empty() && active_tab == 2 {
+                                                let Some(target) = selected_peer.as_ref() else { continue; };
+                                                let ts = format_system_time(SystemTime::now());
+                                                let msg_str = format!("{} [You] {}", ts, input_buffer);
+                                                direct_messages.push_back(msg_str.clone());
+
+                                                let peer_id: libp2p::PeerId = match target.parse() {
+                                                    Ok(pid) => pid,
+                                                    Err(e) => {
+                                                        logs.push_back(format!("Invalid peer ID: {}", e));
+                                                        input_buffer.clear();
+                                                        continue;
+                                                    }
+                                                };
+
+                                                let dm = DirectMessage {
+                                                    content: input_buffer.clone(),
+                                                    timestamp: SystemTime::now()
+                                                        .duration_since(UNIX_EPOCH)
+                                                        .map(|d| d.as_secs() as i64)
+                                                        .unwrap_or(0),
+                                                };
+
+                                                swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
+
+                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(target)) {
+                                                    logs.push_back(format!("Failed to save DM: {}", e));
                                                 }
 
                                                 input_buffer.clear();
@@ -328,6 +443,36 @@ mod tui {
                                 f.render_widget(chat_list, chunks[1]);
                             }
                             1 => {
+                                let peer_items: Vec<ListItem> =
+                                    peers.iter().map(|p| ListItem::new(p.clone())).collect();
+                                let peer_list = List::new(peer_items)
+                                    .block(
+                                        Block::default()
+                                            .title("Peers - Press Enter to open DM")
+                                            .borders(Borders::ALL),
+                                    )
+                                    .style(Style::default().fg(Color::White));
+                                f.render_widget(peer_list, chunks[1]);
+                            }
+                            2 => {
+                                let peer_name = selected_peer
+                                    .as_ref()
+                                    .map(|p| &p[..8.min(p.len())])
+                                    .unwrap_or("None");
+                                let dm_items: Vec<ListItem> = direct_messages
+                                    .iter()
+                                    .map(|m| ListItem::new(m.clone()))
+                                    .collect();
+                                let dm_list = List::new(dm_items)
+                                    .block(
+                                        Block::default()
+                                            .title(format!("DM: {}", peer_name))
+                                            .borders(Borders::ALL),
+                                    )
+                                    .style(Style::default().fg(Color::White));
+                                f.render_widget(dm_list, chunks[1]);
+                            }
+                            3 => {
                                 let log_items: Vec<ListItem> =
                                     logs.iter().map(|l| ListItem::new(l.clone())).collect();
                                 let log_list = List::new(log_items)
@@ -340,10 +485,10 @@ mod tui {
                             _ => {}
                         }
 
-                        let input_display = if active_tab == 0 {
+                        let input_display = if active_tab == 0 || active_tab == 2 {
                             format!("> {}", input_buffer)
                         } else {
-                            "(Input disabled in Debug tab)".to_string()
+                            "(Input disabled)".to_string()
                         };
                         let input_line = Paragraph::new(input_display)
                             .style(Style::default().fg(Color::Yellow))
@@ -390,6 +535,10 @@ mod tui {
                         SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                             for (peer_id, multiaddr) in list {
                                 eprintln!("mDNS discovered: {} at {}", peer_id, multiaddr);
+                                let addresses = vec![multiaddr.to_string()];
+                                if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
+                                    eprintln!("Failed to save peer: {}", e);
+                                }
                                 let _ = swarm.dial(multiaddr.clone());
                                 swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                             }
