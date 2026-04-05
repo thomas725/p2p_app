@@ -113,18 +113,41 @@ mod tui {
                 }
 
                 if let Ok(db_peers) = load_peers() {
-                    for peer in db_peers.iter() {
+                    let mut peer_indices: Vec<usize> = (0..db_peers.len()).collect();
+                    peer_indices
+                        .sort_by(|&a, &b| db_peers[b].last_seen.cmp(&db_peers[a].last_seen));
+                    for &idx in peer_indices.iter().take(10) {
+                        let peer = &db_peers[idx];
                         let first_seen = format_peer_datetime(peer.first_seen);
                         let last_seen = format_peer_datetime(peer.last_seen);
                         peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
                     log_debug(
                         &logs,
-                        format!("Loaded {} peers from database", db_peers.len()),
+                        format!(
+                            "Loaded {} peers from database (dialing top 10 by last_seen)",
+                            db_peers.len()
+                        ),
                     );
-                    for peer in db_peers.iter() {
-                        for addr_str in peer.addresses.split(',') {
-                            if let Ok(addr) = addr_str.trim().parse::<libp2p::Multiaddr>() {
+                    for &idx in peer_indices.iter().take(10) {
+                        let peer = &db_peers[idx];
+                        let addr_strs: Vec<&str> = peer.addresses.split(',').collect();
+                        for addr_str in addr_strs {
+                            let trimmed = addr_str.trim();
+                            if trimmed.contains("/tcp/") {
+                                let addr: libp2p::Multiaddr = match trimmed.parse() {
+                                    Ok(a) => a,
+                                    Err(e) => {
+                                        log_debug(
+                                            &logs,
+                                            format!(
+                                                "Failed to parse peer address '{}': {}",
+                                                trimmed, e
+                                            ),
+                                        );
+                                        continue;
+                                    }
+                                };
                                 log_debug(
                                     &logs,
                                     format!("Dialing known peer: {} at {}", peer.peer_id, addr),
@@ -326,17 +349,23 @@ mod tui {
                                     log_debug(&logs, format!("Expired listen addr: {}", address));
                                 }
                                 SwarmEvent::ListenerError { listener_id, error } => {
-                                    log_debug(&logs, format!("Listener error: {:?} - {:?}", listener_id, error));
+                                    log_debug(&logs, format!("Listener {:?} error: {}", listener_id, error));
                                 }
                                 SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
-                                    log_debug(&logs, format!("Listener closed: {:?} - {:?} ({:?})", listener_id, reason, addresses));
+                                    log_debug(&logs, format!("Listener {:?} closed: {:?} ({:?})", listener_id, reason, addresses));
                                 }
                                 SwarmEvent::IncomingConnection { connection_id, local_addr, .. } => {
-                                    log_debug(&logs, format!("Incoming connection: {:?} from {:?}", connection_id, local_addr));
+                                    log_debug(&logs, format!("Incoming connection {:?} from {:?}", connection_id, local_addr));
                                 }
-                                SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, peer_id, error } => {
-                                    log_debug(&logs, format!("Incoming connection error: {:?} from {:?} to {:?} (peer: {:?}): {:?}",
-                                        connection_id, local_addr, send_back_addr, peer_id, error));
+                                SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
+                                    let err_str = format!("{}", error);
+                                    if err_str.contains("ConnectionClosed") || err_str.contains("TimedOut") {
+                                        log_debug(&logs, format!("Connection {:?} failed (expected): {} from {:?} to {:?}",
+                                            connection_id, error, local_addr, send_back_addr));
+                                    } else {
+                                        log_debug(&logs, format!("Connection {:?} error: {} from {:?} to {:?}",
+                                            connection_id, error, local_addr, send_back_addr));
+                                    }
                                 }
                                 _ => {}
                             }
