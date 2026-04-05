@@ -130,11 +130,12 @@ mod tui {
                                     }
                                 }
                                 SwarmEvent::Behaviour(AppEv::RequestResponse(
-                                    libp2p::request_response::Event::Message { message, .. },
+                                    libp2p::request_response::Event::Message { peer, message, .. },
                                 )) => {
                                     match message {
                                         libp2p::request_response::Message::Request { request, channel, .. } => {
-                                            let peer_id_str = "unknown".to_string();
+                                            let peer_id_str = peer.to_string();
+                                            let sender_id = request.sender_id.clone();
                                             let content = request.content.clone();
                                             let ts = format_system_time(SystemTime::now());
 
@@ -145,16 +146,17 @@ mod tui {
                                                     direct_messages.pop_front();
                                                 }
                                             } else {
-                                                logs.push_back(format!("Received DM from unknown: {}", content));
+                                                logs.push_back(format!("Received DM from {}: {}", &sender_id[..8.min(sender_id.len())], content));
                                             }
 
-                                            if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
+                                            if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&sender_id)) {
                                                 logs.push_back(format!("Failed to save DM: {}", e));
                                             }
 
                                             let response = DirectMessage {
                                                 content: "ok".to_string(),
                                                 timestamp: chrono::Utc::now().timestamp(),
+                                                sender_id: swarm.local_peer_id().to_string(),
                                             };
                                             let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
                                         }
@@ -359,6 +361,7 @@ mod tui {
                                                 let dm = DirectMessage {
                                                     content: input_buffer.clone(),
                                                     timestamp: chrono::Utc::now().timestamp(),
+                                                    sender_id: swarm.local_peer_id().to_string(),
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
