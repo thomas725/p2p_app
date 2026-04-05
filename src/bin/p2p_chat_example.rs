@@ -24,7 +24,7 @@ mod tui {
         backend::CrosstermBackend,
         layout::{Constraint, Direction, Layout},
         style::{Color, Style},
-        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Wrap},
     };
     use std::collections::VecDeque;
     use std::time::{Duration, SystemTime};
@@ -455,14 +455,18 @@ mod tui {
                                 f.render_widget(dm_list, chunks[1]);
                             }
                             3 => {
-                                let log_items: Vec<ListItem> =
-                                    logs.iter().map(|l| ListItem::new(l.clone())).collect();
-                                let log_list = List::new(log_items)
+                                let log_text = logs
+                                    .iter()
+                                    .map(|l| l.clone())
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                let log_paragraph = Paragraph::new(log_text)
                                     .block(
                                         Block::default().title("Debug Logs").borders(Borders::ALL),
                                     )
-                                    .style(Style::default().fg(Color::White));
-                                f.render_widget(log_list, chunks[1]);
+                                    .style(Style::default().fg(Color::White))
+                                    .wrap(Wrap::default());
+                                f.render_widget(log_paragraph, chunks[1]);
                             }
                             _ => {}
                         }
