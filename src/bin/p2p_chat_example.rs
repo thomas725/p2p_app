@@ -245,7 +245,9 @@ mod tui {
                                         let log = format!("mDNS discovered: {} at {}", peer_id, multiaddr);
                                         logs.push_back(log);
                                         let peer_id_str = peer_id.to_string();
-                                        peers.push_back((peer_id_str, now_timestamp(), now_timestamp()));
+                                        if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                            peers.push_back((peer_id_str, now_timestamp(), now_timestamp()));
+                                        }
                                         let _ = swarm.dial(multiaddr.clone());
                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     }
@@ -278,10 +280,14 @@ mod tui {
                                         Ok(peer) => {
                                             let first_seen = format_naive_datetime(peer.first_seen);
                                             let last_seen = format_naive_datetime(peer.last_seen);
-                                            peers.push_back((peer_id_str, first_seen, last_seen));
+                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                peers.push_back((peer_id_str, first_seen, last_seen));
+                                            }
                                         }
                                         Err(e) => {
-                                            peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                            }
                                             logs.push_back(format!("Failed to save peer: {}", e));
                                         }
                                     }
