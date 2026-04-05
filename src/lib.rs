@@ -40,6 +40,11 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     Ok(conn)
 }
 
+pub fn get_database_url() -> String {
+    dotenv().ok();
+    env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned())
+}
+
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     let conn = &mut sqlite_connect()?;
     if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {

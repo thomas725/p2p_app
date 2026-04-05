@@ -73,8 +73,8 @@ mod tui {
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
-        DirectMessage, get_unsent_messages, load_direct_messages, load_messages, load_peers,
-        mark_message_sent, save_message, save_peer,
+        DirectMessage, get_database_url, get_unsent_messages, load_direct_messages, load_messages,
+        load_peers, mark_message_sent, save_message, save_peer,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -143,7 +143,7 @@ mod tui {
                 let mut selected_peer: Option<String> = None;
                 let mut input_buffer = String::new();
 
-                logs.push_back("TUI started".to_string());
+                logs.push_back(format!("Using database: {}", get_database_url()));
 
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {

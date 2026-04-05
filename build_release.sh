@@ -147,3 +147,5 @@ fi
 # Packed 1 file.
 # -rwxr-xr-x 1 user users 1618124 Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
 # -rwxr-xr-x 1 user users 1.6M Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
+
+# target=x86_64-unknown-linux-gnu features=default bash build_release.sh
