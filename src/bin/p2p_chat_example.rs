@@ -47,6 +47,11 @@ mod tui {
         local.format("%H:%M:%S").to_string()
     }
 
+    fn log_debug(logs: &mut VecDeque<String>, message: String) {
+        let ts = format_system_time(SystemTime::now());
+        logs.push_back(format!("[{}] {}", ts, message));
+    }
+
     pub async fn run_tui(
         mut swarm: Swarm<AppBehaviour>,
         topic_str: String,
@@ -145,7 +150,7 @@ mod tui {
                                                     direct_messages.pop_front();
                                                 }
                                             } else {
-                                                logs.push_back(format!("[{}] Received DM from {}: {}", format_system_time(SystemTime::now()), &peer_id_str[..8.min(peer_id_str.len())], content));
+                                                log_debug(&mut logs, format!("Received DM from {}: {}", &peer_id_str[..8.min(peer_id_str.len())], content));
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
@@ -160,7 +165,7 @@ mod tui {
                                         }
                                         libp2p::request_response::Message::Response { request_id, response } => {
                                             let _ = request_id;
-                                            logs.push_back(format!("[{}] DM response received: {}", format_system_time(SystemTime::now()), response.content));
+                                            log_debug(&mut logs, format!("DM response received: {}", response.content));
                                         }
                                     }
                                 }
@@ -346,7 +351,7 @@ mod tui {
                                                 let ts = format_system_time(SystemTime::now());
                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
                                                 direct_messages.push_back(msg_str.clone());
-                                                logs.push_back(format!("[{}] Sending DM to {}", format_system_time(SystemTime::now()), target));
+                                                log_debug(&mut logs, format!("Sending DM to {}", target));
 
                                                 let peer_id: libp2p::PeerId = match target.parse() {
                                                     Ok(pid) => pid,
@@ -363,7 +368,7 @@ mod tui {
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
-                                                logs.push_back(format!("[{}] DM request sent to {}", format_system_time(SystemTime::now()), target));
+                                                log_debug(&mut logs, format!("DM request sent to {}", target));
 
                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(&peer_id.to_string())) {
                                                     logs.push_back(format!("Failed to save DM: {}", e));
