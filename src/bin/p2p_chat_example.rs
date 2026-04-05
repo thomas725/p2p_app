@@ -70,6 +70,7 @@ mod tui {
                 let mut input_buffer = String::new();
 
                 logs.push_back(format!("Using database: {}", get_database_url()));
+                logs.push_back(format!("Our peer ID: {}", swarm.local_peer_id()));
 
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
