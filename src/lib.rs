@@ -1,6 +1,73 @@
 pub mod models_insertable;
 pub mod models_queryable;
 pub mod schema;
+
+#[cfg(feature = "mdns")]
+use libp2p::mdns;
+use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
+
+pub const CHAT_TOPIC: &str = "test-net";
+pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
+
+pub type P2pAppBehaviour = AppBehaviour;
+
+#[derive(NetworkBehaviour)]
+pub struct AppBehaviour {
+    pub gossipsub: gossipsub::Behaviour,
+    pub request_response: request_response::Behaviour<ChatCodec>,
+    #[cfg(feature = "mdns")]
+    pub mdns: mdns::tokio::Behaviour,
+}
+
+pub fn build_behaviour(key: &libp2p_identity::Keypair) -> AppBehaviour {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::time::Duration;
+
+    let message_id_fn = |message: &gossipsub::Message| {
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        gossipsub::MessageId::from(s.finish().to_string())
+    };
+
+    let gossipsub_config = gossipsub::ConfigBuilder::default()
+        .heartbeat_interval(Duration::from_secs(10))
+        .validation_mode(gossipsub::ValidationMode::Strict)
+        .message_id_fn(message_id_fn)
+        .build()
+        .expect("gossipsub config should be valid");
+
+    let gossipsub = gossipsub::Behaviour::new(
+        gossipsub::MessageAuthenticity::Signed(key.clone()),
+        gossipsub_config,
+    )
+    .expect("gossipsub should be created");
+
+    #[cfg(feature = "mdns")]
+    let mdns = mdns::tokio::Behaviour::new(
+        mdns::Config {
+            query_interval: Duration::from_secs(1),
+            ..Default::default()
+        },
+        key.public().to_peer_id(),
+    )
+    .expect("mDNS should be created");
+
+    let request_response = request_response::Behaviour::<ChatCodec>::new(
+        vec![(
+            libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
+            libp2p::request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default(),
+    );
+
+    AppBehaviour {
+        gossipsub,
+        request_response,
+        #[cfg(feature = "mdns")]
+        mdns,
+    }
+}
 use crate::schema::identities::dsl::identities;
 use crate::schema::messages::dsl::messages;
 use crate::schema::peers::dsl::peers;
@@ -15,12 +82,10 @@ use diesel::{
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use dotenvy::dotenv;
-use serde::{Deserialize, Serialize};
-use std::env;
-
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
-pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
+use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DirectMessage {

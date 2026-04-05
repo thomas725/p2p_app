@@ -1,80 +1,18 @@
-#[cfg(feature = "mdns")]
-use libp2p::mdns;
-use libp2p::{gossipsub, noise, request_response, swarm::NetworkBehaviour, tcp, yamux};
-use p2p_app::ChatCodec;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-    time::Duration,
-};
-
-#[cfg(not(feature = "tui"))]
-use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
-
-#[derive(NetworkBehaviour)]
-struct MyBehaviour {
-    gossipsub: gossipsub::Behaviour,
-    request_response: request_response::Behaviour<ChatCodec>,
-    #[cfg(feature = "mdns")]
-    mdns: mdns::tokio::Behaviour,
-}
-
-fn build_behaviour_impl(key: &libp2p_identity::Keypair) -> MyBehaviour {
-    let message_id_fn = |message: &gossipsub::Message| {
-        let mut s = DefaultHasher::new();
-        message.data.hash(&mut s);
-        gossipsub::MessageId::from(s.finish().to_string())
-    };
-
-    let gossipsub_config = gossipsub::ConfigBuilder::default()
-        .heartbeat_interval(Duration::from_secs(10))
-        .validation_mode(gossipsub::ValidationMode::Strict)
-        .message_id_fn(message_id_fn)
-        .build()
-        .expect("gossipsub config should be valid");
-
-    let gossipsub = gossipsub::Behaviour::new(
-        gossipsub::MessageAuthenticity::Signed(key.clone()),
-        gossipsub_config,
-    )
-    .expect("gossipsub should be created");
-
-    #[cfg(feature = "mdns")]
-    let mdns = mdns::tokio::Behaviour::new(
-        mdns::Config {
-            query_interval: Duration::from_secs(1),
-            ..Default::default()
-        },
-        key.public().to_peer_id(),
-    )
-    .expect("mDNS should be created");
-
-    let request_response = request_response::Behaviour::<p2p_app::ChatCodec>::new(
-        vec![(
-            libp2p::StreamProtocol::new(p2p_app::DM_PROTOCOL_NAME),
-            libp2p::request_response::ProtocolSupport::Full,
-        )],
-        request_response::Config::default(),
-    );
-
-    MyBehaviour {
-        gossipsub,
-        request_response,
-        #[cfg(feature = "mdns")]
-        mdns,
-    }
-}
+use libp2p::{gossipsub, noise, tcp, yamux};
+use p2p_app::{AppBehaviour, build_behaviour};
+use std::time::Duration;
 
 #[cfg(feature = "tui")]
 mod tui {
-    use super::MyBehaviour;
+    use super::AppBehaviour;
     use libp2p::Swarm;
     #[cfg(feature = "mdns")]
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
-        DirectMessage, get_database_url, get_unsent_messages, load_direct_messages, load_messages,
-        load_peers, mark_message_sent, save_message, save_peer,
+        AppBehaviourEvent as AppEv, DirectMessage, get_database_url, get_unsent_messages,
+        load_direct_messages, load_messages, load_peers, mark_message_sent, save_message,
+        save_peer,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -122,7 +60,7 @@ mod tui {
     }
 
     pub async fn run_tui(
-        mut swarm: Swarm<MyBehaviour>,
+        mut swarm: Swarm<AppBehaviour>,
         topic_str: String,
     ) -> color_eyre::Result<()> {
         let is_tty = atty::is(atty::Stream::Stdout);
@@ -180,7 +118,7 @@ mod tui {
 
                         event = swarm.select_next_some() => {
                             match event {
-                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Gossipsub(
+                                SwarmEvent::Behaviour(AppEv::Gossipsub(
                                     gossipsub::Event::Message {
                                         propagation_source: peer_id,
                                         message,
@@ -199,7 +137,7 @@ mod tui {
                                         logs.push_back(format!("Failed to save message: {}", e));
                                     }
                                 }
-                                SwarmEvent::Behaviour(super::MyBehaviourEvent::RequestResponse(
+                                SwarmEvent::Behaviour(AppEv::RequestResponse(
                                     libp2p::request_response::Event::Message { message, .. },
                                 )) => {
                                     match message {
@@ -238,7 +176,7 @@ mod tui {
                                     }
                                 }
                                 #[cfg(feature = "mdns")]
-                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(
+                                SwarmEvent::Behaviour(AppEv::Mdns(
                                     mdns::Event::Discovered(list),
                                 )) => {
                                     for (peer_id, multiaddr) in list {
@@ -253,7 +191,7 @@ mod tui {
                                     }
                                 }
                                 #[cfg(feature = "mdns")]
-                                SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(
+                                SwarmEvent::Behaviour(AppEv::Mdns(
                                     mdns::Event::Expired(list),
                                 )) => {
                                     for (peer_id, multiaddr) in list {
@@ -544,7 +482,7 @@ mod tui {
         }
     }
 
-    async fn run_noninteractive_mode(mut swarm: Swarm<MyBehaviour>) -> color_eyre::Result<()> {
+    async fn run_noninteractive_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
         println!("Running in non-interactive mode");
         println!("Press Ctrl+C to exit");
 
@@ -559,7 +497,7 @@ mod tui {
                             eprintln!("Connected to: {}", peer_id);
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                         }
-                        SwarmEvent::Behaviour(super::MyBehaviourEvent::Gossipsub(
+                        SwarmEvent::Behaviour(AppEv::Gossipsub(
                             gossipsub::Event::Message { propagation_source, message, .. }
                         )) => {
                             eprintln!(
@@ -569,7 +507,7 @@ mod tui {
                             );
                         }
                         #[cfg(feature = "mdns")]
-                        SwarmEvent::Behaviour(super::MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                        SwarmEvent::Behaviour(AppEv::Mdns(mdns::Event::Discovered(list))) => {
                             for (peer_id, multiaddr) in list {
                                 eprintln!("mDNS discovered: {} at {}", peer_id, multiaddr);
                                 let addresses = vec![multiaddr.to_string()];
@@ -606,13 +544,13 @@ async fn main() -> color_eyre::Result<()> {
         #[cfg(feature = "quic")]
         let swarm = base
             .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
         #[cfg(not(feature = "quic"))]
         let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
@@ -656,13 +594,13 @@ async fn main() -> color_eyre::Result<()> {
         #[cfg(feature = "quic")]
         let swarm = base
             .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
         #[cfg(not(feature = "quic"))]
         let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour_impl(key)))?
+            .with_behaviour(|key| Ok(build_behaviour(key)))?
             .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
             .build();
 
@@ -723,7 +661,7 @@ async fn main() -> color_eyre::Result<()> {
             }
             event = swarm.select_next_some() => match event {
                 #[cfg(feature = "mdns")]
-                SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                     for (peer_id, multiaddr) in list {
                         println!("mDNS discovered peer: {} at {}", peer_id, multiaddr);
                         let _ = swarm.dial(multiaddr.clone());
@@ -731,13 +669,13 @@ async fn main() -> color_eyre::Result<()> {
                     }
                 },
                 #[cfg(feature = "mdns")]
-                SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+                SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                     for (peer_id, multiaddr) in list {
                         println!("mDNS peer expired: {} at {}", peer_id, multiaddr);
                         swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
                     }
                 },
-                SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                SwarmEvent::Behaviour(AppBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                     propagation_source: peer_id,
                     message_id: id,
                     message,
