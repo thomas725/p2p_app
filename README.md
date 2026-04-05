@@ -75,4 +75,4 @@ src/
 - [x] Debug logging system with timestamps
 - [x] QUIC transport support
 - [x] Tracing integration for libp2p debugging
-- [x] Non-interactive/headless mode
+- [x] Headless CLI mode (no TUI, reads stdin, prints to stderr)
