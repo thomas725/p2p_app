@@ -1,3 +1,4 @@
--- Columns is_direct and target_peer already added to messages table manually
--- This migration is a no-op for existing databases
--- For new databases, the columns are created by the schema
+-- Add is_direct and target_peer columns to messages table
+-- These columns were manually added to existing databases but need to be added for fresh databases
+ALTER TABLE messages ADD COLUMN is_direct INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE messages ADD COLUMN target_peer TEXT;
