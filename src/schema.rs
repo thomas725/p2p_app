@@ -16,9 +16,22 @@ diesel::table! {
         peer_id -> Nullable<Text>,
         topic -> Text,
         sent -> Integer,
+        is_direct -> Integer,
+        target_peer -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    peers (id) {
+        id -> Integer,
+        created_at -> Timestamp,
+        peer_id -> Text,
+        addresses -> Text,
+        last_seen -> Timestamp,
     }
 }
 
 diesel::joinable!(messages -> identities (id));
+diesel::joinable!(peers -> identities (id));
 
-diesel::allow_tables_to_appear_in_same_query!(identities, messages,);
+diesel::allow_tables_to_appear_in_same_query!(identities, messages, peers,);

@@ -6,17 +6,28 @@
 use crate::schema::*;
 use diesel::Insertable;
 
-#[derive(Debug, Insertable)]
+use chrono::NaiveDateTime;
+#[derive(Insertable, Debug)]
 #[diesel(table_name = identities)]
 pub struct NewIdentity {
     pub key: Vec<u8>,
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Insertable)]
 #[diesel(table_name = messages)]
 pub struct NewMessage<'a> {
     pub content: &'a str,
     pub peer_id: Option<&'a str>,
     pub topic: &'a str,
     pub sent: i32,
+    pub is_direct: i32,
+    pub target_peer: Option<&'a str>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = peers)]
+pub struct NewPeer<'a> {
+    pub peer_id: &'a str,
+    pub addresses: &'a str,
+    pub last_seen: NaiveDateTime,
 }
