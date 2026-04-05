@@ -1,0 +1,3 @@
+-- Columns is_direct and target_peer already added to messages table manually
+-- This migration is a no-op for existing databases
+-- For new databases, the columns are created by the schema
