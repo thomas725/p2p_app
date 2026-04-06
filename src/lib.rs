@@ -34,7 +34,7 @@ pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
         .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
         .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
         .with_target("libp2p_swarm", LevelFilter::DEBUG)
-        .with_target("libp2p_gossipsub::behaviour", LevelFilter::DEBUG)
+        .with_target("libp2p_gossipsub::behaviour", LevelFilter::INFO)
         .with_target("libp2p_tcp", LevelFilter::DEBUG)
         .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
         .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)

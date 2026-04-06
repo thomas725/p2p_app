@@ -247,3 +247,66 @@ address=/ip4/10.201.0.2/tcp/44137/p2p/12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACs
 [19:52:51.534] Connection established: 12D3KooWRCx4pgegk5AkVrB4dZA41LSpGU9X96HACsEaL7VYTKV1 (conn: ConnectionId(3))
 [19:52:51.534] Concurrent peers: 1
 ```
+
+----
+
+analyze and debug why we don't see any connection succesful in our logs, even though the second started instance detects and tries to connect to the first one. Is it a problem that it detects and tries to connect to the other instance before it starts listening on all it's network devces or is that just an logging timing artefact? Try to reproduce this with an integration test and iterate using it.
+
+```log
+[08:27:17.505] Using database: host1.db
+[08:27:17.506] Our peer ID: 12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:17.507] Loaded 0 messages from database
+[08:27:17.508] Loaded 0 peers from database (dialing top 10 by last_seen)
+[08:27:17.508] Network size: Small (0-3 peers avg) - optimized for low latency
+[08:27:17.510] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/127.0.0.1/tcp/32925
+[08:27:17.510] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/127.0.0.1/tcp/32925
+[08:27:17.543] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/192.168.16.99/tcp/32925
+[08:27:17.543] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/192.168.16.99/tcp/32925
+[08:27:17.554] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/172.17.0.1/tcp/32925
+[08:27:17.554] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/172.17.0.1/tcp/32925
+[08:27:17.569] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/172.30.0.1/tcp/32925
+[08:27:17.570] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/172.30.0.1/tcp/32925
+[08:27:17.586] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/172.18.0.1/tcp/32925
+[08:27:17.587] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/172.18.0.1/tcp/32925
+[08:27:17.602] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/10.201.0.1/tcp/32925
+[08:27:17.602] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/10.201.0.1/tcp/32925
+[08:27:17.616] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/127.0.0.1/udp/46272/quic-v1
+[08:27:17.616] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/127.0.0.1/udp/46272/quic-v1
+[08:27:17.630] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/192.168.16.99/udp/46272/quic-v1
+[08:27:17.630] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/192.168.16.99/udp/46272/quic-v1
+[08:27:17.642] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/172.17.0.1/udp/46272/quic-v1
+[08:27:17.642] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/172.17.0.1/udp/46272/quic-v1
+[08:27:17.660] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/172.30.0.1/udp/46272/quic-v1
+[08:27:17.660] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/172.30.0.1/udp/46272/quic-v1
+[08:27:17.673] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/172.18.0.1/udp/46272/quic-v1
+[08:27:17.673] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/172.18.0.1/udp/46272/quic-v1
+[08:27:17.686] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/10.201.0.1/udp/46272/quic-v1
+[08:27:17.686] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/10.201.0.1/udp/46272/quic-v1
+
+----
+
+[08:27:22.223] Using database: sanbox2.db
+[08:27:22.224] Our peer ID: 12D3KooWNbSRcN5oaq4Y8JphCC8dQfFLPYkjHgoiuntzkTYtXzhX
+[08:27:22.224] Loaded 0 messages from database
+[08:27:22.225] Loaded 1 peers from database (dialing top 10 by last_seen)
+[08:27:22.225] Dialing known peer: 12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw at /ip4/10.201.0.1/tcp/33389/p2p/12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.225] DEBUG libp2p_tcp: dialing address address=10.201.0.1:33389
+[08:27:22.226] Network size: Small (0-3 peers avg) - optimized for low latency
+[08:27:22.227] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/127.0.0.1/tcp/35015
+[08:27:22.227] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/127.0.0.1/tcp/35015
+[08:27:22.249] INFO Swarm::poll: libp2p_mdns::behaviour: discovered peer on address peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw address=/ip4/10.201.0.1/tcp/32925/p2p/12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.249] INFO Swarm::poll: libp2p_mdns::behaviour: discovered peer on address peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw address=/ip4/10.201.0.1/udp/46272/quic-v1/p2p/12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.265] DEBUG libp2p_swarm: discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=2 discarded_addresses_count=2
+[08:27:22.265] DEBUG libp2p_tcp: dialing address address=10.201.0.1:32925
+[08:27:22.265] DEBUG libp2p_gossipsub::behaviour: Adding explicit peer peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.265] DEBUG libp2p_gossipsub::behaviour: Connecting to explicit peer peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.271] DEBUG libp2p_swarm: discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection connection=4 discarded_addresses_count=2
+[08:27:22.271] DEBUG libp2p_gossipsub::behaviour: Adding explicit peer peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.271] DEBUG libp2p_gossipsub::behaviour: Connecting to explicit peer peer=12D3KooWKwEn4KjozEt4tzNB9jfG2SC2fj6B6ecnpNfF9EtRikMw
+[08:27:22.315] DEBUG Swarm::poll: libp2p_tcp: New listen address address=/ip4/10.201.0.2/tcp/35015
+[08:27:22.315] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(2) address=/ip4/10.201.0.2/tcp/35015
+[08:27:22.327] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/127.0.0.1/udp/57877/quic-v1
+[08:27:22.327] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/127.0.0.1/udp/57877/quic-v1
+[08:27:22.341] DEBUG Swarm::poll: libp2p_quic::transport: New listen address address=/ip4/10.201.0.2/udp/57877/quic-v1
+[08:27:22.341] DEBUG Swarm::poll: libp2p_swarm: New listener address listener=ListenerId(1) address=/ip4/10.201.0.2/udp/57877/quic-v1
+```

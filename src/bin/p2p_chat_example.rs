@@ -27,8 +27,9 @@ mod tui {
         backend::CrosstermBackend,
         layout::{Constraint, Direction, Layout},
         style::{Color, Style},
-        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs, Wrap},
+        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     };
+    use ratatui_textarea::{Input, TextArea};
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, SystemTime};
@@ -117,7 +118,12 @@ mod tui {
                 let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
                 let mut active_tab = 0;
                 let mut selected_peer: Option<String> = None;
-                let mut input_buffer = String::new();
+                let mut chat_input = TextArea::default();
+                chat_input.set_line_number_style(Style::default());
+                chat_input.set_cursor_line_style(Style::default());
+                let mut dm_input = TextArea::default();
+                dm_input.set_line_number_style(Style::default());
+                dm_input.set_cursor_line_style(Style::default());
                 let mut concurrent_peers: usize = 0;
                 let mut peer_selection: usize = 0;
                 let mut debug_scroll_offset: usize = 0;
@@ -461,92 +467,69 @@ mod tui {
                             if poll(Duration::ZERO).ok() == Some(true)
                                 && let Ok(event) = read()
                                 && let Event::Key(key) = event {
-                                    match key.code {
-                                        KeyCode::Tab | KeyCode::BackTab => {
-                                            if key.code == KeyCode::BackTab {
-                                                active_tab = if active_tab == 0 { 3 } else { active_tab - 1 };
-                                            } else {
-                                                active_tab = (active_tab + 1) % 4;
-                                            }
-                                            if active_tab == 0 {
-                                                unread_broadcasts = 0;
-                                            }
-                                            if active_tab == 2 {
-                                                if let Some(ref target) = selected_peer {
-                                                    unread_dms.remove(target);
-                                                }
-                                            }
-                                        }
-                                        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                            if unread_broadcasts > 0 {
-                                                active_tab = 0;
-                                                unread_broadcasts = 0;
-                                            } else if !unread_dms.is_empty() {
-                                                active_tab = 2;
-                                                if let Some(ref target) = selected_peer {
-                                                    unread_dms.remove(target);
-                                                }
-                                            }
-                                        }
-                                        KeyCode::Char('1') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                            active_tab = 0;
-                                            unread_broadcasts = 0;
-                                        }
-                                        KeyCode::Char('2') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                            active_tab = 1;
-                                        }
-                                        KeyCode::Char('3') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                            active_tab = 2;
-                                            if let Some(ref target) = selected_peer {
-                                                unread_dms.remove(target);
-                                            }
-                                        }
-                                        KeyCode::Char('4') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                            active_tab = 3;
-                                        }
-                                         KeyCode::Enter => {
-                                             if !input_buffer.is_empty() && active_tab == 0 {
-                                                 let ts = format_system_time(SystemTime::now());
-                                                 let msg_str = format!("{} [You] {}", ts, input_buffer);
-                                                 messages.push_back(msg_str.clone());
+                                    if key.code == KeyCode::Esc
+                                        || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
+                                    {
+                                        execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+                                        disable_raw_mode().ok();
+                                        return Ok(());
+                                    }
 
-                                                 let topic = gossipsub::IdentTopic::new("test-net");
-                                                 log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
-                                                 let publish_result = swarm.behaviour_mut().gossipsub.publish(
-                                                     topic,
-                                                     input_buffer.as_bytes(),
-                                                 );
+                                    let input: Input = key.into();
 
-                                                 if let Err(e) = publish_result {
-                                                     log_debug(&logs, format!("Publish error: {:?}", e));
-                                                 } else {
-                                                     log_debug(&logs, "Message published successfully".to_string());
-                                                 }
-
-                                                 if let Err(e) = save_message(&input_buffer, None, &topic_str, false, None) {
-                                                     log_debug(&logs, format!("Failed to save message: {}", e));
-                                                 }
-
-                                                 input_buffer.clear();
-                                             } else if active_tab == 1 && !peers.is_empty() {
-                                                 let idx = peer_selection.min(peers.len() - 1);
-                                                 if let Some(peer) = peers.iter().nth(idx).cloned() {
-                                                     let (peer_id, _, _) = peer;
-                                                     selected_peer = Some(peer_id.clone());
-                                                     active_tab = 2;
-                                                     direct_messages.clear();
-                                                     if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
-                                                         for msg in msgs {
-                                                             let ts = format_peer_datetime(msg.created_at);
-                                                             let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
-                                                             direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
-                                                         }
-                                                     }
-                                                 }
-                                             } else if !input_buffer.is_empty() && active_tab == 2 {
-                                                let Some(target) = selected_peer.as_ref() else { continue; };
+                                    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Enter {
+                                        if active_tab == 0 {
+                                            let lines = chat_input.lines();
+                                            let text: String = lines.join("\n");
+                                            if !text.trim().is_empty() {
                                                 let ts = format_system_time(SystemTime::now());
-                                                let msg_str = format!("{} [You] {}", ts, input_buffer);
+                                                let display_text = text.replace('\n', "\\n");
+                                                let msg_str = format!("{} [You] {}", ts, display_text);
+                                                messages.push_back(msg_str.clone());
+
+                                                let topic = gossipsub::IdentTopic::new("test-net");
+                                                log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
+                                                let publish_result = swarm.behaviour_mut().gossipsub.publish(
+                                                    topic,
+                                                    text.as_bytes(),
+                                                );
+
+                                                if let Err(e) = publish_result {
+                                                    log_debug(&logs, format!("Publish error: {:?}", e));
+                                                } else {
+                                                    log_debug(&logs, "Message published successfully".to_string());
+                                                }
+
+                                                if let Err(e) = save_message(&text, None, &topic_str, false, None) {
+                                                    log_debug(&logs, format!("Failed to save message: {}", e));
+                                                }
+                                            }
+                                            chat_input = TextArea::default();
+                                            chat_input.set_line_number_style(Style::default());
+                                            chat_input.set_cursor_line_style(Style::default());
+                                        } else if active_tab == 1 && !peers.is_empty() {
+                                            let idx = peer_selection.min(peers.len() - 1);
+                                            if let Some(peer) = peers.iter().nth(idx).cloned() {
+                                                let (peer_id, _, _) = peer;
+                                                selected_peer = Some(peer_id.clone());
+                                                active_tab = 2;
+                                                direct_messages.clear();
+                                                if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
+                                                    for msg in msgs {
+                                                        let ts = format_peer_datetime(msg.created_at);
+                                                        let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                        direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                    }
+                                                }
+                                            }
+                                        } else if active_tab == 2 {
+                                            let Some(target) = selected_peer.as_ref() else { continue; };
+                                            let lines = dm_input.lines();
+                                            let text: String = lines.join("\n");
+                                            if !text.trim().is_empty() {
+                                                let ts = format_system_time(SystemTime::now());
+                                                let display_text = text.replace('\n', "\\n");
+                                                let msg_str = format!("{} [You] {}", ts, display_text);
                                                 direct_messages.push_back(msg_str.clone());
                                                 log_debug(&logs, format!("Sending DM to {}", target));
 
@@ -554,79 +537,124 @@ mod tui {
                                                     Ok(pid) => pid,
                                                     Err(e) => {
                                                         log_debug(&logs, format!("Invalid peer ID: {}", e));
-                                                        input_buffer.clear();
+                                                        dm_input = TextArea::default();
+                                                        dm_input.set_line_number_style(Style::default());
+                                                        dm_input.set_cursor_line_style(Style::default());
                                                         continue;
                                                     }
                                                 };
 
                                                 let dm = DirectMessage {
-                                                    content: input_buffer.clone(),
+                                                    content: text.clone(),
                                                     timestamp: chrono::Utc::now().timestamp(),
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
                                                 log_debug(&logs, format!("DM request sent to {}", target));
 
-                                                if let Err(e) = save_message(&input_buffer, None, &topic_str, true, Some(&peer_id.to_string())) {
+                                                if let Err(e) = save_message(&text, None, &topic_str, true, Some(&peer_id.to_string())) {
                                                     log_debug(&logs, format!("Failed to save DM: {}", e));
                                                 }
-
-                                                input_buffer.clear();
+                                            }
+                                            dm_input = TextArea::default();
+                                            dm_input.set_line_number_style(Style::default());
+                                            dm_input.set_cursor_line_style(Style::default());
+                                        }
+                                    } else if key.modifiers.contains(KeyModifiers::CONTROL)
+                                        && matches!(key.code, KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') | KeyCode::Char('4'))
+                                    {
+                                        let tab = match key.code {
+                                            KeyCode::Char('1') => 0,
+                                            KeyCode::Char('2') => 1,
+                                            KeyCode::Char('3') => 2,
+                                            KeyCode::Char('4') => 3,
+                                            _ => unreachable!(),
+                                        };
+                                        active_tab = tab;
+                                        if tab == 0 {
+                                            unread_broadcasts = 0;
+                                        }
+                                        if tab == 2 {
+                                            if let Some(ref target) = selected_peer {
+                                                unread_dms.remove(target);
                                             }
                                         }
-                                        KeyCode::Char(c) => {
-                                            input_buffer.push(c);
-                                            if key.modifiers.contains(KeyModifiers::CONTROL) && c == 'q' {
-                                                execute!(std::io::stdout(), LeaveAlternateScreen).ok();
-                                                disable_raw_mode().ok();
-                                                return Ok(());
+                                    } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('n') {
+                                        if unread_broadcasts > 0 {
+                                            active_tab = 0;
+                                            unread_broadcasts = 0;
+                                        } else if !unread_dms.is_empty() {
+                                            active_tab = 2;
+                                            if let Some(ref target) = selected_peer {
+                                                unread_dms.remove(target);
                                             }
                                         }
-                                        KeyCode::Backspace => {
-                                            input_buffer.pop();
+                                    } else if key.code == KeyCode::Tab || key.code == KeyCode::BackTab {
+                                        if key.code == KeyCode::BackTab {
+                                            active_tab = if active_tab == 0 { 3 } else { active_tab - 1 };
+                                        } else {
+                                            active_tab = (active_tab + 1) % 4;
                                         }
-                                         KeyCode::Esc => {
-                                             execute!(std::io::stdout(), LeaveAlternateScreen).ok();
-                                             disable_raw_mode().ok();
-                                             return Ok(());
-                                         }
-                                         KeyCode::Up => {
-                                             if active_tab == 1 && !peers.is_empty() {
-                                                 peer_selection = peer_selection.saturating_sub(1);
-                                             } else if active_tab == 3 {
-                                                 debug_auto_scroll = false;
-                                                 debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
-                                             }
-                                         }
-                                         KeyCode::Down => {
-                                             if active_tab == 1 && !peers.is_empty() {
-                                                 peer_selection = (peer_selection + 1).min(peers.len() - 1);
-                                             } else if active_tab == 3 {
-                                                 if let Ok(l) = logs.lock() {
-                                                     debug_scroll_offset = (debug_scroll_offset + 1).min(l.len().saturating_sub(1));
-                                                 }
-                                             }
-                                         }
-                                         KeyCode::PageUp => {
-                                             if active_tab == 3 {
-                                                 debug_auto_scroll = false;
-                                                 debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
-                                             }
-                                         }
-                                         KeyCode::PageDown => {
-                                             if active_tab == 3 {
-                                                 if let Ok(l) = logs.lock() {
-                                                     debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
-                                                 }
-                                             }
-                                         }
-                                         KeyCode::End => {
-                                             if active_tab == 3 {
-                                                 debug_scroll_offset = usize::MAX;
-                                                 debug_auto_scroll = true;
-                                             }
-                                         }
-                                         _ => {}
+                                        if active_tab == 0 {
+                                            unread_broadcasts = 0;
+                                        }
+                                        if active_tab == 2 {
+                                            if let Some(ref target) = selected_peer {
+                                                unread_dms.remove(target);
+                                            }
+                                        }
+                                    } else if active_tab == 0 || active_tab == 2 {
+                                        let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
+                                        match key.code {
+                                            KeyCode::Enter => {
+                                                textarea.input_without_shortcuts(input);
+                                            }
+                                            KeyCode::Up if active_tab != 0 && active_tab != 2 => {}
+                                            KeyCode::Down if active_tab != 0 && active_tab != 2 => {}
+                                            _ => {
+                                                textarea.input(input);
+                                            }
+                                        }
+                                    } else if active_tab == 1 {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                if !peers.is_empty() {
+                                                    peer_selection = peer_selection.saturating_sub(1);
+                                                }
+                                            }
+                                            KeyCode::Down => {
+                                                if !peers.is_empty() {
+                                                    peer_selection = (peer_selection + 1).min(peers.len() - 1);
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    } else if active_tab == 3 {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                debug_auto_scroll = false;
+                                                debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
+                                            }
+                                            KeyCode::Down => {
+                                                if let Ok(l) = logs.lock() {
+                                                    debug_scroll_offset = (debug_scroll_offset + 1).min(l.len().saturating_sub(1));
+                                                }
+                                            }
+                                            KeyCode::PageUp => {
+                                                debug_auto_scroll = false;
+                                                debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
+                                            }
+                                            KeyCode::PageDown => {
+                                                if let Ok(l) = logs.lock() {
+                                                    debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
+                                                }
+                                            }
+                                            KeyCode::End => {
+                                                debug_scroll_offset = usize::MAX;
+                                                debug_auto_scroll = true;
+                                            }
+                                            _ => {}
+                                        }
                                     }
                                 }
                         }
@@ -638,7 +666,7 @@ mod tui {
                             .constraints([
                                 Constraint::Length(3),
                                 Constraint::Min(0),
-                                Constraint::Length(3),
+                                Constraint::Length(5),
                                 Constraint::Length(1),
                             ])
                             .split(f.area());
@@ -764,18 +792,22 @@ mod tui {
                             _ => {}
                         }
 
-                        let input_display = if active_tab == 0 || active_tab == 2 {
-                            format!("> {}", input_buffer)
+                        let input_area = if active_tab == 0 || active_tab == 2 {
+                            chunks[2]
                         } else {
-                            "(Input disabled)".to_string()
+                            ratatui::layout::Rect::default()
                         };
-                        let input_line = Paragraph::new(input_display)
-                            .style(Style::default().fg(Color::Yellow))
-                            .block(Block::default().title("Input").borders(Borders::ALL));
-                        f.render_widget(input_line, chunks[2]);
+                        if !input_area.is_empty() {
+                            let textarea = if active_tab == 0 { &chat_input } else { &dm_input };
+                            let input_title = if active_tab == 0 { "Input (Ctrl+Enter to send)" } else { "DM Input (Ctrl+Enter to send)" };
+                            let textarea_block = Block::default().title(input_title).borders(Borders::ALL);
+                            let mut textarea_clone = textarea.clone();
+                            textarea_clone.set_block(textarea_block);
+                            f.render_widget(&textarea_clone, input_area);
+                        }
 
                         let help = Paragraph::new(
-                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
+                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Ctrl+Enter: send | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
