@@ -236,7 +236,9 @@ mod tui {
                     }
                 }
 
-                let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
+                let mut unread_broadcasts: u32 = 0;
+                let mut unread_dms: std::collections::HashMap<String, u32> =
+                    std::collections::HashMap::new();
 
                 loop {
                     tokio::select! {
@@ -260,6 +262,9 @@ mod tui {
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
                                     }
+                                    if active_tab != 0 {
+                                        unread_broadcasts += 1;
+                                    }
                                      if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
                                          log_debug(&logs, format!("Failed to save message: {}", e));
                                      }
@@ -279,8 +284,12 @@ mod tui {
                                                 if direct_messages.len() > MAX_MESSAGES {
                                                     direct_messages.pop_front();
                                                 }
+                                                if active_tab != 2 {
+                                                    *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
+                                                }
                                             } else {
                                                  log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content));
+                                                 *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
@@ -458,6 +467,30 @@ mod tui {
                                             } else {
                                                 active_tab = (active_tab + 1) % 4;
                                             }
+                                            if active_tab == 0 {
+                                                unread_broadcasts = 0;
+                                            }
+                                            if active_tab == 2 {
+                                                if let Some(ref target) = selected_peer {
+                                                    unread_dms.remove(target);
+                                                }
+                                            }
+                                        }
+                                        KeyCode::Char('1') => {
+                                            active_tab = 0;
+                                            unread_broadcasts = 0;
+                                        }
+                                        KeyCode::Char('2') => {
+                                            active_tab = 1;
+                                        }
+                                        KeyCode::Char('3') => {
+                                            active_tab = 2;
+                                            if let Some(ref target) = selected_peer {
+                                                unread_dms.remove(target);
+                                            }
+                                        }
+                                        KeyCode::Char('4') => {
+                                            active_tab = 3;
                                         }
                                          KeyCode::Enter => {
                                              if !input_buffer.is_empty() && active_tab == 0 {
@@ -561,6 +594,18 @@ mod tui {
                                                  }
                                              }
                                          }
+                                         KeyCode::PageUp => {
+                                             if active_tab == 3 {
+                                                 debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
+                                             }
+                                         }
+                                         KeyCode::PageDown => {
+                                             if active_tab == 3 {
+                                                 if let Ok(l) = logs.lock() {
+                                                     debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
+                                                 }
+                                             }
+                                         }
                                          _ => {}
                                     }
                                 }
@@ -578,10 +623,46 @@ mod tui {
                             ])
                             .split(f.area());
 
+                        let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
+
                         let tabs = Tabs::new(tab_titles.clone())
                             .style(Style::default().fg(Color::Cyan))
                             .select(active_tab);
                         f.render_widget(tabs, chunks[0]);
+
+                        let notification_area = if unread_broadcasts > 0 || !unread_dms.is_empty() {
+                            let mut parts = Vec::new();
+                            if unread_broadcasts > 0 {
+                                parts.push(format!("{} new broadcast(s) [1]", unread_broadcasts));
+                            }
+                            if !unread_dms.is_empty() {
+                                let total: u32 = unread_dms.values().sum();
+                                parts.push(format!(
+                                    "{} DM(s) from {} peer(s) [2]",
+                                    total,
+                                    unread_dms.len()
+                                ));
+                            }
+                            Some(parts.join(" | "))
+                        } else {
+                            None
+                        };
+
+                        let notification_offset = if notification_area.is_some() { 1 } else { 0 };
+
+                        let content_area = if notification_offset > 0 {
+                            let layout = Layout::default()
+                                .direction(Direction::Vertical)
+                                .constraints([Constraint::Length(1), Constraint::Min(0)])
+                                .split(chunks[1]);
+                            let notif_text =
+                                Paragraph::new(notification_area.as_ref().unwrap().as_str())
+                                    .style(Style::default().fg(Color::Yellow));
+                            f.render_widget(notif_text, layout[0]);
+                            layout[1]
+                        } else {
+                            chunks[1]
+                        };
 
                         match active_tab {
                             0 => {
@@ -590,7 +671,7 @@ mod tui {
                                 let chat_list = List::new(chat_items)
                                     .block(Block::default().title("Messages").borders(Borders::ALL))
                                     .style(Style::default().fg(Color::White));
-                                f.render_widget(chat_list, chunks[1]);
+                                f.render_widget(chat_list, content_area);
                             }
                             1 => {
                                 let peer_items: Vec<ListItem> = peers
@@ -612,7 +693,7 @@ mod tui {
                                             .borders(Borders::ALL),
                                     )
                                     .style(Style::default().fg(Color::White));
-                                f.render_widget(peer_list, chunks[1]);
+                                f.render_widget(peer_list, content_area);
                             }
                             2 => {
                                 let peer_name = selected_peer
@@ -630,19 +711,15 @@ mod tui {
                                             .borders(Borders::ALL),
                                     )
                                     .style(Style::default().fg(Color::White));
-                                f.render_widget(dm_list, chunks[1]);
+                                f.render_widget(dm_list, content_area);
                             }
                             3 => {
                                 let log_vec = logs.lock().unwrap().clone();
                                 let total = log_vec.len();
                                 let debug_title =
                                     format!("Debug Logs [{}/{}]", debug_scroll_offset + 1, total);
-                                let visible_logs: Vec<String> = log_vec
-                                    .iter()
-                                    .skip(debug_scroll_offset)
-                                    .take(50)
-                                    .cloned()
-                                    .collect();
+                                let visible_logs: Vec<String> =
+                                    log_vec.iter().skip(debug_scroll_offset).cloned().collect();
                                 let log_text = visible_logs.join("\n");
                                 let log_paragraph = Paragraph::new(log_text)
                                     .block(
@@ -650,7 +727,7 @@ mod tui {
                                     )
                                     .style(Style::default().fg(Color::White))
                                     .wrap(Wrap::default());
-                                f.render_widget(log_paragraph, chunks[1]);
+                                f.render_widget(log_paragraph, content_area);
                             }
                             _ => {}
                         }
@@ -666,7 +743,7 @@ mod tui {
                         f.render_widget(input_line, chunks[2]);
 
                         let help = Paragraph::new(
-                            "Tab: switch | Type message and Enter to send | Ctrl+Q: quit",
+                            "1-4: jump tab | Tab: cycle | PgUp/PgDn: scroll debug | Type + Enter | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
