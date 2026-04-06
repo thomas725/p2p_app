@@ -1,5 +1,5 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::{AppBehaviour, build_behaviour, init_logging};
+use p2p_app::{AppBehaviour, build_behaviour, init_logging, p2plog_warn};
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -13,8 +13,9 @@ mod tui {
     use p2p_app::{
         AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, format_peer_datetime,
         get_database_url, get_network_size, get_unsent_messages, init_logging,
-        load_direct_messages, load_messages, load_peers, mark_message_sent, now_timestamp,
-        p2plog_error, p2plog_info, save_message, save_peer, save_peer_session,
+        load_direct_messages, load_listen_ports, load_messages, load_peers, mark_message_sent,
+        now_timestamp, p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer,
+        save_peer_session,
     };
     use ratatui::crossterm::{
         event::{Event, KeyCode, KeyModifiers, read},
@@ -336,7 +337,29 @@ mod tui {
                                             .remove_explicit_peer(&peer_id);
                                     }
                                 }
-                                SwarmEvent::NewListenAddr { .. } => {}
+                                SwarmEvent::NewListenAddr { address, .. } => {
+                                    log_debug(&logs, format!("Listening on: {}", address));
+                                    if let Some(port) = address
+                                        .iter()
+                                        .find_map(|p| match p {
+                                            libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+                                            _ => None,
+                                        })
+                                    {
+                                        let _ = save_listen_ports(Some(port), None);
+                                    }
+                                    #[cfg(feature = "quic")]
+                                    if let Some(port) = address
+                                        .iter()
+                                        .find_map(|p| match p {
+                                            libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+                                            _ => None,
+                                        })
+                                    {
+                                        let (tcp, _) = load_listen_ports().unwrap_or((None, None));
+                                        let _ = save_listen_ports(tcp, Some(port));
+                                    }
+                                }
                                 SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                                     concurrent_peers += 1;
                                     log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
@@ -389,6 +412,9 @@ mod tui {
                                     }
                                 }
                                 SwarmEvent::Dialing { peer_id: Some(_pid), .. } => {
+                                }
+                                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                                    log_debug(&logs, format!("Dial failed: peer={:?}, error={}", peer_id, error));
                                 }
                                 SwarmEvent::ExpiredListenAddr { address, .. } => {
                                     log_debug(&logs, format!("Expired listen addr: {}", address));
@@ -664,6 +690,29 @@ mod tui {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
                             p2plog_info(format!("Listening on: {}", address));
+                            if let Some(port) = address
+                                .iter()
+                                .find_map(|p| match p {
+                                    libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+                                    _ => None,
+                                })
+                            {
+                                let _ = save_listen_ports(Some(port), None);
+                            }
+                            #[cfg(feature = "quic")]
+                            if let Some(port) = address
+                                .iter()
+                                .find_map(|p| match p {
+                                    libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+                                    _ => None,
+                                })
+                            {
+                                let (tcp, _) = load_listen_ports().unwrap_or((None, None));
+                                let _ = save_listen_ports(tcp, Some(port));
+                            }
+                        }
+                        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                            p2plog_info(format!("Dial failed: peer={:?}, error={}", peer_id, error));
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                             concurrent_peers += 1;
@@ -775,11 +824,52 @@ async fn main() -> color_eyre::Result<()> {
 
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
+    let (last_tcp_port, last_quic_port) = p2p_app::load_listen_ports().unwrap_or((None, None));
+
     #[cfg(feature = "quic")]
     {
-        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+        let quic_addr = if let Some(port) = last_quic_port {
+            format!("/ip4/0.0.0.0/udp/{}/quic-v1", port)
+        } else {
+            "/ip4/0.0.0.0/udp/0/quic-v1".to_string()
+        };
+        match quic_addr.parse::<libp2p::Multiaddr>() {
+            Ok(addr) => {
+                if swarm.listen_on(addr.clone()).is_err() {
+                    p2plog_warn(format!(
+                        "Failed to listen on last QUIC port {}, trying port 0",
+                        addr
+                    ));
+                    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+                }
+            }
+            Err(e) => {
+                p2plog_warn(format!("Failed to parse QUIC address: {}", e));
+                swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+            }
+        }
     }
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
+
+    let tcp_addr = if let Some(port) = last_tcp_port {
+        format!("/ip4/0.0.0.0/tcp/{}", port)
+    } else {
+        "/ip4/0.0.0.0/tcp/0".to_string()
+    };
+    match tcp_addr.parse::<libp2p::Multiaddr>() {
+        Ok(addr) => {
+            if swarm.listen_on(addr.clone()).is_err() {
+                p2plog_warn(format!(
+                    "Failed to listen on last TCP port {}, trying port 0",
+                    addr
+                ));
+                swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
+            }
+        }
+        Err(e) => {
+            p2plog_warn(format!("Failed to parse TCP address: {}", e));
+            swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
+        }
+    }
 
     // Clone logs for the TUI function
     let tui_logs = logs.clone();
@@ -793,8 +883,8 @@ mod headless {
         Multiaddr, futures::StreamExt, gossipsub, mdns, noise, swarm::SwarmEvent, tcp, yamux,
     };
     use p2p_app::{
-        AppBehaviourEvent, NetworkSize, build_behaviour, init_logging, p2plog_debug, p2plog_error,
-        p2plog_info, p2plog_warn, save_peer,
+        AppBehaviourEvent, NetworkSize, build_behaviour, init_logging, load_listen_ports,
+        p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, save_listen_ports, save_peer,
     };
     use std::time::Duration;
     use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
@@ -845,23 +935,50 @@ mod headless {
 
         let mut stdin = BufReader::new(stdin()).lines();
 
+        let (last_tcp_port, last_quic_port) = load_listen_ports().unwrap_or((None, None));
+
         #[cfg(feature = "quic")]
         {
-            swarm
-                .listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)
-                .map_err(|e| {
-                    #[cfg(feature = "tracing")]
-                    p2plog_warn(format!("failed to listen to quic: {e}"));
-                })
-                .ok();
+            let quic_addr = if let Some(port) = last_quic_port {
+                format!("/ip4/0.0.0.0/udp/{}/quic-v1", port)
+            } else {
+                "/ip4/0.0.0.0/udp/0/quic-v1".to_string()
+            };
+            match quic_addr.parse::<Multiaddr>() {
+                Ok(addr) => {
+                    if swarm.listen_on(addr.clone()).is_ok() {
+                        p2plog_info(format!("Listening on QUIC: {}", addr));
+                    } else {
+                        p2plog_warn(format!("Failed to listen on last QUIC port, trying port 0"));
+                        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+                    }
+                }
+                Err(e) => {
+                    p2plog_warn(format!("Failed to parse QUIC address: {}", e));
+                    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
+                }
+            }
         }
-        swarm
-            .listen_on("/ip4/0.0.0.0/tcp/0".parse()?)
-            .map_err(|e| {
-                #[cfg(feature = "tracing")]
-                p2plog_warn(format!("failed to listen to tcp: {e}"));
-            })
-            .ok();
+
+        let tcp_addr = if let Some(port) = last_tcp_port {
+            format!("/ip4/0.0.0.0/tcp/{}", port)
+        } else {
+            "/ip4/0.0.0.0/tcp/0".to_string()
+        };
+        match tcp_addr.parse::<Multiaddr>() {
+            Ok(addr) => {
+                if swarm.listen_on(addr.clone()).is_ok() {
+                    p2plog_info(format!("Listening on TCP: {}", addr));
+                } else {
+                    p2plog_warn(format!("Failed to listen on last TCP port, trying port 0"));
+                    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
+                }
+            }
+            Err(e) => {
+                p2plog_warn(format!("Failed to parse TCP address: {}", e));
+                swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
+            }
+        }
 
         p2plog_info(
             "Enter messages via STDIN and they will be sent to connected peers using Gossipsub"
@@ -925,6 +1042,29 @@ mod headless {
                     )),
                     SwarmEvent::NewListenAddr { address, .. } => {
                         p2plog_info(format!("Local node is listening on {address}"));
+                        if let Some(port) = address
+                            .iter()
+                            .find_map(|p| match p {
+                                libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+                                _ => None,
+                            })
+                        {
+                            let _ = save_listen_ports(Some(port), None);
+                        }
+                        #[cfg(feature = "quic")]
+                        if let Some(port) = address
+                            .iter()
+                            .find_map(|p| match p {
+                                libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+                                _ => None,
+                            })
+                        {
+                            let (tcp, _) = load_listen_ports().unwrap_or((None, None));
+                            let _ = save_listen_ports(tcp, Some(port));
+                        }
+                    }
+                    SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                        p2plog_error(format!("Dial failed: peer={:?}, error={}", peer_id, error));
                     }
                     SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                         p2plog_info(format!("Connected to peer: {peer_id}"));

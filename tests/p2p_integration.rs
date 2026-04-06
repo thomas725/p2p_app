@@ -529,3 +529,232 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
 
     Ok(())
 }
+
+struct NodeWithDB {
+    swarm: libp2p::Swarm<TestBehaviour>,
+    peer_id: libp2p::PeerId,
+    listen_addr: Option<Multiaddr>,
+    db_path: String,
+}
+
+async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::error::Error>> {
+    let _ = std::fs::remove_file(db_path);
+
+    let keypair = identity::Keypair::generate_ed25519();
+    let peer_id = keypair.public().to_peer_id();
+
+    let message_id_fn = |message: &gossipsub::Message| {
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        gossipsub::MessageId::from(s.finish().to_string())
+    };
+
+    let gossipsub_config = gossipsub::ConfigBuilder::default()
+        .heartbeat_interval(Duration::from_millis(500))
+        .validation_mode(gossipsub::ValidationMode::Permissive)
+        .message_id_fn(message_id_fn)
+        .mesh_n(1)
+        .mesh_n_low(1)
+        .mesh_n_high(2)
+        .gossip_lazy(1)
+        .flood_publish(true)
+        .build()
+        .map_err(|msg| std::io::Error::new(std::io::ErrorKind::Other, msg))?;
+
+    let gossipsub = gossipsub::Behaviour::new(
+        gossipsub::MessageAuthenticity::Signed(keypair.clone()),
+        gossipsub_config,
+    )?;
+
+    let mut mdns_config = mdns::Config::default();
+    mdns_config.query_interval = Duration::from_millis(500);
+    let mdns = mdns::tokio::Behaviour::new(mdns_config, peer_id)?;
+
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default().nodelay(true),
+            libp2p::noise::Config::new,
+            yamux::Config::default,
+        )?
+        .with_quic()
+        .with_behaviour(|_| Ok(TestBehaviour { gossipsub, mdns }))?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .build();
+
+    let topic = gossipsub::IdentTopic::new("test-net");
+    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+
+    Ok(NodeWithDB {
+        swarm,
+        peer_id,
+        listen_addr: None,
+        db_path: db_path.to_string(),
+    })
+}
+
+fn save_stale_peer_to_db(
+    db_path: &str,
+    peer_id: &str,
+    stale_address: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let original_db = std::env::var("DATABASE_URL").ok();
+    unsafe { std::env::set_var("DATABASE_URL", db_path) };
+    let result = p2p_app::save_peer(peer_id, &[stale_address.to_string()]);
+    if let Some(ref db) = original_db {
+        unsafe { std::env::set_var("DATABASE_URL", db) };
+    } else {
+        unsafe { std::env::remove_var("DATABASE_URL") };
+    }
+    result?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_connection_with_stale_db_address_and_mdns_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    init_test_tracing();
+
+    let db_path_1 = "test_stale_db_1.db";
+    let db_path_2 = "test_stale_db_2.db";
+    let _ = std::fs::remove_file(db_path_1);
+    let _ = std::fs::remove_file(db_path_2);
+
+    let mut node_a = create_node_with_db(db_path_1).await?;
+    let peer_a = node_a.peer_id;
+
+    node_a.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+
+    let mut a_listen_addr = None;
+    let listen_timeout = Duration::from_secs(5);
+    let _ = timeout(listen_timeout, async {
+        loop {
+            if let SwarmEvent::NewListenAddr { address, .. } = node_a.swarm.select_next_some().await
+            {
+                if address.to_string().contains("/tcp/") {
+                    a_listen_addr = Some(address.clone());
+                    eprintln!("Node A listening on: {}", address);
+                    break;
+                }
+            }
+        }
+    })
+    .await;
+
+    let a_listen_addr = a_listen_addr.expect("Node A should have a listen address");
+    let addr_str = a_listen_addr.to_string();
+    let tcp_port = addr_str
+        .split('/')
+        .skip_while(|p| *p != "tcp")
+        .nth(1)
+        .unwrap_or("0")
+        .parse::<u16>()
+        .unwrap();
+    let stale_port = tcp_port + 1000;
+    let stale_addr = format!("/ip4/127.0.0.1/tcp/{}/p2p/{}", stale_port, peer_a);
+
+    eprintln!("Stale address for DB: {}", stale_addr);
+    save_stale_peer_to_db(db_path_2, &peer_a.to_string(), &stale_addr)?;
+
+    let mut node_b = create_node_with_db(db_path_2).await?;
+    let peer_b = node_b.peer_id;
+
+    eprintln!("Node B will try stale address: {}", stale_addr);
+
+    let stale_addr_parsed: Multiaddr = stale_addr.parse()?;
+    eprintln!("Node B dialing stale address...");
+    let _ = node_b.swarm.dial(stale_addr_parsed);
+
+    let mut connected = false;
+    let mut dial_failed = false;
+    let mut mdns_discovered = false;
+    let deadline = Duration::from_secs(15);
+
+    let _ = timeout(deadline, async {
+        loop {
+            tokio::select! {
+                event = node_a.swarm.select_next_some() => {
+                    match event {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            eprintln!("Node A new listen addr: {}", address);
+                        }
+                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                            eprintln!("Node A connected to: {}", peer_id);
+                            if peer_id == peer_b {
+                                connected = true;
+                            }
+                        }
+                        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                            eprintln!("Node A outgoing connection error: peer={:?}, error={:?}", peer_id, error);
+                        }
+                        SwarmEvent::IncomingConnectionError { error, .. } => {
+                            eprintln!("Node A incoming connection error: {:?}", error);
+                        }
+                        SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                            for (pid, addr) in list {
+                                eprintln!("Node A mDNS discovered: {} at {}", pid, addr);
+                                let _ = node_a.swarm.dial(addr.clone());
+                                node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                event = node_b.swarm.select_next_some() => {
+                    match event {
+                        SwarmEvent::NewListenAddr { address, .. } => {
+                            eprintln!("Node B new listen addr: {}", address);
+                        }
+                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                            eprintln!("Node B connected to: {}", peer_id);
+                            if peer_id == peer_a {
+                                connected = true;
+                            }
+                        }
+                        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                            eprintln!("Node B outgoing connection error: peer={:?}, error={:?}", peer_id, error);
+                            dial_failed = true;
+                        }
+                        SwarmEvent::IncomingConnectionError { error, .. } => {
+                            eprintln!("Node B incoming connection error: {:?}", error);
+                        }
+                        SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                            for (pid, addr) in list {
+                                eprintln!("Node B mDNS discovered: {} at {}", pid, addr);
+                                if pid == peer_a {
+                                    mdns_discovered = true;
+                                    eprintln!("Node B dialing mDNS address: {}", addr);
+                                    let _ = node_b.swarm.dial(addr.clone());
+                                    node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ = tokio::time::sleep(Duration::from_secs(1)) => {
+                    eprintln!("Still waiting... connected={}, dial_failed={}, mdns_discovered={}", connected, dial_failed, mdns_discovered);
+                }
+            }
+
+            if connected {
+                break;
+            }
+        }
+    }).await;
+
+    if !connected {
+        return Err(format!(
+            "Connection timed out: dial_failed={}, mdns_discovered={}",
+            dial_failed, mdns_discovered
+        )
+        .into());
+    }
+
+    eprintln!("Test passed: connection established despite stale DB address");
+
+    let _ = std::fs::remove_file(db_path_1);
+    let _ = std::fs::remove_file(db_path_2);
+
+    Ok(())
+}

@@ -453,6 +453,29 @@ pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
     Ok(())
 }
 
+pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::identities::table)
+        .set((
+            schema::identities::last_tcp_port.eq(tcp_port),
+            schema::identities::last_quic_port.eq(quic_port),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
+    let conn = &mut sqlite_connect()?;
+    let result = schema::identities::table
+        .select((
+            schema::identities::last_tcp_port,
+            schema::identities::last_quic_port,
+        ))
+        .first::<(Option<i32>, Option<i32>)>(conn)
+        .optional()?;
+    Ok(result.unwrap_or((None, None)))
+}
+
 pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     let conn = &mut sqlite_connect()?;
     let sessions = schema::peer_sessions::table

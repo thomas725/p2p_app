@@ -101,6 +101,7 @@ cargo test -- --nocapture
 - Schema is auto-generated in `src/schema.rs` - do not edit manually
 - Run `diesel_generate.sh` to regenerate after schema changes
 - Migrations live in `./migrations/` directory
+- **Migration naming convention**: `YYYY-MM-DD-HHMMSS_description` (the 6 digits after the date are hours, minutes, seconds, e.g. `2026-04-06-120000_add_ports`)
 
 ### Async Code (tokio)
 

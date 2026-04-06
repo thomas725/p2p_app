@@ -5,6 +5,8 @@ diesel::table! {
         id -> Integer,
         created_at -> Timestamp,
         key -> Binary,
+        last_tcp_port -> Nullable<Integer>,
+        last_quic_port -> Nullable<Integer>,
     }
 }
 
@@ -39,8 +41,5 @@ diesel::table! {
         last_seen -> Timestamp,
     }
 }
-
-diesel::joinable!(messages -> identities (id));
-diesel::joinable!(peers -> identities (id));
 
 diesel::allow_tables_to_appear_in_same_query!(identities, messages, peer_sessions, peers,);

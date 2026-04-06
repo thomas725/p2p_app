@@ -1,0 +1,2 @@
+ALTER TABLE identities ADD COLUMN last_tcp_port INTEGER DEFAULT NULL;
+ALTER TABLE identities ADD COLUMN last_quic_port INTEGER DEFAULT NULL;
