@@ -477,7 +477,7 @@ mod tui {
 
                                     let input: Input = key.into();
 
-                                    if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Enter {
+                                    if key.code == KeyCode::Enter && !key.modifiers.contains(KeyModifiers::CONTROL) {
                                         if active_tab == 0 {
                                             let lines = chat_input.lines();
                                             let text: String = lines.join("\n");
@@ -560,6 +560,11 @@ mod tui {
                                             dm_input.set_line_number_style(Style::default());
                                             dm_input.set_cursor_line_style(Style::default());
                                         }
+                                    } else if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::CONTROL) {
+                                        if active_tab == 0 || active_tab == 2 {
+                                            let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
+                                            textarea.input_without_shortcuts(input);
+                                        }
                                     } else if key.modifiers.contains(KeyModifiers::CONTROL)
                                         && matches!(key.code, KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') | KeyCode::Char('4'))
                                     {
@@ -605,16 +610,7 @@ mod tui {
                                         }
                                     } else if active_tab == 0 || active_tab == 2 {
                                         let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
-                                        match key.code {
-                                            KeyCode::Enter => {
-                                                textarea.input_without_shortcuts(input);
-                                            }
-                                            KeyCode::Up if active_tab != 0 && active_tab != 2 => {}
-                                            KeyCode::Down if active_tab != 0 && active_tab != 2 => {}
-                                            _ => {
-                                                textarea.input(input);
-                                            }
-                                        }
+                                        textarea.input(input);
                                     } else if active_tab == 1 {
                                         match key.code {
                                             KeyCode::Up => {
@@ -799,7 +795,7 @@ mod tui {
                         };
                         if !input_area.is_empty() {
                             let textarea = if active_tab == 0 { &chat_input } else { &dm_input };
-                            let input_title = if active_tab == 0 { "Input (Ctrl+Enter to send)" } else { "DM Input (Ctrl+Enter to send)" };
+                            let input_title = if active_tab == 0 { "Input (Enter to send)" } else { "DM Input (Enter to send)" };
                             let textarea_block = Block::default().title(input_title).borders(Borders::ALL);
                             let mut textarea_clone = textarea.clone();
                             textarea_clone.set_block(textarea_block);
@@ -807,7 +803,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Ctrl+Enter: send | Ctrl+Q: quit",
+                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Enter: send | Ctrl+Enter: newline | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
