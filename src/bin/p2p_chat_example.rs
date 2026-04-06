@@ -488,20 +488,20 @@ mod tui {
                                                 }
                                             }
                                         }
-                                        KeyCode::Char('1') => {
+                                        KeyCode::Char('1') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                             active_tab = 0;
                                             unread_broadcasts = 0;
                                         }
-                                        KeyCode::Char('2') => {
+                                        KeyCode::Char('2') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                             active_tab = 1;
                                         }
-                                        KeyCode::Char('3') => {
+                                        KeyCode::Char('3') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                             active_tab = 2;
                                             if let Some(ref target) = selected_peer {
                                                 unread_dms.remove(target);
                                             }
                                         }
-                                        KeyCode::Char('4') => {
+                                        KeyCode::Char('4') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                             active_tab = 3;
                                         }
                                          KeyCode::Enter => {
@@ -775,7 +775,7 @@ mod tui {
                         f.render_widget(input_line, chunks[2]);
 
                         let help = Paragraph::new(
-                            "1-4: jump tab | Tab: cycle | Ctrl+N: latest notification | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
+                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
