@@ -18,7 +18,7 @@ mod tui {
         save_peer_session,
     };
     use ratatui::crossterm::{
-        event::{Event, KeyCode, KeyModifiers, read},
+        event::{Event, KeyCode, KeyModifiers, poll, read},
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     };
@@ -311,12 +311,12 @@ mod tui {
                                                 let first_seen = format_peer_datetime(peer.first_seen);
                                                 let last_seen = format_peer_datetime(peer.last_seen);
                                                 if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                    peers.push_back((peer_id_str.clone(), first_seen, last_seen));
+                                                    peers.push_front((peer_id_str.clone(), first_seen, last_seen));
                                                 }
                                             }
                                             Err(e) => {
                                                 if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                    peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                                    peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
                                                 }
                                                 log_debug(&logs, format!("Failed to save peer: {}", e));
                                             }
@@ -372,12 +372,12 @@ mod tui {
                                             let first_seen = format_peer_datetime(peer.first_seen);
                                             let last_seen = format_peer_datetime(peer.last_seen);
                                             if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                peers.push_back((peer_id_str, first_seen, last_seen));
+                                                peers.push_front((peer_id_str, first_seen, last_seen));
                                             }
                                         }
                                         Err(e) => {
                                             if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                peers.push_back((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                                peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
                                             }
                                             log_debug(&logs, format!("Failed to save peer: {}", e));
                                         }
@@ -448,7 +448,8 @@ mod tui {
                         }
 
                         _ = tokio::time::sleep(Duration::from_millis(16)) => {
-                            if let Ok(event) = read()
+                            if poll(Duration::ZERO).ok() == Some(true)
+                                && let Ok(event) = read()
                                 && let Event::Key(key) = event {
                                     match key.code {
                                         KeyCode::Tab | KeyCode::BackTab => {
