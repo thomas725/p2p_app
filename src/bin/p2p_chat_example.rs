@@ -477,6 +477,17 @@ mod tui {
                                                 }
                                             }
                                         }
+                                        KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                            if unread_broadcasts > 0 {
+                                                active_tab = 0;
+                                                unread_broadcasts = 0;
+                                            } else if !unread_dms.is_empty() {
+                                                active_tab = 2;
+                                                if let Some(ref target) = selected_peer {
+                                                    unread_dms.remove(target);
+                                                }
+                                            }
+                                        }
                                         KeyCode::Char('1') => {
                                             active_tab = 0;
                                             unread_broadcasts = 0;
@@ -725,31 +736,30 @@ mod tui {
                             3 => {
                                 let log_vec = logs.lock().unwrap().clone();
                                 let total = log_vec.len();
+                                let visible_height = content_area.height.saturating_sub(2) as usize;
 
                                 if debug_auto_scroll {
-                                    debug_scroll_offset = total.saturating_sub(1);
+                                    debug_scroll_offset = total.saturating_sub(visible_height);
                                 }
 
                                 if debug_scroll_offset > total.saturating_sub(1) {
                                     debug_scroll_offset = total.saturating_sub(1);
                                 }
 
-                                let visible_logs: Vec<String> = log_vec
+                                let log_items: Vec<ListItem> = log_vec
                                     .iter()
                                     .skip(debug_scroll_offset)
-                                    .cloned()
+                                    .map(|l| ListItem::new(l.clone()))
                                     .collect();
 
                                 let debug_title =
                                     format!("Debug Logs [{}/{}]", debug_scroll_offset + 1, total);
-                                let log_text = visible_logs.join("\n");
-                                let log_paragraph = Paragraph::new(log_text)
+                                let log_list = List::new(log_items)
                                     .block(
                                         Block::default().title(debug_title).borders(Borders::ALL),
                                     )
-                                    .style(Style::default().fg(Color::White))
-                                    .wrap(Wrap::default());
-                                f.render_widget(log_paragraph, content_area);
+                                    .style(Style::default().fg(Color::White));
+                                f.render_widget(log_list, content_area);
                             }
                             _ => {}
                         }
@@ -765,7 +775,7 @@ mod tui {
                         f.render_widget(input_line, chunks[2]);
 
                         let help = Paragraph::new(
-                            "1-4: jump tab | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
+                            "1-4: jump tab | Tab: cycle | Ctrl+N: latest notification | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
