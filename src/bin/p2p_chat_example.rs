@@ -725,20 +725,18 @@ mod tui {
                             3 => {
                                 let log_vec = logs.lock().unwrap().clone();
                                 let total = log_vec.len();
-                                let content_height = content_area.height.saturating_sub(2) as usize;
 
-                                if debug_auto_scroll && total > 0 {
-                                    debug_scroll_offset = total.saturating_sub(content_height);
+                                if debug_auto_scroll {
+                                    debug_scroll_offset = total.saturating_sub(1);
                                 }
 
                                 if debug_scroll_offset > total.saturating_sub(1) {
-                                    debug_scroll_offset = total.saturating_sub(content_height);
+                                    debug_scroll_offset = total.saturating_sub(1);
                                 }
 
                                 let visible_logs: Vec<String> = log_vec
                                     .iter()
                                     .skip(debug_scroll_offset)
-                                    .take(content_height)
                                     .cloned()
                                     .collect();
 
