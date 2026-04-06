@@ -125,23 +125,23 @@ This document lists all project dependencies, their purpose, and update status.
 
 ## UI
 
-### ratatui (=0.28)
+### ratatui (=0.30)
 
 - **Purpose:** Terminal UI framework - renders the 4-tab TUI interface
-- **Version in use:** 0.28.1
-- **In use release date:** 2024-08-25
+- **Version in use:** 0.30.0
+- **In use release date:** 2025-12-26
 - **Latest version:** 0.30.0
 - **Latest release date:** 2025-12-26
-- **Status:** Behind latest - pinned to 0.28.x
+- **Status:** Up to date
 
-### crossterm (=0.5)
+### crossterm (=0.29)
 
 - **Purpose:** Terminal manipulation - handles raw mode, alternate screen, key events
-- **Version in use:** 0.5.5
-- **In use release date:** 2019-01-26
+- **Version in use:** 0.29.0
+- **In use release date:** 2025-04-05
 - **Latest version:** 0.29.0
 - **Latest release date:** 2025-04-05
-- **Status:** Behind latest - pinned to 0.5.x (very old, but compatible with ratatui 0.28)
+- **Status:** Up to date
 
 ### atty (=0.2)
 
@@ -194,19 +194,13 @@ This document lists all project dependencies, their purpose, and update status.
 | serde | 1.0.228 | - | 1.0.228 | - | OK |
 | serde_json | 1.0.149 | - | 1.0.149 | - | OK |
 | futures | 0.3.32 | - | 0.3.32 | - | OK |
-| ratatui | 0.28.1 | 2024-08-25 | 0.30.0 | 2025-12-26 | Behind |
-| crossterm | 0.5.5 | 2019-01-26 | 0.29.0 | 2025-04-05 | Behind |
+| ratatui | 0.30.0 | 2025-12-26 | 0.30.0 | 2025-12-26 | OK |
+| crossterm | 0.29.0 | 2025-04-05 | 0.29.0 | 2025-04-05 | OK |
 | atty | 0.2.14 | - | 0.2.14 | - | OK |
 
 \*libsqlite3-sys 0.37.0 has compatibility issues with diesel 2.3.7
 
 ## Notes on Behind Dependencies
-
-### crossterm (0.5.5 vs 0.29.0)
-Pinned to `=0.5` in Cargo.toml. This is a very old version from 2019. The ratatui 0.28 ecosystem may have been tested with this version. Updating requires checking ratatui compatibility.
-
-### ratatui (0.28.1 vs 0.30.0)
-Pinned to `=0.28` in Cargo.toml. Two minor versions behind. Upgrading to 0.30.0 may require API changes in TUI code.
 
 ### libsqlite3-sys (0.36.0 vs 0.37.0)
 Not pinned (uses `0.36.0` without `=`). 0.37.0 exists but has known compatibility issues with diesel 2.3.7. Stay on 0.36.0 until diesel updates.
