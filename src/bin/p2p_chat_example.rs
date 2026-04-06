@@ -121,6 +121,7 @@ mod tui {
                 let mut concurrent_peers: usize = 0;
                 let mut peer_selection: usize = 0;
                 let mut debug_scroll_offset: usize = 0;
+                let mut debug_auto_scroll: bool = true;
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -582,6 +583,7 @@ mod tui {
                                              if active_tab == 1 && !peers.is_empty() {
                                                  peer_selection = peer_selection.saturating_sub(1);
                                              } else if active_tab == 3 {
+                                                 debug_auto_scroll = false;
                                                  debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
                                              }
                                          }
@@ -596,6 +598,7 @@ mod tui {
                                          }
                                          KeyCode::PageUp => {
                                              if active_tab == 3 {
+                                                 debug_auto_scroll = false;
                                                  debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
                                              }
                                          }
@@ -604,6 +607,12 @@ mod tui {
                                                  if let Ok(l) = logs.lock() {
                                                      debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
                                                  }
+                                             }
+                                         }
+                                         KeyCode::End => {
+                                             if active_tab == 3 {
+                                                 debug_scroll_offset = usize::MAX;
+                                                 debug_auto_scroll = true;
                                              }
                                          }
                                          _ => {}
@@ -716,10 +725,25 @@ mod tui {
                             3 => {
                                 let log_vec = logs.lock().unwrap().clone();
                                 let total = log_vec.len();
+                                let content_height = content_area.height.saturating_sub(2) as usize;
+
+                                if debug_auto_scroll && total > 0 {
+                                    debug_scroll_offset = total.saturating_sub(content_height);
+                                }
+
+                                if debug_scroll_offset > total.saturating_sub(1) {
+                                    debug_scroll_offset = total.saturating_sub(content_height);
+                                }
+
+                                let visible_logs: Vec<String> = log_vec
+                                    .iter()
+                                    .skip(debug_scroll_offset)
+                                    .take(content_height)
+                                    .cloned()
+                                    .collect();
+
                                 let debug_title =
                                     format!("Debug Logs [{}/{}]", debug_scroll_offset + 1, total);
-                                let visible_logs: Vec<String> =
-                                    log_vec.iter().skip(debug_scroll_offset).cloned().collect();
                                 let log_text = visible_logs.join("\n");
                                 let log_paragraph = Paragraph::new(log_text)
                                     .block(
@@ -743,7 +767,7 @@ mod tui {
                         f.render_widget(input_line, chunks[2]);
 
                         let help = Paragraph::new(
-                            "1-4: jump tab | Tab: cycle | PgUp/PgDn: scroll debug | Type + Enter | Ctrl+Q: quit",
+                            "1-4: jump tab | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Type + Enter | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
