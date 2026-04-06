@@ -34,7 +34,7 @@ This document lists all project dependencies, their purpose, and update status.
 - **Latest release date:** 2026-03-13
 - **Status:** Up to date
 
-### libsqlite3-sys (0.36.0, optional)
+### libsqlite3-sys (0.36.0, optional for static bundling)
 
 - **Purpose:** Native SQLite bindings - provides FFI to SQLite library
 - **Features used:** bundled (embed SQLite statically)
@@ -84,7 +84,8 @@ This document lists all project dependencies, their purpose, and update status.
 - **Purpose:** Generic Request/Response protocols - used for direct messages
 - **Features used:** json
 - **Version in use:** 0.29.0
-- **Latest version:** 0.29.0
+- **Latest release date:** 2025-06-27
+- **In use release date:** 2025-06-27
 - **Status:** Up to date
 
 ## Logging & Error Handling
@@ -158,6 +159,8 @@ This document lists all project dependencies, their purpose, and update status.
 - **Features used:** derive
 - **Version in use:** 1.0.228
 - **Latest version:** 1.0.228
+- **Latest release date:** 2025-09-27
+- **In use release date:** 2025-09-27
 - **Status:** Up to date
 
 ### serde_json (1.0)
@@ -165,6 +168,8 @@ This document lists all project dependencies, their purpose, and update status.
 - **Purpose:** JSON serialization file format - used for request-response message encoding
 - **Version in use:** 1.0.149
 - **Latest version:** 1.0.149
+- **Latest release date:** 2026-01-06
+- **In use release date:** 2026-01-06
 - **Status:** Up to date
 
 ### futures (0.3)
@@ -172,35 +177,36 @@ This document lists all project dependencies, their purpose, and update status.
 - **Purpose:** Async stream and future utilities - used for StreamExt in event loops
 - **Version in use:** 0.3.32
 - **Latest version:** 0.3.32
+- **Latest release date:** 2026-02-15
+- **In use release date:** 2026-02-15
 - **Status:** Up to date
 
 ## Summary
 
-| Dependency | In Use | In Use Release | Latest | Latest Release | Status |
-|------------|--------|-----------------|--------|-----------------|--------|
-| libp2p | 0.56.0 | 2025-06-28 | 0.56.0 | 2025-06-28 | OK |
-| tokio | 1.51.0 | 2026-04-03 | 1.51.0 | 2026-04-03 | OK |
-| diesel | 2.3.7 | 2026-03-13 | 2.3.7 | 2026-03-13 | OK |
-| libsqlite3-sys | 0.36.0 | 2025-12-20 | 0.37.0 | 2026-03-15 | Behind* |
-| diesel_migrations | 2.3.1 | 2025-11-26 | 2.3.1 | 2025-11-26 | OK |
-| chrono | 0.4.44 | 2026-02-23 | 0.4.44 | 2026-02-23 | OK |
-| libp2p-identity | 0.2.13 | 2023-03-12 | 0.2.13 | 2023-03-12 | OK |
-| libp2p-quic | 0.13.0 | 2025-06-27 | 0.13.0 | 2025-06-27 | OK |
-| libp2p-request-response | 0.29.0 | - | 0.29.0 | - | OK |
-| tracing | 0.1.44 | 2026-01-09 | 0.1.44 | 2026-01-09 | OK |
-| tracing-subscriber | 0.3.23 | 2026-03-13 | 0.3.23 | 2026-03-13 | OK |
-| color-eyre | 0.6.5 | 2025-05-30 | 0.6.5 | 2025-05-30 | OK |
-| dotenvy | 0.15.7 | 2023-03-22 | 0.15.7 | 2023-03-22 | OK |
-| serde | 1.0.228 | - | 1.0.228 | - | OK |
-| serde_json | 1.0.149 | - | 1.0.149 | - | OK |
-| futures | 0.3.32 | - | 0.3.32 | - | OK |
-| ratatui | 0.30.0 | 2025-12-26 | 0.30.0 | 2025-12-26 | OK |
-| crossterm | 0.29.0 | 2025-04-05 | 0.29.0 | 2025-04-05 | OK |
-| atty | 0.2.14 | - | 0.2.14 | - | OK |
-
-\*libsqlite3-sys 0.37.0 has compatibility issues with diesel 2.3.7
+| Dependency              | In Use   | In Use Release | Latest   | Latest Release | Status |
+|-------------------------|----------|----------------|----------|----------------|--------|
+| libp2p                  | 0.56.0   | 2025-06-28     | 0.56.0   | 2025-06-28     | OK     |
+| tokio                   | 1.51.0   | 2026-04-03     | 1.51.0   | 2026-04-03     | OK     |
+| diesel                  | 2.3.7    | 2026-03-13     | 2.3.7    | 2026-03-13     | OK     |
+| libsqlite3-sys          | 0.36.0   | 2025-12-20     | 0.37.0   | 2026-03-15     | Behind |
+| diesel_migrations       | 2.3.1    | 2025-11-26     | 2.3.1    | 2025-11-26     | OK     |
+| chrono                  | 0.4.44   | 2026-02-23     | 0.4.44   | 2026-02-23     | OK     |
+| libp2p-identity         | 0.2.13   | 2023-03-12     | 0.2.13   | 2023-03-12     | OK     |
+| libp2p-quic             | 0.13.0   | 2025-06-27     | 0.13.0   | 2025-06-27     | OK     |
+| libp2p-request-response | 0.29.0   | 2025-06-27     | 0.29.0   | 2025-06-27     | OK     |
+| tracing                 | 0.1.44   | 2026-01-09     | 0.1.44   | 2026-01-09     | OK     |
+| tracing-subscriber      | 0.3.23   | 2026-03-13     | 0.3.23   | 2026-03-13     | OK     |
+| color-eyre              | 0.6.5    | 2025-05-30     | 0.6.5    | 2025-05-30     | OK     |
+| dotenvy                 | 0.15.7   | 2023-03-22     | 0.15.7   | 2023-03-22     | OK     |
+| serde                   | 1.0.228  | 2025-09-27     | 1.0.228  | 2025-09-27     | OK     |
+| serde_json              | 1.0.149  | 2026-01-06     | 1.0.149  | 2026-01-06     | OK     |
+| futures                 | 0.3.32   | 2026-02-15     | 0.3.32   | 2026-02-15     | OK     |
+| ratatui                 | 0.30.0   | 2025-12-26     | 0.30.0   | 2025-12-26     | OK     |
+| crossterm               | 0.29.0   | 2025-04-05     | 0.29.0   | 2025-04-05     | OK     |
+| atty                    | 0.2.14   | 2020-01-05     | 0.2.14   | 2020-01-05     | OK     |
 
 ## Notes on Behind Dependencies
 
 ### libsqlite3-sys (0.36.0 vs 0.37.0)
+
 Not pinned (uses `0.36.0` without `=`). 0.37.0 exists but has known compatibility issues with diesel 2.3.7. Stay on 0.36.0 until diesel updates.
