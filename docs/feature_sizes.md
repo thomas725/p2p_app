@@ -11,6 +11,7 @@ This document shows the binary sizes for different feature combinations.
 | `quic` | UDP-based QUIC transport |
 | `tracing` | Debug logging and tracing support |
 | `sqlite_bundled` | Embed SQLite library (no system dependency) |
+| `tui` | Ratatui terminal UI (default enabled) |
 
 ## Size Table
 
@@ -34,10 +35,10 @@ This document shows the binary sizes for different feature combinations.
 ## Usage
 
 ```bash
-# Minimum build (no mdns, no tracing)
+# Minimum build (no mdns, no tracing, no tui)
 target=x86_64-unknown-linux-gnu features=basic bash build_release.sh
 
-# Full build (default)
+# Full build (default: mdns, tracing, quic, tui)
 target=x86_64-unknown-linux-gnu bash build_release.sh
 
 # Custom combinations
@@ -48,8 +49,8 @@ target=x86_64-unknown-linux-gnu features="quic,mdns,tracing,sqlite_bundled" bash
 
 ## Notes
 
-- All features are independent and can be combined freely
-- Default build includes: `basic`, `mdns`, `tracing`
+- `tui` feature adds ratatui + crossterm + atty for the terminal UI
+- Default build includes: `mdns`, `tracing`, `quic`, `tui`
 - `quic` adds significant size (~1.1MB uncompressed) due to QUIC protocol stack
 - `sqlite_bundled` adds ~1MB uncompressed for embedded SQLite
 - UPX compression achieves ~30-35% size reduction

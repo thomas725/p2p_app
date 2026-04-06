@@ -2,8 +2,8 @@
 
 This document lists all project dependencies, their purpose, and the date they were last checked for updates.
 
-**Last checked:** 2026-04-04T13:18:50Z
-**Last updated:** 2026-04-04T14:00:00Z
+**Last checked:** 2026-04-06T19:00:00Z
+**Last updated:** 2026-04-06T19:00:00Z
 
 ## Core Dependencies
 
@@ -114,6 +114,107 @@ This document lists all project dependencies, their purpose, and the date they w
 - **Latest release date:** 2023-03-22
 - **Status:** Up to date
 
+## UI
+
+### ratatui (=0.28)
+
+- **Purpose:** Terminal UI framework - renders the 4-tab TUI interface
+- **Version in use:** 0.28
+- **Status:** Up to date
+
+### crossterm (=0.5)
+
+- **Purpose:** Terminal manipulation - handles raw mode, alternate screen, key events
+- **Version in use:** 0.5
+- **Status:** Up to date
+
+### atty (=0.2)
+
+- **Purpose:** TTY detection - determines if stdout is a terminal to decide TUI vs headless
+- **Version in use:** 0.2
+- **Status:** Up to date
+
+## Serialization
+
+### serde (=1.0)
+
+- **Purpose:** Serialization/deserialization - used for DirectMessage JSON codec
+- **Version in use:** 1.0
+- **Status:** Up to date
+
+### serde_json (=1.0)
+
+- **Purpose:** JSON serialization - used for request-response message encoding
+- **Version in use:** 1.0
+- **Status:** Up to date
+
+### futures (=0.3)
+
+- **Purpose:** Async stream and future utilities - used for StreamExt in event loops
+- **Version in use:** 0.3
+- **Status:** Up to date
+
+### libp2p-request-response (=0.29)
+
+- **Purpose:** Request-response protocol for direct messages
+- **Features used:** json
+- **Version in use:** 0.29
+- **Status:** Up to date
+
+### libp2p-request-response (=0.29)
+
+- **Purpose:** Request-response protocol for direct messages
+- **Features used:** json
+- **Version in use:** 0.29
+- **Latest version:** 0.29
+- **Status:** Up to date
+
+## UI
+
+### ratatui (=0.28)
+
+- **Purpose:** Terminal UI framework - renders the 4-tab TUI interface
+- **Version in use:** 0.28
+- **Latest version:** 0.28
+- **Status:** Up to date
+
+### crossterm (=0.5)
+
+- **Purpose:** Terminal manipulation - handles raw mode, alternate screen, key events
+- **Version in use:** 0.5
+- **Latest version:** 0.5
+- **Status:** Up to date
+
+### atty (=0.2)
+
+- **Purpose:** TTY detection - determines if stdout is a terminal to decide TUI vs headless
+- **Version in use:** 0.2
+- **Latest version:** 0.2
+- **Status:** Up to date
+
+## Serialization
+
+### serde (=1.0)
+
+- **Purpose:** Serialization/deserialization - used for DirectMessage JSON codec
+- **Version in use:** 1.0
+- **Latest version:** 1.0
+- **Status:** Up to date
+
+### serde_json (=1.0)
+
+- **Purpose:** JSON serialization - used for request-response message encoding
+- **Version in use:** 1.0
+- **Latest version:** 1.0
+- **Status:** Up to date
+
+### futures (=0.3)
+
+- **Purpose:** Async stream and future utilities - used for StreamExt in event loops
+- **Version in use:** 0.3
+- **Latest version:** 0.3
+- **Status:** Up to date
+
 ## Summary
 
 | Dependency | In Use | In Use Release | Latest | Latest Release | Status |
@@ -126,9 +227,16 @@ This document lists all project dependencies, their purpose, and the date they w
 | chrono | 0.4.44 | 2026-02-23 | 0.4.44 | 2026-02-23 | OK |
 | libp2p-identity | 0.2.13 | 2023-03-12 | 0.2.13 | 2023-03-12 | OK |
 | libp2p-quic | 0.13.0 | 2025-06-27 | 0.13.0 | 2025-06-27 | OK |
+| libp2p-request-response | 0.29 | - | 0.29 | - | OK |
 | tracing | 0.1.44 | 2026-01-09 | 0.1.44 | 2026-01-09 | OK |
 | tracing-subscriber | 0.3.23 | 2026-03-13 | 0.3.23 | 2026-03-13 | OK |
 | color-eyre | 0.6.5 | 2025-05-30 | 0.6.5 | 2025-05-30 | OK |
 | dotenvy | 0.15.7 | 2023-03-22 | 0.15.7 | 2023-03-22 | OK |
+| serde | 1.0 | - | 1.0 | - | OK |
+| serde_json | 1.0 | - | 1.0 | - | OK |
+| futures | 0.3 | - | 0.3 | - | OK |
+| ratatui | 0.28 | - | 0.28 | - | OK |
+| crossterm | 0.5 | - | 0.5 | - | OK |
+| atty | 0.2 | - | 0.2 | - | OK |
 
 *libsqlite3-sys 0.37.0 has compatibility issues with diesel 2.3.7
