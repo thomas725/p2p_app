@@ -18,7 +18,10 @@ mod tui {
         save_peer_session,
     };
     use ratatui::crossterm::{
-        event::{Event, KeyCode, KeyModifiers, poll, read},
+        event::{
+            Event, KeyCode, KeyModifiers, PopKeyboardEnhancementFlags,
+            PushKeyboardEnhancementFlags, poll, read,
+        },
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     };
@@ -112,6 +115,12 @@ mod tui {
             Ok(mut terminal) => {
                 execute!(std::io::stdout(), EnterAlternateScreen)?;
                 enable_raw_mode()?;
+                execute!(
+                    std::io::stdout(),
+                    PushKeyboardEnhancementFlags(
+                        crossterm::event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                    )
+                )?;
 
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut direct_messages: VecDeque<String> = VecDeque::new();
@@ -470,6 +479,7 @@ mod tui {
                                     if key.code == KeyCode::Esc
                                         || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
                                     {
+                                        execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
                                         execute!(std::io::stdout(), LeaveAlternateScreen).ok();
                                         disable_raw_mode().ok();
                                         return Ok(());
@@ -477,7 +487,12 @@ mod tui {
 
                                     let input: Input = key.into();
 
-                                    if key.code == KeyCode::Enter && !key.modifiers.contains(KeyModifiers::CONTROL) {
+                                    if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
+                                        if active_tab == 0 || active_tab == 2 {
+                                            let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
+                                            textarea.input_without_shortcuts(input);
+                                        }
+                                    } else if key.code == KeyCode::Enter {
                                         if active_tab == 0 {
                                             let lines = chat_input.lines();
                                             let text: String = lines.join("\n");
@@ -560,11 +575,6 @@ mod tui {
                                             dm_input.set_line_number_style(Style::default());
                                             dm_input.set_cursor_line_style(Style::default());
                                         }
-                                    } else if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::CONTROL) {
-                                        if active_tab == 0 || active_tab == 2 {
-                                            let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
-                                            textarea.input_without_shortcuts(input);
-                                        }
                                     } else if key.modifiers.contains(KeyModifiers::CONTROL)
                                         && matches!(key.code, KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') | KeyCode::Char('4'))
                                     {
@@ -610,7 +620,16 @@ mod tui {
                                         }
                                     } else if active_tab == 0 || active_tab == 2 {
                                         let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
-                                        textarea.input(input);
+                                        match key.code {
+                                            KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                            | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                            | KeyCode::End | KeyCode::Enter => {
+                                                textarea.input(input);
+                                            }
+                                            _ => {
+                                                log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
+                                            }
+                                        }
                                     } else if active_tab == 1 {
                                         match key.code {
                                             KeyCode::Up => {
@@ -623,7 +642,9 @@ mod tui {
                                                     peer_selection = (peer_selection + 1).min(peers.len() - 1);
                                                 }
                                             }
-                                            _ => {}
+                                            _ => {
+                                                log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
+                                            }
                                         }
                                     } else if active_tab == 3 {
                                         match key.code {
@@ -649,7 +670,9 @@ mod tui {
                                                 debug_scroll_offset = usize::MAX;
                                                 debug_auto_scroll = true;
                                             }
-                                            _ => {}
+                                            _ => {
+                                                log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
+                                            }
                                         }
                                     }
                                 }
@@ -795,7 +818,7 @@ mod tui {
                         };
                         if !input_area.is_empty() {
                             let textarea = if active_tab == 0 { &chat_input } else { &dm_input };
-                            let input_title = if active_tab == 0 { "Input (Enter to send)" } else { "DM Input (Enter to send)" };
+                            let input_title = if active_tab == 0 { "Input (Enter to send, Alt+Enter for newline)" } else { "DM Input (Enter to send, Alt+Enter for newline)" };
                             let textarea_block = Block::default().title(input_title).borders(Borders::ALL);
                             let mut textarea_clone = textarea.clone();
                             textarea_clone.set_block(textarea_block);
@@ -803,7 +826,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Enter: send | Ctrl+Enter: newline | Ctrl+Q: quit",
+                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Enter: send | Alt+Enter: newline | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
