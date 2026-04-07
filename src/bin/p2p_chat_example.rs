@@ -93,6 +93,26 @@ mod tui {
         local.format("%H:%M:%S.%3f").to_string()
     }
 
+    fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
+        if let Some(sent) = sent_at {
+            let recv = received_at
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs_f64();
+            let diff = recv - sent;
+            if diff.abs() < 10.0 {
+                return format!("[{:.3}s]", diff);
+            } else {
+                let sent_str = format_system_time(
+                    std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(sent),
+                );
+                let recv_str = format_system_time(received_at);
+                return format!("[sent:{} recv:{}]", sent_str, recv_str);
+            }
+        }
+        String::new()
+    }
+
     fn log_debug(logs: &Mutex<VecDeque<String>>, message: impl Into<String>) {
         let ts = format_system_time(SystemTime::now());
         let formatted = format!("[{}] {}", ts, message.into());
@@ -137,6 +157,8 @@ mod tui {
                 let mut peer_selection: usize = 0;
                 let mut debug_scroll_offset: usize = 0;
                 let mut debug_auto_scroll: bool = true;
+                let mut chat_scroll_offset: usize = 0;
+                let mut chat_auto_scroll: bool = true;
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -268,23 +290,31 @@ mod tui {
                                         message,
                                         ..
                                     },
-                                )) => {
-                                     log_debug(&logs, format!("Gossipsub message from: {}", peer_id));
-                                    let peer_id_str = peer_id.to_string();
-                                    let content = String::from_utf8_lossy(&message.data).to_string();
-                                    let ts = format_system_time(SystemTime::now());
-                                    let msg = format!("{} [{}] {}", ts, &peer_id_str[peer_id_str.len().saturating_sub(8)..], content);
-                                    messages.push_back(msg.clone());
-                                    if messages.len() > MAX_MESSAGES {
-                                        messages.pop_front();
-                                    }
-                                    if active_tab != 0 {
-                                        unread_broadcasts += 1;
-                                    }
+                                 )) => {
+                                     let peer_id_str = peer_id.to_string();
+                                     let raw = String::from_utf8_lossy(&message.data).to_string();
+                                     let now = SystemTime::now();
+                                     let ts = format_system_time(now);
+
+                                     let (content, sent_at) = if let Ok(bcast) = serde_json::from_str::<p2p_app::BroadcastMessage>(&raw) {
+                                         (bcast.content, bcast.sent_at)
+                                     } else {
+                                         (raw, None)
+                                     };
+
+                                     let latency = format_latency(sent_at, now);
+                                     let msg = format!("{} {} [{}] {}", ts, latency, &peer_id_str[peer_id_str.len().saturating_sub(8)..], content);
+                                     messages.push_back(msg.clone());
+                                     if messages.len() > MAX_MESSAGES {
+                                         messages.pop_front();
+                                     }
+                                     if active_tab != 0 {
+                                         unread_broadcasts += 1;
+                                     }
                                      if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
                                          log_debug(&logs, format!("Failed to save message: {}", e));
                                      }
-                                }
+                                 }
                                 SwarmEvent::Behaviour(AppEv::RequestResponse(
                                     libp2p::request_response::Event::Message { peer, message, .. },
                                 )) => {
@@ -292,10 +322,12 @@ mod tui {
                                         libp2p::request_response::Message::Request { request, channel, .. } => {
                                             let peer_id_str = peer.to_string();
                                             let content = request.content.clone();
-                                            let ts = format_system_time(SystemTime::now());
+                                            let now = SystemTime::now();
+                                            let ts = format_system_time(now);
+                                            let latency = format_latency(request.sent_at, now);
 
                                             if selected_peer.clone() == Some(peer_id_str.clone()) {
-                                                let msg = format!("{} [Peer] {}", ts, content);
+                                                let msg = format!("{} {} [Peer] {}", ts, latency, content);
                                                 direct_messages.push_back(msg.clone());
                                                 if direct_messages.len() > MAX_MESSAGES {
                                                     direct_messages.pop_front();
@@ -315,6 +347,10 @@ mod tui {
                                             let response = DirectMessage {
                                                 content: "ok".to_string(),
                                                 timestamp: chrono::Utc::now().timestamp(),
+                                                sent_at: Some(std::time::SystemTime::now()
+                                                    .duration_since(std::time::UNIX_EPOCH)
+                                                    .unwrap()
+                                                    .as_secs_f64()),
                                             };
                                             let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
                                         }
@@ -498,16 +534,25 @@ mod tui {
                                             let text: String = lines.join("\n");
                                             if !text.trim().is_empty() {
                                                 let ts = format_system_time(SystemTime::now());
-                                                let display_text = text.replace('\n', "\\n");
-                                                let msg_str = format!("{} [You] {}", ts, display_text);
+                                                let msg_str = format!("{} [You] {}", ts, text);
                                                 messages.push_back(msg_str.clone());
 
                                                 let topic = gossipsub::IdentTopic::new("test-net");
                                                 log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
-                                                let publish_result = swarm.behaviour_mut().gossipsub.publish(
-                                                    topic,
-                                                    text.as_bytes(),
-                                                );
+                                    let now = SystemTime::now();
+                                    let sent_at = now
+                                        .duration_since(std::time::UNIX_EPOCH)
+                                        .unwrap()
+                                        .as_secs_f64();
+                                    let broadcast = p2p_app::BroadcastMessage {
+                                        content: text.clone(),
+                                        sent_at: Some(sent_at),
+                                    };
+                                    let payload = serde_json::to_string(&broadcast).unwrap_or(text.clone());
+                                    let publish_result = swarm.behaviour_mut().gossipsub.publish(
+                                        topic,
+                                        payload.as_bytes(),
+                                    );
 
                                                 if let Err(e) = publish_result {
                                                     log_debug(&logs, format!("Publish error: {:?}", e));
@@ -543,8 +588,7 @@ mod tui {
                                             let text: String = lines.join("\n");
                                             if !text.trim().is_empty() {
                                                 let ts = format_system_time(SystemTime::now());
-                                                let display_text = text.replace('\n', "\\n");
-                                                let msg_str = format!("{} [You] {}", ts, display_text);
+                                                let msg_str = format!("{} [You] {}", ts, text);
                                                 direct_messages.push_back(msg_str.clone());
                                                 log_debug(&logs, format!("Sending DM to {}", target));
 
@@ -562,6 +606,10 @@ mod tui {
                                                 let dm = DirectMessage {
                                                     content: text.clone(),
                                                     timestamp: chrono::Utc::now().timestamp(),
+                                                    sent_at: Some(std::time::SystemTime::now()
+                                                        .duration_since(std::time::UNIX_EPOCH)
+                                                        .unwrap()
+                                                        .as_secs_f64()),
                                                 };
 
                                                 swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
@@ -618,7 +666,36 @@ mod tui {
                                                 unread_dms.remove(target);
                                             }
                                         }
-                                    } else if active_tab == 0 || active_tab == 2 {
+                                    } else if active_tab == 0 {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                chat_auto_scroll = false;
+                                                chat_scroll_offset = chat_scroll_offset.saturating_sub(1);
+                                            }
+                                            KeyCode::Down => {
+                                                chat_scroll_offset = (chat_scroll_offset + 1).min(messages.len().saturating_sub(1));
+                                            }
+                                            KeyCode::PageUp => {
+                                                chat_auto_scroll = false;
+                                                chat_scroll_offset = chat_scroll_offset.saturating_sub(20);
+                                            }
+                                            KeyCode::PageDown => {
+                                                chat_scroll_offset = (chat_scroll_offset + 20).min(messages.len().saturating_sub(1));
+                                            }
+                                            KeyCode::End => {
+                                                chat_scroll_offset = usize::MAX;
+                                                chat_auto_scroll = true;
+                                            }
+                                            KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                            | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                            | KeyCode::Enter => {
+                                                chat_input.input(input);
+                                            }
+                                            _ => {
+                                                log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
+                                            }
+                                        }
+                                    } else if active_tab == 2 {
                                         let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
                                         match key.code {
                                             KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
@@ -733,10 +810,26 @@ mod tui {
 
                         match active_tab {
                             0 => {
-                                let chat_items: Vec<ListItem> =
-                                    messages.iter().map(|m| ListItem::new(m.clone())).collect();
+                                let total = messages.len();
+                                let visible_height = content_area.height.saturating_sub(2) as usize;
+
+                                if chat_auto_scroll {
+                                    chat_scroll_offset = total.saturating_sub(visible_height);
+                                }
+
+                                if chat_scroll_offset > total.saturating_sub(1) {
+                                    chat_scroll_offset = total.saturating_sub(1);
+                                }
+
+                                let chat_title =
+                                    format!("Messages [{}/{}]", chat_scroll_offset + 1, total);
+                                let chat_items: Vec<ListItem> = messages
+                                    .iter()
+                                    .skip(chat_scroll_offset)
+                                    .map(|m| ListItem::new(m.clone()))
+                                    .collect();
                                 let chat_list = List::new(chat_items)
-                                    .block(Block::default().title("Messages").borders(Borders::ALL))
+                                    .block(Block::default().title(chat_title).borders(Borders::ALL))
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(chat_list, content_area);
                             }
@@ -826,7 +919,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll debug | End: auto-scroll | Enter: send | Alt+Enter: newline | Ctrl+Q: quit",
+                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll | End: auto-scroll | Enter: send | Alt+Enter: newline | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);

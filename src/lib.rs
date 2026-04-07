@@ -252,6 +252,13 @@ use std::env;
 pub struct DirectMessage {
     pub content: String,
     pub timestamp: i64,
+    pub sent_at: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BroadcastMessage {
+    pub content: String,
+    pub sent_at: Option<f64>,
 }
 
 pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
