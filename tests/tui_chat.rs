@@ -1,6 +1,6 @@
 #[cfg(feature = "tui")]
 mod tests {
-    use p2p_app::tui::{TEST_MESSAGES, TuiTestState};
+    use p2p_app::tui::{DmTab, TEST_MESSAGES, TabId, TuiTestState};
 
     #[test]
     fn test_handle_mouse_click() {
@@ -67,5 +67,53 @@ mod tests {
         assert!(state.chat_message_peers[0].is_empty());
         assert_eq!(state.chat_message_peers[1], "Peer1");
         assert!(state.chat_message_peers[2].is_empty());
+    }
+
+    #[test]
+    fn test_tab_id_index() {
+        assert_eq!(TabId::Chat.index(), 0);
+        assert_eq!(TabId::Peers.index(), 1);
+        assert_eq!(TabId::Direct.index(), 2);
+        assert_eq!(TabId::Log.index(), 3);
+    }
+
+    #[test]
+    fn test_tab_id_from_index() {
+        assert_eq!(TabId::from_index(0), TabId::Chat);
+        assert_eq!(TabId::from_index(1), TabId::Peers);
+        assert_eq!(TabId::from_index(2), TabId::Direct);
+        assert_eq!(TabId::from_index(3), TabId::Log);
+        assert_eq!(TabId::from_index(99), TabId::Chat);
+    }
+
+    #[test]
+    fn test_tab_id_default() {
+        let default_tab: TabId = TabId::default();
+        assert_eq!(default_tab, TabId::Chat);
+    }
+
+    #[test]
+    fn test_dm_tab_new() {
+        let dm = DmTab::new("peer123".to_string());
+        assert_eq!(dm.peer_id, "peer123");
+        assert!(dm.messages.is_empty());
+    }
+
+    #[test]
+    fn test_dm_tab_with_messages() {
+        let messages = std::collections::VecDeque::from(vec![
+            String::from("[You] Hello"),
+            String::from("[Peer] Hi there"),
+        ]);
+        let dm = DmTab::with_messages("peer456".to_string(), messages.clone());
+        assert_eq!(dm.peer_id, "peer456");
+        assert_eq!(dm.messages.len(), 2);
+    }
+
+    #[test]
+    fn test_dm_tab_clone() {
+        let dm1 = DmTab::new("peer789".to_string());
+        let dm2 = dm1.clone();
+        assert_eq!(dm1.peer_id, dm2.peer_id);
     }
 }

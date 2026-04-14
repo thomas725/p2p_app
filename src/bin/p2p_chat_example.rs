@@ -13,9 +13,8 @@ mod tui {
     use p2p_app::{
         AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, format_peer_datetime,
         get_database_url, get_network_size, get_unsent_messages, init_logging,
-        load_direct_messages, load_listen_ports, load_messages, load_peers, mark_message_sent,
-        now_timestamp, p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer,
-        save_peer_session,
+        load_direct_messages, load_messages, load_peers, mark_message_sent, now_timestamp,
+        p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer, save_peer_session,
     };
     use ratatui::crossterm::{
         event::{
