@@ -4,8 +4,8 @@
 #![allow(clippy::all)]
 
 use crate::schema::*;
-use diesel::{Queryable, Selectable};
 use chrono::NaiveDateTime;
+use diesel::{Queryable, Selectable};
 
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = identities)]

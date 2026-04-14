@@ -624,11 +624,12 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     let _ = timeout(listen_timeout, async {
         loop {
             if let SwarmEvent::NewListenAddr { address, .. } = node_a.swarm.select_next_some().await
-                && address.to_string().contains("/tcp/") {
-                    a_listen_addr = Some(address.clone());
-                    eprintln!("Node A listening on: {}", address);
-                    break;
-                }
+                && address.to_string().contains("/tcp/")
+            {
+                a_listen_addr = Some(address.clone());
+                eprintln!("Node A listening on: {}", address);
+                break;
+            }
         }
     })
     .await;

@@ -44,4 +44,3 @@ pub struct NewPeer<'a> {
     pub peer_local_nickname: Option<&'a str>,
     pub received_nickname: Option<&'a str>,
 }
-
