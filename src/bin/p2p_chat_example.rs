@@ -642,6 +642,12 @@ mod tui {
                                                 unread_dms.remove(target);
                                             }
                                         }
+                                    } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
+                                        if active_tab == 2 {
+                                            selected_peer = None;
+                                            direct_messages.clear();
+                                            active_tab = 0;
+                                        }
                                     } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('n') {
                                         if unread_broadcasts > 0 {
                                             active_tab = 0;
@@ -767,7 +773,7 @@ mod tui {
                             ])
                             .split(f.area());
 
-                        let tab_titles = vec!["Chat", "Peers", "Direct", "Debug"];
+                        let tab_titles = vec!["Chat", "Peers", "Direct", "Log"];
 
                         let tabs = Tabs::new(tab_titles.clone())
                             .style(Style::default().fg(Color::Cyan))
@@ -892,11 +898,11 @@ mod tui {
                                     .map(|l| ListItem::new(l.clone()))
                                     .collect();
 
-                                let debug_title =
-                                    format!("Debug Logs [{}/{}]", debug_scroll_offset + 1, total);
+                                let log_title =
+                                    format!("Log [{}/{}]", debug_scroll_offset + 1, total);
                                 let log_list = List::new(log_items)
                                     .block(
-                                        Block::default().title(debug_title).borders(Borders::ALL),
+                                        Block::default().title(log_title).borders(Borders::ALL),
                                     )
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(log_list, content_area);
