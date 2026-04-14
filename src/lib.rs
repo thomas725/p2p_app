@@ -606,8 +606,7 @@ pub mod tui {
         }
     }
 
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    #[derive(Default)]
+    #[derive(Clone, Debug, PartialEq, Eq, Default)]
     pub enum TabId {
         #[default]
         Chat,
@@ -655,8 +654,6 @@ pub mod tui {
             }
         }
     }
-
-    
 }
 #[cfg(test)]
 mod tests {
