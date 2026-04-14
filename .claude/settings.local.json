@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /home/user/project/src -name \"*.rs\" -exec wc -l {} +)",
+      "Bash(grep -rn \"silent\\\\|ignore\\\\|suppress\" /home/user/project/src --include=*.rs)",
+      "Bash(grep -rn thread:: /home/user/project/src --include=*.rs)"
+    ]
+  }
+}

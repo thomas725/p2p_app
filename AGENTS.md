@@ -16,27 +16,29 @@ This is a Rust project using Diesel (SQLite), libp2p (P2P networking), and tokio
 # Build the project
 cargo build
 
-# Build release version
-cargo build --release
+# Build release version (uses build_release.sh)
+./build_release.sh
 
 # Run the binary
 cargo run
 
 # Run with custom database
 DATABASE_URL=my.db cargo run
-```
 
-### Running with TUI
-
-```bash
-# TUI is enabled by default
-cargo run
-
-# Without TUI (headless mode)
+# Run headless version (no TUI)
 cargo run --no-default-features --features mdns,tracing
+
+# Run CLI version (no TUI, no mdns)
+cargo run --no-default-features --features tracing
 ```
 
-### Linting & Formatting
+### Binary Selection
+
+The project has two binaries defined in Cargo.toml:
+- `p2p_chat` (CLI version): `cargo run --bin p2p_chat`
+- `p2p_chat_tui` (TUI version): `cargo run --bin p2p_chat_tui` (default)
+
+## Linting & Formatting
 
 ```bash
 # Format code (Rustfmt)
@@ -47,6 +49,9 @@ cargo clippy
 
 # Run Clippy with fix suggestions
 cargo clippy --fix
+
+# Run Clippy with strict warnings (as in CI)
+cargo clippy -- -D warnings
 ```
 
 ### Testing
@@ -60,6 +65,15 @@ cargo test test_name
 
 # Run tests with output
 cargo test -- --nocapture
+
+# Run integration tests
+cargo test --test p2p_integration
+
+# Run TUI tests
+cargo test --test tui_chat
+
+# Run a specific TUI test
+cargo test --test tui_chat test_name
 ```
 
 ## Code Style Guidelines
@@ -69,25 +83,29 @@ cargo test -- --nocapture
 - Use underscore suffixes for trait imports used for methods: `use tokio::io::AsyncBufReadExt as _`
 - Group imports: std first, then external crates, then crate modules
 - Use `use` statements at module level, not inline
+- For libp2p, prefer specific feature imports when possible
 
 ### Formatting
 
 - Run `cargo fmt` before committing
 - Use 4 spaces for indentation (Rust default)
 - Maximum line length: 100 characters (default rustfmt)
+- Prefer explicit returns over implicit returns in public functions
 
 ### Types
 
 - Use explicit return types on public functions
 - Prefer `Result<T, color_eyre::Report>` for error handling
 - Use the type system; avoid `unwrap()` in production code
+- For internal fallible functions, use `Option<T>` or `Result<T, SpecificError>`
 
 ### Naming Conventions
 
-- `snake_case` for variables, functions, modules
+- `snake_case` for variables, functions, modules, files
 - `PascalCase` for types, traits, enums
 - `SCREAMING_SNAKE_CASE` for constants
 - Prefix private fields with underscore: `struct Foo { _private: T }`
+- Suffix trait imports used for methods with underscore: `AsyncBufReadExt as _`
 
 ### Error Handling
 
@@ -95,20 +113,26 @@ cargo test -- --nocapture
 - Use `wrap_err_with()` or `eyre!()` for context
 - Use `tracing` for logging errors: `tracing::error!("description: {e}")`
 - Avoid silent failures: use `.ok()` or `.map_err()` explicitly
+- In applications, handle errors at boundaries; in libraries, return them
 
 ### Database (Diesel)
 
 - Models are in `src/models_queryable.rs` and `src/models_insertable.rs`
 - Schema is auto-generated in `src/schema.rs` - do not edit manually
-- Run `diesel_generate.sh` to regenerate after schema changes
+- Run `./diesel_generate.sh` to regenerate after schema changes
 - Migrations live in `./migrations/` directory
 - **Migration naming convention**: `YYYY-MM-DD-HHMMSS_description` (the 6 digits after the date are hours, minutes, seconds, e.g. `2026-04-06-120000_add_ports`)
+- Use Diesel's query builder rather than raw SQL when possible
+- Handle database errors with `color_eyre::Report`
 
 ### Async Code (tokio)
 
 - Use `#[tokio::main]` for async main functions
 - Prefer `tokio::select!` for concurrent operations
 - Use `StreamExt` for stream processing
+- For CPU-intensive tasks, use `tokio::task::spawn_blocking`
+- Prefer `tokio::sync` primitives over `std::sync` for async contexts
+- Avoid blocking the tokio runtime with long synchronous operations
 
 ### libp2p
 
@@ -116,6 +140,9 @@ cargo test -- --nocapture
 - Use `SwarmEvent` for handling swarm events
 - Topic subscription: use `gossipsub::IdentTopic`
 - Direct messages use `request_response::Behaviour` with JSON codec
+- Handle connection events properly (listener, dialer)
+- Use appropriate timeouts for request-response protocols
+- When handling events, match on specific event types rather than using wildcards
 
 ### Project Structure
 
@@ -124,10 +151,12 @@ src/
 ├── lib.rs           # Library root, database logic, DirectMessage codec
 ├── schema.rs        # Auto-generated Diesel schema
 ├── models_*.rs      # Auto-generated model structs
-└── bin/
-    └── p2p_chat_example.rs  # Binary entry point, TUI implementation
+├── bin/
+│   ├── p2p_chat.rs          # CLI binary entry point
+│   └── p2p_chat_example.rs  # TUI binary entry point
 migrations/          # SQL migration files
 sqlite.db            # SQLite database (created at runtime)
+target/              # Compiled artifacts (gitignored)
 ```
 
 ## TUI Usage
@@ -146,6 +175,7 @@ Input is only enabled in Chat and Direct tabs. Press `Ctrl+Q` to quit.
 - `/nick` - Show current nickname
 - `/setpeer <peer-id> <name>` - Set local nickname for a peer (not transmitted)
 - `Ctrl+W` - Close current DM tab
+- Mouse: Click tabs to switch, click peers in Peers tab to open DM
 
 ## Development Environment
 
@@ -158,7 +188,12 @@ nix develop
 # Or use direnv (auto-loaded via .envrc)
 ```
 
-Required system packages (see flake.nix): cargo, rustc, rustfmt, clippy, pkg-config, openssl, sqlite.
+Required system packages (see flake.nix): cargo, rustc, rustfmt, clippy, pkg-config, openssl, sqlite, clang, lld, upx, binutils, gcc.
+
+### Shell Scripts
+
+- `./diesel_generate.sh` - Regenerates Diesel models and runs migrations
+- `./build_release.sh` - Builds optimized release binary
 
 ## Notes
 
@@ -167,6 +202,8 @@ Required system packages (see flake.nix): cargo, rustc, rustfmt, clippy, pkg-con
 - Identity keypair is generated and stored in database on first run
 - Messages are persisted with `is_direct` flag for broadcast vs direct
 - Direct messages use libp2p's request-response protocol (encrypted via Noise)
+- CLI version reads from stdin and writes to stdout/stderr
+- TUI version provides interactive interface with multiple tabs
 
 ### Nickname System
 
@@ -215,7 +252,7 @@ if let Some(expected_peer) = state.chat_message_peers.get(expected_idx) {
 
 - `messages`: `VecDeque<String>` - chat messages in display format
 - `chat_message_peers`: `Vec<String>` - extracted peer IDs from messages
-- `active_tab`: `usize` - current tab (0=Chat, 1=Peers, 2=Direct, 3=Debug)
+- `active_tab`: `usize` - current tab (0=Chat, 1=Peers, 2=Direct, 3=Log)
 - `chat_list_state_offset`: `usize` - scroll offset
 - `unread_broadcasts` / `unread_dms`: notification state
 
@@ -223,3 +260,14 @@ if let Some(expected_peer) = state.chat_message_peers.get(expected_idx) {
 
 - `handle_mouse_click(row)` - returns peer ID for clicked row
 - `calculate_content_start_row()` - returns row where messages start (accounts for tabs + notifications)
+
+### Integration Tests
+
+Integration tests are in `tests/p2p_integration.rs` and test actual networking functionality:
+
+```bash
+# Run integration tests
+cargo test --test p2p_integration
+```
+
+These tests spawn actual nodes and test message passing between them.

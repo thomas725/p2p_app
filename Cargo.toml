@@ -2,6 +2,7 @@
 name = "p2p_app"
 version = "0.1.0"
 edition = "2024"
+default-run = "p2p_chat_tui"
 
 [profile.release]
 ## https://github.com/johnthagen/min-sized-rust
@@ -90,3 +91,12 @@ rand = "0.8"
 [dev-dependencies]
 tempfile = "3"
 once_cell = "1"
+
+[[bin]]
+name = "p2p_chat"
+path = "src/bin/p2p_chat.rs"
+
+[[bin]]
+name = "p2p_chat_tui"
+path = "src/bin/p2p_chat_example.rs"
+required-features = ["tui"]

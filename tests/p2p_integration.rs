@@ -53,7 +53,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         .validation_mode(gossipsub::ValidationMode::Permissive)
         .message_id_fn(message_id_fn)
         .build()
-        .map_err(|msg| std::io::Error::other(msg))?;
+        .map_err(std::io::Error::other)?;
 
     let gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(keypair.clone()),
@@ -553,7 +553,7 @@ async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::e
         .gossip_lazy(1)
         .flood_publish(true)
         .build()
-        .map_err(|msg| std::io::Error::other(msg))?;
+        .map_err(std::io::Error::other)?;
 
     let gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(keypair.clone()),

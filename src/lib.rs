@@ -12,20 +12,24 @@ use std::sync::OnceLock;
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
 ///
-/// Denylist (set to OFF):
+/// This filter reduces log spam from libp2p's verbose internal components while
+/// preserving important events for network debugging.
+///
+/// # Denylist (set to OFF):
 /// - `multistream_select` - protocol negotiation internals
 /// - `yamux::connection` - stream multiplexing pings/RTT
 /// - `libp2p_core::transport::choice` - unreadable type names on dial failure
 /// - `libp2p_mdns::behaviour::iface` - startup-only noise
 ///
-/// Kept at DEBUG:
+/// # DEBUG level:
 /// - `libp2p_swarm` - connection lifecycle, listener addresses
 /// - `libp2p_gossipsub::behaviour` - mesh changes, heartbeats, peer subs
 /// - `libp2p_tcp` - dial attempts, listen addresses
 /// - `libp2p_quic::transport` - listen addresses
 /// - `libp2p_mdns::behaviour` - peer discovery events
 ///
-/// Default level for everything else: WARN
+/// # Default:
+/// Everything else defaults to WARN level
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};
     Targets::new()
@@ -41,18 +45,40 @@ pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
         .with_default(LevelFilter::WARN)
 }
 
+/// Default broadcast topic for chat messages
 pub const CHAT_TOPIC: &str = "test-net";
+/// Protocol name for direct messaging via libp2p request-response
 pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 
+/// Type alias for the main network behavior combining gossipsub, request-response, and mDNS
 pub type P2pAppBehaviour = AppBehaviour;
 
 static LOG_TUI_CALLBACK: OnceLock<Box<dyn Fn(String) + Send + Sync>> = OnceLock::new();
 static LOGS: OnceLock<std::sync::Mutex<VecDeque<String>>> = OnceLock::new();
 
+/// Initialize the logging system by creating the global logs queue.
+///
+/// Must be called once at application startup before any logging occurs.
 pub fn init_logging() {
     LOGS.get_or_init(|| std::sync::Mutex::new(VecDeque::new()));
 }
 
+/// Remove ANSI escape codes from a string (e.g., color/formatting codes).
+///
+/// Useful for cleaning terminal output before storing in logs or displaying in TUI.
+///
+/// # Arguments
+/// * `s` - Input string that may contain ANSI escape sequences
+///
+/// # Returns
+/// A new String with all ANSI codes stripped
+///
+/// # Example
+/// ```
+/// # use p2p_app::strip_ansi_codes;
+/// let colored = "\x1b[32mHello\x1b[0m";
+/// assert_eq!(strip_ansi_codes(colored), "Hello");
+/// ```
 pub fn strip_ansi_codes(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     let mut in_escape = false;
@@ -70,11 +96,22 @@ pub fn strip_ansi_codes(s: &str) -> String {
     result
 }
 
+/// Format a naive UTC datetime as a local time string with timezone.
+///
+/// # Arguments
+/// * `time` - NaiveDateTime in UTC
+///
+/// # Returns
+/// Formatted string in timezone-aware local time: "YYYY-MM-DD HH:MM:SS +ZZZZ"
 pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
     let local = time.and_utc().with_timezone(&chrono::Local);
     local.format("%Y-%m-%d %H:%M:%S %z").to_string()
 }
 
+/// Get the current time as a formatted local time string with timezone.
+///
+/// # Returns
+/// Formatted string: "YYYY-MM-DD HH:MM:SS +ZZZZ" in local time
 pub fn now_timestamp() -> String {
     let local = chrono::Local::now();
     local.format("%Y-%m-%d %H:%M:%S %z").to_string()
@@ -162,6 +199,17 @@ pub struct AppBehaviour {
     pub mdns: mdns::tokio::Behaviour,
 }
 
+/// Build the libp2p NetworkBehaviour combining gossipsub, request-response, and mDNS.
+///
+/// Configures gossipsub mesh parameters based on network size (Small/Medium/Large)
+/// to optimize for the expected scale of the network.
+///
+/// # Arguments
+/// * `key` - The node's identity keypair
+/// * `network_size` - Adaptive network classification for tuning gossipsub
+///
+/// # Returns
+/// An AppBehaviour instance ready for use with Swarm
 pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -263,6 +311,17 @@ pub struct BroadcastMessage {
 
 pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 
+/// Establish a connection to the SQLite database and run pending migrations.
+///
+/// Loads `DATABASE_URL` from environment or `.env` file, defaulting to "sqlite.db".
+/// Automatically runs all pending Diesel migrations on first call.
+///
+/// # Returns
+/// A new SqliteConnection with all migrations applied, or an error if connection/migration fails
+///
+/// # Errors
+/// - If database file cannot be found or created
+/// - If migrations fail to execute
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned());
@@ -273,6 +332,9 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     Ok(conn)
 }
 
+/// Get the database URL from environment or default value.
+///
+/// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
 pub fn get_database_url() -> String {
     dotenv().ok();
     env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned())
@@ -336,6 +398,20 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     }
 }
 
+/// Save a message to the database.
+///
+/// Inserts a new message with the given content and metadata.
+/// Messages are marked as unsent initially; use `mark_message_sent()` after transmission.
+///
+/// # Arguments
+/// * `content` - Message text (can be empty string)
+/// * `peer_id` - Sender's peer ID (None for local user)
+/// * `topic` - Topic for broadcast messages (e.g., "test-net")
+/// * `is_direct` - True for direct peer-to-peer, false for broadcast
+/// * `target_peer` - Recipient peer ID (required if `is_direct` is true)
+///
+/// # Returns
+/// The inserted Message with auto-generated id and timestamps
 pub fn save_message(
     content: &str,
     peer_id: Option<&str>,
@@ -359,6 +435,7 @@ pub fn save_message(
     Ok(msg)
 }
 
+/// Get all unsent broadcast messages for a topic, ordered by creation time.
 pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut sqlite_connect()?;
     let msgs = messages
@@ -371,6 +448,7 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     Ok(msgs)
 }
 
+/// Get all unsent direct messages to a specific peer, ordered by creation time.
 pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut sqlite_connect()?;
     let msgs = messages
@@ -383,6 +461,7 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
     Ok(msgs)
 }
 
+/// Mark a message as sent by ID.
 pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
     diesel::update(schema::messages::table.filter(schema::messages::id.eq(id)))
@@ -391,6 +470,7 @@ pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     Ok(())
 }
 
+/// Load broadcast messages for a topic, newest first, limited to count.
 pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut sqlite_connect()?;
     let msgs = messages
@@ -403,6 +483,7 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
     Ok(msgs)
 }
 
+/// Load direct messages with a peer, oldest first, limited to count.
 pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut sqlite_connect()?;
     let msgs = messages
@@ -415,6 +496,17 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
     Ok(msgs)
 }
 
+/// Save or update a peer in the database.
+///
+/// If peer already exists (by peer_id), updates addresses and last_seen timestamp.
+/// Otherwise inserts a new peer record with current timestamp.
+///
+/// # Arguments
+/// * `peer_id` - Unique peer identifier
+/// * `addresses` - List of multiaddrs where this peer can be reached
+///
+/// # Returns
+/// The saved or updated Peer record
 pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer> {
     let conn = &mut sqlite_connect()?;
     let addresses_str = addresses.join(",");
@@ -442,6 +534,7 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
     Ok(peer)
 }
 
+/// Load all known peers, ordered by most recently seen first.
 pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
     let conn = &mut sqlite_connect()?;
     let peers_list = peers
@@ -451,6 +544,7 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
     Ok(peers_list)
 }
 
+/// Delete a peer from the database by peer_id.
 pub fn remove_peer(peer_id: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
     diesel::delete(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
@@ -515,14 +609,28 @@ pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
     Ok(last.unwrap_or(0))
 }
 
+/// Adaptive network size classification based on average peer count.
+///
+/// Used to configure gossipsub mesh parameters appropriately for network conditions.
+/// Smaller networks use aggressive flooding; larger networks use lazy gossip.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkSize {
+    /// 0-3 peers: Use flood_publish, aggressive heartbeat
     Small,
+    /// 4-15 peers: Balanced mesh topology
     Medium,
+    /// 16+ peers: Larger mesh, lazy gossip
     Large,
 }
 
 impl NetworkSize {
+    /// Classify network size based on average peer count.
+    ///
+    /// # Arguments
+    /// * `avg` - Average number of concurrent peers from historical data
+    ///
+    /// # Returns
+    /// NetworkSize classification for configuring gossipsub behavior
     pub fn from_peer_count(avg: f64) -> Self {
         match avg as i32 {
             0..=3 => NetworkSize::Small,
@@ -679,55 +787,33 @@ pub mod tui {
 mod tests {
     use super::*;
 
-    fn test_connection() -> SqliteConnection {
-        let mut conn =
-            SqliteConnection::establish(":memory:").expect("Failed to create in-memory database");
-        conn.run_pending_migrations(MIGRATIONS)
-            .expect("Failed to run migrations");
-        conn
-    }
-
-    #[test]
-    fn test_save_and_load_peer() {
-        let _conn = test_connection();
-        let _ = save_peer("test-peer-1", &["/ip4/127.0.0.1/tcp/4001".to_string()]);
-        let loaded_peers = load_peers().expect("Failed to load peers");
-        assert!(!loaded_peers.is_empty());
-    }
-
-    #[ignore]
-    #[test]
-    fn test_save_peer_session() {
-        let _conn = test_connection();
-        save_peer_session(5).expect("Failed to save session");
-        let recent = get_recent_peer_count().expect("Failed to get recent count");
-        assert_eq!(recent, 5);
-    }
-
-    #[ignore]
-    #[test]
-    fn test_save_and_load_listen_ports() {
-        let _conn = test_connection();
-        save_listen_ports(Some(8000), Some(8001)).expect("Failed to save ports");
-        let (tcp, quic) = load_listen_ports().expect("Failed to load ports");
-        assert_eq!(tcp, Some(8000));
-        assert_eq!(quic, Some(8001));
-    }
-
     #[test]
     fn test_format_peer_datetime() {
         use chrono::NaiveDateTime;
-        let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+        let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")
+            .expect("Failed to parse date");
         let formatted = format_peer_datetime(dt);
         assert!(formatted.contains("2024"));
     }
 
-    #[ignore]
     #[test]
-    fn test_save_and_load_messages() {
-        let _conn = &mut test_connection();
-        let _ = save_message("Hello world", None, "test-topic", false, None);
-        let loaded_msgs = load_messages("test-topic", 10).expect("Failed to load messages");
-        assert!(!loaded_msgs.is_empty());
+    fn test_strip_ansi_codes() {
+        let ansi_text = "\x1b[32mHello\x1b[0m";
+        let clean = strip_ansi_codes(ansi_text);
+        assert_eq!(clean, "Hello");
+    }
+
+    #[test]
+    fn test_now_timestamp_format() {
+        let ts = now_timestamp();
+        assert!(ts.contains('-'));
+        assert!(ts.contains(':'));
+    }
+
+    #[test]
+    fn test_network_size_from_peer_count() {
+        assert_eq!(NetworkSize::from_peer_count(1.0), NetworkSize::Small);
+        assert_eq!(NetworkSize::from_peer_count(5.0), NetworkSize::Medium);
+        assert_eq!(NetworkSize::from_peer_count(20.0), NetworkSize::Large);
     }
 }

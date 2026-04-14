@@ -7,6 +7,7 @@ diesel::table! {
         key -> Binary,
         last_tcp_port -> Nullable<Integer>,
         last_quic_port -> Nullable<Integer>,
+        self_nickname -> Nullable<Text>,
     }
 }
 
@@ -39,6 +40,8 @@ diesel::table! {
         addresses -> Text,
         first_seen -> Timestamp,
         last_seen -> Timestamp,
+        peer_local_nickname -> Nullable<Text>,
+        received_nickname -> Nullable<Text>,
     }
 }
 
