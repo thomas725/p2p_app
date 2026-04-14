@@ -421,12 +421,12 @@ pub fn save_message(
 ) -> color_eyre::Result<Message> {
     let conn = &mut sqlite_connect()?;
     let new_msg = NewMessage {
-        content,
-        peer_id,
-        topic,
+        content: content.to_string(),
+        peer_id: peer_id.map(|s| s.to_string()),
+        topic: topic.to_string(),
         sent: 0,
         is_direct: if is_direct { 1 } else { 0 },
-        target_peer,
+        target_peer: target_peer.map(|s| s.to_string()),
     };
     let msg = diesel::insert_into(schema::messages::table)
         .values(&new_msg)
@@ -513,8 +513,8 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
     let now = chrono::Utc::now().naive_utc();
 
     let new_peer = NewPeer {
-        peer_id,
-        addresses: &addresses_str,
+        peer_id: peer_id.to_string(),
+        addresses: addresses_str.clone(),
         first_seen: now,
         last_seen: now,
         peer_local_nickname: None,
