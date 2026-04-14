@@ -677,6 +677,33 @@ mod tests {
 
     #[ignore]
     #[test]
+    fn test_save_peer_session() {
+        let _conn = test_connection();
+        let _ = save_peer_session(5).expect("Failed to save session");
+        let recent = get_recent_peer_count().expect("Failed to get recent count");
+        assert_eq!(recent, 5);
+    }
+
+    #[ignore]
+    #[test]
+    fn test_save_and_load_listen_ports() {
+        let _conn = test_connection();
+        let _ = save_listen_ports(Some(8000), Some(8001)).expect("Failed to save ports");
+        let (tcp, quic) = load_listen_ports().expect("Failed to load ports");
+        assert_eq!(tcp, Some(8000));
+        assert_eq!(quic, Some(8001));
+    }
+
+    #[test]
+    fn test_format_peer_datetime() {
+        use chrono::NaiveDateTime;
+        let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
+        let formatted = format_peer_datetime(dt);
+        assert!(formatted.contains("2024"));
+    }
+
+    #[ignore]
+    #[test]
     fn test_save_and_load_messages() {
         let _conn = &mut test_connection();
         let _ = save_message("Hello world", None, "test-topic", false, None);
