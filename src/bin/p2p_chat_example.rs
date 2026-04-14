@@ -97,7 +97,7 @@ mod tui {
         if let Some(sent) = sent_at {
             let recv = received_at
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .expect("system time is valid")
                 .as_secs_f64();
             let diff = recv - sent;
             if diff.abs() < 10.0 {
@@ -146,6 +146,7 @@ mod tui {
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut direct_messages: VecDeque<String> = VecDeque::new();
                 let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+                // active_tab indices: 0=Chat, 1=Peers, 2=Direct (selected peer), 3=Debug
                 let mut active_tab = 0;
                 let mut selected_peer: Option<String> = None;
                 let mut chat_input = TextArea::default();
@@ -350,7 +351,7 @@ mod tui {
                                                                                                             timestamp: chrono::Utc::now().timestamp(),
                                                                                                             sent_at: Some(std::time::SystemTime::now()
                                                                                                                 .duration_since(std::time::UNIX_EPOCH)
-                                                                                                                .unwrap()
+                                                                                                                .expect("system time is valid")
                                                                                                                 .as_secs_f64()),
                                                                                                         };
                                                                                                         let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
@@ -571,7 +572,7 @@ mod tui {
                                                                                                 let now = SystemTime::now();
                                                                                                 let sent_at = now
                                                                                                     .duration_since(std::time::UNIX_EPOCH)
-                                                                                                    .unwrap()
+                                                                                                    .expect("system time is valid")
                                                                                                     .as_secs_f64();
                                                                                                 let broadcast = p2p_app::BroadcastMessage {
                                                                                                     content: text.clone(),
@@ -637,7 +638,7 @@ mod tui {
                                                                                                                 timestamp: chrono::Utc::now().timestamp(),
                                                                                                                 sent_at: Some(std::time::SystemTime::now()
                                                                                                                     .duration_since(std::time::UNIX_EPOCH)
-                                                                                                                    .unwrap()
+                                                                                                                    .expect("system time is valid")
                                                                                                                     .as_secs_f64()),
                                                                                                             };
 
@@ -907,7 +908,7 @@ mod tui {
                                 f.render_widget(dm_list, content_area);
                             }
                             3 => {
-                                let log_vec = logs.lock().unwrap().clone();
+                                let log_vec = logs.lock().expect("logs mutex not poisoned").clone();
                                 let total = log_vec.len();
                                 let visible_height = content_area.height.saturating_sub(2) as usize;
 

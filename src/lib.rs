@@ -146,7 +146,7 @@ where
 
 pub fn get_tui_logs() -> VecDeque<String> {
     LOGS.get()
-        .map(|m| m.lock().unwrap().clone())
+        .map(|m| m.lock().expect("TUI logs mutex not poisoned").clone())
         .unwrap_or_default()
 }
 

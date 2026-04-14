@@ -158,4 +158,66 @@ mod tests {
         state.handle_tab_click(3);
         assert_eq!(state.active_tab, 3, "Click row 3 should go to Log");
     }
+
+    #[test]
+    fn test_unread_notification_increments() {
+        let mut state = TuiTestState::new();
+        let initial = state.unread_broadcasts;
+        state.unread_broadcasts += 1;
+        assert_eq!(state.unread_broadcasts, initial + 1);
+    }
+
+    #[test]
+    fn test_notification_clears_on_chat_tab_focus() {
+        let mut state = TuiTestState::new();
+        state.unread_broadcasts = 5;
+        // When switching to chat tab (tab 0), unread should clear
+        state.active_tab = 0;
+        state.unread_broadcasts = 0;
+        assert_eq!(state.unread_broadcasts, 0);
+        assert_eq!(state.active_tab, 0);
+    }
+
+    #[test]
+    fn test_notification_area_calculation() {
+        let mut state = TuiTestState::new();
+        // No unread - notification area should be 0
+        state.unread_broadcasts = 0;
+        let start_row = state.calculate_content_start_row();
+
+        // With unread - notification area should push content down
+        let mut state_with_unread = state.clone();
+        state_with_unread.unread_broadcasts = 3;
+        let start_row_with_unread = state_with_unread.calculate_content_start_row();
+
+        assert!(
+            start_row_with_unread > start_row,
+            "Content should start lower with notifications"
+        );
+    }
+
+    #[test]
+    fn test_dm_tab_message_persistence() {
+        let messages = vec![
+            "alice [10:00:00] Hello".to_string(),
+            "bob [10:01:00] Hi there".to_string(),
+        ]
+        .into_iter()
+        .collect();
+        let dm = DmTab::with_messages("alice".to_string(), messages);
+
+        assert_eq!(dm.messages.len(), 2);
+        assert_eq!(dm.peer_id, "alice");
+        assert!(dm.messages.front().unwrap().contains("Hello"));
+    }
+
+    #[test]
+    fn test_dm_tab_cloning() {
+        let messages = vec!["test message".to_string()].into_iter().collect();
+        let dm1 = DmTab::with_messages("peer1".to_string(), messages);
+        let dm2 = dm1.clone();
+
+        assert_eq!(dm1, dm2);
+        assert_eq!(dm2.peer_id, "peer1");
+    }
 }

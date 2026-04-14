@@ -1,1 +1,2 @@
--- This file should undo anything in `up.sql`
+ALTER TABLE peers DROP COLUMN peer_local_nickname;
+ALTER TABLE peers DROP COLUMN received_nickname;
