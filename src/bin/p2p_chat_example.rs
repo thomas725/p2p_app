@@ -384,7 +384,7 @@ mod tui {
                                                                                                         }
                                                                                                     }
                                                                                                     swarm.dial(multiaddr.clone()).ok();
-                                                                                                    let _ = swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                                                                                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                                                                                 }
                                                                                             }
                                                                                             #[cfg(feature = "mdns")]
@@ -465,9 +465,7 @@ mod tui {
                                                                                             SwarmEvent::ConnectionClosed {
                                                                                                 peer_id, cause: _, ..
                                                                                             } => {
-                                                                                                if concurrent_peers > 0 {
-                                                                                                    concurrent_peers -= 1;
-                                                                                                }
+                                                                                                concurrent_peers = concurrent_peers.saturating_sub(1);
                                                                                                 log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, &peer_id.to_string()[peer_id.to_string().len().saturating_sub(8)..]));
                                                                                                 if let Err(e) = save_peer_session(concurrent_peers as i32) {
                                                                                                     log_debug(&logs, format!("Failed to save peer session: {}", e));
@@ -499,14 +497,13 @@ mod tui {
                                                                                             _ => {}
                                                                                         }
 
-                                                                                        if let Ok(l) = logs.lock() {
-                                                                                            if l.len() > MAX_LOGS {
+                                                                                        if let Ok(l) = logs.lock()
+                                                                                            && l.len() > MAX_LOGS {
                                                                                                 drop(l);
                                                                                                 if let Ok(mut l) = logs.lock() {
                                                                                                     l.pop_front();
                                                                                                 }
                                                                                             }
-                                                                                        }
                                                                                     }
 
                                                                                     _ = tokio::time::sleep(Duration::from_millis(16)) => {
@@ -601,7 +598,7 @@ mod tui {
                                                                                                         chat_input.set_cursor_line_style(Style::default());
                                                                                                     } else if active_tab == 1 && !peers.is_empty() {
                                                                                                         let idx = peer_selection.min(peers.len() - 1);
-                                                                                                        if let Some(peer) = peers.iter().nth(idx).cloned() {
+                                                                                                        if let Some(peer) = peers.get(idx).cloned() {
                                                                                                             let (peer_id, _, _) = peer;
                                                                                                             selected_peer = Some(peer_id.clone());
                                                                                                             active_tab = 2;
@@ -669,11 +666,10 @@ mod tui {
                                                                                                     if tab == 0 {
                                                                                                         unread_broadcasts = 0;
                                                                                                     }
-                                                                                                    if tab == 2 {
-                                                                                                        if let Some(ref target) = selected_peer {
+                                                                                                    if tab == 2
+                                                                                                        && let Some(ref target) = selected_peer {
                                                                                                             unread_dms.remove(target);
                                                                                                         }
-                                                                                                    }
                                                                                                 } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
                                                                                                     if active_tab == 2 {
                                                                                                         selected_peer = None;
@@ -699,11 +695,10 @@ mod tui {
                                                                                                     if active_tab == 0 {
                                                                                                         unread_broadcasts = 0;
                                                                                                     }
-                                                                                                    if active_tab == 2 {
-                                                                                                        if let Some(ref target) = selected_peer {
+                                                                                                    if active_tab == 2
+                                                                                                        && let Some(ref target) = selected_peer {
                                                                                                             unread_dms.remove(target);
                                                                                                         }
-                                                                                                    }
                                                                                                 } else if active_tab == 0 {
                                                                                                     match key.code {
                                                                                                         KeyCode::Up => {
@@ -1012,9 +1007,7 @@ mod tui {
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                         }
                         SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                            if concurrent_peers > 0 {
-                                concurrent_peers -= 1;
-                            }
+                            concurrent_peers = concurrent_peers.saturating_sub(1);
                             p2plog_info(format!("Disconnected from: {} (peers: {})", peer_id, concurrent_peers));
                             if let Err(e) = save_peer_session(concurrent_peers as i32) {
                                 p2plog_error(format!("Failed to save peer session: {}", e));

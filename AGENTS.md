@@ -5,9 +5,10 @@ This is a Rust project using Diesel (SQLite), libp2p (P2P networking), and tokio
 ## Features
 
 - **P2P Chat**: gossipsub for broadcast messages, request-response for direct messages
-- **TUI**: Interactive terminal UI with 4 tabs (Chat, Peers, Direct, Debug)
+- **TUI**: Interactive terminal UI with 4 tabs (Chat, Peers, Direct, Log)
 - **Peer Discovery**: mDNS for local peer discovery
 - **Persistence**: SQLite database for messages, peers, and identity
+- **Mouse**: Click tabs to switch, click peers to open DM
 
 ## Build & Run Commands
 

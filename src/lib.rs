@@ -607,7 +607,9 @@ pub mod tui {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
+    #[derive(Default)]
     pub enum TabId {
+        #[default]
         Chat,
         Peers,
         Direct,
@@ -654,11 +656,7 @@ pub mod tui {
         }
     }
 
-    impl Default for TabId {
-        fn default() -> Self {
-            TabId::Chat
-        }
-    }
+    
 }
 #[cfg(test)]
 mod tests {
