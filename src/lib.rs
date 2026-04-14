@@ -87,14 +87,13 @@ pub fn push_log(message: impl Into<String>) {
     if let Some(callback) = LOG_TUI_CALLBACK.get() {
         (callback)(formatted.clone());
     }
-    if let Some(logs) = LOGS.get() {
-        if let Ok(mut l) = logs.lock() {
+    if let Some(logs) = LOGS.get()
+        && let Ok(mut l) = logs.lock() {
             l.push_back(formatted.clone());
             if l.len() > 1000 {
                 l.pop_front();
             }
         }
-    }
     if !has_callback {
         eprintln!("{}", formatted);
     }
@@ -122,14 +121,13 @@ pub fn p2plog(level: &str, msg: String) {
         (callback)(formatted.clone());
     }
 
-    if let Some(logs) = LOGS.get() {
-        if let Ok(mut l) = logs.lock() {
+    if let Some(logs) = LOGS.get()
+        && let Ok(mut l) = logs.lock() {
             l.push_back(formatted.clone());
             if l.len() > 1000 {
                 l.pop_front();
             }
         }
-    }
 
     // Only print to stderr if TUI is not active (no callback set)
     if LOG_TUI_CALLBACK.get().is_none() {
@@ -527,6 +525,88 @@ pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     Ok(NetworkSize::from_peer_count(avg))
 }
 
+
+#[cfg(feature = "tui")]
+pub mod tui {
+    use std::collections::{BTreeMap, VecDeque};
+
+    pub const TEST_MESSAGES: &[&str] = &[
+        "[You] Hello world",
+        "[Peer1] How are you?",
+        "[You] I'm good, thanks!",
+        "[Peer2] Welcome to the chat",
+        "[You] Thanks!",
+    ];
+
+    #[derive(Clone, Debug)]
+    pub struct TuiTestState {
+        pub messages: VecDeque<String>,
+        pub chat_message_peers: Vec<String>,
+        pub active_tab: usize,
+        pub chat_list_state_offset: usize,
+        pub unread_broadcasts: u32,
+        pub unread_dms: BTreeMap<String, u32>,
+    }
+
+    impl TuiTestState {
+        pub fn new() -> Self {
+            Self::with_messages(
+                TEST_MESSAGES.iter().map(|s| s.to_string()).collect()
+            )
+        }
+
+        pub fn with_messages(messages: VecDeque<String>) -> Self {
+            let chat_message_peers: Vec<String> = messages
+                .iter()
+                .map(|m| {
+                    if m.contains("[You]") {
+                        String::new()
+                    } else {
+                        m.split('[')
+                            .nth(1)
+                            .map(|s| s.split(']').next().unwrap_or("").to_string())
+                            .unwrap_or_default()
+                    }
+                })
+                .collect();
+
+            Self {
+                messages,
+                chat_message_peers,
+                active_tab: 0,
+                chat_list_state_offset: 0,
+                unread_broadcasts: 0,
+                unread_dms: BTreeMap::new(),
+            }
+        }
+
+        pub fn handle_mouse_click(&self, row: u16) -> Option<String> {
+            let content_start = self.calculate_content_start_row();
+            let click_offset = row as isize - content_start as isize;
+
+            if click_offset < 0 {
+                return None;
+            }
+
+            let peer_idx = self.chat_list_state_offset + click_offset as usize;
+            self.chat_message_peers.get(peer_idx).cloned()
+        }
+
+        pub fn calculate_content_start_row(&self) -> u16 {
+            let mut start = 1; // Tabs row
+            if self.unread_broadcasts > 0 || !self.unread_dms.is_empty() {
+                start += 1; // Notification row
+            }
+            start
+        }
+    }
+
+    impl Default for TuiTestState {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

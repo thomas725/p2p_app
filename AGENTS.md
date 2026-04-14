@@ -131,13 +131,20 @@ sqlite.db            # SQLite database (created at runtime)
 
 ## TUI Usage
 
-The TUI has 4 tabs accessible with `Tab` key:
+The TUI has tabs accessible with `Tab` key:
 - **Chat**: Broadcast messages to all peers (via gossipsub)
 - **Peers**: List discovered/connected peers, press Enter to open DM
-- **Direct**: Direct message with selected peer (via request-response)
+- **Direct** (dynamic): Direct message tabs open with selected peers
 - **Debug**: Log output and system messages
 
 Input is only enabled in Chat and Direct tabs. Press `Ctrl+Q` to quit.
+
+### TUI Commands
+
+- `/nick <name>` - Set your display name (sent to peers)
+- `/nick` - Show current nickname
+- `/setpeer <peer-id> <name>` - Set local nickname for a peer (not transmitted)
+- `Ctrl+W` - Close current DM tab
 
 ## Development Environment
 
@@ -159,3 +166,59 @@ Required system packages (see flake.nix): cargo, rustc, rustfmt, clippy, pkg-con
 - Identity keypair is generated and stored in database on first run
 - Messages are persisted with `is_direct` flag for broadcast vs direct
 - Direct messages use libp2p's request-response protocol (encrypted via Noise)
+
+### Nickname System
+
+- Generated petname (e.g., "brave-wolf") used as default on first run
+- Self nickname: stored locally, sent to remote peers with messages
+- Peer local nickname: stored locally only, displayed instead of peer ID
+- Peer received nickname: nickname received from peer, stored locally
+- Priority: local nickname > received nickname > peer ID suffix
+
+## Testing
+
+### TUI Tests
+
+TUI tests are in `tests/tui_chat.rs` and test the mouse click to peer mapping logic:
+
+```bash
+# Run all TUI tests
+cargo test --test tui_chat
+
+# Run a specific test
+cargo test --test tui_chat test_name
+```
+
+### Writing TUI Tests
+
+Use the `TuiTestState` struct to simulate UI state:
+
+```rust
+use tui_chat::{TuiTestState, TEST_MESSAGES};
+
+// Create state with test messages
+let state = TuiTestState::new();
+
+// Simulate clicking a row
+let peer = state.handle_mouse_click(4); // row 4
+
+// Verify the correct peer is returned (not hardcoded - uses actual state)
+let content_start = state.calculate_content_start_row();
+let expected_idx = state.chat_list_state_offset + (4 - content_start) as usize;
+if let Some(expected_peer) = state.chat_message_peers.get(expected_idx) {
+    assert_eq!(peer, *expected_peer);
+}
+```
+
+### Test State Components
+
+- `messages`: `VecDeque<String>` - chat messages in display format
+- `chat_message_peers`: `Vec<String>` - extracted peer IDs from messages
+- `active_tab`: `usize` - current tab (0=Chat, 1=Peers, 2=Direct, 3=Debug)
+- `chat_list_state_offset`: `usize` - scroll offset
+- `unread_broadcasts` / `unread_dms`: notification state
+
+### Key Functions
+
+- `handle_mouse_click(row)` - returns peer ID for clicked row
+- `calculate_content_start_row()` - returns row where messages start (accounts for tabs + notifications)
