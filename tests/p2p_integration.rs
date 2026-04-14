@@ -53,7 +53,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         .validation_mode(gossipsub::ValidationMode::Permissive)
         .message_id_fn(message_id_fn)
         .build()
-        .map_err(|msg| std::io::Error::new(std::io::ErrorKind::Other, msg))?;
+        .map_err(|msg| std::io::Error::other(msg))?;
 
     let gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(keypair.clone()),
@@ -108,34 +108,30 @@ async fn connect_nodes(
         loop {
             tokio::select! {
                 event = node_a.swarm.select_next_some() => {
-                    if let SwarmEvent::NewListenAddr { ref address, .. } = event {
-                        if node_a.listen_addr.is_none() {
+                    if let SwarmEvent::NewListenAddr { ref address, .. } = event
+                        && node_a.listen_addr.is_none() {
                             node_a.listen_addr = Some(address.clone());
                             if let Some(ref addr_b) = node_b.listen_addr {
                                 let _ = node_a.swarm.dial(addr_b.clone());
                             }
                         }
-                    }
-                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
-                        if peer_id == peer_b {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event
+                        && peer_id == peer_b {
                             a_connected = true;
                         }
-                    }
                 }
                 event = node_b.swarm.select_next_some() => {
-                    if let SwarmEvent::NewListenAddr { ref address, .. } = event {
-                        if node_b.listen_addr.is_none() {
+                    if let SwarmEvent::NewListenAddr { ref address, .. } = event
+                        && node_b.listen_addr.is_none() {
                             node_b.listen_addr = Some(address.clone());
                             if let Some(ref addr_a) = node_a.listen_addr {
                                 let _ = node_b.swarm.dial(addr_a.clone());
                             }
                         }
-                    }
-                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
-                        if peer_id == peer_a {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event
+                        && peer_id == peer_a {
                             b_connected = true;
                         }
-                    }
                 }
             }
 
@@ -391,20 +387,18 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
         loop {
             tokio::select! {
                 event = node_a.swarm.select_next_some() => {
-                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
-                        if peer_id == peer_b {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event
+                        && peer_id == peer_b {
                             println!("Node A connected to Node B");
                             connected = true;
                         }
-                    }
                 }
                 event = node_b.swarm.select_next_some() => {
-                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event {
-                        if peer_id == peer_a {
+                    if let SwarmEvent::ConnectionEstablished { peer_id, .. } = event
+                        && peer_id == peer_a {
                             println!("Node B connected to Node A");
                             connected = true;
                         }
-                    }
                 }
             }
             if connected {
@@ -559,7 +553,7 @@ async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::e
         .gossip_lazy(1)
         .flood_publish(true)
         .build()
-        .map_err(|msg| std::io::Error::new(std::io::ErrorKind::Other, msg))?;
+        .map_err(|msg| std::io::Error::other(msg))?;
 
     let gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(keypair.clone()),
@@ -630,13 +624,11 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     let _ = timeout(listen_timeout, async {
         loop {
             if let SwarmEvent::NewListenAddr { address, .. } = node_a.swarm.select_next_some().await
-            {
-                if address.to_string().contains("/tcp/") {
+                && address.to_string().contains("/tcp/") {
                     a_listen_addr = Some(address.clone());
                     eprintln!("Node A listening on: {}", address);
                     break;
                 }
-            }
         }
     })
     .await;

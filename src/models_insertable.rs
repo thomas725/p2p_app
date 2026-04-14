@@ -9,8 +9,11 @@ use diesel::Insertable;
 use chrono::NaiveDateTime;
 #[derive(Insertable, Debug)]
 #[diesel(table_name = identities)]
-pub struct NewIdentity {
+pub struct NewIdentity<'a> {
     pub key: Vec<u8>,
+    pub last_tcp_port: Option<i32>,
+    pub last_quic_port: Option<i32>,
+    pub self_nickname: Option<&'a str>,
 }
 
 #[derive(Insertable)]
@@ -25,16 +28,20 @@ pub struct NewMessage<'a> {
 }
 
 #[derive(Insertable)]
+#[diesel(table_name = peer_sessions)]
+pub struct NewPeerSession {
+    pub concurrent_peers: i32,
+    pub recorded_at: NaiveDateTime,
+}
+
+#[derive(Insertable)]
 #[diesel(table_name = peers)]
 pub struct NewPeer<'a> {
     pub peer_id: &'a str,
     pub addresses: &'a str,
     pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
+    pub peer_local_nickname: Option<&'a str>,
+    pub received_nickname: Option<&'a str>,
 }
 
-#[derive(Insertable)]
-#[diesel(table_name = peer_sessions)]
-pub struct NewPeerSession {
-    pub concurrent_peers: i32,
-}

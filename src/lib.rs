@@ -302,7 +302,12 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         let keypair = libp2p_identity::Keypair::generate_ed25519();
         match keypair.to_protobuf_encoding() {
             Ok(key) => {
-                let i = NewIdentity { key };
+                let i = NewIdentity {
+                    key,
+                    last_tcp_port: None,
+                    last_quic_port: None,
+                    self_nickname: None,
+                };
                 match diesel::insert_into(schema::identities::table)
                     .values(&i)
                     .returning(Identity::as_returning())
@@ -420,6 +425,8 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         addresses: &addresses_str,
         first_seen: now,
         last_seen: now,
+        peer_local_nickname: None,
+        received_nickname: None,
     };
 
     let peer = diesel::insert_into(schema::peers::table)
@@ -453,7 +460,10 @@ pub fn remove_peer(peer_id: &str) -> color_eyre::Result<()> {
 
 pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    let new_session = NewPeerSession { concurrent_peers };
+    let new_session = NewPeerSession {
+        concurrent_peers,
+        recorded_at: chrono::Utc::now().naive_utc(),
+    };
     diesel::insert_into(schema::peer_sessions::table)
         .values(&new_session)
         .execute(conn)?;
@@ -682,14 +692,14 @@ mod tests {
         let _conn = test_connection();
         let _ = save_peer("test-peer-1", &["/ip4/127.0.0.1/tcp/4001".to_string()]);
         let loaded_peers = load_peers().expect("Failed to load peers");
-        assert!(loaded_peers.len() >= 1);
+        assert!(!loaded_peers.is_empty());
     }
 
     #[ignore]
     #[test]
     fn test_save_peer_session() {
         let _conn = test_connection();
-        let _ = save_peer_session(5).expect("Failed to save session");
+        save_peer_session(5).expect("Failed to save session");
         let recent = get_recent_peer_count().expect("Failed to get recent count");
         assert_eq!(recent, 5);
     }
@@ -698,7 +708,7 @@ mod tests {
     #[test]
     fn test_save_and_load_listen_ports() {
         let _conn = test_connection();
-        let _ = save_listen_ports(Some(8000), Some(8001)).expect("Failed to save ports");
+        save_listen_ports(Some(8000), Some(8001)).expect("Failed to save ports");
         let (tcp, quic) = load_listen_ports().expect("Failed to load ports");
         assert_eq!(tcp, Some(8000));
         assert_eq!(quic, Some(8001));
@@ -718,6 +728,6 @@ mod tests {
         let _conn = &mut test_connection();
         let _ = save_message("Hello world", None, "test-topic", false, None);
         let loaded_msgs = load_messages("test-topic", 10).expect("Failed to load messages");
-        assert!(loaded_msgs.len() >= 1);
+        assert!(!loaded_msgs.is_empty());
     }
 }
