@@ -598,6 +598,16 @@ pub mod tui {
             }
             start
         }
+
+        pub fn handle_tab_click(&mut self, row: u16) {
+            self.active_tab = match row {
+                0 => 0, // Chat tab
+                1 => 1, // Peers tab
+                2 => 2, // Direct tab (deprecated, but still works)
+                3 => 3, // Log tab
+                _ => self.active_tab,
+            };
+        }
     }
 
     impl Default for TuiTestState {

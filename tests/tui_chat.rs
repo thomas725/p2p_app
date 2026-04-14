@@ -131,4 +131,31 @@ mod tests {
         assert_eq!(dm1, dm2);
         assert_ne!(dm1, dm3);
     }
+
+    #[test]
+    fn test_tab_click_to_chat() {
+        let mut state = TuiTestState::new();
+        state.active_tab = 1;
+        state.handle_tab_click(0);
+        assert_eq!(
+            state.active_tab, 0,
+            "Click row 0 should go to Chat (index 0)"
+        );
+    }
+
+    #[test]
+    fn test_tab_click_to_peers() {
+        let mut state = TuiTestState::new();
+        state.active_tab = 0;
+        state.handle_tab_click(1);
+        assert_eq!(state.active_tab, 1, "Click row 1 should go to Peers");
+    }
+
+    #[test]
+    fn test_tab_click_to_log() {
+        let mut state = TuiTestState::new();
+        state.active_tab = 0;
+        state.handle_tab_click(3);
+        assert_eq!(state.active_tab, 3, "Click row 3 should go to Log");
+    }
 }
