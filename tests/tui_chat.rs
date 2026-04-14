@@ -116,4 +116,19 @@ mod tests {
         let dm2 = dm1.clone();
         assert_eq!(dm1.peer_id, dm2.peer_id);
     }
+
+    #[test]
+    fn test_tab_id_partial_eq() {
+        assert_eq!(TabId::Chat, TabId::Chat);
+        assert_ne!(TabId::Chat, TabId::Peers);
+    }
+
+    #[test]
+    fn test_dm_tab_partial_eq() {
+        let dm1 = DmTab::new("peer123".to_string());
+        let dm2 = DmTab::new("peer123".to_string());
+        let dm3 = DmTab::new("peer456".to_string());
+        assert_eq!(dm1, dm2);
+        assert_ne!(dm1, dm3);
+    }
 }

@@ -140,6 +140,7 @@ mod tui {
                         crossterm::event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
                     )
                 )?;
+                execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
 
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut direct_messages: VecDeque<String> = VecDeque::new();
@@ -514,6 +515,7 @@ mod tui {
                                     if key.code == KeyCode::Esc
                                         || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
                                     {
+                                        execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
                                         execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
                                         execute!(std::io::stdout(), LeaveAlternateScreen).ok();
                                         disable_raw_mode().ok();
@@ -521,6 +523,36 @@ mod tui {
                                     }
 
                                     let input: Input = key.into();
+
+                                    if let Event::Mouse(mouse_event) = event {
+                                        let row = mouse_event.row;
+                                        if row <= 2 {
+                                            if row == 0 {
+                                                active_tab = 0;
+                                            } else if row == 1 && !peers.is_empty() {
+                                                active_tab = 1;
+                                            } else if row == 2 {
+                                                active_tab = 3;
+                                            }
+                                        } else if active_tab == 1 && row > 2 {
+                                            let peer_idx = (row as usize - 3).saturating_sub(peer_selection);
+                                            if peer_idx < peers.len() {
+                                                peer_selection = peer_idx;
+                                                let (peer_id, _, _) = peers.get(peer_idx).cloned().unwrap_or(("".to_string(), "".to_string(), "".to_string()));
+                                                selected_peer = Some(peer_id.clone());
+                                                active_tab = 2;
+                                                direct_messages.clear();
+                                                if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
+                                                    for msg in msgs {
+                                                        let ts = format_peer_datetime(msg.created_at);
+                                                        let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                        direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        continue;
+                                    }
 
                                     if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
                                         if active_tab == 0 || active_tab == 2 {
