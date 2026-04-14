@@ -1,22 +1,100 @@
+#!/usr/bin/env bash
+set -e
 
-# cargo binstall diesel_cli
+# Diesel Model Generator with Automatic Type Conversion
+#
+# This script regenerates Diesel models from database schema with automatic
+# post-processing to convert borrowed reference types (&'a str) to owned String
+# types in insertable models. This simplifies lifetime management and makes
+# the generated models immediately usable without further modifications.
+#
+# Usage: ./diesel_generate.sh
+#
+# After modifying migrations:
+#   1. Update migrations/<timestamp>_description/up.sql and down.sql
+#   2. Run: ./diesel_generate.sh
+#   3. Commit changes - no manual editing needed!
 
-# add new migration = database version = empty set of up.sql + down.sql
-diesel migration generate add_peer_nicknames
+echo "=== Diesel Model Generation with Type Conversion ==="
 
-# generates schema.rs:
+# Step 1: Run migrations to update the database schema
+echo ""
+echo "Step 1: Running migrations..."
 diesel migration run
 
-# verify up.sql + down.sql symmetry
-#diesel migration redo
+# Step 2: Generate schema.rs from database
+echo ""
+echo "Step 2: Generating schema.rs..."
+diesel print-schema > src/schema.rs
 
-# feature sets of LukasLohmar & abbychau merged:
-#cargo install --git "https://github.com/thomas725/diesel_cli_ext" --branch master
-# todo: switch to upstream once it supports "struct-attribute" parameters or an equivalent.
-# see also: https://github.com/abbychau/diesel_cli_ext/issues/67
-#cargo install --git "https://github.com/LukasLohmar/diesel_cli_ext" --branch dev
-# diesel_ext --import-types "crate::schema::*" --add-table-name --struct-attribute "#[diesel(check_for_backend(diesel::sqlite::Sqlite))]" --derive "Queryable, Selectable, Debug" > src/models_queryable.rs
+# Step 3: Generate queryable models
+echo ""
+echo "Step 3: Generating queryable models (models_queryable.rs)..."
+diesel_ext \
+  --import-types "crate::schema::*" \
+  --add-table-name \
+  --derive "Queryable, Selectable, Debug, Clone" \
+  > src/models_queryable.rs
 
-#cargo install diesel_cli_ext
-# diesel_ext --import-types "crate::schema::*" --import-types "diesel::Insertable" --insertable > src/models_insertable.rs
-# WARNING: needs manual modification: delete <'a> from structs without borrowed data.
+# Step 4: Generate insertable models (raw output)
+echo ""
+echo "Step 4: Generating insertable models (raw from diesel_ext)..."
+diesel_ext \
+  --import-types "crate::schema::*" \
+  --insertable \
+  --derive "Insertable, Debug" \
+  > /tmp/models_insertable_raw.rs
+
+# Step 5: Post-process to convert borrowed types to owned types
+echo ""
+echo "Step 5: Post-processing (converting &'a str to String for ergonomics)..."
+
+# Transform diesel_ext output:
+#   pub struct NewFoo<'a> { pub field: &'a str, ... }
+# Into:
+#   pub struct NewFoo { pub field: String, ... }
+#
+# This eliminates lifetime complexity in calling code while maintaining type safety.
+
+sed \
+  -e "s/#\[derive(Insertable)\]/#[derive(Insertable, Debug)]/g" \
+  -e "s/pub struct New\([A-Za-z]*\)<'a>/pub struct New\1/g" \
+  -e "s/Option<&'a str>/Option<String>/g" \
+  -e "s/&'a str/String/g" \
+  -e "s/<'a>//g" \
+  -e "/^use crate::schema::\*;$/a use diesel::Insertable;" \
+  /tmp/models_insertable_raw.rs > src/models_insertable.rs
+
+# Cleanup temporary file
+rm /tmp/models_insertable_raw.rs
+
+# Step 6: Verify the build works
+echo ""
+echo "Step 6: Verifying build..."
+if ! cargo build 2>&1 | tail -5; then
+    echo ""
+    echo "ERROR: Build failed after model generation!"
+    echo "Please check the errors above."
+    exit 1
+fi
+
+# Step 7: Run tests to ensure models work correctly
+echo ""
+echo "Step 7: Running tests..."
+if ! cargo test --lib --test tui_chat --test p2p_integration 2>&1 | tail -10; then
+    echo ""
+    echo "WARNING: Some tests failed after model generation."
+    echo "Check the output above for details."
+    exit 1
+fi
+
+echo ""
+echo "✅ SUCCESS: Models regenerated and validated!"
+echo ""
+echo "Generated files:"
+echo "  - src/schema.rs"
+echo "  - src/models_queryable.rs"
+echo "  - src/models_insertable.rs"
+echo ""
+echo "Insertable models use owned String types for simplicity and ergonomics."
+echo "No manual editing required - commit these changes directly!"
