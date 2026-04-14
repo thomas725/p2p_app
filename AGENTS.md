@@ -135,7 +135,7 @@ The TUI has tabs accessible with `Tab` key:
 - **Chat**: Broadcast messages to all peers (via gossipsub)
 - **Peers**: List discovered/connected peers, press Enter to open DM
 - **Direct** (dynamic): Direct message tabs open with selected peers
-- **Debug**: Log output and system messages
+- **Log**: Log output and system messages
 
 Input is only enabled in Chat and Direct tabs. Press `Ctrl+Q` to quit.
 

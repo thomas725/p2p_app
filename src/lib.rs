@@ -88,12 +88,13 @@ pub fn push_log(message: impl Into<String>) {
         (callback)(formatted.clone());
     }
     if let Some(logs) = LOGS.get()
-        && let Ok(mut l) = logs.lock() {
-            l.push_back(formatted.clone());
-            if l.len() > 1000 {
-                l.pop_front();
-            }
+        && let Ok(mut l) = logs.lock()
+    {
+        l.push_back(formatted.clone());
+        if l.len() > 1000 {
+            l.pop_front();
         }
+    }
     if !has_callback {
         eprintln!("{}", formatted);
     }
@@ -122,12 +123,13 @@ pub fn p2plog(level: &str, msg: String) {
     }
 
     if let Some(logs) = LOGS.get()
-        && let Ok(mut l) = logs.lock() {
-            l.push_back(formatted.clone());
-            if l.len() > 1000 {
-                l.pop_front();
-            }
+        && let Ok(mut l) = logs.lock()
+    {
+        l.push_back(formatted.clone());
+        if l.len() > 1000 {
+            l.pop_front();
         }
+    }
 
     // Only print to stderr if TUI is not active (no callback set)
     if LOG_TUI_CALLBACK.get().is_none() {
@@ -525,7 +527,6 @@ pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     Ok(NetworkSize::from_peer_count(avg))
 }
 
-
 #[cfg(feature = "tui")]
 pub mod tui {
     use std::collections::{BTreeMap, VecDeque};
@@ -550,9 +551,7 @@ pub mod tui {
 
     impl TuiTestState {
         pub fn new() -> Self {
-            Self::with_messages(
-                TEST_MESSAGES.iter().map(|s| s.to_string()).collect()
-            )
+            Self::with_messages(TEST_MESSAGES.iter().map(|s| s.to_string()).collect())
         }
 
         pub fn with_messages(messages: VecDeque<String>) -> Self {
@@ -604,6 +603,60 @@ pub mod tui {
     impl Default for TuiTestState {
         fn default() -> Self {
             Self::new()
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum TabId {
+        Chat,
+        Peers,
+        Direct,
+        Log,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct DmTab {
+        pub peer_id: String,
+        pub messages: VecDeque<String>,
+    }
+
+    impl DmTab {
+        pub fn new(peer_id: String) -> Self {
+            Self {
+                peer_id,
+                messages: VecDeque::new(),
+            }
+        }
+
+        pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
+            Self { peer_id, messages }
+        }
+    }
+
+    impl TabId {
+        pub fn index(&self) -> usize {
+            match self {
+                TabId::Chat => 0,
+                TabId::Peers => 1,
+                TabId::Direct => 2,
+                TabId::Log => 3,
+            }
+        }
+
+        pub fn from_index(idx: usize) -> Self {
+            match idx {
+                0 => TabId::Chat,
+                1 => TabId::Peers,
+                2 => TabId::Direct,
+                3 => TabId::Log,
+                _ => TabId::Chat,
+            }
+        }
+    }
+
+    impl Default for TabId {
+        fn default() -> Self {
+            TabId::Chat
         }
     }
 }
