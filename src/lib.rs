@@ -834,11 +834,12 @@ pub mod tui {
         }
 
         pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
+            let log_index = 2 + self.dm_tabs.len();
             match tab_idx {
                 0 => TabContent::Chat,
                 1 => TabContent::Peers,
-                idx if idx == self.base_tab_count() => TabContent::Log,
-                idx if idx >= 2 && idx < self.base_tab_count() => {
+                idx if idx == log_index => TabContent::Log,
+                idx if idx >= 2 && idx < log_index => {
                     let dm_idx = idx - 2;
                     if let Some(tab) = self.dm_tabs.get(dm_idx) {
                         TabContent::Direct(tab.peer_id.clone())
@@ -851,8 +852,8 @@ pub mod tui {
         }
 
         #[must_use]
-        pub fn base_tab_count(&self) -> usize {
-            2 + self.dm_tabs.len()
+        pub fn total_tab_count(&self) -> usize {
+            3 + self.dm_tabs.len()
         }
     }
 

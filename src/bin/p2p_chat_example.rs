@@ -525,7 +525,7 @@ mod tui {
 
                                     let input: Input = key.into();
                                     let tab_content = dynamic_tabs.tab_index_to_content(active_tab);
-                                    let tab_count = dynamic_tabs.base_tab_count();
+                                    let tab_count = dynamic_tabs.total_tab_count();
 
                                     if let Event::Mouse(mouse_event) = event {
                                         let row = mouse_event.row;
