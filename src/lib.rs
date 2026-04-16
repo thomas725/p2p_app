@@ -2,6 +2,9 @@ pub mod models_insertable;
 pub mod models_queryable;
 pub mod schema;
 
+#[cfg(feature = "tui")]
+pub use tui::{DynamicTabs, TabContent};
+
 #[cfg(feature = "mdns")]
 use libp2p::mdns;
 use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};

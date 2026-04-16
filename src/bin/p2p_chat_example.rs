@@ -1,5 +1,5 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::{AppBehaviour, build_behaviour, init_logging, p2plog_warn};
+use p2p_app::{AppBehaviour, build_behaviour, init_logging};
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -11,11 +11,11 @@ mod tui {
     use libp2p::mdns;
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
-        AppBehaviourEvent as AppEv, DirectMessage, NetworkSize, format_peer_datetime,
-        get_database_url, get_network_size, get_unsent_messages, init_logging,
-        load_direct_messages, load_listen_ports, load_messages, load_peers, mark_message_sent,
-        now_timestamp, p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer,
-        save_peer_session,
+        AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
+        format_peer_datetime, get_database_url, get_network_size, get_unsent_messages,
+        init_logging, load_direct_messages, load_listen_ports, load_messages, load_peers,
+        mark_message_sent, now_timestamp, p2plog_error, p2plog_info, save_listen_ports,
+        save_message, save_peer, save_peer_session,
     };
     use ratatui::crossterm::{
         event::{
@@ -33,7 +33,7 @@ mod tui {
         widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     };
     use ratatui_textarea::{Input, TextArea};
-    use std::collections::VecDeque;
+    use std::collections::{HashMap, VecDeque};
     use std::sync::{Arc, Mutex};
     use std::time::{Duration, SystemTime};
     use tracing_subscriber::prelude::*;
@@ -101,16 +101,17 @@ mod tui {
                 .as_secs_f64();
             let diff = recv - sent;
             if diff.abs() < 10.0 {
-                return format!("[{:.3}s]", diff);
+                format!("[{:.3}s]", diff)
             } else {
                 let sent_str = format_system_time(
                     std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(sent),
                 );
                 let recv_str = format_system_time(received_at);
-                return format!("[sent:{} recv:{}]", sent_str, recv_str);
+                format!("[sent:{} recv:{}]", sent_str, recv_str)
             }
+        } else {
+            String::new()
         }
-        String::new()
     }
 
     fn log_debug(logs: &Mutex<VecDeque<String>>, message: impl Into<String>) {
@@ -144,17 +145,14 @@ mod tui {
                 execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
 
                 let mut messages: VecDeque<String> = VecDeque::new();
-                let mut direct_messages: VecDeque<String> = VecDeque::new();
+                let mut dm_messages: HashMap<String, VecDeque<String>> = HashMap::new();
                 let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
-                // active_tab indices: 0=Chat, 1=Peers, 2=Direct (selected peer), 3=Debug
+                let mut dynamic_tabs = DynamicTabs::new();
                 let mut active_tab = 0;
-                let mut selected_peer: Option<String> = None;
+                let mut dm_inputs: HashMap<String, TextArea> = HashMap::new();
                 let mut chat_input = TextArea::default();
                 chat_input.set_line_number_style(Style::default());
                 chat_input.set_cursor_line_style(Style::default());
-                let mut dm_input = TextArea::default();
-                dm_input.set_line_number_style(Style::default());
-                dm_input.set_cursor_line_style(Style::default());
                 let mut concurrent_peers: usize = 0;
                 let mut peer_selection: usize = 0;
                 let mut debug_scroll_offset: usize = 0;
@@ -277,518 +275,550 @@ mod tui {
                 }
 
                 let mut unread_broadcasts: u32 = 0;
-                let mut unread_dms: std::collections::HashMap<String, u32> =
-                    std::collections::HashMap::new();
+                let mut unread_dms: HashMap<String, u32> = HashMap::new();
 
                 loop {
                     tokio::select! {
-                                                                                    biased;
+                        biased;
 
-                                                                                    event = swarm.select_next_some() => {
-                                                                                        match event {
-                                                                                            SwarmEvent::Behaviour(AppEv::Gossipsub(
-                                                                                                gossipsub::Event::Message {
-                                                                                                    propagation_source: peer_id,
-                                                                                                    message,
-                                                                                                    ..
-                                                                                                },
-                                                                                             )) => {
-                                                                                                 let peer_id_str = peer_id.to_string();
-                                                                                                 let raw = String::from_utf8_lossy(&message.data).to_string();
-                                                                                                 let now = SystemTime::now();
-                                                                                                 let ts = format_system_time(now);
+                        event = swarm.select_next_some() => {
+                            match event {
+                                SwarmEvent::Behaviour(AppEv::Gossipsub(
+                                    gossipsub::Event::Message {
+                                        propagation_source: peer_id,
+                                        message,
+                                        ..
+                                    },
+                                )) => {
+                                    let peer_id_str = peer_id.to_string();
+                                    let raw = String::from_utf8_lossy(&message.data).to_string();
+                                    let now = SystemTime::now();
+                                    let ts = format_system_time(now);
 
-                                                                                                 let (content, sent_at) = if let Ok(bcast) = serde_json::from_str::<p2p_app::BroadcastMessage>(&raw) {
-                                                                                                     (bcast.content, bcast.sent_at)
-                                                                                                 } else {
-                                                                                                     (raw, None)
-                                                                                                 };
+                                    let (content, sent_at) = if let Ok(bcast) = serde_json::from_str::<p2p_app::BroadcastMessage>(&raw) {
+                                        (bcast.content, bcast.sent_at)
+                                    } else {
+                                        (raw, None)
+                                    };
 
-                                                                                                 let latency = format_latency(sent_at, now);
-                                                                                                 let msg = format!("{} {} [{}] {}", ts, latency, &peer_id_str[peer_id_str.len().saturating_sub(8)..], content);
-                                                                                                 messages.push_back(msg.clone());
-                                                                                                 if messages.len() > MAX_MESSAGES {
-                                                                                                     messages.pop_front();
-                                                                                                 }
-                                                                                                 if active_tab != 0 {
-                                                                                                     unread_broadcasts += 1;
-                                                                                                 }
-                                                                                                 if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
-                                                                                                     log_debug(&logs, format!("Failed to save message: {}", e));
-                                                                                                 }
-                                                                                             }
-                                                                                            SwarmEvent::Behaviour(AppEv::RequestResponse(
-                                                                                                libp2p::request_response::Event::Message { peer, message, .. },
-                                                                                            )) => {
-                                                                                                match message {
-                                                                                                    libp2p::request_response::Message::Request { request, channel, .. } => {
-                                                                                                        let peer_id_str = peer.to_string();
-                                                                                                        let content = request.content.clone();
-                                                                                                        let now = SystemTime::now();
-                                                                                                        let ts = format_system_time(now);
-                                                                                                        let latency = format_latency(request.sent_at, now);
+                                    let latency = format_latency(sent_at, now);
+                                    let msg = format!("{} {} [{}] {}", ts, latency, &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content);
+                                    messages.push_back(msg.clone());
+                                    if messages.len() > MAX_MESSAGES {
+                                        messages.pop_front();
+                                    }
+                                    if active_tab != 0 {
+                                        unread_broadcasts += 1;
+                                    }
+                                    if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
+                                        log_debug(&logs, format!("Failed to save message: {}", e));
+                                    }
+                                }
+                                SwarmEvent::Behaviour(AppEv::RequestResponse(
+                                    libp2p::request_response::Event::Message { peer, message, .. },
+                                )) => {
+                                    match message {
+                                        libp2p::request_response::Message::Request { request, channel, .. } => {
+                                            let peer_id_str = peer.to_string();
+                                            let content = request.content.clone();
+                                            let now = SystemTime::now();
+                                            let ts = format_system_time(now);
+                                            let latency = format_latency(request.sent_at, now);
 
-                                                                                                        if selected_peer.clone() == Some(peer_id_str.clone()) {
-                                                                                                            let msg = format!("{} {} [Peer] {}", ts, latency, content);
-                                                                                                            direct_messages.push_back(msg.clone());
-                                                                                                            if direct_messages.len() > MAX_MESSAGES {
-                                                                                                                direct_messages.pop_front();
-                                                                                                            }
-                                                                                                            if active_tab != 2 {
-                                                                                                                *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
-                                                                                                            }
-                                                                                                        } else {
-                                                                                                             log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content));
-                                                                                                             *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
-                                                                                                        }
+                                            let current_peer = match dynamic_tabs.tab_index_to_content(active_tab) {
+                                                TabContent::Direct(id) => Some(id),
+                                                _ => None,
+                                            };
+                                            let is_current_dm = current_peer.as_ref() == Some(&peer_id_str);
 
-                                                                                                        if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
-                                                                                                             log_debug(&logs, format!("Failed to save DM: {}", e));
-                                                                                                        }
+                                            let dm_msgs = dm_messages.entry(peer_id_str.clone()).or_default();
+                                            let msg = format!("{} {} [Peer] {}", ts, latency, content);
+                                            dm_msgs.push_back(msg.clone());
+                                            if dm_msgs.len() > MAX_MESSAGES {
+                                                dm_msgs.pop_front();
+                                            }
 
-                                                                                                        let response = DirectMessage {
-                                                                                                            content: "ok".to_string(),
-                                                                                                            timestamp: chrono::Utc::now().timestamp(),
-                                                                                                            sent_at: Some(std::time::SystemTime::now()
-                                                                                                                .duration_since(std::time::UNIX_EPOCH)
-                                                                                                                .expect("system time is valid")
-                                                                                                                .as_secs_f64()),
-                                                                                                        };
-                                                                                                        let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
-                                                                                                    }
-                                                                                                    libp2p::request_response::Message::Response { request_id, response } => {
-                                                                                                        let _ = request_id;
-                                                                                                         log_debug(&logs, format!("DM response received: {}", response.content));
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                            #[cfg(feature = "mdns")]
-                                                                                            SwarmEvent::Behaviour(AppEv::Mdns(
-                                                                                                mdns::Event::Discovered(list),
-                                                                                            )) => {
-                                                                                                for (peer_id, multiaddr) in list {
-                                                                                                    let peer_id_str = peer_id.to_string();
-                                                                                                    let addresses = vec![multiaddr.to_string()];
-                                                                                                    match save_peer(&peer_id_str, &addresses) {
-                                                                                                        Ok(peer) => {
-                                                                                                            let first_seen = format_peer_datetime(peer.first_seen);
-                                                                                                            let last_seen = format_peer_datetime(peer.last_seen);
-                                                                                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                                                                                peers.push_front((peer_id_str.clone(), first_seen, last_seen));
-                                                                                                            }
-                                                                                                        }
-                                                                                                        Err(e) => {
-                                                                                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                                                                                peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
-                                                                                                            }
-                                                                                                            log_debug(&logs, format!("Failed to save peer: {}", e));
-                                                                                                        }
-                                                                                                    }
-                                                                                                    swarm.dial(multiaddr.clone()).ok();
-                                                                                                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                                                                                                }
-                                                                                            }
-                                                                                            #[cfg(feature = "mdns")]
-                                                                                            SwarmEvent::Behaviour(AppEv::Mdns(
-                                                                                                mdns::Event::Expired(list),
-                                                                                                )) => {
-                                                                                                for (peer_id, multiaddr) in list {
-                                                                                                    log_debug(&logs, format!("mDNS expired: {} at {}", peer_id, multiaddr));
-                                                                                                    swarm
-                                                                                                        .behaviour_mut()
-                                                                                                        .gossipsub
-                                                                                                        .remove_explicit_peer(&peer_id);
-                                                                                                }
-                                                                                            }
-                                                                                            SwarmEvent::NewListenAddr { address, .. } => {
-                                                                                                log_debug(&logs, format!("Listening on: {}", address));
-                                                                                                if let Some(port) = address
-                                                                                                    .iter()
-                                                                                                    .find_map(|p| match p {
-                                                                                                        libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-                                                                                                        _ => None,
-                                                                                                    })
-                                                                                                {
-                                                                                                    let _ = save_listen_ports(Some(port), None);
-                                                                                                }
-                                                                                                #[cfg(feature = "quic")]
-                                                                                                if let Some(port) = address
-                                                                                                    .iter()
-                                                                                                    .find_map(|p| match p {
-                                                                                                        libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-                                                                                                        _ => None,
-                                                                                                    })
-                                                                                                {
-                    let (last_tcp_port, _last_quic_port) = load_listen_ports().unwrap_or((None, None));
+                                            if !is_current_dm {
+                                                *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
+                                                dynamic_tabs.add_dm_tab(peer_id_str.clone());
+                                            } else {
+                                                log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content));
+                                            }
+
+                                            if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
+                                                log_debug(&logs, format!("Failed to save DM: {}", e));
+                                            }
+
+                                            let response = DirectMessage {
+                                                content: "ok".to_string(),
+                                                timestamp: chrono::Utc::now().timestamp(),
+                                                sent_at: Some(std::time::SystemTime::now()
+                                                    .duration_since(std::time::UNIX_EPOCH)
+                                                    .expect("system time is valid")
+                                                    .as_secs_f64()),
+                                            };
+                                            let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
+                                        }
+                                        libp2p::request_response::Message::Response { request_id, response } => {
+                                            let _ = request_id;
+                                            log_debug(&logs, format!("DM response received: {}", response.content));
+                                        }
+                                    }
+                                }
+                                #[cfg(feature = "mdns")]
+                                SwarmEvent::Behaviour(AppEv::Mdns(
+                                    mdns::Event::Discovered(list),
+                                )) => {
+                                    for (peer_id, multiaddr) in list {
+                                        let peer_id_str = peer_id.to_string();
+                                        let addresses = vec![multiaddr.to_string()];
+                                        match save_peer(&peer_id_str, &addresses) {
+                                            Ok(peer) => {
+                                                let first_seen = format_peer_datetime(peer.first_seen);
+                                                let last_seen = format_peer_datetime(peer.last_seen);
+                                                if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                    peers.push_front((peer_id_str.clone(), first_seen, last_seen));
+                                                }
+                                            }
+                                            Err(e) => {
+                                                if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                    peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                                }
+                                                log_debug(&logs, format!("Failed to save peer: {}", e));
+                                            }
+                                        }
+                                        swarm.dial(multiaddr.clone()).ok();
+                                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                    }
+                                }
+                                #[cfg(feature = "mdns")]
+                                SwarmEvent::Behaviour(AppEv::Mdns(
+                                    mdns::Event::Expired(list),
+                                )) => {
+                                    for (peer_id, multiaddr) in list {
+                                        log_debug(&logs, format!("mDNS expired: {} at {}", peer_id, multiaddr));
+                                        swarm
+                                            .behaviour_mut()
+                                            .gossipsub
+                                            .remove_explicit_peer(&peer_id);
+                                    }
+                                }
+                                SwarmEvent::NewListenAddr { address, .. } => {
+                                    log_debug(&logs, format!("Listening on: {}", address));
+                                    if let Some(port) = address
+                                        .iter()
+                                        .find_map(|p| match p {
+                                            libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+                                            _ => None,
+                                        })
+                                    {
+                                        let _ = save_listen_ports(Some(port), None);
+                                    }
+                                    #[cfg(feature = "quic")]
+                                    if let Some(port) = address
+                                        .iter()
+                                        .find_map(|p| match p {
+                                            libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+                                            _ => None,
+                                        })
+                                    {
+                                        let (last_tcp_port, _last_quic_port) = load_listen_ports().unwrap_or((None, None));
                                         let _ = save_listen_ports(last_tcp_port, Some(port));
-                                                                                                }
-                                                                                            }
-                                                                                            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                                                                                                concurrent_peers += 1;
-                                                                                                log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
-                                                                                                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                                    }
+                                }
+                                SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                                    concurrent_peers += 1;
+                                    log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
+                                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 
-                                                                                                let peer_id_str = peer_id.to_string();
-                                                                                                let addresses = vec![peer_id_str.clone()];
-                                                                                                match save_peer(&peer_id_str, &addresses) {
-                                                                                                    Ok(peer) => {
-                                                                                                        let first_seen = format_peer_datetime(peer.first_seen);
-                                                                                                        let last_seen = format_peer_datetime(peer.last_seen);
-                                                                                                        if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                                                                            peers.push_front((peer_id_str, first_seen, last_seen));
-                                                                                                        }
-                                                                                                    }
-                                                                                                    Err(e) => {
-                                                                                                        if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
-                                                                                                            peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
-                                                                                                        }
-                                                                                                        log_debug(&logs, format!("Failed to save peer: {}", e));
-                                                                                                    }
-                                                                                                }
+                                    let peer_id_str = peer_id.to_string();
+                                    let addresses = vec![peer_id_str.clone()];
+                                    match save_peer(&peer_id_str, &addresses) {
+                                        Ok(peer) => {
+                                            let first_seen = format_peer_datetime(peer.first_seen);
+                                            let last_seen = format_peer_datetime(peer.last_seen);
+                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                peers.push_front((peer_id_str, first_seen, last_seen));
+                                            }
+                                        }
+                                        Err(e) => {
+                                            if !peers.iter().any(|(id, _, _)| id == &peer_id_str) {
+                                                peers.push_front((peer_id_str.clone(), now_timestamp(), now_timestamp()));
+                                            }
+                                            log_debug(&logs, format!("Failed to save peer: {}", e));
+                                        }
+                                    }
 
-                                                                                                if let Ok(unsent) = get_unsent_messages(&topic_str)
-                                                                                                    && !unsent.is_empty()
-                                                                                                {
-                                                                                                    log_debug(&logs, format!("Retrying {} unsent messages", unsent.len()));
-                                                                                                    for msg in unsent {
-                                                                                                        let topic = gossipsub::IdentTopic::new("test-net");
-                                                                                                        if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, msg.content.as_bytes()) {
-                                                                                                            log_debug(&logs, format!("Retry publish failed: {:?}", e));
-                                                                                                        } else {
-                                                                                                            let _ = mark_message_sent(msg.id);
-                                                                                                            let ts = format_system_time(SystemTime::now());
-                                                                                                            let retry_msg = format!("{} [You] {} (sent)", ts, msg.content);
-                                                                                                            messages.push_back(retry_msg);
-                                                                                                        }
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                            SwarmEvent::ConnectionClosed {
-                                                                                                peer_id, cause: _, ..
-                                                                                            } => {
-                                                                                                concurrent_peers = concurrent_peers.saturating_sub(1);
-                                                                                                log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, &peer_id.to_string()[peer_id.to_string().len().saturating_sub(8)..]));
-                                                                                                if let Err(e) = save_peer_session(concurrent_peers as i32) {
-                                                                                                    log_debug(&logs, format!("Failed to save peer session: {}", e));
-                                                                                                }
-                                                                                            }
-                                                                                            SwarmEvent::Dialing { peer_id: Some(_pid), .. } => {
-                                                                                            }
-                                                                                            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                                                                                                log_debug(&logs, format!("Dial failed: peer={:?}, error={}", peer_id, error));
-                                                                                            }
-                                                                                            SwarmEvent::ExpiredListenAddr { address, .. } => {
-                                                                                                log_debug(&logs, format!("Expired listen addr: {}", address));
-                                                                                            }
-                                                                                            SwarmEvent::ListenerError { listener_id, error } => {
-                                                                                                log_debug(&logs, format!("Listener {:?} error: {}", listener_id, error));
-                                                                                            }
-                                                                                            SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
-                                                                                                log_debug(&logs, format!("Listener {:?} closed: {:?} ({:?})", listener_id, reason, addresses));
-                                                                                            }
-                                                                                            SwarmEvent::IncomingConnection { .. } => {}
-                                                                                            SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
-                                                                                                let err_str = format!("{}", error);
-                                                                                                if err_str.contains("ConnectionClosed") || err_str.contains("TimedOut") {
-                                                                                                } else {
-                                                                                                    log_debug(&logs, format!("Connection {:?} error: {} from {:?} to {:?}",
-                                                                                                        connection_id, error, local_addr, send_back_addr));
-                                                                                                }
-                                                                                            }
-                                                                                            _ => {}
-                                                                                        }
+                                    if let Ok(unsent) = get_unsent_messages(&topic_str)
+                                        && !unsent.is_empty()
+                                    {
+                                        log_debug(&logs, format!("Retrying {} unsent messages", unsent.len()));
+                                        for msg in unsent {
+                                            let topic = gossipsub::IdentTopic::new("test-net");
+                                            if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic, msg.content.as_bytes()) {
+                                                log_debug(&logs, format!("Retry publish failed: {:?}", e));
+                                            } else {
+                                                let _ = mark_message_sent(msg.id);
+                                                let ts = format_system_time(SystemTime::now());
+                                                let retry_msg = format!("{} [You] {} (sent)", ts, msg.content);
+                                                messages.push_back(retry_msg);
+                                            }
+                                        }
+                                    }
+                                }
+                                SwarmEvent::ConnectionClosed {
+                                    peer_id, cause: _, ..
+                                } => {
+                                    concurrent_peers = concurrent_peers.saturating_sub(1);
+                                    log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, &peer_id.to_string()[peer_id.to_string().len().saturating_sub(8.min(peer_id.to_string().len()))..]));
+                                    if let Err(e) = save_peer_session(concurrent_peers as i32) {
+                                        log_debug(&logs, format!("Failed to save peer session: {}", e));
+                                    }
+                                }
+                                SwarmEvent::Dialing { peer_id: Some(_pid), .. } => {}
+                                SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                                    log_debug(&logs, format!("Dial failed: peer={:?}, error={}", peer_id, error));
+                                }
+                                SwarmEvent::ExpiredListenAddr { address, .. } => {
+                                    log_debug(&logs, format!("Expired listen addr: {}", address));
+                                }
+                                SwarmEvent::ListenerError { listener_id, error } => {
+                                    log_debug(&logs, format!("Listener {:?} error: {}", listener_id, error));
+                                }
+                                SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
+                                    log_debug(&logs, format!("Listener {:?} closed: {:?} ({:?})", listener_id, reason, addresses));
+                                }
+                                SwarmEvent::IncomingConnection { .. } => {}
+                                SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
+                                    let err_str = format!("{}", error);
+                                    if err_str.contains("ConnectionClosed") || err_str.contains("TimedOut") {
+                                    } else {
+                                        log_debug(&logs, format!("Connection {:?} error: {} from {:?} to {:?}",
+                                            connection_id, error, local_addr, send_back_addr));
+                                    }
+                                }
+                                _ => {}
+                            }
 
-                                                                                        if let Ok(l) = logs.lock()
-                                                                                            && l.len() > MAX_LOGS {
-                                                                                                drop(l);
-                                                                                                if let Ok(mut l) = logs.lock() {
-                                                                                                    l.pop_front();
-                                                                                                }
-                                                                                            }
-                                                                                    }
+                            if let Ok(l) = logs.lock()
+                                && l.len() > MAX_LOGS {
+                                    drop(l);
+                                    if let Ok(mut l) = logs.lock() {
+                                        l.pop_front();
+                                    }
+                                }
+                        }
 
-                                                                                    _ = tokio::time::sleep(Duration::from_millis(16)) => {
-                                                                                        if poll(Duration::ZERO).ok() == Some(true)
-                                                                                            && let Ok(event) = read()
-                                                                                            && let Event::Key(key) = event {
-                                                                                                if key.code == KeyCode::Esc
-                                                                                                    || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
-                                                                                                {
-                                                                                                    execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
-                                                                                                    execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
-                                                                                                    execute!(std::io::stdout(), LeaveAlternateScreen).ok();
-                                                                                                    disable_raw_mode().ok();
-                                                                                                    return Ok(());
-                                                                                                }
+                        _ = tokio::time::sleep(Duration::from_millis(16)) => {
+                            if poll(Duration::ZERO).ok() == Some(true)
+                                && let Ok(event) = read()
+                                && let Event::Key(key) = event {
+                                    if key.code == KeyCode::Esc
+                                        || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
+                                    {
+                                        execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
+                                        execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
+                                        execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+                                        disable_raw_mode().ok();
+                                        return Ok(());
+                                    }
 
-                                                                                                let input: Input = key.into();
+                                    let input: Input = key.into();
+                                    let tab_content = dynamic_tabs.tab_index_to_content(active_tab);
+                                    let tab_count = dynamic_tabs.base_tab_count();
 
-                                                                                                if let Event::Mouse(mouse_event) = event {
-                                                                                                    let row = mouse_event.row;
-                                                                                                    if row <= 2 {
-                                                                                                        if row == 0 {
-                                                                                                            active_tab = 0;
-                                                                                                        } else if row == 1 && !peers.is_empty() {
-                                                                                                            active_tab = 1;
-                                                                                                        } else if row == 2 {
-                                                                                                            active_tab = 3;
-                                                                                                        }
-                                                                                                    } else if active_tab == 1 && row > 2 {
-                                                                                                        let peer_idx = (row as usize - 3).saturating_sub(peer_selection);
-                                                                                                        if peer_idx < peers.len() {
-                                                                                                            peer_selection = peer_idx;
-                                                                                                            let (peer_id, _, _) = peers.get(peer_idx).cloned().unwrap_or(("".to_string(), "".to_string(), "".to_string()));
-                                                                                                            selected_peer = Some(peer_id.clone());
-                                                                                                            active_tab = 2;
-                                                                                                            direct_messages.clear();
-                                                                                                            if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
-                                                                                                                for msg in msgs {
-                                                                                                                    let ts = format_peer_datetime(msg.created_at);
-                                                                                                                    let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
-                                                                                                                    direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
-                                                                                                                }
-                                                                                                            }
-                                                                                                        }
-                                                                                                    }
-                                                                                                    continue;
-                                                                                                }
+                                    if let Event::Mouse(mouse_event) = event {
+                                        let row = mouse_event.row;
+                                        let col = mouse_event.column as usize;
 
-                                                                                                if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
-                                                                                                    if active_tab == 0 || active_tab == 2 {
-                                                                                                        let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
-                                                                                                        textarea.input_without_shortcuts(input);
-                                                                                                    }
-                                                                                                } else if key.code == KeyCode::Enter {
-                                                                                                    if active_tab == 0 {
-                                                                                                        let lines = chat_input.lines();
-                                                                                                        let text: String = lines.join("\n");
-                                                                                                        if !text.trim().is_empty() {
-                                                                                                            let ts = format_system_time(SystemTime::now());
-                                                                                                            let msg_str = format!("{} [You] {}", ts, text);
-                                                                                                            messages.push_back(msg_str.clone());
+                                        if row == 0 {
+                                            let titles = dynamic_tabs.all_titles();
+                                            let mut char_pos = 0;
+                                            for (i, title) in titles.iter().enumerate() {
+                                                let title_len = title.len();
+                                                if col >= char_pos && col < char_pos + title_len {
+                                                    if title.contains("(X)") && matches!(dynamic_tabs.tab_index_to_content(i), TabContent::Direct(_)) {
+                                                        let dm_idx = i - 2;
+                                                        if let Some(tab) = dynamic_tabs.dm_tabs.get(dm_idx) {
+                                                            let peer_id = tab.peer_id.clone();
+                                                            dynamic_tabs.remove_dm_tab(&peer_id);
+                                                            dm_messages.remove(&peer_id);
+                                                            dm_inputs.remove(&peer_id);
+                                                            unread_dms.remove(&peer_id);
+                                                        }
+                                                    } else {
+                                                        active_tab = i;
+                                                    }
+                                                    break;
+                                                }
+                                                char_pos += title_len + 2;
+                                            }
+                                            continue;
+                                        }
 
-                                                                                                            let topic = gossipsub::IdentTopic::new("test-net");
-                                                                                                            log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
-                                                                                                let now = SystemTime::now();
-                                                                                                let sent_at = now
-                                                                                                    .duration_since(std::time::UNIX_EPOCH)
-                                                                                                    .expect("system time is valid")
-                                                                                                    .as_secs_f64();
-                                                                                                let broadcast = p2p_app::BroadcastMessage {
-                                                                                                    content: text.clone(),
-                                                                                                    sent_at: Some(sent_at),
-                                                                                                };
-                                                                                                let payload = serde_json::to_string(&broadcast).unwrap_or(text.clone());
-                                                                                                let publish_result = swarm.behaviour_mut().gossipsub.publish(
-                                                                                                    topic,
-                                                                                                    payload.as_bytes(),
-                                                                                                );
+                                        if row == 1 {
+                                            active_tab = tab_count - 1;
+                                            continue;
+                                        }
 
-                                                                                                            if let Err(e) = publish_result {
-                                                                                                                log_debug(&logs, format!("Publish error: {:?}", e));
-                                                                                                            } else {
-                                                                                                                log_debug(&logs, "Message published successfully".to_string());
-                                                                                                            }
+                                        if matches!(tab_content, TabContent::Peers) && row > 1 {
+                                            let peer_idx = row as usize - 2;
+                                            if peer_idx < peers.len() {
+                                                peer_selection = peer_idx;
+                                                let (peer_id, _, _) = peers.get(peer_idx).cloned().unwrap_or(("".to_string(), "".to_string(), "".to_string()));
+                                                active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
+                                                dm_msgs.clear();
+                                                if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
+                                                    for msg in msgs {
+                                                        let ts = format_peer_datetime(msg.created_at);
+                                                        let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                        dm_msgs.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                    }
+                                                }
+                                            }
+                                            continue;
+                                        }
+                                    }
 
-                                                                                                            if let Err(e) = save_message(&text, None, &topic_str, false, None) {
-                                                                                                                log_debug(&logs, format!("Failed to save message: {}", e));
-                                                                                                            }
-                                                                                                        }
-                                                                                                        chat_input = TextArea::default();
-                                                                                                        chat_input.set_line_number_style(Style::default());
-                                                                                                        chat_input.set_cursor_line_style(Style::default());
-                                                                                                    } else if active_tab == 1 && !peers.is_empty() {
-                                                                                                        let idx = peer_selection.min(peers.len() - 1);
-                                                                                                        if let Some(peer) = peers.get(idx).cloned() {
-                                                                                                            let (peer_id, _, _) = peer;
-                                                                                                            selected_peer = Some(peer_id.clone());
-                                                                                                            active_tab = 2;
-                                                                                                            direct_messages.clear();
-                                                                                                            if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
-                                                                                                                for msg in msgs {
-                                                                                                                    let ts = format_peer_datetime(msg.created_at);
-                                                                                                                    let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
-                                                                                                                    direct_messages.push_back(format!("{} {} {}", ts, sender, msg.content));
-                                                                                                                }
-                                                                                                            }
-                                                                                                        }
-                                                                                                    } else if active_tab == 2 {
-                                                                                                        let Some(target) = selected_peer.as_ref() else { continue; };
-                                                                                                        let lines = dm_input.lines();
-                                                                                                        let text: String = lines.join("\n");
-                                                                                                        if !text.trim().is_empty() {
-                                                                                                            let ts = format_system_time(SystemTime::now());
-                                                                                                            let msg_str = format!("{} [You] {}", ts, text);
-                                                                                                            direct_messages.push_back(msg_str.clone());
-                                                                                                            log_debug(&logs, format!("Sending DM to {}", target));
+                                    if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
+                                        if tab_content.is_input_enabled() {
+                                            match &tab_content {
+                                                TabContent::Chat => { chat_input.input_without_shortcuts(input); }
+                                                TabContent::Direct(peer_id) => {
+                                                    let dm_input = dm_inputs.entry(peer_id.clone()).or_insert_with(|| {
+                                                        let mut ta = TextArea::default();
+                                                        ta.set_line_number_style(Style::default());
+                                                        ta.set_cursor_line_style(Style::default());
+                                                        ta
+                                                    });
+                                                    dm_input.input_without_shortcuts(input);
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                    } else if key.code == KeyCode::Enter {
+                                        match tab_content {
+                                            TabContent::Chat => {
+                                                let lines = chat_input.lines();
+                                                let text: String = lines.join("\n");
+                                                if !text.trim().is_empty() {
+                                                    let ts = format_system_time(SystemTime::now());
+                                                    let msg_str = format!("{} [You] {}", ts, text);
+                                                    messages.push_back(msg_str.clone());
 
-                                                                                                            let peer_id: libp2p::PeerId = match target.parse() {
-                                                                                                                Ok(pid) => pid,
-                                                                                                                Err(e) => {
-                                                                                                                    log_debug(&logs, format!("Invalid peer ID: {}", e));
-                                                                                                                    dm_input = TextArea::default();
-                                                                                                                    dm_input.set_line_number_style(Style::default());
-                                                                                                                    dm_input.set_cursor_line_style(Style::default());
-                                                                                                                    continue;
-                                                                                                                }
-                                                                                                            };
+                                                    let topic = gossipsub::IdentTopic::new("test-net");
+                                                    log_debug(&logs, format!("Publishing to gossipsub topic: {}", topic));
+                                                    let now = SystemTime::now();
+                                                    let sent_at = now
+                                                        .duration_since(std::time::UNIX_EPOCH)
+                                                        .expect("system time is valid")
+                                                        .as_secs_f64();
+                                                    let broadcast = p2p_app::BroadcastMessage {
+                                                        content: text.clone(),
+                                                        sent_at: Some(sent_at),
+                                                    };
+                                                    let payload = serde_json::to_string(&broadcast).unwrap_or(text.clone());
+                                                    let publish_result = swarm.behaviour_mut().gossipsub.publish(
+                                                        topic,
+                                                        payload.as_bytes(),
+                                                    );
 
-                                                                                                            let dm = DirectMessage {
-                                                                                                                content: text.clone(),
-                                                                                                                timestamp: chrono::Utc::now().timestamp(),
-                                                                                                                sent_at: Some(std::time::SystemTime::now()
-                                                                                                                    .duration_since(std::time::UNIX_EPOCH)
-                                                                                                                    .expect("system time is valid")
-                                                                                                                    .as_secs_f64()),
-                                                                                                            };
+                                                    if let Err(e) = publish_result {
+                                                        log_debug(&logs, format!("Publish error: {:?}", e));
+                                                    } else {
+                                                        log_debug(&logs, "Message published successfully".to_string());
+                                                    }
 
-                                                                                                            swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
-                                                                                                            log_debug(&logs, format!("DM request sent to {}", target));
+                                                    if let Err(e) = save_message(&text, None, &topic_str, false, None) {
+                                                        log_debug(&logs, format!("Failed to save message: {}", e));
+                                                    }
+                                                }
+                                                chat_input = TextArea::default();
+                                                chat_input.set_line_number_style(Style::default());
+                                                chat_input.set_cursor_line_style(Style::default());
+                                            }
+                                            TabContent::Peers if !peers.is_empty() => {
+                                                let idx = peer_selection.min(peers.len() - 1);
+                                                if let Some(peer) = peers.get(idx).cloned() {
+                                                    let (peer_id, _, _) = peer;
+                                                    active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                    let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
+                                                    dm_msgs.clear();
+                                                    if let Ok(msgs) = load_direct_messages(&peer_id, MAX_MESSAGES) {
+                                                        for msg in msgs {
+                                                            let ts = format_peer_datetime(msg.created_at);
+                                                            let sender = if msg.peer_id.is_some() { "[You]" } else { "[Peer]" };
+                                                            dm_msgs.push_back(format!("{} {} {}", ts, sender, msg.content));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            TabContent::Direct(target) => {
+                                                let dm_input = dm_inputs.entry(target.clone()).or_insert_with(|| {
+                                                    let mut ta = TextArea::default();
+                                                    ta.set_line_number_style(Style::default());
+                                                    ta.set_cursor_line_style(Style::default());
+                                                    ta
+                                                });
+                                                let lines = dm_input.lines();
+                                                let text: String = lines.join("\n");
+                                                if !text.trim().is_empty() {
+                                                    let ts = format_system_time(SystemTime::now());
+                                                    let msg_str = format!("{} [You] {}", ts, text);
+                                                    let dm_msgs = dm_messages.entry(target.clone()).or_default();
+                                                    dm_msgs.push_back(msg_str.clone());
+                                                    log_debug(&logs, format!("Sending DM to {}", target));
 
-                                                                                                            if let Err(e) = save_message(&text, None, &topic_str, true, Some(&peer_id.to_string())) {
-                                                                                                                log_debug(&logs, format!("Failed to save DM: {}", e));
-                                                                                                            }
-                                                                                                        }
-                                                                                                        dm_input = TextArea::default();
-                                                                                                        dm_input.set_line_number_style(Style::default());
-                                                                                                        dm_input.set_cursor_line_style(Style::default());
-                                                                                                    }
-                                                                                                } else if key.modifiers.contains(KeyModifiers::CONTROL)
-                                                                                                    && matches!(key.code, KeyCode::Char('1') | KeyCode::Char('2') | KeyCode::Char('3') | KeyCode::Char('4'))
-                                                                                                {
-                                                                                                    let tab = match key.code {
-                                                                                                        KeyCode::Char('1') => 0,
-                                                                                                        KeyCode::Char('2') => 1,
-                                                                                                        KeyCode::Char('3') => 2,
-                                                                                                        KeyCode::Char('4') => 3,
-                                                                                                        _ => unreachable!(),
-                                                                                                    };
-                                                                                                    active_tab = tab;
-                                                                                                    if tab == 0 {
-                                                                                                        unread_broadcasts = 0;
-                                                                                                    }
-                                                                                                    if tab == 2
-                                                                                                        && let Some(ref target) = selected_peer {
-                                                                                                            unread_dms.remove(target);
-                                                                                                        }
-                                                                                                } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
-                                                                                                    if active_tab == 2 {
-                                                                                                        selected_peer = None;
-                                                                                                        direct_messages.clear();
-                                                                                                        active_tab = 0;
-                                                                                                    }
-                                                                                                } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('n') {
-                                                                                                    if unread_broadcasts > 0 {
-                                                                                                        active_tab = 0;
-                                                                                                        unread_broadcasts = 0;
-                                                                                                    } else if !unread_dms.is_empty() {
-                                                                                                        active_tab = 2;
-                                                                                                        if let Some(ref target) = selected_peer {
-                                                                                                            unread_dms.remove(target);
-                                                                                                        }
-                                                                                                    }
-                                                                                                } else if key.code == KeyCode::Tab || key.code == KeyCode::BackTab {
-                                                                                                    if key.code == KeyCode::BackTab {
-                                                                                                        active_tab = if active_tab == 0 { 3 } else { active_tab - 1 };
-                                                                                                    } else {
-                                                                                                        active_tab = (active_tab + 1) % 4;
-                                                                                                    }
-                                                                                                    if active_tab == 0 {
-                                                                                                        unread_broadcasts = 0;
-                                                                                                    }
-                                                                                                    if active_tab == 2
-                                                                                                        && let Some(ref target) = selected_peer {
-                                                                                                            unread_dms.remove(target);
-                                                                                                        }
-                                                                                                } else if active_tab == 0 {
-                                                                                                    match key.code {
-                                                                                                        KeyCode::Up => {
-                                                                                                            chat_auto_scroll = false;
-                                                                                                            chat_scroll_offset = chat_scroll_offset.saturating_sub(1);
-                                                                                                        }
-                                                                                                        KeyCode::Down => {
-                                                                                                            chat_scroll_offset = (chat_scroll_offset + 1).min(messages.len().saturating_sub(1));
-                                                                                                        }
-                                                                                                        KeyCode::PageUp => {
-                                                                                                            chat_auto_scroll = false;
-                                                                                                            chat_scroll_offset = chat_scroll_offset.saturating_sub(20);
-                                                                                                        }
-                                                                                                        KeyCode::PageDown => {
-                                                                                                            chat_scroll_offset = (chat_scroll_offset + 20).min(messages.len().saturating_sub(1));
-                                                                                                        }
-                                                                                                        KeyCode::End => {
-                                                                                                            chat_scroll_offset = usize::MAX;
-                                                                                                            chat_auto_scroll = true;
-                                                                                                        }
-                                                                                                        KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
-                                                                                                        | KeyCode::Left | KeyCode::Right | KeyCode::Home
-                                                                                                        | KeyCode::Enter => {
-                                                                                                            chat_input.input(input);
-                                                                                                        }
-                                                                                                        _ => {
-                                                                                                            log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
-                                                                                                        }
-                                                                                                    }
-                                                                                                } else if active_tab == 2 {
-                                                                                                    let textarea = if active_tab == 0 { &mut chat_input } else { &mut dm_input };
-                                                                                                    match key.code {
-                                                                                                        KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
-                                                                                                        | KeyCode::Left | KeyCode::Right | KeyCode::Home
-                                                                                                        | KeyCode::End | KeyCode::Enter => {
-                                                                                                            textarea.input(input);
-                                                                                                        }
-                                                                                                        _ => {
-                                                                                                            log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
-                                                                                                        }
-                                                                                                    }
-                                                                                                } else if active_tab == 1 {
-                                                                                                    match key.code {
-                                                                                                        KeyCode::Up => {
-                                                                                                            if !peers.is_empty() {
-                                                                                                                peer_selection = peer_selection.saturating_sub(1);
-                                                                                                            }
-                                                                                                        }
-                                                                                                        KeyCode::Down => {
-                                                                                                            if !peers.is_empty() {
-                                                                                                                peer_selection = (peer_selection + 1).min(peers.len() - 1);
-                                                                                                            }
-                                                                                                        }
-                                                                                                        _ => {
-                                                                                                            log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
-                                                                                                        }
-                                                                                                    }
-                                                                                                } else if active_tab == 3 {
-                                                                                                    match key.code {
-                                                                                                        KeyCode::Up => {
-                                                                                                            debug_auto_scroll = false;
-                                                                                                            debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
-                                                                                                        }
-                                                                                                        KeyCode::Down => {
-                                                                                                            if let Ok(l) = logs.lock() {
-                                                                                                                debug_scroll_offset = (debug_scroll_offset + 1).min(l.len().saturating_sub(1));
-                                                                                                            }
-                                                                                                        }
-                                                                                                        KeyCode::PageUp => {
-                                                                                                            debug_auto_scroll = false;
-                                                                                                            debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
-                                                                                                        }
-                                                                                                        KeyCode::PageDown => {
-                                                                                                            if let Ok(l) = logs.lock() {
-                                                                                                                debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
-                                                                                                            }
-                                                                                                        }
-                                                                                                        KeyCode::End => {
-                                                                                                            debug_scroll_offset = usize::MAX;
-                                                                                                            debug_auto_scroll = true;
-                                                                                                        }
-                                                                                                        _ => {
-                                                                                                            log_debug(&logs, format!("Unhandled key: code={:?}, modifiers={:?}", key.code, key.modifiers));
-                                                                                                        }
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-                                                                                    }
-                                                                                }
+                                                    let peer_id: libp2p::PeerId = match target.parse() {
+                                                        Ok(pid) => pid,
+                                                        Err(e) => {
+                                                            log_debug(&logs, format!("Invalid peer ID: {}", e));
+                                                            *dm_inputs.get_mut(&target.clone()).unwrap() = TextArea::default();
+                                                            dm_inputs.get_mut(&target).unwrap().set_line_number_style(Style::default());
+                                                            dm_inputs.get_mut(&target).unwrap().set_cursor_line_style(Style::default());
+                                                            continue;
+                                                        }
+                                                    };
+
+                                                    let dm = DirectMessage {
+                                                        content: text.clone(),
+                                                        timestamp: chrono::Utc::now().timestamp(),
+                                                        sent_at: Some(std::time::SystemTime::now()
+                                                            .duration_since(std::time::UNIX_EPOCH)
+                                                            .expect("system time is valid")
+                                                            .as_secs_f64()),
+                                                    };
+
+                                                    swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
+                                                    log_debug(&logs, format!("DM request sent to {}", target));
+
+                                                    if let Err(e) = save_message(&text, None, &topic_str, true, Some(&peer_id.to_string())) {
+                                                        log_debug(&logs, format!("Failed to save DM: {}", e));
+                                                    }
+                                                }
+                                                *dm_inputs.get_mut(&target.clone()).unwrap() = TextArea::default();
+                                                dm_inputs.get_mut(&target).unwrap().set_line_number_style(Style::default());
+                                                dm_inputs.get_mut(&target).unwrap().set_cursor_line_style(Style::default());
+                                            }
+                                            _ => {}
+                                        }
+                                    } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
+                                        if let TabContent::Direct(target) = tab_content {
+                                            dynamic_tabs.remove_dm_tab(&target);
+                                            dm_messages.remove(&target);
+                                            dm_inputs.remove(&target);
+                                            unread_dms.remove(&target);
+                                            active_tab = 0;
+                                        }
+                                    } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('n') {
+                                        if unread_broadcasts > 0 {
+                                            active_tab = 0;
+                                            unread_broadcasts = 0;
+                                        } else if let Some((target, _)) = unread_dms.iter().next() {
+                                            let target_clone = target.clone();
+                                            active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
+                                            unread_dms.remove(&target_clone);
+                                        }
+                                    } else if key.code == KeyCode::Tab || key.code == KeyCode::BackTab {
+                                        if key.code == KeyCode::BackTab {
+                                            active_tab = if active_tab == 0 { tab_count - 1 } else { active_tab - 1 };
+                                        } else {
+                                            active_tab = (active_tab + 1) % tab_count;
+                                        }
+                                        let new_content = dynamic_tabs.tab_index_to_content(active_tab);
+                                        if matches!(new_content, TabContent::Chat) {
+                                            unread_broadcasts = 0;
+                                        }
+                                        if let TabContent::Direct(target) = new_content {
+                                            unread_dms.remove(&target);
+                                        }
+                                    } else if matches!(tab_content, TabContent::Chat) {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                chat_auto_scroll = false;
+                                                chat_scroll_offset = chat_scroll_offset.saturating_sub(1);
+                                            }
+                                            KeyCode::Down => {
+                                                chat_scroll_offset = (chat_scroll_offset + 1).min(messages.len().saturating_sub(1));
+                                            }
+                                            KeyCode::PageUp => {
+                                                chat_auto_scroll = false;
+                                                chat_scroll_offset = chat_scroll_offset.saturating_sub(20);
+                                            }
+                                            KeyCode::PageDown => {
+                                                chat_scroll_offset = (chat_scroll_offset + 20).min(messages.len().saturating_sub(1));
+                                            }
+                                            KeyCode::End => {
+                                                chat_scroll_offset = usize::MAX;
+                                                chat_auto_scroll = true;
+                                            }
+                                            KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                            | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                            | KeyCode::Enter => {
+                                                chat_input.input(input);
+                                            }
+                                            _ => {}
+                                        }
+                                    } else if let Some(peer_id) = tab_content.peer_id() {
+                                        let dm_input = dm_inputs.entry(peer_id.to_string()).or_insert_with(|| {
+                                            let mut ta = TextArea::default();
+                                            ta.set_line_number_style(Style::default());
+                                            ta.set_cursor_line_style(Style::default());
+                                            ta
+                                        });
+                                        match key.code {
+                                            KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                            | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                            | KeyCode::End | KeyCode::Enter => {
+                                                dm_input.input(input);
+                                            }
+                                            _ => {}
+                                        }
+                                    } else if matches!(tab_content, TabContent::Peers) {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                if !peers.is_empty() {
+                                                    peer_selection = peer_selection.saturating_sub(1);
+                                                }
+                                            }
+                                            KeyCode::Down => {
+                                                if !peers.is_empty() {
+                                                    peer_selection = (peer_selection + 1).min(peers.len() - 1);
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    } else if matches!(tab_content, TabContent::Log) {
+                                        match key.code {
+                                            KeyCode::Up => {
+                                                debug_auto_scroll = false;
+                                                debug_scroll_offset = debug_scroll_offset.saturating_sub(1);
+                                            }
+                                            KeyCode::Down => {
+                                                if let Ok(l) = logs.lock() {
+                                                    debug_scroll_offset = (debug_scroll_offset + 1).min(l.len().saturating_sub(1));
+                                                }
+                                            }
+                                            KeyCode::PageUp => {
+                                                debug_auto_scroll = false;
+                                                debug_scroll_offset = debug_scroll_offset.saturating_sub(20);
+                                            }
+                                            KeyCode::PageDown => {
+                                                if let Ok(l) = logs.lock() {
+                                                    debug_scroll_offset = (debug_scroll_offset + 20).min(l.len().saturating_sub(1));
+                                                }
+                                            }
+                                            KeyCode::End => {
+                                                debug_scroll_offset = usize::MAX;
+                                                debug_auto_scroll = true;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                        }
+                    }
 
                     terminal.draw(|f| {
                         let chunks = Layout::default()
@@ -801,8 +831,7 @@ mod tui {
                             ])
                             .split(f.area());
 
-                        let tab_titles = vec!["Chat", "Peers", "Direct", "Log"];
-
+                        let tab_titles = dynamic_tabs.all_titles();
                         let tabs = Tabs::new(tab_titles.clone())
                             .style(Style::default().fg(Color::Cyan))
                             .select(active_tab);
@@ -842,8 +871,8 @@ mod tui {
                             chunks[1]
                         };
 
-                        match active_tab {
-                            0 => {
+                        match dynamic_tabs.tab_index_to_content(active_tab) {
+                            TabContent::Chat => {
                                 let total = messages.len();
                                 let visible_height = content_area.height.saturating_sub(2) as usize;
 
@@ -867,13 +896,12 @@ mod tui {
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(chat_list, content_area);
                             }
-                            1 => {
+                            TabContent::Peers => {
                                 let peer_items: Vec<ListItem> = peers
                                     .iter()
                                     .enumerate()
                                     .map(|(i, (peer_id, first_seen, last_seen))| {
-                                        let prefix =
-                                            if i == peer_selection { ">> " } else { "   " };
+                                        let prefix = if i == peer_selection { ">> " } else { "   " };
                                         ListItem::new(format!(
                                             "{}{} | First: {} | Last: {}",
                                             prefix, peer_id, first_seen, last_seen
@@ -889,12 +917,17 @@ mod tui {
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(peer_list, content_area);
                             }
-                            2 => {
-                                let peer_name = selected_peer
-                                    .as_ref()
-                                    .map(|p| &p[p.len().saturating_sub(8.min(p.len()))..])
-                                    .unwrap_or("None");
-                                let dm_items: Vec<ListItem> = direct_messages
+                            TabContent::Direct(peer_id) => {
+                                let peer_name: String = peer_id
+                                    .chars()
+                                    .rev()
+                                    .take(8)
+                                    .collect::<String>()
+                                    .chars()
+                                    .rev()
+                                    .collect();
+                                let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
+                                let dm_items: Vec<ListItem> = dm_msgs
                                     .iter()
                                     .map(|m| ListItem::new(m.clone()))
                                     .collect();
@@ -907,7 +940,7 @@ mod tui {
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(dm_list, content_area);
                             }
-                            3 => {
+                            TabContent::Log => {
                                 let log_vec = logs.lock().expect("logs mutex not poisoned").clone();
                                 let total = log_vec.len();
                                 let visible_height = content_area.height.saturating_sub(2) as usize;
@@ -935,25 +968,44 @@ mod tui {
                                     .style(Style::default().fg(Color::White));
                                 f.render_widget(log_list, content_area);
                             }
-                            _ => {}
                         }
 
-                        let input_area = if active_tab == 0 || active_tab == 2 {
+                        let tab_content = dynamic_tabs.tab_index_to_content(active_tab);
+                        let input_area = if tab_content.is_input_enabled() {
                             chunks[2]
                         } else {
                             ratatui::layout::Rect::default()
                         };
                         if !input_area.is_empty() {
-                            let textarea = if active_tab == 0 { &chat_input } else { &dm_input };
-                            let input_title = if active_tab == 0 { "Input (Enter to send, Alt+Enter for newline)" } else { "DM Input (Enter to send, Alt+Enter for newline)" };
-                            let textarea_block = Block::default().title(input_title).borders(Borders::ALL);
-                            let mut textarea_clone = textarea.clone();
-                            textarea_clone.set_block(textarea_block);
-                            f.render_widget(&textarea_clone, input_area);
+                            match &tab_content {
+                                TabContent::Chat => {
+                                    let textarea_block = Block::default()
+                                        .title("Input (Enter to send, Alt+Enter for newline)")
+                                        .borders(Borders::ALL);
+                                    let mut textarea_clone = chat_input.clone();
+                                    textarea_clone.set_block(textarea_block);
+                                    f.render_widget(&textarea_clone, input_area);
+                                }
+                                TabContent::Direct(peer_id) => {
+                                    let dm_input = dm_inputs.entry(peer_id.clone()).or_insert_with(|| {
+                                        let mut ta = TextArea::default();
+                                        ta.set_line_number_style(Style::default());
+                                        ta.set_cursor_line_style(Style::default());
+                                        ta
+                                    });
+                                    let textarea_block = Block::default()
+                                        .title("DM Input (Enter to send, Alt+Enter for newline)")
+                                        .borders(Borders::ALL);
+                                    let mut textarea_clone = dm_input.clone();
+                                    textarea_clone.set_block(textarea_block);
+                                    f.render_widget(&textarea_clone, input_area);
+                                }
+                                _ => {}
+                            }
                         }
 
                         let help = Paragraph::new(
-                            "Ctrl+1-4: jump tab | Ctrl+N: latest notification | Tab: cycle | PgUp/PgDn: scroll | End: auto-scroll | Enter: send | Alt+Enter: newline | Ctrl+Q: quit",
+                            "Tab: cycle | Enter: send/open | Ctrl+W: close DM | Click (X): close | PgUp/PgDn: scroll | Alt+Enter: newline | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
@@ -1055,7 +1107,6 @@ async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
 
-    // Set up TUI logging callback early to capture all logs
     let logs = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
     let logs_callback = logs.clone();
     p2p_app::set_tui_log_callback(move |msg| {
@@ -1108,265 +1159,10 @@ async fn main() -> color_eyre::Result<()> {
         swarm
     };
 
+    let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
+    swarm.listen_on(listen_addr)?;
+
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
-    let (last_tcp_port, last_quic_port) = p2p_app::load_listen_ports().unwrap_or((None, None));
-
-    #[cfg(feature = "quic")]
-    {
-        let quic_addr = if let Some(port) = last_quic_port {
-            format!("/ip4/0.0.0.0/udp/{}/quic-v1", port)
-        } else {
-            "/ip4/0.0.0.0/udp/0/quic-v1".to_string()
-        };
-        match quic_addr.parse::<libp2p::Multiaddr>() {
-            Ok(addr) => {
-                if swarm.listen_on(addr.clone()).is_err() {
-                    p2plog_warn(format!(
-                        "Failed to listen on last QUIC port {}, trying port 0",
-                        addr
-                    ));
-                    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
-                }
-            }
-            Err(e) => {
-                p2plog_warn(format!("Failed to parse QUIC address: {}", e));
-                swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
-            }
-        }
-    }
-
-    let tcp_addr = if let Some(port) = last_tcp_port {
-        format!("/ip4/0.0.0.0/tcp/{}", port)
-    } else {
-        "/ip4/0.0.0.0/tcp/0".to_string()
-    };
-    match tcp_addr.parse::<libp2p::Multiaddr>() {
-        Ok(addr) => {
-            if swarm.listen_on(addr.clone()).is_err() {
-                p2plog_warn(format!(
-                    "Failed to listen on last TCP port {}, trying port 0",
-                    addr
-                ));
-                swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
-            }
-        }
-        Err(e) => {
-            p2plog_warn(format!("Failed to parse TCP address: {}", e));
-            swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
-        }
-    }
-
-    // Clone logs for the TUI function
-    let tui_logs = logs.clone();
-    tui::run_tui(swarm, topic.to_string(), tui_logs).await
-}
-
-#[cfg(not(feature = "tui"))]
-mod headless {
-    use super::AppBehaviour;
-    use libp2p::{
-        Multiaddr, futures::StreamExt, gossipsub, mdns, noise, swarm::SwarmEvent, tcp, yamux,
-    };
-    use p2p_app::{
-        AppBehaviourEvent, NetworkSize, build_behaviour, init_logging, load_listen_ports,
-        p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, save_listen_ports, save_peer,
-    };
-    use std::time::Duration;
-    use tokio::io::{AsyncBufReadExt as _, BufReader, stdin};
-
-    pub async fn run() -> color_eyre::Result<()> {
-        color_eyre::install()?;
-        init_logging();
-        p2plog_info("Starting non-interactive mode".to_string());
-
-        // libp2p uses the tracing library which helps to understand complex async flows
-        #[cfg(feature = "tracing")]
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .try_init()
-            .map_err(|e| {
-                p2plog_error(format!("failed to init tracing subscriber: {e}"));
-            })
-            .ok();
-
-        let mut swarm = {
-            let base =
-                libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
-                    .with_tokio()
-                    .with_tcp(
-                        tcp::Config::default().nodelay(true),
-                        noise::Config::new,
-                        yamux::Config::default,
-                    )?;
-
-            #[cfg(feature = "quic")]
-            let swarm = base
-                .with_quic()
-                .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
-                .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-                .build();
-
-            #[cfg(not(feature = "quic"))]
-            let swarm = base
-                .with_behaviour(|key| Ok(build_behaviour(key, p2p_app::NetworkSize::Small)))?
-                .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-                .build();
-
-            swarm
-        };
-
-        let topic = gossipsub::IdentTopic::new("test-net");
-        swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
-
-        let mut stdin = BufReader::new(stdin()).lines();
-
-        let (last_tcp_port, last_quic_port) = load_listen_ports().unwrap_or((None, None));
-
-        #[cfg(feature = "quic")]
-        {
-            let quic_addr = if let Some(port) = last_quic_port {
-                format!("/ip4/0.0.0.0/udp/{}/quic-v1", port)
-            } else {
-                "/ip4/0.0.0.0/udp/0/quic-v1".to_string()
-            };
-            match quic_addr.parse::<Multiaddr>() {
-                Ok(addr) => {
-                    if swarm.listen_on(addr.clone()).is_ok() {
-                        p2plog_info(format!("Listening on QUIC: {}", addr));
-                    } else {
-                        p2plog_warn(format!("Failed to listen on last QUIC port, trying port 0"));
-                        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
-                    }
-                }
-                Err(e) => {
-                    p2plog_warn(format!("Failed to parse QUIC address: {}", e));
-                    swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?).ok();
-                }
-            }
-        }
-
-        let tcp_addr = if let Some(port) = last_tcp_port {
-            format!("/ip4/0.0.0.0/tcp/{}", port)
-        } else {
-            "/ip4/0.0.0.0/tcp/0".to_string()
-        };
-        match tcp_addr.parse::<Multiaddr>() {
-            Ok(addr) => {
-                if swarm.listen_on(addr.clone()).is_ok() {
-                    p2plog_info(format!("Listening on TCP: {}", addr));
-                } else {
-                    p2plog_warn(format!("Failed to listen on last TCP port, trying port 0"));
-                    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
-                }
-            }
-            Err(e) => {
-                p2plog_warn(format!("Failed to parse TCP address: {}", e));
-                swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?).ok();
-            }
-        }
-
-        p2plog_info(
-            "Enter messages via STDIN and they will be sent to connected peers using Gossipsub"
-                .to_string(),
-        );
-        p2plog_info("Or connect to another peer manually: /connect <multiaddr>".to_string());
-
-        loop {
-            tokio::select! {
-                Ok(Some(line)) = stdin.next_line() => {
-                    let line = line.trim().to_string();
-                    if line.starts_with("/connect ") {
-                        let addr = line.trim_start_matches("/connect ");
-                        match addr.parse::<Multiaddr>() {
-                            Ok(multiaddr) => {
-                                p2plog_info(format!("Dialing {multiaddr}"));
-                                swarm.dial(multiaddr).map_err(|e| p2plog_error(format!("Dial error: {e:?}"))).ok();
-                            }
-                            Err(e) => {
-                                p2plog_error(format!("Failed to parse multiaddr: {e}"));
-                            }
-                        }
-                    } else if line.is_empty() {
-                        continue;
-                    } else {
-                        swarm
-                            .behaviour_mut()
-                            .gossipsub
-                            .publish(topic.clone(), line.as_bytes())
-                            .map_err(|e| p2plog_error(format!("Publish error: {e:?}")))
-                            .ok();
-                    }
-                }
-                event = swarm.select_next_some() => match event {
-                    #[cfg(feature = "mdns")]
-                    SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                        for (peer_id, multiaddr) in list {
-                            p2plog_info(format!("mDNS discovered peer: {} at {}", peer_id, multiaddr));
-                            let addresses = vec![multiaddr.to_string()];
-                            if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
-                                p2plog_error(format!("Failed to save peer: {}", e));
-                            }
-                            let _ = swarm.dial(multiaddr.clone());
-                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                        }
-                    },
-                    #[cfg(feature = "mdns")]
-                    SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                        for (peer_id, multiaddr) in list {
-                            p2plog_info(format!("mDNS peer expired: {} at {}", peer_id, multiaddr));
-                            swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
-                        }
-                    },
-                    SwarmEvent::Behaviour(AppBehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                        propagation_source: peer_id,
-                        message_id: id,
-                        message,
-                    })) => p2plog_info(format!(
-                        "Got message: '{}' with id: {id} from peer: {peer_id}",
-                        String::from_utf8_lossy(&message.data),
-                    )),
-                    SwarmEvent::NewListenAddr { address, .. } => {
-                        p2plog_info(format!("Local node is listening on {address}"));
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
-                            let _ = save_listen_ports(Some(port), None);
-                        }
-                        #[cfg(feature = "quic")]
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
-                            let (tcp, _) = load_listen_ports().unwrap_or((None, None));
-                            let _ = save_listen_ports(tcp, Some(port));
-                        }
-                    }
-                    SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                        p2plog_error(format!("Dial failed: peer={:?}, error={}", peer_id, error));
-                    }
-                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                        p2plog_info(format!("Connected to peer: {peer_id}"));
-                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                    }
-                    other => {
-                        p2plog_debug(format!("Other swarm event: {other:?}"));
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[cfg(not(feature = "tui"))]
-#[tokio::main]
-async fn main() -> color_eyre::Result<()> {
-    headless::run().await
+    tui::run_tui(swarm, "test-net".to_string(), logs).await
 }
