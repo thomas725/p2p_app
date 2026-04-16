@@ -277,4 +277,78 @@ mod tests {
         assert_eq!(state.chat_message_peers.len(), 1);
         assert!(state.chat_message_peers[0].is_empty());
     }
+
+    #[test]
+    fn test_dynamic_tabs_add_remove() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+
+        assert_eq!(tabs.dm_tab_count(), 0);
+
+        let idx = tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(idx, 2);
+        assert_eq!(tabs.dm_tab_count(), 1);
+
+        let idx2 = tabs.add_dm_tab("peer2".to_string());
+        assert_eq!(idx2, 3);
+        assert_eq!(tabs.dm_tab_count(), 2);
+
+        // Adding same peer again returns existing index
+        let idx3 = tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(idx3, 2);
+
+        // Remove peer1
+        let removed = tabs.remove_dm_tab("peer1");
+        assert!(removed.is_some());
+        assert_eq!(tabs.dm_tab_count(), 1);
+
+        // Remove again returns None
+        let removed2 = tabs.remove_dm_tab("peer1");
+        assert!(removed2.is_none());
+    }
+
+    #[test]
+    fn test_dynamic_tabs_titles() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        tabs.add_dm_tab("12D3KooWSkP1pEPy2".to_string());
+        tabs.add_dm_tab("12D3KooWGDyE67".to_string());
+
+        let titles = tabs.all_titles();
+        assert_eq!(titles.len(), 5); // Chat, Peers, 2 DM tabs + Log = 5
+        assert_eq!(titles[0], "Chat");
+        assert_eq!(titles[1], "Peers");
+        // DM tabs have "(X)" suffix for closing
+        assert!(titles[2].contains("(X)"));
+        assert!(titles[3].contains("(X)"));
+        assert_eq!(titles[4], "Log");
+    }
+
+    #[test]
+    fn test_dm_tab_short_id() {
+        let dm =
+            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+        let short = dm.short_id();
+        assert_eq!(short.len(), 8);
+    }
+
+    #[test]
+    fn test_tab_content_mapping() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        tabs.add_dm_tab("peerA".to_string());
+        tabs.add_dm_tab("peerB".to_string());
+
+        assert_eq!(tabs.tab_index_to_content(0), p2p_app::tui::TabContent::Chat);
+        assert_eq!(
+            tabs.tab_index_to_content(1),
+            p2p_app::tui::TabContent::Peers
+        );
+        assert_eq!(
+            tabs.tab_index_to_content(2),
+            p2p_app::tui::TabContent::Direct("peerA".to_string())
+        );
+        assert_eq!(
+            tabs.tab_index_to_content(3),
+            p2p_app::tui::TabContent::Direct("peerB".to_string())
+        );
+        assert_eq!(tabs.tab_index_to_content(4), p2p_app::tui::TabContent::Log);
+    }
 }

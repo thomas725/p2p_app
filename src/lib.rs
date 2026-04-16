@@ -761,6 +761,119 @@ pub mod tui {
         pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
             Self { peer_id, messages }
         }
+
+        #[must_use]
+        pub fn short_id(&self) -> String {
+            self.peer_id
+                .chars()
+                .rev()
+                .take(8)
+                .collect::<String>()
+                .chars()
+                .rev()
+                .collect()
+        }
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct DynamicTabs {
+        pub dm_tabs: Vec<DmTab>,
+    }
+
+    impl DynamicTabs {
+        pub fn new() -> Self {
+            Self {
+                dm_tabs: Vec::new(),
+            }
+        }
+
+        pub fn add_dm_tab(&mut self, peer_id: String) -> usize {
+            if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
+                return pos + 2;
+            }
+            self.dm_tabs.push(DmTab::new(peer_id));
+            self.dm_tabs.len() + 1
+        }
+
+        pub fn remove_dm_tab(&mut self, peer_id: &str) -> Option<usize> {
+            if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
+                self.dm_tabs.remove(pos);
+                return Some(pos + 2);
+            }
+            None
+        }
+
+        pub fn get_dm_tab(&self, peer_id: &str) -> Option<&DmTab> {
+            self.dm_tabs.iter().find(|t| t.peer_id == peer_id)
+        }
+
+        pub fn get_dm_tab_mut(&mut self, peer_id: &str) -> Option<&mut DmTab> {
+            self.dm_tabs.iter_mut().find(|t| t.peer_id == peer_id)
+        }
+
+        #[must_use]
+        pub fn dm_tab_count(&self) -> usize {
+            self.dm_tabs.len()
+        }
+
+        pub fn dm_tab_titles(&self) -> Vec<String> {
+            self.dm_tabs
+                .iter()
+                .map(|t| format!("{} (X)", t.short_id()))
+                .collect()
+        }
+
+        pub fn all_titles(&self) -> Vec<String> {
+            let mut titles = vec!["Chat".to_string(), "Peers".to_string()];
+            titles.extend(self.dm_tab_titles());
+            titles.push("Log".to_string());
+            titles
+        }
+
+        pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
+            match tab_idx {
+                0 => TabContent::Chat,
+                1 => TabContent::Peers,
+                idx if idx == self.base_tab_count() => TabContent::Log,
+                idx if idx >= 2 && idx < self.base_tab_count() => {
+                    let dm_idx = idx - 2;
+                    if let Some(tab) = self.dm_tabs.get(dm_idx) {
+                        TabContent::Direct(tab.peer_id.clone())
+                    } else {
+                        TabContent::Chat
+                    }
+                }
+                _ => TabContent::Chat,
+            }
+        }
+
+        #[must_use]
+        pub fn base_tab_count(&self) -> usize {
+            2 + self.dm_tabs.len()
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum TabContent {
+        Chat,
+        Peers,
+        Direct(String),
+        Log,
+    }
+
+    impl TabContent {
+        #[must_use]
+        pub fn peer_id(&self) -> Option<&str> {
+            match self {
+                TabContent::Direct(id) => Some(id),
+                _ => None,
+            }
+        }
+
+        #[must_use]
+        pub fn is_input_enabled(&self) -> bool {
+            matches!(self, TabContent::Chat | TabContent::Direct(_))
+        }
     }
 
     impl TabId {
