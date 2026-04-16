@@ -143,6 +143,7 @@ mod tui {
                     )
                 )?;
                 execute!(std::io::stdout(), crossterm::event::EnableMouseCapture)?;
+                let mut mouse_capture = true;
 
                 let mut messages: VecDeque<String> = VecDeque::new();
                 let mut dm_messages: HashMap<String, VecDeque<String>> = HashMap::new();
@@ -513,7 +514,14 @@ mod tui {
                             if poll(Duration::ZERO).ok() == Some(true)
                                 && let Ok(event) = read()
                                 && let Event::Key(key) = event {
-                                    if key.code == KeyCode::Esc
+                                    if key.code == KeyCode::F(12) {
+                                        mouse_capture = !mouse_capture;
+                                        if mouse_capture {
+                                            execute!(std::io::stdout(), crossterm::event::EnableMouseCapture).ok();
+                                        } else {
+                                            execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
+                                        }
+                                    } else if key.code == KeyCode::Esc
                                         || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
                                     {
                                         execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
@@ -1005,7 +1013,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Tab: cycle | Enter: send/open | Ctrl+W: close DM | Click (X): close | PgUp/PgDn: scroll | Alt+Enter: newline | Ctrl+Q: quit",
+                            "Tab: cycle | Enter: send/open | Ctrl+W: close DM | F12: toggle mouse | PgUp/PgDn: scroll | Alt+Enter: newline | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[3]);
