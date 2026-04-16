@@ -335,9 +335,10 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
 /// Get the database URL from environment or default value.
 ///
 /// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
+#[must_use]
 pub fn get_database_url() -> String {
     dotenv().ok();
-    env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned())
+    env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite.db".to_owned())
 }
 
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
@@ -815,5 +816,31 @@ mod tests {
         assert_eq!(NetworkSize::from_peer_count(1.0), NetworkSize::Small);
         assert_eq!(NetworkSize::from_peer_count(5.0), NetworkSize::Medium);
         assert_eq!(NetworkSize::from_peer_count(20.0), NetworkSize::Large);
+    }
+
+    #[test]
+    fn test_network_size_boundary_values() {
+        assert_eq!(NetworkSize::from_peer_count(0.0), NetworkSize::Small);
+        assert_eq!(NetworkSize::from_peer_count(3.0), NetworkSize::Small);
+        assert_eq!(NetworkSize::from_peer_count(4.0), NetworkSize::Medium);
+        assert_eq!(NetworkSize::from_peer_count(15.0), NetworkSize::Medium);
+        assert_eq!(NetworkSize::from_peer_count(16.0), NetworkSize::Large);
+    }
+
+    #[test]
+    fn test_network_size_display() {
+        assert_eq!(format!("{:?}", NetworkSize::Small), "Small");
+        assert_eq!(format!("{:?}", NetworkSize::Medium), "Medium");
+        assert_eq!(format!("{:?}", NetworkSize::Large), "Large");
+    }
+
+    #[test]
+    fn test_network_size_from_peer_count_method() {
+        let small = NetworkSize::from_peer_count(3.0);
+        let medium = NetworkSize::from_peer_count(10.0);
+        let large = NetworkSize::from_peer_count(100.0);
+        assert_eq!(small, NetworkSize::Small);
+        assert_eq!(medium, NetworkSize::Medium);
+        assert_eq!(large, NetworkSize::Large);
     }
 }
