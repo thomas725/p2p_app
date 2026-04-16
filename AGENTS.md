@@ -10,6 +10,22 @@ This is a Rust project using Diesel (SQLite), libp2p (P2P networking), and tokio
 - **Persistence**: SQLite database for messages, peers, and identity
 - **Mouse**: Click tabs to switch, click peers to open DM
 
+## User Stories
+
+### As a user, I can:
+1. Broadcast messages to all connected peers via gossipsub
+2. Send direct messages to specific peers
+3. See a list of discovered peers with their connection status
+4. Set local nicknames for peers for easier identification
+5. View chat history in the Chat tab
+6. View message history with specific peers in DM tabs
+
+### As a developer, I can:
+1. Run the application in TUI mode or headless mode
+2. Configure network mesh parameters based on expected peer count
+3. Automatically recover from stale peer addresses via mDNS
+4. View logs with timestamps in the Log tab
+
 ## Build & Run Commands
 
 ```bash
@@ -19,17 +35,20 @@ cargo build
 # Build release version (uses build_release.sh)
 ./build_release.sh
 
-# Run the binary
+# Run the default TUI binary
 cargo run
 
 # Run with custom database
 DATABASE_URL=my.db cargo run
 
-# Run headless version (no TUI)
+# Run headless version (no TUI, with mdns and tracing)
 cargo run --no-default-features --features mdns,tracing
 
 # Run CLI version (no TUI, no mdns)
 cargo run --no-default-features --features tracing
+
+# Run integration tests
+cargo test --test p2p_integration
 ```
 
 ### Binary Selection
@@ -47,8 +66,8 @@ cargo fmt
 # Run Clippy lints
 cargo clippy
 
-# Run Clippy with fix suggestions
-cargo clippy --fix
+# Run Clippy with fix suggestions (allows dirty working directory)
+cargo clippy --fix --allow-dirty
 
 # Run Clippy with strict warnings (as in CI)
 cargo clippy -- -D warnings
