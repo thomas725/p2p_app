@@ -7,6 +7,7 @@ use crate::schema::*;
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
+
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = identities)]
 pub struct Identity {
@@ -16,6 +17,13 @@ pub struct Identity {
     pub last_tcp_port: Option<i32>,
     pub last_quic_port: Option<i32>,
     pub self_nickname: Option<String>,
+}
+
+impl Identity {
+    #[must_use]
+    pub fn last_port(&self) -> Option<i32> {
+        self.last_tcp_port.or(self.last_quic_port)
+    }
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -31,12 +39,41 @@ pub struct Message {
     pub target_peer: Option<String>,
 }
 
+impl Message {
+    #[must_use]
+    pub fn is_sent(&self) -> bool {
+        self.sent != 0
+    }
+
+    #[must_use]
+    pub fn is_broadcast(&self) -> bool {
+        self.is_direct == 0
+    }
+
+    #[must_use]
+    pub fn is_direct_message(&self) -> bool {
+        self.is_direct != 0
+    }
+
+    #[must_use]
+    pub fn is_from_local_user(&self) -> bool {
+        self.peer_id.is_none()
+    }
+}
+
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = peer_sessions)]
 pub struct PeerSession {
     pub id: i32,
     pub concurrent_peers: i32,
     pub recorded_at: NaiveDateTime,
+}
+
+impl PeerSession {
+    #[must_use]
+    pub fn peer_count(&self) -> usize {
+        self.concurrent_peers.unsigned_abs() as usize
+    }
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -52,3 +89,30 @@ pub struct Peer {
     pub received_nickname: Option<String>,
 }
 
+impl Peer {
+    #[must_use]
+    pub fn display_name(&self) -> String {
+        self.peer_local_nickname
+            .clone()
+            .or_else(|| self.received_nickname.clone())
+            .unwrap_or_else(|| {
+                self.peer_id
+                    .chars()
+                    .rev()
+                    .take(8)
+                    .collect::<String>()
+                    .chars()
+                    .rev()
+                    .collect()
+            })
+    }
+
+    #[must_use]
+    pub fn address_list(&self) -> Vec<String> {
+        self.addresses
+            .split(',')
+            .map(ToString::to_string)
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
+}

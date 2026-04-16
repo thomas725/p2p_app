@@ -220,4 +220,61 @@ mod tests {
         assert_eq!(dm1, dm2);
         assert_eq!(dm2.peer_id, "peer1");
     }
+
+    #[test]
+    fn test_handle_mouse_click_with_scroll_offset() {
+        let custom = std::collections::VecDeque::from(vec![
+            "[You] msg0".to_string(),
+            "[Peer] msg1".to_string(),
+            "[You] msg2".to_string(),
+            "[Peer] msg3".to_string(),
+        ]);
+        let mut state = TuiTestState::with_messages(custom);
+        state.chat_list_state_offset = 2;
+        let content_start = state.calculate_content_start_row();
+
+        let peer = state.handle_mouse_click(content_start);
+        // At offset 2 + row 0 (content_start), we get index 2, which is "[You] msg2" -> empty string
+        assert_eq!(peer, Some(String::new()));
+    }
+
+    #[test]
+    fn test_keyboard_navigation_cycle() {
+        let mut state = TuiTestState::new();
+        state.active_tab = 3;
+
+        state.handle_tab_click(0);
+        assert_eq!(state.active_tab, 0);
+
+        state.handle_tab_click(1);
+        assert_eq!(state.active_tab, 1);
+    }
+
+    #[test]
+    fn test_dm_notification_tracking() {
+        let mut state = TuiTestState::new();
+        state.unread_dms.insert("Peer1".to_string(), 2);
+        state.unread_dms.insert("Peer2".to_string(), 1);
+
+        assert_eq!(state.unread_dms.get("Peer1"), Some(&2));
+        assert_eq!(state.unread_dms.get("Peer2"), Some(&1));
+    }
+
+    #[test]
+    fn test_empty_messages_handling() {
+        let empty: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        let state = TuiTestState::with_messages(empty);
+
+        assert!(state.messages.is_empty());
+        assert!(state.chat_message_peers.is_empty());
+    }
+
+    #[test]
+    fn test_peer_extraction_no_brackets() {
+        let no_bracket = std::collections::VecDeque::from(vec!["just a plain message".to_string()]);
+        let state = TuiTestState::with_messages(no_bracket);
+
+        assert_eq!(state.chat_message_peers.len(), 1);
+        assert!(state.chat_message_peers[0].is_empty());
+    }
 }
