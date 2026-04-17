@@ -582,10 +582,7 @@ mod tui {
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Chat) {
                                             let term_width = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80);
                                             let content_width = term_width.saturating_sub(4);
-                                            let tabs_rows = 3;
-                                            let notification_rows = if unread_broadcasts > 0 || !unread_dms.is_empty() { 1 } else { 0 };
-                                            let list_header_rows = 2;
-                                            let content_start_row = tabs_rows + notification_rows + list_header_rows;
+                                            let content_start_row = 4;
 
                                             if row >= content_start_row {
                                                 let clicked_row = row - content_start_row;
