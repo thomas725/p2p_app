@@ -525,16 +525,19 @@ mod tui {
                                             let mut char_pos = 0;
                                             for (i, title) in titles.iter().enumerate() {
                                                 let title_len = title.len();
+                                                let x_suffix = if title.ends_with(" (X)") { 4 } else { 0 };
+                                                let clickable_len = title_len - x_suffix;
                                                 if col >= char_pos && col <= char_pos + title_len {
-                                                    match dynamic_tabs.tab_index_to_content(i) {
-                                                        TabContent::Direct(t) if titles[i].contains("(X)") => {
+                                                    if x_suffix > 0 && col > char_pos + clickable_len {
+                                                        if let TabContent::Direct(t) = dynamic_tabs.tab_index_to_content(i) {
                                                             dynamic_tabs.remove_dm_tab(&t);
                                                             dm_messages.remove(&t);
                                                             dm_inputs.remove(&t);
                                                             unread_dms.remove(&t);
                                                             active_tab = 0;
                                                         }
-                                                        _ => { active_tab = i; }
+                                                    } else {
+                                                        active_tab = i;
                                                     }
                                                     break;
                                                 }
