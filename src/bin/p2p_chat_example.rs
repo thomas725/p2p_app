@@ -548,7 +548,7 @@ mod tui {
                                             }
                                         } else if row == 1 && (unread_broadcasts > 0 || !unread_dms.is_empty()) {
                                             if unread_broadcasts > 0 && !unread_dms.is_empty() {
-                                                let separator_pos = format!("{} new broadcast(s) [1] | ", unread_broadcasts).len();
+                                                let separator_pos = format!("{} broadcast(s) | ", unread_broadcasts).len();
                                                 if col < separator_pos {
                                                     active_tab = 0;
                                                     unread_broadcasts = 0;
@@ -577,7 +577,7 @@ mod tui {
                                                 }
                                             }
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Chat) {
-                                            let content_start_row = 3;
+                                            let content_start_row = 2;
                                             let list_header_rows = 2;
                                             if row as usize > content_start_row + list_header_rows - 1 {
                                                 let msg_idx = row as usize - content_start_row - list_header_rows - chat_scroll_offset;
@@ -756,10 +756,10 @@ mod tui {
                                                 active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
                                                 unread_dms.remove(&target_clone);
                                             }
-                                        } else if key.code == KeyCode::Char('1') && unread_broadcasts > 0 {
+                                        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('1') && unread_broadcasts > 0 {
                                             active_tab = 0;
                                             unread_broadcasts = 0;
-                                        } else if key.code == KeyCode::Char('2') && !unread_dms.is_empty() {
+                                        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('2') && !unread_dms.is_empty() {
                                             if let Some((target, _)) = unread_dms.iter().next() {
                                                 let target_clone = target.clone();
                                                 active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
@@ -872,7 +872,7 @@ mod tui {
                         let chunks = Layout::default()
                             .direction(Direction::Vertical)
                             .constraints([
-                                Constraint::Length(3),
+                                Constraint::Length(1),
                                 Constraint::Length(1),
                                 Constraint::Min(0),
                                 Constraint::Length(5),
@@ -889,12 +889,12 @@ mod tui {
                         if unread_broadcasts > 0 || !unread_dms.is_empty() {
                             let mut parts = Vec::new();
                             if unread_broadcasts > 0 {
-                                parts.push(format!("{} new broadcast(s) [1]", unread_broadcasts));
+                                parts.push(format!("{} broadcast(s)", unread_broadcasts));
                             }
                             if !unread_dms.is_empty() {
                                 let total: u32 = unread_dms.values().sum();
                                 parts.push(format!(
-                                    "{} DM(s) from {} peer(s) [2]",
+                                    "{} DM(s) from {} peer(s)",
                                     total,
                                     unread_dms.len()
                                 ));
@@ -1040,7 +1040,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Tab: cycle | Enter: send/open | [1] broadcast | [2] DM | Ctrl+W: close DM | F12: mouse | PgUp/PgDn: scroll | Ctrl+Q: quit",
+                            "Tab: cycle | Enter: send | Ctrl+1: broadcast | Ctrl+2: DM | Ctrl+W: close | F12: mouse | PgUp/PgDn: scroll | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[4]);
