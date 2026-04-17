@@ -149,8 +149,7 @@ where
 
 /// Get the current TUI log messages.
 pub fn get_tui_logs() -> VecDeque<String> {
-    LOGS
-        .get()
+    LOGS.get()
         .map(|m| m.lock().expect("TUI logs mutex not poisoned").clone())
         .unwrap_or_default()
 }
@@ -318,7 +317,9 @@ pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, 
 
 /// Establish a connection to the SQLite database and run pending migrations.
 ///
-/// Loads `DATABASE_URL` from environment or `.env` file, defaulting to "sqlite.db".
+/// If DATABASE_URL is set, uses that file directly.
+/// Otherwise, finds the first unused SQLite database in the current working directory
+/// using lock files (`.lock` files with our PID), or creates a new one.
 /// Automatically runs all pending Diesel migrations on first call.
 ///
 /// # Returns
@@ -329,16 +330,124 @@ pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, 
 /// - If migrations fail to execute
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
-    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite.db".to_owned());
-    let mut conn = SqliteConnection::establish(&database_url)
-        .wrap_err_with(|| format!("Error connecting to {database_url}"))?;
+
+    // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
+    if let Ok(url) = env::var("DATABASE_URL") {
+        let mut conn = SqliteConnection::establish(&url)
+            .wrap_err_with(|| format!("Error connecting to {url}"))?;
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| eyre!(format!("Error executing migrations on {url}: {e}")))?;
+        return Ok(conn);
+    }
+
+    // No DATABASE_URL set: find or create an unused database in cwd
+    let db_path = find_or_create_unused_db()?;
+    let mut conn = SqliteConnection::establish(&db_path)
+        .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
     conn.run_pending_migrations(MIGRATIONS)
-        .map_err(|e| eyre!(format!("Error executing migrations on {database_url}: {e}")))?;
+        .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
     Ok(conn)
 }
 
-/// Convert boolean to integer for database operations
+/// Finds the first unused SQLite database in the current working directory using lock files.
+/// If none is available, creates a new database with the next sequential name.
+fn find_or_create_unused_db() -> color_eyre::Result<String> {
+    use std::fs;
+    use std::io::Write;
+    use std::process::id as getpid;
 
+    let cwd = std::env::current_dir().wrap_err("failed to get current working directory")?;
+    let pid = getpid();
+
+    // Collect all existing .db files
+    let mut db_files: Vec<_> = fs::read_dir(&cwd)
+        .wrap_err("failed to read current directory")?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("db") {
+                path.file_name().and_then(|n| n.to_str()).map(String::from)
+            } else {
+                None
+            }
+        })
+        .collect();
+    db_files.sort();
+
+    // Check existing databases for lock files (lock indicates active use)
+    // A lock file is considered active if:
+    // 1. It exists and contains a numeric PID  
+    // 2. That process is still running
+    let mut available = Vec::new();
+    for db_file in &db_files {
+        let lock_path = cwd.join(format!("{}.lock", db_file));
+        let is_locked = if lock_path.exists() {
+            match fs::read_to_string(&lock_path) {
+                Ok(content) => {
+                    // If PID in lock file is still running, it's locked
+                    if let Ok(other_pid) = content.trim().parse::<u32>() {
+                        if other_pid == 0 {
+                            false // Empty/zero PID means unlocked
+                        } else {
+                            // Check if process with this PID exists using /proc
+                            #[cfg(target_os = "linux")]
+                            {
+                                std::path::Path::new(&format!("/proc/{other_pid}")).exists()
+                            }
+                            #[cfg(not(target_os = "linux"))]
+                            {
+                                // On non-Linux, we can't easily check, so assume locked
+                                true
+                            }
+                        }
+                    } else {
+                        true // Non-numeric content = assume locked
+                    }
+                }
+                Err(_) => true, // Can't read lock file = assume locked
+            }
+        } else {
+            false // No lock file = available
+        };
+        if !is_locked {
+            available.push(db_file.clone());
+        }
+    }
+
+    // Pick first available, or create new one
+    let db_file = if let Some(first) = available.first() {
+        first.clone()
+    } else {
+        // Find the next sequential number
+        let next_n = db_files
+            .iter()
+            .filter_map(|name| {
+                let stem = name.trim_start_matches("sqlite_").trim_end_matches(".db");
+                if let Ok(n) = stem.parse::<u32>() {
+                    Some(n)
+                } else {
+                    None
+                }
+            })
+            .max()
+            .unwrap_or(0);
+        format!("sqlite_{}.db", next_n + 1)
+    };
+
+    // Write lock file with our PID
+    let lock_path = cwd.join(format!("{}.lock", db_file));
+    let mut lock_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&lock_path)
+        .wrap_err_with(|| format!("failed to create lock file for {db_file}"))?;
+    write!(lock_file, "{}", pid).wrap_err_with(|| format!("failed to write PID to lock file"))?;
+
+    Ok(cwd.join(db_file).to_string_lossy().into_owned())
+}
+
+/// Convert boolean to integer for database operations
 
 /// Get the database URL from environment or default value.
 ///
@@ -441,8 +550,12 @@ pub fn save_message(
         .values(&new_msg)
         .returning(Message::as_returning())
         .get_result(conn)
-        .wrap_err_with(|| format!("Failed to save message: content='{}', topic='{}', is_direct={}", 
-            content, topic, is_direct))
+        .wrap_err_with(|| {
+            format!(
+                "Failed to save message: content='{}', topic='{}', is_direct={}",
+                content, topic, is_direct
+            )
+        })
         .map(|msg| {
             tracing::debug!(message_id = msg.id, "Message saved to database");
             msg
@@ -508,7 +621,12 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
         .order(schema::messages::created_at.asc())
         .select(Message::as_select())
         .load(conn)
-        .wrap_err_with(|| format!("Failed to load unsent direct messages for peer: {}", target_peer))
+        .wrap_err_with(|| {
+            format!(
+                "Failed to load unsent direct messages for peer: {}",
+                target_peer
+            )
+        })
 }
 
 /// Load all known peers, ordered by most recently seen first.
@@ -650,7 +768,7 @@ impl NetworkSize {
 
 impl TryFrom<i32> for NetworkSize {
     type Error = &'static str;
-    
+
     fn try_from(value: i32) -> Result<Self, Self::Error> {
         match value {
             0..=3 => Ok(Self::Small),
