@@ -589,7 +589,9 @@ mod tui {
 
                                                 while current_row <= clicked_row && msg_idx < messages.len() {
                                                     let (msg_text, _) = &messages[msg_idx];
-                                                    let msg_lines = (msg_text.len() / content_width).saturating_add(1).max(1);
+                                                    let manual_breaks = msg_text.matches('\n').count();
+                                                    let wrapped_lines = (msg_text.len() / content_width).saturating_add(1);
+                                                    let msg_lines = (manual_breaks + wrapped_lines).max(1);
 
                                                     if clicked_row >= current_row && clicked_row < current_row + msg_lines {
                                                         if let Some((_, Some(peer_id))) = messages.get(msg_idx) {
