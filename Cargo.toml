@@ -102,7 +102,7 @@ path = "src/bin/p2p_chat.rs"
 
 [[bin]]
 name = "p2p_chat_tui"
-path = "src/bin/p2p_chat_example.rs"
+path = "src/bin/p2p_chat_tui.rs"
 required-features = ["tui"]
 
 [[bin]]

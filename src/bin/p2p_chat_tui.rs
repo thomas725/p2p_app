@@ -42,23 +42,22 @@ mod tui {
     const MAX_LOGS: usize = 1000;
 
     mod tracing_writer {
-        use p2p_app::strip_ansi_codes;
-        use std::collections::VecDeque;
-        use std::sync::{Arc, Mutex};
-        use std::time::SystemTime;
+        use std::{collections::VecDeque, time::SystemTime};
 
         fn format_system_time(time: SystemTime) -> String {
-            let local: chrono::DateTime<chrono::Local> = time.into();
-            local.format("%H:%M:%S.%3f").to_string()
+            chrono::DateTime::<chrono::Local>::from(time)
+                .format("%H:%M:%S.%3f")
+                .to_string()
         }
 
         #[derive(Clone)]
         pub struct TracingWriter {
-            logs: Arc<Mutex<VecDeque<String>>>,
+            logs: std::sync::Arc<std::sync::Mutex<VecDeque<String>>>,
         }
 
         impl TracingWriter {
-            pub fn new(logs: Arc<Mutex<VecDeque<String>>>) -> Self {
+            #[must_use]
+            pub fn new(logs: std::sync::Arc<std::sync::Mutex<VecDeque<String>>>) -> Self {
                 Self { logs }
             }
         }
@@ -66,7 +65,7 @@ mod tui {
         impl std::io::Write for TracingWriter {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
                 if let Ok(s) = std::str::from_utf8(buf) {
-                    let cleaned = strip_ansi_codes(s);
+                    let cleaned = p2p_app::strip_ansi_codes(s);
                     let trimmed = cleaned.trim();
                     if !trimmed.is_empty() {
                         let ts = format_system_time(SystemTime::now());
@@ -89,8 +88,9 @@ mod tui {
     }
 
     fn format_system_time(time: SystemTime) -> String {
-        let local: chrono::DateTime<chrono::Local> = time.into();
-        local.format("%H:%M:%S.%3f").to_string()
+        chrono::DateTime::<chrono::Local>::from(time)
+            .format("%H:%M:%S.%3f")
+            .to_string()
     }
 
     fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
@@ -122,6 +122,17 @@ mod tui {
         }
     }
 
+    fn style_textarea(ta: &mut TextArea) {
+        ta.set_line_number_style(Style::default());
+        ta.set_cursor_line_style(Style::default());
+    }
+
+    fn init_textarea() -> TextArea<'static> {
+        let mut ta = TextArea::default();
+        style_textarea(&mut ta);
+        ta
+    }
+
     pub async fn run_tui(
         mut swarm: Swarm<AppBehaviour>,
         topic_str: String,
@@ -151,9 +162,7 @@ mod tui {
                 let mut dynamic_tabs = DynamicTabs::new();
                 let mut active_tab = 0;
                 let mut dm_inputs: HashMap<String, TextArea> = HashMap::new();
-                let mut chat_input = TextArea::default();
-                chat_input.set_line_number_style(Style::default());
-                chat_input.set_cursor_line_style(Style::default());
+                let mut chat_input = init_textarea();
                 let mut concurrent_peers: usize = 0;
                 let mut peer_selection: usize = 0;
                 let mut debug_scroll_offset: usize = 0;
@@ -637,12 +646,7 @@ mod tui {
                                                 match &tab_content {
                                                     TabContent::Chat => { chat_input.input_without_shortcuts(input); }
                                                     TabContent::Direct(peer_id) => {
-                                                        let dm_input = dm_inputs.entry(peer_id.clone()).or_insert_with(|| {
-                                                            let mut ta = TextArea::default();
-                                                            ta.set_line_number_style(Style::default());
-                                                            ta.set_cursor_line_style(Style::default());
-                                                            ta
-                                                        });
+                                                        let dm_input = dm_inputs.entry(peer_id.clone()).or_insert_with(init_textarea);
                                                         dm_input.input_without_shortcuts(input);
                                                     }
                                                     _ => {}
@@ -685,9 +689,7 @@ mod tui {
                                                             log_debug(&logs, format!("Failed to save message: {}", e));
                                                         }
                                                     }
-                                                    chat_input = TextArea::default();
-                                                    chat_input.set_line_number_style(Style::default());
-                                                    chat_input.set_cursor_line_style(Style::default());
+                                                    chat_input = init_textarea();
                                                 }
                                                 TabContent::Peers if !peers.is_empty() => {
                                                     let idx = peer_selection.min(peers.len() - 1);
@@ -706,12 +708,7 @@ mod tui {
                                                     }
                                                 }
                                                 TabContent::Direct(target) => {
-                                                    let dm_input = dm_inputs.entry(target.clone()).or_insert_with(|| {
-                                                        let mut ta = TextArea::default();
-                                                        ta.set_line_number_style(Style::default());
-                                                        ta.set_cursor_line_style(Style::default());
-                                                        ta
-                                                    });
+                                                    let dm_input = dm_inputs.entry(target.clone()).or_insert_with(init_textarea);
                                                     let lines = dm_input.lines();
                                                     let text: String = lines.join("\n");
                                                     if !text.trim().is_empty() {
@@ -725,9 +722,9 @@ mod tui {
                                                             Ok(pid) => pid,
                                                             Err(e) => {
                                                                 log_debug(&logs, format!("Invalid peer ID: {}", e));
-                                                                *dm_inputs.get_mut(&target.clone()).unwrap() = TextArea::default();
-                                                                dm_inputs.get_mut(&target).unwrap().set_line_number_style(Style::default());
-                                                                dm_inputs.get_mut(&target).unwrap().set_cursor_line_style(Style::default());
+                                                                if let Some(ta) = dm_inputs.get_mut(&target) {
+                                                                    *ta = init_textarea();
+                                                                }
                                                                 continue;
                                                             }
                                                         };
@@ -748,9 +745,9 @@ mod tui {
                                                             log_debug(&logs, format!("Failed to save DM: {}", e));
                                                         }
                                                     }
-                                                    *dm_inputs.get_mut(&target.clone()).unwrap() = TextArea::default();
-                                                    dm_inputs.get_mut(&target).unwrap().set_line_number_style(Style::default());
-                                                    dm_inputs.get_mut(&target).unwrap().set_cursor_line_style(Style::default());
+                                                    if let Some(ta) = dm_inputs.get_mut(&target) {
+                                                        *ta = init_textarea();
+                                                    }
                                                 }
                                                 _ => {}
                                             }

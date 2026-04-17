@@ -59,7 +59,7 @@ The application follows a modular architecture with clear separation of concerns
 
 - **`schema.rs`**: Auto-generated Diesel schema from migrations. Regenerate with `./diesel_generate.sh` after creating new migrations.
 
-- **`bin/p2p_chat_example.rs`**: TUI binary - implements interactive terminal interface with tabs, mouse support, and real-time message display.
+- **`bin/p2p_chat_tui.rs`**: TUI binary - implements interactive terminal interface with tabs, mouse support, and real-time message display.
 
 - **`bin/p2p_chat.rs`**: CLI/headless binary - simpler entry point for non-interactive use.
 
@@ -325,7 +325,7 @@ Key state components: `messages`, `chat_message_peers`, `active_tab`, `unread_br
 ### Error Handling Philosophy
 
 - **Library code** (`src/lib.rs`): No `unwrap()` - all errors propagated via `Result`
-- **TUI code** (`src/bin/p2p_chat_example.rs`): 6 `expect()` calls all with defensive guards checking preconditions
+- **TUI code** (`src/bin/p2p_chat_tui.rs`): 6 `expect()` calls all with defensive guards checking preconditions
 - **Tests**: Comprehensive timeout handling prevents hung tests (15-60 second limits)
 
 ## Performance & Optimization
@@ -343,7 +343,7 @@ Key state components: `messages`, `chat_message_peers`, `active_tab`, `unread_br
 1. **Network events**: Increase tracing level for `libp2p_swarm` or `libp2p_gossipsub::behaviour`
 2. **Message flow**: Enable tracing for `request_response` and check direct message protocol
 3. **Database issues**: Test migrations with `diesel migration run` and `diesel migration revert`
-4. **TUI rendering**: Check terminal backend in `bin/p2p_chat_example.rs` CrosstermBackend setup
+4. **TUI rendering**: Check terminal backend in `bin/p2p_chat_tui.rs` CrosstermBackend setup
 5. **Logs**: Messages appear in TUI Debug tab and stderr; check for truncation at 1000 messages
 
 ## File Structure Summary
@@ -356,7 +356,7 @@ src/
 ├── models_insertable.rs      # Auto-generated (don't edit)
 └── bin/
     ├── p2p_chat.rs           # CLI/headless entry point
-    └── p2p_chat_example.rs   # TUI entry point (conditional compile)
+    └── p2p_chat_tui.rs       # TUI entry point (conditional compile)
 tests/
 ├── p2p_integration.rs        # Network behavior tests
 └── tui_chat.rs               # TUI component tests
@@ -374,7 +374,7 @@ migrations/                   # SQL schema migrations
 ## Links to Key Files
 
 - Database queries & helpers: `src/lib.rs`
-- TUI implementation: `src/bin/p2p_chat_example.rs`
+- TUI implementation: `src/bin/p2p_chat_tui.rs`
 - Integration tests: `tests/p2p_integration.rs`
 - Project config: `Cargo.toml` (features, dependencies)
 - Dev environment: `flake.nix`, `.envrc`

@@ -4,9 +4,11 @@
 ## build with debugging info telling which src file and line caused a panic:
 #debug=1
 
-project="p2p_chat_example"
 z1="build-std=std,panic_abort"
 
+if [ -z "$project" ]; then
+  project="p2p_chat_tui"
+fi
 if [ -z "$features" ]; then
   features="default"
 fi

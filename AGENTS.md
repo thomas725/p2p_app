@@ -178,7 +178,7 @@ src/
 ├── models_*.rs      # Auto-generated model structs
 ├── bin/
 │   ├── p2p_chat.rs          # CLI binary entry point
-│   └── p2p_chat_example.rs  # TUI binary entry point
+│   └── p2p_chat_tui.rs      # TUI binary entry point
 migrations/          # SQL migration files
 sqlite.db            # SQLite database (created at runtime)
 target/              # Compiled artifacts (gitignored)

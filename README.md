@@ -57,7 +57,7 @@ src/
 ├── models_insertable.rs      # Insertable models
 ├── models_queryable.rs       # Queryable models
 └── bin/
-    └── p2p_chat_example.rs   # Binary: TUI and headless mode entry points
+    └── p2p_chat_tui.rs       # Binary: TUI and headless mode entry points
 migrations/                   # SQL migration files
 tests/
 └── p2p_integration.rs        # Integration tests with tracing
