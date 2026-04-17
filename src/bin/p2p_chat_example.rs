@@ -580,17 +580,27 @@ mod tui {
                                             let content_start_row = 2;
                                             let list_header_rows = 2;
                                             if row as usize > content_start_row + list_header_rows - 1 {
-                                                let msg_idx = row as usize - content_start_row - list_header_rows - chat_scroll_offset;
-                                                let total = messages.len();
-                                                let visible_height = if total > 0 {
-                                                    let term_height = crossterm::terminal::size().map(|(_, h)| h as usize).unwrap_or(24);
-                                                    term_height.saturating_sub(3 + 1 + 5 + 1)
-                                                } else { 0 };
-                                                if msg_idx < total && msg_idx < visible_height {
-                                                    if let Some((_, Some(peer_id))) = messages.iter().nth(msg_idx) {
-                                                        active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
-                                                        dm_messages.entry(peer_id.clone()).or_default();
+                                                let term_width = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80);
+                                                let content_width = term_width - 4;
+                                                let clicked_row = row as usize - content_start_row - list_header_rows;
+
+                                                let mut current_row = 0;
+                                                let mut msg_idx = chat_scroll_offset;
+
+                                                while current_row <= clicked_row && msg_idx < messages.len() {
+                                                    let (msg_text, _) = &messages[msg_idx];
+                                                    let msg_lines = (msg_text.len() / content_width).saturating_add(1).max(1);
+
+                                                    if clicked_row >= current_row && clicked_row < current_row + msg_lines {
+                                                        if let Some((_, Some(peer_id))) = messages.get(msg_idx) {
+                                                            active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                            dm_messages.entry(peer_id.clone()).or_default();
+                                                        }
+                                                        break;
                                                     }
+
+                                                    current_row += msg_lines;
+                                                    msg_idx += 1;
                                                 }
                                             }
                                         }
