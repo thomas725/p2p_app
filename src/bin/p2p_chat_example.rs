@@ -538,7 +538,7 @@ mod tui {
                                                     }
                                                     break;
                                                 }
-                                                char_pos += title_len + 2;
+                                                char_pos += title_len + 3;
                                             }
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) && row > 1 {
                                             let p = row as usize - 2;
