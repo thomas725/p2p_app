@@ -576,6 +576,23 @@ mod tui {
                                                     dm_messages.entry(pid).or_default();
                                                 }
                                             }
+                                        } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Chat) {
+                                            let content_start_row = 3;
+                                            let list_header_rows = 2;
+                                            if row as usize > content_start_row + list_header_rows - 1 {
+                                                let msg_idx = row as usize - content_start_row - list_header_rows - chat_scroll_offset;
+                                                let total = messages.len();
+                                                let visible_height = if total > 0 {
+                                                    let term_height = crossterm::terminal::size().map(|(_, h)| h as usize).unwrap_or(24);
+                                                    term_height.saturating_sub(3 + 1 + 5 + 1)
+                                                } else { 0 };
+                                                if msg_idx < total && msg_idx < visible_height {
+                                                    if let Some((_, Some(peer_id))) = messages.iter().nth(msg_idx) {
+                                                        active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                        dm_messages.entry(peer_id.clone()).or_default();
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                     Event::Key(key) => {
