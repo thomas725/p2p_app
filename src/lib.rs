@@ -147,8 +147,10 @@ where
     let _ = LOG_TUI_CALLBACK.set(Box::new(callback));
 }
 
+/// Get the current TUI log messages.
 pub fn get_tui_logs() -> VecDeque<String> {
-    LOGS.get()
+    LOGS
+        .get()
         .map(|m| m.lock().expect("TUI logs mutex not poisoned").clone())
         .unwrap_or_default()
 }
@@ -327,13 +329,16 @@ pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, 
 /// - If migrations fail to execute
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
-    let database_url = env::var("DATABASE_URL").unwrap_or("sqlite.db".to_owned());
+    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite.db".to_owned());
     let mut conn = SqliteConnection::establish(&database_url)
         .wrap_err_with(|| format!("Error connecting to {database_url}"))?;
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| eyre!(format!("Error executing migrations on {database_url}: {e}")))?;
     Ok(conn)
 }
+
+/// Convert boolean to integer for database operations
+
 
 /// Get the database URL from environment or default value.
 ///
@@ -429,41 +434,35 @@ pub fn save_message(
         peer_id: peer_id.map(|s| s.to_string()),
         topic: topic.to_string(),
         sent: 0,
-        is_direct: if is_direct { 1 } else { 0 },
+        is_direct: is_direct as i32,
         target_peer: target_peer.map(|s| s.to_string()),
     };
-    let msg = diesel::insert_into(schema::messages::table)
+    diesel::insert_into(schema::messages::table)
         .values(&new_msg)
         .returning(Message::as_returning())
-        .get_result(conn)?;
-    Ok(msg)
+        .get_result(conn)
+        .wrap_err_with(|| format!("Failed to save message: content='{}', topic='{}', is_direct={}", 
+            content, topic, is_direct))
+        .map(|msg| {
+            tracing::debug!(message_id = msg.id, "Message saved to database");
+            msg
+        })
 }
 
 /// Get all unsent broadcast messages for a topic, ordered by creation time.
 pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut sqlite_connect()?;
-    let msgs = messages
+    messages
         .filter(schema::messages::topic.eq(topic))
         .filter(schema::messages::sent.eq(0))
         .filter(schema::messages::is_direct.eq(0))
         .order(schema::messages::created_at.asc())
         .select(Message::as_select())
-        .load(conn)?;
-    Ok(msgs)
+        .load(conn)
+        .wrap_err_with(|| format!("Failed to load unsent messages for topic: {}", topic))
 }
 
 /// Get all unsent direct messages to a specific peer, ordered by creation time.
-pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
-    let conn = &mut sqlite_connect()?;
-    let msgs = messages
-        .filter(schema::messages::target_peer.eq(target_peer))
-        .filter(schema::messages::sent.eq(0))
-        .filter(schema::messages::is_direct.eq(1))
-        .order(schema::messages::created_at.asc())
-        .select(Message::as_select())
-        .load(conn)?;
-    Ok(msgs)
-}
 
 /// Mark a message as sent by ID.
 pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
@@ -499,6 +498,20 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
         .load(conn)?;
     Ok(msgs)
 }
+
+pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    messages
+        .filter(schema::messages::target_peer.eq(target_peer))
+        .filter(schema::messages::sent.eq(0))
+        .filter(schema::messages::is_direct.eq(1))
+        .order(schema::messages::created_at.asc())
+        .select(Message::as_select())
+        .load(conn)
+        .wrap_err_with(|| format!("Failed to load unsent direct messages for peer: {}", target_peer))
+}
+
+/// Load all known peers, ordered by most recently seen first.
 
 /// Save or update a peer in the database.
 ///
@@ -538,7 +551,6 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
     Ok(peer)
 }
 
-/// Load all known peers, ordered by most recently seen first.
 pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
     let conn = &mut sqlite_connect()?;
     let peers_list = peers
@@ -546,14 +558,6 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
         .select(Peer::as_select())
         .load(conn)?;
     Ok(peers_list)
-}
-
-/// Delete a peer from the database by peer_id.
-pub fn remove_peer(peer_id: &str) -> color_eyre::Result<()> {
-    let conn = &mut sqlite_connect()?;
-    diesel::delete(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
-        .execute(conn)?;
-    Ok(())
 }
 
 pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
@@ -637,9 +641,21 @@ impl NetworkSize {
     /// NetworkSize classification for configuring gossipsub behavior
     pub fn from_peer_count(avg: f64) -> Self {
         match avg as i32 {
-            0..=3 => NetworkSize::Small,
-            4..=15 => NetworkSize::Medium,
-            _ => NetworkSize::Large,
+            0..=3 => Self::Small,
+            4..=15 => Self::Medium,
+            _ => Self::Large,
+        }
+    }
+}
+
+impl TryFrom<i32> for NetworkSize {
+    type Error = &'static str;
+    
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0..=3 => Ok(Self::Small),
+            4..=15 => Ok(Self::Medium),
+            _ => Ok(Self::Large),
         }
     }
 }
