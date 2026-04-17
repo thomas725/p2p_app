@@ -765,16 +765,9 @@ mod tui {
                                                 unread_dms.remove(&target);
                                                 active_tab = 0;
                                             }
-                                        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('n') {
-                                            if unread_broadcasts > 0 {
-                                                active_tab = 0;
-                                                unread_broadcasts = 0;
-                                            } else if let Some((target, _)) = unread_dms.iter().next() {
-                                                let target_clone = target.clone();
-                                                active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
-                                                unread_dms.remove(&target_clone);
-                                            }
-                                        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('g') {
+                                        } else if key.modifiers.contains(KeyModifiers::CONTROL)
+                                            && (key.code == KeyCode::Char('n') || key.code == KeyCode::Char('g'))
+                                        {
                                             if unread_broadcasts > 0 {
                                                 active_tab = 0;
                                                 unread_broadcasts = 0;
