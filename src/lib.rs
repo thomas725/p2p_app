@@ -1015,4 +1015,70 @@ mod tests {
         assert_eq!(medium, NetworkSize::Medium);
         assert_eq!(large, NetworkSize::Large);
     }
+
+    #[test]
+    fn test_strip_ansi_codes_empty() {
+        let clean = strip_ansi_codes("");
+        assert_eq!(clean, "");
+    }
+
+    #[test]
+    fn test_strip_ansi_codes_no_ansi() {
+        let clean = strip_ansi_codes("plain text");
+        assert_eq!(clean, "plain text");
+    }
+
+    #[test]
+    fn test_strip_ansi_codes_multiple_codes() {
+        let ansi = "\x1b[1m\x1b[32mBold Green\x1b[0m Normal";
+        let clean = strip_ansi_codes(ansi);
+        assert_eq!(clean, "Bold Green Normal");
+    }
+
+    #[test]
+    fn test_strip_ansi_codes_incomplete_sequence() {
+        let ansi = "\x1b[32mGreen\x1b[0m incomplete";
+        let clean = strip_ansi_codes(ansi);
+        assert!(clean.contains("Green"));
+        assert!(clean.contains("incomplete"));
+    }
+
+    #[test]
+    fn test_direct_message_serialization() {
+        use serde_json;
+        let dm = DirectMessage {
+            content: "Hello".to_string(),
+            timestamp: 1234567890,
+            sent_at: Some(1234567890.5),
+        };
+        let json = serde_json::to_string(&dm).unwrap();
+        assert!(json.contains("Hello"));
+        assert!(json.contains("1234567890"));
+    }
+
+    #[test]
+    fn test_broadcast_message_serialization() {
+        use serde_json;
+        let bm = BroadcastMessage {
+            content: "World".to_string(),
+            sent_at: Some(1234567890.5),
+        };
+        let json = serde_json::to_string(&bm).unwrap();
+        assert!(json.contains("World"));
+    }
+
+    #[test]
+    fn test_network_size_equality() {
+        assert_eq!(NetworkSize::Small, NetworkSize::Small);
+        assert_eq!(NetworkSize::Medium, NetworkSize::Medium);
+        assert_eq!(NetworkSize::Large, NetworkSize::Large);
+        assert_ne!(NetworkSize::Small, NetworkSize::Medium);
+    }
+
+    #[test]
+    fn test_network_size_copy() {
+        let size = NetworkSize::Medium;
+        let copy = size;
+        assert_eq!(size, copy);
+    }
 }

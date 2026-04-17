@@ -31,50 +31,84 @@ The terminal is organized into rows starting from 0:
 ### Peers Tab
 
 ```rust
-let tabs_rows = 3;
-let notification_rows = if unread_broadcasts > 0 || !unread_dms.is_empty() { 1 } else { 0 };
-let list_header_rows = 1;  // Just the "Peers" header line
-let peers_start_row = tabs_rows + notification_rows + list_header_rows;
+let peers_start_row = 3;
+if row >= peers_start_row {
+    let p = row - peers_start_row;
+    // p = 0 is first peer, p = 1 is second peer, etc.
+}
 ```
 
-**Without notification:** `3 + 0 + 1 = 4` (first peer at row 3)
-**With notification:** `3 + 1 + 1 = 5` (first peer at row 4)
+**Click row 3** → first peer (p = 0)
+**Click row 4** → second peer (p = 1)
 
 ### Chat Tab
 
 ```rust
-let tabs_rows = 3;
-let notification_rows = if unread_broadcasts > 0 || !unread_dms.is_empty() { 1 } else { 0 };
-let list_header_rows = 2;  // Title line + column headers
-let content_start_row = tabs_rows + notification_rows + list_header_rows;
+let content_start_row = 4;
+if row >= content_start_row {
+    let clicked_row = row - content_start_row;
+    // Iterate through messages accumulating line counts
+}
 ```
 
-**Without notification:** `3 + 0 + 2 = 5` (first message at row 4)
-**With notification:** `3 + 1 + 2 = 6` (first message at row 5)
+**Click row 4** → first message (relative row 0)
+**Click row 5** → second message (relative row 1), assuming single-line messages
+
+### Notification Handling
+
+The notification bar occupies row 1 but does NOT shift the peers list down.
+Both Peers and Chat use fixed base offsets regardless of notification state.
 
 ## Common Mistakes
 
-1. **Hardcoding notification_rows**: Always check if there are unread broadcasts or DMs before adding 1 to the notification row count.
+1. **Off-by-one errors**: Always test with the actual TUI. Unit tests may not catch row calculation bugs.
 
-2. **Wrong list_header_rows**: Peers has 1 header row, Chat has 2 header rows. Don't assume they're the same.
+2. **Confusing row index vs 1-indexed**: Crossterm uses 0-indexed rows. Row 0 is the top row.
 
-3. **Confusing row index vs 1-indexed**: All calculations use 0-indexed rows. The first row displayed on screen is row 0, not row 1.
+3. **Not accounting for multi-line messages**: When clicking on messages, the handler must account for messages that wrap to multiple lines based on terminal width.
 
-4. **Not accounting for multi-line messages**: When clicking on messages, the handler must account for messages that wrap to multiple lines based on terminal width.
+4. **Wrong peer index**: Clicking row X should give peer index (X - start_row), not just X.
 
-## Click Handler Pattern
+## Click Handler Pattern (Peers)
 
 ```rust
-if row as usize >= content_start_row {
-    let clicked_row_in_content = row as usize - content_start_row;
-    // For peers: index = clicked_row_in_content
-    // For messages: iterate through messages, accumulating line counts
+let peers_start_row = 3;  // Hardcoded after empirical testing
+if row >= peers_start_row {
+    let p = row - peers_start_row;
+    if p < peers.len() {
+        // Open DM with peers[p]
+    }
+}
+```
+
+## Click Handler Pattern (Chat)
+
+```rust
+let content_start_row = 4;  // First message row
+let content_width = terminal_width - 4;  // Account for borders
+
+if row >= content_start_row {
+    let clicked_row = row - content_start_row;
+    
+    let mut current_row = 0;
+    for msg_idx in chat_scroll_offset..messages.len() {
+        let msg = &messages[msg_idx];
+        let manual_breaks = msg.matches('\n').count();
+        let wrapped_lines = (msg.len() / content_width).max(1);
+        let msg_lines = manual_breaks + wrapped_lines;
+        
+        if clicked_row >= current_row && clicked_row < current_row + msg_lines {
+            // Clicked on this message
+            break;
+        }
+        current_row += msg_lines;
+    }
 }
 ```
 
 ## Testing with TuiTestState
 
-The `TuiTestState` struct in `src/lib.rs` provides testable methods for verifying row calculations:
+The `TuiTestState` struct in `src/lib.rs` provides testable methods:
 
 ```rust
 pub fn list_header_start_row(&self) -> u16 {
@@ -86,4 +120,13 @@ pub fn list_header_start_row(&self) -> u16 {
 pub fn first_message_row(&self) -> u16 {
     self.list_header_start_row() + 2  // +2 for Chat's 2-row list header
 }
+
+pub fn handle_mouse_click(&self, row: u16, _col: u16) -> Option<String> {
+    // Returns peer ID for clicked message, or None if outside content area
+}
+```
+
+Run tests:
+```bash
+cargo test --test tui_chat
 ```

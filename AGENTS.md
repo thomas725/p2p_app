@@ -53,9 +53,15 @@ cargo test --test p2p_integration
 
 ### Binary Selection
 
-The project has two binaries defined in Cargo.toml:
-- `p2p_chat` (CLI version): `cargo run --bin p2p_chat`
-- `p2p_chat_tui` (TUI version): `cargo run --bin p2p_chat_tui` (default)
+The project has three binaries defined in Cargo.toml:
+
+| Binary | Description | Run Command |
+|--------|-------------|-------------|
+| `p2p_chat` | CLI (basic, no UI) | `cargo run --bin p2p_chat` |
+| `p2p_chat_tui` | TUI frontend | `cargo run` (default) |
+| `p2p_chat_dioxus` | Dioxus GUI | `cargo run --bin p2p_chat_dioxus --features dioxus-desktop` |
+
+**Note:** The Dioxus GUI requires GTK/WebKit system libraries. See the Dioxus section below.
 
 ## Linting & Formatting
 
