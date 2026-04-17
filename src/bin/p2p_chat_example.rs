@@ -568,7 +568,7 @@ mod tui {
                                                 unread_dms.remove(&target_clone);
                                             }
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) {
-                                            let peers_start_row = 4;
+                                            let peers_start_row = 5;
                                             if row as usize >= peers_start_row {
                                                 let p = row as usize - peers_start_row;
                                                 if p < peers.len() {
