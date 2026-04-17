@@ -669,6 +669,7 @@ pub mod tui {
         pub chat_list_state_offset: usize,
         pub unread_broadcasts: u32,
         pub unread_dms: BTreeMap<String, u32>,
+        pub terminal_width: usize,
     }
 
     impl TuiTestState {
@@ -677,16 +678,22 @@ pub mod tui {
         }
 
         pub fn with_messages(messages: VecDeque<String>) -> Self {
+            Self::with_messages_and_width(messages, 80)
+        }
+
+        pub fn with_messages_and_width(messages: VecDeque<String>, width: usize) -> Self {
             let chat_message_peers: Vec<String> = messages
                 .iter()
                 .map(|m| {
-                    if m.contains("[You]") {
-                        String::new()
-                    } else {
+                    if m.starts_with("[You]") {
+                        "You".to_string()
+                    } else if m.contains('[') {
                         m.split('[')
                             .nth(1)
                             .map(|s| s.split(']').next().unwrap_or("").to_string())
                             .unwrap_or_default()
+                    } else {
+                        String::new()
                     }
                 })
                 .collect();
@@ -698,38 +705,86 @@ pub mod tui {
                 chat_list_state_offset: 0,
                 unread_broadcasts: 0,
                 unread_dms: BTreeMap::new(),
+                terminal_width: width,
             }
         }
 
-        pub fn handle_mouse_click(&self, row: u16) -> Option<String> {
-            let content_start = self.calculate_content_start_row();
-            let click_offset = row as isize - content_start as isize;
-
-            if click_offset < 0 {
+        pub fn handle_mouse_click(&self, row: u16, _col: u16) -> Option<String> {
+            let first_msg_row = self.first_message_row();
+            if row < first_msg_row {
                 return None;
             }
 
-            let peer_idx = self.chat_list_state_offset + click_offset as usize;
-            self.chat_message_peers.get(peer_idx).cloned()
+            let content_width = (self.terminal_width as u16).saturating_sub(4);
+            let clicked_row_in_list = row - first_msg_row;
+
+            let mut current_row: u16 = 0;
+            for msg_idx in self.chat_list_state_offset..self.messages.len() {
+                let msg = &self.messages[msg_idx];
+                let manual_breaks = msg.matches('\n').count() as u16;
+                let wrapped_lines = ((msg.len() as u16) / content_width)
+                    .saturating_add(1)
+                    .max(1);
+                let msg_lines = manual_breaks + wrapped_lines;
+
+                if clicked_row_in_list >= current_row
+                    && clicked_row_in_list < current_row + msg_lines
+                {
+                    return self.chat_message_peers.get(msg_idx).cloned();
+                }
+
+                current_row += msg_lines;
+            }
+
+            None
+        }
+
+        pub fn list_header_start_row(&self) -> u16 {
+            let tabs_rows = 3;
+            let notification_rows = if self.unread_broadcasts > 0 || !self.unread_dms.is_empty() {
+                1
+            } else {
+                0
+            };
+            tabs_rows + notification_rows
+        }
+
+        pub fn first_message_row(&self) -> u16 {
+            self.list_header_start_row() + 2
         }
 
         pub fn calculate_content_start_row(&self) -> u16 {
-            let mut start = 1; // Tabs row
-            if self.unread_broadcasts > 0 || !self.unread_dms.is_empty() {
-                start += 1; // Notification row
-            }
-            start
+            self.first_message_row()
         }
 
         pub fn handle_tab_click(&mut self, row: u16) {
             self.active_tab = match row {
-                0 => 0, // Chat tab
-                1 => 1, // Peers tab
-                2 => 2, // Direct tab (deprecated, but still works)
-                3 => 3, // Log tab
+                0..=2 => (row / 3) as usize,
                 _ => self.active_tab,
             };
         }
+
+        pub fn handle_notification_click(&self, col: u16) -> Option<NotificationTarget> {
+            if self.unread_broadcasts > 0 || !self.unread_dms.is_empty() {
+                if col < 20 {
+                    Some(NotificationTarget::Broadcasts)
+                } else {
+                    self.unread_dms
+                        .keys()
+                        .next()
+                        .cloned()
+                        .map(NotificationTarget::Dm)
+                }
+            } else {
+                None
+            }
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    pub enum NotificationTarget {
+        Broadcasts,
+        Dm(String),
     }
 
     impl Default for TuiTestState {
