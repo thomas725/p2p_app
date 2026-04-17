@@ -5,7 +5,8 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { self, nixpkgs }:
     let
       forAllSystems = nixpkgs.lib.genAttrs [
         "x86_64-linux"
@@ -13,7 +14,8 @@
       ];
     in
     {
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = import nixpkgs { inherit system; };
         in
@@ -33,6 +35,14 @@
               binutils
               bashInteractive
               gcc
+              # Dioxus Desktop dependencies
+              gtk3
+              libsoup
+              webkitgtk_4_1
+              glib
+              pango
+              cairo
+              gdk-pixbuf
             ];
 
             RUST_BACKTRACE = "1";

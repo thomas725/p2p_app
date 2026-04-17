@@ -27,6 +27,8 @@ quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm", "dep:atty" ]
 gabble = [ "dep:gabble" ]
+dioxus = [ "dep:dioxus" ]
+dioxus-desktop = [ "dioxus", "dep:dioxus-desktop" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
@@ -37,6 +39,8 @@ ratatui-textarea = { version = "0.8", optional = true, default-features = false,
 crossterm = { version = "=0.29", optional = true }
 atty = { version = "=0.2", optional = true }
 gabble = { version = "0.2", optional = true }
+dioxus = { version = "0.7", optional = true }
+dioxus-desktop = { version = "0.7", optional = true }
 
 # ORM mapper we use to access our SQLite database
 diesel = { version = "=2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
@@ -100,3 +104,8 @@ path = "src/bin/p2p_chat.rs"
 name = "p2p_chat_tui"
 path = "src/bin/p2p_chat_example.rs"
 required-features = ["tui"]
+
+[[bin]]
+name = "p2p_chat_dioxus"
+path = "src/bin/p2p_chat_dioxus.rs"
+required-features = ["dioxus-desktop"]
