@@ -570,7 +570,7 @@ mod tui {
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) {
                                             let tabs_rows = 3;
                                             let notification_rows = if unread_broadcasts > 0 || !unread_dms.is_empty() { 1 } else { 0 };
-                                            let peers_start_row = tabs_rows + notification_rows + 2;
+                                            let peers_start_row = tabs_rows + notification_rows + 1;
                                             if row as usize >= peers_start_row {
                                                 let p = row as usize - peers_start_row;
                                                 if p < peers.len() {
