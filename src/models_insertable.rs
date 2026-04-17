@@ -7,7 +7,6 @@ use crate::schema::*;
 use diesel::Insertable;
 
 use chrono::NaiveDateTime;
-
 #[derive(Insertable, Debug)]
 #[diesel(table_name = identities)]
 pub struct NewIdentity {
@@ -15,17 +14,6 @@ pub struct NewIdentity {
     pub last_tcp_port: Option<i32>,
     pub last_quic_port: Option<i32>,
     pub self_nickname: Option<String>,
-}
-
-impl NewIdentity {
-    pub fn new(key: Vec<u8>) -> Self {
-        Self {
-            key,
-            last_tcp_port: None,
-            last_quic_port: None,
-            self_nickname: None,
-        }
-    }
 }
 
 #[derive(Insertable, Debug)]
@@ -39,44 +27,11 @@ pub struct NewMessage {
     pub target_peer: Option<String>,
 }
 
-impl NewMessage {
-    pub fn broadcast(content: String, topic: &str) -> Self {
-        Self {
-            content,
-            peer_id: None,
-            topic: topic.to_string(),
-            sent: 0,
-            is_direct: 0,
-            target_peer: None,
-        }
-    }
-
-    pub fn direct(content: String, topic: &str, target_peer: &str) -> Self {
-        Self {
-            content,
-            peer_id: None,
-            topic: topic.to_string(),
-            sent: 0,
-            is_direct: 1,
-            target_peer: Some(target_peer.to_string()),
-        }
-    }
-}
-
 #[derive(Insertable, Debug)]
 #[diesel(table_name = peer_sessions)]
 pub struct NewPeerSession {
     pub concurrent_peers: i32,
     pub recorded_at: NaiveDateTime,
-}
-
-impl NewPeerSession {
-    pub fn new(concurrent_peers: i32) -> Self {
-        Self {
-            concurrent_peers,
-            recorded_at: chrono::Utc::now().naive_utc(),
-        }
-    }
 }
 
 #[derive(Insertable, Debug)]
@@ -90,101 +45,3 @@ pub struct NewPeer {
     pub received_nickname: Option<String>,
 }
 
-impl NewPeer {
-    pub fn new(peer_id: String, addresses: Vec<String>) -> Self {
-        let now = chrono::Utc::now().naive_utc();
-        Self {
-            peer_id,
-            addresses: addresses.join(","),
-            first_seen: now,
-            last_seen: now,
-            peer_local_nickname: None,
-            received_nickname: None,
-        }
-    }
-
-    pub fn with_nickname(mut self, nickname: String) -> Self {
-        self.peer_local_nickname = Some(nickname);
-        self
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_new_identity_default() {
-        let identity = NewIdentity::new(vec![1, 2, 3]);
-        assert_eq!(identity.key, vec![1, 2, 3]);
-        assert_eq!(identity.last_tcp_port, None);
-        assert_eq!(identity.last_quic_port, None);
-        assert_eq!(identity.self_nickname, None);
-    }
-
-    #[test]
-    fn test_new_message_broadcast() {
-        let msg = NewMessage::broadcast("Hello".to_string(), "test-topic");
-        assert_eq!(msg.content, "Hello");
-        assert_eq!(msg.topic, "test-topic");
-        assert_eq!(msg.peer_id, None);
-        assert_eq!(msg.sent, 0);
-        assert_eq!(msg.is_direct, 0);
-        assert_eq!(msg.target_peer, None);
-    }
-
-    #[test]
-    fn test_new_message_direct() {
-        let msg = NewMessage::direct("Private".to_string(), "test-topic", "peer123");
-        assert_eq!(msg.content, "Private");
-        assert_eq!(msg.topic, "test-topic");
-        assert_eq!(msg.peer_id, None);
-        assert_eq!(msg.sent, 0);
-        assert_eq!(msg.is_direct, 1);
-        assert_eq!(msg.target_peer, Some("peer123".to_string()));
-    }
-
-    #[test]
-    fn test_new_peer_session() {
-        let session = NewPeerSession::new(5);
-        assert_eq!(session.concurrent_peers, 5);
-        assert!(session.recorded_at <= chrono::Utc::now().naive_utc());
-    }
-
-    #[test]
-    fn test_new_peer() {
-        let peer = NewPeer::new(
-            "peer123".to_string(),
-            vec!["/ip4/127.0.0.1/tcp/8080".to_string()],
-        );
-        assert_eq!(peer.peer_id, "peer123");
-        assert_eq!(peer.addresses, "/ip4/127.0.0.1/tcp/8080");
-        assert_eq!(peer.peer_local_nickname, None);
-        assert_eq!(peer.received_nickname, None);
-        assert!(peer.first_seen <= chrono::Utc::now().naive_utc());
-        assert!(peer.last_seen <= chrono::Utc::now().naive_utc());
-    }
-
-    #[test]
-    fn test_new_peer_with_nickname() {
-        let peer = NewPeer::new(
-            "peer123".to_string(),
-            vec!["/ip4/127.0.0.1/tcp/8080".to_string()],
-        )
-        .with_nickname("Alice".to_string());
-        assert_eq!(peer.peer_local_nickname, Some("Alice".to_string()));
-    }
-
-    #[test]
-    fn test_new_peer_multiple_addresses() {
-        let peer = NewPeer::new(
-            "peer123".to_string(),
-            vec![
-                "/ip4/127.0.0.1/tcp/8080".to_string(),
-                "/ip4/192.168.1.1/tcp/9090".to_string(),
-            ],
-        );
-        assert!(peer.addresses.contains("/ip4/127.0.0.1/tcp/8080"));
-        assert!(peer.addresses.contains("/ip4/192.168.1.1/tcp/9090"));
-    }
-}
