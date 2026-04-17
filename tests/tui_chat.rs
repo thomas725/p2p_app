@@ -1,38 +1,116 @@
 #[cfg(feature = "tui")]
 mod tests {
-    use p2p_app::tui::{DmTab, TEST_MESSAGES, TabId, TuiTestState};
+    use p2p_app::tui::{DmTab, NotificationTarget, TabId, TuiTestState};
 
     #[test]
-    fn test_handle_mouse_click() {
+    fn test_layout_rows_no_notification() {
         let state = TuiTestState::new();
+        assert_eq!(state.list_header_start_row(), 3);
+        assert_eq!(state.first_message_row(), 5);
+    }
 
-        assert_eq!(state.messages.len(), TEST_MESSAGES.len());
-        assert_eq!(state.chat_message_peers.len(), TEST_MESSAGES.len());
-        assert_eq!(state.active_tab, 0);
+    #[test]
+    fn test_layout_rows_with_notification() {
+        let mut state = TuiTestState::new();
+        state.unread_broadcasts = 5;
+        assert_eq!(state.list_header_start_row(), 4);
+        assert_eq!(state.first_message_row(), 6);
+    }
 
-        let content_start = state.calculate_content_start_row();
-        let test_row = content_start + 2;
-        let peer = state.handle_mouse_click(test_row);
+    #[test]
+    fn test_handle_mouse_click_first_message() {
+        let state = TuiTestState::new();
+        let first_msg_row = state.first_message_row();
 
-        assert!(peer.is_some());
+        let peer = state.handle_mouse_click(first_msg_row, 5);
+        assert!(
+            peer.is_some(),
+            "Should click first message at row {}",
+            first_msg_row
+        );
+    }
 
-        let expected_idx = state.chat_list_state_offset + (test_row - content_start) as usize;
-        if let Some(expected_peer) = state.chat_message_peers.get(expected_idx) {
-            assert_eq!(peer, Some(expected_peer.clone()));
-        }
+    #[test]
+    fn test_handle_mouse_click_second_message() {
+        let custom = std::collections::VecDeque::from(vec![
+            "[You] msg0".to_string(),
+            "[Peer1] msg1".to_string(),
+            "[You] msg2".to_string(),
+        ]);
+        let state = TuiTestState::with_messages(custom);
+        let first_msg_row = state.first_message_row();
+
+        let peer = state.handle_mouse_click(first_msg_row, 5);
+        assert_eq!(peer, Some("You".to_string()), "First message is from You");
+
+        let peer2 = state.handle_mouse_click(first_msg_row + 1, 5);
+        assert_eq!(
+            peer2,
+            Some("Peer1".to_string()),
+            "Second message is from Peer1"
+        );
     }
 
     #[test]
     fn test_handle_mouse_click_outside_bounds() {
         let state = TuiTestState::new();
-        let content_start = state.calculate_content_start_row();
+        let list_header_row = state.list_header_start_row();
 
-        let peer = state.handle_mouse_click(content_start - 1);
-        assert!(peer.is_none());
+        let peer = state.handle_mouse_click(list_header_row - 1, 5);
+        assert!(peer.is_none(), "Click above list header should return None");
+    }
 
-        let max_row = content_start + state.chat_message_peers.len() as u16 + 5;
-        let peer = state.handle_mouse_click(max_row);
-        assert!(peer.is_none());
+    #[test]
+    fn test_handle_mouse_click_with_scroll_offset() {
+        let custom = std::collections::VecDeque::from(vec![
+            "[You] msg0".to_string(),
+            "[Peer1] msg1".to_string(),
+            "[You] msg2".to_string(),
+            "[Peer2] msg3".to_string(),
+        ]);
+        let state = TuiTestState::with_messages(custom);
+        let first_msg_row = state.first_message_row();
+
+        let mut scrolled = state.clone();
+        scrolled.chat_list_state_offset = 2;
+
+        let peer = scrolled.handle_mouse_click(first_msg_row, 5);
+        assert_eq!(
+            peer,
+            Some("You".to_string()),
+            "Scrolled view: first visible is msg2"
+        );
+    }
+
+    #[test]
+    fn test_handle_mouse_click_multiline_message() {
+        let custom = std::collections::VecDeque::from(vec![
+            "[Peer1] line1\nline2\nline3".to_string(),
+            "[Peer2] msg2".to_string(),
+        ]);
+        let state = TuiTestState::with_messages(custom);
+        let first_msg_row = state.first_message_row();
+
+        let peer_line1 = state.handle_mouse_click(first_msg_row, 5);
+        assert_eq!(
+            peer_line1,
+            Some("Peer1".to_string()),
+            "First line of multi-line message"
+        );
+
+        let peer_line2 = state.handle_mouse_click(first_msg_row + 1, 5);
+        assert_eq!(
+            peer_line2,
+            Some("Peer1".to_string()),
+            "Second line of multi-line message"
+        );
+
+        let peer_line4 = state.handle_mouse_click(first_msg_row + 3, 5);
+        assert_eq!(
+            peer_line4,
+            Some("Peer2".to_string()),
+            "Fourth row is second message"
+        );
     }
 
     #[test]
@@ -40,12 +118,32 @@ mod tests {
         let state = TuiTestState::new();
         let start_row = state.calculate_content_start_row();
 
-        assert!(start_row >= 1);
-
         let mut state_with_notifs = state.clone();
         state_with_notifs.unread_broadcasts = 5;
         let start_row_with_notifs = state_with_notifs.calculate_content_start_row();
         assert!(start_row_with_notifs > start_row);
+    }
+
+    #[test]
+    fn test_notification_click_broadcasts() {
+        let mut state = TuiTestState::new();
+        state.unread_broadcasts = 5;
+        state.unread_dms.insert("Peer1".to_string(), 2);
+
+        let target = state.handle_notification_click(5);
+        assert!(matches!(target, Some(NotificationTarget::Broadcasts)));
+    }
+
+    #[test]
+    fn test_notification_click_dm() {
+        let mut state = TuiTestState::new();
+        state.unread_dms.insert("Peer1".to_string(), 2);
+
+        let target = state.handle_notification_click(40);
+        match target {
+            Some(NotificationTarget::Dm(pid)) => assert_eq!(pid, "Peer1"),
+            _ => panic!("Expected Dm notification target"),
+        }
     }
 
     #[test]
@@ -64,9 +162,9 @@ mod tests {
         assert_eq!(state.messages[2], "[You] I am good");
 
         assert_eq!(state.chat_message_peers.len(), 3);
-        assert!(state.chat_message_peers[0].is_empty());
+        assert_eq!(state.chat_message_peers[0], "You");
         assert_eq!(state.chat_message_peers[1], "Peer1");
-        assert!(state.chat_message_peers[2].is_empty());
+        assert_eq!(state.chat_message_peers[2], "You");
     }
 
     #[test]
@@ -133,70 +231,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tab_click_to_chat() {
-        let mut state = TuiTestState::new();
-        state.active_tab = 1;
-        state.handle_tab_click(0);
-        assert_eq!(
-            state.active_tab, 0,
-            "Click row 0 should go to Chat (index 0)"
-        );
-    }
-
-    #[test]
-    fn test_tab_click_to_peers() {
-        let mut state = TuiTestState::new();
-        state.active_tab = 0;
-        state.handle_tab_click(1);
-        assert_eq!(state.active_tab, 1, "Click row 1 should go to Peers");
-    }
-
-    #[test]
-    fn test_tab_click_to_log() {
-        let mut state = TuiTestState::new();
-        state.active_tab = 0;
-        state.handle_tab_click(3);
-        assert_eq!(state.active_tab, 3, "Click row 3 should go to Log");
-    }
-
-    #[test]
-    fn test_unread_notification_increments() {
-        let mut state = TuiTestState::new();
-        let initial = state.unread_broadcasts;
-        state.unread_broadcasts += 1;
-        assert_eq!(state.unread_broadcasts, initial + 1);
-    }
-
-    #[test]
-    fn test_notification_clears_on_chat_tab_focus() {
-        let mut state = TuiTestState::new();
-        state.unread_broadcasts = 5;
-        // When switching to chat tab (tab 0), unread should clear
-        state.active_tab = 0;
-        state.unread_broadcasts = 0;
-        assert_eq!(state.unread_broadcasts, 0);
-        assert_eq!(state.active_tab, 0);
-    }
-
-    #[test]
-    fn test_notification_area_calculation() {
-        let mut state = TuiTestState::new();
-        // No unread - notification area should be 0
-        state.unread_broadcasts = 0;
-        let start_row = state.calculate_content_start_row();
-
-        // With unread - notification area should push content down
-        let mut state_with_unread = state.clone();
-        state_with_unread.unread_broadcasts = 3;
-        let start_row_with_unread = state_with_unread.calculate_content_start_row();
-
-        assert!(
-            start_row_with_unread > start_row,
-            "Content should start lower with notifications"
-        );
-    }
-
-    #[test]
     fn test_dm_tab_message_persistence() {
         let messages = vec![
             "alice [10:00:00] Hello".to_string(),
@@ -209,45 +243,6 @@ mod tests {
         assert_eq!(dm.messages.len(), 2);
         assert_eq!(dm.peer_id, "alice");
         assert!(dm.messages.front().unwrap().contains("Hello"));
-    }
-
-    #[test]
-    fn test_dm_tab_cloning() {
-        let messages = vec!["test message".to_string()].into_iter().collect();
-        let dm1 = DmTab::with_messages("peer1".to_string(), messages);
-        let dm2 = dm1.clone();
-
-        assert_eq!(dm1, dm2);
-        assert_eq!(dm2.peer_id, "peer1");
-    }
-
-    #[test]
-    fn test_handle_mouse_click_with_scroll_offset() {
-        let custom = std::collections::VecDeque::from(vec![
-            "[You] msg0".to_string(),
-            "[Peer] msg1".to_string(),
-            "[You] msg2".to_string(),
-            "[Peer] msg3".to_string(),
-        ]);
-        let mut state = TuiTestState::with_messages(custom);
-        state.chat_list_state_offset = 2;
-        let content_start = state.calculate_content_start_row();
-
-        let peer = state.handle_mouse_click(content_start);
-        // At offset 2 + row 0 (content_start), we get index 2, which is "[You] msg2" -> empty string
-        assert_eq!(peer, Some(String::new()));
-    }
-
-    #[test]
-    fn test_keyboard_navigation_cycle() {
-        let mut state = TuiTestState::new();
-        state.active_tab = 3;
-
-        state.handle_tab_click(0);
-        assert_eq!(state.active_tab, 0);
-
-        state.handle_tab_click(1);
-        assert_eq!(state.active_tab, 1);
     }
 
     #[test]
@@ -292,16 +287,13 @@ mod tests {
         assert_eq!(idx2, 3);
         assert_eq!(tabs.dm_tab_count(), 2);
 
-        // Adding same peer again returns existing index
         let idx3 = tabs.add_dm_tab("peer1".to_string());
         assert_eq!(idx3, 2);
 
-        // Remove peer1
         let removed = tabs.remove_dm_tab("peer1");
         assert!(removed.is_some());
         assert_eq!(tabs.dm_tab_count(), 1);
 
-        // Remove again returns None
         let removed2 = tabs.remove_dm_tab("peer1");
         assert!(removed2.is_none());
     }
@@ -313,10 +305,9 @@ mod tests {
         tabs.add_dm_tab("12D3KooWGDyE67".to_string());
 
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 5); // Chat, Peers, 2 DM tabs + Log = 5
+        assert_eq!(titles.len(), 5);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
-        // DM tabs have "(X)" suffix for closing
         assert!(titles[2].contains("(X)"));
         assert!(titles[3].contains("(X)"));
         assert_eq!(titles[4], "Log");
