@@ -748,6 +748,11 @@ mod tui {
                                                     chat_scroll_offset = usize::MAX;
                                                     chat_auto_scroll = true;
                                                 }
+                                                KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                                | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                                | KeyCode::Enter => {
+                                                    chat_input.input(input);
+                                                }
                                                 _ => {}
                                             }
                                         } else if matches!(tab_content, TabContent::Peers) {
@@ -761,6 +766,21 @@ mod tui {
                                                     if !peers.is_empty() {
                                                         peer_selection = (peer_selection + 1).min(peers.len() - 1);
                                                     }
+                                                }
+                                                _ => {}
+                                            }
+                                        } else if let TabContent::Direct(peer_id) = tab_content {
+                                            let dm_input = dm_inputs.entry(peer_id.to_string()).or_insert_with(|| {
+                                                let mut ta = TextArea::default();
+                                                ta.set_line_number_style(Style::default());
+                                                ta.set_cursor_line_style(Style::default());
+                                                ta
+                                            });
+                                            match key.code {
+                                                KeyCode::Char(_) | KeyCode::Backspace | KeyCode::Delete
+                                                | KeyCode::Left | KeyCode::Right | KeyCode::Home
+                                                | KeyCode::End | KeyCode::Enter => {
+                                                    dm_input.input(input);
                                                 }
                                                 _ => {}
                                             }
