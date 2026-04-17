@@ -515,7 +515,8 @@ mod tui {
                                 && let Ok(event) = read()
                             {
                                 match event {
-                                    Event::Mouse(mouse) if mouse_capture => {
+                                    Event::Mouse(mouse) if mouse_capture
+                                        && matches!(mouse.kind, crossterm::event::MouseEventKind::Down(_)) => {
                                         let row = mouse.row;
                                         let col = mouse.column as usize;
 
