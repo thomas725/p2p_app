@@ -546,7 +546,7 @@ mod tui {
                                                 }
                                                 char_pos += title_len + 3;
                                             }
-                                        } else if row == 1 && (unread_broadcasts > 0 || !unread_dms.is_empty()) {
+                                        } else if row == 3 && (unread_broadcasts > 0 || !unread_dms.is_empty()) {
                                             if unread_broadcasts > 0 && !unread_dms.is_empty() {
                                                 let separator_pos = format!("{} broadcast(s) | ", unread_broadcasts).len();
                                                 if col < separator_pos {
@@ -567,18 +567,26 @@ mod tui {
                                                 active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
                                                 unread_dms.remove(&target_clone);
                                             }
-                                        } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) && row > 1 {
-                                            let p = row as usize - 2;
-                                            if p < peers.len() {
-                                                peer_selection = p;
-                                                if let Some((pid, _, _)) = peers.get(p).cloned() {
-                                                    active_tab = dynamic_tabs.add_dm_tab(pid.clone());
-                                                    dm_messages.entry(pid).or_default();
+                                        } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) {
+                                            let tabs_rows = 3;
+                                            let notification_rows = 1;
+                                            let list_header_rows = 2;
+                                            let peers_start_row = tabs_rows + notification_rows + list_header_rows;
+                                            if row as usize >= peers_start_row {
+                                                let p = row as usize - peers_start_row;
+                                                if p < peers.len() {
+                                                    peer_selection = p;
+                                                    if let Some((pid, _, _)) = peers.get(p).cloned() {
+                                                        active_tab = dynamic_tabs.add_dm_tab(pid.clone());
+                                                        dm_messages.entry(pid).or_default();
+                                                    }
                                                 }
                                             }
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Chat) {
-                                            let content_start_row = 2;
+                                            let tabs_rows = 3;
+                                            let notification_rows = 1;
                                             let list_header_rows = 2;
+                                            let content_start_row = tabs_rows + notification_rows;
                                             if row as usize > content_start_row + list_header_rows - 1 {
                                                 let term_width = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80);
                                                 let content_width = term_width - 4;
