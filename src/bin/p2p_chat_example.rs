@@ -525,7 +525,7 @@ mod tui {
                                             let mut char_pos = 0;
                                             for (i, title) in titles.iter().enumerate() {
                                                 let title_len = title.len();
-                                                if col >= char_pos && col < char_pos + title_len {
+                                                if col >= char_pos && col <= char_pos + title_len {
                                                     match dynamic_tabs.tab_index_to_content(i) {
                                                         TabContent::Direct(t) if titles[i].contains("(X)") => {
                                                             dynamic_tabs.remove_dm_tab(&t);
