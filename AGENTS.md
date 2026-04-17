@@ -290,3 +290,66 @@ cargo test --test p2p_integration
 ```
 
 These tests spawn actual nodes and test message passing between them.
+
+## Dioxus Frontend
+
+The project supports a Dioxus GUI frontend alongside the TUI.
+
+### Building Dioxus
+
+```bash
+# Install Dioxus CLI
+cargo install dioxus-cli
+
+# Build and run
+cargo run --bin p2p_chat_dioxus --features dioxus-desktop
+```
+
+### System Dependencies (Linux)
+
+```bash
+# Debian/Ubuntu
+sudo apt install libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libglib2.0-dev libpango1.0-dev libcairo2-dev libgdk-pixbuf2.0-dev
+```
+
+See `flake.nix` for NixOS dependencies.
+
+### Dioxus File Structure
+
+```
+src/bin/p2p_chat_dioxus.rs  # Main Dioxus frontend
+```
+
+### Key Dioxus Patterns
+
+State management with Signals:
+```rust
+let mut count = use_signal(0);
+count.set(count() + 1);
+```
+
+Event handlers:
+```rust
+onclick: move |_| { /* handler */ }
+onkeydown: move |evt| { if evt.key() == Key::Enter { ... } }
+```
+
+RSX! macro for UI:
+```rust
+rsx! {
+    div {
+        button { onclick: move |_| count -= 1, "-" }
+        p { "{count}" }
+        button { onclick: move |_| count += 1, "+" }
+    }
+}
+```
+
+### Connecting to P2P Networking
+
+The Dioxus frontend should:
+1. Subscribe to shared broadcast channels for messages and peer events
+2. Update Signals when events are received
+3. Send messages through the libp2p swarm when the user submits
+
+See `docs/dual_frontend_architecture.md` for architecture details.
