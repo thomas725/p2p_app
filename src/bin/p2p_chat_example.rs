@@ -583,25 +583,23 @@ mod tui {
                                                 }
                                             }
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Chat) {
-                                            let tabs_rows = 3;
-                                            let notification_rows = 1;
-                                            let list_header_rows = 2;
-                                            let content_start_row = tabs_rows + notification_rows;
-                                            if row as usize > content_start_row + list_header_rows - 1 {
-                                                let term_width = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80);
-                                                let content_width = term_width - 4;
-                                                let clicked_row = row as usize - content_start_row - list_header_rows;
+                                            let term_width = crossterm::terminal::size().map(|(w, _)| w as usize).unwrap_or(80);
+                                            let content_width = term_width.saturating_sub(4);
+                                            let content_start_row = 6;
+
+                                            if row >= content_start_row {
+                                                let clicked_row = row - content_start_row;
 
                                                 let mut current_row = 0;
                                                 let mut msg_idx = chat_scroll_offset;
 
-                                                while current_row <= clicked_row && msg_idx < messages.len() {
+                                                while msg_idx < messages.len() {
                                                     let (msg_text, _) = &messages[msg_idx];
                                                     let manual_breaks = msg_text.matches('\n').count();
                                                     let wrapped_lines = (msg_text.len() / content_width).saturating_add(1);
                                                     let msg_lines = (manual_breaks + wrapped_lines).max(1);
 
-                                                    if clicked_row >= current_row && clicked_row < current_row + msg_lines {
+                                                    if clicked_row >= current_row && clicked_row < current_row + msg_lines as u16 {
                                                         if let Some((_, Some(peer_id))) = messages.get(msg_idx) {
                                                             active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
                                                             dm_messages.entry(peer_id.clone()).or_default();
@@ -609,7 +607,7 @@ mod tui {
                                                         break;
                                                     }
 
-                                                    current_row += msg_lines;
+                                                    current_row += msg_lines as u16;
                                                     msg_idx += 1;
                                                 }
                                             }
