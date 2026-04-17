@@ -756,6 +756,15 @@ mod tui {
                                                 active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
                                                 unread_dms.remove(&target_clone);
                                             }
+                                        } else if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('g') {
+                                            if unread_broadcasts > 0 {
+                                                active_tab = 0;
+                                                unread_broadcasts = 0;
+                                            } else if let Some((target, _)) = unread_dms.iter().next() {
+                                                let target_clone = target.clone();
+                                                active_tab = dynamic_tabs.add_dm_tab(target_clone.clone());
+                                                unread_dms.remove(&target_clone);
+                                            }
                                         } else if key.code == KeyCode::Tab || key.code == KeyCode::BackTab {
                                             if key.code == KeyCode::BackTab {
                                                 active_tab = if active_tab == 0 { tab_count - 1 } else { active_tab - 1 };
@@ -1031,7 +1040,7 @@ mod tui {
                         }
 
                         let help = Paragraph::new(
-                            "Tab: cycle | Enter: send | Ctrl+W: close | F12: mouse | click notification to view | PgUp/PgDn: scroll | Ctrl+Q: quit",
+                            "Tab: cycle | Enter: send | Ctrl+G: notification | Ctrl+W: close | F12: mouse | PgUp/PgDn: scroll | Ctrl+Q: quit",
                         )
                         .style(Style::default().fg(Color::DarkGray));
                         f.render_widget(help, chunks[4]);
