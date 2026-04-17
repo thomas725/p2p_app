@@ -522,26 +522,24 @@ mod tui {
 
                                         if row == 0 {
                                             let titles = dynamic_tabs.all_titles();
-                                            let cnt = titles.len();
-                                            if cnt > 0 {
-                                                let w = crossterm::terminal::size()
-                                                    .map(|(w, _)| w as usize)
-                                                    .unwrap_or(80);
-                                                let tw = (w / cnt).max(1);
-                                                let idx = (col / tw).min(cnt - 1);
-                                                match dynamic_tabs.tab_index_to_content(idx) {
-                                                    TabContent::Direct(t) if titles[idx].contains("(X)") => {
-                                                        dynamic_tabs.remove_dm_tab(&t);
-                                                        dm_messages.remove(&t);
-                                                        dm_inputs.remove(&t);
-                                                        unread_dms.remove(&t);
-                                                        active_tab = 0;
+                                            let mut char_pos = 0;
+                                            for (i, title) in titles.iter().enumerate() {
+                                                let title_len = title.len();
+                                                if col >= char_pos && col < char_pos + title_len {
+                                                    match dynamic_tabs.tab_index_to_content(i) {
+                                                        TabContent::Direct(t) if titles[i].contains("(X)") => {
+                                                            dynamic_tabs.remove_dm_tab(&t);
+                                                            dm_messages.remove(&t);
+                                                            dm_inputs.remove(&t);
+                                                            unread_dms.remove(&t);
+                                                            active_tab = 0;
+                                                        }
+                                                        _ => { active_tab = i; }
                                                     }
-                                                    _ => { active_tab = idx; }
+                                                    break;
                                                 }
+                                                char_pos += title_len + 2;
                                             }
-                                        } else if row == 1 {
-                                            active_tab = dynamic_tabs.total_tab_count() - 1;
                                         } else if matches!(dynamic_tabs.tab_index_to_content(active_tab), TabContent::Peers) && row > 1 {
                                             let p = row as usize - 2;
                                             if p < peers.len() {
