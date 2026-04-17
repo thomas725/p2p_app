@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **p2p_app** is a decentralized P2P chat application built with Rust. It provides both a TUI (terminal UI) and headless CLI for communication across networks using libp2p's gossipsub (broadcast) and request-response (direct messaging) protocols. All messages and peer metadata are persisted in SQLite using Diesel ORM.
 
 **Key Technologies:**
+
 - **libp2p**: P2P networking (gossipsub, request-response, mDNS, TCP/QUIC transports)
 - **Diesel**: SQLite ORM with embedded migrations
 - **Ratatui**: Terminal UI framework with multiple tabs
@@ -32,13 +33,13 @@ The application follows a modular architecture with clear separation of concerns
         │ LibP2P Swarm │ (networking core)
         │  AppBehaviour│
         └──────┬───────┘
-          ┌────┴──────┬──────────┐
-          │            │          │
-    ┌─────▼────┐ ┌────▼────┐ ┌──▼─────┐
-    │ Gossipsub │ │ Request │ │ mDNS   │
+          ┌────┴───────┬───────────┐
+          │            │           │
+    ┌─────▼─────┐ ┌────▼────┐ ┌────▼─────┐
+    │ Gossipsub │ │ Request │ │ mDNS     │
     │ (Publish) │ │Response │ │(Discovery)
-    │           │ │(DM)     │ │        │
-    └───────────┘ └─────────┘ └────────┘
+    │           │ │(DM)     │ │          │
+    └───────────┘ └─────────┘ └──────────┘
           │
     ┌─────▼────────────────────┐
     │   Diesel Database        │

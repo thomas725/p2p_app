@@ -44,4 +44,3 @@ pub struct NewPeer {
     pub peer_local_nickname: Option<String>,
     pub received_nickname: Option<String>,
 }
-
