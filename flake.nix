@@ -37,12 +37,13 @@
               gcc
               # Dioxus Desktop dependencies
               gtk3
-              libsoup
+              # libsoup_2_4 # insecure! let's comment this out for now..
               webkitgtk_4_1
               glib
               pango
               cairo
               gdk-pixbuf
+              # nodejs_24 # for installing and trying https://freebuff.ai/ in our sandbox: npm install -g freebuff # doesn't work in Austria.
             ];
 
             RUST_BACKTRACE = "1";
