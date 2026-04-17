@@ -14,7 +14,7 @@ This is meant to become a multi-purpose p2p application. Our first feature set i
 * **Multiple Transports**: TCP and optional QUIC support
 * **Logging**: Debug logging with millisecond timestamps and libp2p tracing integration
 * **Network Size Optimization**: Gossipsub config adapts based on historical peer count
-* **Multi-instance Support**: Ephemeral identities when DATABASE_URL is not set
+* **Multi-instance Support**: Using First unused DB in working directory when DATABASE_URL is not set. Prevent opening second instance using same DB if already running.
 
 ## Build & Run
 
