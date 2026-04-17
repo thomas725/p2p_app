@@ -342,4 +342,189 @@ mod tests {
         );
         assert_eq!(tabs.tab_index_to_content(4), p2p_app::tui::TabContent::Log);
     }
+
+    #[test]
+    fn test_tab_content_peer_id() {
+        let direct = p2p_app::tui::TabContent::Direct("peer123".to_string());
+        assert_eq!(direct.peer_id(), Some("peer123"));
+
+        let chat = p2p_app::tui::TabContent::Chat;
+        assert_eq!(chat.peer_id(), None);
+
+        let peers = p2p_app::tui::TabContent::Peers;
+        assert_eq!(peers.peer_id(), None);
+
+        let log = p2p_app::tui::TabContent::Log;
+        assert_eq!(log.peer_id(), None);
+    }
+
+    #[test]
+    fn test_tab_content_is_input_enabled() {
+        assert!(p2p_app::tui::TabContent::Chat.is_input_enabled());
+        assert!(p2p_app::tui::TabContent::Direct("peer".to_string()).is_input_enabled());
+        assert!(!p2p_app::tui::TabContent::Peers.is_input_enabled());
+        assert!(!p2p_app::tui::TabContent::Log.is_input_enabled());
+    }
+
+    #[test]
+    fn test_dynamic_tabs_total_tab_count() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        assert_eq!(tabs.total_tab_count(), 3);
+
+        tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(tabs.total_tab_count(), 4);
+
+        tabs.add_dm_tab("peer2".to_string());
+        assert_eq!(tabs.total_tab_count(), 5);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_get_dm_tab() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+
+        assert!(tabs.get_dm_tab("peer1").is_some());
+        assert!(tabs.get_dm_tab("peer2").is_none());
+    }
+
+    #[test]
+    fn test_dynamic_tabs_get_dm_tab_mut() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+
+        if let Some(tab) = tabs.get_dm_tab_mut("peer1") {
+            tab.messages.push_back("test".to_string());
+        }
+
+        assert_eq!(tabs.get_dm_tab("peer1").unwrap().messages.len(), 1);
+    }
+
+    #[test]
+    fn test_notification_target_clone() {
+        let broadcasts = p2p_app::tui::NotificationTarget::Broadcasts;
+        let dm = p2p_app::tui::NotificationTarget::Dm("peer".to_string());
+
+        let broadcasts_clone = broadcasts.clone();
+        let dm_clone = dm.clone();
+
+        assert!(matches!(
+            broadcasts_clone,
+            p2p_app::tui::NotificationTarget::Broadcasts
+        ));
+        assert!(matches!(dm_clone, p2p_app::tui::NotificationTarget::Dm(p) if p == "peer"));
+    }
+
+    #[test]
+    fn test_handle_tab_click() {
+        let mut state = TuiTestState::new();
+        state.handle_tab_click(0);
+        assert_eq!(state.active_tab, 0);
+
+        state.handle_tab_click(1);
+        assert_eq!(state.active_tab, 0);
+
+        state.handle_tab_click(2);
+        assert_eq!(state.active_tab, 0);
+
+        state.handle_tab_click(3);
+        assert_eq!(state.active_tab, 0);
+
+        state.active_tab = 1;
+        state.handle_tab_click(3);
+        assert_eq!(state.active_tab, 1);
+    }
+
+    #[test]
+    fn test_handle_notification_click_no_notifications() {
+        let state = TuiTestState::new();
+        let target = state.handle_notification_click(5);
+        assert!(target.is_none());
+    }
+
+    #[test]
+    fn test_handle_notification_click_boundary() {
+        let mut state = TuiTestState::new();
+        state.unread_broadcasts = 1;
+
+        let target = state.handle_notification_click(19);
+        assert!(matches!(
+            target,
+            Some(p2p_app::tui::NotificationTarget::Broadcasts)
+        ));
+
+        let target = state.handle_notification_click(20);
+        assert!(target.is_none());
+    }
+
+    #[test]
+    fn test_notification_with_multiple_dms() {
+        let mut state = TuiTestState::new();
+        state.unread_dms.insert("Alice".to_string(), 1);
+        state.unread_dms.insert("Bob".to_string(), 2);
+
+        let target = state.handle_notification_click(40);
+        match target {
+            Some(p2p_app::tui::NotificationTarget::Dm(pid)) => {
+                assert!(pid == "Alice" || pid == "Bob");
+            }
+            _ => panic!("Expected Dm notification"),
+        }
+    }
+
+    #[test]
+    fn test_handle_mouse_click_empty_messages() {
+        let empty: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        let state = TuiTestState::with_messages(empty);
+
+        let result = state.handle_mouse_click(5, 5);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_handle_mouse_click_with_different_terminal_width() {
+        let messages: std::collections::VecDeque<String> = vec![
+            "A very long message that will wrap to multiple lines when the terminal is narrow"
+                .to_string(),
+        ]
+        .into();
+        let state = TuiTestState::with_messages_and_width(messages, 40);
+        let first_row = state.first_message_row();
+
+        let result = state.handle_mouse_click(first_row, 5);
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_dm_tab_short_id_consistency() {
+        let dm1 =
+            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+        let dm2 =
+            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+
+        assert_eq!(dm1.short_id(), dm2.short_id());
+    }
+
+    #[test]
+    fn test_dm_tab_debug_format() {
+        let dm = p2p_app::tui::DmTab::new("test-peer".to_string());
+        let debug = format!("{:?}", dm);
+        assert!(debug.contains("test-peer"));
+    }
+
+    #[test]
+    fn test_dynamic_tabs_remove_nonexistent() {
+        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let result = tabs.remove_dm_tab("nonexistent");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_dynamic_tabs_all_titles_empty() {
+        let tabs = p2p_app::tui::DynamicTabs::new();
+        let titles = tabs.all_titles();
+        assert_eq!(titles.len(), 3);
+        assert_eq!(titles[0], "Chat");
+        assert_eq!(titles[1], "Peers");
+        assert_eq!(titles[2], "Log");
+    }
 }
