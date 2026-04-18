@@ -25,16 +25,17 @@ cargo build
 # Run (TUI enabled by default)
 cargo run
 
-# Headless mode (no TUI, reads stdin, prints to stderr)
-cargo run --no-default-features --features mdns,tracing
-
 # With custom database
 DATABASE_URL=my.db cargo run
+
+# Headless mode (no TUI, reads stdin, prints to stderr)
+cargo run --no-default-features --bin p2p_chat
 ```
 
 ## TUI Usage
 
 Press `Tab` to switch between tabs:
+
 * **Chat**: Broadcast messages to all peers
 * **Peers**: List discovered peers (sorted by last seen), Up/Down to select, Enter to open DM
 * **Direct**: Direct message with selected peer

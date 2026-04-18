@@ -12,6 +12,9 @@ fi
 if [ -z "$features" ]; then
   features="default"
 fi
+if [ -z "$target" ]; then
+  target="x86_64-unknown-linux-gnu" 
+fi
 
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
   # -Zfmt-debug=none # don't use because it breaks debug printing structs which we use a lot! also, doesn't save that much..
@@ -151,3 +154,19 @@ fi
 # -rwxr-xr-x 1 user users 1.6M Apr  3 16:21 target/x86_64-unknown-linux-gnu/release/p2p_chat_example
 
 # target=x86_64-unknown-linux-gnu features=default bash build_release.sh
+
+## 2026-04-18
+# $ bash build_release.sh
+# -rwxr-xr-x 2 user user 4,7M Apr 18 06:48 target/x86_64-unknown-linux-gnu/release/p2p_chat_tui
+#                        Ultimate Packer for eXecutables
+#                           Copyright (C) 1996 - 2025
+# UPX 5.0.2       Markus Oberhumer, Laszlo Molnar & John Reiser   Jul 20th 2025
+# 
+#         File size         Ratio      Format      Name
+#    --------------------   ------   -----------   -----------
+#    4897688 ->   1665496   34.01%   linux/amd64   p2p_chat_tui                  
+# 
+# Packed 1 file.
+# -rwxr-xr-x 1 user user 1,6M Apr 18 06:48 target/x86_64-unknown-linux-gnu/release/p2p_chat_tui
+# $ target=x86_64-unknown-linux-gnu features=basic ./build_release.sh
+# doesn't build currently. need to put stuff behind their feature flags. particullarly tracing.

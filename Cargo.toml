@@ -17,9 +17,10 @@ overflow-checks = false # Disable runtime integer overflow checks
 inherits = "release"
 debug = true
 strip = false
+panic = 'unwind'
 
 [features]
-default = [ "mdns", "tracing", "quic", "tui", "gabble" ]
+default = [ "mdns", "tracing", "quic", "tui" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
