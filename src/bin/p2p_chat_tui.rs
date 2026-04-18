@@ -812,15 +812,11 @@ mod tui {
                                             }
                                         } else if matches!(tab_content, TabContent::Peers) {
                                             match key.code {
-                                                KeyCode::Up => {
-                                                    if !peers.is_empty() {
-                                                        peer_selection = peer_selection.saturating_sub(1);
-                                                    }
+                                                KeyCode::Up if !peers.is_empty() => {
+                                                    peer_selection = peer_selection.saturating_sub(1);
                                                 }
-                                                KeyCode::Down => {
-                                                    if !peers.is_empty() {
-                                                        peer_selection = (peer_selection + 1).min(peers.len() - 1);
-                                                    }
+                                                KeyCode::Down if !peers.is_empty() => {
+                                                    peer_selection = (peer_selection + 1).min(peers.len() - 1);
                                                 }
                                                 _ => {}
                                             }

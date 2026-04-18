@@ -425,11 +425,7 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
             .iter()
             .filter_map(|name| {
                 let stem = name.trim_start_matches("sqlite_").trim_end_matches(".db");
-                if let Ok(n) = stem.parse::<u32>() {
-                    Some(n)
-                } else {
-                    None
-                }
+                stem.parse::<u32>().ok()
             })
             .max()
             .unwrap_or(0);
@@ -444,13 +440,13 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         .truncate(true)
         .open(&lock_path)
         .wrap_err_with(|| format!("failed to create lock file for {db_file}"))?;
-    write!(lock_file, "{}", pid).wrap_err_with(|| format!("failed to write PID to lock file"))?;
+    write!(lock_file, "{}", pid)
+        .wrap_err_with(|| "failed to write PID to lock file".to_string())?;
 
     Ok(cwd.join(db_file).to_string_lossy().into_owned())
 }
 
 /// Convert boolean to integer for database operations
-
 /// Get the database URL from environment or default value.
 ///
 /// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
@@ -551,10 +547,9 @@ pub fn save_message(
                 content, topic, is_direct
             )
         })
-        .map(|msg| {
+        .inspect(|msg| {
             #[cfg(feature = "tracing")]
             tracing::debug!(message_id = msg.id, "Message saved to database");
-            msg
         })
 }
 
@@ -572,7 +567,6 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
 }
 
 /// Get all unsent direct messages to a specific peer, ordered by creation time.
-
 /// Mark a message as sent by ID.
 pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
@@ -626,7 +620,6 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
 }
 
 /// Load all known peers, ordered by most recently seen first.
-
 /// Save or update a peer in the database.
 ///
 /// If peer already exists (by peer_id), updates addresses and last_seen timestamp.
