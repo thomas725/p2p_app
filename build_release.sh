@@ -6,14 +6,14 @@
 
 z1="build-std=std,panic_abort"
 
-if [ -z "$project" ]; then
-  project="p2p_chat_tui"
-fi
 if [ -z "$features" ]; then
   features="default"
 fi
 if [ -z "$target" ]; then
   target="x86_64-unknown-linux-gnu" 
+fi
+if [ -z "$bin" ]; then
+  bin='p2p_chat_tui'
 fi
 
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
@@ -34,37 +34,37 @@ if [[ $features == *"tokio_console"* ]]; then
 fi
 if [ "$target" == "x86_64-unknown-linux-gnu" ]; then
   echo "building for x86_64, can use cargo, don't need cross"
-  bin=cargo
+  cargo=cargo
 else
   echo "cross-compiling to: $target - using 'cross' instead of 'cargo'"
-  bin=cross
+  cargo=cross
 fi
 if [ -z ${debug+x} ] || [ $debug -ne 1 ]; then
   profile='release'
   if [ -z ${stable+x} ] || [ $stable -ne 1 ]; then
-    RUSTFLAGS="$RUSTFLAGS" $bin +nightly build -Z $z1 --target $target --release --no-default-features -F $features
+    RUSTFLAGS="$RUSTFLAGS" $cargo +nightly build -Z $z1 --target $target --release --no-default-features -F $features
   else
     # nightly sometimes doesn't work. especially with cross compiling. if it doesn't, set environment stable=1 flag for:
-    RUSTFLAGS="$RUSTFLAGS" $bin build --target $target --release --no-default-features -F $features
+    RUSTFLAGS="$RUSTFLAGS" $cargo build --target $target --release --no-default-features -F $features
   fi
 else
   echo "debug flag set: using release-with-debug profile + CARGO_PROFILE_RELEASE_DEBUG flag."
   CARGO_PROFILE_RELEASE_DEBUG=true
   profile='release-with-debug'
   # +nightly
-  RUSTFLAGS="$RUSTFLAGS" $bin build --target $target --profile=release-with-debug --no-default-features -F $features
+  RUSTFLAGS="$RUSTFLAGS" $cargo build --target $target --profile=release-with-debug --no-default-features -F $features
 fi
-ls -al target/$target/$profile/$project
-ls -alh target/$target/$profile/$project
+ls -al target/$target/$profile/$bin
+ls -alh target/$target/$profile/$bin
 if [ -z ${skip_upx+x} ] || [ $skip_upx -ne 1 ]; then
   # upx version 5 outputs binaries that don't work on legacy system:
   # > UPX-5.0 wants mead_create(), or needs /dev/shm(,O_TMPFILE,)
   # so we use latest version 4 instead:
   # cd /opt ; wget https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-amd64_linux.tar.xz ; tar xf upx-4.2.4-amd64_linux.tar.xz
   # /opt/upx-4.2.4-amd64_linux/
-  upx --best --lzma target/$target/$profile/$project
-  ls -al target/$target/$profile/$project
-  ls -alh target/$target/$profile/$project
+  upx --best --lzma target/$target/$profile/$bin
+  ls -al target/$target/$profile/$bin
+  ls -alh target/$target/$profile/$bin
 fi
 
 ## 2025-08-30 ~01:00: default release build = 4573480 bytes = 4,4MiB
@@ -168,5 +168,16 @@ fi
 # 
 # Packed 1 file.
 # -rwxr-xr-x 1 user user 1,6M Apr 18 06:48 target/x86_64-unknown-linux-gnu/release/p2p_chat_tui
-# $ target=x86_64-unknown-linux-gnu features=basic ./build_release.sh
-# doesn't build currently. need to put stuff behind their feature flags. particullarly tracing.
+
+# $ target=x86_64-unknown-linux-gnu features=basic bin=p2p_chat ./build_release.sh
+# -rwxr-xr-x 2 user users 2,4M Apr 18 07:07 target/x86_64-unknown-linux-gnu/release/p2p_chat
+#                        Ultimate Packer for eXecutables
+#                           Copyright (C) 1996 - 2025
+# UPX 5.0.2       Markus Oberhumer, Laszlo Molnar & John Reiser   Jul 20th 2025
+# 
+#         File size         Ratio      Format      Name
+#    --------------------   ------   -----------   -----------
+#    2510232 ->    815824   32.50%   linux/amd64   p2p_chat                      
+# 
+# Packed 1 file.
+# -rwxr-xr-x 1 user users 815824 Apr 18 07:07 target/x86_64-unknown-linux-gnu/release/p2p_chat
