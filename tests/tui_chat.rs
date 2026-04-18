@@ -495,6 +495,34 @@ mod tests {
     }
 
     #[test]
+    fn test_handle_mouse_click_with_notification_shifts_messages() {
+        let custom = std::collections::VecDeque::from(vec![
+            "[You] msg0".to_string(),
+            "[Peer1] msg1".to_string(),
+        ]);
+        let state = TuiTestState::with_messages(custom);
+        assert_eq!(state.first_message_row(), 5);
+
+        let mut state_with_notif = state.clone();
+        state_with_notif.unread_broadcasts = 5;
+        assert_eq!(state_with_notif.first_message_row(), 6);
+
+        let peer = state_with_notif.handle_mouse_click(6, 5);
+        assert_eq!(
+            peer,
+            Some("You".to_string()),
+            "First message should be at row 6 when notification is present"
+        );
+
+        let peer2 = state_with_notif.handle_mouse_click(7, 5);
+        assert_eq!(
+            peer2,
+            Some("Peer1".to_string()),
+            "Second message should be at row 7 when notification is present"
+        );
+    }
+
+    #[test]
     fn test_dm_tab_short_id_consistency() {
         let dm1 =
             p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
