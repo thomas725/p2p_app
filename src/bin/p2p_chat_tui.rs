@@ -736,7 +736,10 @@ mod tui {
                                                                         if let Err(e) = set_self_nickname(new_nick) {
                                                                             log_debug(&logs, format!("Failed to set nickname: {}", e));
                                                                         } else {
+                                                                            let ts = format_system_time(SystemTime::now());
+                                                                            let old_nick = own_nickname.clone();
                                                                             own_nickname = new_nick.to_string();
+                                                                            messages.push_back((format!("{} [System] Nickname changed: {} -> {}", ts, old_nick, new_nick), None));
                                                                             log_debug(&logs, format!("Nickname set to: {}", new_nick));
                                                                         }
                                                                     } else {
@@ -759,12 +762,24 @@ mod tui {
                                                                             log_debug(&logs, format!("Failed to set peer nickname: {}", e));
                                                                         } else {
                                                                             local_nicknames.insert(target_peer.to_string(), new_nick.to_string());
+                                                                            let short = short_peer_id(target_peer);
+                                                                            let ts = format_system_time(SystemTime::now());
+                                                                            messages.push_back((format!("{} [System] Set nickname for {}: {}", ts, &short[..3.min(short.len())], new_nick), None));
                                                                             log_debug(&logs, format!("Set local nickname for {}: {}", target_peer, new_nick));
                                                                         }
                                                                     }
                                                                 } else {
                                                                     log_debug(&logs, "Usage: /setname <peer_id> <nickname>".to_string());
                                                                 }
+                                                                chat_input = init_textarea();
+                                                            }
+                                                            "/help" | "/h" => {
+                                                                let ts = format_system_time(SystemTime::now());
+                                                                messages.push_back((format!("{} [System] Available commands:", ts), None));
+                                                                messages.push_back((format!("{} [System]   /nick [name] - set your nickname or view current if no name given", ts), None));
+                                                                messages.push_back((format!("{} [System]   /setname <peer> <name> - set a local nickname for a peer", ts), None));
+                                                                messages.push_back((format!("{} [System]   /help (/h) - show this help message", ts), None));
+                                                                log_debug(&logs, "Displayed help message".to_string());
                                                                 chat_input = init_textarea();
                                                             }
                                                             _ => {
