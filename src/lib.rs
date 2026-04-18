@@ -33,7 +33,7 @@ use std::sync::OnceLock;
 ///
 /// # Default:
 /// Everything else defaults to WARN level
-/// 
+///
 #[cfg(feature = "tracing")]
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};
@@ -378,7 +378,7 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
 
     // Check existing databases for lock files (lock indicates active use)
     // A lock file is considered active if:
-    // 1. It exists and contains a numeric PID  
+    // 1. It exists and contains a numeric PID
     // 2. That process is still running
     let mut available = Vec::new();
     for db_file in &db_files {
@@ -457,65 +457,58 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
 #[must_use]
 pub fn get_database_url() -> String {
     dotenv().ok();
-    env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite.db".to_owned())
+    env::var("DATABASE_URL")
+        .unwrap_or_else(|_| find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned()))
 }
 
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     dotenv().ok();
-    let database_url = env::var("DATABASE_URL").ok();
-
-    if let Some(_db_url) = &database_url {
-        let conn = &mut sqlite_connect()?;
-        if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
-            for row in rows {
-                match libp2p_identity::Keypair::from_protobuf_encoding(&row.key) {
-                    Ok(i) => {
-                        return Ok(i);
-                    }
-                    Err(e) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::error!("invalid identity stored: {row:?} - {e}");
-                    }
+    let conn = &mut sqlite_connect()?;
+    if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
+        for row in rows {
+            match libp2p_identity::Keypair::from_protobuf_encoding(&row.key) {
+                Ok(i) => {
+                    return Ok(i);
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("invalid identity stored: {row:?} - {e}");
                 }
             }
         }
-        #[cfg(feature = "tracing")]
-        tracing::warn!("no valid identity found in database, generating and storing new one");
-        let keypair = libp2p_identity::Keypair::generate_ed25519();
-        match keypair.to_protobuf_encoding() {
-            Ok(key) => {
-                let i = NewIdentity {
-                    key,
-                    last_tcp_port: None,
-                    last_quic_port: None,
-                    self_nickname: None,
-                };
-                match diesel::insert_into(schema::identities::table)
-                    .values(&i)
-                    .returning(Identity::as_returning())
-                    .get_result(conn)
-                {
-                    Ok(i) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::info!("inserted new identity: {i:?}");
-                    }
-                    Err(e) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::error!("failed to insert identity {i:?}: {e}");
-                    }
-                }
-            }
-            Err(e) => {
-                #[cfg(feature = "tracing")]
-                tracing::error!("failed to encode identity: {e}");
-            }
-        }
-        Ok(keypair)
-    } else {
-        #[cfg(feature = "tracing")]
-        tracing::info!("no DATABASE_URL set, generating ephemeral identity");
-        Ok(libp2p_identity::Keypair::generate_ed25519())
     }
+    #[cfg(feature = "tracing")]
+    tracing::warn!("no valid identity found in database, generating and storing new one");
+    let keypair = libp2p_identity::Keypair::generate_ed25519();
+    match keypair.to_protobuf_encoding() {
+        Ok(key) => {
+            let i = NewIdentity {
+                key,
+                last_tcp_port: None,
+                last_quic_port: None,
+                self_nickname: None,
+            };
+            match diesel::insert_into(schema::identities::table)
+                .values(&i)
+                .returning(Identity::as_returning())
+                .get_result(conn)
+            {
+                Ok(i) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!("inserted new identity: {i:?}");
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("failed to insert identity {i:?}: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to encode identity: {e}");
+        }
+    }
+    Ok(keypair)
 }
 
 /// Save a message to the database.
