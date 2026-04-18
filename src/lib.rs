@@ -33,6 +33,8 @@ use std::sync::OnceLock;
 ///
 /// # Default:
 /// Everything else defaults to WARN level
+/// 
+#[cfg(feature = "tracing")]
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};
     Targets::new()
@@ -557,6 +559,7 @@ pub fn save_message(
             )
         })
         .map(|msg| {
+            #[cfg(feature = "tracing")]
             tracing::debug!(message_id = msg.id, "Message saved to database");
             msg
         })
