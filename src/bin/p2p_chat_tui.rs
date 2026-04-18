@@ -93,6 +93,28 @@ mod tui {
             .to_string()
     }
 
+    fn short_peer_id(id: &str) -> String {
+        id[id.len().saturating_sub(8.min(id.len()))..].to_string()
+    }
+
+    fn clamp_scroll(total: usize, current: usize, delta: isize) -> usize {
+        if delta < 0 {
+            current.saturating_sub(delta.unsigned_abs())
+        } else {
+            current
+                .saturating_add(delta as usize)
+                .min(total.saturating_sub(1))
+        }
+    }
+
+    fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+        total.saturating_sub(visible).min(total.saturating_sub(1))
+    }
+
+    fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
+        format!("{} [{}/{}]", prefix, scroll_offset + 1, total)
+    }
+
     fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
         if let Some(sent) = sent_at {
             let recv = received_at
@@ -200,7 +222,7 @@ mod tui {
                         let sender = msg
                             .peer_id
                             .as_ref()
-                            .map(|p| format!("[{}]", &p[p.len().saturating_sub(8.min(p.len()))..]))
+                            .map(|p| format!("[{}]", &short_peer_id(p)))
                             .unwrap_or_else(|| "[You]".to_string());
                         messages.push_back((
                             format!("{} {} {}", ts, sender, msg.content),
@@ -315,7 +337,7 @@ mod tui {
                                     };
 
                                     let latency = format_latency(sent_at, now);
-                                    let msg = format!("{} {} [{}] {}", ts, latency, &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content);
+                                    let msg = format!("{} {} [{}] {}", ts, latency, &short_peer_id(&peer_id_str), content);
                                     messages.push_back((msg.clone(), Some(peer_id_str.clone())));
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
@@ -355,7 +377,7 @@ mod tui {
                                                 *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
                                                 dynamic_tabs.add_dm_tab(peer_id_str.clone());
                                             } else {
-                                                log_debug(&logs, format!("Received DM from {}: {}", &peer_id_str[peer_id_str.len().saturating_sub(8.min(peer_id_str.len()))..], content));
+                                                log_debug(&logs, format!("Received DM from {}: {}", &short_peer_id(&peer_id_str), content));
                                             }
 
                                             if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
@@ -483,7 +505,7 @@ mod tui {
                                     peer_id, cause: _, ..
                                 } => {
                                     concurrent_peers = concurrent_peers.saturating_sub(1);
-                                    log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, &peer_id.to_string()[peer_id.to_string().len().saturating_sub(8.min(peer_id.to_string().len()))..]));
+                                    log_debug(&logs, format!("Concurrent peers: {} (disconnected: {})", concurrent_peers, short_peer_id(&peer_id.to_string())));
                                     if let Err(e) = save_peer_session(concurrent_peers as i32) {
                                         log_debug(&logs, format!("Failed to save peer session: {}", e));
                                     }
@@ -914,15 +936,12 @@ mod tui {
                                 let visible_height = content_area.height.saturating_sub(2) as usize;
 
                                 if chat_auto_scroll {
-                                    chat_scroll_offset = total.saturating_sub(visible_height);
+                                    chat_scroll_offset = auto_scroll_offset(total, visible_height);
+                                } else {
+                                    chat_scroll_offset = chat_scroll_offset.min(total.saturating_sub(1));
                                 }
 
-                                if chat_scroll_offset > total.saturating_sub(1) {
-                                    chat_scroll_offset = total.saturating_sub(1);
-                                }
-
-                                let chat_title =
-                                    format!("Messages [{}/{}]", chat_scroll_offset + 1, total);
+                                let chat_title = scroll_title("Messages", chat_scroll_offset, total);
                                 let chat_items: Vec<ListItem> = messages
                                     .iter()
                                     .skip(chat_scroll_offset)
@@ -996,8 +1015,7 @@ mod tui {
                                     .map(|l| ListItem::new(l.clone()))
                                     .collect();
 
-                                let log_title =
-                                    format!("Log [{}/{}]", debug_scroll_offset + 1, total);
+                                let log_title = scroll_title("Log", debug_scroll_offset, total);
                                 let log_list = List::new(log_items)
                                     .block(
                                         Block::default().title(log_title).borders(Borders::ALL),
