@@ -12,10 +12,11 @@ mod tui {
     use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use p2p_app::{
         AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
-        format_peer_datetime, get_database_url, get_network_size, get_unsent_messages,
-        init_logging, load_direct_messages, load_listen_ports, load_messages, load_peers,
-        mark_message_sent, now_timestamp, p2plog_error, p2plog_info, save_listen_ports,
-        save_message, save_peer, save_peer_session,
+        ensure_self_nickname, format_peer_datetime, get_database_url, get_network_size,
+        get_self_nickname, get_unsent_messages, init_logging, load_direct_messages,
+        load_listen_ports, load_messages, load_peers, mark_message_sent, now_timestamp,
+        p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer, save_peer_session,
+        set_peer_local_nickname, set_self_nickname,
     };
     use ratatui::crossterm::{
         event::{
@@ -95,6 +96,22 @@ mod tui {
 
     fn short_peer_id(id: &str) -> String {
         id[id.len().saturating_sub(8.min(id.len()))..].to_string()
+    }
+
+    fn peer_display_name(
+        peer_id: &str,
+        local_nicknames: &HashMap<String, String>,
+        received_nicknames: &HashMap<String, String>,
+    ) -> String {
+        if let Some(nick) = local_nicknames.get(peer_id) {
+            let short = short_peer_id(peer_id);
+            return format!("{} ({})", nick, &short[..3.min(short.len())]);
+        }
+        if let Some(nick) = received_nicknames.get(peer_id) {
+            let short = short_peer_id(peer_id);
+            return format!("{} ({})", nick, &short[..3.min(short.len())]);
+        }
+        short_peer_id(peer_id)
     }
 
     fn clamp_scroll(total: usize, current: usize, delta: isize) -> usize {
@@ -191,6 +208,13 @@ mod tui {
                 let mut debug_auto_scroll: bool = true;
                 let mut chat_scroll_offset: usize = 0;
                 let mut chat_auto_scroll: bool = true;
+                let mut own_nickname: String = ensure_self_nickname().unwrap_or_else(|_| {
+                    log_debug(&logs, "Failed to get/ensure nickname".to_string());
+                    "unknown".to_string()
+                });
+                let mut local_nicknames: HashMap<String, String> = HashMap::new();
+                let mut received_nicknames: HashMap<String, String> = HashMap::new();
+                log_debug(&logs, format!("Your nickname: {}", own_nickname));
 
                 init_logging();
                 let logs_for_callback = logs.clone();
@@ -222,8 +246,12 @@ mod tui {
                         let sender = msg
                             .peer_id
                             .as_ref()
-                            .map(|p| format!("[{}]", &short_peer_id(p)))
-                            .unwrap_or_else(|| "[You]".to_string());
+                            .map(|p| {
+                                let display =
+                                    peer_display_name(p, &local_nicknames, &received_nicknames);
+                                format!("[{}]", display)
+                            })
+                            .unwrap_or_else(|| format!("[{}]", own_nickname));
                         messages.push_back((
                             format!("{} {} {}", ts, sender, msg.content),
                             msg.peer_id.clone(),
@@ -245,6 +273,12 @@ mod tui {
                         let peer = &db_peers[idx];
                         let first_seen = format_peer_datetime(peer.first_seen);
                         let last_seen = format_peer_datetime(peer.last_seen);
+                        if let Some(ref local_nick) = peer.peer_local_nickname {
+                            local_nicknames.insert(peer.peer_id.clone(), local_nick.clone());
+                        }
+                        if let Some(ref recv_nick) = peer.received_nickname {
+                            received_nicknames.insert(peer.peer_id.clone(), recv_nick.clone());
+                        }
                         peers.push_back((peer.peer_id.to_string(), first_seen, last_seen));
                     }
                     log_debug(
@@ -330,14 +364,19 @@ mod tui {
                                     let now = SystemTime::now();
                                     let ts = format_system_time(now);
 
-                                    let (content, sent_at) = if let Ok(bcast) = serde_json::from_str::<p2p_app::BroadcastMessage>(&raw) {
-                                        (bcast.content, bcast.sent_at)
+                                    let (content, sent_at, _received_nick) = if let Ok(bcast) = serde_json::from_str::<p2p_app::BroadcastMessage>(&raw) {
+                                        if let Some(nick) = &bcast.nickname {
+                                            received_nicknames.insert(peer_id_str.clone(), nick.clone());
+                                            let _ = p2p_app::set_peer_received_nickname(&peer_id_str, nick);
+                                        }
+                                        (bcast.content, bcast.sent_at, bcast.nickname.clone())
                                     } else {
-                                        (raw, None)
+                                        (raw, None, None)
                                     };
 
+                                    let sender_display = peer_display_name(&peer_id_str, &local_nicknames, &received_nicknames);
                                     let latency = format_latency(sent_at, now);
-                                    let msg = format!("{} {} [{}] {}", ts, latency, &short_peer_id(&peer_id_str), content);
+                                    let msg = format!("{} {} [{}] {}", ts, latency, sender_display, content);
                                     messages.push_back((msg.clone(), Some(peer_id_str.clone())));
                                     if messages.len() > MAX_MESSAGES {
                                         messages.pop_front();
@@ -360,14 +399,20 @@ mod tui {
                                             let ts = format_system_time(now);
                                             let latency = format_latency(request.sent_at, now);
 
+                                            if let Some(ref nick) = request.nickname {
+                                                received_nicknames.insert(peer_id_str.clone(), nick.clone());
+                                                let _ = p2p_app::set_peer_received_nickname(&peer_id_str, nick);
+                                            }
+
                                             let current_peer = match dynamic_tabs.tab_index_to_content(active_tab) {
                                                 TabContent::Direct(id) => Some(id),
                                                 _ => None,
                                             };
                                             let is_current_dm = current_peer.as_ref() == Some(&peer_id_str);
 
+                                            let sender_display = peer_display_name(&peer_id_str, &local_nicknames, &received_nicknames);
                                             let dm_msgs = dm_messages.entry(peer_id_str.clone()).or_default();
-                                            let msg = format!("{} {} [Peer] {}", ts, latency, content);
+                                            let msg = format!("{} {} [{}] {}", ts, latency, sender_display, content);
                                             dm_msgs.push_back(msg.clone());
                                             if dm_msgs.len() > MAX_MESSAGES {
                                                 dm_msgs.pop_front();
@@ -391,6 +436,7 @@ mod tui {
                                                     .duration_since(std::time::UNIX_EPOCH)
                                                     .expect("system time is valid")
                                                     .as_secs_f64()),
+                                                nickname: Some(own_nickname.clone()),
                                             };
                                             let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
                                         }
@@ -680,7 +726,53 @@ mod tui {
                                                 TabContent::Chat => {
                                                     let lines = chat_input.lines();
                                                     let text: String = lines.join("\n");
-                                                    if !text.trim().is_empty() {
+                                                    if text.starts_with('/') {
+                                                        let parts: Vec<&str> = text.splitn(2, ' ').collect();
+                                                        match parts[0] {
+                                                            "/nick" => {
+                                                                if let Some(new_nick) = parts.get(1) {
+                                                                    let new_nick = new_nick.trim();
+                                                                    if !new_nick.is_empty() {
+                                                                        if let Err(e) = set_self_nickname(new_nick) {
+                                                                            log_debug(&logs, format!("Failed to set nickname: {}", e));
+                                                                        } else {
+                                                                            own_nickname = new_nick.to_string();
+                                                                            log_debug(&logs, format!("Nickname set to: {}", new_nick));
+                                                                        }
+                                                                    } else {
+                                                                        if let Ok(Some(current)) = get_self_nickname() {
+                                                                            log_debug(&logs, format!("Current nickname: {}", current));
+                                                                        } else {
+                                                                            log_debug(&logs, "No nickname set. Usage: /nick <name>".to_string());
+                                                                        }
+                                                                    }
+                                                                }
+                                                                chat_input = init_textarea();
+                                                            }
+                                                            "/setname" => {
+                                                                let parts: Vec<&str> = text.splitn(3, ' ').collect();
+                                                                if parts.len() >= 3 {
+                                                                    let target_peer = parts[1];
+                                                                    let new_nick = parts[2].trim();
+                                                                    if !new_nick.is_empty() {
+                                                                        if let Err(e) = set_peer_local_nickname(target_peer, new_nick) {
+                                                                            log_debug(&logs, format!("Failed to set peer nickname: {}", e));
+                                                                        } else {
+                                                                            local_nicknames.insert(target_peer.to_string(), new_nick.to_string());
+                                                                            log_debug(&logs, format!("Set local nickname for {}: {}", target_peer, new_nick));
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    log_debug(&logs, "Usage: /setname <peer_id> <nickname>".to_string());
+                                                                }
+                                                                chat_input = init_textarea();
+                                                            }
+                                                            _ => {
+                                                                log_debug(&logs, "Commands: /nick [name] - set/view nickname, /setname <peer> <name> - set local nickname".to_string());
+                                                                chat_input = init_textarea();
+                                                            }
+                                                        }
+                                                    } else if !text.trim().is_empty() {
                                                         let ts = format_system_time(SystemTime::now());
                                                         let msg_str = format!("[{}] [You] {}", ts, text);
                                                         messages.push_back((msg_str.clone(), None));
@@ -695,6 +787,7 @@ mod tui {
                                                         let broadcast = p2p_app::BroadcastMessage {
                                                             content: text.clone(),
                                                             sent_at: Some(sent_at),
+                                                            nickname: Some(own_nickname.clone()),
                                                         };
                                                         let payload = serde_json::to_string(&broadcast).unwrap_or(text.clone());
                                                         let publish_result = swarm.behaviour_mut().gossipsub.publish(
@@ -759,6 +852,7 @@ mod tui {
                                                                 .duration_since(std::time::UNIX_EPOCH)
                                                                 .expect("system time is valid")
                                                                 .as_secs_f64()),
+                                                            nickname: Some(own_nickname.clone()),
                                                         };
 
                                                         swarm.behaviour_mut().request_response.send_request(&peer_id, dm);
@@ -835,6 +929,50 @@ mod tui {
                                             }
                                         } else if matches!(tab_content, TabContent::Peers) {
                                             match key.code {
+                                                KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                                    if !peers.is_empty() {
+                                                        let idx = peer_selection.min(peers.len() - 1);
+                                                        if let Some((peer_id, _, _)) = peers.get(idx).cloned() {
+                                                            let input = match dm_inputs.entry(peer_id.clone()) {
+                                                                std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
+                                                                std::collections::hash_map::Entry::Vacant(e) => {
+                                                                    let mut ta = TextArea::default();
+                                                                    ta.set_line_number_style(Style::default());
+                                                                    ta.set_cursor_line_style(Style::default());
+                                                                    e.insert(ta)
+                                                                }
+                                                            };
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('/'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('s'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('e'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('t'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('n'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('a'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('m'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char('e'), KeyModifiers::NONE
+                                                            )));
+                                                            input.input(Input::from(crossterm::event::KeyEvent::new(
+                                                                KeyCode::Char(' '), KeyModifiers::NONE
+                                                            )));
+                                                            active_tab = dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                        }
+                                                    }
+                                                }
                                                 KeyCode::Up if !peers.is_empty() => {
                                                     peer_selection = peer_selection.saturating_sub(1);
                                                 }

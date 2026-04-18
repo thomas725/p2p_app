@@ -2164,15 +2164,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gabble"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04d099cc5bdd4b84c32424ce266aa5937fbf7f33e8cc176323abb75f858430ed"
-dependencies = [
- "rand 0.9.4",
-]
-
-[[package]]
 name = "gdk"
 version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4597,7 +4588,6 @@ dependencies = [
  "dioxus-desktop",
  "dotenvy",
  "futures",
- "gabble",
  "libp2p",
  "libp2p-identity",
  "libp2p-quic",

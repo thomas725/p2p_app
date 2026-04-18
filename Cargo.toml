@@ -27,7 +27,6 @@ sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm", "dep:atty" ]
-gabble = [ "dep:gabble" ]
 dioxus = [ "dep:dioxus" ]
 dioxus-desktop = [ "dioxus", "dep:dioxus-desktop" ]
 
@@ -39,8 +38,7 @@ ratatui = { version = "=0.30", optional = true }
 ratatui-textarea = { version = "0.8", optional = true, default-features = false, features = ["crossterm"] }
 crossterm = { version = "=0.29", optional = true }
 atty = { version = "=0.2", optional = true }
-gabble = { version = "0.2", optional = true }
-dioxus = { version = "0.7", optional = true }
+dioxus = { version = "=0.7", optional = true }
 dioxus-desktop = { version = "0.7", optional = true }
 
 # ORM mapper we use to access our SQLite database

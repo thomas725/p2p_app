@@ -66,7 +66,7 @@ The application follows a modular architecture with clear separation of concerns
 
 ### Feature Flags & Runtime Behavior
 
-Feature flags control which components are compiled in. Defaults: `mdns`, `tracing`, `quic`, `tui`, `gabble`.
+Feature flags control which components are compiled in. Defaults: `mdns`, `tracing`, `quic`, `tui`.
 
 **When to use which configuration:**
 - **TUI mode** (default): `cargo run` - Full interactive experience

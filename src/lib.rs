@@ -302,17 +302,111 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 use serde::{Deserialize, Serialize};
 use std::env;
 
+pub fn generate_self_nickname() -> String {
+    petname::petname(2, "-")
+}
+
+pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
+    let conn = &mut sqlite_connect()?;
+    let identity = schema::identities::table
+        .select(models_queryable::Identity::as_select())
+        .first(conn)
+        .optional()?;
+    Ok(identity.and_then(|i| i.self_nickname))
+}
+
+pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::identities::table)
+        .set(schema::identities::self_nickname.eq(nickname))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn ensure_self_nickname() -> color_eyre::Result<String> {
+    if let Some(nick) = get_self_nickname()? {
+        return Ok(nick);
+    }
+    let nickname = generate_self_nickname();
+    set_self_nickname(&nickname)?;
+    Ok(nickname)
+}
+
+pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
+        .set(schema::peers::peer_local_nickname.eq(nickname))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    let conn = &mut sqlite_connect()?;
+    let peer = schema::peers::table
+        .filter(schema::peers::peer_id.eq(peer_id))
+        .select(models_queryable::Peer::as_select())
+        .first(conn)
+        .optional()?;
+    Ok(peer.and_then(|p| p.peer_local_nickname))
+}
+
+pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::peers::table.filter(schema::peers::peer_id.eq(peer_id)))
+        .set(schema::peers::received_nickname.eq(nickname))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
+    let short_id: String = peer_id
+        .chars()
+        .rev()
+        .take(8)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect();
+    if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
+        return Ok(format!(
+            "{} ({})",
+            local_nick,
+            &short_id[..3.min(short_id.len())]
+        ));
+    }
+    if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
+        return Ok(format!(
+            "{} ({})",
+            received_nick,
+            &short_id[..3.min(short_id.len())]
+        ));
+    }
+    Ok(short_id)
+}
+
+pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    let conn = &mut sqlite_connect()?;
+    let peer = schema::peers::table
+        .filter(schema::peers::peer_id.eq(peer_id))
+        .select(models_queryable::Peer::as_select())
+        .first(conn)
+        .optional()?;
+    Ok(peer.and_then(|p| p.received_nickname))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DirectMessage {
     pub content: String,
     pub timestamp: i64,
     pub sent_at: Option<f64>,
+    pub nickname: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BroadcastMessage {
     pub content: String,
     pub sent_at: Option<f64>,
+    pub nickname: Option<String>,
 }
 
 pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
@@ -1173,6 +1267,7 @@ mod tests {
             content: "Hello".to_string(),
             timestamp: 1234567890,
             sent_at: Some(1234567890.5),
+            nickname: None,
         };
         let json = serde_json::to_string(&dm).unwrap();
         assert!(json.contains("Hello"));
@@ -1185,6 +1280,7 @@ mod tests {
         let bm = BroadcastMessage {
             content: "World".to_string(),
             sent_at: Some(1234567890.5),
+            nickname: None,
         };
         let json = serde_json::to_string(&bm).unwrap();
         assert!(json.contains("World"));
