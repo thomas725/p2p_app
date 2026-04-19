@@ -98,6 +98,17 @@ mod tui {
         ta
     }
 
+    fn exit_tui() -> color_eyre::Result<()> {
+        use crossterm::event::{DisableMouseCapture, PopKeyboardEnhancementFlags};
+        use ratatui::crossterm::terminal::disable_raw_mode;
+        use ratatui::crossterm::{execute, terminal::LeaveAlternateScreen};
+        execute!(std::io::stdout(), DisableMouseCapture).ok();
+        execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
+        execute!(std::io::stdout(), LeaveAlternateScreen).ok();
+        disable_raw_mode().ok();
+        Ok(())
+    }
+
     fn handle_chat_input(
         text: &str,
         swarm: &mut Swarm<AppBehaviour>,
@@ -752,10 +763,7 @@ mod tui {
                                                             } else if key.code == KeyCode::Esc
                                                                 || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
                                                             {
-                                                                execute!(std::io::stdout(), crossterm::event::DisableMouseCapture).ok();
-                                                                execute!(std::io::stdout(), PopKeyboardEnhancementFlags).ok();
-                                                                execute!(std::io::stdout(), LeaveAlternateScreen).ok();
-                                                                disable_raw_mode().ok();
+                                                                exit_tui()?;
                                                                 return Ok(());
                                                             }
 
