@@ -1157,6 +1157,105 @@ pub fn log_debug(
 }
 
 #[cfg(feature = "tui")]
+pub mod tui_channels {
+    use crate::AppBehaviour;
+    use libp2p::PeerId;
+    use std::sync::Arc;
+    use tokio::sync::mpsc;
+
+    #[derive(Debug, Clone)]
+    pub enum TuiEvent {
+        Message(String, Option<String>),
+        PeerConnected(PeerId),
+        PeerDisconnected(PeerId),
+        ListenAddr(String),
+        Input(String),
+        Exit,
+    }
+
+    #[derive(Debug, Clone)]
+    pub enum InputCommand {
+        SendBroadcast(String),
+        SendDm(String, PeerId),
+        SetNickname(String),
+        OpenDm(String),
+        CloseDm(String),
+        ScrollUp,
+        ScrollDown,
+    }
+
+    pub type EventTx = mpsc::Sender<TuiEvent>;
+    pub type EventRx = mpsc::Receiver<TuiEvent>;
+    pub type InputTx = mpsc::Sender<InputCommand>;
+    pub type InputRx = mpsc::Receiver<InputCommand>;
+
+    pub fn create_channels() -> (EventTx, EventRx, InputTx, InputRx) {
+        let (event_tx, event_rx) = mpsc::channel(100);
+        let (input_tx, input_rx) = mpsc::channel(100);
+        (event_tx, event_rx, input_tx, input_rx)
+    }
+
+    pub struct TuiThreads {
+        pub event_handle: tokio::task::JoinHandle<()>,
+        pub input_handle: tokio::task::JoinHandle<()>,
+    }
+
+    pub fn spawn_swarm_handler(
+        swarm: libp2p::Swarm<AppBehaviour>,
+        event_tx: EventTx,
+    ) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            use futures::StreamExt;
+            use libp2p::swarm::SwarmEvent;
+
+            let mut swarm = swarm;
+            loop {
+                tokio::select! {
+                    event = swarm.select_next_some() => {
+                        match event {
+                            SwarmEvent::NewListenAddr { address, .. } => {
+                                let _ = event_tx.send(TuiEvent::ListenAddr(address.to_string())).await;
+                            }
+                            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                                let _ = event_tx.send(TuiEvent::PeerConnected(peer_id)).await;
+                                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                            }
+                            SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                                let _ = event_tx.send(TuiEvent::PeerDisconnected(peer_id)).await;
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ = tokio::time::sleep(std::time::Duration::from_millis(50)) => {}
+                }
+            }
+        })
+    }
+
+    pub fn spawn_input_poller(input_tx: InputTx) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            use crossterm::event::{poll, read};
+            use std::time::Duration;
+
+            loop {
+                if poll(Duration::from_millis(16)).ok() == Some(true) {
+                    if let Ok(event) = read() {
+                        break;
+                    }
+                }
+                tokio::time::sleep(Duration::from_millis(16)).await;
+            }
+        })
+    }
+}
+
+#[cfg(feature = "tui")]
+pub use tui_channels::{
+    EventRx, EventTx, InputCommand, InputRx, TuiEvent, TuiThreads, create_channels,
+    spawn_input_poller, spawn_swarm_handler,
+};
+
+#[cfg(feature = "tui")]
 pub mod tui_state {
     use crate::DynamicTabs;
     use std::collections::{HashMap, VecDeque};

@@ -282,36 +282,6 @@ mod tui {
                 log_debug(&logs, format!("Your nickname: {}", own_nickname));
 
                 p2p_app::logging::init_logging();
-        // Shared application state
-        let shared_state = Arc::new(tokio::sync::Mutex::new(RunningState {
-            messages: VecDeque::new(),
-            dm_messages: HashMap::new(),
-            peers: VecDeque::new(),
-            dynamic_tabs: DynamicTabs::new(),
-            active_tab: 0,
-            dm_inputs: HashMap::new(),
-            chat_input: init_textarea(),
-            concurrent_peers: 0,
-            peer_selection: 0,
-            debug_scroll_offset: 0,
-            debug_auto_scroll: true,
-            chat_scroll_offset: 0,
-            chat_auto_scroll: true,
-            own_nickname: ensure_self_nickname().unwrap_or_else(|_| {
-                log_debug(&logs, "Failed to get/ensure nickname".to_string());
-                "unknown".to_string()
-            }),
-            local_nicknames: HashMap::new(),
-            received_nicknames: HashMap::new(),
-            unread_broadcasts: 0,
-            unread_dms: HashMap::new(),
-        }));
-        
-        // Communication channels
-        let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(100);
-        let (input_tx, input_rx) = tokio::sync::mpsc::channel(100);
-        let (swarm_tx, swarm_rx) = tokio::sync::mpsc::channel(100);
-        let (render_tx, mut render_rx) = tokio::sync::mpsc::channel(100);
                 let logs_for_callback = logs.clone();
                 p2p_app::logging::set_tui_log_callback(move |msg| {
                     if let Ok(mut l) = logs_for_callback.lock() {

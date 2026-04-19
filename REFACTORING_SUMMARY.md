@@ -1,65 +1,53 @@
-# Refactoring Summary
+# Refactoring Summary: Decoupled Tokio Tasks for `run_tui`
 
-## Overview
-Successfully refactored the P2P chat application to improve code quality, robustness, and maintainability.
+## Problem
+The original `run_tui` function contained a bare `tokio::select!` loop that didn't process any events. All actual event handling (Swarm events, input processing, UI rendering) was done outside the select loop, causing a mismatch between the async runtime and the event processing logic.
 
-## Key Changes
+## Solution
+Refactored the code into separate, concurrent tokio tasks with proper channel-based communication:
 
-### 1. Error Handling Improvements (lib.rs)
-- Added `wrap_err_with()` to all database operations for better error context
-- Added `tracing::debug!()` logging to key operations
-- Improved error messages with specific context about failures
+### 1. **RunningState** (Shared State)
+- Created a `RunningState` struct to hold all application state
+- Protected by `tokio::sync::Mutex` for safe concurrent access
+- Contains: messages, dm_messages, peers, dynamic_tabs, UI state, nicknames, counters
 
-### 2. Type Safety (lib.rs)
-- Fixed type mismatch: Changed `is_direct` field to use `i32` consistently
-- Replaced `1.into()` with `1_i32` for Diesel queries
-- Proper boolean-to-integer conversion using `bool::from()` where needed
+### 2. **Channels for Communication**
+- `ui_tx` / `ui_rx`: UI events (tick, mouse clicks, key presses)
+- `input_tx` / `input_rx`: Input events from polling thread
+- `swarm_tx` / `swarm_rx`: Swarm commands/events
+- `render_tx` / render receiver: UI render triggers
 
-### 3. API Completeness (lib.rs)
-- Added missing exports:
-  - `mark_message_sent(id: i32)`
-  - `load_messages(topic: &str, limit: usize)`
-  - `load_direct_messages(target_peer: &str, limit: usize)`
+### 3. **Separate Tasks**
 
-### 4. Code Quality Fixes
-- Removed duplicate `load_peers()` function
-- Fixed indentation issues in `get_unsent_direct_messages()`
-- Removed duplicate `set_tui_log_callback` definition
-- Fixed extra closing braces
+#### UI Task (`run_ui_task`)
+- Handles terminal setup and event loop
+- Processes mouse clicks and keyboard input
+- Renders UI at 16ms intervals
+- Delegates event handling to helper functions
 
-### 5. Code Structure Improvements
-- Reduced nesting in database query chains
-- Improved iterator chaining for better readability
-- Used `Self::` instead of hardcoded enum names
-- Better code organization
+#### Swarm Task (`run_swarm_task`)
+- Listens for swarm commands/events
+- Processes network events asynchronously
+- Decoupled from UI rendering
 
-### 6. Documentation Enhancements
-- Added comprehensive doc comments for all public functions
-- Improved parameter documentation
-- Enhanced example documentation
-- Clarified function purposes and return values
+#### Event Handlers (moved from main loop)
+- `handle_mouse_click_impl`: Mouse interaction logic
+- `handle_key_press_impl`: Keyboard input processing  
+- `handle_swarm_command_impl`: Swarm event processing
 
-## Test Results
-✅ **All tests passing:**
-- 43 TUI interaction tests
-- 7 integration tests  
-- 15 unit tests
-- 1 documentation test
-- **Total: 66 tests passing**
+### 4. **Benefits**
+- **Proper concurrency**: Each task runs independently
+- **Clean separation of concerns**: UI, input, swarm, and rendering are separate
+- **Better maintainability**: Each function has a single responsibility
+- **Scalability**: Easy to add new event types or tasks
+- **No busy-waiting**: Proper async/await patterns with channels
 
-✅ **Code quality:**
-- Zero compilation warnings
-- Zero compilation errors
-- Clean `cargo check` output
+### 5. **Key Changes Made**
+- Replaced bare `tokio::select!` with proper task architecture
+- Created `RunningState` for shared, mutex-protected state
+- Implemented channel-based communication between tasks
+- Separated UI rendering from event processing
+- Maintained all original functionality while improving structure
 
-## Files Modified
-- `src/lib.rs` - Main library file with all improvements
-
-## Verification
-The codebase now:
-- Is more idiomatic Rust
-- Has better error handling
-- Uses types more safely
-- Is better documented
-- Has no compilation issues
-- Passes all existing tests
+### 6. **File Modified**
+`src/bin/p2p_chat_tui.rs` - Refactored `run_tui` function and added supporting structures

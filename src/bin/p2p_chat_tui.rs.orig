@@ -1,14 +1,13 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::logging::init_logging;
 use p2p_app::{
-    AppBehaviour, AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, InputCommand,
-    NetworkSize, TabContent, auto_scroll_offset, build_behaviour, create_channels,
-    ensure_self_nickname, format_latency, format_peer_datetime, format_system_time,
-    get_database_url, get_network_size, get_self_nickname, get_unsent_messages,
-    load_direct_messages, load_listen_ports, load_messages, load_peers, log_debug,
-    mark_message_sent, now_timestamp, peer_display_name, save_listen_ports, save_message,
-    save_peer, save_peer_session, scroll_title, set_peer_local_nickname, set_self_nickname,
-    short_peer_id, spawn_input_poller, spawn_swarm_handler,
+    AppBehaviour, AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
+    auto_scroll_offset, build_behaviour, ensure_self_nickname, format_latency,
+    format_peer_datetime, format_system_time, get_database_url, get_network_size,
+    get_self_nickname, get_unsent_messages, load_direct_messages, load_listen_ports, load_messages,
+    load_peers, log_debug, mark_message_sent, now_timestamp, peer_display_name, save_listen_ports,
+    save_message, save_peer, save_peer_session, scroll_title, set_peer_local_nickname,
+    set_self_nickname, short_peer_id,
 };
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -282,36 +281,6 @@ mod tui {
                 log_debug(&logs, format!("Your nickname: {}", own_nickname));
 
                 p2p_app::logging::init_logging();
-        // Shared application state
-        let shared_state = Arc::new(tokio::sync::Mutex::new(RunningState {
-            messages: VecDeque::new(),
-            dm_messages: HashMap::new(),
-            peers: VecDeque::new(),
-            dynamic_tabs: DynamicTabs::new(),
-            active_tab: 0,
-            dm_inputs: HashMap::new(),
-            chat_input: init_textarea(),
-            concurrent_peers: 0,
-            peer_selection: 0,
-            debug_scroll_offset: 0,
-            debug_auto_scroll: true,
-            chat_scroll_offset: 0,
-            chat_auto_scroll: true,
-            own_nickname: ensure_self_nickname().unwrap_or_else(|_| {
-                log_debug(&logs, "Failed to get/ensure nickname".to_string());
-                "unknown".to_string()
-            }),
-            local_nicknames: HashMap::new(),
-            received_nicknames: HashMap::new(),
-            unread_broadcasts: 0,
-            unread_dms: HashMap::new(),
-        }));
-        
-        // Communication channels
-        let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(100);
-        let (input_tx, input_rx) = tokio::sync::mpsc::channel(100);
-        let (swarm_tx, swarm_rx) = tokio::sync::mpsc::channel(100);
-        let (render_tx, mut render_rx) = tokio::sync::mpsc::channel(100);
                 let logs_for_callback = logs.clone();
                 p2p_app::logging::set_tui_log_callback(move |msg| {
                     if let Ok(mut l) = logs_for_callback.lock() {
@@ -441,35 +410,11 @@ mod tui {
                 let mut unread_broadcasts: u32 = 0;
                 let mut unread_dms: HashMap<String, u32> = HashMap::new();
 
-                let (event_tx, mut event_rx, input_tx, input_rx) = create_channels();
-
-                let swarm_handle = spawn_swarm_handler(swarm.clone(), event_tx.clone());
-                let input_handle = spawn_input_poller(input_tx.clone());
-
                 loop {
                     tokio::select! {
-                        biased;
+                                            biased;
 
-                        Some(event) = event_rx.recv() => {
-                            match event {
-                                _ => {}
-                            }
-                        }
-
-                        Some(_cmd) = input_rx.recv() => {
-                        }
-
-                        _ = tokio::time::sleep(Duration::from_millis(16)) => {
-                        }
-                    }
-                }
-
-                swarm_handle.abort();
-                input_handle.abort();
-
-                exit_tui()?;
-                Ok(())
-            }
+                                            event = swarm.select_next_some() => {
                                                 match event {
                                                     SwarmEvent::Behaviour(AppEv::Gossipsub(
                                                         gossipsub::Event::Message {
