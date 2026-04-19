@@ -179,7 +179,7 @@ fn peers_view(peers: Signal<Vec<Peer>>) -> Element {
 
 #[component]
 fn log_view() -> Element {
-    let mut logs = use_signal(|| {
+    let logs = use_signal(|| {
         vec![
             "[12:00:00] Application started".to_string(),
             "[12:00:01] Network initialized".to_string(),

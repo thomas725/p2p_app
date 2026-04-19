@@ -12,7 +12,8 @@ This is a Rust project using Diesel (SQLite), libp2p (P2P networking), and tokio
 
 ## User Stories
 
-### As a user, I can:
+### As a user, I can
+
 1. Broadcast messages to all connected peers via gossipsub
 2. Send direct messages to specific peers
 3. See a list of discovered peers with their connection status
@@ -20,7 +21,8 @@ This is a Rust project using Diesel (SQLite), libp2p (P2P networking), and tokio
 5. View chat history in the Chat tab
 6. View message history with specific peers in DM tabs
 
-### As a developer, I can:
+### As a developer, I can
+
 1. Run the application in TUI mode or headless mode
 2. Configure network mesh parameters based on expected peer count
 3. Automatically recover from stale peer addresses via mDNS
@@ -79,7 +81,7 @@ cargo clippy --fix --allow-dirty
 cargo clippy -- -D warnings
 ```
 
-### Testing
+### Testing revisted
 
 ```bash
 # Run all tests
@@ -187,6 +189,7 @@ target/              # Compiled artifacts (gitignored)
 ## TUI Usage
 
 The TUI has tabs accessible with `Tab` key:
+
 - **Chat**: Broadcast messages to all peers (via gossipsub)
 - **Peers**: List discovered/connected peers, press Enter to open DM
 - **Direct** (dynamic): Direct message tabs open with selected peers
@@ -329,18 +332,21 @@ src/bin/p2p_chat_dioxus.rs  # Main Dioxus frontend
 ### Key Dioxus Patterns
 
 State management with Signals:
+
 ```rust
 let mut count = use_signal(0);
 count.set(count() + 1);
 ```
 
 Event handlers:
+
 ```rust
 onclick: move |_| { /* handler */ }
 onkeydown: move |evt| { if evt.key() == Key::Enter { ... } }
 ```
 
 RSX! macro for UI:
+
 ```rust
 rsx! {
     div {
@@ -354,6 +360,7 @@ rsx! {
 ### Connecting to P2P Networking
 
 The Dioxus frontend should:
+
 1. Subscribe to shared broadcast channels for messages and peer events
 2. Update Signals when events are received
 3. Send messages through the libp2p swarm when the user submits

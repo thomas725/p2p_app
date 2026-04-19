@@ -9,8 +9,8 @@ use p2p_app::{
     save_message, save_peer, save_peer_session, scroll_title, set_peer_local_nickname,
     set_self_nickname, short_peer_id,
 };
-use std::collections::VecDeque;
-use std::sync::Mutex;
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 #[cfg(feature = "tui")]
@@ -19,7 +19,7 @@ mod tui {
     use libp2p::Swarm;
     #[cfg(feature = "mdns")]
     use libp2p::mdns;
-    use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent as Libp2pSwarmEvent};
+    use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
     use ratatui::crossterm::{
         event::{
             Event, KeyCode, KeyModifiers, PopKeyboardEnhancementFlags,
@@ -28,6 +28,9 @@ mod tui {
         execute,
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     };
+    use std::collections::{HashMap, VecDeque};
+    use std::sync::Arc;
+    use tokio::sync::mpsc;
     use ratatui::{
         Terminal,
         backend::CrosstermBackend,
@@ -36,9 +39,6 @@ mod tui {
         widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     };
     use ratatui_textarea::{Input, TextArea};
-    use std::collections::{HashMap, VecDeque};
-    use std::sync::Arc;
-    use tokio::sync::mpsc;
     use tracing_subscriber::prelude::*;
 
     const MAX_MESSAGES: usize = 1000;
@@ -419,7 +419,7 @@ mod tui {
 
                                             event = swarm.select_next_some() => {
                                                 match event {
-                                                    Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(
+                                                    SwarmEvent::Behaviour(AppEv::Gossipsub(
                                                         gossipsub::Event::Message {
                                                             propagation_source: peer_id,
                                                             message,
@@ -455,7 +455,7 @@ mod tui {
                                                             log_debug(&logs, format!("Failed to save message: {}", e));
                                                         }
                                                     }
-                                                    Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
+                                                    SwarmEvent::Behaviour(AppEv::RequestResponse(
                                                         libp2p::request_response::Event::Message { peer, message, .. },
                                                     )) => {
                                                         match message {
@@ -514,7 +514,7 @@ mod tui {
                                                         }
                                                     }
                                                     #[cfg(feature = "mdns")]
-                                                    Libp2pSwarmEvent::Behaviour(AppEv::Mdns(
+                                                    SwarmEvent::Behaviour(AppEv::Mdns(
                                                         mdns::Event::Discovered(list),
                                                     )) => {
                                                         for (peer_id, multiaddr) in list {
@@ -540,7 +540,7 @@ mod tui {
                                                         }
                                                     }
                                                     #[cfg(feature = "mdns")]
-                                                    Libp2pSwarmEvent::Behaviour(AppEv::Mdns(
+                                                    SwarmEvent::Behaviour(AppEv::Mdns(
                                                         mdns::Event::Expired(list),
                                                     )) => {
                                                         for (peer_id, multiaddr) in list {
@@ -551,7 +551,7 @@ mod tui {
                                                                 .remove_explicit_peer(&peer_id);
                                                         }
                                                     }
-                                                    Libp2pSwarmEvent::NewListenAddr { address, .. } => {
+                                                    SwarmEvent::NewListenAddr { address, .. } => {
                                                         log_debug(&logs, format!("Listening on: {}", address));
                                                         if let Some(port) = address
                                                             .iter()
@@ -574,7 +574,7 @@ mod tui {
                                                             let _ = save_listen_ports(last_tcp_port, Some(port));
                                                         }
                                                     }
-                                                    Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                                                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                                                         concurrent_peers += 1;
                                                         log_debug(&logs, format!("Concurrent peers: {}", concurrent_peers));
                                                         swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
@@ -614,7 +614,7 @@ mod tui {
                                                             }
                                                         }
                                                     }
-                                                    Libp2pSwarmEvent::ConnectionClosed {
+                                                    SwarmEvent::ConnectionClosed {
                                                         peer_id, cause: _, ..
                                                     } => {
                                                         concurrent_peers = concurrent_peers.saturating_sub(1);
@@ -623,21 +623,21 @@ mod tui {
                                                             log_debug(&logs, format!("Failed to save peer session: {}", e));
                                                         }
                                                     }
-                                                    Libp2pSwarmEvent::Dialing { peer_id: Some(_pid), .. } => {}
-                                                    Libp2pSwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
+                                                    SwarmEvent::Dialing { peer_id: Some(_pid), .. } => {}
+                                                    SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
                                                         log_debug(&logs, format!("Dial failed: peer={:?}, error={}", peer_id, error));
                                                     }
-                                                    Libp2pSwarmEvent::ExpiredListenAddr { address, .. } => {
+                                                    SwarmEvent::ExpiredListenAddr { address, .. } => {
                                                         log_debug(&logs, format!("Expired listen addr: {}", address));
                                                     }
-                                                    Libp2pSwarmEvent::ListenerError { listener_id, error } => {
+                                                    SwarmEvent::ListenerError { listener_id, error } => {
                                                         log_debug(&logs, format!("Listener {:?} error: {}", listener_id, error));
                                                     }
-                                                    Libp2pSwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
+                                                    SwarmEvent::ListenerClosed { listener_id, reason, addresses } => {
                                                         log_debug(&logs, format!("Listener {:?} closed: {:?} ({:?})", listener_id, reason, addresses));
                                                     }
-                                                    Libp2pSwarmEvent::IncomingConnection { .. } => {}
-                                                    Libp2pSwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
+                                                    SwarmEvent::IncomingConnection { .. } => {}
+                                                    SwarmEvent::IncomingConnectionError { connection_id, local_addr, send_back_addr, error, .. } => {
                                                         let err_str = format!("{}", error);
                                                         if err_str.contains("ConnectionClosed") || err_str.contains("TimedOut") {
                                                         } else {
@@ -1205,100 +1205,124 @@ mod tui {
         }
     }
 
-    #[derive(Debug, Clone)]
-    pub struct RunningState {
-        pub messages: VecDeque<(String, Option<String>)>,
-        pub dm_messages: HashMap<String, VecDeque<String>>,
-        pub peers: VecDeque<(String, String, String)>,
-        pub dynamic_tabs: DynamicTabs,
-        pub active_tab: usize,
-        pub dm_inputs: HashMap<String, TextArea<'static>>,
-        pub chat_input: TextArea<'static>,
-        pub concurrent_peers: usize,
-        pub peer_selection: usize,
-        pub debug_scroll_offset: usize,
-        pub debug_auto_scroll: bool,
-        pub chat_scroll_offset: usize,
-        pub chat_auto_scroll: bool,
-        pub own_nickname: String,
-        pub local_nicknames: HashMap<String, String>,
-        pub received_nicknames: HashMap<String, String>,
-        pub unread_broadcasts: u32,
-        pub unread_dms: HashMap<String, u32>,
-        pub topic_str: String,
-        pub logs: Arc<Mutex<VecDeque<String>>>,
-    }
 
-    impl RunningState {
-        pub fn new(
-            topic_str: String,
-            logs: Arc<Mutex<VecDeque<String>>>,
-            own_nickname: String,
-            local_nicknames: HashMap<String, String>,
-            received_nicknames: HashMap<String, String>,
-            initial_messages: VecDeque<(String, Option<String>)>,
-            initial_peers: VecDeque<(String, String, String)>,
-        ) -> Self {
-            Self {
-                messages: initial_messages,
-                dm_messages: HashMap::new(),
-                peers: initial_peers,
-                dynamic_tabs: DynamicTabs::new(),
-                active_tab: 0,
-                dm_inputs: HashMap::new(),
-                chat_input: TextArea::default(),
-                concurrent_peers: 0,
-                peer_selection: 0,
-                debug_scroll_offset: 0,
-                debug_auto_scroll: true,
-                chat_scroll_offset: 0,
-                chat_auto_scroll: true,
-                own_nickname,
-                local_nicknames,
-                received_nicknames,
-                unread_broadcasts: 0,
-                unread_dms: HashMap::new(),
-                topic_str,
-                logs,
+        #[derive(Debug, Clone)]
+        pub struct RunningState {
+            pub messages: VecDeque<(String, Option<String>)>,
+            pub dm_messages: HashMap<String, VecDeque<String>>,
+            pub peers: VecDeque<(String, String, String)>,
+            pub dynamic_tabs: DynamicTabs,
+            pub active_tab: usize,
+            pub dm_inputs: HashMap<String, TextArea<'static>>,
+            pub chat_input: TextArea<'static>,
+            pub concurrent_peers: usize,
+            pub peer_selection: usize,
+            pub debug_scroll_offset: usize,
+            pub debug_auto_scroll: bool,
+            pub chat_scroll_offset: usize,
+            pub chat_auto_scroll: bool,
+            pub own_nickname: String,
+            pub local_nicknames: HashMap<String, String>,
+            pub received_nicknames: HashMap<String, String>,
+            pub unread_broadcasts: u32,
+            pub unread_dms: HashMap<String, u32>,
+            pub topic_str: String,
+            pub logs: Arc<Mutex<VecDeque<String>>>,
+        }
+
+        impl RunningState {
+            pub fn new(
+                topic_str: String,
+                logs: Arc<Mutex<VecDeque<String>>>,
+                own_nickname: String,
+                local_nicknames: HashMap<String, String>,
+                received_nicknames: HashMap<String, String>,
+                initial_messages: VecDeque<(String, Option<String>)>,
+                initial_peers: VecDeque<(String, String, String)>,
+            ) -> Self {
+                Self {
+                    messages: initial_messages,
+                    dm_messages: HashMap::new(),
+                    peers: initial_peers,
+                    dynamic_tabs: DynamicTabs::new(),
+                    active_tab: 0,
+                    dm_inputs: HashMap::new(),
+                    chat_input: TextArea::default(),
+                    concurrent_peers: 0,
+                    peer_selection: 0,
+                    debug_scroll_offset: 0,
+                    debug_auto_scroll: true,
+                    chat_scroll_offset: 0,
+                    chat_auto_scroll: true,
+                    own_nickname,
+                    local_nicknames,
+                    received_nicknames,
+                    unread_broadcasts: 0,
+                    unread_dms: HashMap::new(),
+                    topic_str,
+                    logs,
+                }
             }
         }
-    }
 
-    #[derive(Debug)]
-    pub enum UiCommand {
-        ShowMessage(String, Option<String>),
-        UpdatePeers(VecDeque<(String, String, String)>),
-        AddDmTab(String),
-        RemoveDmTab(String),
-        SetActiveTab(usize),
-        ShowDmMessages(String, VecDeque<String>),
-        ClearInput,
-        SetChatInput(String),
-        ToggleMouseCapture,
-        Exit,
-    }
+        #[derive(Debug)]
+        pub enum UiCommand {
+            ShowMessage(String, Option<String>),
+            UpdatePeers(VecDeque<(String, String, String)>),
+            AddDmTab(String),
+            RemoveDmTab(String),
+            SetActiveTab(usize),
+            ShowDmMessages(String, VecDeque<String>),
+            ClearInput,
+            SetChatInput(String),
+            ToggleMouseCapture,
+            Exit,
+        }
 
-    #[derive(Debug)]
-    pub enum SwarmCommand {
-        SendBroadcast(String),
-        SendDm(String, libp2p::PeerId, DirectMessage),
-        SetNickname(String),
-        SetPeerNickname(String, String),
-    }
+        #[derive(Debug)]
+        pub enum SwarmCommand {
+            SendBroadcast(String),
+            SendDm(String, libp2p::PeerId, DirectMessage),
+            SetNickname(String),
+            SetPeerNickname(String, String),
+        }
 
-    #[derive(Debug)]
-    pub enum InputEvent {
-        Key(Event),
-        Mouse(Event),
-    }
+        #[derive(Debug)]
+        pub enum InputEvent {
+            Key(Event),
+            Mouse(Event),
+        }
 
-    pub type UiCommandTx = mpsc::Sender<UiCommand>;
-    pub type UiCommandRx = mpsc::Receiver<UiCommand>;
-    pub type SwarmCommandTx = mpsc::Sender<SwarmCommand>;
-    pub type SwarmCommandRx = mpsc::Receiver<SwarmCommand>;
-    pub type InputEventTx = mpsc::Sender<InputEvent>;
-    pub type InputEventRx = mpsc::Receiver<InputEvent>;
-}
+        #[derive(Debug)]
+        pub enum SwarmEvent {
+            MessageReceived(String, String, Option<String>),
+            PeerConnected(libp2p::PeerId),
+            PeerDisconnected(libp2p::PeerId),
+            ListenAddr(String),
+            ConnectionEstablished(libp2p::PeerId),
+            ConnectionClosed(libp2p::PeerId),
+            Dialing(libp2p::PeerId),
+            OutgoingConnectionError(libp2p::PeerId, String),
+            ExpiredListenAddr(String),
+            ListenerError(usize, String),
+            ListenerClosed(usize, String, Vec<libp2p::Multiaddr>),
+            IncomingConnection,
+            IncomingConnectionError(usize, String, libp2p::Multiaddr, libp2p::Multiaddr),
+            MdnsDiscovered(Vec<(libp2p::PeerId, libp2p::Multiaddr)>),
+            MdnsExpired(Vec<(libp2p::PeerId, libp2p::Multiaddr)>),
+            GossipsubMessage { propagation_source: libp2p::PeerId, message: gossipsub::Message },
+            RequestResponseRequest { peer: libp2p::PeerId, message: libp2p::request_response::Message<DirectMessage, ()>, channel: libp2p::request_response::Channel<DirectMessage, ()> },
+            RequestResponseResponse { request_id: libp2p::request_response::RequestId, response: DirectMessage },
+        }
+
+        pub type UiCommandTx = mpsc::Sender<UiCommand>;
+        pub type UiCommandRx = mpsc::Receiver<UiCommand>;
+        pub type SwarmCommandTx = mpsc::Sender<SwarmCommand>;
+        pub type SwarmCommandRx = mpsc::Receiver<SwarmCommand>;
+        pub type InputEventTx = mpsc::Sender<InputEvent>;
+        pub type InputEventRx = mpsc::Receiver<InputEvent>;
+        pub type SwarmEventTx = mpsc::Sender<SwarmEvent>;
+        pub type SwarmEventRx = mpsc::Receiver<SwarmEvent>;
 
 #[cfg(feature = "tui")]
 #[tokio::main]

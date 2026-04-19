@@ -35,11 +35,11 @@ The application follows a modular architecture with clear separation of concerns
         └──────┬───────┘
           ┌────┴───────┬───────────┐
           │            │           │
-    ┌─────▼─────┐ ┌────▼────┐ ┌────▼─────┐
-    │ Gossipsub │ │ Request │ │ mDNS     │
-    │ (Publish) │ │Response │ │(Discovery)
-    │           │ │(DM)     │ │          │
-    └───────────┘ └─────────┘ └──────────┘
+    ┌─────▼─────┐ ┌────▼────┐ ┌────▼──────┐
+    │ Gossipsub │ │ Request │ │ mDNS      │
+    │ (Publish) │ │Response │ │(Discovery)│
+    │           │ │(DM)     │ │           │
+    └───────────┘ └─────────┘ └───────────┘
           │
     ┌─────▼────────────────────┐
     │   Diesel Database        │
@@ -69,6 +69,7 @@ The application follows a modular architecture with clear separation of concerns
 Feature flags control which components are compiled in. Defaults: `mdns`, `tracing`, `quic`, `tui`.
 
 **When to use which configuration:**
+
 - **TUI mode** (default): `cargo run` - Full interactive experience
 - **Headless with mDNS**: `cargo run --no-default-features --features mdns,tracing` - Peer discovery without UI
 - **CLI only**: `cargo run --no-default-features --features tracing` - No discovery or TUI
@@ -165,6 +166,7 @@ cargo test --test tui_chat test_name
 ### LibP2P Behaviors
 
 The `AppBehaviour` struct implements `NetworkBehaviour` and orchestrates three sub-behaviors:
+
 - **Gossipsub**: Broadcast messaging to subscribed topic (`"test-net"`)
 - **Request-Response**: Direct messaging between peers
 - **mDNS**: Automatic peer discovery on local network
@@ -181,6 +183,7 @@ Events flow through `SwarmEvent` -> matched on specific event types -> applicati
 ### Logging & Tracing
 
 The `tracing_filter()` function implements a denylist approach:
+
 - **OFF**: `multistream_select`, `yamux::connection`, `libp2p_core::transport::choice`, `libp2p_mdns::behaviour::iface` (noise)
 - **DEBUG**: `libp2p_swarm`, `libp2p_tcp`, `libp2p_quic::transport`, `libp2p_mdns::behaviour`
 - **INFO**: `libp2p_gossipsub::behaviour`
@@ -206,6 +209,7 @@ Use `push_log()` to add timestamped messages to the TUI debug tab and stderr.
 ## Code Style
 
 See AGENTS.md for detailed style guidelines. Key points:
+
 - Trait imports used for methods: `use crate::AsyncBufReadExt as _`
 - Explicit return types on public functions
 - `Result<T, color_eyre::Report>` for error handling
@@ -217,6 +221,7 @@ See AGENTS.md for detailed style guidelines. Key points:
 ### Tab System
 
 The TUI maintains multiple tabs accessible via Tab key:
+
 1. **Chat**: Broadcast messages (write-enabled)
 2. **Peers**: Discovered peers list (read-only, click to open DM)
 3. **Direct**: Dynamic tabs for each active peer conversation (write-enabled)
@@ -225,6 +230,7 @@ The TUI maintains multiple tabs accessible via Tab key:
 ### State Management
 
 `App` struct holds:
+
 - `active_tab`: Current tab index
 - `messages`: VecDeque of formatted chat messages
 - `direct_message_tabs`: HashMap of peer_id -> conversation state
@@ -244,11 +250,12 @@ Mouse click detection maps row to peer ID by calculating content offset and list
 
 ### Test Coverage Summary
 
-**Total: 28 tests (4 unit + 4 integration + 20 TUI), 100% passing**
+Total: 28 tests (4 unit + 4 integration + 20 TUI), 100% passing
 
 ### Unit Tests (4 tests in `src/lib.rs`)
 
 Core utilities and formatting:
+
 1. `test_format_peer_datetime()` - Timezone-aware peer timestamp formatting
 2. `test_strip_ansi_codes()` - ANSI escape sequence removal for log display
 3. `test_now_timestamp_format()` - Current timestamp generation in UTC
@@ -257,12 +264,14 @@ Core utilities and formatting:
 ### Integration Tests (7 tests in `tests/p2p_integration.rs`, 4 active + 3 ignored)
 
 Network behavior and message passing:
+
 1. **`test_auto_discovery_via_mdns()`** - Peers automatically discover each other via mDNS within ~2 sec
 2. **`test_p2p_message_transfer()`** - Messages published to gossipsub topic propagate to subscribed peers
 3. **`test_bidirectional_messages()`** - Messages flow correctly in both directions between nodes
 4. **`test_connection_with_stale_db_address_and_mdns_recovery()`** - Nodes recover and reconnect when DB has stale peer addresses
 
 Ignored (marked for manual testing):
+
 - `test_direct_message_protocol()` - Direct message (request-response) protocol validation
 - `test_peer_persistence()` - Peer list survives binary restart (requires DB setup)
 - `test_message_deduplication()` - Gossipsub message deduplication via DefaultHasher
@@ -270,28 +279,33 @@ Ignored (marked for manual testing):
 ### TUI Tests (20 tests in `tests/tui_chat.rs`)
 
 **Mouse & Input Handling (3 tests):**
+
 - `test_handle_mouse_click()` - Valid row coordinates map to correct peer
 - `test_handle_mouse_click_outside_bounds()` - Out-of-bounds clicks return None
 - `test_calculate_content_start_row()` - Content layout accounts for notification area
 
 **Tab Management (4 tests):**
+
 - `test_tab_id_index()` - TabId enum maps to correct numeric index (0-3)
 - `test_tab_id_from_index()` - TabId created from numeric index
 - `test_tab_id_default()` - Default TabId is Chat (0)
 - `test_tab_id_partial_eq()` - TabId equality works correctly
 
 **Tab Switching (4 tests):**
+
 - `test_tab_click_to_chat()` - Tab row 0 switches to Chat
 - `test_tab_click_to_peers()` - Tab row 1 switches to Peers
 - `test_tab_click_to_log()` - Tab row 3 switches to Debug log
 - Custom message handling tests (comprehensive message flow)
 
 **Notification & Unread Tracking (4 tests):**
+
 - `test_unread_notification_increments()` - Unread count increments on new broadcast
 - `test_notification_clears_on_chat_tab_focus()` - Unread clears when Chat tab active
 - `test_notification_area_calculation()` - Notification area expands/contracts based on count
 
 **Data Structure Tests (3 tests):**
+
 - `test_dm_tab_new()` - Create empty DM tab for peer
 - `test_dm_tab_with_messages()` - DM tab initialized with message history
 - `test_dm_tab_message_persistence()` - Messages survive DM tab cloning
