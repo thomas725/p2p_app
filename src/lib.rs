@@ -15,6 +15,7 @@ pub use nickname::{
     get_peer_received_nickname, get_self_nickname, set_peer_local_nickname,
     set_peer_received_nickname, set_self_nickname,
 };
+#[allow(unused_imports)]
 use std::collections::VecDeque;
 
 #[cfg(feature = "tui")]
@@ -1243,3 +1244,30 @@ pub mod tui_state {
 
 #[cfg(feature = "tui")]
 pub use tui_state::TuiState;
+
+#[cfg(feature = "tui")]
+pub mod tui_tasks {
+    use futures::future::BoxFuture;
+    use std::sync::Arc;
+
+    pub async fn spawn<F>(name: &str, f: F)
+    where
+        F: FnOnce() -> BoxFuture<'static, ()> + Send + 'static,
+    {
+        let _ = name;
+        tokio::spawn(async move {
+            f().await;
+        });
+    }
+
+    pub async fn spawn_with_state<F, S>(name: &str, state: Arc<std::sync::Mutex<S>>, f: F)
+    where
+        F: FnOnce(Arc<std::sync::Mutex<S>>) -> BoxFuture<'static, ()> + Send + 'static,
+        S: Send + 'static,
+    {
+        let _ = name;
+        tokio::spawn(async move {
+            f(state).await;
+        });
+    }
+}
