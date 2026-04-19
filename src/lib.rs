@@ -1154,3 +1154,92 @@ pub fn log_debug(
         l.push_back(formatted);
     }
 }
+
+#[cfg(feature = "tui")]
+pub mod tui_state {
+    use crate::DynamicTabs;
+    use std::collections::{HashMap, VecDeque};
+
+    #[derive(Clone, Debug, Default)]
+    pub struct TuiState {
+        pub messages: VecDeque<(String, Option<String>)>,
+        pub dm_messages: HashMap<String, VecDeque<String>>,
+        pub peers: VecDeque<(String, String, String)>,
+        pub dynamic_tabs: DynamicTabs,
+        pub active_tab: usize,
+        pub peer_selection: usize,
+        pub chat_scroll_offset: usize,
+        pub chat_auto_scroll: bool,
+        pub debug_scroll_offset: usize,
+        pub debug_auto_scroll: bool,
+        pub unread_broadcasts: u32,
+        pub unread_dms: HashMap<String, u32>,
+        pub own_nickname: String,
+        pub local_nicknames: HashMap<String, String>,
+        pub received_nicknames: HashMap<String, String>,
+    }
+
+    impl TuiState {
+        pub fn new(nickname: String) -> Self {
+            Self {
+                own_nickname: nickname,
+                messages: VecDeque::new(),
+                dm_messages: HashMap::new(),
+                peers: VecDeque::new(),
+                dynamic_tabs: DynamicTabs::new(),
+                active_tab: 0,
+                peer_selection: 0,
+                chat_scroll_offset: 0,
+                chat_auto_scroll: true,
+                debug_scroll_offset: 0,
+                debug_auto_scroll: true,
+                unread_broadcasts: 0,
+                unread_dms: HashMap::new(),
+                local_nicknames: HashMap::new(),
+                received_nicknames: HashMap::new(),
+            }
+        }
+
+        pub fn add_message(&mut self, content: String, peer_id: Option<String>) {
+            self.messages.push_back((content, peer_id));
+            if self.messages.len() > 1000 {
+                self.messages.pop_front();
+            }
+        }
+
+        pub fn add_dm(&mut self, peer_id: String, msg: String) {
+            self.dm_messages
+                .entry(peer_id)
+                .or_insert_with(VecDeque::new)
+                .push_back(msg);
+        }
+
+        pub fn add_peer(&mut self, id: String, first: String, last: String) {
+            self.peers.push_back((id, first, last));
+        }
+
+        pub fn add_unread_broadcast(&mut self) {
+            self.unread_broadcasts += 1;
+        }
+
+        pub fn add_unread_dm(&mut self, peer_id: String) {
+            *self.unread_dms.entry(peer_id).or_insert(0) += 1;
+        }
+
+        pub fn clear_unread(&mut self) {
+            self.unread_broadcasts = 0;
+            self.unread_dms.clear();
+        }
+
+        pub fn tab_count(&self) -> usize {
+            self.dynamic_tabs.total_tab_count()
+        }
+
+        pub fn tab_content(&self, idx: usize) -> crate::TabContent {
+            self.dynamic_tabs.tab_index_to_content(idx)
+        }
+    }
+}
+
+#[cfg(feature = "tui")]
+pub use tui_state::TuiState;
