@@ -1,57 +1,4 @@
-use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::logging::init_logging;
-use p2p_app::{
-    AppBehaviour, AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
-    auto_scroll_offset, build_behaviour, ensure_self_nickname, format_latency,
-    format_peer_datetime, format_system_time, get_database_url, get_network_size,
-    get_self_nickname, get_unsent_messages, load_direct_messages, load_listen_ports, load_messages,
-    load_peers, log_debug, mark_message_sent, now_timestamp, peer_display_name, save_listen_ports,
-    save_message, save_peer, save_peer_session, scroll_title, set_peer_local_nickname,
-    set_self_nickname, short_peer_id,
-};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
-
-#[cfg(feature = "tui")]
-mod tui {
-    use super::*;
-    use libp2p::Swarm;
-    #[cfg(feature = "mdns")]
-    use libp2p::mdns;
-    use libp2p::{futures::StreamExt, gossipsub, swarm::SwarmEvent};
-    use ratatui::crossterm::{
-        event::{
-            Event, KeyCode, KeyModifiers, PopKeyboardEnhancementFlags,
-            PushKeyboardEnhancementFlags, poll, read,
-        },
-        execute,
-        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-    };
-    use ratatui::{
-        Terminal,
-        backend::CrosstermBackend,
-        layout::{Constraint, Direction, Layout},
-        style::{Color, Style},
-        widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
-    };
-    use ratatui_textarea::{Input, TextArea};
-    use tracing_subscriber::prelude::*;
-
-    const MAX_MESSAGES: usize = 1000;
-    const MAX_LOGS: usize = 1000;
-
-    mod tracing_writer {
-        use std::{collections::VecDeque, time::SystemTime};
-
-        fn format_system_time(time: SystemTime) -> String {
-            chrono::DateTime::<chrono::Local>::from(time)
-                .format("%H:%M:%S.%3f")
-                .to_string()
-        }
-
-        #[derive(Clone)]
-        pub struct TracingWriter {
+struct TracingWriter {
             logs: std::sync::Arc<std::sync::Mutex<VecDeque<String>>>,
         }
 
@@ -64,8 +11,8 @@ mod tui {
 
         impl std::io::Write for TracingWriter {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                if let Ok(s) = std::str::from_utf8(buf) {
-                    let cleaned = p2p_app::logging::strip_ansi_codes(s);
+                 if let Ok(s) = std::str::from_utf8(buf) {
+                     let cleaned = p2p_app::logging::strip_ansi_codes(s);
                     let trimmed = cleaned.trim();
                     if !trimmed.is_empty() {
                         let ts = format_system_time(SystemTime::now());
@@ -84,6 +31,79 @@ mod tui {
             fn flush(&mut self) -> std::io::Result<()> {
                 Ok(())
             }
+        }
+    }
+
+    fn format_system_time(time: SystemTime) -> String {
+        chrono::DateTime::<chrono::Local>::from(time)
+            .format("%H:%M:%S.%3f")
+            .to_string()
+    }
+
+    fn short_peer_id(id: &str) -> String {
+        id[id.len().saturating_sub(8.min(id.len()))..].to_string()
+    }
+
+    fn peer_display_name(
+        peer_id: &str,
+        local_nicknames: &HashMap<String, String>,
+        received_nicknames: &HashMap<String, String>,
+    ) -> String {
+        if let Some(nick) = local_nicknames.get(peer_id) {
+            let short = short_peer_id(peer_id);
+            return format!("{} ({})", nick, &short[..3.min(short.len())]);
+        }
+        if let Some(nick) = received_nicknames.get(peer_id) {
+            let short = short_peer_id(peer_id);
+            return format!("{} ({})", nick, &short[..3.min(short.len())]);
+        }
+        short_peer_id(peer_id)
+    }
+
+    fn clamp_scroll(total: usize, current: usize, delta: isize) -> usize {
+        if delta < 0 {
+            current.saturating_sub(delta.unsigned_abs())
+        } else {
+            current
+                .saturating_add(delta as usize)
+                .min(total.saturating_sub(1))
+        }
+    }
+
+    fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+        total.saturating_sub(visible).min(total.saturating_sub(1))
+    }
+
+    fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
+        format!("{} [{}/{}]", prefix, scroll_offset + 1, total)
+    }
+
+    fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
+        if let Some(sent) = sent_at {
+            let recv = received_at
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time is valid")
+                .as_secs_f64();
+            let diff = recv - sent;
+            if diff.abs() < 10.0 {
+                format!("[{:.3}s]", diff)
+            } else {
+                let sent_str = format_system_time(
+                    std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(sent),
+                );
+                let recv_str = format_system_time(received_at);
+                format!("[sent:{} recv:{}]", sent_str, recv_str)
+            }
+        } else {
+            String::new()
+        }
+    }
+
+    fn log_debug(logs: &Mutex<VecDeque<String>>, message: impl Into<String>) {
+        let ts = format_system_time(SystemTime::now());
+        let formatted = format!("[{}] {}", ts, message.into());
+        if let Ok(mut l) = logs.lock() {
+            l.push_back(formatted);
         }
     }
 
@@ -142,9 +162,9 @@ mod tui {
                 let mut received_nicknames: HashMap<String, String> = HashMap::new();
                 log_debug(&logs, format!("Your nickname: {}", own_nickname));
 
-                p2p_app::logging::init_logging();
-                let logs_for_callback = logs.clone();
-                p2p_app::logging::set_tui_log_callback(move |msg| {
+                 p2p_app::logging::init_logging();
+                 let logs_for_callback = logs.clone();
+                 p2p_app::logging::set_tui_log_callback(move |msg| {
                     if let Ok(mut l) = logs_for_callback.lock() {
                         l.push_back(msg);
                         if l.len() > 1000 {
@@ -1149,154 +1169,3 @@ mod tui {
             Err(_e) => run_headless_mode(swarm).await,
         }
     }
-
-    async fn run_headless_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
-        p2p_app::logging::init_logging();
-        p2p_app::logging::p2plog_info("Starting non-interactive mode".to_string());
-        p2p_app::logging::p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
-        p2p_app::logging::p2plog_info("Press Ctrl+C to exit".to_string());
-
-        let mut concurrent_peers: usize = 0;
-
-        loop {
-            tokio::select! {
-                event = swarm.select_next_some() => {
-                    match event {
-                        SwarmEvent::NewListenAddr { address, .. } => {
-                             p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
-                            if let Some(port) = address
-                                .iter()
-                                .find_map(|p| match p {
-                                    libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-                                    _ => None,
-                                })
-                            {
-                                let _ = save_listen_ports(Some(port), None);
-                            }
-                            #[cfg(feature = "quic")]
-                            if let Some(port) = address
-                                .iter()
-                                .find_map(|p| match p {
-                                    libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-                                    _ => None,
-                                })
-                            {
-                                let (tcp, _) = load_listen_ports().unwrap_or((None, None));
-                                let _ = save_listen_ports(tcp, Some(port));
-                            }
-                        }
-                        SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                             p2p_app::logging::p2plog_info(format!("Dial failed: peer={:?}, error={}", peer_id, error));
-                        }
-                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            concurrent_peers += 1;
-                             p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: {})", peer_id, concurrent_peers));
-                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                        }
-                        SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                            concurrent_peers = concurrent_peers.saturating_sub(1);
-                             p2p_app::logging::p2plog_info(format!("Disconnected from: {} (peers: {})", peer_id, concurrent_peers));
-                            if let Err(e) = save_peer_session(concurrent_peers as i32) {
-                                 p2p_app::logging::p2plog_error(format!("Failed to save peer session: {}", e));
-                            }
-                        }
-                        SwarmEvent::Dialing { peer_id, .. } => {
-                              p2p_app::logging::p2plog_info(format!("Dialing: {:?}", peer_id));
-                        }
-                        SwarmEvent::Behaviour(AppEv::Gossipsub(
-                            gossipsub::Event::Message { propagation_source, message, .. }
-                        )) => {
-                            let ps = propagation_source.to_string();
-                            let suffix = &ps[ps.len().saturating_sub(8)..];
-                             p2p_app::logging::p2plog_info(format!(
-                                "[{}] {}",
-                                suffix,
-                                String::from_utf8_lossy(&message.data)
-                            ));
-                        }
-                        #[cfg(feature = "mdns")]
-                        SwarmEvent::Behaviour(AppEv::Mdns(mdns::Event::Discovered(list))) => {
-                            for (peer_id, multiaddr) in list {
-                                 p2p_app::logging::p2plog_info(format!("mDNS discovered: {} at {}", peer_id, multiaddr));
-                                let addresses = vec![multiaddr.to_string()];
-                                if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
-                                     p2p_app::logging::p2plog_error(format!("Failed to save peer: {}", e));
-                                }
-                                let _ = swarm.dial(multiaddr.clone());
-                                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                _ = tokio::time::sleep(Duration::from_secs(3600)) => {}
-            }
-        }
-    }
-}
-
-#[cfg(feature = "tui")]
-#[tokio::main]
-async fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    init_logging();
-
-    let logs = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
-    let logs_callback = logs.clone();
-    p2p_app::logging::set_tui_log_callback(move |msg| {
-        if let Ok(mut l) = logs_callback.lock() {
-            l.push_back(msg);
-            if l.len() > 1000 {
-                l.pop_front();
-            }
-        }
-    });
-
-    let topic = gossipsub::IdentTopic::new("test-net");
-
-    let network_size = match p2p_app::get_network_size() {
-        Ok(size) => {
-            eprintln!("Network size detected: {:?}", size);
-            size
-        }
-        Err(e) => {
-            eprintln!(
-                "Could not determine network size, defaulting to Small: {}",
-                e
-            );
-            p2p_app::NetworkSize::Small
-        }
-    };
-
-    let mut swarm = {
-        let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
-            .with_tokio()
-            .with_tcp(
-                tcp::Config::default().nodelay(true),
-                noise::Config::new,
-                yamux::Config::default,
-            )?;
-
-        #[cfg(feature = "quic")]
-        let swarm = base
-            .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        #[cfg(not(feature = "quic"))]
-        let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        swarm
-    };
-
-    let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
-    swarm.listen_on(listen_addr)?;
-
-    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
-
-    tui::run_tui(swarm, "test-net".to_string(), logs).await
-}

@@ -22,7 +22,7 @@ pub fn init_logging() {
 ///
 /// # Example
 /// ```
-/// # use p2p_app::strip_ansi_codes;
+/// # use p2p_app::logging::strip_ansi_codes;
 /// let colored = "\x1b[32mHello\x1b[0m";
 /// assert_eq!(strip_ansi_codes(colored), "Hello");
 /// ```

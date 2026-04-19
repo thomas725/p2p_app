@@ -1081,3 +1081,76 @@ mod tests {
         assert_eq!(size, copy);
     }
 }
+
+#[cfg(feature = "tui")]
+pub fn format_system_time(time: std::time::SystemTime) -> String {
+    chrono::DateTime::<chrono::Local>::from(time)
+        .format("%H:%M:%S.%3f")
+        .to_string()
+}
+
+#[cfg(feature = "tui")]
+pub fn short_peer_id(id: &str) -> String {
+    id[id.len().saturating_sub(8.min(id.len()))..].to_string()
+}
+
+#[cfg(feature = "tui")]
+pub fn peer_display_name(
+    peer_id: &str,
+    local_nicknames: &std::collections::HashMap<String, String>,
+    received_nicknames: &std::collections::HashMap<String, String>,
+) -> String {
+    if let Some(nick) = local_nicknames.get(peer_id) {
+        let short = short_peer_id(peer_id);
+        return format!("{} ({})", nick, &short[..3.min(short.len())]);
+    }
+    if let Some(nick) = received_nicknames.get(peer_id) {
+        let short = short_peer_id(peer_id);
+        return format!("{} ({})", nick, &short[..3.min(short.len())]);
+    }
+    short_peer_id(peer_id)
+}
+
+#[cfg(feature = "tui")]
+pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+    total.saturating_sub(visible).min(total.saturating_sub(1))
+}
+
+#[cfg(feature = "tui")]
+pub fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
+    format!("{} [{}/{}]", prefix, scroll_offset + 1, total)
+}
+
+#[cfg(feature = "tui")]
+pub fn format_latency(sent_at: Option<f64>, received_at: std::time::SystemTime) -> String {
+    if let Some(sent) = sent_at {
+        let recv = received_at
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time is valid")
+            .as_secs_f64();
+        let diff = recv - sent;
+        if diff.abs() < 10.0 {
+            format!("[{:.3}s]", diff)
+        } else {
+            let sent_str = format_system_time(
+                std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(sent),
+            );
+            let recv_str = format_system_time(received_at);
+            format!("[sent:{} recv:{}]", sent_str, recv_str)
+        }
+    } else {
+        String::new()
+    }
+}
+
+#[cfg(feature = "tui")]
+pub fn log_debug(
+    logs: &std::sync::Mutex<std::collections::VecDeque<String>>,
+    message: impl Into<String>,
+) {
+    let ts = format_system_time(std::time::SystemTime::now());
+    let formatted = format!("[{}] {}", ts, message.into());
+    if let Ok(mut l) = logs.lock() {
+        l.push_back(formatted);
+    }
+}

@@ -1,17 +1,12 @@
 #[cfg(feature = "dioxus-desktop")]
-use dioxus::desktop::Config;
-
-#[cfg(feature = "dioxus-desktop")]
 fn main() {
-    dioxus::launch_with_props(
-        app,
-        dioxus_desktop::launch_builder().with_cfg(
-            Config::new().with_window(
-                dioxus_desktop::WindowBuilder::new()
-                    .with_title("P2P Chat")
-                    .with_inner_size(dioxus_desktop::LogicalSize::new(800.0, 600.0)),
-            ),
+    dioxus_desktop::launch_cfg(
+        dioxus_desktop::Config::new().with_window(
+            dioxus_desktop::WindowBuilder::new()
+                .with_title("P2P Chat")
+                .with_inner_size(dioxus_desktop::LogicalSize::new(800.0, 600.0)),
         ),
+        app,
     );
 }
 
