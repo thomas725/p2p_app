@@ -1,16 +1,21 @@
+pub mod logging;
 pub mod models_insertable;
 pub mod models_queryable;
+pub mod network;
 pub mod schema;
+
+use crate::logging::{
+    get_tui_logs, init_logging, push_log, set_tui_log_callback, strip_ansi_codes,
+};
+use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
+pub use network::{NetworkSize, get_network_size};
+use std::collections::VecDeque;
 
 #[cfg(feature = "tui")]
 pub use tui::{DynamicTabs, TabContent};
 
 #[cfg(feature = "mdns")]
 use libp2p::mdns;
-use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
-
-use std::collections::VecDeque;
-use std::sync::OnceLock;
 
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
@@ -34,7 +39,7 @@ use std::sync::OnceLock;
 /// # Default:
 /// Everything else defaults to WARN level
 ///
-#[cfg(feature = "tracing")]
+/// #[cfg(feature = "tracing")]
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};
     Targets::new()
@@ -58,49 +63,6 @@ pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 /// Type alias for the main network behavior combining gossipsub, request-response, and mDNS
 pub type P2pAppBehaviour = AppBehaviour;
 
-static LOG_TUI_CALLBACK: OnceLock<Box<dyn Fn(String) + Send + Sync>> = OnceLock::new();
-static LOGS: OnceLock<std::sync::Mutex<VecDeque<String>>> = OnceLock::new();
-
-/// Initialize the logging system by creating the global logs queue.
-///
-/// Must be called once at application startup before any logging occurs.
-pub fn init_logging() {
-    LOGS.get_or_init(|| std::sync::Mutex::new(VecDeque::new()));
-}
-
-/// Remove ANSI escape codes from a string (e.g., color/formatting codes).
-///
-/// Useful for cleaning terminal output before storing in logs or displaying in TUI.
-///
-/// # Arguments
-/// * `s` - Input string that may contain ANSI escape sequences
-///
-/// # Returns
-/// A new String with all ANSI codes stripped
-///
-/// # Example
-/// ```
-/// # use p2p_app::strip_ansi_codes;
-/// let colored = "\x1b[32mHello\x1b[0m";
-/// assert_eq!(strip_ansi_codes(colored), "Hello");
-/// ```
-pub fn strip_ansi_codes(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut in_escape = false;
-    for c in s.chars() {
-        if c == '\x1b' {
-            in_escape = true;
-        } else if in_escape {
-            if c == 'm' {
-                in_escape = false;
-            }
-        } else {
-            result.push(c);
-        }
-    }
-    result
-}
-
 /// Format a naive UTC datetime as a local time string with timezone.
 ///
 /// # Arguments
@@ -120,81 +82,6 @@ pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
 pub fn now_timestamp() -> String {
     let local = chrono::Local::now();
     local.format("%Y-%m-%d %H:%M:%S %z").to_string()
-}
-
-pub fn push_log(message: impl Into<String>) {
-    let ts = chrono::Local::now().format("%H:%M:%S.%3f");
-    let formatted = format!("[{}] {}", ts, message.into());
-    let has_callback = LOG_TUI_CALLBACK.get().is_some();
-    if let Some(callback) = LOG_TUI_CALLBACK.get() {
-        (callback)(formatted.clone());
-    }
-    if let Some(logs) = LOGS.get()
-        && let Ok(mut l) = logs.lock()
-    {
-        l.push_back(formatted.clone());
-        if l.len() > 1000 {
-            l.pop_front();
-        }
-    }
-    if !has_callback {
-        eprintln!("{}", formatted);
-    }
-}
-
-pub fn set_tui_log_callback<F>(callback: F)
-where
-    F: Fn(String) + Send + Sync + 'static,
-{
-    let _ = LOG_TUI_CALLBACK.set(Box::new(callback));
-}
-
-/// Get the current TUI log messages.
-pub fn get_tui_logs() -> VecDeque<String> {
-    LOGS.get()
-        .map(|m| m.lock().expect("TUI logs mutex not poisoned").clone())
-        .unwrap_or_default()
-}
-
-#[allow(dead_code)]
-pub fn p2plog(level: &str, msg: String) {
-    let ts = chrono::Local::now().format("%H:%M:%S").to_string();
-    let formatted = format!("[{}] [{}] {}", ts, level, msg);
-
-    if let Some(callback) = LOG_TUI_CALLBACK.get() {
-        (callback)(formatted.clone());
-    }
-
-    if let Some(logs) = LOGS.get()
-        && let Ok(mut l) = logs.lock()
-    {
-        l.push_back(formatted.clone());
-        if l.len() > 1000 {
-            l.pop_front();
-        }
-    }
-
-    // Only print to stderr if TUI is not active (no callback set)
-    if LOG_TUI_CALLBACK.get().is_none() {
-        eprintln!("{}", formatted);
-    }
-}
-
-#[allow(dead_code)]
-pub fn p2plog_debug(msg: String) {
-    p2plog("DEBUG", msg);
-}
-#[allow(dead_code)]
-pub fn p2plog_info(msg: String) {
-    p2plog("INFO", msg);
-}
-#[allow(dead_code)]
-pub fn p2plog_warn(msg: String) {
-    p2plog("WARN", msg);
-}
-#[allow(dead_code)]
-pub fn p2plog_error(msg: String) {
-    p2plog("ERROR", msg);
 }
 
 #[derive(NetworkBehaviour)]
@@ -820,51 +707,6 @@ pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
 
 /// Adaptive network size classification based on average peer count.
 ///
-/// Used to configure gossipsub mesh parameters appropriately for network conditions.
-/// Smaller networks use aggressive flooding; larger networks use lazy gossip.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NetworkSize {
-    /// 0-3 peers: Use flood_publish, aggressive heartbeat
-    Small,
-    /// 4-15 peers: Balanced mesh topology
-    Medium,
-    /// 16+ peers: Larger mesh, lazy gossip
-    Large,
-}
-
-impl NetworkSize {
-    /// Classify network size based on average peer count.
-    ///
-    /// # Arguments
-    /// * `avg` - Average number of concurrent peers from historical data
-    ///
-    /// # Returns
-    /// NetworkSize classification for configuring gossipsub behavior
-    pub fn from_peer_count(avg: f64) -> Self {
-        match avg as i32 {
-            0..=3 => Self::Small,
-            4..=15 => Self::Medium,
-            _ => Self::Large,
-        }
-    }
-}
-
-impl TryFrom<i32> for NetworkSize {
-    type Error = &'static str;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0..=3 => Ok(Self::Small),
-            4..=15 => Ok(Self::Medium),
-            _ => Ok(Self::Large),
-        }
-    }
-}
-
-pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
-    let avg = get_average_peer_count()?;
-    Ok(NetworkSize::from_peer_count(avg))
-}
 
 #[cfg(feature = "tui")]
 pub mod tui {
@@ -1189,7 +1031,7 @@ mod tests {
     #[test]
     fn test_strip_ansi_codes() {
         let ansi_text = "\x1b[32mHello\x1b[0m";
-        let clean = strip_ansi_codes(ansi_text);
+        let clean = logging::strip_ansi_codes(ansi_text);
         assert_eq!(clean, "Hello");
     }
 
@@ -1202,60 +1044,84 @@ mod tests {
 
     #[test]
     fn test_network_size_from_peer_count() {
-        assert_eq!(NetworkSize::from_peer_count(1.0), NetworkSize::Small);
-        assert_eq!(NetworkSize::from_peer_count(5.0), NetworkSize::Medium);
-        assert_eq!(NetworkSize::from_peer_count(20.0), NetworkSize::Large);
+        assert_eq!(
+            network::NetworkSize::from_peer_count(1.0),
+            network::NetworkSize::Small
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(5.0),
+            network::NetworkSize::Medium
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(20.0),
+            network::NetworkSize::Large
+        );
     }
 
     #[test]
     fn test_network_size_boundary_values() {
-        assert_eq!(NetworkSize::from_peer_count(0.0), NetworkSize::Small);
-        assert_eq!(NetworkSize::from_peer_count(3.0), NetworkSize::Small);
-        assert_eq!(NetworkSize::from_peer_count(4.0), NetworkSize::Medium);
-        assert_eq!(NetworkSize::from_peer_count(15.0), NetworkSize::Medium);
-        assert_eq!(NetworkSize::from_peer_count(16.0), NetworkSize::Large);
+        assert_eq!(
+            network::NetworkSize::from_peer_count(0.0),
+            network::NetworkSize::Small
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(3.0),
+            network::NetworkSize::Small
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(4.0),
+            network::NetworkSize::Medium
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(15.0),
+            network::NetworkSize::Medium
+        );
+        assert_eq!(
+            network::NetworkSize::from_peer_count(16.0),
+            network::NetworkSize::Large
+        );
     }
 
     #[test]
     fn test_network_size_display() {
-        assert_eq!(format!("{:?}", NetworkSize::Small), "Small");
-        assert_eq!(format!("{:?}", NetworkSize::Medium), "Medium");
-        assert_eq!(format!("{:?}", NetworkSize::Large), "Large");
+        assert_eq!(format!("{:?}", network::NetworkSize::Small), "Small");
+        assert_eq!(format!("{:?}", network::NetworkSize::Medium), "Medium");
+        assert_eq!(format!("{:?}", network::NetworkSize::Large), "Large");
     }
 
     #[test]
     fn test_network_size_from_peer_count_method() {
-        let small = NetworkSize::from_peer_count(3.0);
-        let medium = NetworkSize::from_peer_count(10.0);
-        let large = NetworkSize::from_peer_count(100.0);
-        assert_eq!(small, NetworkSize::Small);
-        assert_eq!(medium, NetworkSize::Medium);
-        assert_eq!(large, NetworkSize::Large);
+        let small = network::NetworkSize::from_peer_count(3.0);
+        let medium = network::NetworkSize::from_peer_count(10.0);
+        let large = network::NetworkSize::from_peer_count(100.0);
+        assert_eq!(small, network::NetworkSize::Small);
+        assert_eq!(medium, network::NetworkSize::Medium);
+        assert_eq!(large, network::NetworkSize::Large);
     }
 
     #[test]
     fn test_strip_ansi_codes_empty() {
-        let clean = strip_ansi_codes("");
+        let clean = logging::strip_ansi_codes("");
         assert_eq!(clean, "");
     }
 
     #[test]
     fn test_strip_ansi_codes_no_ansi() {
-        let clean = strip_ansi_codes("plain text");
+        let clean = logging::strip_ansi_codes("plain text");
         assert_eq!(clean, "plain text");
     }
 
     #[test]
     fn test_strip_ansi_codes_multiple_codes() {
         let ansi = "\x1b[1m\x1b[32mBold Green\x1b[0m Normal";
-        let clean = strip_ansi_codes(ansi);
+        let clean = logging::strip_ansi_codes(ansi);
         assert_eq!(clean, "Bold Green Normal");
     }
 
     #[test]
     fn test_strip_ansi_codes_incomplete_sequence() {
         let ansi = "\x1b[32mGreen\x1b[0m incomplete";
-        let clean = strip_ansi_codes(ansi);
+        let clean = logging::strip_ansi_codes(ansi);
         assert!(clean.contains("Green"));
         assert!(clean.contains("incomplete"));
     }
@@ -1288,15 +1154,15 @@ mod tests {
 
     #[test]
     fn test_network_size_equality() {
-        assert_eq!(NetworkSize::Small, NetworkSize::Small);
-        assert_eq!(NetworkSize::Medium, NetworkSize::Medium);
-        assert_eq!(NetworkSize::Large, NetworkSize::Large);
-        assert_ne!(NetworkSize::Small, NetworkSize::Medium);
+        assert_eq!(network::NetworkSize::Small, network::NetworkSize::Small);
+        assert_eq!(network::NetworkSize::Medium, network::NetworkSize::Medium);
+        assert_eq!(network::NetworkSize::Large, network::NetworkSize::Large);
+        assert_ne!(network::NetworkSize::Small, network::NetworkSize::Medium);
     }
 
     #[test]
     fn test_network_size_copy() {
-        let size = NetworkSize::Medium;
+        let size = network::NetworkSize::Medium;
         let copy = size;
         assert_eq!(size, copy);
     }

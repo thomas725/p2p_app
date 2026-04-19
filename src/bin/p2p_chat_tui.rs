@@ -1,5 +1,6 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::{AppBehaviour, build_behaviour, init_logging};
+use p2p_app::logging::init_logging;
+use p2p_app::{AppBehaviour, build_behaviour};
 use std::collections::VecDeque;
 use std::time::Duration;
 
@@ -13,10 +14,9 @@ mod tui {
     use p2p_app::{
         AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
         ensure_self_nickname, format_peer_datetime, get_database_url, get_network_size,
-        get_self_nickname, get_unsent_messages, init_logging, load_direct_messages,
-        load_listen_ports, load_messages, load_peers, mark_message_sent, now_timestamp,
-        p2plog_error, p2plog_info, save_listen_ports, save_message, save_peer, save_peer_session,
-        set_peer_local_nickname, set_self_nickname,
+        get_self_nickname, get_unsent_messages, load_direct_messages, load_listen_ports,
+        load_messages, load_peers, mark_message_sent, now_timestamp, save_listen_ports,
+        save_message, save_peer, save_peer_session, set_peer_local_nickname, set_self_nickname,
     };
     use ratatui::crossterm::{
         event::{
@@ -66,7 +66,7 @@ mod tui {
         impl std::io::Write for TracingWriter {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
                 if let Ok(s) = std::str::from_utf8(buf) {
-                    let cleaned = p2p_app::strip_ansi_codes(s);
+                    let cleaned = p2p_app::logging::strip_ansi_codes(s);
                     let trimmed = cleaned.trim();
                     if !trimmed.is_empty() {
                         let ts = format_system_time(SystemTime::now());
@@ -216,9 +216,9 @@ mod tui {
                 let mut received_nicknames: HashMap<String, String> = HashMap::new();
                 log_debug(&logs, format!("Your nickname: {}", own_nickname));
 
-                init_logging();
+                p2p_app::logging::init_logging();
                 let logs_for_callback = logs.clone();
-                p2p_app::set_tui_log_callback(move |msg| {
+                p2p_app::logging::set_tui_log_callback(move |msg| {
                     if let Ok(mut l) = logs_for_callback.lock() {
                         l.push_back(msg);
                         if l.len() > 1000 {
@@ -1225,10 +1225,10 @@ mod tui {
     }
 
     async fn run_headless_mode(mut swarm: Swarm<AppBehaviour>) -> color_eyre::Result<()> {
-        init_logging();
-        p2plog_info("Starting non-interactive mode".to_string());
-        p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
-        p2plog_info("Press Ctrl+C to exit".to_string());
+        p2p_app::logging::init_logging();
+        p2p_app::logging::p2plog_info("Starting non-interactive mode".to_string());
+        p2p_app::logging::p2plog_info(format!("Our peer ID: {}", swarm.local_peer_id()));
+        p2p_app::logging::p2plog_info("Press Ctrl+C to exit".to_string());
 
         let mut concurrent_peers: usize = 0;
 
@@ -1237,7 +1237,7 @@ mod tui {
                 event = swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            p2plog_info(format!("Listening on: {}", address));
+                             p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
                             if let Some(port) = address
                                 .iter()
                                 .find_map(|p| match p {
@@ -1260,29 +1260,29 @@ mod tui {
                             }
                         }
                         SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                            p2plog_info(format!("Dial failed: peer={:?}, error={}", peer_id, error));
+                             p2p_app::logging::p2plog_info(format!("Dial failed: peer={:?}, error={}", peer_id, error));
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                             concurrent_peers += 1;
-                            p2plog_info(format!("Connected to: {} (peers: {})", peer_id, concurrent_peers));
+                             p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: {})", peer_id, concurrent_peers));
                             swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                         }
                         SwarmEvent::ConnectionClosed { peer_id, .. } => {
                             concurrent_peers = concurrent_peers.saturating_sub(1);
-                            p2plog_info(format!("Disconnected from: {} (peers: {})", peer_id, concurrent_peers));
+                             p2p_app::logging::p2plog_info(format!("Disconnected from: {} (peers: {})", peer_id, concurrent_peers));
                             if let Err(e) = save_peer_session(concurrent_peers as i32) {
-                                p2plog_error(format!("Failed to save peer session: {}", e));
+                                 p2p_app::logging::p2plog_error(format!("Failed to save peer session: {}", e));
                             }
                         }
                         SwarmEvent::Dialing { peer_id, .. } => {
-                            p2plog_info(format!("Dialing: {:?}", peer_id));
+                              p2p_app::logging::p2plog_info(format!("Dialing: {:?}", peer_id));
                         }
                         SwarmEvent::Behaviour(AppEv::Gossipsub(
                             gossipsub::Event::Message { propagation_source, message, .. }
                         )) => {
                             let ps = propagation_source.to_string();
                             let suffix = &ps[ps.len().saturating_sub(8)..];
-                            p2plog_info(format!(
+                             p2p_app::logging::p2plog_info(format!(
                                 "[{}] {}",
                                 suffix,
                                 String::from_utf8_lossy(&message.data)
@@ -1291,10 +1291,10 @@ mod tui {
                         #[cfg(feature = "mdns")]
                         SwarmEvent::Behaviour(AppEv::Mdns(mdns::Event::Discovered(list))) => {
                             for (peer_id, multiaddr) in list {
-                                p2plog_info(format!("mDNS discovered: {} at {}", peer_id, multiaddr));
+                                 p2p_app::logging::p2plog_info(format!("mDNS discovered: {} at {}", peer_id, multiaddr));
                                 let addresses = vec![multiaddr.to_string()];
                                 if let Err(e) = save_peer(&peer_id.to_string(), &addresses) {
-                                    p2plog_error(format!("Failed to save peer: {}", e));
+                                     p2p_app::logging::p2plog_error(format!("Failed to save peer: {}", e));
                                 }
                                 let _ = swarm.dial(multiaddr.clone());
                                 swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
@@ -1317,7 +1317,7 @@ async fn main() -> color_eyre::Result<()> {
 
     let logs = std::sync::Arc::new(std::sync::Mutex::new(VecDeque::new()));
     let logs_callback = logs.clone();
-    p2p_app::set_tui_log_callback(move |msg| {
+    p2p_app::logging::set_tui_log_callback(move |msg| {
         if let Ok(mut l) = logs_callback.lock() {
             l.push_back(msg);
             if l.len() > 1000 {

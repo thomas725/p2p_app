@@ -28,7 +28,7 @@ quic = [ "dep:libp2p", "dep:libp2p-quic" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm", "dep:atty" ]
 dioxus = [ "dep:dioxus" ]
-dioxus-desktop = [ "dioxus", "dep:dioxus-desktop" ]
+dioxus-desktop = [ "dep:dioxus-desktop" ]
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
@@ -38,7 +38,7 @@ ratatui = { version = "=0.30", optional = true }
 ratatui-textarea = { version = "0.8", optional = true, default-features = false, features = ["crossterm"] }
 crossterm = { version = "=0.29", optional = true }
 atty = { version = "=0.2", optional = true }
-dioxus = { version = "=0.7", optional = true }
+dioxus = { version = "=0.7", features = ["fullstack"], optional = true }
 dioxus-desktop = { version = "0.7", optional = true }
 
 # ORM mapper we use to access our SQLite database
@@ -73,13 +73,16 @@ libp2p = { version = "=0.56.0", features = [
 libp2p-request-response = { version = "0.29", features = ["json"] }
 
 # async runtime also used for libp2p
-tokio = { version = "=1.51.0", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }
+tokio = { version = "1", features = [ "macros", "rt-multi-thread", "io-util", "io-std" ] }
 # features needed for tokio::main macro: "rt-core" & "macros"
 # feature "io-util" is used for AsyncBufReadExt
 # feature "io-std" gives us io::stdin()
 
 # libp2p uses tracing crate to log events - subscriber can help to debug issues
 # enable with "tracing" feature
+
+# for once_cell used in logging
+once_cell = "1"
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }

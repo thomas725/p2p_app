@@ -1,5 +1,6 @@
 use libp2p::{futures::StreamExt, gossipsub, noise, tcp, yamux};
-use p2p_app::{build_behaviour, get_libp2p_identity, get_network_size, init_logging, p2plog_info};
+use p2p_app::logging::p2plog_info;
+use p2p_app::{build_behaviour, get_libp2p_identity, get_network_size};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 use tokio::select;
@@ -7,7 +8,7 @@ use tokio::select;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
-    init_logging();
+    p2p_app::logging::init_logging();
     p2plog_info("Starting P2P Chat CLI".to_string());
 
     let network_size = match get_network_size() {
@@ -63,7 +64,7 @@ async fn main() -> color_eyre::Result<()> {
             event = swarm.select_next_some() => {
                 match event {
                     libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
-                        p2plog_info(format!("Listening on: {}", address));
+                        p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
                         if let Some(port) = address
                             .iter()
                             .find_map(|p| match p {
@@ -86,17 +87,17 @@ async fn main() -> color_eyre::Result<()> {
                         }
                     }
                     libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                        p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
+                        p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
                     }
                     libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                        p2plog_info(format!("Disconnected from: {}", peer_id));
+                        p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
                     }
                     libp2p::swarm::SwarmEvent::Behaviour(p2p_app::AppBehaviourEvent::Gossipsub(
                         libp2p::gossipsub::Event::Message { propagation_source, message, .. }
                     )) => {
                         let msg = String::from_utf8_lossy(&message.data);
                         let sender = propagation_source.to_string();
-                        p2plog_info(format!("[{}] {}", &sender[..8.min(sender.len())], msg));
+                        p2p_app::logging::p2plog_info(format!("[{}] {}", &sender[..8.min(sender.len())], msg));
                     }
                     _ => {}
                 }
