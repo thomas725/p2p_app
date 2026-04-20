@@ -48,6 +48,7 @@ mod tui {
     pub enum UiCommand {
         ShowMessage(String, Option<String>),
         BroadcastMessage(String, String, Option<String>),
+        DirectMessage(String, String, Option<String>),
         UpdatePeers(VecDeque<(String, String, String)>),
         PeerConnected(String),
         PeerDisconnected(String),
@@ -529,6 +530,29 @@ mod tui {
                                                         }
                                                         if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
                                                             log_debug(&logs, format!("Failed to save message: {}", e));
+                                                        }
+                                                    }
+                                                    Some(UiCommand::DirectMessage(content, peer_id_str, latency)) => {
+                                                        let now = SystemTime::now();
+                                                        let ts = format_system_time(now);
+                                                        let sender_display = peer_display_name(&peer_id_str, &local_nicknames, &received_nicknames);
+                                                        let dm_msgs = dm_messages.entry(peer_id_str.clone()).or_default();
+                                                        let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
+                                                        dm_msgs.push_back(msg.clone());
+                                                        if dm_msgs.len() > MAX_MESSAGES {
+                                                            dm_msgs.pop_front();
+                                                        }
+                                                        let current_peer = match dynamic_tabs.tab_index_to_content(active_tab) {
+                                                            TabContent::Direct(id) => Some(id),
+                                                            _ => None,
+                                                        };
+                                                        let is_current_dm = current_peer.as_ref() == Some(&peer_id_str);
+                                                        if !is_current_dm {
+                                                            *unread_dms.entry(peer_id_str.clone()).or_insert(0) += 1;
+                                                            dynamic_tabs.add_dm_tab(peer_id_str.clone());
+                                                        }
+                                                        if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, true, Some(&peer_id_str)) {
+                                                            log_debug(&logs, format!("Failed to save DM: {}", e));
                                                         }
                                                     }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
