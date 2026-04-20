@@ -559,6 +559,13 @@ mod tui {
                                                             log_debug(&logs, format!("Failed to save DM: {}", e));
                                                         }
                                                     }
+                                                    Some(UiCommand::UpdatePeers(new_peers)) => {
+                                                        for (peer_id, first_seen, last_seen) in new_peers {
+                                                            if !peers.iter().any(|(id, _, _)| id == &peer_id) {
+                                                                peers.push_front((peer_id, first_seen, last_seen));
+                                                            }
+                                                        }
+                                                    }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
                                                     }
