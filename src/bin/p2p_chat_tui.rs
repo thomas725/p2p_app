@@ -64,6 +64,15 @@ mod tui {
     }
 
     #[derive(Debug)]
+    pub enum SwarmCommand {
+        SendBroadcast(String),
+        SendDm(String),
+    }
+
+    pub type SwarmCommandTx = mpsc::Sender<SwarmCommand>;
+    pub type SwarmCommandRx = mpsc::Receiver<SwarmCommand>;
+
+    #[derive(Debug)]
     pub enum InputEvent {
         Key(Event),
         Mouse(Event),
@@ -339,6 +348,7 @@ mod tui {
 
                 // Create channels for async task communication
                 let (ui_command_tx, mut ui_command_rx) = mpsc::channel(100);
+                let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(100);
                 let input_tx = ui_command_tx.clone();
 
                 // Spawn input handler task (runs concurrently)
@@ -364,6 +374,16 @@ mod tui {
                                 }
                             }
                         }
+                    }
+                });
+
+                let topic = gossipsub::IdentTopic::new("test-net");
+
+                // Spawn message sender task
+                let swarm_cmd_tx_clone = swarm_cmd_tx.clone();
+                tokio::spawn(async move {
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
                     }
                 });
 
@@ -479,6 +499,28 @@ mod tui {
                 loop {
                     tokio::select! {
                                             biased;
+
+                                            cmd = swarm_cmd_rx.recv() => {
+                                                match cmd {
+                                                    Some(SwarmCommand::SendBroadcast(content)) => {
+                                                        let bcast = p2p_app::BroadcastMessage {
+                                                            content: content.clone(),
+                                                            sent_at: Some(std::time::SystemTime::now()
+                                                                .duration_since(std::time::UNIX_EPOCH)
+                                                                .expect("system time is valid")
+                                                                .as_secs_f64()),
+                                                            nickname: Some(own_nickname.clone()),
+                                                        };
+                                                        if let Ok(msg) = serde_json::to_string(&bcast) {
+                                                            if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), msg.as_bytes()) {
+                                                                log_debug(&logs, format!("Broadcast failed: {}", e));
+                                                            }
+                                                        }
+                                                    }
+                                                    Some(SwarmCommand::SendDm(content)) => {}
+                                                    _ => {}
+                                                }
+                                            }
 
                                             cmd = ui_command_rx.recv() => {
                                                 match cmd {
