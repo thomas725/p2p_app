@@ -578,6 +578,21 @@ mod tui {
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
                                                     }
+                                                    Some(UiCommand::ClearInput) => {
+                                                        chat_input = init_textarea();
+                                                    }
+                                                    Some(UiCommand::SetChatInput(text)) => {
+                                                        chat_input = init_textarea();
+                                                        chat_input.insert_str(&text);
+                                                    }
+                                                    Some(UiCommand::ToggleMouseCapture) => {
+                                                        mouse_capture = !mouse_capture;
+                                                        if mouse_capture {
+                                                            let _ = execute!(std::io::stdout(), crossterm::event::EnableMouseCapture);
+                                                        } else {
+                                                            let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
+                                                        }
+                                                    }
                                                     _ => {}
                                                 }
                                             }
