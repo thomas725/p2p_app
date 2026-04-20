@@ -355,22 +355,20 @@ mod tui {
                 let input_handler_handle = tokio::spawn(async move {
                     use std::time::Duration;
                     loop {
-                        tokio::select! {
-                            _ = tokio::time::sleep(Duration::from_millis(16)) => {
-                                if poll(Duration::ZERO).ok() == Some(true) {
-                                    if let Ok(event) = read() {
-                                        match event {
-                                            Event::Key(key) => {
-                                                if key.code == KeyCode::Esc
-                                                    || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
-                                                {
-                                                    let _ = input_tx.send(UiCommand::Exit).await;
-                                                    break;
-                                                }
-                                            }
-                                            _ => {}
+                        tokio::time::sleep(Duration::from_millis(16)).await;
+                        if poll(Duration::ZERO).ok() == Some(true) {
+                            if let Ok(event) = read() {
+                                match event {
+                                    Event::Key(key) => {
+                                        if key.code == KeyCode::Esc
+                                            || (key.modifiers.contains(KeyModifiers::CONTROL)
+                                                && key.code == KeyCode::Char('q'))
+                                        {
+                                            let _ = input_tx.send(UiCommand::Exit).await;
+                                            break;
                                         }
                                     }
+                                    _ => {}
                                 }
                             }
                         }
