@@ -65,8 +65,8 @@ mod tui {
 
     #[derive(Debug)]
     pub enum SwarmCommand {
-        SendBroadcast(String),
-        SendDm(String),
+        Publish(String),
+        SendDm(String, String),
     }
 
     pub type SwarmCommandTx = mpsc::Sender<SwarmCommand>;
@@ -498,7 +498,7 @@ mod tui {
 
                                             cmd = swarm_cmd_rx.recv() => {
                                                 match cmd {
-                                                    Some(SwarmCommand::SendBroadcast(content)) => {
+                                                    Some(SwarmCommand::Publish(content)) => {
                                                         let bcast = p2p_app::BroadcastMessage {
                                                             content: content.clone(),
                                                             sent_at: Some(std::time::SystemTime::now()
@@ -513,7 +513,7 @@ mod tui {
                                                             }
                                                         }
                                                     }
-                                                    Some(SwarmCommand::SendDm(content)) => {}
+                                                    Some(SwarmCommand::SendDm(_peer_id, _content)) => {}
                                                     _ => {}
                                                 }
                                             }
