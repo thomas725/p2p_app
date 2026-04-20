@@ -48,6 +48,8 @@ mod tui {
     pub enum UiCommand {
         ShowMessage(String, Option<String>),
         UpdatePeers(VecDeque<(String, String, String)>),
+        PeerConnected(String),
+        PeerDisconnected(String),
         AddDmTab(String),
         RemoveDmTab(String),
         SetActiveTab(usize),
@@ -494,6 +496,23 @@ mod tui {
                                                     }
                                                     Some(UiCommand::AddDmTab(target)) => {
                                                         dynamic_tabs.add_dm_tab(target);
+                                                    }
+                                                    Some(UiCommand::PeerConnected(peer_id)) => {
+                                                        concurrent_peers += 1;
+                                                        let addresses = vec![peer_id.clone()];
+                                                        if let Ok(peer) = save_peer(&peer_id, &addresses) {
+                                                            let first_seen = format_peer_datetime(peer.first_seen);
+                                                            let last_seen = format_peer_datetime(peer.last_seen);
+                                                            if !peers.iter().any(|(id, _, _)| id == &peer_id) {
+                                                                peers.push_front((peer_id.clone(), first_seen, last_seen));
+                                                            }
+                                                        }
+                                                        if let Ok(peer_id_val) = peer_id.parse() {
+                                                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id_val);
+                                                        }
+                                                    }
+                                                    Some(UiCommand::PeerDisconnected(peer_id)) => {
+                                                        concurrent_peers = concurrent_peers.saturating_sub(1);
                                                     }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
