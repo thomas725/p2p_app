@@ -385,6 +385,39 @@ mod tui {
                 log_debug(&logs, format!("Using database: {}", get_database_url()));
                 log_debug(&logs, format!("Our peer ID: {}", swarm.local_peer_id()));
 
+                // Create channels for async task communication
+                let (ui_command_tx, mut ui_command_rx) = mpsc::channel(100);
+                let input_tx = ui_command_tx.clone();
+
+                // Spawn input handler task (runs concurrently)
+                let input_handler_handle = tokio::spawn(async move {
+                    use std::time::Duration;
+                    loop {
+                        tokio::select! {
+                            _ = tokio::time::sleep(Duration::from_millis(16)) => {
+                                if poll(Duration::ZERO).ok() == Some(true) {
+                                    if let Ok(event) = read() {
+                                        match event {
+                                            Event::Key(key) => {
+                                                if key.code == KeyCode::Esc
+                                                    || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
+                                                {
+                                                    let _ = input_tx.send(UiCommand::Exit).await;
+                                                    break;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                let swarm_handler_handle: tokio::task::JoinHandle<()> =
+                    tokio::spawn(async move { futures::future::pending::<()>().await });
+
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
                         let ts = format_peer_datetime(msg.created_at);
@@ -494,6 +527,33 @@ mod tui {
                 loop {
                     tokio::select! {
                                             biased;
+
+                                            cmd = ui_command_rx.recv() => {
+                                                match cmd {
+                                                    Some(UiCommand::ShowMessage(msg, peer_id)) => {
+                                                        messages.push_back((msg, peer_id));
+                                                        if messages.len() > MAX_MESSAGES {
+                                                            messages.pop_front();
+                                                        }
+                                                    }
+                                                    Some(UiCommand::Exit) => {
+                                                        let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
+                                                        let _ = disable_raw_mode();
+                                                        let _ = execute!(std::io::stdout(), PopKeyboardEnhancementFlags);
+                                                        let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
+                                                        swarm_handler_handle.abort();
+                                                        input_handler_handle.abort();
+                                                        return Ok(());
+                                                    }
+                                                    Some(UiCommand::AddDmTab(target)) => {
+                                                        dynamic_tabs.add_dm_tab(target);
+                                                    }
+                                                    Some(UiCommand::SetActiveTab(idx)) => {
+                                                        active_tab = idx;
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
 
                                             event = swarm.select_next_some() => {
                                                 match event {
