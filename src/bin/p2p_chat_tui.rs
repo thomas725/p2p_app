@@ -570,6 +570,11 @@ mod tui {
                                                         dynamic_tabs.add_dm_tab(peer_id.clone());
                                                         dm_messages.insert(peer_id, dm_msgs);
                                                     }
+                                                    Some(UiCommand::RemoveDmTab(peer_id)) => {
+                                                        dynamic_tabs.remove_dm_tab(&peer_id);
+                                                        dm_messages.remove(&peer_id);
+                                                        dm_inputs.remove(&peer_id);
+                                                    }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
                                                     }
