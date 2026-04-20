@@ -379,16 +379,12 @@ mod tui {
 
                 let topic = gossipsub::IdentTopic::new("test-net");
 
-                // Spawn message sender task
-                let swarm_cmd_tx_clone = swarm_cmd_tx.clone();
-                tokio::spawn(async move {
-                    loop {
-                        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
-                    }
-                });
-
                 let swarm_handler_handle: tokio::task::JoinHandle<()> =
                     tokio::spawn(async move { futures::future::pending::<()>().await });
+
+                // Spawn message sender task
+                let swarm_cmd_tx_clone = swarm_cmd_tx.clone();
+                tokio::spawn(async move { futures::future::pending::<()>().await });
 
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
