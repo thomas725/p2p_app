@@ -1215,24 +1215,22 @@ pub mod tui_channels {
             use libp2p::swarm::SwarmEvent;
 
             let mut swarm = swarm;
-            loop {
-                tokio::select! {
-                    event = swarm.select_next_some() => {
-                        match event {
-                            SwarmEvent::NewListenAddr { address, .. } => {
-                                let _ = event_tx.send(TuiEvent::ListenAddr(address.to_string())).await;
-                            }
-                            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                                let _ = event_tx.send(TuiEvent::PeerConnected(peer_id)).await;
-                                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                            }
-                            SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                                let _ = event_tx.send(TuiEvent::PeerDisconnected(peer_id)).await;
-                            }
-                            _ => {}
-                        }
+            let _event_tx = event_tx;
+
+            while let Some(event) = swarm.next().await {
+                match event {
+                    SwarmEvent::NewListenAddr { address, .. } => {
+                        let _ = _event_tx
+                            .send(TuiEvent::ListenAddr(address.to_string()))
+                            .await;
                     }
-                    _ = tokio::time::sleep(std::time::Duration::from_millis(50)) => {}
+                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                        let _ = _event_tx.send(TuiEvent::PeerConnected(peer_id)).await;
+                    }
+                    SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                        let _ = _event_tx.send(TuiEvent::PeerDisconnected(peer_id)).await;
+                    }
+                    _ => {}
                 }
             }
         })
