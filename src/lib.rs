@@ -1166,9 +1166,15 @@ pub mod tui_channels {
     #[derive(Debug, Clone)]
     pub enum TuiEvent {
         Message(String, Option<String>),
+        Broadcast(String, String, Option<String>),
+        Direct(String, String),
         PeerConnected(PeerId),
         PeerDisconnected(PeerId),
         ListenAddr(String),
+        UpdatePeers(Vec<(String, String, String)>),
+        AddDmTab(String),
+        RemoveDmTab(String),
+        SetActiveTab(usize),
         Input(String),
         Exit,
     }

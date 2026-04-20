@@ -2,8 +2,8 @@ use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::logging::init_logging;
 use p2p_app::{
     AppBehaviour, AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
-    auto_scroll_offset, build_behaviour, ensure_self_nickname, format_latency,
-    format_peer_datetime, format_system_time, get_database_url, get_network_size,
+    TuiEvent, auto_scroll_offset, build_behaviour, create_channels, ensure_self_nickname,
+    format_latency, format_peer_datetime, format_system_time, get_database_url, get_network_size,
     get_self_nickname, get_unsent_messages, load_direct_messages, load_listen_ports, load_messages,
     load_peers, log_debug, mark_message_sent, now_timestamp, peer_display_name, save_listen_ports,
     save_message, save_peer, save_peer_session, scroll_title, set_peer_local_nickname,
