@@ -69,59 +69,6 @@ mod tui {
     pub type InputEventTx = mpsc::Sender<InputEvent>;
     pub type InputEventRx = mpsc::Receiver<InputEvent>;
 
-    async fn run_swarm_handler(swarm: libp2p::Swarm<AppBehaviour>, ui_tx: UiCommandTx) {
-        use futures::StreamExt;
-        use libp2p::swarm::SwarmEvent;
-        let mut swarm = swarm;
-        loop {
-            tokio::select! {
-                event = swarm.select_next_some() => {
-                    match event {
-                        SwarmEvent::NewListenAddr { address, .. } => {
-                            let _ = ui_tx.send(UiCommand::ShowMessage(format!("Listening: {}", address), None)).await;
-                        }
-                        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            let s = peer_id.to_string();
-                            let short = s.chars().skip(s.len().saturating_sub(8)).collect::<String>();
-                            let _ = ui_tx.send(UiCommand::ShowMessage(format!("Connected: {}", short), None)).await;
-                        }
-                        SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                            let s = peer_id.to_string();
-                            let short = s.chars().skip(s.len().saturating_sub(8)).collect::<String>();
-                            let _ = ui_tx.send(UiCommand::ShowMessage(format!("Disconnected: {}", short), None)).await;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
-
-    async fn run_input_handler(input_rx: InputEventRx, ui_tx: UiCommandTx) {
-        use std::time::Duration;
-        loop {
-            tokio::select! {
-                _ = tokio::time::sleep(Duration::from_millis(16)) => {
-                    if poll(Duration::ZERO).ok() == Some(true) {
-                        if let Ok(event) = read() {
-                            match event {
-                                Event::Key(key) => {
-                                    if key.code == KeyCode::Esc
-                                        || (key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('q'))
-                                    {
-                                        let _ = ui_tx.send(UiCommand::Exit).await;
-                                        break;
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     mod tracing_writer {
         use std::{collections::VecDeque, time::SystemTime};
 
