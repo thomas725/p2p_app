@@ -47,6 +47,7 @@ mod tui {
     #[derive(Debug)]
     pub enum UiCommand {
         ShowMessage(String, Option<String>),
+        BroadcastMessage(String, String, Option<String>),
         UpdatePeers(VecDeque<(String, String, String)>),
         PeerConnected(String),
         PeerDisconnected(String),
@@ -513,6 +514,22 @@ mod tui {
                                                     }
                                                     Some(UiCommand::PeerDisconnected(peer_id)) => {
                                                         concurrent_peers = concurrent_peers.saturating_sub(1);
+                                                    }
+                                                    Some(UiCommand::BroadcastMessage(content, peer_id_str, latency)) => {
+                                                        let now = SystemTime::now();
+                                                        let ts = format_system_time(now);
+                                                        let sender_display = peer_display_name(&peer_id_str, &local_nicknames, &received_nicknames);
+                                                        let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
+                                                        messages.push_back((msg.clone(), Some(peer_id_str.clone())));
+                                                        if messages.len() > MAX_MESSAGES {
+                                                            messages.pop_front();
+                                                        }
+                                                        if active_tab != 0 {
+                                                            unread_broadcasts += 1;
+                                                        }
+                                                        if let Err(e) = save_message(&content, Some(&peer_id_str), &topic_str, false, None) {
+                                                            log_debug(&logs, format!("Failed to save message: {}", e));
+                                                        }
                                                     }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
