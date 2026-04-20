@@ -487,32 +487,39 @@ mod tui {
                 let mut unread_dms: HashMap<String, u32> = HashMap::new();
 
                 loop {
+                    // Handle outbound commands
+                    if let Ok(cmd) = swarm_cmd_rx.try_recv() {
+                        match cmd {
+                            SwarmCommand::Publish(content) => {
+                                let bcast = p2p_app::BroadcastMessage {
+                                    content: content.clone(),
+                                    sent_at: Some(
+                                        std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .expect("system time is valid")
+                                            .as_secs_f64(),
+                                    ),
+                                    nickname: Some(own_nickname.clone()),
+                                };
+                                if let Ok(msg) = serde_json::to_string(&bcast) {
+                                    if let Err(e) = swarm
+                                        .behaviour_mut()
+                                        .gossipsub
+                                        .publish(topic.clone(), msg.as_bytes())
+                                    {
+                                        log_debug(&logs, format!("Broadcast failed: {}", e));
+                                    }
+                                }
+                            }
+                            SwarmCommand::SendDm(_peer_id, _content) => {}
+                        }
+                    }
+
+                    // Handle UI commands via ready!
                     tokio::select! {
-                                            biased;
+                        biased;
 
-                                            cmd = swarm_cmd_rx.recv() => {
-                                                match cmd {
-                                                    Some(SwarmCommand::Publish(content)) => {
-                                                        let bcast = p2p_app::BroadcastMessage {
-                                                            content: content.clone(),
-                                                            sent_at: Some(std::time::SystemTime::now()
-                                                                .duration_since(std::time::UNIX_EPOCH)
-                                                                .expect("system time is valid")
-                                                                .as_secs_f64()),
-                                                            nickname: Some(own_nickname.clone()),
-                                                        };
-                                                        if let Ok(msg) = serde_json::to_string(&bcast) {
-                                                            if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), msg.as_bytes()) {
-                                                                log_debug(&logs, format!("Broadcast failed: {}", e));
-                                                            }
-                                                        }
-                                                    }
-                                                    Some(SwarmCommand::SendDm(_peer_id, _content)) => {}
-                                                    _ => {}
-                                                }
-                                            }
-
-                                            cmd = ui_command_rx.recv() => {
+                        cmd = ui_command_rx.recv() => {
                                                 match cmd {
                                                     Some(UiCommand::ShowMessage(msg, peer_id)) => {
                                                         messages.push_back((msg, peer_id));
