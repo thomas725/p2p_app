@@ -1,0 +1,91 @@
+name: Store CI Results
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  store-results:
+    name: Store Workflow Results
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download all artifacts from completed workflow
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: ci.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          path: downloaded-artifacts
+        continue-on-error: true
+      
+      - name: Create results summary
+        run: |
+          mkdir -p .github/ci-results
+          
+          RESULTS_FILE=".github/ci-results/latest.txt"
+          
+          cat > "$RESULTS_FILE" << 'EOF'
+          ============================================================
+          GitHub Actions CI Results
+          ============================================================
+          
+          EOF
+          
+          echo "Run ID: ${{ github.event.workflow_run.id }}" >> "$RESULTS_FILE"
+          echo "Commit: ${{ github.event.workflow_run.head_sha }}" >> "$RESULTS_FILE"
+          echo "Branch: ${{ github.event.workflow_run.head_branch }}" >> "$RESULTS_FILE"
+          echo "Event: ${{ github.event.workflow_run.event }}" >> "$RESULTS_FILE"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}" >> "$RESULTS_FILE"
+          echo "Timestamp: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> "$RESULTS_FILE"
+          
+          echo "" >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "Artifacts Downloaded:" >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "" >> "$RESULTS_FILE"
+          
+          if [ -d downloaded-artifacts ]; then
+            find downloaded-artifacts -type f | sed 's|^|  - |' >> "$RESULTS_FILE"
+          else
+            echo "  (none found)" >> "$RESULTS_FILE"
+          fi
+          
+          echo "" >> "$RESULTS_FILE"
+          echo "View full logs at:" >> "$RESULTS_FILE"
+          echo "https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}" >> "$RESULTS_FILE"
+          
+          cat "$RESULTS_FILE"
+      
+      - name: Copy artifacts to results directory
+        if: always()
+        run: |
+          mkdir -p .github/ci-results/artifacts
+          if [ -d downloaded-artifacts ]; then
+            cp -r downloaded-artifacts/* .github/ci-results/artifacts/ 2>/dev/null || true
+          fi
+      
+      - name: Commit results to repository
+        run: |
+          git config --global user.email "claude-ci@anthropic.com"
+          git config --global user.name "Claude CI Results"
+          
+          git add .github/ci-results/ 2>/dev/null || true
+          
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: store results for run ${{ github.event.workflow_run.id }} (conclusion: ${{ github.event.workflow_run.conclusion }})" --allow-empty
+            
+            # Push using GitHub token
+            git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+            git push origin main 2>&1 || git push origin $(git rev-parse --abbrev-ref HEAD) 2>&1 || echo "Could not push"
+          else
+            echo "No changes to commit"
+          fi
+        continue-on-error: true
