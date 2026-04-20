@@ -52,6 +52,7 @@ mod tui {
         UpdatePeers(VecDeque<(String, String, String)>),
         PeerConnected(String),
         PeerDisconnected(String),
+        NewListenAddr(String),
         AddDmTab(String),
         RemoveDmTab(String),
         SetActiveTab(usize),
@@ -515,6 +516,9 @@ mod tui {
                                                     }
                                                     Some(UiCommand::PeerDisconnected(peer_id)) => {
                                                         concurrent_peers = concurrent_peers.saturating_sub(1);
+                                                    }
+                                                    Some(UiCommand::NewListenAddr(addr)) => {
+                                                        log_debug(&logs, format!("Listening on: {}", addr));
                                                     }
                                                     Some(UiCommand::BroadcastMessage(content, peer_id_str, latency)) => {
                                                         let now = SystemTime::now();
