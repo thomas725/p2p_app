@@ -40,6 +40,7 @@ crossterm = { version = "=0.29", optional = true }
 atty = { version = "=0.2", optional = true }
 dioxus = { version = "=0.7", features = ["fullstack"], optional = true }
 dioxus-desktop = { version = "0.7", optional = true }
+tokio-stream = "0.1"
 
 # ORM mapper we use to access our SQLite database
 diesel = { version = "=2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
@@ -83,6 +84,9 @@ tokio = { version = "1", features = [ "macros", "rt-multi-thread", "io-util", "i
 
 # for once_cell used in logging
 once_cell = "1"
+
+# async stream helper
+async-stream = "0.3"
 
 # nice error handing
 color-eyre ={ version = "=0.6.5" }

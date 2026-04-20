@@ -18,7 +18,10 @@ pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
 
 pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::update(crate::schema::identities::table)
+    diesel::insert_or_ignore_into(crate::schema::identities::table)
+        .values(crate::schema::identities::self_nickname.eq(nickname))
+        .on_conflict(crate::schema::identities::id)
+        .do_update()
         .set(crate::schema::identities::self_nickname.eq(nickname))
         .execute(conn)?;
     Ok(())
@@ -35,7 +38,13 @@ pub fn ensure_self_nickname() -> color_eyre::Result<String> {
 
 pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::update(crate::schema::peers::table.filter(crate::schema::peers::peer_id.eq(peer_id)))
+    diesel::insert_or_ignore_into(crate::schema::peers::table)
+        .values((
+            crate::schema::peers::peer_id.eq(peer_id),
+            crate::schema::peers::peer_local_nickname.eq(nickname),
+        ))
+        .on_conflict(crate::schema::peers::peer_id)
+        .do_update()
         .set(crate::schema::peers::peer_local_nickname.eq(nickname))
         .execute(conn)?;
     Ok(())
