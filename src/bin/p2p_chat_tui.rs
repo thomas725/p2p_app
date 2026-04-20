@@ -41,6 +41,9 @@ mod tui {
     use tokio::sync::mpsc;
     use tracing_subscriber::prelude::*;
 
+    mod state;
+    mod tracing_writer;
+
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
 
@@ -82,52 +85,6 @@ mod tui {
     pub type UiCommandRx = mpsc::Receiver<UiCommand>;
     pub type InputEventTx = mpsc::Sender<InputEvent>;
     pub type InputEventRx = mpsc::Receiver<InputEvent>;
-
-    mod tracing_writer {
-        use std::{collections::VecDeque, time::SystemTime};
-
-        fn format_system_time(time: SystemTime) -> String {
-            chrono::DateTime::<chrono::Local>::from(time)
-                .format("%H:%M:%S.%3f")
-                .to_string()
-        }
-
-        #[derive(Clone)]
-        pub struct TracingWriter {
-            logs: std::sync::Arc<std::sync::Mutex<VecDeque<String>>>,
-        }
-
-        impl TracingWriter {
-            #[must_use]
-            pub fn new(logs: std::sync::Arc<std::sync::Mutex<VecDeque<String>>>) -> Self {
-                Self { logs }
-            }
-        }
-
-        impl std::io::Write for TracingWriter {
-            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                if let Ok(s) = std::str::from_utf8(buf) {
-                    let cleaned = p2p_app::logging::strip_ansi_codes(s);
-                    let trimmed = cleaned.trim();
-                    if !trimmed.is_empty() {
-                        let ts = format_system_time(SystemTime::now());
-                        let formatted = format!("[{}] {}", ts, trimmed);
-                        if let Ok(mut l) = self.logs.lock() {
-                            l.push_back(formatted);
-                            if l.len() > 2000 {
-                                l.pop_front();
-                            }
-                        }
-                    }
-                }
-                Ok(buf.len())
-            }
-
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
-    }
 
     fn style_textarea(ta: &mut TextArea) {
         ta.set_line_number_style(Style::default());
@@ -338,7 +295,7 @@ mod tui {
                     .with_target(true)
                     .without_time()
                     .with_writer(move || {
-                        tracing_writer::TracingWriter::new(logs_for_tracing.clone())
+                        tui::tracing_writer::TracingWriter::new(logs_for_tracing.clone())
                     })
                     .compact()
                     .with_filter(p2p_app::tracing_filter());
@@ -380,30 +337,15 @@ mod tui {
                 let swarm_handler_handle: tokio::task::JoinHandle<()> =
                     tokio::spawn(async move { futures::future::pending::<()>().await });
 
-                if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
-                    for msg in db_messages.iter().rev() {
-                        let ts = format_peer_datetime(msg.created_at);
-                        let sender = msg
-                            .peer_id
-                            .as_ref()
-                            .map(|p| {
-                                let display =
-                                    peer_display_name(p, &local_nicknames, &received_nicknames);
-                                format!("[{}]", display)
-                            })
-                            .unwrap_or_else(|| format!("[{}]", own_nickname));
-                        messages.push_back((
-                            format!("{} {} {}", ts, sender, msg.content),
-                            msg.peer_id.clone(),
-                        ));
-                    }
-                    log_debug(
-                        &logs,
-                        format!("Loaded {} messages from database", db_messages.len()),
-                    );
-                } else {
-                    log_debug(&logs, "Failed to load messages from database".to_string());
-                }
+                let loaded_messages = tui::state::load_and_format_messages(
+                    &topic_str,
+                    MAX_MESSAGES,
+                    &logs,
+                    &local_nicknames,
+                    &received_nicknames,
+                    &own_nickname,
+                );
+                messages.extend(loaded_messages);
 
                 if let Ok(db_peers) = load_peers() {
                     let mut peer_indices: Vec<usize> = (0..db_peers.len()).collect();
