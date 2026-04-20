@@ -566,6 +566,10 @@ mod tui {
                                                             }
                                                         }
                                                     }
+                                                    Some(UiCommand::ShowDmMessages(peer_id, dm_msgs)) => {
+                                                        dynamic_tabs.add_dm_tab(peer_id.clone());
+                                                        dm_messages.insert(peer_id, dm_msgs);
+                                                    }
                                                     Some(UiCommand::SetActiveTab(idx)) => {
                                                         active_tab = idx;
                                                     }
