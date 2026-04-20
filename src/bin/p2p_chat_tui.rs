@@ -380,9 +380,6 @@ mod tui {
                 let swarm_handler_handle: tokio::task::JoinHandle<()> =
                     tokio::spawn(async move { futures::future::pending::<()>().await });
 
-                // Spawn message sender task (placeholder)
-                tokio::spawn(async move { futures::future::pending::<()>().await });
-
                 if let Ok(db_messages) = load_messages(&topic_str, MAX_MESSAGES) {
                     for msg in db_messages.iter().rev() {
                         let ts = format_peer_datetime(msg.created_at);
