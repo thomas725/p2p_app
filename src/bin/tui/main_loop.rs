@@ -66,15 +66,22 @@ pub async fn run_new_tui(
     );
     p2p_app::log_debug(&logs, format!("Loaded {} messages from database", initial_messages.len()));
 
-    // Load initial peers from database
+    // Load initial peers from database (deduplicated by peer_id)
     let initial_peers = if let Ok(db_peers) = p2p_app::load_peers() {
         let mut peers = VecDeque::new();
+        let mut seen_ids = std::collections::HashSet::new();
+
         for peer in db_peers.iter().take(super::constants::MAX_PEERS) {
+            // Skip duplicate peer IDs (keep first occurrence with most recent last_seen)
+            if !seen_ids.insert(peer.peer_id.clone()) {
+                continue;
+            }
+
             let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
-        p2p_app::log_debug(&logs, format!("Loaded {} peers from database", peers.len()));
+        p2p_app::log_debug(&logs, format!("Loaded {} unique peers from database", peers.len()));
         peers
     } else {
         p2p_app::log_debug(&logs, "No peers found in database".to_string());

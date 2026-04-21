@@ -152,10 +152,35 @@ pub fn spawn_command_processor(
                                 }
                             }
                         }
-                        InputEvent::Mouse(_mouse_event) => {
-                            // Mouse events are handled only when mouse capture is enabled.
-                            // Currently, mouse input is limited to basic interaction.
-                            // Tab switching is better done with Tab/Shift+Tab keys.
+                        InputEvent::Mouse(mouse_event) => {
+                            // Handle mouse clicks for tab switching
+                            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
+                                if let Ok(mut s) = state.lock() {
+                                    // Tabs are on row 0; calculate click position
+                                    if mouse_event.row == 0 {
+                                        let tab_titles = s.dynamic_tabs.all_titles();
+                                        let mut col_pos = 0;
+
+                                        // Find which tab was clicked by calculating cumulative positions
+                                        for (idx, title) in tab_titles.iter().enumerate() {
+                                            // Each tab takes up: title length + 1 space + 1 separator (" | " or similar)
+                                            let tab_width = title.len() + 3;
+
+                                            if (mouse_event.column as usize) < col_pos + tab_width {
+                                                // Found the clicked tab
+                                                if idx != s.active_tab {
+                                                    s.active_tab = idx;
+                                                    s.chat_scroll_offset = 0;
+                                                    p2p_app::log_debug(&logs, format!("Switched to tab {} via mouse click", s.active_tab));
+                                                }
+                                                break;
+                                            }
+
+                                            col_pos += tab_width;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
