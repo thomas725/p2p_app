@@ -5,12 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 use super::state::AppState;
-
-#[derive(Debug, Clone)]
-pub enum InputEvent {
-    Key(String),
-    Mouse(String),
-}
+use super::input_handler::InputEvent;
 
 pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,

@@ -46,6 +46,7 @@ mod tui {
     mod command_processor;
     mod input_handler;
     mod render_loop;
+    mod main_loop;
 
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
