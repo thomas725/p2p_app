@@ -73,12 +73,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_format_peer_datetime() {
+    fn test_format_peer_datetime() -> Result<(), chrono::ParseError> {
         use chrono::NaiveDateTime;
-        let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")
-            .expect("Failed to parse date");
+        let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")?;
         let formatted = format_peer_datetime(dt);
         assert!(formatted.contains("2024"));
+        Ok(())
     }
 
     #[test]
