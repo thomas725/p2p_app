@@ -29,13 +29,9 @@ pub struct AppState {
     pub active_tab: usize,
     pub dynamic_tabs: DynamicTabs,
     pub chat_input: TextArea<'static>,
-    pub dm_inputs: HashMap<String, TextArea<'static>>,
-    pub peer_selection: usize,
     pub mouse_capture: bool,
 
     // Scroll State
-    pub debug_scroll_offset: usize,
-    pub debug_auto_scroll: bool,
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
 
@@ -65,13 +61,9 @@ impl AppState {
             peers: initial_peers,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
-            dm_inputs: HashMap::new(),
             chat_input: TextArea::default(),
             concurrent_peers: 0,
-            peer_selection: 0,
             mouse_capture: true,
-            debug_scroll_offset: 0,
-            debug_auto_scroll: true,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             own_nickname,
@@ -111,10 +103,6 @@ pub fn load_and_format_messages(
                 msg.peer_id.clone(),
             ));
         }
-        p2p_app::log_debug(
-            logs,
-            format!("Loaded {} messages from database", db_messages.len()),
-        );
     } else {
         p2p_app::log_debug(logs, "Failed to load messages from database".to_string());
     }

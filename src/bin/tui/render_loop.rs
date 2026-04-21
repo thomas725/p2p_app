@@ -83,7 +83,7 @@ pub fn spawn_render_loop(
                         TabContent::Peers => {
                             let peer_items: Vec<ListItem> = s.peers
                                 .iter()
-                                .map(|(id, first_seen, last_seen)| {
+                                .map(|(id, _first_seen, last_seen)| {
                                     ListItem::new(format!("{} (seen: {})", &id[..std::cmp::min(8, id.len())], last_seen))
                                 })
                                 .collect();
@@ -118,7 +118,7 @@ pub fn spawn_render_loop(
                         .borders(Borders::ALL);
                     f.render_widget(input_block, chunks[3]);
                     if tab_content.is_input_enabled() {
-                        f.render_widget(s.chat_input.widget(), chunks[3]);
+                        f.render_widget(&s.chat_input, chunks[3]);
                     }
 
                     // Render keyboard shortcuts

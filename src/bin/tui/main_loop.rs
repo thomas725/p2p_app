@@ -77,8 +77,8 @@ pub async fn run_new_tui(
                 continue;
             }
 
-            let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+            let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
         p2p_app::log_debug(&logs, format!("Loaded {} unique peers from database", peers.len()));
