@@ -1,0 +1,78 @@
+--- a/src/bin/p2p_chat_tui.rs
++++ b/src/bin/p2p_chat_tui.rs
+@@ -540,6 +540,14 @@
+                 let mut debug_auto_scroll: bool = true;
+                 let mut chat_scroll_offset: usize = 0;
+                 let mut chat_auto_scroll: bool = true;
++                let mut unused_broadcasts: u32 = 0;
++                let mut unused_dms: HashMap<String, u32> = HashMap::new();
++
++                // Handle outbound commands from swarm
++                while let Ok(cmd) = swarm_cmd_rx.try_recv() {
++                    match cmd {
++                        SwarmCommand::Publish(content) => {
++                            let bcast = p2p_app::BroadcastMessage {
++                                content: content.clone(),
++                                sent_at: Some(
++                                    std::time::SystemTime::now()
++                                        .duration_since(std::time::UNIX_EPOCH)
++                                        .expect("system time is valid")
++                                        .as_secs_f64(),
++                                ),
++                                nickname: Some(own_nickname.clone()),
++                            };
++                            if let Ok(msg) = serde_json::to_string(&bcast) {
++                                if let Err(e) = swarm
++                                    .behaviour_mut()
++                                    .gossipsub
++                                    .publish(topic.clone(), msg.as_bytes())
++                                {
++                                    log_debug(&logs, format!("Broadcast failed: {}", e));
++                                }
++                            }
++                        }
++                        SwarmCommand::SendDm(_peer_id, _content) => {}
++                    }
++                }
++
++                // Handle UI commands and update unused counters
+                 loop {
+                     // Handle outbound commands
+                     if let Ok(cmd) = swarm_cmd_rx.try_recv() {
+@@ -554,14 +562,6 @@
+                     }
+ 
+                     // Handle UI commands
+-                    tokio::select! {
+-                        biased;
+-
+-                        cmd = ui_command_rx.recv() => {
+-                            match cmd {
+-                                Some(UiCommand::ShowMessage(msg, peer_id)) => {
+-                                    unused_dms.entry(peer_id.clone()).or_default();
+-                                    unused_broadcasts += 1;
+-                                    messages.push_back((msg, peer_id));
++                    while let Ok(cmd) = ui_command_rx.try_recv() {
++                        match cmd {
++                            UiCommand::ShowMessage(msg, peer_id) => {
++                                messages.push_back((msg, peer_id));
+                                 if messages.len() > MAX_MESSAGES {
+                                     messages.pop_front();
+                                 }
+@@ -576,12 +576,13 @@
+                                 }
+                                 Some(UiCommand::ToggleMouseCapture) => {
+                                     mouse_capture = !mouse_capture;
+-                                    if mouse_capture {
++                                    if mouse_capture {
+                                         let _ = execute!(std::io::stdout(), crossterm::event::EnableMouseCapture);
+                                     } else {
+                                         let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
+                                     }
+-                                }
+-                                _ => {}
++                                }
++                                _ => {}
+                             }
+                         }
+                     }
