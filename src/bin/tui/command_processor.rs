@@ -189,7 +189,7 @@ pub fn spawn_command_processor(
                             }
                         }
                         InputEvent::Mouse(mouse_event) => {
-                            // Handle mouse clicks for tab switching and closing
+                            // Handle mouse clicks for tab switching, closing, and peer selection
                             if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
                                 if let Ok(mut s) = state.lock() {
                                     // Tabs are on row 0; calculate click position
@@ -225,6 +225,23 @@ pub fn spawn_command_processor(
                                             }
 
                                             col_pos = tab_end;
+                                        }
+                                    } else if mouse_event.row > 1 && mouse_event.row < 16 {
+                                        // Peer list click - rows 2-15 (accounting for tab row 0, peer info row 1)
+                                        let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                        if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                            // Calculate which peer was clicked (row 2 = first peer, row 3 = second, etc.)
+                                            let peer_row = (mouse_event.row as usize).saturating_sub(2);
+                                            if peer_row < s.peers.len() {
+                                                // Update selection and open DM
+                                                s.peer_selection = peer_row;
+                                                if let Some((peer_id, _, _)) = s.peers.iter().nth(peer_row) {
+                                                    let peer_id_clone = peer_id.clone();
+                                                    let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
+                                                    s.active_tab = tab_idx;
+                                                    p2p_app::log_debug(&logs, format!("Opened DM with peer via mouse: {}", peer_id_clone));
+                                                }
+                                            }
                                         }
                                     }
                                 }
