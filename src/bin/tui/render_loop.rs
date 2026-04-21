@@ -83,9 +83,15 @@ pub fn spawn_render_loop(
                         TabContent::Peers => {
                             let peer_items: Vec<ListItem> = s.peers
                                 .iter()
-                                .map(|(id, _first_seen, last_seen)| {
-                                    // Display full ID in peer list for maximum visibility
-                                    ListItem::new(format!("{} ({})", id, last_seen))
+                                .enumerate()
+                                .map(|(idx, (id, _first_seen, last_seen))| {
+                                    let line = format!("{} ({})", id, last_seen);
+                                    // Highlight selected peer
+                                    if idx == s.peer_selection {
+                                        ListItem::new(line).style(Style::default().bg(Color::DarkGray))
+                                    } else {
+                                        ListItem::new(line)
+                                    }
                                 })
                                 .collect();
                             let peers_list = List::new(peer_items)

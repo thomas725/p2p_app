@@ -29,6 +29,7 @@ pub struct AppState {
     pub active_tab: usize,
     pub dynamic_tabs: DynamicTabs,
     pub chat_input: TextArea<'static>,
+    pub peer_selection: usize,  // For navigating peer list
     pub mouse_capture: bool,
 
     // Scroll State
@@ -62,6 +63,7 @@ impl AppState {
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
             chat_input: TextArea::default(),
+            peer_selection: 0,
             concurrent_peers: 0,
             mouse_capture: true,
             chat_scroll_offset: 0,
