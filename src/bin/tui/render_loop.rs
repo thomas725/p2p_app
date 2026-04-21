@@ -129,9 +129,13 @@ pub fn spawn_render_loop(
                     let input_block = Block::default()
                         .title("Input")
                         .borders(Borders::ALL);
-                    f.render_widget(input_block, chunks[3]);
                     if tab_content.is_input_enabled() {
-                        f.render_widget(&s.chat_input, chunks[3]);
+                        // Create a wrapper that combines textarea with block styling
+                        let inner_area = input_block.inner(chunks[3]);
+                        f.render_widget(input_block, chunks[3]);
+                        f.render_widget(&s.chat_input, inner_area);
+                    } else {
+                        f.render_widget(input_block, chunks[3]);
                     }
 
                     // Render keyboard shortcuts

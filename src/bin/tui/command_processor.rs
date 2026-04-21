@@ -115,10 +115,16 @@ pub fn spawn_command_processor(
                                             execute!(stdout, crossterm::event::DisableMouseCapture)
                                         };
                                     }
-                                    // Send message on Enter, or open DM on Peers tab
+                                    // Send message on Enter, or open DM on Peers tab (Shift+Enter adds newline)
                                     crossterm::event::KeyCode::Enter => {
                                         let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                        if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+
+                                        // Shift+Enter adds a newline
+                                        if key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                                            if tab_content.is_input_enabled() {
+                                                s.chat_input.insert_str("\n");
+                                            }
+                                        } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                             // Open DM with selected peer
                                             let peer_id_opt = s.peers.iter().nth(s.peer_selection).map(|(id, _, _)| id.clone());
                                             if let Some(peer_id) = peer_id_opt {
