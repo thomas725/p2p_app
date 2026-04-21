@@ -5,7 +5,7 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 use super::state::AppState;
 use super::input_handler::InputEvent;
-use super::constants::{CHANNEL_CAPACITY, MAX_MESSAGE_HISTORY};
+use super::constants::{CHANNEL_CAPACITY, MAX_MESSAGE_HISTORY, MAX_DM_HISTORY, MAX_PEERS};
 
 /// Spawns the command processor task (the main state mutation engine)
 ///
@@ -107,7 +107,7 @@ pub fn spawn_command_processor(
                                     content
                                 );
                                 dm_msgs.push_back(msg);
-                                if dm_msgs.len() > 1000 {
+                                if dm_msgs.len() > MAX_DM_HISTORY {
                                     dm_msgs.pop_front();
                                 }
                                 *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
@@ -143,7 +143,8 @@ pub fn spawn_command_processor(
                         #[cfg(feature = "mdns")]
                         SwarmEvent::PeerDiscovered { peer_id, addresses: _ } => {
                             if let Ok(mut s) = state.lock()
-                                && !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
+                                && !s.peers.iter().any(|(id, _, _)| id == &peer_id)
+                                && s.peers.len() < MAX_PEERS {
                                     s.peers.push_front((peer_id, p2p_app::now_timestamp(), p2p_app::now_timestamp()));
                                 }
                         }
