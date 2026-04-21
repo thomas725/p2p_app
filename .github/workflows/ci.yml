@@ -23,7 +23,41 @@ jobs:
           components: rustfmt
       
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: |
+          set +e
+          cargo fmt -- --check 2>&1 | tee fmt-output.txt
+          FMT_EXIT=$?
+          set -e
+          
+          if [ $FMT_EXIT -ne 0 ]; then
+            echo "=== FORMATTING CHECK FAILED ===" > fmt-error.txt
+            echo "Exit Code: $FMT_EXIT" >> fmt-error.txt
+            echo "" >> fmt-error.txt
+            echo "=== Output ===" >> fmt-error.txt
+            cat fmt-output.txt >> fmt-error.txt
+            echo "" >> fmt-error.txt
+            echo "To fix formatting, run: cargo fmt" >> fmt-error.txt
+            exit $FMT_EXIT
+          fi
+      
+      - name: Save fmt errors on failure
+        if: failure()
+        run: |
+          mkdir -p fmt-results
+          if [ -f fmt-error.txt ]; then
+            cp fmt-error.txt fmt-results/
+          fi
+          if [ -f fmt-output.txt ]; then
+            cp fmt-output.txt fmt-results/
+          fi
+      
+      - name: Upload fmt results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmt-results
+          path: fmt-results/
+        continue-on-error: true
 
   lint-and-test:
     name: Lint & Test (with cache)
