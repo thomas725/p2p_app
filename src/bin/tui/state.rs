@@ -2,30 +2,43 @@ use super::*;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-pub struct RunningState {
+/// Shared application state for all tasks
+pub struct AppState {
+    // Messages & Chat
     pub messages: VecDeque<(String, Option<String>)>,
     pub dm_messages: HashMap<String, VecDeque<String>>,
-    pub peers: VecDeque<(String, String, String)>,
-    pub dynamic_tabs: DynamicTabs,
-    pub active_tab: usize,
-    pub dm_inputs: HashMap<String, TextArea<'static>>,
-    pub chat_input: TextArea<'static>,
+
+    // Peer Management
+    pub peers: VecDeque<(String, String, String)>, // (id, first_seen, last_seen)
     pub concurrent_peers: usize,
+    pub local_nicknames: HashMap<String, String>,
+    pub received_nicknames: HashMap<String, String>,
+
+    // UI State (TUI-specific)
+    pub active_tab: usize,
+    pub dynamic_tabs: DynamicTabs,
+    pub chat_input: TextArea<'static>,
+    pub dm_inputs: HashMap<String, TextArea<'static>>,
     pub peer_selection: usize,
+    pub mouse_capture: bool,
+
+    // Scroll State
     pub debug_scroll_offset: usize,
     pub debug_auto_scroll: bool,
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
-    pub own_nickname: String,
-    pub local_nicknames: HashMap<String, String>,
-    pub received_nicknames: HashMap<String, String>,
+
+    // Unread Counts
     pub unread_broadcasts: u32,
     pub unread_dms: HashMap<String, u32>,
+
+    // Runtime Context
+    pub own_nickname: String,
     pub topic_str: String,
     pub logs: Arc<Mutex<VecDeque<String>>>,
 }
 
-impl RunningState {
+impl AppState {
     pub fn new(
         topic_str: String,
         logs: Arc<Mutex<VecDeque<String>>>,
@@ -45,6 +58,7 @@ impl RunningState {
             chat_input: TextArea::default(),
             concurrent_peers: 0,
             peer_selection: 0,
+            mouse_capture: false,
             debug_scroll_offset: 0,
             debug_auto_scroll: true,
             chat_scroll_offset: 0,
