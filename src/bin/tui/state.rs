@@ -1,4 +1,4 @@
-use super::*;
+use super::{DynamicTabs, TextArea};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 

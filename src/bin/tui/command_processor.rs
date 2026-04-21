@@ -1,4 +1,3 @@
-use super::*;
 use p2p_app::{SwarmCommand, SwarmEvent};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -6,7 +5,7 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 use super::state::AppState;
 use super::input_handler::InputEvent;
-use crossterm::event::{KeyCode, KeyModifiers};
+use super::constants::{CHANNEL_CAPACITY, MAX_MESSAGE_HISTORY};
 
 pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,
@@ -14,7 +13,7 @@ pub fn spawn_command_processor(
     mut swarm_event_rx: mpsc::Receiver<SwarmEvent>,
     logs: Arc<Mutex<VecDeque<String>>>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Sender<SwarmCommand>) {
-    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(100);
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     let handle = tokio::spawn(async move {
         loop {
@@ -57,7 +56,7 @@ pub fn spawn_command_processor(
                                     content
                                 );
                                 s.messages.push_back((msg.clone(), Some(peer_id.clone())));
-                                if s.messages.len() > 1000 {
+                                if s.messages.len() > MAX_MESSAGE_HISTORY {
                                     s.messages.pop_front();
                                 }
                                 if s.active_tab != 0 {

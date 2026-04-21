@@ -19,10 +19,7 @@ pub mod tui_test_state;
 #[cfg(feature = "tui")]
 pub mod tui_events;
 
-use crate::logging::{
-    get_tui_logs, init_logging, push_log, set_tui_log_callback, strip_ansi_codes,
-};
-use libp2p::{gossipsub, request_response, swarm::NetworkBehaviour};
+pub use logging::init_logging;
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{
     ensure_self_nickname, generate_self_nickname, get_peer_display_name, get_peer_local_nickname,
@@ -55,11 +52,7 @@ pub use tui_tabs::{DynamicTabs, TabContent, TabId, DmTab};
 pub use tui_test_state::{TuiTestState, NotificationTarget};
 #[cfg(feature = "tui")]
 pub use tui_events::{TuiEvent, InputCommand, EventTx, EventRx, InputTx, InputRx, TuiThreads, create_channels};
-#[allow(unused_imports)]
-use std::collections::VecDeque;
 
-#[cfg(feature = "mdns")]
-use libp2p::mdns;
 
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};

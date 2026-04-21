@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::{collections::VecDeque, time::SystemTime};
+use super::constants::MAX_LOGS;
 
 fn format_system_time(time: SystemTime) -> String {
     chrono::DateTime::<chrono::Local>::from(time)
@@ -29,7 +30,7 @@ impl std::io::Write for TracingWriter {
                 let formatted = format!("[{}] {}", ts, trimmed);
                 if let Ok(mut l) = self.logs.lock() {
                     l.push_back(formatted);
-                    if l.len() > 2000 {
+                    if l.len() > MAX_LOGS {
                         l.pop_front();
                     }
                 }

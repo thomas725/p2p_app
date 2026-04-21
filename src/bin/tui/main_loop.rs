@@ -1,9 +1,7 @@
 use super::*;
-use p2p_app::SwarmEvent;
+use super::constants::CHANNEL_CAPACITY;
 use std::collections::VecDeque;
-use std::io::Stdout;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use tokio::sync::mpsc;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -51,7 +49,7 @@ pub async fn run_new_tui(
     )));
 
     // Setup channels
-    let (input_tx, input_rx) = mpsc::channel(100);
+    let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     // Spawn tasks
     // SwarmHandler returns both a handle and a receiver of SwarmEvent

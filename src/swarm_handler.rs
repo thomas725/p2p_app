@@ -12,7 +12,7 @@ use tokio::sync::mpsc;
 /// and translates them to app-level SwarmEvent messages.
 pub fn spawn_swarm_handler(
     mut swarm: Swarm<AppBehaviour>,
-    logs: Arc<Mutex<VecDeque<String>>>,
+    _logs: Arc<Mutex<VecDeque<String>>>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Receiver<SwarmEvent>) {
     let (tx, rx) = mpsc::channel(100);
 

@@ -4,7 +4,6 @@ use crate::{
     models_insertable::{NewPeer, NewPeerSession}, models_queryable::Peer,
     schema::peers::dsl::peers,
 };
-use color_eyre::eyre::Context;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
 
 /// Save or update a peer in the database.

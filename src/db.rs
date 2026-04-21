@@ -3,7 +3,7 @@
 use crate::schema::identities::dsl::identities;
 use crate::models_queryable::Identity;
 use color_eyre::eyre::{eyre, Context};
-use diesel::{Connection as _, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection};
+use diesel::{Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection};
 use diesel_migrations::MigrationHarness;
 use dotenvy::dotenv;
 use std::env;

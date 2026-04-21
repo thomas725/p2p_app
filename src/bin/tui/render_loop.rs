@@ -1,4 +1,3 @@
-use p2p_app::DynamicTabs;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
@@ -11,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use std::time::Duration;
 use super::state::AppState;
+use super::constants::FRAME_TIME_MS;
 
 /// Spawns the render loop task that continuously renders the TUI
 pub fn spawn_render_loop(
@@ -18,7 +18,7 @@ pub fn spawn_render_loop(
     mut terminal: Terminal<CrosstermBackend<Stdout>>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(16)); // 60 FPS
+        let mut interval = tokio::time::interval(Duration::from_millis(FRAME_TIME_MS)); // 60 FPS
 
         loop {
             interval.tick().await;

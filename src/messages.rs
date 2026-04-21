@@ -4,7 +4,7 @@ use crate::{
     models_insertable::NewMessage, models_queryable::Message, schema::messages::dsl::messages,
 };
 use color_eyre::eyre::Context;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
 
 /// Save a message to the database.
 ///
