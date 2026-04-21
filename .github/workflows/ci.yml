@@ -53,17 +53,38 @@ jobs:
       - name: Run tests (with output capture)
         run: |
           mkdir -p test-results
-          cargo test --all-features --verbose 2>&1 | tee test-results/test-output.txt || TEST_FAILED=true
-          echo "Test run completed"
+          set +e
+          cargo test --all-features --verbose 2>&1 | tee test-results/test-output.txt
+          TEST_EXIT=$?
+          set -e
+          echo "Test exit code: $TEST_EXIT" >> test-results/test-output.txt
+          
+          if [ $TEST_EXIT -ne 0 ]; then
+            echo "TESTS FAILED!" > test-results/FAILURE.txt
+            echo "Exit Code: $TEST_EXIT" >> test-results/FAILURE.txt
+            echo "Run: ${{ github.run_id }}" >> test-results/FAILURE.txt
+            echo "SHA: ${{ github.sha }}" >> test-results/FAILURE.txt
+            exit $TEST_EXIT
+          fi
       
-      - name: Capture test failures
+      - name: Capture explicit failures
         if: failure()
         run: |
           mkdir -p test-results
-          echo "CI Workflow Failed" > test-results/FAILURE.txt
-          echo "Run: ${{ github.run_id }}" >> test-results/FAILURE.txt
-          echo "SHA: ${{ github.sha }}" >> test-results/FAILURE.txt
-          echo "See full logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> test-results/FAILURE.txt
+          {
+            echo "=== CI WORKFLOW FAILURE REPORT ==="
+            echo "Run ID: ${{ github.run_id }}"
+            echo "Commit: ${{ github.sha }}"
+            echo "Event: ${{ github.event_name }}"
+            echo ""
+            echo "=== PREVIOUS TEST OUTPUT (last 50 lines) ==="
+            if [ -f test-results/test-output.txt ]; then
+              tail -50 test-results/test-output.txt
+            else
+              echo "No test output captured"
+            fi
+          } > test-results/FAILURE_REPORT.txt
+          cat test-results/FAILURE_REPORT.txt
       
       - name: Build documentation (check only)
         run: cargo doc --no-deps --all-features --document-private-items

@@ -25,7 +25,7 @@ jobs:
           path: downloaded-artifacts
         continue-on-error: true
       
-      - name: Create results summary
+      - name: Create results summary with test output
         run: |
           mkdir -p .github/ci-results
           
@@ -44,6 +44,25 @@ jobs:
           echo "Event: ${{ github.event.workflow_run.event }}" >> "$RESULTS_FILE"
           echo "Conclusion: ${{ github.event.workflow_run.conclusion }}" >> "$RESULTS_FILE"
           echo "Timestamp: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> "$RESULTS_FILE"
+          
+          echo "" >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "Test Output:" >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "" >> "$RESULTS_FILE"
+          
+          if [ -f "downloaded-artifacts/test-results/test-output.txt" ]; then
+            echo "Found test output:" >> "$RESULTS_FILE"
+            tail -200 "downloaded-artifacts/test-results/test-output.txt" >> "$RESULTS_FILE"
+          elif [ -f "downloaded-artifacts/test-results/FAILURE_REPORT.txt" ]; then
+            echo "Failure Report:" >> "$RESULTS_FILE"
+            cat "downloaded-artifacts/test-results/FAILURE_REPORT.txt" >> "$RESULTS_FILE"
+          elif [ -f "downloaded-artifacts/test-results/FAILURE.txt" ]; then
+            echo "Failure Details:" >> "$RESULTS_FILE"
+            cat "downloaded-artifacts/test-results/FAILURE.txt" >> "$RESULTS_FILE"
+          else
+            echo "No test output captured" >> "$RESULTS_FILE"
+          fi
           
           echo "" >> "$RESULTS_FILE"
           echo "============================================================" >> "$RESULTS_FILE"
