@@ -6,6 +6,7 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 use super::state::AppState;
 use super::input_handler::InputEvent;
+use crossterm::event::{KeyCode, KeyModifiers};
 
 pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,
@@ -18,8 +19,24 @@ pub fn spawn_command_processor(
     let handle = tokio::spawn(async move {
         loop {
             tokio::select! {
-                Some(_input_event) = input_rx.recv() => {
-                    // Input handling - TODO
+                Some(input_event) = input_rx.recv() => {
+                    // Handle input events from terminal
+                    match input_event {
+                        InputEvent::Key(key_event) => {
+                            // Detect Ctrl+C or Esc to exit
+                            if key_event.code == crossterm::event::KeyCode::Esc
+                                || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+                                    && key_event.code == crossterm::event::KeyCode::Char('c'))
+                            {
+                                // Exit signal - tasks will stop when this loop exits
+                                p2p_app::log_debug(&logs, "Exit signal received".to_string());
+                                return;
+                            }
+                        }
+                        InputEvent::Mouse(_mouse_event) => {
+                            // Handle mouse events if needed
+                        }
+                    }
                 }
                 Some(swarm_event) = swarm_event_rx.recv() => {
                     match swarm_event {
