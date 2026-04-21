@@ -84,7 +84,13 @@ pub fn spawn_render_loop(
                             let peer_items: Vec<ListItem> = s.peers
                                 .iter()
                                 .map(|(id, _first_seen, last_seen)| {
-                                    ListItem::new(format!("{} (seen: {})", &id[..std::cmp::min(8, id.len())], last_seen))
+                                    // Display full ID if short enough, otherwise show first 8 chars + last 4 chars
+                                    let display_id = if id.len() <= 16 {
+                                        id.clone()
+                                    } else {
+                                        format!("{}...{}", &id[..8], &id[id.len()-4..])
+                                    };
+                                    ListItem::new(format!("{} ({})", display_id, last_seen))
                                 })
                                 .collect();
                             let peers_list = List::new(peer_items)

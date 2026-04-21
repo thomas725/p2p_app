@@ -335,3 +335,46 @@ fn test_tui_peer_display_limit() {
     // Verify we have exactly MAX_PEERS
     assert_eq!(peers.len(), MAX_PEERS);
 }
+
+#[test]
+fn test_tui_peer_deduplication_with_limit() {
+    // Simulate loading peers from database with many duplicates
+    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut seen_ids = std::collections::HashSet::new();
+
+    // Simulate database entries: peer1 appears 5 times, peer2 appears 3 times, etc.
+    let db_entries = vec![
+        ("peer1", "2024-01-01", "2024-01-05"),
+        ("peer1", "2024-01-02", "2024-01-04"), // duplicate - should skip
+        ("peer2", "2024-01-01", "2024-01-03"),
+        ("peer1", "2024-01-03", "2024-01-06"), // duplicate - should skip
+        ("peer3", "2024-01-01", "2024-01-02"),
+        ("peer2", "2024-01-02", "2024-01-04"), // duplicate - should skip
+        ("peer4", "2024-01-01", "2024-01-01"),
+    ];
+
+    const MAX_PEERS: usize = 10000;
+
+    // Deduplicate first, then apply limit
+    for (id, first_seen, last_seen) in db_entries {
+        if !seen_ids.insert(id.to_string()) {
+            continue; // Skip duplicates
+        }
+
+        if peers.len() >= MAX_PEERS {
+            break;
+        }
+
+        peers.push_back((id.to_string(), first_seen.to_string(), last_seen.to_string()));
+    }
+
+    // Should have 4 unique peers (peer1, peer2, peer3, peer4)
+    assert_eq!(peers.len(), 4);
+    assert_eq!(seen_ids.len(), 4);
+
+    // Verify all are unique
+    let mut unique_check = std::collections::HashSet::new();
+    for (id, _, _) in &peers {
+        assert!(unique_check.insert(id.clone()), "Found duplicate peer: {}", id);
+    }
+}

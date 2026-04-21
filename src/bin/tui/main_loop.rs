@@ -71,17 +71,23 @@ pub async fn run_new_tui(
         let mut peers = VecDeque::new();
         let mut seen_ids = std::collections::HashSet::new();
 
-        for peer in db_peers.iter().take(super::constants::MAX_PEERS) {
+        // Deduplicate first, then apply limit
+        for peer in db_peers.iter() {
             // Skip duplicate peer IDs (keep first occurrence with most recent last_seen)
             if !seen_ids.insert(peer.peer_id.clone()) {
                 continue;
+            }
+
+            // Stop if we've reached MAX_PEERS
+            if peers.len() >= super::constants::MAX_PEERS {
+                break;
             }
 
             let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
             let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
-        p2p_app::log_debug(&logs, format!("Loaded {} unique peers from database", peers.len()));
+        p2p_app::log_debug(&logs, format!("Loaded {} unique peers from {} total database entries", peers.len(), db_peers.len()));
         peers
     } else {
         p2p_app::log_debug(&logs, "No peers found in database".to_string());
