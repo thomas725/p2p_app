@@ -69,7 +69,7 @@ impl AppState {
             chat_input: TextArea::default(),
             concurrent_peers: 0,
             peer_selection: 0,
-            mouse_capture: false,
+            mouse_capture: true,
             debug_scroll_offset: 0,
             debug_auto_scroll: true,
             chat_scroll_offset: 0,

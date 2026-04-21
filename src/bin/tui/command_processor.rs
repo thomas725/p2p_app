@@ -152,23 +152,10 @@ pub fn spawn_command_processor(
                                 }
                             }
                         }
-                        InputEvent::Mouse(mouse_event) => {
-                            // Handle mouse tab switching on click
-                            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
-                                if let Ok(mut s) = state.lock() {
-                                    // Tabs are typically on row 0, calculate which tab was clicked
-                                    // This is a simplified approach - just check if click is in tab area
-                                    if mouse_event.row == 0 {
-                                        // Rough tab calculation: each tab is ~10 chars wide
-                                        let tab_idx = ((mouse_event.column as usize) / 10).min(s.dynamic_tabs.total_tab_count().saturating_sub(1));
-                                        if tab_idx != s.active_tab {
-                                            s.active_tab = tab_idx;
-                                            s.chat_scroll_offset = 0;
-                                            p2p_app::log_debug(&logs, format!("Switched to tab {} via mouse", s.active_tab));
-                                        }
-                                    }
-                                }
-                            }
+                        InputEvent::Mouse(_mouse_event) => {
+                            // Mouse events are handled only when mouse capture is enabled.
+                            // Currently, mouse input is limited to basic interaction.
+                            // Tab switching is better done with Tab/Shift+Tab keys.
                         }
                     }
                 }
@@ -236,11 +223,13 @@ pub fn spawn_command_processor(
                             if let Ok(mut s) = state.lock() {
                                 s.concurrent_peers += 1;
                                 p2p_app::log_debug(&logs, format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
-                                let addresses = vec![peer_id.clone()];
-                                if let Ok(peer) = p2p_app::save_peer(&peer_id, &addresses) {
-                                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-                                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                                    if !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
+
+                                // Only add peer if not already in list (check prevents duplicates)
+                                if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
+                                    let addresses = vec![peer_id.clone()];
+                                    if let Ok(peer) = p2p_app::save_peer(&peer_id, &addresses) {
+                                        let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+                                        let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
                                         s.peers.push_front((peer_id, first_seen, last_seen));
                                     }
                                 }
