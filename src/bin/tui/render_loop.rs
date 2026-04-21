@@ -12,6 +12,25 @@ use super::state::AppState;
 use super::constants::FRAME_TIME_MS;
 
 /// Spawns the render loop task that continuously renders the TUI
+///
+/// This task reads the shared AppState on a fixed interval and draws it to the terminal.
+///
+/// **Rendering strategy:**
+/// - Fixed 60 FPS (~16ms per frame) via tokio::time::interval
+/// - Always renders regardless of changes (time-based, not event-driven)
+/// - Acquires AppState lock briefly for each frame, then releases
+/// - Handles partial redraws via ratatui library
+///
+/// **Future optimization:**
+/// Could implement event-driven rendering by using a notification channel:
+/// CommandProcessor would send a "state changed" signal, and RenderLoop
+/// would only redraw on updates or timeout. This would reduce CPU usage.
+///
+/// **Layout:**
+/// - Top tabs: Broadcast channel + DM tabs (for peer conversations)
+/// - Chat area: Messages from selected tab
+/// - Input box: Current message being typed
+/// - Status bar: Peer list, connection status, debug logs
 pub fn spawn_render_loop(
     state: Arc<Mutex<AppState>>,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,

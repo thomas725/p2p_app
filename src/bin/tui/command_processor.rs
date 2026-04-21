@@ -7,6 +7,28 @@ use super::state::AppState;
 use super::input_handler::InputEvent;
 use super::constants::{CHANNEL_CAPACITY, MAX_MESSAGE_HISTORY};
 
+/// Spawns the command processor task (the main state mutation engine)
+///
+/// This task orchestrates the core business logic:
+/// 1. Receives InputEvent from InputHandler
+/// 2. Receives SwarmEvent from SwarmHandler
+/// 3. Processes events and mutates the shared AppState
+/// 4. Optionally sends SwarmCommand back to network layer
+///
+/// **Mutation logic:**
+/// - InputEvent triggers: chat input, commands, navigation, DM interactions
+/// - SwarmEvent triggers: peer updates, message display, connection status
+///
+/// **Concurrency model:**
+/// - Uses `tokio::select!` to wait on both input and swarm event channels
+/// - Locks AppState only when necessary for mutation
+/// - Bounded message history (MAX_MESSAGE_HISTORY) prevents memory bloat
+///
+/// **Returns:**
+/// - A JoinHandle to monitor task health
+/// - A SwarmCommand sender (for potential future use)
+///
+/// The task runs indefinitely until explicitly shut down or on error.
 pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,
     mut input_rx: mpsc::Receiver<InputEvent>,

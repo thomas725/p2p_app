@@ -6,6 +6,18 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 
 /// Run the new 4-task TUI architecture
+///
+/// Orchestrates the spawning and supervision of the four concurrent tasks:
+/// - **SwarmHandler**: Translates libp2p events to SwarmEvent
+/// - **InputHandler**: Polls terminal for keyboard/mouse input
+/// - **CommandProcessor**: Receives events, mutates shared AppState
+/// - **RenderLoop**: Renders AppState to terminal at ~60 FPS
+///
+/// All tasks communicate via bounded MPSC channels (capacity: 100 events).
+/// State is shared behind Arc<Mutex<AppState>> for safe concurrent access.
+///
+/// The function sets up terminal mode (alternate screen, raw mode, mouse capture),
+/// initializes the state from database, and waits for any task to exit (indicating error).
 pub async fn run_new_tui(
     swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
     topic_str: String,

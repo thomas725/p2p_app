@@ -7,6 +7,62 @@ use std::time::Duration;
 
 #[cfg(feature = "tui")]
 mod tui {
+    //! Four-task TUI architecture for p2p_app
+    //!
+    //! ## Overview
+    //!
+    //! This module implements a concurrent, event-driven terminal UI using async Rust.
+    //! Four independent tasks communicate via MPSC channels, each responsible for a specific concern:
+    //!
+    //! 1. **SwarmHandler** - Listens to libp2p network events and translates them to app-level SwarmEvent
+    //! 2. **InputHandler** - Polls terminal for keyboard/mouse input and sends InputEvent
+    //! 3. **CommandProcessor** - Receives InputEvent and SwarmEvent, mutates AppState, sends SwarmCommand
+    //! 4. **RenderLoop** - Reads AppState and renders the TUI at ~60 FPS
+    //!
+    //! ## Architecture
+    //!
+    //! ```text
+    //! ┌─────────────────────────────────────────────────────┐
+    //! │                  libp2p Swarm                       │
+    //! └────────────────────────┬────────────────────────────┘
+    //!                          │
+    //!                          ↓
+    //!                  SwarmHandler Task
+    //!                    (libp2p events)
+    //!                          │
+    //!                          ↓ SwarmEvent (mpsc)
+    //!          ┌───────────────────────────────┐
+    //!          │    CommandProcessor Task      │
+    //!          │  ┌─────────────────────────┐  │
+    //!          │  │  Shared AppState        │  │
+    //!          │  │ (Arc<Mutex<AppState>>)  │  │
+    //!          │  └─────────────────────────┘  │
+    //!          └───────────────────────────────┘
+    //!                 ↑              ↑
+    //!    InputEvent   │              │ SwarmEvent
+    //!      (mpsc)     │              │ (mpsc)
+    //!                 │              │
+    //!          InputHandler Task  SwarmHandler Task
+    //!                 ↑
+    //!          Terminal Input
+    //!
+    //! RenderLoop continuously reads AppState and redraws terminal.
+    //! ```
+    //!
+    //! ## State Management
+    //!
+    //! All TUI state is centralized in `AppState` behind an `Arc<Mutex<>>` for safe concurrent access.
+    //! Only CommandProcessor mutates state; other tasks read-only or signal mutations through channels.
+    //!
+    //! Channel Capacity: 100 events max in flight per channel (prevents unbounded buffering).
+    //!
+    //! ## Key Design Decisions
+    //!
+    //! - **Arc<Mutex> over RwLock**: Simplicity. Most operations read and modify multiple fields atomically.
+    //! - **Polling input instead of event subscriptions**: Works on all platforms with crossterm.
+    //! - **60 FPS render loop**: UI responsiveness. Could optimize to event-driven in future.
+    //! - **Immutable channel types**: Each task has dedicated input/output channels, no shared mutable channels.
+
     use ratatui_textarea::TextArea;
     pub use p2p_app::tui_tabs::DynamicTabs;
 

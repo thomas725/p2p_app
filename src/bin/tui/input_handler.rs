@@ -11,6 +11,15 @@ pub enum InputEvent {
 }
 
 /// Spawns the input handler task that polls terminal events
+///
+/// This task runs in a loop polling the terminal for keyboard and mouse events.
+/// When an event is detected, it is wrapped in InputEvent and sent to the CommandProcessor.
+///
+/// - **Poll frequency**: 16ms (60 FPS) for responsive input
+/// - **Channel**: InputEvent → CommandProcessor (mpsc, capacity 100)
+/// - **Non-blocking**: Yields to async runtime after each poll to prevent starvation
+///
+/// The task runs indefinitely; it should only exit on error or program shutdown.
 pub fn spawn_input_handler(
     input_tx: mpsc::Sender<InputEvent>,
 ) -> tokio::task::JoinHandle<()> {

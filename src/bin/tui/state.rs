@@ -3,6 +3,17 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 /// Shared application state for all tasks
+///
+/// This struct centralizes all mutable state needed by the TUI.
+/// It is wrapped in `Arc<Mutex<AppState>>` to be safely shared across async tasks.
+///
+/// Only the CommandProcessor task directly mutates this state.
+/// Other tasks:
+/// - **RenderLoop**: Read-only access to render current state
+/// - **InputHandler**: No direct access, sends InputEvent to CommandProcessor
+/// - **SwarmHandler**: No direct access, sends SwarmEvent to CommandProcessor
+///
+/// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
 pub struct AppState {
     // Messages & Chat
     pub messages: VecDeque<(String, Option<String>)>,
