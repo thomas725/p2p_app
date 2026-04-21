@@ -83,14 +83,49 @@ pub async fn run_new_tui(
     p2p_app::log_debug(&logs, "Started 4-task TUI architecture".to_string());
 
     // Wait for any task to complete (indicates error or exit)
-    tokio::select! {
-        _ = swarm_handler => { p2p_app::log_debug(&logs, "SwarmHandler exited".to_string()); }
-        _ = input_handler => { p2p_app::log_debug(&logs, "InputHandler exited".to_string()); }
-        _ = command_processor => { p2p_app::log_debug(&logs, "CommandProcessor exited".to_string()); }
-        _ = render_loop => { p2p_app::log_debug(&logs, "RenderLoop exited".to_string()); }
-    }
+    let exit_reason = tokio::select! {
+        result = swarm_handler => {
+            if result.is_err() {
+                p2p_app::log_debug(&logs, "SwarmHandler panicked".to_string());
+                "SwarmHandler task error"
+            } else {
+                p2p_app::log_debug(&logs, "SwarmHandler exited".to_string());
+                "SwarmHandler completed"
+            }
+        }
+        result = input_handler => {
+            if result.is_err() {
+                p2p_app::log_debug(&logs, "InputHandler panicked".to_string());
+                "InputHandler task error"
+            } else {
+                p2p_app::log_debug(&logs, "InputHandler exited".to_string());
+                "InputHandler completed"
+            }
+        }
+        result = command_processor => {
+            if result.is_err() {
+                p2p_app::log_debug(&logs, "CommandProcessor panicked".to_string());
+                "CommandProcessor task error"
+            } else {
+                p2p_app::log_debug(&logs, "CommandProcessor exited".to_string());
+                "CommandProcessor completed"
+            }
+        }
+        result = render_loop => {
+            if result.is_err() {
+                p2p_app::log_debug(&logs, "RenderLoop panicked".to_string());
+                "RenderLoop task error"
+            } else {
+                p2p_app::log_debug(&logs, "RenderLoop exited".to_string());
+                "RenderLoop completed"
+            }
+        }
+    };
 
-    // Cleanup
+    // Signal graceful shutdown to remaining tasks
+    p2p_app::log_debug(&logs, format!("Initiating shutdown: {}", exit_reason));
+
+    // Cleanup terminal state
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
     let _ = disable_raw_mode();
     let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
