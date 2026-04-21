@@ -49,14 +49,42 @@ pub async fn run_new_tui(
     let own_nickname = p2p_app::ensure_self_nickname()
         .unwrap_or_else(|_| "Anonymous".to_string());
 
+    p2p_app::log_debug(&logs, format!("Loading database for topic: {}", topic_str));
+
+    // Load initial messages from database
+    let initial_messages = super::state::load_and_format_messages(
+        &topic_str,
+        super::constants::MAX_MESSAGE_HISTORY,
+        &logs,
+        &std::collections::HashMap::new(),
+        &std::collections::HashMap::new(),
+        &own_nickname,
+    );
+    p2p_app::log_debug(&logs, format!("Loaded {} messages from database", initial_messages.len()));
+
+    // Load initial peers from database
+    let initial_peers = if let Ok(db_peers) = p2p_app::load_peers() {
+        let mut peers = VecDeque::new();
+        for peer in db_peers.iter().take(super::constants::MAX_PEERS) {
+            let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+            let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+            peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
+        }
+        p2p_app::log_debug(&logs, format!("Loaded {} peers from database", peers.len()));
+        peers
+    } else {
+        p2p_app::log_debug(&logs, "No peers found in database".to_string());
+        VecDeque::new()
+    };
+
     let state = Arc::new(Mutex::new(super::state::AppState::new(
         topic_str.clone(),
         logs.clone(),
         own_nickname.clone(),
         std::collections::HashMap::new(),
         std::collections::HashMap::new(),
-        VecDeque::new(),
-        VecDeque::new(),
+        initial_messages,
+        initial_peers,
     )));
 
     // Setup channels

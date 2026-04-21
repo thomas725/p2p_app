@@ -3,13 +3,14 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Tabs},
+    widgets::{Block, Borders, Paragraph, Tabs, List, ListItem},
 };
 use std::io::Stdout;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use super::state::AppState;
 use super::constants::FRAME_TIME_MS;
+use p2p_app::tui_tabs::TabContent;
 
 /// Spawns the render loop task that continuously renders the TUI
 ///
@@ -46,11 +47,12 @@ pub fn spawn_render_loop(
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
-                            Constraint::Length(1),
-                            Constraint::Length(1),
-                            Constraint::Min(0),
-                            Constraint::Length(5),
-                            Constraint::Length(1),
+                            Constraint::Length(1),  // tabs
+                            Constraint::Length(1),  // peer info
+                            Constraint::Min(0),     // messages
+                            Constraint::Length(5),  // input area
+                            Constraint::Length(1),  // shortcuts
+                            Constraint::Length(1),  // status
                         ])
                         .split(f.area());
 
@@ -65,21 +67,68 @@ pub fn spawn_render_loop(
                     let peer_info = Paragraph::new(format!("Peers: {}", s.concurrent_peers));
                     f.render_widget(peer_info, chunks[1]);
 
-                    // Render messages block
-                    let messages_block = Block::default()
-                        .title("Messages")
-                        .borders(Borders::ALL);
-                    f.render_widget(messages_block, chunks[2]);
+                    // Render tab-specific content
+                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                    match &tab_content {
+                        TabContent::Chat => {
+                            let messages_text = s.messages
+                                .iter()
+                                .map(|(msg, _)| msg.as_str())
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            let messages_para = Paragraph::new(messages_text)
+                                .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
+                            f.render_widget(messages_para, chunks[2]);
+                        }
+                        TabContent::Peers => {
+                            let peer_items: Vec<ListItem> = s.peers
+                                .iter()
+                                .map(|(id, first_seen, last_seen)| {
+                                    ListItem::new(format!("{} (seen: {})", &id[..std::cmp::min(8, id.len())], last_seen))
+                                })
+                                .collect();
+                            let peers_list = List::new(peer_items)
+                                .block(Block::default().title("Connected Peers").borders(Borders::ALL));
+                            f.render_widget(peers_list, chunks[2]);
+                        }
+                        TabContent::Direct(peer_id) => {
+                            let dm_text = s.dm_messages
+                                .get(peer_id)
+                                .map(|msgs| msgs.iter().cloned().collect::<Vec<_>>().join("\n"))
+                                .unwrap_or_else(|| "No messages yet".to_string());
+                            let dm_para = Paragraph::new(dm_text)
+                                .block(Block::default().title(format!("DM: {}", &peer_id[..std::cmp::min(8, peer_id.len())])).borders(Borders::ALL));
+                            f.render_widget(dm_para, chunks[2]);
+                        }
+                        TabContent::Log => {
+                            let log_text = s.logs
+                                .lock()
+                                .ok()
+                                .map(|logs| logs.iter().cloned().collect::<Vec<_>>().join("\n"))
+                                .unwrap_or_else(|| "No logs".to_string());
+                            let log_para = Paragraph::new(log_text)
+                                .block(Block::default().title("Logs").borders(Borders::ALL));
+                            f.render_widget(log_para, chunks[2]);
+                        }
+                    }
 
-                    // Render input area with chat input
+                    // Render input area (only for chat/DM tabs)
                     let input_block = Block::default()
                         .title("Input")
                         .borders(Borders::ALL);
                     f.render_widget(input_block, chunks[3]);
+                    if tab_content.is_input_enabled() {
+                        f.render_widget(s.chat_input.widget(), chunks[3]);
+                    }
 
-                    // Render status line
-                    let status = Paragraph::new("Connected");
-                    f.render_widget(status, chunks[4]);
+                    // Render keyboard shortcuts
+                    let shortcuts = Paragraph::new("Tab: next tab | Shift+Tab: prev tab | ↑↓: scroll | Enter: send | F12: toggle mouse | Ctrl+Q: quit");
+                    f.render_widget(shortcuts, chunks[4]);
+
+                    // Render status line with mouse mode
+                    let mouse_mode = if s.mouse_capture { "ON" } else { "OFF" };
+                    let status = Paragraph::new(format!("Connected [Mouse: {}]", mouse_mode));
+                    f.render_widget(status, chunks[5]);
                 } else {
                     let para = Paragraph::new("Failed to acquire state lock");
                     f.render_widget(para, f.area());

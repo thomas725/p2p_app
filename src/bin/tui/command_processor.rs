@@ -38,24 +38,137 @@ pub fn spawn_command_processor(
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     let handle = tokio::spawn(async move {
+        p2p_app::log_debug(&logs, "CommandProcessor task started".to_string());
         loop {
             tokio::select! {
                 Some(input_event) = input_rx.recv() => {
                     // Handle input events from terminal
                     match input_event {
                         InputEvent::Key(key_event) => {
-                            // Detect Ctrl+C or Esc to exit
+                            // Detect Ctrl+Q or Esc to exit
                             if key_event.code == crossterm::event::KeyCode::Esc
                                 || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
-                                    && key_event.code == crossterm::event::KeyCode::Char('c'))
+                                    && key_event.code == crossterm::event::KeyCode::Char('q'))
                             {
                                 // Exit signal - tasks will stop when this loop exits
                                 p2p_app::log_debug(&logs, "Exit signal received".to_string());
                                 return;
                             }
+
+                            // Handle tab navigation and input
+                            if let Ok(mut s) = state.lock() {
+                                match key_event.code {
+                                    // Tab switching: Tab for next, Shift+Tab for previous
+                                    crossterm::event::KeyCode::Tab => {
+                                        let max_tabs = s.dynamic_tabs.total_tab_count();
+                                        s.active_tab = (s.active_tab + 1) % max_tabs;
+                                        s.chat_scroll_offset = 0;
+                                        p2p_app::log_debug(&logs, format!("Switched to tab {}", s.active_tab));
+                                    }
+                                    crossterm::event::KeyCode::BackTab => {
+                                        let max_tabs = s.dynamic_tabs.total_tab_count();
+                                        s.active_tab = if s.active_tab == 0 { max_tabs - 1 } else { s.active_tab - 1 };
+                                        s.chat_scroll_offset = 0;
+                                        p2p_app::log_debug(&logs, format!("Switched to tab {}", s.active_tab));
+                                    }
+                                    // Scroll up/down in chat or logs
+                                    crossterm::event::KeyCode::Up => {
+                                        if s.chat_auto_scroll {
+                                            s.chat_auto_scroll = false;
+                                        }
+                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(1);
+                                    }
+                                    crossterm::event::KeyCode::Down => {
+                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(1);
+                                        if s.chat_scroll_offset == 0 {
+                                            s.chat_auto_scroll = true;
+                                        }
+                                    }
+                                    // Toggle mouse capture on F12
+                                    crossterm::event::KeyCode::F(12) => {
+                                        s.mouse_capture = !s.mouse_capture;
+                                        let mode = if s.mouse_capture { "enabled" } else { "disabled" };
+                                        p2p_app::log_debug(&logs, format!("Mouse capture {}", mode));
+
+                                        // Execute the terminal command to actually toggle mouse capture
+                                        use ratatui::crossterm::execute;
+                                        let mut stdout = std::io::stdout();
+                                        let _ = if s.mouse_capture {
+                                            execute!(stdout, crossterm::event::EnableMouseCapture)
+                                        } else {
+                                            execute!(stdout, crossterm::event::DisableMouseCapture)
+                                        };
+                                    }
+                                    // Send message on Enter
+                                    crossterm::event::KeyCode::Enter => {
+                                        let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                        if tab_content.is_input_enabled() {
+                                            let text: String = s.chat_input.lines().join("\n");
+                                            if !text.trim().is_empty() {
+                                                match &tab_content {
+                                                    p2p_app::tui_tabs::TabContent::Chat => {
+                                                        // Send broadcast message
+                                                        let now = SystemTime::now();
+                                                        let ts = p2p_app::format_system_time(now);
+                                                        let msg = format!("{} [{}] {}", ts, s.own_nickname, text);
+                                                        s.messages.push_back((msg, None));
+                                                        if s.messages.len() > MAX_MESSAGE_HISTORY {
+                                                            s.messages.pop_front();
+                                                        }
+                                                        p2p_app::log_debug(&logs, format!("Sent broadcast: {}", text));
+                                                        if let Err(e) = p2p_app::save_message(&text, None, &s.topic_str, false, None) {
+                                                            p2p_app::log_debug(&logs, format!("Failed to save sent message: {}", e));
+                                                        }
+                                                    }
+                                                    p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+                                                        // Send DM
+                                                        let now = SystemTime::now();
+                                                        let ts = p2p_app::format_system_time(now);
+                                                        let msg = format!("{} [{}] {}", ts, s.own_nickname, text);
+                                                        let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
+                                                        dm_msgs.push_back(msg);
+                                                        if dm_msgs.len() > MAX_DM_HISTORY {
+                                                            dm_msgs.pop_front();
+                                                        }
+                                                        p2p_app::log_debug(&logs, format!("Sent DM to {}: {}", peer_id, text));
+                                                        if let Err(e) = p2p_app::save_message(&text, None, &s.topic_str, true, Some(peer_id)) {
+                                                            p2p_app::log_debug(&logs, format!("Failed to save sent DM: {}", e));
+                                                        }
+                                                    }
+                                                    _ => {}
+                                                }
+                                                // Clear the input after sending
+                                                s.chat_input = ratatui_textarea::TextArea::default();
+                                            }
+                                        }
+                                    }
+                                    // Enter text input to the chat input box
+                                    _ => {
+                                        let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                        if tab_content.is_input_enabled() {
+                                            s.chat_input.input(key_event);
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        InputEvent::Mouse(_mouse_event) => {
-                            // Handle mouse events if needed
+                        InputEvent::Mouse(mouse_event) => {
+                            // Handle mouse tab switching on click
+                            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
+                                if let Ok(mut s) = state.lock() {
+                                    // Tabs are typically on row 0, calculate which tab was clicked
+                                    // This is a simplified approach - just check if click is in tab area
+                                    if mouse_event.row == 0 {
+                                        // Rough tab calculation: each tab is ~10 chars wide
+                                        let tab_idx = ((mouse_event.column as usize) / 10).min(s.dynamic_tabs.total_tab_count().saturating_sub(1));
+                                        if tab_idx != s.active_tab {
+                                            s.active_tab = tab_idx;
+                                            s.chat_scroll_offset = 0;
+                                            p2p_app::log_debug(&logs, format!("Switched to tab {} via mouse", s.active_tab));
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -84,6 +197,7 @@ pub fn spawn_command_processor(
                                 if s.active_tab != 0 {
                                     s.unread_broadcasts += 1;
                                 }
+                                p2p_app::log_debug(&logs, format!("Broadcast message from {}: {}", sender_display, content));
                                 if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None) {
                                     p2p_app::log_debug(&logs, format!("Failed to save message: {}", e));
                                 }
@@ -112,6 +226,7 @@ pub fn spawn_command_processor(
                                 }
                                 *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
                                 s.dynamic_tabs.add_dm_tab(peer_id.clone());
+                                p2p_app::log_debug(&logs, format!("Direct message from {}: {}", sender_display, content));
                                 if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id)) {
                                     p2p_app::log_debug(&logs, format!("Failed to save DM: {}", e));
                                 }
