@@ -7,7 +7,6 @@ use ratatui::{
 };
 use std::io::Stdout;
 use std::sync::{Arc, Mutex};
-use std::collections::VecDeque;
 use std::time::Duration;
 use super::state::AppState;
 use super::constants::FRAME_TIME_MS;

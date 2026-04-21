@@ -100,12 +100,12 @@ pub fn load_and_format_messages(
                 msg.peer_id.clone(),
             ));
         }
-        let _ = p2p_app::log_debug(
+        p2p_app::log_debug(
             logs,
             format!("Loaded {} messages from database", db_messages.len()),
         );
     } else {
-        let _ = p2p_app::log_debug(logs, "Failed to load messages from database".to_string());
+        p2p_app::log_debug(logs, "Failed to load messages from database".to_string());
     }
     messages
 }

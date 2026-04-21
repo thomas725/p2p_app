@@ -120,11 +120,10 @@ pub fn spawn_command_processor(
                         }
                         #[cfg(feature = "mdns")]
                         SwarmEvent::PeerDiscovered { peer_id, addresses: _ } => {
-                            if let Ok(mut s) = state.lock() {
-                                if !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
+                            if let Ok(mut s) = state.lock()
+                                && !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
                                     s.peers.push_front((peer_id, p2p_app::now_timestamp(), p2p_app::now_timestamp()));
                                 }
-                            }
                         }
                         #[cfg(feature = "mdns")]
                         SwarmEvent::PeerExpired { peer_id } => {

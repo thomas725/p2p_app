@@ -17,8 +17,8 @@ pub fn spawn_input_handler(
     tokio::spawn(async move {
         loop {
             // Poll with FRAME_TIME_MS timeout (60 FPS)
-            if poll(Duration::from_millis(FRAME_TIME_MS)).ok() == Some(true) {
-                if let Ok(event) = read() {
+            if poll(Duration::from_millis(FRAME_TIME_MS)).ok() == Some(true)
+                && let Ok(event) = read() {
                     match event {
                         Event::Key(key) => {
                             let _ = input_tx.send(InputEvent::Key(key)).await;
@@ -29,7 +29,6 @@ pub fn spawn_input_handler(
                         _ => {}
                     }
                 }
-            }
             // Yield to async runtime
             tokio::task::yield_now().await;
         }

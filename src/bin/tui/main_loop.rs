@@ -1,4 +1,3 @@
-use super::*;
 use super::constants::CHANNEL_CAPACITY;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
