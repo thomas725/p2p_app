@@ -84,13 +84,8 @@ pub fn spawn_render_loop(
                             let peer_items: Vec<ListItem> = s.peers
                                 .iter()
                                 .map(|(id, _first_seen, last_seen)| {
-                                    // Display full ID if short enough, otherwise show first 8 chars + last 4 chars
-                                    let display_id = if id.len() <= 16 {
-                                        id.clone()
-                                    } else {
-                                        format!("{}...{}", &id[..8], &id[id.len()-4..])
-                                    };
-                                    ListItem::new(format!("{} ({})", display_id, last_seen))
+                                    // Display full ID in peer list for maximum visibility
+                                    ListItem::new(format!("{} ({})", id, last_seen))
                                 })
                                 .collect();
                             let peers_list = List::new(peer_items)
@@ -102,8 +97,14 @@ pub fn spawn_render_loop(
                                 .get(peer_id)
                                 .map(|msgs| msgs.iter().cloned().collect::<Vec<_>>().join("\n"))
                                 .unwrap_or_else(|| "No messages yet".to_string());
+                            // Show last 8 chars of peer ID (more distinctive than first 8)
+                            let short_id = if peer_id.len() <= 8 {
+                                peer_id.clone()
+                            } else {
+                                peer_id[peer_id.len()-8..].to_string()
+                            };
                             let dm_para = Paragraph::new(dm_text)
-                                .block(Block::default().title(format!("DM: {}", &peer_id[..std::cmp::min(8, peer_id.len())])).borders(Borders::ALL));
+                                .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
                             f.render_widget(dm_para, chunks[2]);
                         }
                         TabContent::Log => {
