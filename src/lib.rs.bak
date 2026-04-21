@@ -8,9 +8,6 @@ pub mod types;
 pub mod swarm_handler;
 pub mod fmt;
 pub mod behavior;
-pub mod db;
-pub mod messages;
-pub mod peers;
 
 use crate::logging::{
     get_tui_logs, init_logging, push_log, set_tui_log_callback, strip_ansi_codes,
@@ -29,17 +26,8 @@ pub use fmt::{
     peer_display_name, scroll_title, short_peer_id,
 };
 pub use behavior::{
-    build_behaviour, AppBehaviour, BroadcastMessage, ChatCodec, DirectMessage, CHAT_TOPIC,
-    DM_PROTOCOL_NAME,
-};
-pub use db::{get_database_url, get_libp2p_identity, sqlite_connect};
-pub use messages::{
-    get_unsent_direct_messages, get_unsent_messages, load_direct_messages, load_messages,
-    mark_message_sent, save_message,
-};
-pub use peers::{
-    get_average_peer_count, get_recent_peer_count, load_listen_ports, load_peers, save_listen_ports,
-    save_peer, save_peer_session,
+    build_behaviour, AppBehaviour, AppBehaviourEvent, BroadcastMessage, ChatCodec, DirectMessage,
+    DmProtocol, CHAT_TOPIC, DM_PROTOCOL_NAME,
 };
 #[allow(unused_imports)]
 use std::collections::VecDeque;
@@ -88,20 +76,566 @@ pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
         .with_default(LevelFilter::WARN)
 }
 
-use diesel_migrations::{EmbeddedMigrations, embed_migrations};
-pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+/// Default broadcast topic for chat messages
+pub const CHAT_TOPIC: &str = "test-net";
+/// Protocol name for direct messaging via libp2p request-response
+pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 
-#[cfg(feature = "tui")]
-pub fn log_debug(
-    logs: &std::sync::Mutex<std::collections::VecDeque<String>>,
-    message: impl Into<String>,
-) {
-    let ts = format_system_time(std::time::SystemTime::now());
-    let formatted = format!("[{}] {}", ts, message.into());
-    if let Ok(mut l) = logs.lock() {
-        l.push_back(formatted);
+/// Type alias for the main network behavior combining gossipsub, request-response, and mDNS
+pub type P2pAppBehaviour = AppBehaviour;
+
+/// Format a naive UTC datetime as a local time string with timezone.
+///
+/// # Arguments
+/// * `time` - NaiveDateTime in UTC
+///
+/// # Returns
+/// Formatted string in timezone-aware local time: "YYYY-MM-DD HH:MM:SS +ZZZZ"
+pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
+    let local = time.and_utc().with_timezone(&chrono::Local);
+    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
+}
+
+/// Get the current time as a formatted local time string with timezone.
+///
+/// # Returns
+/// Formatted string: "YYYY-MM-DD HH:MM:SS +ZZZZ" in local time
+pub fn now_timestamp() -> String {
+    let local = chrono::Local::now();
+    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
+}
+
+#[derive(NetworkBehaviour)]
+pub struct AppBehaviour {
+    pub gossipsub: gossipsub::Behaviour,
+    pub request_response: request_response::Behaviour<ChatCodec>,
+    #[cfg(feature = "mdns")]
+    pub mdns: mdns::tokio::Behaviour,
+}
+
+/// Build the libp2p NetworkBehaviour combining gossipsub, request-response, and mDNS.
+///
+/// Configures gossipsub mesh parameters based on network size (Small/Medium/Large)
+/// to optimize for the expected scale of the network.
+///
+/// # Arguments
+/// * `key` - The node's identity keypair
+/// * `network_size` - Adaptive network classification for tuning gossipsub
+///
+/// # Returns
+/// An AppBehaviour instance ready for use with Swarm
+pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::time::Duration;
+
+    let message_id_fn = |message: &gossipsub::Message| {
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        gossipsub::MessageId::from(s.finish().to_string())
+    };
+
+    let (heartbeat_interval, gossip_lazy, mesh_n, mesh_n_low, mesh_n_high, flood_publish) =
+        match network_size {
+            NetworkSize::Small => (Duration::from_millis(500), 1, 1, 1, 2, true),
+            NetworkSize::Medium => (Duration::from_secs(1), 3, 6, 4, 8, false),
+            NetworkSize::Large => (Duration::from_secs(2), 6, 8, 6, 12, false),
+        };
+
+    let mut config_builder = gossipsub::ConfigBuilder::default();
+    config_builder
+        .heartbeat_interval(heartbeat_interval)
+        .validation_mode(gossipsub::ValidationMode::Strict)
+        .message_id_fn(message_id_fn)
+        .gossip_lazy(gossip_lazy)
+        .mesh_n(mesh_n)
+        .mesh_n_low(mesh_n_low)
+        .mesh_n_high(mesh_n_high);
+
+    if flood_publish {
+        config_builder.flood_publish(true);
+    }
+
+    let gossipsub_config = config_builder
+        .build()
+        .expect("gossipsub config should be valid");
+
+    let gossipsub = gossipsub::Behaviour::new(
+        gossipsub::MessageAuthenticity::Signed(key.clone()),
+        gossipsub_config,
+    )
+    .expect("gossipsub should be created");
+
+    #[cfg(feature = "mdns")]
+    let mdns = mdns::tokio::Behaviour::new(
+        mdns::Config {
+            query_interval: Duration::from_millis(500),
+            ..Default::default()
+        },
+        key.public().to_peer_id(),
+    )
+    .expect("mDNS should be created");
+
+    let request_response = request_response::Behaviour::<ChatCodec>::new(
+        vec![(
+            libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
+            libp2p::request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default().with_request_timeout(Duration::from_secs(5)),
+    );
+
+    AppBehaviour {
+        gossipsub,
+        request_response,
+        #[cfg(feature = "mdns")]
+        mdns,
     }
 }
+use crate::schema::identities::dsl::identities;
+use crate::schema::messages::dsl::messages;
+use crate::schema::peers::dsl::peers;
+use crate::{
+    models_insertable::{NewIdentity, NewMessage, NewPeer, NewPeerSession},
+    models_queryable::{Identity, Message, Peer},
+};
+use color_eyre::eyre::{Context, eyre};
+use diesel::{
+    Connection as _, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
+    SelectableHelper as _, SqliteConnection,
+};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+use dotenvy::dotenv;
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
+
+use serde::{Deserialize, Serialize};
+use std::env;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectMessage {
+    pub content: String,
+    pub timestamp: i64,
+    pub sent_at: Option<f64>,
+    pub nickname: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BroadcastMessage {
+    pub content: String,
+    pub sent_at: Option<f64>,
+    pub nickname: Option<String>,
+}
+
+pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
+
+/// Establish a connection to the SQLite database and run pending migrations.
+///
+/// If DATABASE_URL is set, uses that file directly.
+/// Otherwise, finds the first unused SQLite database in the current working directory
+/// using lock files (`.lock` files with our PID), or creates a new one.
+/// Automatically runs all pending Diesel migrations on first call.
+///
+/// # Returns
+/// A new SqliteConnection with all migrations applied, or an error if connection/migration fails
+///
+/// # Errors
+/// - If database file cannot be found or created
+/// - If migrations fail to execute
+pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
+    dotenv().ok();
+
+    // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
+    if let Ok(url) = env::var("DATABASE_URL") {
+        let mut conn = SqliteConnection::establish(&url)
+            .wrap_err_with(|| format!("Error connecting to {url}"))?;
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| eyre!(format!("Error executing migrations on {url}: {e}")))?;
+        return Ok(conn);
+    }
+
+    // No DATABASE_URL set: find or create an unused database in cwd
+    let db_path = find_or_create_unused_db()?;
+    let mut conn = SqliteConnection::establish(&db_path)
+        .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
+    conn.run_pending_migrations(MIGRATIONS)
+        .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
+    Ok(conn)
+}
+
+/// Finds the first unused SQLite database in the current working directory using lock files.
+/// If none is available, creates a new database with the next sequential name.
+fn find_or_create_unused_db() -> color_eyre::Result<String> {
+    use std::fs;
+    use std::io::Write;
+    use std::process::id as getpid;
+
+    let cwd = std::env::current_dir().wrap_err("failed to get current working directory")?;
+    let pid = getpid();
+
+    // Collect all existing .db files
+    let mut db_files: Vec<_> = fs::read_dir(&cwd)
+        .wrap_err("failed to read current directory")?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("db") {
+                path.file_name().and_then(|n| n.to_str()).map(String::from)
+            } else {
+                None
+            }
+        })
+        .collect();
+    db_files.sort();
+
+    // Check existing databases for lock files (lock indicates active use)
+    // A lock file is considered active if:
+    // 1. It exists and contains a numeric PID
+    // 2. That process is still running
+    let mut available = Vec::new();
+    for db_file in &db_files {
+        let lock_path = cwd.join(format!("{}.lock", db_file));
+        let is_locked = if lock_path.exists() {
+            match fs::read_to_string(&lock_path) {
+                Ok(content) => {
+                    // If PID in lock file is still running, it's locked
+                    if let Ok(other_pid) = content.trim().parse::<u32>() {
+                        if other_pid == 0 {
+                            false // Empty/zero PID means unlocked
+                        } else {
+                            // Check if process with this PID exists using /proc
+                            #[cfg(target_os = "linux")]
+                            {
+                                std::path::Path::new(&format!("/proc/{other_pid}")).exists()
+                            }
+                            #[cfg(not(target_os = "linux"))]
+                            {
+                                // On non-Linux, we can't easily check, so assume locked
+                                true
+                            }
+                        }
+                    } else {
+                        true // Non-numeric content = assume locked
+                    }
+                }
+                Err(_) => true, // Can't read lock file = assume locked
+            }
+        } else {
+            false // No lock file = available
+        };
+        if !is_locked {
+            available.push(db_file.clone());
+        }
+    }
+
+    // Pick first available, or create new one
+    let db_file = if let Some(first) = available.first() {
+        first.clone()
+    } else {
+        // Find the next sequential number
+        let next_n = db_files
+            .iter()
+            .filter_map(|name| {
+                let stem = name.trim_start_matches("sqlite_").trim_end_matches(".db");
+                stem.parse::<u32>().ok()
+            })
+            .max()
+            .unwrap_or(0);
+        format!("sqlite_{}.db", next_n + 1)
+    };
+
+    // Write lock file with our PID
+    let lock_path = cwd.join(format!("{}.lock", db_file));
+    let mut lock_file = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&lock_path)
+        .wrap_err_with(|| format!("failed to create lock file for {db_file}"))?;
+    write!(lock_file, "{}", pid)
+        .wrap_err_with(|| "failed to write PID to lock file".to_string())?;
+
+    Ok(cwd.join(db_file).to_string_lossy().into_owned())
+}
+
+/// Convert boolean to integer for database operations
+/// Get the database URL from environment or default value.
+///
+/// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
+#[must_use]
+pub fn get_database_url() -> String {
+    dotenv().ok();
+    env::var("DATABASE_URL")
+        .unwrap_or_else(|_| find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned()))
+}
+
+pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
+    dotenv().ok();
+    let conn = &mut sqlite_connect()?;
+    if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
+        for row in rows {
+            match libp2p_identity::Keypair::from_protobuf_encoding(&row.key) {
+                Ok(i) => {
+                    return Ok(i);
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("invalid identity stored: {row:?} - {e}");
+                }
+            }
+        }
+    }
+    #[cfg(feature = "tracing")]
+    tracing::warn!("no valid identity found in database, generating and storing new one");
+    let keypair = libp2p_identity::Keypair::generate_ed25519();
+    match keypair.to_protobuf_encoding() {
+        Ok(key) => {
+            let i = NewIdentity {
+                key,
+                last_tcp_port: None,
+                last_quic_port: None,
+                self_nickname: None,
+            };
+            match diesel::insert_into(schema::identities::table)
+                .values(&i)
+                .returning(Identity::as_returning())
+                .get_result(conn)
+            {
+                Ok(i) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!("inserted new identity: {i:?}");
+                }
+                Err(e) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("failed to insert identity {i:?}: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            #[cfg(feature = "tracing")]
+            tracing::error!("failed to encode identity: {e}");
+        }
+    }
+    Ok(keypair)
+}
+
+/// Save a message to the database.
+///
+/// Inserts a new message with the given content and metadata.
+/// Messages are marked as unsent initially; use `mark_message_sent()` after transmission.
+///
+/// # Arguments
+/// * `content` - Message text (can be empty string)
+/// * `peer_id` - Sender's peer ID (None for local user)
+/// * `topic` - Topic for broadcast messages (e.g., "test-net")
+/// * `is_direct` - True for direct peer-to-peer, false for broadcast
+/// * `target_peer` - Recipient peer ID (required if `is_direct` is true)
+///
+/// # Returns
+/// The inserted Message with auto-generated id and timestamps
+pub fn save_message(
+    content: &str,
+    peer_id: Option<&str>,
+    topic: &str,
+    is_direct: bool,
+    target_peer: Option<&str>,
+) -> color_eyre::Result<Message> {
+    let conn = &mut sqlite_connect()?;
+    let new_msg = NewMessage {
+        content: content.to_string(),
+        peer_id: peer_id.map(|s| s.to_string()),
+        topic: topic.to_string(),
+        sent: 0,
+        is_direct: is_direct as i32,
+        target_peer: target_peer.map(|s| s.to_string()),
+    };
+    diesel::insert_into(schema::messages::table)
+        .values(&new_msg)
+        .returning(Message::as_returning())
+        .get_result(conn)
+        .wrap_err_with(|| {
+            format!(
+                "Failed to save message: content='{}', topic='{}', is_direct={}",
+                content, topic, is_direct
+            )
+        })
+        .inspect(|msg| {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(message_id = msg.id, "Message saved to database");
+        })
+}
+
+/// Get all unsent broadcast messages for a topic, ordered by creation time.
+pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    messages
+        .filter(schema::messages::topic.eq(topic))
+        .filter(schema::messages::sent.eq(0))
+        .filter(schema::messages::is_direct.eq(0))
+        .order(schema::messages::created_at.asc())
+        .select(Message::as_select())
+        .load(conn)
+        .wrap_err_with(|| format!("Failed to load unsent messages for topic: {}", topic))
+}
+
+/// Get all unsent direct messages to a specific peer, ordered by creation time.
+/// Mark a message as sent by ID.
+pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::messages::table.filter(schema::messages::id.eq(id)))
+        .set(schema::messages::sent.eq(1))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Load broadcast messages for a topic, newest first, limited to count.
+pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    let msgs = messages
+        .filter(schema::messages::topic.eq(topic))
+        .filter(schema::messages::is_direct.eq(0))
+        .order(schema::messages::created_at.desc())
+        .limit(limit as i64)
+        .select(Message::as_select())
+        .load(conn)?;
+    Ok(msgs)
+}
+
+/// Load direct messages with a peer, oldest first, limited to count.
+pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    let msgs = messages
+        .filter(schema::messages::target_peer.eq(target_peer))
+        .filter(schema::messages::is_direct.eq(1))
+        .order(schema::messages::created_at.asc())
+        .limit(limit as i64)
+        .select(Message::as_select())
+        .load(conn)?;
+    Ok(msgs)
+}
+
+pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
+    let conn = &mut sqlite_connect()?;
+    messages
+        .filter(schema::messages::target_peer.eq(target_peer))
+        .filter(schema::messages::sent.eq(0))
+        .filter(schema::messages::is_direct.eq(1))
+        .order(schema::messages::created_at.asc())
+        .select(Message::as_select())
+        .load(conn)
+        .wrap_err_with(|| {
+            format!(
+                "Failed to load unsent direct messages for peer: {}",
+                target_peer
+            )
+        })
+}
+
+/// Load all known peers, ordered by most recently seen first.
+/// Save or update a peer in the database.
+///
+/// If peer already exists (by peer_id), updates addresses and last_seen timestamp.
+/// Otherwise inserts a new peer record with current timestamp.
+///
+/// # Arguments
+/// * `peer_id` - Unique peer identifier
+/// * `addresses` - List of multiaddrs where this peer can be reached
+///
+/// # Returns
+/// The saved or updated Peer record
+pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer> {
+    let conn = &mut sqlite_connect()?;
+    let addresses_str = addresses.join(",");
+    let now = chrono::Utc::now().naive_utc();
+
+    let new_peer = NewPeer {
+        peer_id: peer_id.to_string(),
+        addresses: addresses_str.clone(),
+        first_seen: now,
+        last_seen: now,
+        peer_local_nickname: None,
+        received_nickname: None,
+    };
+
+    let peer = diesel::insert_into(schema::peers::table)
+        .values(&new_peer)
+        .on_conflict(schema::peers::peer_id)
+        .do_update()
+        .set((
+            schema::peers::addresses.eq(&addresses_str),
+            schema::peers::last_seen.eq(now),
+        ))
+        .returning(Peer::as_returning())
+        .get_result(conn)?;
+    Ok(peer)
+}
+
+pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
+    let conn = &mut sqlite_connect()?;
+    let peers_list = peers
+        .order(schema::peers::last_seen.desc())
+        .select(Peer::as_select())
+        .load(conn)?;
+    Ok(peers_list)
+}
+
+pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    let new_session = NewPeerSession {
+        concurrent_peers,
+        recorded_at: chrono::Utc::now().naive_utc(),
+    };
+    diesel::insert_into(schema::peer_sessions::table)
+        .values(&new_session)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    diesel::update(schema::identities::table)
+        .set((
+            schema::identities::last_tcp_port.eq(tcp_port),
+            schema::identities::last_quic_port.eq(quic_port),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
+    let conn = &mut sqlite_connect()?;
+    let result = schema::identities::table
+        .select((
+            schema::identities::last_tcp_port,
+            schema::identities::last_quic_port,
+        ))
+        .first::<(Option<i32>, Option<i32>)>(conn)
+        .optional()?;
+    Ok(result.unwrap_or((None, None)))
+}
+
+pub fn get_average_peer_count() -> color_eyre::Result<f64> {
+    let conn = &mut sqlite_connect()?;
+    let sessions = schema::peer_sessions::table
+        .select(schema::peer_sessions::concurrent_peers)
+        .load::<i32>(conn)?;
+    if sessions.is_empty() {
+        return Ok(0.0);
+    }
+    let sum: i64 = sessions.iter().map(|&c| c as i64).sum();
+    Ok(sum as f64 / sessions.len() as f64)
+}
+
+pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
+    let conn = &mut sqlite_connect()?;
+    let last = schema::peer_sessions::table
+        .select(schema::peer_sessions::concurrent_peers)
+        .order(schema::peer_sessions::recorded_at.desc())
+        .first::<i32>(conn)
+        .optional()?;
+    Ok(last.unwrap_or(0))
+}
+
+/// Adaptive network size classification based on average peer count.
+///
 
 #[cfg(feature = "tui")]
 pub mod tui {
@@ -560,6 +1094,79 @@ mod tests {
         let size = network::NetworkSize::Medium;
         let copy = size;
         assert_eq!(size, copy);
+    }
+}
+
+#[cfg(feature = "tui")]
+pub fn format_system_time(time: std::time::SystemTime) -> String {
+    chrono::DateTime::<chrono::Local>::from(time)
+        .format("%H:%M:%S.%3f")
+        .to_string()
+}
+
+#[cfg(feature = "tui")]
+pub fn short_peer_id(id: &str) -> String {
+    id[id.len().saturating_sub(8.min(id.len()))..].to_string()
+}
+
+#[cfg(feature = "tui")]
+pub fn peer_display_name(
+    peer_id: &str,
+    local_nicknames: &std::collections::HashMap<String, String>,
+    received_nicknames: &std::collections::HashMap<String, String>,
+) -> String {
+    if let Some(nick) = local_nicknames.get(peer_id) {
+        let short = short_peer_id(peer_id);
+        return format!("{} ({})", nick, &short[..3.min(short.len())]);
+    }
+    if let Some(nick) = received_nicknames.get(peer_id) {
+        let short = short_peer_id(peer_id);
+        return format!("{} ({})", nick, &short[..3.min(short.len())]);
+    }
+    short_peer_id(peer_id)
+}
+
+#[cfg(feature = "tui")]
+pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+    total.saturating_sub(visible).min(total.saturating_sub(1))
+}
+
+#[cfg(feature = "tui")]
+pub fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
+    format!("{} [{}/{}]", prefix, scroll_offset + 1, total)
+}
+
+#[cfg(feature = "tui")]
+pub fn format_latency(sent_at: Option<f64>, received_at: std::time::SystemTime) -> String {
+    if let Some(sent) = sent_at {
+        let recv = received_at
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time is valid")
+            .as_secs_f64();
+        let diff = recv - sent;
+        if diff.abs() < 10.0 {
+            format!("[{:.3}s]", diff)
+        } else {
+            let sent_str = format_system_time(
+                std::time::UNIX_EPOCH + std::time::Duration::from_secs_f64(sent),
+            );
+            let recv_str = format_system_time(received_at);
+            format!("[sent:{} recv:{}]", sent_str, recv_str)
+        }
+    } else {
+        String::new()
+    }
+}
+
+#[cfg(feature = "tui")]
+pub fn log_debug(
+    logs: &std::sync::Mutex<std::collections::VecDeque<String>>,
+    message: impl Into<String>,
+) {
+    let ts = format_system_time(std::time::SystemTime::now());
+    let formatted = format!("[{}] {}", ts, message.into());
+    if let Ok(mut l) = logs.lock() {
+        l.push_back(formatted);
     }
 }
 

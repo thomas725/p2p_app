@@ -1,5 +1,5 @@
 use crate::types::SwarmEvent;
-use crate::{AppBehaviour, AppBehaviourEvent as AppEv};
+use crate::{AppBehaviour, behavior::AppBehaviourEvent as AppEv};
 use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
 use libp2p::gossipsub;
 use libp2p::futures::StreamExt;

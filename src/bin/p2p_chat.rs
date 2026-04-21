@@ -92,7 +92,7 @@ async fn main() -> color_eyre::Result<()> {
                     libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
                         p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
                     }
-                    libp2p::swarm::SwarmEvent::Behaviour(p2p_app::AppBehaviourEvent::Gossipsub(
+                    libp2p::swarm::SwarmEvent::Behaviour(p2p_app::behavior::AppBehaviourEvent::Gossipsub(
                         libp2p::gossipsub::Event::Message { propagation_source, message, .. }
                     )) => {
                         let msg = String::from_utf8_lossy(&message.data);

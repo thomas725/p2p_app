@@ -1,7 +1,7 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::logging::init_logging;
 use p2p_app::{
-    AppBehaviour, AppBehaviourEvent as AppEv, DirectMessage, DynamicTabs, NetworkSize, TabContent,
+    AppBehaviour, DirectMessage, DynamicTabs, NetworkSize, TabContent,
     TuiEvent, auto_scroll_offset, build_behaviour, create_channels, ensure_self_nickname,
     format_latency, format_peer_datetime, format_system_time, get_database_url, get_network_size,
     get_self_nickname, get_unsent_messages, load_direct_messages, load_listen_ports, load_messages,
