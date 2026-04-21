@@ -50,8 +50,6 @@ pub use logging_config::tracing_filter;
 pub use tui_tabs::{DynamicTabs, TabContent, TabId, DmTab};
 #[cfg(feature = "tui")]
 pub use tui_test_state::{TuiTestState, NotificationTarget};
-#[cfg(feature = "tui")]
-pub use tui_events::{TuiEvent, InputCommand, EventTx, EventRx, InputTx, InputRx, TuiThreads, create_channels};
 
 
 
