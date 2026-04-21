@@ -226,12 +226,12 @@ pub fn spawn_command_processor(
 
                                             col_pos = tab_end;
                                         }
-                                    } else if mouse_event.row > 1 && mouse_event.row < 16 {
-                                        // Peer list click - rows 2-15 (accounting for tab row 0, peer info row 1)
+                                    } else if mouse_event.row > 2 && mouse_event.row < 16 {
+                                        // Peer list click - rows 3+ (accounting for tab row 0, peer info row 1, border row 2)
                                         let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                         if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                            // Calculate which peer was clicked (row 2 = first peer, row 3 = second, etc.)
-                                            let peer_row = (mouse_event.row as usize).saturating_sub(2);
+                                            // Calculate which peer was clicked (row 3 = first peer, row 4 = second, etc.)
+                                            let peer_row = (mouse_event.row as usize).saturating_sub(3);
                                             if peer_row < s.peers.len() {
                                                 // Update selection and open DM
                                                 s.peer_selection = peer_row;
