@@ -49,7 +49,11 @@ pub async fn run_new_tui(
     let own_nickname = p2p_app::ensure_self_nickname()
         .unwrap_or_else(|_| "Anonymous".to_string());
 
-    p2p_app::log_debug(&logs, format!("Loading database for topic: {}", topic_str));
+    // Get database info by attempting a connection to log the path
+    let db_info = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "SQLite database (auto-selected in current directory)".to_string());
+    p2p_app::log_debug(&logs, format!("Database: {}", db_info));
+    p2p_app::log_debug(&logs, format!("Loading data for topic: {}", topic_str));
 
     // Load initial messages from database
     let initial_messages = super::state::load_and_format_messages(
