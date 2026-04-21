@@ -1,0 +1,170 @@
+name: Release Builds
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v0.1.0)'
+        required: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 1
+
+jobs:
+  build-release:
+    name: Build Release (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary_name: p2p_chat_example
+            build_cmd: cargo build --release --target x86_64-unknown-linux-gnu
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary_name: p2p_chat_example
+            build_cmd: cargo build --release --target x86_64-apple-darwin
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary_name: p2p_chat_example
+            build_cmd: cargo build --release --target aarch64-apple-darwin
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary_name: p2p_chat_example
+            build_cmd: cargo build --release --target aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+          cache-all-crates: true
+          save-if: true
+      
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev pkg-config build-essential
+      
+      - name: Install cross (for ARM targets)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo install cross --locked
+      
+      - name: Build with cross (ARM)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        env:
+          CROSS_CONTAINER_IN_CONTAINER: true
+        run: cross build --release --target aarch64-unknown-linux-gnu
+      
+      - name: Build (non-ARM)
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        run: ${{ matrix.build_cmd }}
+      
+      - name: Strip binary (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: strip target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+      
+      - name: Create checksums
+        run: |
+          cd target/${{ matrix.target }}/release
+          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
+          cat ${{ matrix.binary_name }}.sha256
+      
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-release
+          path: |
+            target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+            target/${{ matrix.target }}/release/${{ matrix.binary_name }}.sha256
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+      
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find release-artifacts -type f \( -name "p2p_chat_example" -o -name "*.sha256" \) -exec cp {} release-files/ \;
+          ls -la release-files/
+      
+      - name: Get release notes from CHANGELOG
+        id: release-notes
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # Extract release notes for current tag
+            TAG=${GITHUB_REF#refs/tags/}
+            sed -n "/^## \[$TAG\]/,/^## \[/p" CHANGELOG.md | sed '$d' > RELEASE_NOTES.txt || echo "Release of $TAG" > RELEASE_NOTES.txt
+          else
+            echo "Release of ${GITHUB_REF#refs/tags/}" > RELEASE_NOTES.txt
+          fi
+          cat RELEASE_NOTES.txt
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          body_path: RELEASE_NOTES.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-minimal-release:
+    name: Build Minimal Release (Embedded Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: minimal-release
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev pkg-config
+      
+      - name: Build minimal binary
+        run: cargo build --release --no-default-features --features basic,mdns,sqlite_bundled
+      
+      - name: Create checksums
+        run: |
+          cd target/release
+          sha256sum p2p_chat_example > p2p_chat_example.minimal.sha256
+          cat p2p_chat_example.minimal.sha256
+      
+      - name: Upload minimal artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: minimal-release
+          path: |
+            target/release/p2p_chat_example
+            target/release/p2p_chat_example.minimal.sha256
+          retention-days: 30

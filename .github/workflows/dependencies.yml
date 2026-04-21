@@ -1,0 +1,31 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Check for updates daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-dependencies:
+    name: Check Dependency Updates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - uses: Swatinem/rust-cache@v2
+      
+      - name: Check for outdated dependencies
+        run: |
+          cargo install cargo-outdated --locked || true
+          cargo outdated
+      
+      - name: Check for security vulnerabilities
+        run: |
+          cargo install cargo-audit --locked || true
+          cargo audit
