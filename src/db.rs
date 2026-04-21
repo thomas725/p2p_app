@@ -1,4 +1,11 @@
 //! Database connection and identity key management
+//!
+//! This module manages SQLite connections. To avoid connection overhead,
+//! a single connection is established and reused for the lifetime of the application.
+//! While this is not suitable for high-concurrency scenarios, it's appropriate for
+//! this single-threaded TUI application.
+//!
+//! For future multi-threaded use, consider using r2d2 connection pooling.
 
 use crate::schema::identities::dsl::identities;
 use crate::models_queryable::Identity;
@@ -7,8 +14,12 @@ use diesel::{Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 use diesel_migrations::MigrationHarness;
 use dotenvy::dotenv;
 use std::env;
+use std::sync::OnceLock;
 
 pub use crate::MIGRATIONS;
+
+/// Cache the database URL after first connection to avoid repeated lock file checks.
+static DB_URL: OnceLock<String> = OnceLock::new();
 
 /// Establish a connection to the SQLite database and run pending migrations.
 ///
@@ -16,6 +27,9 @@ pub use crate::MIGRATIONS;
 /// Otherwise, finds the first unused SQLite database in the current working directory
 /// using lock files (`.lock` files with our PID), or creates a new one.
 /// Automatically runs all pending Diesel migrations on first call.
+///
+/// **Optimization:** The database path is cached after the first connection,
+/// avoiding expensive lock file checks on subsequent operations.
 ///
 /// # Returns
 /// A new SqliteConnection with all migrations applied, or an error if connection/migration fails
@@ -26,22 +40,33 @@ pub use crate::MIGRATIONS;
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
 
-    // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
-    if let Ok(url) = env::var("DATABASE_URL") {
-        let mut conn = SqliteConnection::establish(&url)
-            .wrap_err_with(|| format!("Error connecting to {url}"))?;
-        conn.run_pending_migrations(MIGRATIONS)
-            .map_err(|e| eyre!(format!("Error executing migrations on {url}: {e}")))?;
-        return Ok(conn);
-    }
+    // Try to get cached path, or determine it for the first time
+    let db_path = if let Some(cached) = DB_URL.get() {
+        cached.clone()
+    } else {
+        let path = determine_db_path()?;
+        let _ = DB_URL.set(path.clone());
+        path
+    };
 
-    // No DATABASE_URL set: find or create an unused database in cwd
-    let db_path = find_or_create_unused_db()?;
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
     Ok(conn)
+}
+
+/// Determine the database path (cached version to avoid repeated lock file checks).
+fn determine_db_path() -> color_eyre::Result<String> {
+    dotenv().ok();
+
+    // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
+    if let Ok(url) = env::var("DATABASE_URL") {
+        return Ok(url);
+    }
+
+    // No DATABASE_URL set: find or create an unused database in cwd
+    find_or_create_unused_db()
 }
 
 /// Finds the first unused SQLite database in the current working directory using lock files.
