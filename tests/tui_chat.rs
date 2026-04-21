@@ -1,6 +1,7 @@
 #[cfg(feature = "tui")]
 mod tests {
-    use p2p_app::tui::{DmTab, NotificationTarget, TabId, TuiTestState};
+    use p2p_app::tui_tabs::{DmTab, TabId};
+    use p2p_app::tui_test_state::{TuiTestState, NotificationTarget};
 
     #[test]
     fn test_layout_rows_no_notification() {
@@ -275,7 +276,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_tabs_add_remove() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
 
         assert_eq!(tabs.dm_tab_count(), 0);
 
@@ -300,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_tabs_titles() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         tabs.add_dm_tab("12D3KooWSkP1pEPy2".to_string());
         tabs.add_dm_tab("12D3KooWGDyE67".to_string());
 
@@ -316,59 +317,59 @@ mod tests {
     #[test]
     fn test_dm_tab_short_id() {
         let dm =
-            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
         let short = dm.short_id();
         assert_eq!(short.len(), 8);
     }
 
     #[test]
     fn test_tab_content_mapping() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         tabs.add_dm_tab("peerA".to_string());
         tabs.add_dm_tab("peerB".to_string());
 
-        assert_eq!(tabs.tab_index_to_content(0), p2p_app::tui::TabContent::Chat);
+        assert_eq!(tabs.tab_index_to_content(0), p2p_app::tui_tabs::TabContent::Chat);
         assert_eq!(
             tabs.tab_index_to_content(1),
-            p2p_app::tui::TabContent::Peers
+            p2p_app::tui_tabs::TabContent::Peers
         );
         assert_eq!(
             tabs.tab_index_to_content(2),
-            p2p_app::tui::TabContent::Direct("peerA".to_string())
+            p2p_app::tui_tabs::TabContent::Direct("peerA".to_string())
         );
         assert_eq!(
             tabs.tab_index_to_content(3),
-            p2p_app::tui::TabContent::Direct("peerB".to_string())
+            p2p_app::tui_tabs::TabContent::Direct("peerB".to_string())
         );
-        assert_eq!(tabs.tab_index_to_content(4), p2p_app::tui::TabContent::Log);
+        assert_eq!(tabs.tab_index_to_content(4), p2p_app::tui_tabs::TabContent::Log);
     }
 
     #[test]
     fn test_tab_content_peer_id() {
-        let direct = p2p_app::tui::TabContent::Direct("peer123".to_string());
+        let direct = p2p_app::tui_tabs::TabContent::Direct("peer123".to_string());
         assert_eq!(direct.peer_id(), Some("peer123"));
 
-        let chat = p2p_app::tui::TabContent::Chat;
+        let chat = p2p_app::tui_tabs::TabContent::Chat;
         assert_eq!(chat.peer_id(), None);
 
-        let peers = p2p_app::tui::TabContent::Peers;
+        let peers = p2p_app::tui_tabs::TabContent::Peers;
         assert_eq!(peers.peer_id(), None);
 
-        let log = p2p_app::tui::TabContent::Log;
+        let log = p2p_app::tui_tabs::TabContent::Log;
         assert_eq!(log.peer_id(), None);
     }
 
     #[test]
     fn test_tab_content_is_input_enabled() {
-        assert!(p2p_app::tui::TabContent::Chat.is_input_enabled());
-        assert!(p2p_app::tui::TabContent::Direct("peer".to_string()).is_input_enabled());
-        assert!(!p2p_app::tui::TabContent::Peers.is_input_enabled());
-        assert!(!p2p_app::tui::TabContent::Log.is_input_enabled());
+        assert!(p2p_app::tui_tabs::TabContent::Chat.is_input_enabled());
+        assert!(p2p_app::tui_tabs::TabContent::Direct("peer".to_string()).is_input_enabled());
+        assert!(!p2p_app::tui_tabs::TabContent::Peers.is_input_enabled());
+        assert!(!p2p_app::tui_tabs::TabContent::Log.is_input_enabled());
     }
 
     #[test]
     fn test_dynamic_tabs_total_tab_count() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         assert_eq!(tabs.total_tab_count(), 3);
 
         tabs.add_dm_tab("peer1".to_string());
@@ -380,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_tabs_get_dm_tab() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         tabs.add_dm_tab("peer1".to_string());
 
         assert!(tabs.get_dm_tab("peer1").is_some());
@@ -389,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_dynamic_tabs_get_dm_tab_mut() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         tabs.add_dm_tab("peer1".to_string());
 
         if let Some(tab) = tabs.get_dm_tab_mut("peer1") {
@@ -401,17 +402,17 @@ mod tests {
 
     #[test]
     fn test_notification_target_clone() {
-        let broadcasts = p2p_app::tui::NotificationTarget::Broadcasts;
-        let dm = p2p_app::tui::NotificationTarget::Dm("peer".to_string());
+        let broadcasts = p2p_app::tui_test_state::NotificationTarget::Broadcasts;
+        let dm = p2p_app::tui_test_state::NotificationTarget::Dm("peer".to_string());
 
         let broadcasts_clone = broadcasts.clone();
         let dm_clone = dm.clone();
 
         assert!(matches!(
             broadcasts_clone,
-            p2p_app::tui::NotificationTarget::Broadcasts
+            p2p_app::tui_test_state::NotificationTarget::Broadcasts
         ));
-        assert!(matches!(dm_clone, p2p_app::tui::NotificationTarget::Dm(p) if p == "peer"));
+        assert!(matches!(dm_clone, p2p_app::tui_test_state::NotificationTarget::Dm(p) if p == "peer"));
     }
 
     #[test]
@@ -449,7 +450,7 @@ mod tests {
         let target = state.handle_notification_click(19);
         assert!(matches!(
             target,
-            Some(p2p_app::tui::NotificationTarget::Broadcasts)
+            Some(p2p_app::tui_test_state::NotificationTarget::Broadcasts)
         ));
 
         let target = state.handle_notification_click(20);
@@ -464,7 +465,7 @@ mod tests {
 
         let target = state.handle_notification_click(40);
         match target {
-            Some(p2p_app::tui::NotificationTarget::Dm(pid)) => {
+            Some(p2p_app::tui_test_state::NotificationTarget::Dm(pid)) => {
                 assert!(pid == "Alice" || pid == "Bob");
             }
             _ => panic!("Expected Dm notification"),
@@ -525,30 +526,30 @@ mod tests {
     #[test]
     fn test_dm_tab_short_id_consistency() {
         let dm1 =
-            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
         let dm2 =
-            p2p_app::tui::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
 
         assert_eq!(dm1.short_id(), dm2.short_id());
     }
 
     #[test]
     fn test_dm_tab_debug_format() {
-        let dm = p2p_app::tui::DmTab::new("test-peer".to_string());
+        let dm = p2p_app::tui_tabs::DmTab::new("test-peer".to_string());
         let debug = format!("{:?}", dm);
         assert!(debug.contains("test-peer"));
     }
 
     #[test]
     fn test_dynamic_tabs_remove_nonexistent() {
-        let mut tabs = p2p_app::tui::DynamicTabs::new();
+        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
         let result = tabs.remove_dm_tab("nonexistent");
         assert!(result.is_none());
     }
 
     #[test]
     fn test_dynamic_tabs_all_titles_empty() {
-        let tabs = p2p_app::tui::DynamicTabs::new();
+        let tabs = p2p_app::tui_tabs::DynamicTabs::new();
         let titles = tabs.all_titles();
         assert_eq!(titles.len(), 3);
         assert_eq!(titles[0], "Chat");
