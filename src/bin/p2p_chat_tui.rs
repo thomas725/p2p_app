@@ -43,6 +43,7 @@ mod tui {
 
     mod state;
     mod tracing_writer;
+    mod command_processor;
 
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
