@@ -4,6 +4,7 @@ pub mod models_queryable;
 pub mod network;
 pub mod nickname;
 pub mod schema;
+pub mod types;
 
 use crate::logging::{
     get_tui_logs, init_logging, push_log, set_tui_log_callback, strip_ansi_codes,
@@ -15,6 +16,7 @@ pub use nickname::{
     get_peer_received_nickname, get_self_nickname, set_peer_local_nickname,
     set_peer_received_nickname, set_self_nickname,
 };
+pub use types::{SwarmCommand, SwarmEvent};
 #[allow(unused_imports)]
 use std::collections::VecDeque;
 
