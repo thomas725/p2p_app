@@ -5,6 +5,7 @@ pub mod network;
 pub mod nickname;
 pub mod schema;
 pub mod types;
+pub mod swarm_handler;
 
 use crate::logging::{
     get_tui_logs, init_logging, push_log, set_tui_log_callback, strip_ansi_codes,
@@ -17,6 +18,7 @@ pub use nickname::{
     set_peer_received_nickname, set_self_nickname,
 };
 pub use types::{SwarmCommand, SwarmEvent};
+pub use swarm_handler::spawn_swarm_handler;
 #[allow(unused_imports)]
 use std::collections::VecDeque;
 
@@ -1258,7 +1260,7 @@ pub mod tui_channels {
 #[cfg(feature = "tui")]
 pub use tui_channels::{
     EventRx, EventTx, InputCommand, InputRx, TuiEvent, TuiThreads, create_channels,
-    spawn_input_poller, spawn_swarm_handler,
+    spawn_input_poller,
 };
 
 #[cfg(feature = "tui")]
