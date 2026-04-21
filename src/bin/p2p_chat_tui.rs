@@ -46,7 +46,7 @@ mod tui {
     mod command_processor;
     mod input_handler;
     mod render_loop;
-    mod main_loop;
+    pub mod main_loop;
 
     const MAX_MESSAGES: usize = 1000;
     const MAX_LOGS: usize = 1000;
@@ -1493,5 +1493,6 @@ async fn main() -> color_eyre::Result<()> {
 
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
-    tui::run_tui(swarm, "test-net".to_string(), logs).await
+    // Use new 4-task architecture instead of monolithic tokio::select!
+    tui::main_loop::run_new_tui(swarm, "test-net".to_string(), logs).await
 }
