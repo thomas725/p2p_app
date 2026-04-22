@@ -4,3 +4,4 @@
 # Testing Cargo.toml fix
 # Testing formatting fix
 # Testing improved fmt error capture
+# Testing enhanced error capture
