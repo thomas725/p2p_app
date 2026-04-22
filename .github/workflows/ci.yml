@@ -82,7 +82,19 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: |
+          set +e
+          cargo clippy --all-targets --all-features -- -D warnings 2>&1 | tee clippy-output.txt
+          CLIPPY_EXIT=$?
+          set -e
+          
+          if [ $CLIPPY_EXIT -ne 0 ]; then
+            echo "=== CLIPPY ERRORS ===" > clippy-errors.txt
+            echo "Exit Code: $CLIPPY_EXIT" >> clippy-errors.txt
+            echo "" >> clippy-errors.txt
+            cat clippy-output.txt >> clippy-errors.txt
+            exit $CLIPPY_EXIT
+          fi
       
       - name: Run tests (with output capture)
         run: |
@@ -111,13 +123,23 @@ jobs:
             echo "Commit: ${{ github.sha }}"
             echo "Event: ${{ github.event_name }}"
             echo ""
-            echo "=== PREVIOUS TEST OUTPUT (last 50 lines) ==="
+            
+            # Clippy errors
+            if [ -f clippy-errors.txt ]; then
+              echo "=== CLIPPY ERRORS ===" 
+              cat clippy-errors.txt
+              echo ""
+            fi
+            
+            # Test output
+            echo "=== TEST OUTPUT (last 100 lines) ==="
             if [ -f test-results/test-output.txt ]; then
-              tail -50 test-results/test-output.txt
+              tail -100 test-results/test-output.txt
             else
               echo "No test output captured"
             fi
           } > test-results/FAILURE_REPORT.txt
+          
           cat test-results/FAILURE_REPORT.txt
       
       - name: Build documentation (check only)
