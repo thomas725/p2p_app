@@ -11,6 +11,9 @@ async fn main() -> color_eyre::Result<()> {
     p2p_app::logging::init_logging();
     p2plog_info("Starting P2P Chat CLI".to_string());
 
+    let db_url = p2p_app::get_database_url();
+    p2plog_info(format!("Using database: {}", db_url));
+
     let network_size = match get_network_size() {
         Ok(size) => {
             p2plog_info(format!("Network size detected: {:?}", size));

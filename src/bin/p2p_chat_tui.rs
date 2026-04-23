@@ -1,6 +1,6 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::build_behaviour;
-use p2p_app::logging::init_logging;
+use p2p_app::logging::{init_logging, p2plog_info};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
@@ -75,11 +75,13 @@ mod tui {
     mod tracing_writer;
 }
 
-#[cfg(feature = "tui")]
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
+
+    let db_url = p2p_app::get_database_url();
+    p2plog_info(format!("Using database: {}", db_url));
 
     let logs = Arc::new(std::sync::Mutex::new(VecDeque::new()));
 
