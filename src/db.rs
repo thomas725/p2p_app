@@ -226,7 +226,10 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 }
 
 /// Get the database URL from environment or default value.
-/// Uses cached value if already determined.
+///
+/// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
+/// Get the database URL from environment or default value.
+/// Caches result in DB_URL so subsequent calls (like from sqlite_connect) use same db.
 #[must_use]
 pub fn get_database_url() -> String {
     if let Some(cached) = DB_URL.get() {
