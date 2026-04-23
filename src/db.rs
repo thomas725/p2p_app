@@ -7,10 +7,12 @@
 //!
 //! For future multi-threaded use, consider using r2d2 connection pooling.
 
-use crate::schema::identities::dsl::identities;
 use crate::models_queryable::Identity;
-use color_eyre::eyre::{eyre, Context};
-use diesel::{Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection};
+use crate::schema::identities::dsl::identities;
+use color_eyre::eyre::{Context, eyre};
+use diesel::{
+    Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection,
+};
 use diesel_migrations::MigrationHarness;
 use dotenvy::dotenv;
 use std::env;
@@ -136,32 +138,92 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
 
     // Pick first available, or create new one
     let db_file = if let Some(first) = available.first() {
-        first.clone()
+        let candidate = first.clone();
+        let lock_path = cwd.join(format!("{}.lock", candidate));
+        // Try to create lock file atomically (fails if exists)
+        match fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_path)
+        {
+            Ok(mut f) => {
+                use std::io::Write;
+                let _ = f.write_all(pid.to_string().as_bytes());
+                candidate
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // Lost race, try others
+                let mut tried = vec![candidate];
+                loop {
+                    let next = available.iter().find(|d| !tried.contains(d));
+                    if let Some(db) = next {
+                        let candidate = db.clone();
+                        tried.push(candidate.clone());
+                        let lock_path = cwd.join(format!("{}.lock", candidate));
+                        match fs::OpenOptions::new()
+                            .create_new(true)
+                            .write(true)
+                            .open(&lock_path)
+                        {
+                            Ok(mut f) => {
+                                use std::io::Write;
+                                let _ = f.write_all(pid.to_string().as_bytes());
+                                break candidate;
+                            }
+                            Err(_) => continue,
+                        }
+                    } else {
+                        // All tried, create new
+                        break create_new_db(&db_files, &cwd, pid);
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(e).wrap_err_with(|| format!("failed to create lock for {}", candidate));
+            }
+        }
     } else {
-        // Find the next sequential number
-        let next_n = db_files
-            .iter()
-            .filter_map(|name| {
-                let stem = name.trim_start_matches("sqlite_").trim_end_matches(".db");
-                stem.parse::<u32>().ok()
-            })
-            .max()
-            .unwrap_or(0);
-        format!("sqlite_{}.db", next_n + 1)
+        create_new_db(&db_files, &cwd, pid)
     };
 
-    // Write lock file with our PID
-    let lock_path = cwd.join(format!("{}.lock", db_file));
-    let mut lock_file = fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(&lock_path)
-        .wrap_err_with(|| format!("failed to create lock file for {db_file}"))?;
-    write!(lock_file, "{}", pid)
-        .wrap_err_with(|| "failed to write PID to lock file".to_string())?;
-
     Ok(cwd.join(db_file).to_string_lossy().into_owned())
+}
+
+fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String {
+    use std::fs;
+    use std::io::Write;
+
+    let max_n = db_files
+        .iter()
+        .filter_map(|name| {
+            let stem = name.trim_start_matches("sqlite_").trim_end_matches(".db");
+            stem.parse::<u32>().ok()
+        })
+        .max()
+        .unwrap_or(0);
+    let mut candidate = format!("sqlite_{}.db", max_n + 1);
+    let mut attempts = 0;
+
+    loop {
+        if attempts > 1000 {
+            return "sqlite.db".to_string(); // Give up
+        }
+        let lock_path = cwd.join(format!("{}.lock", candidate));
+        match fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&lock_path)
+        {
+            Ok(mut f) => {
+                let _ = f.write_all(pid.to_string().as_bytes());
+                return candidate;
+            }
+            Err(_) => {
+                attempts += 1;
+                candidate = format!("sqlite_{}.db", max_n + attempts);
+            }
+        }
+    }
 }
 
 /// Get the database URL from environment or default value.
