@@ -75,7 +75,6 @@ fn determine_db_path() -> color_eyre::Result<String> {
 /// If none is available, creates a new database with the next sequential name.
 fn find_or_create_unused_db() -> color_eyre::Result<String> {
     use std::fs;
-    use std::io::Write;
     use std::process::id as getpid;
 
     let cwd = std::env::current_dir().wrap_err("failed to get current working directory")?;
