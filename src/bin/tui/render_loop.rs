@@ -1,16 +1,16 @@
+use super::constants::FRAME_TIME_MS;
+use super::state::AppState;
+use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, Paragraph, Tabs, List, ListItem},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
 };
 use std::io::Stdout;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use super::state::AppState;
-use super::constants::FRAME_TIME_MS;
-use p2p_app::tui_tabs::TabContent;
 
 /// Spawns the render loop task that continuously renders the TUI
 ///

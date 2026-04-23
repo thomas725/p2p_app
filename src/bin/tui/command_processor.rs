@@ -1,11 +1,11 @@
+use super::constants::{CHANNEL_CAPACITY, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, MAX_PEERS};
+use super::input_handler::InputEvent;
+use super::state::AppState;
 use p2p_app::{SwarmCommand, SwarmEvent};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
-use super::state::AppState;
-use super::input_handler::InputEvent;
-use super::constants::{CHANNEL_CAPACITY, MAX_MESSAGE_HISTORY, MAX_DM_HISTORY, MAX_PEERS};
 
 /// Spawns the command processor task (the main state mutation engine)
 ///

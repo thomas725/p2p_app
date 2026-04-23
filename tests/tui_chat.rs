@@ -1,7 +1,7 @@
 #[cfg(feature = "tui")]
 mod tests {
     use p2p_app::tui_tabs::{DmTab, TabId};
-    use p2p_app::tui_test_state::{TuiTestState, NotificationTarget};
+    use p2p_app::tui_test_state::{NotificationTarget, TuiTestState};
 
     #[test]
     fn test_layout_rows_no_notification() {
@@ -316,8 +316,9 @@ mod tests {
 
     #[test]
     fn test_dm_tab_short_id() {
-        let dm =
-            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+        let dm = p2p_app::tui_tabs::DmTab::new(
+            "12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string(),
+        );
         let short = dm.short_id();
         assert_eq!(short.len(), 8);
     }
@@ -328,7 +329,10 @@ mod tests {
         tabs.add_dm_tab("peerA".to_string());
         tabs.add_dm_tab("peerB".to_string());
 
-        assert_eq!(tabs.tab_index_to_content(0), p2p_app::tui_tabs::TabContent::Chat);
+        assert_eq!(
+            tabs.tab_index_to_content(0),
+            p2p_app::tui_tabs::TabContent::Chat
+        );
         assert_eq!(
             tabs.tab_index_to_content(1),
             p2p_app::tui_tabs::TabContent::Peers
@@ -341,7 +345,10 @@ mod tests {
             tabs.tab_index_to_content(3),
             p2p_app::tui_tabs::TabContent::Direct("peerB".to_string())
         );
-        assert_eq!(tabs.tab_index_to_content(4), p2p_app::tui_tabs::TabContent::Log);
+        assert_eq!(
+            tabs.tab_index_to_content(4),
+            p2p_app::tui_tabs::TabContent::Log
+        );
     }
 
     #[test]
@@ -412,7 +419,9 @@ mod tests {
             broadcasts_clone,
             p2p_app::tui_test_state::NotificationTarget::Broadcasts
         ));
-        assert!(matches!(dm_clone, p2p_app::tui_test_state::NotificationTarget::Dm(p) if p == "peer"));
+        assert!(
+            matches!(dm_clone, p2p_app::tui_test_state::NotificationTarget::Dm(p) if p == "peer")
+        );
     }
 
     #[test]
@@ -525,10 +534,12 @@ mod tests {
 
     #[test]
     fn test_dm_tab_short_id_consistency() {
-        let dm1 =
-            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
-        let dm2 =
-            p2p_app::tui_tabs::DmTab::new("12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string());
+        let dm1 = p2p_app::tui_tabs::DmTab::new(
+            "12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string(),
+        );
+        let dm2 = p2p_app::tui_tabs::DmTab::new(
+            "12D3KooWSkP1pEPy2EETdeJBbMRju1oWAwUBngQYJ2Ai".to_string(),
+        );
 
         assert_eq!(dm1.short_id(), dm2.short_id());
     }

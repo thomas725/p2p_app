@@ -48,10 +48,7 @@ pub struct AppBehaviour {
 /// # Arguments
 /// * `key` - libp2p identity keypair
 /// * `network_size` - Network size enum for tuning behavior parameters
-pub fn build_behaviour(
-    key: &libp2p_identity::Keypair,
-    network_size: NetworkSize,
-) -> AppBehaviour {
+pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
     // Configure Gossipsub based on network size
     let gossipsub_config = match network_size {
         NetworkSize::Small => {
@@ -93,7 +90,10 @@ pub fn build_behaviour(
     .expect("valid gossipsub");
 
     let request_response = request_response::Behaviour::new(
-        [(libp2p::StreamProtocol::new(DM_PROTOCOL_NAME), request_response::ProtocolSupport::Full)],
+        [(
+            libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
+            request_response::ProtocolSupport::Full,
+        )],
         Default::default(),
     );
 

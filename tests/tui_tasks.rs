@@ -37,7 +37,10 @@ mod tui_architecture_tests {
         }
 
         fn add_dm(&mut self, peer_id: &str, msg: String) {
-            let dm_msgs = self.dm_messages.entry(peer_id.to_string()).or_insert_with(VecDeque::new);
+            let dm_msgs = self
+                .dm_messages
+                .entry(peer_id.to_string())
+                .or_insert_with(VecDeque::new);
             dm_msgs.push_back(msg);
             // Bound: max 1000 per peer
             if dm_msgs.len() > 1000 {
@@ -106,7 +109,8 @@ mod tui_architecture_tests {
 
         // Add 10,100 peers
         for i in 0..10_100 {
-            let result = state.add_peer(format!("peer_{}", i), "now".to_string(), "now".to_string());
+            let result =
+                state.add_peer(format!("peer_{}", i), "now".to_string(), "now".to_string());
             if i < 10_000 {
                 assert!(result, "Should add peer {}", i);
             } else {

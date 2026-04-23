@@ -1,6 +1,6 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::logging::init_logging;
 use p2p_app::build_behaviour;
+use p2p_app::logging::init_logging;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
@@ -63,16 +63,16 @@ mod tui {
     //! - **60 FPS render loop**: UI responsiveness. Could optimize to event-driven in future.
     //! - **Immutable channel types**: Each task has dedicated input/output channels, no shared mutable channels.
 
-    use ratatui_textarea::TextArea;
     pub use p2p_app::tui_tabs::DynamicTabs;
+    use ratatui_textarea::TextArea;
 
+    mod command_processor;
     pub mod constants;
+    mod input_handler;
     pub mod main_loop;
+    mod render_loop;
     mod state;
     mod tracing_writer;
-    mod command_processor;
-    mod input_handler;
-    mod render_loop;
 }
 
 #[cfg(feature = "tui")]

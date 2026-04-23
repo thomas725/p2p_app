@@ -1,8 +1,8 @@
 use crate::types::SwarmEvent;
 use crate::{AppBehaviour, behavior::AppBehaviourEvent as AppEv};
-use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
-use libp2p::gossipsub;
 use libp2p::futures::StreamExt;
+use libp2p::gossipsub;
+use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -19,13 +19,11 @@ pub fn spawn_swarm_handler(
     let handle = tokio::spawn(async move {
         loop {
             match swarm.select_next_some().await {
-                Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(
-                    gossipsub::Event::Message {
-                        propagation_source: peer_id,
-                        message,
-                        ..
-                    },
-                )) => {
+                Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(gossipsub::Event::Message {
+                    propagation_source: peer_id,
+                    message,
+                    ..
+                })) => {
                     let peer_id_str = peer_id.to_string();
                     let raw = String::from_utf8_lossy(&message.data).to_string();
 
@@ -46,11 +44,10 @@ pub fn spawn_swarm_handler(
                 Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
                     libp2p::request_response::Event::Message {
                         peer,
-                        message: libp2p::request_response::Message::Request {
-                            request,
-                            channel,
-                            ..
-                        },
+                        message:
+                            libp2p::request_response::Message::Request {
+                                request, channel, ..
+                            },
                         connection_id: _,
                     },
                 )) => {
@@ -75,16 +72,17 @@ pub fn spawn_swarm_handler(
                             SystemTime::now()
                                 .duration_since(SystemTime::UNIX_EPOCH)
                                 .unwrap_or_default()
-                                .as_secs_f64()
+                                .as_secs_f64(),
                         ),
                         nickname: None,
                     };
-                    let _ = swarm.behaviour_mut().request_response.send_response(channel, response);
+                    let _ = swarm
+                        .behaviour_mut()
+                        .request_response
+                        .send_response(channel, response);
                 }
                 #[cfg(feature = "mdns")]
-                Libp2pSwarmEvent::Behaviour(AppEv::Mdns(
-                    libp2p::mdns::Event::Discovered(list),
-                )) => {
+                Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
                     for (peer_id, multiaddr) in list {
                         let _ = tx
                             .send(SwarmEvent::PeerDiscovered {
@@ -97,7 +95,9 @@ pub fn spawn_swarm_handler(
                     }
                 }
                 Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                    let _ = tx.send(SwarmEvent::PeerConnected(peer_id.to_string())).await;
+                    let _ = tx
+                        .send(SwarmEvent::PeerConnected(peer_id.to_string()))
+                        .await;
                 }
                 Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
                     let _ = tx

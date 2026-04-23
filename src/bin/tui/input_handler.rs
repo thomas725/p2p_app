@@ -1,7 +1,7 @@
-use crossterm::event::{poll, read, Event, KeyEvent, MouseEvent};
+use super::constants::FRAME_TIME_MS;
+use crossterm::event::{Event, KeyEvent, MouseEvent, poll, read};
 use std::time::Duration;
 use tokio::sync::mpsc;
-use super::constants::FRAME_TIME_MS;
 
 /// Input event type for terminal I/O
 #[derive(Debug, Clone)]
@@ -20,24 +20,23 @@ pub enum InputEvent {
 /// - **Non-blocking**: Yields to async runtime after each poll to prevent starvation
 ///
 /// The task runs indefinitely; it should only exit on error or program shutdown.
-pub fn spawn_input_handler(
-    input_tx: mpsc::Sender<InputEvent>,
-) -> tokio::task::JoinHandle<()> {
+pub fn spawn_input_handler(input_tx: mpsc::Sender<InputEvent>) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         loop {
             // Poll with FRAME_TIME_MS timeout (60 FPS)
             if poll(Duration::from_millis(FRAME_TIME_MS)).ok() == Some(true)
-                && let Ok(event) = read() {
-                    match event {
-                        Event::Key(key) => {
-                            let _ = input_tx.send(InputEvent::Key(key)).await;
-                        }
-                        Event::Mouse(mouse) => {
-                            let _ = input_tx.send(InputEvent::Mouse(mouse)).await;
-                        }
-                        _ => {}
+                && let Ok(event) = read()
+            {
+                match event {
+                    Event::Key(key) => {
+                        let _ = input_tx.send(InputEvent::Key(key)).await;
                     }
+                    Event::Mouse(mouse) => {
+                        let _ = input_tx.send(InputEvent::Mouse(mouse)).await;
+                    }
+                    _ => {}
                 }
+            }
             // Yield to async runtime
             tokio::task::yield_now().await;
         }

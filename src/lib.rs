@@ -1,55 +1,55 @@
+pub mod behavior;
+pub mod db;
+pub mod fmt;
 pub mod logging;
+pub mod logging_config;
+pub mod messages;
 pub mod models_insertable;
 pub mod models_queryable;
 pub mod network;
 pub mod nickname;
-pub mod schema;
-pub mod types;
-pub mod swarm_handler;
-pub mod fmt;
-pub mod behavior;
-pub mod db;
-pub mod messages;
 pub mod peers;
-pub mod logging_config;
+pub mod schema;
+pub mod swarm_handler;
+#[cfg(feature = "tui")]
+pub mod tui_events;
 #[cfg(feature = "tui")]
 pub mod tui_tabs;
 #[cfg(feature = "tui")]
 pub mod tui_test_state;
-#[cfg(feature = "tui")]
-pub mod tui_events;
+pub mod types;
 
+pub use behavior::{
+    AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
+    build_behaviour,
+};
+pub use db::{get_database_url, get_libp2p_identity, sqlite_connect};
+pub use fmt::{
+    auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, now_timestamp,
+    peer_display_name, scroll_title, short_peer_id,
+};
 pub use logging::init_logging;
+pub use logging_config::tracing_filter;
+pub use messages::{
+    get_unsent_direct_messages, get_unsent_messages, load_direct_messages, load_messages,
+    mark_message_sent, save_message,
+};
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{
     ensure_self_nickname, generate_self_nickname, get_peer_display_name, get_peer_local_nickname,
     get_peer_received_nickname, get_self_nickname, set_peer_local_nickname,
     set_peer_received_nickname, set_self_nickname,
 };
-pub use types::{SwarmCommand, SwarmEvent};
-pub use swarm_handler::spawn_swarm_handler;
-pub use fmt::{
-    auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, now_timestamp,
-    peer_display_name, scroll_title, short_peer_id,
-};
-pub use behavior::{
-    build_behaviour, AppBehaviour, BroadcastMessage, ChatCodec, DirectMessage, CHAT_TOPIC,
-    DM_PROTOCOL_NAME,
-};
-pub use db::{get_database_url, get_libp2p_identity, sqlite_connect};
-pub use messages::{
-    get_unsent_direct_messages, get_unsent_messages, load_direct_messages, load_messages,
-    mark_message_sent, save_message,
-};
 pub use peers::{
-    get_average_peer_count, get_recent_peer_count, load_listen_ports, load_peers, save_listen_ports,
-    save_peer, save_peer_session,
+    get_average_peer_count, get_recent_peer_count, load_listen_ports, load_peers,
+    save_listen_ports, save_peer, save_peer_session,
 };
-pub use logging_config::tracing_filter;
+pub use swarm_handler::spawn_swarm_handler;
 #[cfg(feature = "tui")]
-pub use tui_tabs::{DynamicTabs, TabContent, TabId, DmTab};
+pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(feature = "tui")]
-pub use tui_test_state::{TuiTestState, NotificationTarget};
+pub use tui_test_state::{NotificationTarget, TuiTestState};
+pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
@@ -218,6 +218,3 @@ mod tests {
         assert_eq!(size, copy);
     }
 }
-
-
-

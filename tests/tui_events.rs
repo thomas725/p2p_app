@@ -68,7 +68,10 @@ mod event_tests {
         queue.push_back(MockSwarmEvent::PeerDisconnected("peer1".to_string()));
 
         // Events should come out in order
-        assert_eq!(queue.pop_front(), Some(MockSwarmEvent::PeerConnected("peer1".to_string())));
+        assert_eq!(
+            queue.pop_front(),
+            Some(MockSwarmEvent::PeerConnected("peer1".to_string()))
+        );
         assert_eq!(
             queue.pop_front(),
             Some(MockSwarmEvent::MessageReceived {
@@ -76,7 +79,10 @@ mod event_tests {
                 content: "msg1".to_string()
             })
         );
-        assert_eq!(queue.pop_front(), Some(MockSwarmEvent::PeerDisconnected("peer1".to_string())));
+        assert_eq!(
+            queue.pop_front(),
+            Some(MockSwarmEvent::PeerDisconnected("peer1".to_string()))
+        );
         assert_eq!(queue.pop_front(), None);
     }
 

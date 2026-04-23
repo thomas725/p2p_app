@@ -1,9 +1,9 @@
 use super::constants::CHANNEL_CAPACITY;
+use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use ratatui::Terminal;
-use ratatui::backend::CrosstermBackend;
 
 /// Run the new 4-task TUI architecture
 ///
@@ -24,9 +24,9 @@ pub async fn run_new_tui(
     logs: Arc<Mutex<VecDeque<String>>>,
 ) -> color_eyre::Result<()> {
     use ratatui::crossterm::{
-        execute,
-        terminal::{EnterAlternateScreen, disable_raw_mode, enable_raw_mode, LeaveAlternateScreen},
         event::PushKeyboardEnhancementFlags,
+        execute,
+        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     };
 
     // Setup terminal
@@ -46,8 +46,7 @@ pub async fn run_new_tui(
     terminal.clear()?;
 
     // Initialize state
-    let own_nickname = p2p_app::ensure_self_nickname()
-        .unwrap_or_else(|_| "Anonymous".to_string());
+    let own_nickname = p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
 
     // Get database info by attempting a connection to log the path
     let db_info = std::env::var("DATABASE_URL")
@@ -64,7 +63,10 @@ pub async fn run_new_tui(
         &std::collections::HashMap::new(),
         &own_nickname,
     );
-    p2p_app::log_debug(&logs, format!("Loaded {} messages from database", initial_messages.len()));
+    p2p_app::log_debug(
+        &logs,
+        format!("Loaded {} messages from database", initial_messages.len()),
+    );
 
     // Load initial peers from database (deduplicated by peer_id)
     let initial_peers = if let Ok(db_peers) = p2p_app::load_peers() {
@@ -87,7 +89,14 @@ pub async fn run_new_tui(
             let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
-        p2p_app::log_debug(&logs, format!("Loaded {} unique peers from {} total database entries", peers.len(), db_peers.len()));
+        p2p_app::log_debug(
+            &logs,
+            format!(
+                "Loaded {} unique peers from {} total database entries",
+                peers.len(),
+                db_peers.len()
+            ),
+        );
         peers
     } else {
         p2p_app::log_debug(&logs, "No peers found in database".to_string());

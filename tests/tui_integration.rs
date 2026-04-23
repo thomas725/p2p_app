@@ -49,17 +49,29 @@ fn test_tui_tab_navigation_backward() {
     let mut active_tab = 0;
 
     // Press Shift+Tab (backward) -> should wrap to Log
-    active_tab = if active_tab == 0 { max_tabs - 1 } else { active_tab - 1 };
+    active_tab = if active_tab == 0 {
+        max_tabs - 1
+    } else {
+        active_tab - 1
+    };
     let content = state.tab_index_to_content(active_tab);
     assert_eq!(content, p2p_app::tui_tabs::TabContent::Log);
 
     // Press Shift+Tab -> should go to Peers
-    active_tab = if active_tab == 0 { max_tabs - 1 } else { active_tab - 1 };
+    active_tab = if active_tab == 0 {
+        max_tabs - 1
+    } else {
+        active_tab - 1
+    };
     let content = state.tab_index_to_content(active_tab);
     assert_eq!(content, p2p_app::tui_tabs::TabContent::Peers);
 
     // Press Shift+Tab -> should go to Chat
-    active_tab = if active_tab == 0 { max_tabs - 1 } else { active_tab - 1 };
+    active_tab = if active_tab == 0 {
+        max_tabs - 1
+    } else {
+        active_tab - 1
+    };
     let content = state.tab_index_to_content(active_tab);
     assert_eq!(content, p2p_app::tui_tabs::TabContent::Chat);
 }
@@ -80,7 +92,10 @@ fn test_tui_dm_tab_creation_on_peer_connection() {
 
     // Tab index should point to the DM tab
     let content = state.tab_index_to_content(tab_idx);
-    assert_eq!(content, p2p_app::tui_tabs::TabContent::Direct(peer_id.clone()));
+    assert_eq!(
+        content,
+        p2p_app::tui_tabs::TabContent::Direct(peer_id.clone())
+    );
 
     // Adding same peer again should return existing tab index
     let tab_idx_2 = state.add_dm_tab(peer_id.clone());
@@ -94,8 +109,16 @@ fn test_tui_no_duplicate_peers_on_reconnect() {
 
     // Simulate app state with initial peers from database
     let mut peers_list: VecDeque<(String, String, String)> = VecDeque::new();
-    peers_list.push_back(("peer1".to_string(), "10:00".to_string(), "10:05".to_string()));
-    peers_list.push_back(("peer2".to_string(), "10:01".to_string(), "10:06".to_string()));
+    peers_list.push_back((
+        "peer1".to_string(),
+        "10:00".to_string(),
+        "10:05".to_string(),
+    ));
+    peers_list.push_back((
+        "peer2".to_string(),
+        "10:01".to_string(),
+        "10:06".to_string(),
+    ));
 
     // Simulate PeerConnected event for peer that's already in the list
     let peer_id = "peer1".to_string();
@@ -328,7 +351,11 @@ fn test_tui_peer_display_limit() {
     // Try to add more peers than the limit
     for i in 0..MAX_PEERS + 100 {
         if peers.len() < MAX_PEERS {
-            peers.push_back((format!("peer{}", i), "time1".to_string(), "time2".to_string()));
+            peers.push_back((
+                format!("peer{}", i),
+                "time1".to_string(),
+                "time2".to_string(),
+            ));
         }
     }
 
@@ -365,7 +392,11 @@ fn test_tui_peer_deduplication_with_limit() {
             break;
         }
 
-        peers.push_back((id.to_string(), first_seen.to_string(), last_seen.to_string()));
+        peers.push_back((
+            id.to_string(),
+            first_seen.to_string(),
+            last_seen.to_string(),
+        ));
     }
 
     // Should have 4 unique peers (peer1, peer2, peer3, peer4)
@@ -375,6 +406,10 @@ fn test_tui_peer_deduplication_with_limit() {
     // Verify all are unique
     let mut unique_check = std::collections::HashSet::new();
     for (id, _, _) in &peers {
-        assert!(unique_check.insert(id.clone()), "Found duplicate peer: {}", id);
+        assert!(
+            unique_check.insert(id.clone()),
+            "Found duplicate peer: {}",
+            id
+        );
     }
 }
