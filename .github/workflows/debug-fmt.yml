@@ -1,0 +1,50 @@
+name: Debug Fmt
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  debug-fmt:
+    name: Debug Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      
+      - name: Check formatting and save errors
+        run: |
+          mkdir -p .github/debug-outputs
+          set +e
+          cargo fmt -- --check 2>&1 | tee .github/debug-outputs/fmt-check.txt
+          FMT_EXIT=$?
+          set -e
+          
+          if [ $FMT_EXIT -ne 0 ]; then
+            echo "=== RUSTFMT ERRORS ===" > .github/debug-outputs/fmt-errors.txt
+            echo "Exit Code: $FMT_EXIT" >> .github/debug-outputs/fmt-errors.txt
+            echo "" >> .github/debug-outputs/fmt-errors.txt
+            cargo fmt -- --check 2>&1 >> .github/debug-outputs/fmt-errors.txt
+            echo "" >> .github/debug-outputs/fmt-errors.txt
+            echo "=== TO FIX ===" >> .github/debug-outputs/fmt-errors.txt
+            echo "Run: cargo fmt" >> .github/debug-outputs/fmt-errors.txt
+          else
+            echo "✅ Formatting check PASSED" > .github/debug-outputs/fmt-check.txt
+          fi
+      
+      - name: Commit debug output if there are changes
+        run: |
+          git config --global user.email "claude-debug@anthropic.com"
+          git config --global user.name "Claude Debug"
+          git add .github/debug-outputs/ 2>/dev/null || true
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "debug: save fmt errors for analysis"
+            git push origin main 2>&1 || echo "Could not push (branch may be protected)"
+          else
+            echo "No changes to commit"
+          fi
+        continue-on-error: true

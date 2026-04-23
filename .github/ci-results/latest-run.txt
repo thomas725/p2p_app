@@ -1,0 +1,15 @@
+CI Results - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+=====================================
+
+Run ID: 24748332307
+Commit: 2698e0e3f2f43b4c6fa9cedc0db772354849c0ad
+Branch: refs/heads/main
+
+Jobs Status:
+- fmt: success
+- lint-and-test: failure
+- build: skipped
+- build-minimal: skipped
+
+Artifacts Available:
+  - ci-artifacts/test-results/FAILURE_REPORT.txt

@@ -82,13 +82,35 @@ jobs:
           
           cat "$RESULTS_FILE"
       
-      - name: Copy artifacts to results directory
-        if: always()
+      - name: Extract and commit error details to repository
         run: |
-          mkdir -p .github/ci-results/artifacts
-          if [ -d downloaded-artifacts ]; then
-            cp -r downloaded-artifacts/* .github/ci-results/artifacts/ 2>/dev/null || true
+          mkdir -p .github/ci-errors
+          
+          # Extract FAILURE_REPORT.txt if it exists
+          if [ -f "downloaded-artifacts/test-results/FAILURE_REPORT.txt" ]; then
+            cp "downloaded-artifacts/test-results/FAILURE_REPORT.txt" ".github/ci-errors/latest-failure.txt"
+            
+            # Also create a timestamped version
+            TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+            cp "downloaded-artifacts/test-results/FAILURE_REPORT.txt" ".github/ci-errors/failure_${TIMESTAMP}_${{ github.event.workflow_run.id }}.txt"
           fi
+          
+          # Try to find any clippy or test output files
+          find downloaded-artifacts -name "*.txt" -type f 2>/dev/null | while read file; do
+            filename=$(basename "$file")
+            cp "$file" ".github/ci-errors/$filename" 2>/dev/null || true
+          done
+          
+          # Commit if there are errors
+          git config --global user.email "ci-error-logger@anthropic.com"
+          git config --global user.name "CI Error Logger"
+          git add .github/ci-errors/ 2>/dev/null || true
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: capture error details from run ${{ github.event.workflow_run.id }}"
+            git push origin main 2>&1 || echo "Could not push errors"
+          fi
+        continue-on-error: true
       
       - name: Commit results to repository
         run: |

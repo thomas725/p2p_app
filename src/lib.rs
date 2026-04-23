@@ -51,8 +51,6 @@ pub use tui_tabs::{DynamicTabs, TabContent, TabId, DmTab};
 #[cfg(feature = "tui")]
 pub use tui_test_state::{TuiTestState, NotificationTarget};
 
-
-
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
