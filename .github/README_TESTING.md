@@ -7,3 +7,4 @@
 # Testing enhanced error capture
 # Testing glib2.0-dev fix
 # Testing libgtk-3-dev fix
+# Testing latest code with new TUI changes
