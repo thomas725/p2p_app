@@ -226,13 +226,17 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 }
 
 /// Get the database URL from environment or default value.
-///
-/// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
+/// Uses cached value if already determined.
 #[must_use]
 pub fn get_database_url() -> String {
+    if let Some(cached) = DB_URL.get() {
+        return cached.clone();
+    }
     dotenv().ok();
-    env::var("DATABASE_URL")
-        .unwrap_or_else(|_| find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned()))
+    let url = env::var("DATABASE_URL")
+        .unwrap_or_else(|_| find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned()));
+    let _ = DB_URL.set(url.clone());
+    url
 }
 
 /// Load or generate the libp2p identity keypair.
