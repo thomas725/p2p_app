@@ -42,6 +42,17 @@ static DB_URL: OnceLock<String> = OnceLock::new();
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
 
+    // Register cleanup on panic (for any abnormal exit)
+    let db_path_for_panic = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+    let db_path_clone = db_path_for_panic.clone();
+    std::panic::set_hook(Box::new(move |_info| {
+        if let Ok(path) = db_path_clone.lock() {
+            let lock_path = format!("{}.lock", path);
+            let _ = std::fs::remove_file(&lock_path);
+            eprintln!("[DB] released lock on panic: {}", lock_path);
+        }
+    }));
+
     // Try to get cached path, or determine it for the first time
     let db_path = if let Some(cached) = DB_URL.get() {
         cached.clone()
@@ -50,6 +61,9 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
         let _ = DB_URL.set(path.clone());
         path
     };
+
+    // Store for panic hook
+    *db_path_for_panic.lock().unwrap() = db_path.clone();
 
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
