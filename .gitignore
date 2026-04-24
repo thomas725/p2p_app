@@ -1,5 +1,6 @@
 /target
 *.db
+*.lock
 
 # NixOS dev dependencies direnv temp folder
 .direnv
