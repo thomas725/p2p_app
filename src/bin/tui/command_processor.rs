@@ -126,7 +126,7 @@ pub fn spawn_command_processor(
                                             }
                                         } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                             // Open DM with selected peer
-                                            let peer_id_opt = s.peers.iter().nth(s.peer_selection).map(|(id, _, _)| id.clone());
+                                            let peer_id_opt = s.peers.get(s.peer_selection).map(|(id, _, _)| id.clone());
                                             if let Some(peer_id) = peer_id_opt {
                                                 let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id.clone());
                                                 s.active_tab = tab_idx;
@@ -175,14 +175,13 @@ pub fn spawn_command_processor(
                                     // Close current tab with Ctrl+W
                                     crossterm::event::KeyCode::Char('w') if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
                                         let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                        if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content {
-                                            if let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
+                                        if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
+                                            && let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
                                                 // Switch to previous tab
                                                 s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
                                                 s.peer_selection = 0;
                                                 p2p_app::log_debug(&logs, format!("Closed DM tab with peer: {}", peer_id));
                                             }
-                                        }
                                     }
                                     // Enter text input to the chat input box
                                     _ => {
@@ -196,8 +195,8 @@ pub fn spawn_command_processor(
                         }
                         InputEvent::Mouse(mouse_event) => {
                             // Handle mouse clicks for tab switching, closing, and peer selection
-                            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
-                                if let Ok(mut s) = state.lock() {
+                            if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind
+                                && let Ok(mut s) = state.lock() {
                                     // Tabs are on row 0; calculate click position
                                     if mouse_event.row == 0 {
                                         let tab_titles = s.dynamic_tabs.all_titles();
@@ -215,12 +214,11 @@ pub fn spawn_command_processor(
                                                 if (mouse_event.column as usize) >= close_start && title.contains("(X)") {
                                                     // Close this DM tab
                                                     let tab_content = s.dynamic_tabs.tab_index_to_content(idx);
-                                                    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content {
-                                                        if let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
+                                                    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
+                                                        && let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
                                                             s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
                                                             p2p_app::log_debug(&logs, format!("Closed DM tab via mouse: {}", peer_id));
                                                         }
-                                                    }
                                                 } else if idx != s.active_tab {
                                                     // Switch tab
                                                     s.active_tab = idx;
@@ -241,7 +239,7 @@ pub fn spawn_command_processor(
                                             if peer_row < s.peers.len() {
                                                 // Update selection and open DM
                                                 s.peer_selection = peer_row;
-                                                if let Some((peer_id, _, _)) = s.peers.iter().nth(peer_row) {
+                                                if let Some((peer_id, _, _)) = s.peers.get(peer_row) {
                                                     let peer_id_clone = peer_id.clone();
                                                     let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
                                                     s.active_tab = tab_idx;
@@ -251,7 +249,6 @@ pub fn spawn_command_processor(
                                         }
                                     }
                                 }
-                            }
                         }
                     }
                 }
