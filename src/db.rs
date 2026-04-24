@@ -76,10 +76,16 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     Ok(conn)
 }
 
+/// Ensures all columns exist in the database schema.
+/// This is needed because SQLite doesn't support "ADD COLUMN IF NOT EXISTS".
+/// We check each table/column pair and add missing ones before migrations run.
+///
+/// This handles legacy databases created before certain columns were added.
 fn ensure_columns(conn: &mut SqliteConnection) {
+    use diesel::RunQueryDsl;
     use diesel::sql_query;
 
-    // Full schema: (table, column, type)
+    // Full schema: (table, column, type) - mirrors src/schema.rs
     let schema = [
         ("identities", "id", "INTEGER"),
         ("identities", "created_at", "TIMESTAMP"),
@@ -109,7 +115,8 @@ fn ensure_columns(conn: &mut SqliteConnection) {
     ];
 
     for (table, column, col_type) in schema {
-        // Skip if table doesn't exist
+        // SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we must check first
+        // Check if table exists
         let table_exists = sql_query(format!(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='{}'",
             table
@@ -122,7 +129,7 @@ fn ensure_columns(conn: &mut SqliteConnection) {
             continue;
         }
 
-        // Skip if column already exists
+        // Check if column exists in table
         let col_exists = sql_query(format!(
             "SELECT COUNT(*) FROM pragma_table_info('{}') WHERE name='{}'",
             table, column
@@ -137,8 +144,11 @@ fn ensure_columns(conn: &mut SqliteConnection) {
 
         // Add missing column
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
-        if sql_query(&sql).execute(conn).is_ok() {
-            crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table));
+        match sql_query(&sql).execute(conn) {
+            Ok(_) => {
+                crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
+            }
+            Err(e) => crate::logging::p2plog_debug(format!("[DB] column {}: {}", column, e)),
         }
     }
 }
