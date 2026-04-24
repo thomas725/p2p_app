@@ -48,9 +48,8 @@ pub async fn run_new_tui(
     // Initialize state
     let own_nickname = p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
 
-    // Get database info by attempting a connection to log the path
-    let db_info = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "SQLite database (auto-selected in current directory)".to_string());
+    // Get database URL (uses cached value from startup)
+    let db_info = p2p_app::get_database_url();
     p2p_app::log_debug(&logs, format!("Database: {}", db_info));
     p2p_app::log_debug(&logs, format!("Loading data for topic: {}", topic_str));
 
