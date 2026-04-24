@@ -53,9 +53,26 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
 
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
+
+    // Ensure columns that may be missing from older schemas
+    ensure_columns(&mut conn);
+
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
     Ok(conn)
+}
+
+fn ensure_columns(conn: &mut SqliteConnection) {
+    use diesel::sql_query;
+
+    let cols = [
+        ("identities", "self_nickname", "TEXT"),
+        ("peers", "peer_local_nickname", "TEXT"),
+        ("peers", "received_nickname", "TEXT"),
+    ];
+    for (tbl, col, ty) in cols {
+        let _ = sql_query(format!("ALTER TABLE {} ADD COLUMN {} {}", tbl, col, ty)).execute(conn);
+    }
 }
 
 /// Determine the database path (cached version to avoid repeated lock file checks).
