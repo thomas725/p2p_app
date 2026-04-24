@@ -1,6 +1,6 @@
 use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::build_behaviour;
-use p2p_app::logging::{init_logging, p2plog_info};
+use p2p_app::logging::{init_logging, p2plog_info, set_tui_callback};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
@@ -79,6 +79,15 @@ mod tui {
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
+
+    // Set up TUI log callback for centralized logging
+    let logs = Arc::new(std::sync::Mutex::new(VecDeque::new()));
+    let logs_for_callback = logs.clone();
+    set_tui_callback(move |msg| {
+        if let Ok(mut l) = logs_for_callback.lock() {
+            l.push_back(msg);
+        }
+    });
 
     let db_url = p2p_app::get_database_url();
     p2plog_info(format!("Using database: {}", db_url));

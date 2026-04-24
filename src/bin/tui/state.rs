@@ -77,6 +77,17 @@ impl AppState {
             logs,
         }
     }
+
+    /// Sync logs from centralized logging to state
+    pub fn sync_logs_from_centralized(&mut self) {
+        use p2p_app::get_tui_logs;
+        let centralized = get_tui_logs();
+        if let Ok(mut l) = self.logs.lock() {
+            for msg in centralized {
+                l.push_back(msg);
+            }
+        }
+    }
 }
 
 pub fn load_and_format_messages(

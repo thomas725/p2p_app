@@ -43,7 +43,7 @@ pub fn spawn_render_loop(
             interval.tick().await;
 
             let _ = terminal.draw(|f| {
-                if let Ok(s) = state.lock() {
+                if let Ok(mut s) = state.lock() {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
@@ -114,6 +114,8 @@ pub fn spawn_render_loop(
                             f.render_widget(dm_para, chunks[2]);
                         }
                         TabContent::Log => {
+                            // Sync logs from centralized logging
+                            s.sync_logs_from_centralized();
                             let log_text = s.logs
                                 .lock()
                                 .ok()
