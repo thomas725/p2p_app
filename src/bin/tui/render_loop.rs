@@ -1,5 +1,6 @@
 use super::constants::FRAME_TIME_MS;
 use super::state::AppState;
+use p2p_app::get_tui_logs;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Terminal,
@@ -43,7 +44,7 @@ pub fn spawn_render_loop(
             interval.tick().await;
 
             let _ = terminal.draw(|f| {
-                if let Ok(mut s) = state.lock() {
+                if let Ok(s) = state.lock() {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
@@ -114,13 +115,7 @@ pub fn spawn_render_loop(
                             f.render_widget(dm_para, chunks[2]);
                         }
                         TabContent::Log => {
-                            // Sync logs from centralized logging
-                            s.sync_logs_from_centralized();
-                            let log_text = s.logs
-                                .lock()
-                                .ok()
-                                .map(|logs| logs.iter().cloned().collect::<Vec<_>>().join("\n"))
-                                .unwrap_or_else(|| "No logs".to_string());
+                            let log_text = get_tui_logs().join("\n");
                             let log_para = Paragraph::new(log_text)
                                 .block(Block::default().title("Logs").borders(Borders::ALL));
                             f.render_widget(log_para, chunks[2]);

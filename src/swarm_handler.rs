@@ -3,8 +3,6 @@ use crate::{AppBehaviour, behavior::AppBehaviourEvent as AppEv};
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub;
 use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
@@ -12,7 +10,6 @@ use tokio::sync::mpsc;
 /// and translates them to app-level SwarmEvent messages.
 pub fn spawn_swarm_handler(
     mut swarm: Swarm<AppBehaviour>,
-    _logs: Arc<Mutex<VecDeque<String>>>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Receiver<SwarmEvent>) {
     let (tx, rx) = mpsc::channel(100);
 

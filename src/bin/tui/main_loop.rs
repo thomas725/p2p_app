@@ -1,4 +1,5 @@
 use super::constants::CHANNEL_CAPACITY;
+use p2p_app::log_debug;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::VecDeque;
@@ -21,7 +22,6 @@ use tokio::sync::mpsc;
 pub async fn run_new_tui(
     swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
     topic_str: String,
-    logs: Arc<Mutex<VecDeque<String>>>,
 ) -> color_eyre::Result<()> {
     use ratatui::crossterm::{
         event::PushKeyboardEnhancementFlags,
@@ -50,22 +50,21 @@ pub async fn run_new_tui(
 
     // Get database URL (uses cached value from startup)
     let db_info = p2p_app::get_database_url();
-    p2p_app::log_debug(&logs, format!("Database: {}", db_info));
-    p2p_app::log_debug(&logs, format!("Loading data for topic: {}", topic_str));
+    log_debug(format!("Database: {}", db_info));
+    log_debug(format!("Loading data for topic: {}", topic_str));
 
     // Load initial messages from database
     let initial_messages = super::state::load_and_format_messages(
         &topic_str,
         super::constants::MAX_MESSAGE_HISTORY,
-        &logs,
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
         &own_nickname,
     );
-    p2p_app::log_debug(
-        &logs,
-        format!("Loaded {} messages from database", initial_messages.len()),
-    );
+    log_debug(format!(
+        "Loaded {} messages from database",
+        initial_messages.len()
+    ));
 
     // Load initial peers from database (deduplicated by peer_id)
     let initial_peers = if let Ok(db_peers) = p2p_app::load_peers() {
@@ -88,23 +87,19 @@ pub async fn run_new_tui(
             let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
-        p2p_app::log_debug(
-            &logs,
-            format!(
-                "Loaded {} unique peers from {} total database entries",
-                peers.len(),
-                db_peers.len()
-            ),
-        );
+        log_debug(format!(
+            "Loaded {} unique peers from {} total database entries",
+            peers.len(),
+            db_peers.len()
+        ));
         peers
     } else {
-        p2p_app::log_debug(&logs, "No peers found in database".to_string());
+        log_debug("No peers found in database".to_string());
         VecDeque::new()
     };
 
     let state = Arc::new(Mutex::new(super::state::AppState::new(
         topic_str.clone(),
-        logs.clone(),
         own_nickname.clone(),
         std::collections::HashMap::new(),
         std::collections::HashMap::new(),
@@ -117,66 +112,62 @@ pub async fn run_new_tui(
 
     // Spawn tasks
     // SwarmHandler returns both a handle and a receiver of SwarmEvent
-    let (swarm_handler, swarm_event_rx) = p2p_app::spawn_swarm_handler(swarm, logs.clone());
+    let (swarm_handler, swarm_event_rx) = p2p_app::spawn_swarm_handler(swarm);
 
     // InputHandler sends InputEvent to this channel
     let input_handler = super::input_handler::spawn_input_handler(input_tx);
 
     // CommandProcessor receives both InputEvent and SwarmEvent
-    let (command_processor, _) = super::command_processor::spawn_command_processor(
-        state.clone(),
-        input_rx,
-        swarm_event_rx,
-        logs.clone(),
-    );
+    let (command_processor, _) =
+        super::command_processor::spawn_command_processor(state.clone(), input_rx, swarm_event_rx);
 
     // RenderLoop reads state and renders
     let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal);
 
-    p2p_app::log_debug(&logs, "Started 4-task TUI architecture".to_string());
+    log_debug("Started 4-task TUI architecture".to_string());
 
     // Wait for any task to complete (indicates error or exit)
     let exit_reason = tokio::select! {
         result = swarm_handler => {
             if result.is_err() {
-                p2p_app::log_debug(&logs, "SwarmHandler panicked".to_string());
+                log_debug( "SwarmHandler panicked".to_string());
                 "SwarmHandler task error"
             } else {
-                p2p_app::log_debug(&logs, "SwarmHandler exited".to_string());
+                log_debug( "SwarmHandler exited".to_string());
                 "SwarmHandler completed"
             }
         }
         result = input_handler => {
             if result.is_err() {
-                p2p_app::log_debug(&logs, "InputHandler panicked".to_string());
+                log_debug( "InputHandler panicked".to_string());
                 "InputHandler task error"
             } else {
-                p2p_app::log_debug(&logs, "InputHandler exited".to_string());
+                log_debug( "InputHandler exited".to_string());
                 "InputHandler completed"
             }
         }
         result = command_processor => {
             if result.is_err() {
-                p2p_app::log_debug(&logs, "CommandProcessor panicked".to_string());
+                log_debug( "CommandProcessor panicked".to_string());
                 "CommandProcessor task error"
             } else {
-                p2p_app::log_debug(&logs, "CommandProcessor exited".to_string());
+                log_debug( "CommandProcessor exited".to_string());
                 "CommandProcessor completed"
             }
         }
         result = render_loop => {
             if result.is_err() {
-                p2p_app::log_debug(&logs, "RenderLoop panicked".to_string());
+                log_debug( "RenderLoop panicked".to_string());
                 "RenderLoop task error"
             } else {
-                p2p_app::log_debug(&logs, "RenderLoop exited".to_string());
+                log_debug( "RenderLoop exited".to_string());
                 "RenderLoop completed"
             }
         }
     };
 
     // Signal graceful shutdown to remaining tasks
-    p2p_app::log_debug(&logs, format!("Initiating shutdown: {}", exit_reason));
+    log_debug(format!("Initiating shutdown: {}", exit_reason));
 
     // Cleanup terminal state
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);

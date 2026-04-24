@@ -55,15 +55,10 @@ use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[cfg(feature = "tui")]
-pub fn log_debug(
-    logs: &std::sync::Mutex<std::collections::VecDeque<String>>,
-    message: impl Into<String>,
-) {
+pub fn log_debug(message: impl Into<String>) {
     let ts = format_system_time(std::time::SystemTime::now());
     let formatted = format!("[{}] {}", ts, message.into());
-    if let Ok(mut l) = logs.lock() {
-        l.push_back(formatted);
-    }
+    logging::push_log(formatted);
 }
 
 #[cfg(test)]

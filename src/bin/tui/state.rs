@@ -1,11 +1,9 @@
 use super::{DynamicTabs, TextArea};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Mutex};
 
 /// Shared application state for all tasks
 ///
 /// This struct centralizes all mutable state needed by the TUI.
-/// It is wrapped in `Arc<Mutex<AppState>>` to be safely shared across async tasks.
 ///
 /// Only the CommandProcessor task directly mutates this state.
 /// Other tasks:
@@ -43,13 +41,11 @@ pub struct AppState {
     // Runtime Context
     pub own_nickname: String,
     pub topic_str: String,
-    pub logs: Arc<Mutex<VecDeque<String>>>,
 }
 
 impl AppState {
     pub fn new(
         topic_str: String,
-        logs: Arc<Mutex<VecDeque<String>>>,
         own_nickname: String,
         local_nicknames: HashMap<String, String>,
         received_nicknames: HashMap<String, String>,
@@ -74,18 +70,6 @@ impl AppState {
             unread_broadcasts: 0,
             unread_dms: HashMap::new(),
             topic_str,
-            logs,
-        }
-    }
-
-    /// Sync logs from centralized logging to state
-    pub fn sync_logs_from_centralized(&mut self) {
-        use p2p_app::get_tui_logs;
-        let centralized = get_tui_logs();
-        if let Ok(mut l) = self.logs.lock() {
-            for msg in centralized {
-                l.push_back(msg);
-            }
         }
     }
 }
@@ -93,7 +77,6 @@ impl AppState {
 pub fn load_and_format_messages(
     topic_str: &str,
     max_messages: usize,
-    logs: &Arc<Mutex<VecDeque<String>>>,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
     own_nickname: &str,
@@ -117,7 +100,7 @@ pub fn load_and_format_messages(
             ));
         }
     } else {
-        p2p_app::log_debug(logs, "Failed to load messages from database".to_string());
+        p2p_app::log_debug("Failed to load messages from database".to_string());
     }
     messages
 }

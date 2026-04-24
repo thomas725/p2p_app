@@ -1,8 +1,7 @@
 use super::constants::{CHANNEL_CAPACITY, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, MAX_PEERS};
 use super::input_handler::InputEvent;
 use super::state::AppState;
-use p2p_app::{SwarmCommand, SwarmEvent};
-use std::collections::VecDeque;
+use p2p_app::{SwarmCommand, SwarmEvent, log_debug};
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
@@ -33,12 +32,11 @@ pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,
     mut input_rx: mpsc::Receiver<InputEvent>,
     mut swarm_event_rx: mpsc::Receiver<SwarmEvent>,
-    logs: Arc<Mutex<VecDeque<String>>>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Sender<SwarmCommand>) {
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     let handle = tokio::spawn(async move {
-        p2p_app::log_debug(&logs, "CommandProcessor task started".to_string());
+        log_debug("CommandProcessor task started".to_string());
         loop {
             tokio::select! {
                 Some(input_event) = input_rx.recv() => {
@@ -51,7 +49,7 @@ pub fn spawn_command_processor(
                                     && key_event.code == crossterm::event::KeyCode::Char('q'))
                             {
                                 // Exit signal - tasks will stop when this loop exits
-                                p2p_app::log_debug(&logs, "Exit signal received".to_string());
+                                log_debug("Exit signal received".to_string());
                                 return;
                             }
 
@@ -63,13 +61,13 @@ pub fn spawn_command_processor(
                                         let max_tabs = s.dynamic_tabs.total_tab_count();
                                         s.active_tab = (s.active_tab + 1) % max_tabs;
                                         s.chat_scroll_offset = 0;
-                                        p2p_app::log_debug(&logs, format!("Switched to tab {}", s.active_tab));
+                                        log_debug(format!("Switched to tab {}", s.active_tab));
                                     }
                                     crossterm::event::KeyCode::BackTab => {
                                         let max_tabs = s.dynamic_tabs.total_tab_count();
                                         s.active_tab = if s.active_tab == 0 { max_tabs - 1 } else { s.active_tab - 1 };
                                         s.chat_scroll_offset = 0;
-                                        p2p_app::log_debug(&logs, format!("Switched to tab {}", s.active_tab));
+                                        log_debug(format!("Switched to tab {}", s.active_tab));
                                     }
                                     // Scroll up/down or select peer
                                     crossterm::event::KeyCode::Up => {
@@ -104,7 +102,7 @@ pub fn spawn_command_processor(
                                     crossterm::event::KeyCode::F(12) => {
                                         s.mouse_capture = !s.mouse_capture;
                                         let mode = if s.mouse_capture { "enabled" } else { "disabled" };
-                                        p2p_app::log_debug(&logs, format!("Mouse capture {}", mode));
+                                        log_debug(format!("Mouse capture {}", mode));
 
                                         // Execute the terminal command to actually toggle mouse capture
                                         use ratatui::crossterm::execute;
@@ -130,7 +128,7 @@ pub fn spawn_command_processor(
                                             if let Some(peer_id) = peer_id_opt {
                                                 let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id.clone());
                                                 s.active_tab = tab_idx;
-                                                p2p_app::log_debug(&logs, format!("Opened DM with peer: {}", peer_id));
+                                                log_debug(format!("Opened DM with peer: {}", peer_id));
                                             }
                                         } else if tab_content.is_input_enabled() {
                                             let text: String = s.chat_input.lines().join("\n");
@@ -145,9 +143,9 @@ pub fn spawn_command_processor(
                                                         if s.messages.len() > MAX_MESSAGE_HISTORY {
                                                             s.messages.pop_front();
                                                         }
-                                                        p2p_app::log_debug(&logs, format!("Sent broadcast: {}", text));
+                                                        log_debug(format!("Sent broadcast: {}", text));
                                                         if let Err(e) = p2p_app::save_message(&text, None, &s.topic_str, false, None) {
-                                                            p2p_app::log_debug(&logs, format!("Failed to save sent message: {}", e));
+                                                            log_debug(format!("Failed to save sent message: {}", e));
                                                         }
                                                     }
                                                     p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
@@ -160,9 +158,9 @@ pub fn spawn_command_processor(
                                                         if dm_msgs.len() > MAX_DM_HISTORY {
                                                             dm_msgs.pop_front();
                                                         }
-                                                        p2p_app::log_debug(&logs, format!("Sent DM to {}: {}", peer_id, text));
+                                                        log_debug(format!("Sent DM to {}: {}", peer_id, text));
                                                         if let Err(e) = p2p_app::save_message(&text, None, &s.topic_str, true, Some(peer_id)) {
-                                                            p2p_app::log_debug(&logs, format!("Failed to save sent DM: {}", e));
+                                                            log_debug(format!("Failed to save sent DM: {}", e));
                                                         }
                                                     }
                                                     _ => {}
@@ -180,7 +178,7 @@ pub fn spawn_command_processor(
                                                 // Switch to previous tab
                                                 s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
                                                 s.peer_selection = 0;
-                                                p2p_app::log_debug(&logs, format!("Closed DM tab with peer: {}", peer_id));
+                                                log_debug(format!("Closed DM tab with peer: {}", peer_id));
                                             }
                                     }
                                     // Enter text input to the chat input box
@@ -217,13 +215,13 @@ pub fn spawn_command_processor(
                                                     if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
                                                         && let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
                                                             s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
-                                                            p2p_app::log_debug(&logs, format!("Closed DM tab via mouse: {}", peer_id));
+                                                            log_debug(format!("Closed DM tab via mouse: {}", peer_id));
                                                         }
                                                 } else if idx != s.active_tab {
                                                     // Switch tab
                                                     s.active_tab = idx;
                                                     s.chat_scroll_offset = 0;
-                                                    p2p_app::log_debug(&logs, format!("Switched to tab {} via mouse click", s.active_tab));
+                                                    log_debug(format!("Switched to tab {} via mouse click", s.active_tab));
                                                 }
                                                 break;
                                             }
@@ -243,7 +241,7 @@ pub fn spawn_command_processor(
                                                     let peer_id_clone = peer_id.clone();
                                                     let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
                                                     s.active_tab = tab_idx;
-                                                    p2p_app::log_debug(&logs, format!("Opened DM with peer via mouse: {}", peer_id_clone));
+                                                    log_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
                                                 }
                                             }
                                         }
@@ -277,9 +275,9 @@ pub fn spawn_command_processor(
                                 if s.active_tab != 0 {
                                     s.unread_broadcasts += 1;
                                 }
-                                p2p_app::log_debug(&logs, format!("Broadcast message from {}: {}", sender_display, content));
+                                log_debug(format!("Broadcast message from {}: {}", sender_display, content));
                                 if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None) {
-                                    p2p_app::log_debug(&logs, format!("Failed to save message: {}", e));
+                                    log_debug(format!("Failed to save message: {}", e));
                                 }
                             }
                         }
@@ -306,16 +304,16 @@ pub fn spawn_command_processor(
                                 }
                                 *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
                                 s.dynamic_tabs.add_dm_tab(peer_id.clone());
-                                p2p_app::log_debug(&logs, format!("Direct message from {}: {}", sender_display, content));
+                                log_debug(format!("Direct message from {}: {}", sender_display, content));
                                 if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id)) {
-                                    p2p_app::log_debug(&logs, format!("Failed to save DM: {}", e));
+                                    log_debug(format!("Failed to save DM: {}", e));
                                 }
                             }
                         }
                         SwarmEvent::PeerConnected(peer_id) => {
                             if let Ok(mut s) = state.lock() {
                                 s.concurrent_peers += 1;
-                                p2p_app::log_debug(&logs, format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
+                                log_debug(format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
 
                                 // Only add peer if not already in list (check prevents duplicates)
                                 if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
@@ -331,11 +329,11 @@ pub fn spawn_command_processor(
                         SwarmEvent::PeerDisconnected(peer_id) => {
                             if let Ok(mut s) = state.lock() {
                                 s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
-                                p2p_app::log_debug(&logs, format!("Peer disconnected: {} (total: {})", peer_id, s.concurrent_peers));
+                                log_debug(format!("Peer disconnected: {} (total: {})", peer_id, s.concurrent_peers));
                             }
                         }
                         SwarmEvent::ListenAddrEstablished(addr) => {
-                            p2p_app::log_debug(&logs, format!("Listening on: {}", addr));
+                            log_debug(format!("Listening on: {}", addr));
                         }
                         #[cfg(feature = "mdns")]
                         SwarmEvent::PeerDiscovered { peer_id, addresses: _ } => {
@@ -347,7 +345,7 @@ pub fn spawn_command_processor(
                         }
                         #[cfg(feature = "mdns")]
                         SwarmEvent::PeerExpired { peer_id } => {
-                            p2p_app::log_debug(&logs, format!("Peer expired: {}", peer_id));
+                            log_debug(format!("Peer expired: {}", peer_id));
                         }
                     }
                 }
