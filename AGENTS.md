@@ -2,6 +2,14 @@
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## 0. Don't Revert
+
+When the user reports a bug, **DO NOT** run `git revert`. Fix the bug properly instead.
+
+- Reverting breaks the commit history and makes debugging harder
+- If you're unsure how to fix, ask the user for clarification
+- Only proceed with fixes when you understand the problem
+
 ## 1. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**

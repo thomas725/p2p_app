@@ -74,11 +74,13 @@ fn determine_db_path() -> color_eyre::Result<String> {
 /// Finds the first unused SQLite database in the current working directory using lock files.
 /// If none is available, creates a new database with the next sequential name.
 fn find_or_create_unused_db() -> color_eyre::Result<String> {
+    use crate::logging::p2plog_debug;
     use std::fs;
     use std::process::id as getpid;
 
     let cwd = std::env::current_dir().wrap_err("failed to get current working directory")?;
     let pid = getpid();
+    p2plog_debug(format!("[DB] cwd={} pid={}", cwd.display(), pid));
 
     // Collect all existing .db files
     let mut db_files: Vec<_> = fs::read_dir(&cwd)
@@ -94,14 +96,17 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         })
         .collect();
     db_files.sort();
+    p2plog_debug(format!(
+        "[DB] found {} db files: {:?}",
+        db_files.len(),
+        db_files
+    ));
 
     // Check existing databases for lock files (lock indicates active use)
-    // A lock file is considered active if:
-    // 1. It exists and contains a numeric PID
-    // 2. That process is still running
     let mut available = Vec::new();
     for db_file in &db_files {
         let lock_path = cwd.join(format!("{}.lock", db_file));
+        p2plog_debug(format!("[DB] checking {}", db_file));
         let is_locked = if lock_path.exists() {
             match fs::read_to_string(&lock_path) {
                 Ok(content) => {
@@ -130,13 +135,17 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         } else {
             false // No lock file = available
         };
-        if !is_locked {
+        if is_locked {
+            p2plog_debug(format!("[DB]   {} has active lock", db_file));
+        } else {
+            p2plog_debug(format!("[DB]   {} is available", db_file));
             available.push(db_file.clone());
         }
     }
 
     // Pick first available, or create new one
     let db_file = if let Some(first) = available.first() {
+        p2plog_debug(format!("[DB] selecting first available: {}", first));
         let candidate = first.clone();
         let lock_path = cwd.join(format!("{}.lock", candidate));
         // Try to create lock file atomically (fails if exists)
@@ -148,9 +157,17 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
             Ok(mut f) => {
                 use std::io::Write;
                 let _ = f.write_all(pid.to_string().as_bytes());
+                p2plog_debug(format!(
+                    "[DB] created lock for {} with pid {}",
+                    candidate, pid
+                ));
                 candidate
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                p2plog_debug(format!(
+                    "[DB] lock for {} already exists, trying others",
+                    candidate
+                ));
                 // Lost race, try others
                 let mut tried = vec![candidate];
                 loop {
