@@ -1,1 +1,0 @@
-ALTER TABLE identities ADD COLUMN self_nickname TEXT;

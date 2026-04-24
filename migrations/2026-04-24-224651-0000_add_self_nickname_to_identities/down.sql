@@ -1,1 +1,0 @@
-ALTER TABLE identities DROP COLUMN self_nickname;
