@@ -99,7 +99,7 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
     let pid = getpid();
     p2plog_debug(format!("[DB] cwd={} pid={}", cwd.display(), pid));
 
-    // Collect all existing .db files
+    // Collect existing .db files and check each immediately
     let mut db_files: Vec<_> = fs::read_dir(&cwd)
         .wrap_err("failed to read current directory")?
         .filter_map(|entry| {
@@ -113,59 +113,46 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         })
         .collect();
     db_files.sort();
-    p2plog_debug(format!(
-        "[DB] found {} db files: {:?}",
-        db_files.len(),
-        db_files
-    ));
 
-    // Check existing databases for lock files (lock indicates active use)
-    let mut available = Vec::new();
+    // Check each db file in order, return first available
     for db_file in &db_files {
         let lock_path = cwd.join(format!("{}.lock", db_file));
         p2plog_debug(format!("[DB] checking {}", db_file));
+
         let is_locked = if lock_path.exists() {
             match fs::read_to_string(&lock_path) {
                 Ok(content) => {
-                    // If PID in lock file is still running, it's locked
                     if let Ok(other_pid) = content.trim().parse::<u32>() {
                         if other_pid == 0 {
-                            false // Empty/zero PID means unlocked
+                            false // Empty/zero PID = unlocked
                         } else {
-                            // Check if process with this PID exists using /proc
                             #[cfg(target_os = "linux")]
                             {
                                 std::path::Path::new(&format!("/proc/{other_pid}")).exists()
                             }
                             #[cfg(not(target_os = "linux"))]
                             {
-                                // On non-Linux, we can't easily check, so assume locked
-                                true
+                                true // Assume locked on non-Linux
                             }
                         }
                     } else {
-                        true // Non-numeric content = assume locked
+                        true // Non-numeric content = locked
                     }
                 }
-                Err(_) => true, // Can't read lock file = assume locked
+                Err(_) => true, // Can't read = locked
             }
         } else {
             false // No lock file = available
         };
+
         if is_locked {
             p2plog_debug(format!("[DB]   {} has active lock", db_file));
-        } else {
-            p2plog_debug(format!("[DB]   {} is available", db_file));
-            available.push(db_file.clone());
+            continue;
         }
-    }
 
-    // Pick first available, or create new one
-    let db_file = if let Some(first) = available.first() {
-        p2plog_debug(format!("[DB] selecting first available: {}", first));
-        let candidate = first.clone();
-        let lock_path = cwd.join(format!("{}.lock", candidate));
-        // Try to create lock file atomically (fails if exists)
+        p2plog_debug(format!("[DB]   {} is available", db_file));
+
+        // Try to acquire lock (may fail if race)
         match fs::OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -174,52 +161,20 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
             Ok(mut f) => {
                 use std::io::Write;
                 let _ = f.write_all(pid.to_string().as_bytes());
-                p2plog_debug(format!(
-                    "[DB] created lock for {} with pid {}",
-                    candidate, pid
-                ));
-                candidate
+                return Ok(cwd.join(db_file.clone()).to_string_lossy().into_owned());
             }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err(_) => {
                 p2plog_debug(format!(
-                    "[DB] lock for {} already exists, trying others",
-                    candidate
+                    "[DB] lock for {} already exists, trying next",
+                    db_file
                 ));
-                // Lost race, try others
-                let mut tried = vec![candidate];
-                loop {
-                    let next = available.iter().find(|d| !tried.contains(d));
-                    if let Some(db) = next {
-                        let candidate = db.clone();
-                        tried.push(candidate.clone());
-                        let lock_path = cwd.join(format!("{}.lock", candidate));
-                        match fs::OpenOptions::new()
-                            .create_new(true)
-                            .write(true)
-                            .open(&lock_path)
-                        {
-                            Ok(mut f) => {
-                                use std::io::Write;
-                                let _ = f.write_all(pid.to_string().as_bytes());
-                                break candidate;
-                            }
-                            Err(_) => continue,
-                        }
-                    } else {
-                        // All tried, create new
-                        break create_new_db(&db_files, &cwd, pid);
-                    }
-                }
-            }
-            Err(e) => {
-                return Err(e).wrap_err_with(|| format!("failed to create lock for {}", candidate));
+                continue; // Lost race, try next
             }
         }
-    } else {
-        create_new_db(&db_files, &cwd, pid)
-    };
+    }
 
-    Ok(cwd.join(db_file).to_string_lossy().into_owned())
+    // All existing dbs locked or taken, create new one
+    Ok(create_new_db(&db_files, &cwd, pid))
 }
 
 fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String {
