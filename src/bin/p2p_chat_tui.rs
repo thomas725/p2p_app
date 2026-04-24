@@ -77,6 +77,7 @@ mod tui {
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
+    p2p_app::logging::set_tui_callback(|_| {});
 
     let db_url = p2p_app::get_database_url();
     p2plog_info(format!("Using database: {}", db_url));
@@ -85,14 +86,14 @@ async fn main() -> color_eyre::Result<()> {
 
     let network_size = match p2p_app::get_network_size() {
         Ok(size) => {
-            eprintln!("Network size detected: {:?}", size);
+            p2plog_info(format!("Network size detected: {:?}", size));
             size
         }
         Err(e) => {
-            eprintln!(
+            p2plog_info(format!(
                 "Could not determine network size, defaulting to Small: {}",
                 e
-            );
+            ));
             p2p_app::NetworkSize::Small
         }
     };
