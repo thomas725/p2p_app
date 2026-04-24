@@ -79,13 +79,67 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
 fn ensure_columns(conn: &mut SqliteConnection) {
     use diesel::sql_query;
 
-    let cols = [
+    // Full schema: (table, column, type)
+    let schema = [
+        ("identities", "id", "INTEGER"),
+        ("identities", "created_at", "TIMESTAMP"),
+        ("identities", "key", "BLOB"),
+        ("identities", "last_tcp_port", "INTEGER"),
+        ("identities", "last_quic_port", "INTEGER"),
         ("identities", "self_nickname", "TEXT"),
+        ("peers", "id", "INTEGER"),
+        ("peers", "created_at", "TIMESTAMP"),
+        ("peers", "peer_id", "TEXT"),
+        ("peers", "addresses", "TEXT"),
+        ("peers", "first_seen", "TIMESTAMP"),
+        ("peers", "last_seen", "TIMESTAMP"),
         ("peers", "peer_local_nickname", "TEXT"),
         ("peers", "received_nickname", "TEXT"),
+        ("messages", "id", "INTEGER"),
+        ("messages", "created_at", "TIMESTAMP"),
+        ("messages", "content", "TEXT"),
+        ("messages", "peer_id", "TEXT"),
+        ("messages", "topic", "TEXT"),
+        ("messages", "sent", "INTEGER"),
+        ("messages", "is_direct", "INTEGER"),
+        ("messages", "target_peer", "TEXT"),
+        ("peer_sessions", "id", "INTEGER"),
+        ("peer_sessions", "concurrent_peers", "INTEGER"),
+        ("peer_sessions", "recorded_at", "TIMESTAMP"),
     ];
-    for (tbl, col, ty) in cols {
-        let _ = sql_query(format!("ALTER TABLE {} ADD COLUMN {} {}", tbl, col, ty)).execute(conn);
+
+    for (table, column, col_type) in schema {
+        // Skip if table doesn't exist
+        let table_exists = sql_query(format!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='{}'",
+            table
+        ))
+        .execute(conn)
+        .unwrap_or(0)
+            > 0;
+
+        if !table_exists {
+            continue;
+        }
+
+        // Skip if column already exists
+        let col_exists = sql_query(format!(
+            "SELECT COUNT(*) FROM pragma_table_info('{}') WHERE name='{}'",
+            table, column
+        ))
+        .execute(conn)
+        .unwrap_or(0)
+            > 0;
+
+        if col_exists {
+            continue;
+        }
+
+        // Add missing column
+        let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
+        if sql_query(&sql).execute(conn).is_ok() {
+            crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table));
+        }
     }
 }
 

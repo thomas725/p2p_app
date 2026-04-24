@@ -1,6 +1,7 @@
--- Peers table: idempotent creation with all columns
--- Uses CREATE TABLE IF NOT EXISTS so safe for fresh DBs
--- For existing databases, missing columns are added by fix_missing_columns() in db.rs
+-- Peers table: handles both fresh DBs and upgrades
+-- For existing tables, use ensure_columns() from db.rs for safe upgrades
+-- This migration is idempotent for fresh tables
+
 CREATE TABLE IF NOT EXISTS peers (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
