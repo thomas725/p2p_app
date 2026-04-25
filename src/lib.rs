@@ -28,7 +28,9 @@ pub use fmt::{
     auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, now_timestamp,
     peer_display_name, scroll_title, short_peer_id,
 };
-pub use logging::{get_tui_logs, init_logging, push_log, set_tui_callback, strip_ansi_codes};
+pub use logging::{
+    get_tui_logs, init_logging, p2plog_debug, push_log, set_tui_callback, strip_ansi_codes,
+};
 pub use logging_config::tracing_filter;
 pub use messages::{
     get_unsent_direct_messages, get_unsent_messages, load_direct_messages, load_messages,
@@ -53,13 +55,6 @@ pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
-
-#[cfg(feature = "tui")]
-pub fn log_debug(message: impl Into<String>) {
-    let ts = format_system_time(std::time::SystemTime::now());
-    let formatted = format!("[{}] {}", ts, message.into());
-    logging::push_log(formatted);
-}
 
 #[cfg(test)]
 mod tests {

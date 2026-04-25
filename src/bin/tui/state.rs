@@ -100,7 +100,7 @@ pub fn load_and_format_messages(
             ));
         }
     } else {
-        p2p_app::log_debug("Failed to load messages from database".to_string());
+        p2p_app::p2plog_debug("Failed to load messages from database");
     }
     messages
 }

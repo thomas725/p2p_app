@@ -106,9 +106,25 @@ pub fn push_log(message: impl Into<String>) {
 /// Legacy log function (maintained for backward compatibility)
 #[allow(dead_code)]
 pub fn p2plog(level: &str, msg: String) {
-    let ts = chrono::Local::now().format("%H:%M:%S").to_string();
+    let ts = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
     let formatted = format!("[{}] [{}] {}", ts, level, msg);
-    push_log(formatted);
+
+    // Store in TUI logs (skip push_log which adds another timestamp)
+    if let Some(logs) = TUI_LOGS.get() {
+        if let Ok(mut l) = logs.lock() {
+            l.push_back(formatted.clone());
+            if l.len() > MAX_TUI_LOGS {
+                l.pop_front();
+            }
+        }
+    }
+
+    // Forward to TUI callback
+    if let Some(callback) = TUI_CALLBACK.get() {
+        callback(formatted);
+    } else {
+        eprintln!("{}", formatted);
+    }
 }
 
 /// Legacy debug log alias

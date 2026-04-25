@@ -1,5 +1,5 @@
 use super::constants::CHANNEL_CAPACITY;
-use p2p_app::log_debug;
+use p2p_app::p2plog_debug;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::VecDeque;
@@ -50,8 +50,8 @@ pub async fn run_new_tui(
 
     // Get database URL (uses cached value from startup)
     let db_info = p2p_app::get_database_url();
-    log_debug(format!("Database: {}", db_info));
-    log_debug(format!("Loading data for topic: {}", topic_str));
+    p2plog_debug(format!("Database: {}", db_info));
+    p2plog_debug(format!("Loading data for topic: {}", topic_str));
 
     // Load initial messages from database
     let initial_messages = super::state::load_and_format_messages(
@@ -61,7 +61,7 @@ pub async fn run_new_tui(
         &std::collections::HashMap::new(),
         &own_nickname,
     );
-    log_debug(format!(
+    p2plog_debug(format!(
         "Loaded {} messages from database",
         initial_messages.len()
     ));
@@ -87,14 +87,14 @@ pub async fn run_new_tui(
             let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
             peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
         }
-        log_debug(format!(
+        p2plog_debug(format!(
             "Loaded {} unique peers from {} total database entries",
             peers.len(),
             db_peers.len()
         ));
         peers
     } else {
-        log_debug("No peers found in database".to_string());
+        p2plog_debug("No peers found in database".to_string());
         VecDeque::new()
     };
 
@@ -124,50 +124,50 @@ pub async fn run_new_tui(
     // RenderLoop reads state and renders
     let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal);
 
-    log_debug("Started 4-task TUI architecture".to_string());
+    p2plog_debug("Started 4-task TUI architecture".to_string());
 
     // Wait for any task to complete (indicates error or exit)
     let exit_reason = tokio::select! {
         result = swarm_handler => {
             if result.is_err() {
-                log_debug( "SwarmHandler panicked".to_string());
+                p2plog_debug( "SwarmHandler panicked".to_string());
                 "SwarmHandler task error"
             } else {
-                log_debug( "SwarmHandler exited".to_string());
+                p2plog_debug( "SwarmHandler exited".to_string());
                 "SwarmHandler completed"
             }
         }
         result = input_handler => {
             if result.is_err() {
-                log_debug( "InputHandler panicked".to_string());
+                p2plog_debug( "InputHandler panicked".to_string());
                 "InputHandler task error"
             } else {
-                log_debug( "InputHandler exited".to_string());
+                p2plog_debug( "InputHandler exited".to_string());
                 "InputHandler completed"
             }
         }
         result = command_processor => {
             if result.is_err() {
-                log_debug( "CommandProcessor panicked".to_string());
+                p2plog_debug( "CommandProcessor panicked".to_string());
                 "CommandProcessor task error"
             } else {
-                log_debug( "CommandProcessor exited".to_string());
+                p2plog_debug( "CommandProcessor exited".to_string());
                 "CommandProcessor completed"
             }
         }
         result = render_loop => {
             if result.is_err() {
-                log_debug( "RenderLoop panicked".to_string());
+                p2plog_debug( "RenderLoop panicked".to_string());
                 "RenderLoop task error"
             } else {
-                log_debug( "RenderLoop exited".to_string());
+                p2plog_debug( "RenderLoop exited".to_string());
                 "RenderLoop completed"
             }
         }
     };
 
     // Signal graceful shutdown to remaining tasks
-    log_debug(format!("Initiating shutdown: {}", exit_reason));
+    p2plog_debug(format!("Initiating shutdown: {}", exit_reason));
 
     // Cleanup terminal state
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
