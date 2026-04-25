@@ -1,5 +1,7 @@
 use super::constants::CHANNEL_CAPACITY;
+use p2p_app::logging::get_tui_logs;
 use p2p_app::p2plog_debug;
+use p2p_app::release_db_lock;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::VecDeque;
@@ -173,6 +175,14 @@ pub async fn run_new_tui(
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
     let _ = disable_raw_mode();
     let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
+
+    // Print cached logs to stdout
+    for log in get_tui_logs() {
+        println!("{}", log);
+    }
+
+    // Release database lock file
+    release_db_lock();
 
     Ok(())
 }

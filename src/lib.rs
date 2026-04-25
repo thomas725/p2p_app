@@ -23,7 +23,7 @@ pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
     build_behaviour,
 };
-pub use db::{get_database_url, get_libp2p_identity, sqlite_connect};
+pub use db::{get_database_url, get_libp2p_identity, release_db_lock, sqlite_connect};
 pub use fmt::{
     auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, now_timestamp,
     peer_display_name, scroll_title, short_peer_id,

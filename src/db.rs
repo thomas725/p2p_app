@@ -281,6 +281,19 @@ pub fn get_database_url() -> String {
     url
 }
 
+/// Release the database lock file by deleting the .lock file.
+/// Called on normal exit to clean up the lock file.
+pub fn release_db_lock() {
+    if let Some(db_path) = DB_URL.get() {
+        let lock_path = format!("{}.lock", db_path);
+        if std::path::Path::new(&lock_path).exists() {
+            if std::fs::remove_file(&lock_path).is_ok() {
+                eprintln!("[DB] released lock on exit: {}", lock_path);
+            }
+        }
+    }
+}
+
 /// Load or generate the libp2p identity keypair.
 ///
 /// Checks the database for an existing identity. If found, deserializes and returns it.
