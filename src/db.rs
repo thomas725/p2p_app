@@ -115,40 +115,14 @@ fn ensure_columns(conn: &mut SqliteConnection) {
     ];
 
     for (table, column, col_type) in schema {
-        // SQLite doesn't support ADD COLUMN IF NOT EXISTS, so we must check first
-        // Check if table exists
-        let table_exists = sql_query(format!(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='{}'",
-            table
-        ))
-        .execute(conn)
-        .unwrap_or(0)
-            > 0;
-
-        if !table_exists {
-            continue;
-        }
-
-        // Check if column exists in table
-        let col_exists = sql_query(format!(
-            "SELECT COUNT(*) FROM pragma_table_info('{}') WHERE name='{}'",
-            table, column
-        ))
-        .execute(conn)
-        .unwrap_or(0)
-            > 0;
-
-        if col_exists {
-            continue;
-        }
-
-        // Add missing column
+        // SQLite doesn't support ADD COLUMN IF NOT EXISTS
+        // Try to add column - errors are OK (column exists or table doesn't exist)
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
         match sql_query(&sql).execute(conn) {
             Ok(_) => {
                 crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
             }
-            Err(e) => crate::logging::p2plog_debug(format!("[DB] column {}: {}", column, e)),
+            Err(_) => {} // Column exists or table missing - that's fine
         }
     }
 }
