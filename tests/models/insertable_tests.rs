@@ -1,4 +1,4 @@
-use crate::models_insertable::*;
+use crate::generated::models_insertable::*;
 use chrono::NaiveDateTime;
 
 #[test]

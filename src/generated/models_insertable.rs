@@ -3,7 +3,7 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 
-use crate::schema::*;
+use crate::generated::schema::*;
 use diesel::Insertable;
 
 use chrono::NaiveDateTime;

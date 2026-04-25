@@ -1,9 +1,9 @@
 //! Peer management and peer session tracking
 
 use crate::{
-    models_insertable::{NewPeer, NewPeerSession},
-    models_queryable::Peer,
-    schema::peers::dsl::peers,
+    generated::models_insertable::{NewPeer, NewPeerSession},
+    generated::models_queryable::Peer,
+    generated::schema::peers::dsl::peers,
 };
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
@@ -34,13 +34,13 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         received_nickname: None,
     };
 
-    let peer = diesel::insert_into(crate::schema::peers::table)
+    let peer = diesel::insert_into(crate::generated::schema::peers::table)
         .values(&new_peer)
-        .on_conflict(crate::schema::peers::peer_id)
+        .on_conflict(crate::generated::schema::peers::peer_id)
         .do_update()
         .set((
-            crate::schema::peers::addresses.eq(&addresses_str),
-            crate::schema::peers::last_seen.eq(now),
+            crate::generated::schema::peers::addresses.eq(&addresses_str),
+            crate::generated::schema::peers::last_seen.eq(now),
         ))
         .returning(Peer::as_returning())
         .get_result(conn)?;
@@ -51,7 +51,7 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
 pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
     let conn = &mut crate::sqlite_connect()?;
     let peers_list = peers
-        .order(crate::schema::peers::last_seen.desc())
+        .order(crate::generated::schema::peers::last_seen.desc())
         .select(Peer::as_select())
         .load(conn)?;
     Ok(peers_list)
@@ -64,7 +64,7 @@ pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
         concurrent_peers,
         recorded_at: chrono::Utc::now().naive_utc(),
     };
-    diesel::insert_into(crate::schema::peer_sessions::table)
+    diesel::insert_into(crate::generated::schema::peer_sessions::table)
         .values(&new_session)
         .execute(conn)?;
     Ok(())
@@ -73,10 +73,10 @@ pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
 /// Save the last used TCP and QUIC ports to the database.
 pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
-    diesel::update(crate::schema::identities::table)
+    diesel::update(crate::generated::schema::identities::table)
         .set((
-            crate::schema::identities::last_tcp_port.eq(tcp_port),
-            crate::schema::identities::last_quic_port.eq(quic_port),
+            crate::generated::schema::identities::last_tcp_port.eq(tcp_port),
+            crate::generated::schema::identities::last_quic_port.eq(quic_port),
         ))
         .execute(conn)?;
     Ok(())
@@ -85,10 +85,10 @@ pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color
 /// Load the last used TCP and QUIC ports from the database.
 pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
     let conn = &mut crate::sqlite_connect()?;
-    let result = crate::schema::identities::table
+    let result = crate::generated::schema::identities::table
         .select((
-            crate::schema::identities::last_tcp_port,
-            crate::schema::identities::last_quic_port,
+            crate::generated::schema::identities::last_tcp_port,
+            crate::generated::schema::identities::last_quic_port,
         ))
         .first::<(Option<i32>, Option<i32>)>(conn)
         .optional()?;
@@ -98,8 +98,8 @@ pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
 /// Calculate the average peer count across all recorded sessions.
 pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     let conn = &mut crate::sqlite_connect()?;
-    let sessions = crate::schema::peer_sessions::table
-        .select(crate::schema::peer_sessions::concurrent_peers)
+    let sessions = crate::generated::schema::peer_sessions::table
+        .select(crate::generated::schema::peer_sessions::concurrent_peers)
         .load::<i32>(conn)?;
     if sessions.is_empty() {
         return Ok(0.0);
@@ -111,9 +111,9 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
 /// Get the most recently recorded peer count.
 pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
     let conn = &mut crate::sqlite_connect()?;
-    let last = crate::schema::peer_sessions::table
-        .select(crate::schema::peer_sessions::concurrent_peers)
-        .order(crate::schema::peer_sessions::recorded_at.desc())
+    let last = crate::generated::schema::peer_sessions::table
+        .select(crate::generated::schema::peer_sessions::concurrent_peers)
+        .order(crate::generated::schema::peer_sessions::recorded_at.desc())
         .first::<i32>(conn)
         .optional()?;
     Ok(last.unwrap_or(0))

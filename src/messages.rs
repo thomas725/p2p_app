@@ -1,7 +1,8 @@
 //! Message persistence and retrieval functions
 
 use crate::{
-    models_insertable::NewMessage, models_queryable::Message, schema::messages::dsl::messages,
+    generated::models_insertable::NewMessage, generated::models_queryable::Message,
+    generated::schema::messages::dsl::messages,
 };
 use color_eyre::eyre::Context;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
@@ -36,7 +37,7 @@ pub fn save_message(
         is_direct: is_direct as i32,
         target_peer: target_peer.map(|s| s.to_string()),
     };
-    diesel::insert_into(crate::schema::messages::table)
+    diesel::insert_into(crate::generated::schema::messages::table)
         .values(&new_msg)
         .returning(Message::as_returning())
         .get_result(conn)
@@ -56,10 +57,10 @@ pub fn save_message(
 pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     messages
-        .filter(crate::schema::messages::topic.eq(topic))
-        .filter(crate::schema::messages::sent.eq(0))
-        .filter(crate::schema::messages::is_direct.eq(0))
-        .order(crate::schema::messages::created_at.asc())
+        .filter(crate::generated::schema::messages::topic.eq(topic))
+        .filter(crate::generated::schema::messages::sent.eq(0))
+        .filter(crate::generated::schema::messages::is_direct.eq(0))
+        .order(crate::generated::schema::messages::created_at.asc())
         .select(Message::as_select())
         .load(conn)
         .wrap_err_with(|| format!("Failed to load unsent messages for topic: {}", topic))
@@ -68,9 +69,12 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
 /// Mark a message as sent by ID.
 pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
-    diesel::update(crate::schema::messages::table.filter(crate::schema::messages::id.eq(id)))
-        .set(crate::schema::messages::sent.eq(1))
-        .execute(conn)?;
+    diesel::update(
+        crate::generated::schema::messages::table
+            .filter(crate::generated::schema::messages::id.eq(id)),
+    )
+    .set(crate::generated::schema::messages::sent.eq(1))
+    .execute(conn)?;
     Ok(())
 }
 
@@ -78,9 +82,9 @@ pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
 pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
-        .filter(crate::schema::messages::topic.eq(topic))
-        .filter(crate::schema::messages::is_direct.eq(0))
-        .order(crate::schema::messages::created_at.desc())
+        .filter(crate::generated::schema::messages::topic.eq(topic))
+        .filter(crate::generated::schema::messages::is_direct.eq(0))
+        .order(crate::generated::schema::messages::created_at.desc())
         .limit(limit as i64)
         .select(Message::as_select())
         .load(conn)?;
@@ -91,9 +95,9 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
 pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
-        .filter(crate::schema::messages::target_peer.eq(target_peer))
-        .filter(crate::schema::messages::is_direct.eq(1))
-        .order(crate::schema::messages::created_at.asc())
+        .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
+        .filter(crate::generated::schema::messages::is_direct.eq(1))
+        .order(crate::generated::schema::messages::created_at.asc())
         .limit(limit as i64)
         .select(Message::as_select())
         .load(conn)?;
@@ -104,10 +108,10 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
 pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     messages
-        .filter(crate::schema::messages::target_peer.eq(target_peer))
-        .filter(crate::schema::messages::sent.eq(0))
-        .filter(crate::schema::messages::is_direct.eq(1))
-        .order(crate::schema::messages::created_at.asc())
+        .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
+        .filter(crate::generated::schema::messages::sent.eq(0))
+        .filter(crate::generated::schema::messages::is_direct.eq(1))
+        .order(crate::generated::schema::messages::created_at.asc())
         .select(Message::as_select())
         .load(conn)
         .wrap_err_with(|| {

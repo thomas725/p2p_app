@@ -7,8 +7,10 @@
 //!
 //! For future multi-threaded use, consider using r2d2 connection pooling.
 
-use crate::models_queryable::Identity;
-use crate::schema::identities::dsl::identities;
+use crate::generated::columns::SCHEMA_ENTRIES;
+
+use crate::generated::models_queryable::Identity;
+use crate::generated::schema::identities::dsl::identities;
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
     Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection,
@@ -85,44 +87,13 @@ fn ensure_columns(conn: &mut SqliteConnection) {
     use diesel::RunQueryDsl;
     use diesel::sql_query;
 
-    // Full schema: (table, column, type) - mirrors src/schema.rs
-    let schema = [
-        ("identities", "id", "INTEGER"),
-        ("identities", "created_at", "TIMESTAMP"),
-        ("identities", "key", "BLOB"),
-        ("identities", "last_tcp_port", "INTEGER"),
-        ("identities", "last_quic_port", "INTEGER"),
-        ("identities", "self_nickname", "TEXT"),
-        ("peers", "id", "INTEGER"),
-        ("peers", "created_at", "TIMESTAMP"),
-        ("peers", "peer_id", "TEXT"),
-        ("peers", "addresses", "TEXT"),
-        ("peers", "first_seen", "TIMESTAMP"),
-        ("peers", "last_seen", "TIMESTAMP"),
-        ("peers", "peer_local_nickname", "TEXT"),
-        ("peers", "received_nickname", "TEXT"),
-        ("messages", "id", "INTEGER"),
-        ("messages", "created_at", "TIMESTAMP"),
-        ("messages", "content", "TEXT"),
-        ("messages", "peer_id", "TEXT"),
-        ("messages", "topic", "TEXT"),
-        ("messages", "sent", "INTEGER"),
-        ("messages", "is_direct", "INTEGER"),
-        ("messages", "target_peer", "TEXT"),
-        ("peer_sessions", "id", "INTEGER"),
-        ("peer_sessions", "concurrent_peers", "INTEGER"),
-        ("peer_sessions", "recorded_at", "TIMESTAMP"),
-    ];
-
-    for (table, column, col_type) in schema {
-        // SQLite doesn't support ADD COLUMN IF NOT EXISTS
-        // Try to add column - errors are OK (column exists or table doesn't exist)
+    for (table, column, col_type) in SCHEMA_ENTRIES {
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
         match sql_query(&sql).execute(conn) {
             Ok(_) => {
                 crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
             }
-            Err(_) => {} // Column exists or table missing - that's fine
+            Err(_) => {}
         }
     }
 }
@@ -319,13 +290,13 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     let keypair = libp2p_identity::Keypair::generate_ed25519();
     match keypair.to_protobuf_encoding() {
         Ok(key) => {
-            let i = crate::models_insertable::NewIdentity {
+            let i = crate::generated::models_insertable::NewIdentity {
                 key,
                 last_tcp_port: None,
                 last_quic_port: None,
                 self_nickname: None,
             };
-            match diesel::insert_into(crate::schema::identities::table)
+            match diesel::insert_into(crate::generated::schema::identities::table)
                 .values(&i)
                 .returning(Identity::as_returning())
                 .get_result(conn)

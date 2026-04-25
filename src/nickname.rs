@@ -9,8 +9,8 @@ pub fn generate_self_nickname() -> String {
 
 pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
     let conn = &mut sqlite_connect()?;
-    let identity = crate::schema::identities::table
-        .select(crate::models_queryable::Identity::as_select())
+    let identity = crate::generated::schema::identities::table
+        .select(crate::generated::models_queryable::Identity::as_select())
         .first(conn)
         .optional()?;
     Ok(identity.and_then(|i| i.self_nickname))
@@ -18,11 +18,11 @@ pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
 
 pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::insert_or_ignore_into(crate::schema::identities::table)
-        .values(crate::schema::identities::self_nickname.eq(nickname))
-        .on_conflict(crate::schema::identities::id)
+    diesel::insert_or_ignore_into(crate::generated::schema::identities::table)
+        .values(crate::generated::schema::identities::self_nickname.eq(nickname))
+        .on_conflict(crate::generated::schema::identities::id)
         .do_update()
-        .set(crate::schema::identities::self_nickname.eq(nickname))
+        .set(crate::generated::schema::identities::self_nickname.eq(nickname))
         .execute(conn)?;
     Ok(())
 }
@@ -38,23 +38,23 @@ pub fn ensure_self_nickname() -> color_eyre::Result<String> {
 
 pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::insert_or_ignore_into(crate::schema::peers::table)
+    diesel::insert_or_ignore_into(crate::generated::schema::peers::table)
         .values((
-            crate::schema::peers::peer_id.eq(peer_id),
-            crate::schema::peers::peer_local_nickname.eq(nickname),
+            crate::generated::schema::peers::peer_id.eq(peer_id),
+            crate::generated::schema::peers::peer_local_nickname.eq(nickname),
         ))
-        .on_conflict(crate::schema::peers::peer_id)
+        .on_conflict(crate::generated::schema::peers::peer_id)
         .do_update()
-        .set(crate::schema::peers::peer_local_nickname.eq(nickname))
+        .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
         .execute(conn)?;
     Ok(())
 }
 
 pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
     let conn = &mut sqlite_connect()?;
-    let peer = crate::schema::peers::table
-        .filter(crate::schema::peers::peer_id.eq(peer_id))
-        .select(crate::models_queryable::Peer::as_select())
+    let peer = crate::generated::schema::peers::table
+        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+        .select(crate::generated::models_queryable::Peer::as_select())
         .first(conn)
         .optional()?;
     Ok(peer.and_then(|p| p.peer_local_nickname))
@@ -62,9 +62,12 @@ pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<Strin
 
 pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::update(crate::schema::peers::table.filter(crate::schema::peers::peer_id.eq(peer_id)))
-        .set(crate::schema::peers::received_nickname.eq(nickname))
-        .execute(conn)?;
+    diesel::update(
+        crate::generated::schema::peers::table
+            .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
+    )
+    .set(crate::generated::schema::peers::received_nickname.eq(nickname))
+    .execute(conn)?;
     Ok(())
 }
 
@@ -96,9 +99,9 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
 
 pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
     let conn = &mut sqlite_connect()?;
-    let peer = crate::schema::peers::table
-        .filter(crate::schema::peers::peer_id.eq(peer_id))
-        .select(crate::models_queryable::Peer::as_select())
+    let peer = crate::generated::schema::peers::table
+        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+        .select(crate::generated::models_queryable::Peer::as_select())
         .first(conn)
         .optional()?;
     Ok(peer.and_then(|p| p.received_nickname))

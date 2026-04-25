@@ -1,10 +1,12 @@
-use crate::models_queryable::*;
+use crate::generated::models_queryable::*;
 use chrono::NaiveDateTime;
 
 fn create_test_message(sent: i32, is_direct: i32, peer_id: Option<&str>) -> Message {
     Message {
         id: 1,
-        created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+        created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
+            .unwrap()
+            .naive_utc(),
         content: "test".to_string(),
         peer_id: peer_id.map(String::from),
         topic: "test".to_string(),
@@ -38,17 +40,20 @@ fn test_message_is_from_local_user() {
     assert!(!create_test_message(0, 0, Some("peer1")).is_from_local_user());
 }
 
-fn create_test_peer(
-    peer_local_nickname: Option<&str>,
-    received_nickname: Option<&str>,
-) -> Peer {
+fn create_test_peer(peer_local_nickname: Option<&str>, received_nickname: Option<&str>) -> Peer {
     Peer {
         id: 1,
-        created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+        created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
+            .unwrap()
+            .naive_utc(),
         peer_id: "12D3KooWTestPeerIdABCDEFGH".to_string(),
         addresses: "/ip4/127.0.0.1/tcp/1234".to_string(),
-        first_seen: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
-        last_seen: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+        first_seen: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
+            .unwrap()
+            .naive_utc(),
+        last_seen: chrono::DateTime::<chrono::Utc>::from_timestamp(0, 0)
+            .unwrap()
+            .naive_utc(),
         peer_local_nickname: peer_local_nickname.map(String::from),
         received_nickname: received_nickname.map(String::from),
     }

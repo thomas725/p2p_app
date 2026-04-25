@@ -4,20 +4,16 @@ pub mod fmt;
 pub mod logging;
 pub mod logging_config;
 pub mod messages;
-pub mod models_insertable;
-pub mod models_queryable;
 pub mod network;
 pub mod nickname;
 pub mod peers;
-pub mod schema;
 pub mod swarm_handler;
-#[cfg(feature = "tui")]
 pub mod tui_events;
-#[cfg(feature = "tui")]
 pub mod tui_tabs;
-#[cfg(feature = "tui")]
 pub mod tui_test_state;
 pub mod types;
+
+pub mod generated;
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
