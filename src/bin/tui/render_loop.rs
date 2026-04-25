@@ -1,4 +1,5 @@
 use super::constants::FRAME_TIME_MS;
+use super::main_loop::RenderEvent;
 use super::state::AppState;
 use p2p_app::get_tui_logs;
 use p2p_app::tui_tabs::TabContent;
@@ -12,6 +13,7 @@ use ratatui::{
 use std::io::Stdout;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tokio::sync::mpsc;
 
 /// Spawns the render loop task that continuously renders the TUI
 ///
@@ -36,12 +38,24 @@ use std::time::Duration;
 pub fn spawn_render_loop(
     state: Arc<Mutex<AppState>>,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,
+    mut render_rx: mpsc::Receiver<RenderEvent>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(FRAME_TIME_MS)); // 60 FPS
+        let mut interval = tokio::time::interval(Duration::from_millis(FRAME_TIME_MS));
 
         loop {
-            interval.tick().await;
+            tokio::select! {
+                _ = interval.tick() => {
+                    // Timeout - still render to handle terminal resize or keepalive
+                }
+                Some(_) = render_rx.recv() => {
+                    // RenderEvent received - state changed, render immediately
+                }
+                else => {
+                    // Channel closed - exit
+                    break;
+                }
+            }
 
             let _ = terminal.draw(|f| {
                 if let Ok(s) = state.lock() {

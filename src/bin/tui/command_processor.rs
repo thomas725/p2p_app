@@ -1,5 +1,6 @@
 use super::constants::{CHANNEL_CAPACITY, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, MAX_PEERS};
 use super::input_handler::InputEvent;
+use super::main_loop::RenderEvent;
 use super::state::AppState;
 use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
 use std::sync::{Arc, Mutex};
@@ -32,11 +33,17 @@ pub fn spawn_command_processor(
     state: Arc<Mutex<AppState>>,
     mut input_rx: mpsc::Receiver<InputEvent>,
     mut swarm_event_rx: mpsc::Receiver<SwarmEvent>,
+    render_tx: mpsc::Sender<RenderEvent>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Sender<SwarmCommand>) {
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     let handle = tokio::spawn(async move {
         p2plog_debug("CommandProcessor task started".to_string());
+
+        let send_render = || async {
+            let _ = render_tx.send(RenderEvent).await;
+        };
+
         loop {
             tokio::select! {
                 Some(input_event) = input_rx.recv() => {
@@ -190,6 +197,7 @@ pub fn spawn_command_processor(
                                     }
                                 }
                             }
+                            send_render().await;
                         }
                         InputEvent::Mouse(mouse_event) => {
                             // Handle mouse clicks for tab switching, closing, and peer selection
@@ -348,6 +356,7 @@ pub fn spawn_command_processor(
                             p2plog_debug(format!("Peer expired: {}", peer_id));
                         }
                     }
+                    send_render().await;
                 }
             }
         }

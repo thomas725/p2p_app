@@ -21,6 +21,10 @@ use tokio::sync::mpsc;
 ///
 /// The function sets up terminal mode (alternate screen, raw mode, mouse capture),
 /// initializes the state from database, and waits for any task to exit (indicating error).
+/// Signal to trigger a render (instead of busy-polling)
+#[derive(Debug, Clone, Copy)]
+pub struct RenderEvent;
+
 pub async fn run_new_tui(
     swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
     topic_str: String,
@@ -111,6 +115,7 @@ pub async fn run_new_tui(
 
     // Setup channels
     let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     // Spawn tasks
     // SwarmHandler returns both a handle and a receiver of SwarmEvent
@@ -119,12 +124,16 @@ pub async fn run_new_tui(
     // InputHandler sends InputEvent to this channel
     let input_handler = super::input_handler::spawn_input_handler(input_tx);
 
-    // CommandProcessor receives both InputEvent and SwarmEvent
-    let (command_processor, _) =
-        super::command_processor::spawn_command_processor(state.clone(), input_rx, swarm_event_rx);
+    // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent
+    let (command_processor, _) = super::command_processor::spawn_command_processor(
+        state.clone(),
+        input_rx,
+        swarm_event_rx,
+        render_tx,
+    );
 
     // RenderLoop reads state and renders
-    let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal);
+    let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal, render_rx);
 
     p2plog_debug("Started 4-task TUI architecture".to_string());
 
