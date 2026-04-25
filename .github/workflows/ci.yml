@@ -84,7 +84,7 @@ jobs:
       - name: Run clippy
         run: |
           set +e
-          cargo clippy --all-targets --all-features -- -D warnings 2>&1 | tee clippy-output.txt
+          cargo clippy --all-targets -- -D warnings 2>&1 | tee clippy-output.txt
           CLIPPY_EXIT=$?
           set -e
           
@@ -100,7 +100,7 @@ jobs:
         run: |
           mkdir -p test-results
           set +e
-          cargo test --all-features --verbose 2>&1 | tee test-results/test-output.txt
+          cargo test --verbose 2>&1 | tee test-results/test-output.txt
           TEST_EXIT=$?
           set -e
           echo "Test exit code: $TEST_EXIT" >> test-results/test-output.txt

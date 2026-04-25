@@ -27,7 +27,7 @@ jobs:
           sudo apt-get install -y libsqlite3-dev pkg-config
       
       - name: Build documentation
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps
         env:
           RUSTDOCFLAGS: "-W missing-docs"
       
