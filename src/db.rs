@@ -202,8 +202,6 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
             continue;
         }
 
-        p2plog_debug(format!("[DB]   {} is available", db_file));
-
         // Try to acquire lock (may fail if race)
         match fs::OpenOptions::new()
             .create_new(true)
