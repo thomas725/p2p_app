@@ -16,7 +16,7 @@
 
 ## All Source Files
 
-| Folder         | File                 | Lines | Characters | Purpose                             |
+| Folder         | File                | Lines | Characters | Purpose                             |
 |---------------|---------------------:|------:|-----------:|------------------------------------:|
 | /             | build.rs             |   107 |      3,762 | Build script                        |
 | src           | lib.rs               |   210 |      6,663 | Module declarations & re-exports    |
@@ -31,24 +31,24 @@
 | src           | network.rs           |    49 |      1,423 | Network size classification         |
 | src           | types.rs             |    42 |      1,144 | Event & command type defs           |
 | src           | logging_config.rs    |    38 |      1,774 | Tracing configuration               |
-| src           | tui_tabs.rs         |   187 |      4,880 | Tab management & navigation         |
-| src           | tui_test_state.rs   |   152 |      4,506 | TUI test state & mouse handling     |
-| src           | tui_events.rs       |    51 |      1,377 | Event/command types & channels      |
+| src           | tui_tabs.rs          |   187 |      4,880 | Tab management & navigation         |
+| src           | tui_test_state.rs    |   152 |      4,506 | TUI test state & mouse handling     |
+| src           | tui_events.rs        |    51 |      1,377 | Event/command types & channels      |
 | src/generated | mod.rs               |     5 |        141 | Module declarations                 |
 | src/generated | columns.rs           |    27 |      1,081 | Auto-generated column definitions   |
 | src/generated | schema.rs            |    48 |      1,125 | Database schema (Diesel)            |
 | src/generated | models_insertable.rs |    46 |      1,108 | Insertable data models              |
 | src/generated | models_queryable.rs  |    54 |      1,321 | Queryable data models               |
-| src/bin       | p2p_chat_tui.rs     |   133 |      5,547 | Main TUI application entry point    |
-| src/bin       | p2p_chat.rs         |   118 |      4,787 | CLI chat application                |
-| src/bin       | p2p_chat_dioxus.rs  |   206 |      7,100 | Web UI (Dioxus framework)           |
-| src/bin/tui   | command_processor.rs |  366 |     24,341 | Business logic & state updates      |
-| src/bin/tui   | main_loop.rs        |   197 |      6,969 | Task orchestration & async          |
-| src/bin/tui   | render_loop.rs      |   167 |      8,014 | 60 FPS rendering loop              |
-| src/bin/tui   | state.rs            |   106 |      3,541 | Shared application state            |
-| src/bin/tui   | input_handler.rs    |    44 |      1,633 | Terminal event polling              |
-| src/bin/tui   | tracing_writer.rs   |     3 |        246 | Tracing log output handling         |
-| src/bin/tui   | constants.rs        |    17 |        588 | TUI constants & config              |
+| src/bin       | p2p_chat_tui.rs      |   133 |      5,547 | Main TUI application entry point    |
+| src/bin       | p2p_chat.rs          |   118 |      4,787 | CLI chat application                |
+| src/bin       | p2p_chat_dioxus.rs   |   206 |      7,100 | Web UI (Dioxus framework)           |
+| src/bin/tui   | command_processor.rs |   366 |     24,341 | Business logic & state updates      |
+| src/bin/tui   | main_loop.rs         |   197 |      6,969 | Task orchestration & async          |
+| src/bin/tui   | render_loop.rs       |   167 |      8,014 | 60 FPS rendering loop               |
+| src/bin/tui   | state.rs             |   106 |      3,541 | Shared application state            |
+| src/bin/tui   | input_handler.rs     |    44 |      1,633 | Terminal event polling              |
+| src/bin/tui   | tracing_writer.rs    |     3 |        246 | Tracing log output handling         |
+| src/bin/tui   | constants.rs         |    17 |        588 | TUI constants & config              |
 
 **Total:** 31 files, 3,539 lines, 133,980 characters
 

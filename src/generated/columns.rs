@@ -23,5 +23,5 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("peers", "last_seen", "TIMESTAMP"),
     ("peers", "peer_id", "TEXT"),
     ("peers", "peer_local_nickname", "TEXT"),
-    ("peers", "received_nickname", "TEXT")
+    ("peers", "received_nickname", "TEXT"),
 ];
