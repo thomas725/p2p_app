@@ -245,6 +245,9 @@ pub fn spawn_command_processor(
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         if s.chat_scroll_offset >= WHEEL_SCROLL_LINES {
                                             s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
+                                        } else {
+                                            s.chat_scroll_offset = 0;
+                                        }
                                         if s.chat_scroll_offset == 0 {
                                             s.chat_auto_scroll = true;
                                         }
