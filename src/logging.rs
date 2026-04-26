@@ -9,6 +9,7 @@
 use std::collections::VecDeque;
 use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
+use tracing::field::Visit;
 
 /// Maximum number of logs to keep in memory for TUI
 const MAX_TUI_LOGS: usize = 1000;
@@ -19,25 +20,90 @@ static TUI_CALLBACK: OnceLock<Arc<dyn Fn(String) + Send + Sync>> = OnceLock::new
 /// In-memory log storage for TUI access
 static TUI_LOGS: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
 
+/// Custom tracing layer that writes to TUI logs instead of stdout/stderr
+struct TuiTracingLayer;
+
+impl<S> tracing_subscriber::layer::Layer<S> for TuiTracingLayer
+where
+    S: tracing::Subscriber + 'static,
+{
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: tracing_subscriber::layer::Context<S>) {
+        let mut buf = String::new();
+        let mut visitor = FormatVisitor(&mut buf);
+        event.record(&mut visitor);
+
+        let ts = chrono::Local::now().format("%H:%M:%S.%3f");
+        let level = event.metadata().level().to_string();
+        let target = event.metadata().target();
+        let msg = if buf.is_empty() {
+            format!("{} [{}] {}", ts, level, target)
+        } else {
+            format!("{} [{}] {} {}", ts, level, target, buf)
+        };
+
+        if let Some(logs) = TUI_LOGS.get()
+            && let Ok(mut l) = logs.lock()
+        {
+            l.push_back(msg.clone());
+            if l.len() > MAX_TUI_LOGS {
+                l.pop_front();
+            }
+        }
+
+        if let Some(callback) = TUI_CALLBACK.get() {
+            callback(msg);
+        }
+    }
+}
+
+/// Visitor that formats event fields into a string
+struct FormatVisitor<'a>(&'a mut String);
+
+impl Visit for FormatVisitor<'_> {
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        if field.name() == "message" {
+            self.0.push_str(value);
+        } else {
+            self.0.push_str(&format!(" {}={value}", field.name()));
+        }
+    }
+
+    fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
+        self.0.push_str(&format!(" {}={value}", field.name()));
+    }
+
+    fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
+        self.0.push_str(&format!(" {}={value}", field.name()));
+    }
+
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.0.push_str(&format!(" {}={value}", field.name()));
+    }
+
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        self.0.push_str(&format!(" {}={value:?}", field.name()));
+    }
+}
+
 /// Initialize the logging system.
 ///
 /// Must be called once at application startup before any logging occurs.
 /// When the `tracing` feature is enabled, this sets up the tracing subscriber.
 #[cfg(feature = "tracing")]
 pub fn init_logging() {
-    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+    use tracing_subscriber::prelude::*;
 
     // Initialize TUI logs storage
     let _ = TUI_LOGS.get_or_init(|| Mutex::new(VecDeque::new()));
 
     // Build filter - use environment or default to warn
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn,p2p_app=info"));
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn,p2p_app=info"));
 
-    // Create the subscriber
+    // Create the subscriber with our custom TUI layer (no stdout/stderr output)
     let subscriber = tracing_subscriber::registry()
         .with(filter)
-        .with(fmt::layer().with_target(true).with_thread_ids(true));
+        .with(TuiTracingLayer);
 
     // Try to init (may fail if already initialized)
     let _ = subscriber.try_init();
