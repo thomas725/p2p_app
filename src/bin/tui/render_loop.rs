@@ -8,7 +8,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+    widgets::{Block, Borders, ListItem, Paragraph, Tabs},
 };
 use std::io::Stdout;
 use std::time::Duration;
@@ -81,18 +81,33 @@ pub fn spawn_render_loop(
                     let peer_info = Paragraph::new(format!("Peers: {}", s.concurrent_peers));
                     f.render_widget(peer_info, chunks[1]);
 
-                    // Render tab-specific content
+                    // Render tab-specific content with scrolling
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                     match &tab_content {
                         TabContent::Chat => {
-                            let messages_text = s.messages
+                            let _item_height = 1;
+                            let visible_height = chunks[2].height as usize;
+                            let total_items = s.messages.len();
+                            
+                            // Calculate scroll - auto-scroll to bottom if enabled
+                            let max_offset = total_items.saturating_sub(visible_height);
+                            let scroll_offset = if s.chat_auto_scroll {
+                                max_offset
+                            } else {
+                                max_offset.min(s.chat_scroll_offset)
+                            };
+                            
+                            // Get visible messages
+                            let visible_messages: Vec<ListItem> = s.messages
                                 .iter()
-                                .map(|(msg, _)| msg.as_str())
-                                .collect::<Vec<_>>()
-                                .join("\n");
-                            let messages_para = Paragraph::new(messages_text)
+                                .skip(scroll_offset)
+                                .take(visible_height)
+                                .map(|(msg, _)| ListItem::new(msg.as_str()))
+                                .collect();
+                            
+                            let messages_list = ratatui::widgets::List::new(visible_messages)
                                 .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
-                            f.render_widget(messages_para, chunks[2]);
+                            f.render_widget(messages_list, chunks[2]);
                         }
                         TabContent::Peers => {
                             let peer_items: Vec<ListItem> = s.peers
@@ -100,7 +115,6 @@ pub fn spawn_render_loop(
                                 .enumerate()
                                 .map(|(idx, (id, _first_seen, last_seen))| {
                                     let line = format!("{} ({})", id, last_seen);
-                                    // Highlight selected peer
                                     if idx == s.peer_selection {
                                         ListItem::new(line).style(Style::default().bg(Color::DarkGray))
                                     } else {
@@ -108,24 +122,43 @@ pub fn spawn_render_loop(
                                     }
                                 })
                                 .collect();
-                            let peers_list = List::new(peer_items)
+                            let peers_list = ratatui::widgets::List::new(peer_items)
                                 .block(Block::default().title("Connected Peers").borders(Borders::ALL));
                             f.render_widget(peers_list, chunks[2]);
                         }
                         TabContent::Direct(peer_id) => {
-                            let dm_text = s.dm_messages
-                                .get(peer_id)
-                                .map(|msgs| msgs.iter().cloned().collect::<Vec<_>>().join("\n"))
-                                .unwrap_or_else(|| "No messages yet".to_string());
-                            // Show last 8 chars of peer ID (more distinctive than first 8)
-                            let short_id = if peer_id.len() <= 8 {
-                                peer_id.clone()
+                            let visible_height = chunks[2].height as usize;
+                            let messages = s.dm_messages.get(peer_id);
+                            
+                            if let Some(msgs) = messages {
+                                let total_items = msgs.len();
+                                let max_offset = total_items.saturating_sub(visible_height);
+                                let scroll_offset = if s.chat_auto_scroll {
+                                    max_offset
+                                } else {
+                                    max_offset.min(s.chat_scroll_offset)
+                                };
+                                
+                                let short_id = if peer_id.len() <= 8 {
+                                    peer_id.clone()
+                                } else {
+                                    peer_id[peer_id.len()-8..].to_string()
+                                };
+                                
+                                let visible: Vec<ListItem> = msgs
+                                    .iter()
+                                    .skip(scroll_offset)
+                                    .take(visible_height)
+                                    .map(|m| ListItem::new(m.as_str()))
+                                    .collect();
+                                
+                                let dm_list = ratatui::widgets::List::new(visible)
+                                    .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
+                                f.render_widget(dm_list, chunks[2]);
                             } else {
-                                peer_id[peer_id.len()-8..].to_string()
-                            };
-                            let dm_para = Paragraph::new(dm_text)
-                                .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
-                            f.render_widget(dm_para, chunks[2]);
+                                let dm_para = Paragraph::new("No messages yet");
+                                f.render_widget(dm_para, chunks[2]);
+                            }
                         }
                         TabContent::Log => {
                             let log_text = get_tui_logs().join("\n");
