@@ -132,7 +132,7 @@ pub fn spawn_render_loop(
                             
                             if let Some(msgs) = messages {
                                 let total_items = msgs.len();
-                                let max_offset = total_items.saturating_sub(visible_height).max(1);
+let max_offset = total_items.saturating_sub(visible_height);
                                 let effective_offset = if s.chat_auto_scroll {
                                     total_items.saturating_sub(visible_height)
                                 } else {

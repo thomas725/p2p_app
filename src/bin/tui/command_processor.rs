@@ -71,13 +71,11 @@ pub fn spawn_command_processor(
                                             s.peer_selection += 1;
                                         }
                                     } else {
-                                        let max_offset = s.messages.len().saturating_sub(10).max(1);
+                                        let max_offset = s.messages.len().saturating_sub(10);
                                         if s.chat_scroll_offset < max_offset {
                                             s.chat_scroll_offset += 1;
                                         }
-                                        if s.chat_scroll_offset >= max_offset {
-                                            s.chat_auto_scroll = true;
-                                        }
+                                        s.chat_auto_scroll = false;
                                     }
                                     drop(s);
                                 }
@@ -85,9 +83,7 @@ pub fn spawn_command_processor(
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                        }
+                                        s.chat_auto_scroll = false;
                                     }
                                     drop(s);
                                 }
@@ -96,9 +92,7 @@ pub fn spawn_command_processor(
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         let max_offset = s.messages.len().saturating_sub(10).max(1);
                                         s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
-                                        if s.chat_scroll_offset >= max_offset {
-                                            s.chat_auto_scroll = true;
-                                        }
+                                        s.chat_auto_scroll = false;
                                     }
                                     drop(s);
                                 }
@@ -114,7 +108,7 @@ pub fn spawn_command_processor(
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.chat_auto_scroll = false;
-                                        s.chat_scroll_offset = s.messages.len().saturating_sub(10).max(1);
+                                        s.chat_scroll_offset = s.messages.len().saturating_sub(10);
                                     }
                                     drop(s);
                                 }
@@ -232,17 +226,12 @@ pub fn spawn_command_processor(
                                     } else {
                                         s.chat_scroll_offset = 0;
                                     }
-                                    if s.chat_auto_scroll {
-                                        s.chat_auto_scroll = false;
-                                    }
+                                    s.chat_auto_scroll = false;
                                 }
                                 crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
                                     let max_offset = s.messages.len().saturating_sub(10).max(1);
                                     if s.chat_scroll_offset < max_offset {
                                         s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-                                    }
-                                    if s.chat_scroll_offset >= max_offset {
-                                        s.chat_auto_scroll = true;
                                     }
                                 }
                                 crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
