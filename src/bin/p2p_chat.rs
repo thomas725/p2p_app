@@ -1,7 +1,7 @@
 use libp2p::{futures::StreamExt, gossipsub, noise, tcp, yamux};
 use p2p_app::logging::p2plog_info;
-use p2p_app::{build_behaviour, get_libp2p_identity, get_network_size};
-use std::time::Duration;
+use p2p_app::{BroadcastMessage, build_behaviour, get_libp2p_identity, get_network_size};
+use std::time::{Duration, SystemTime};
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 use tokio::select;
 
@@ -64,55 +64,75 @@ async fn main() -> color_eyre::Result<()> {
 
     loop {
         select! {
-            event = swarm.select_next_some() => {
-                match event {
-                    libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
-                            let _ = p2p_app::save_listen_ports(Some(port), None);
+                    event = swarm.select_next_some() => {
+                        match event {
+                            libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
+                                p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
+                                if let Some(port) = address
+                                    .iter()
+                                    .find_map(|p| match p {
+                                        libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+                                        _ => None,
+                                    })
+                                {
+                                    let _ = p2p_app::save_listen_ports(Some(port), None);
+                                }
+                                #[cfg(feature = "quic")]
+                                if let Some(port) = address
+                                    .iter()
+                                    .find_map(|p| match p {
+                                        libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+                                        _ => None,
+                                    })
+                                {
+                                    let (tcp, _) = p2p_app::load_listen_ports().unwrap_or((None, None));
+                                    let _ = p2p_app::save_listen_ports(tcp, Some(port));
+                                }
+                            }
+                            libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                                p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
+                            }
+                            libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                                p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
+                            }
+        libp2p::swarm::SwarmEvent::Behaviour(p2p_app::behavior::AppBehaviourEvent::Gossipsub(
+                                libp2p::gossipsub::Event::Message { propagation_source, message, .. }
+                            )) => {
+                                let sender = propagation_source.to_string();
+                                let sender_short = &sender[..8.min(sender.len())];
+
+                                // Try to parse as BroadcastMessage
+                                let msg_str = String::from_utf8_lossy(&message.data);
+                                if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
+                                    p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));
+                                } else {
+                                    // Fallback: display raw message if not valid JSON
+                                    p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, msg_str));
+                                }
+                            }
+                            _ => {}
                         }
-                        #[cfg(feature = "quic")]
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
-                            let (tcp, _) = p2p_app::load_listen_ports().unwrap_or((None, None));
-                            let _ = p2p_app::save_listen_ports(tcp, Some(port));
+                    }
+                    line = lines.next_line() => {
+                        if let Ok(Some(text)) = line {
+                            let text_str: String = text;
+                            if !text_str.is_empty() {
+                                let msg = BroadcastMessage {
+                                    content: text_str,
+                                    sent_at: Some(
+                                        SystemTime::now()
+                                            .duration_since(SystemTime::UNIX_EPOCH)
+                                            .unwrap_or_default()
+                                            .as_secs_f64(),
+                                    ),
+                                    nickname: None,
+                                };
+                                if let Ok(json) = serde_json::to_string(&msg) {
+                                    let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
+                                }
+                            }
                         }
                     }
-                    libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
-                    }
-                    libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
-                    }
-                    libp2p::swarm::SwarmEvent::Behaviour(p2p_app::behavior::AppBehaviourEvent::Gossipsub(
-                        libp2p::gossipsub::Event::Message { propagation_source, message, .. }
-                    )) => {
-                        let msg = String::from_utf8_lossy(&message.data);
-                        let sender = propagation_source.to_string();
-                        p2p_app::logging::p2plog_info(format!("[{}] {}", &sender[..8.min(sender.len())], msg));
-                    }
-                    _ => {}
                 }
-            }
-            line = lines.next_line() => {
-                if let Ok(Some(text)) = line {
-                    let text_str: String = text;
-                    if !text_str.is_empty() {
-                        let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), text_str.as_bytes());
-                    }
-                }
-            }
-        }
     }
 }
