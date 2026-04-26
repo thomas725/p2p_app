@@ -56,11 +56,10 @@ pub fn spawn_command_processor(
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.peer_selection = s.peer_selection.saturating_sub(1);
+                                    } else if s.chat_auto_scroll {
+                                        s.chat_auto_scroll = false;
                                     } else if s.chat_scroll_offset > 0 {
                                         s.chat_scroll_offset -= 1;
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                        }
                                     }
                                     drop(s);
                                 }
@@ -82,8 +81,8 @@ pub fn spawn_command_processor(
                                 crossterm::event::KeyCode::PageUp => {
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
                                         s.chat_auto_scroll = false;
+                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
                                     }
                                     drop(s);
                                 }
@@ -221,12 +220,12 @@ pub fn spawn_command_processor(
 
                             match mouse_event.kind {
                                 crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
+                                    s.chat_auto_scroll = false;
                                     if s.chat_scroll_offset > WHEEL_SCROLL_LINES {
                                         s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
                                     } else {
                                         s.chat_scroll_offset = 0;
                                     }
-                                    s.chat_auto_scroll = false;
                                 }
                                 crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
                                     let max_offset = s.messages.len().saturating_sub(10).max(1);
