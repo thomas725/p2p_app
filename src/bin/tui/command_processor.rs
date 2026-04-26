@@ -56,10 +56,14 @@ pub fn spawn_command_processor(
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.peer_selection = s.peer_selection.saturating_sub(1);
-                                    } else if s.chat_auto_scroll {
+                                    } else {
                                         s.chat_auto_scroll = false;
-                                    } else if s.chat_scroll_offset > 0 {
-                                        s.chat_scroll_offset -= 1;
+                                        if s.messages.len() > 10 {
+                                            let max_offset = s.messages.len() - 10;
+                                            if s.chat_scroll_offset < max_offset {
+                                                s.chat_scroll_offset += 1;
+                                            }
+                                        }
                                     }
                                     drop(s);
                                 }
@@ -70,11 +74,10 @@ pub fn spawn_command_processor(
                                             s.peer_selection += 1;
                                         }
                                     } else {
-                                        let max_offset = s.messages.len().saturating_sub(10);
-                                        if s.chat_scroll_offset < max_offset {
-                                            s.chat_scroll_offset += 1;
-                                        }
                                         s.chat_auto_scroll = false;
+                                        if s.messages.len() > 10 && s.chat_scroll_offset > 0 {
+                                            s.chat_scroll_offset -= 1;
+                                        }
                                     }
                                     drop(s);
                                 }
@@ -82,16 +85,20 @@ pub fn spawn_command_processor(
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.chat_auto_scroll = false;
-                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
+                                        if s.messages.len() > 10 {
+                                            let max_offset = s.messages.len() - 10;
+                                            s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
+                                        }
                                     }
                                     drop(s);
                                 }
                                 crossterm::event::KeyCode::PageDown => {
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        let max_offset = s.messages.len().saturating_sub(10).max(1);
-                                        s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
                                         s.chat_auto_scroll = false;
+                                        if s.messages.len() > 10 {
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
+                                        }
                                     }
                                     drop(s);
                                 }
@@ -105,9 +112,9 @@ pub fn spawn_command_processor(
                                 }
                                 crossterm::event::KeyCode::End => {
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) && s.messages.len() > 10 {
                                         s.chat_auto_scroll = false;
-                                        s.chat_scroll_offset = s.messages.len().saturating_sub(10);
+                                        s.chat_scroll_offset = s.messages.len() - 10;
                                     }
                                     drop(s);
                                 }
@@ -221,16 +228,17 @@ pub fn spawn_command_processor(
                             match mouse_event.kind {
                                 crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
                                     s.chat_auto_scroll = false;
-                                    if s.chat_scroll_offset > WHEEL_SCROLL_LINES {
-                                        s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
-                                    } else {
-                                        s.chat_scroll_offset = 0;
+                                    if s.messages.len() > 10 {
+                                        let max_offset = s.messages.len() - 10;
+                                        s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
                                     }
                                 }
                                 crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
-                                    let max_offset = s.messages.len().saturating_sub(10).max(1);
-                                    if s.chat_scroll_offset < max_offset {
-                                        s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                                    s.chat_auto_scroll = false;
+                                    if s.messages.len() > 10 && s.chat_scroll_offset >= WHEEL_SCROLL_LINES {
+                                        s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
+                                    } else if s.messages.len() > 10 {
+                                        s.chat_scroll_offset = 0;
                                     }
                                 }
                                 crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {

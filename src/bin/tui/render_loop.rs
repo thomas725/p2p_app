@@ -90,7 +90,7 @@ pub fn spawn_render_loop(
                             
                             // For auto-scroll: show last visible_height messages (newest at bottom)
                             // For manual scroll: offset counts from OLDEST, so skip(total - offset - visible)
-                            let max_offset = total_items.saturating_sub(visible_height).max(1);
+                            let max_offset = total_items.saturating_sub(visible_height);
                             let effective_offset = if s.chat_auto_scroll {
                                 total_items.saturating_sub(visible_height)
                             } else {
