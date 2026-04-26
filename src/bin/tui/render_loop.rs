@@ -75,18 +75,21 @@ pub fn spawn_render_loop(
                     let avail_height = chunks[2].height as usize;
                     let text_width = avail_width.saturating_sub(4); // -4 for block borders
                     let usable_height = avail_height.saturating_sub(2); // -2 for block borders
-                    let mut used = 0;
-                    let mut count = 0;
-                    for (msg, _) in s.messages.iter().rev() {
-                        let lines = msg.len().saturating_div(text_width).saturating_add(1);
-                        if used + lines > usable_height {
-                            break;
+
+                    // Helper to calculate visible message count
+                    fn calc_visible(messages: &[String], text_width: usize, usable_height: usize) -> usize {
+                        let mut used = 0;
+                        let mut count = 0;
+                        for msg in messages.iter().rev() {
+                            let lines = msg.len().saturating_div(text_width).saturating_add(1);
+                            if used + lines > usable_height {
+                                break;
+                            }
+                            used += lines;
+                            count += 1;
                         }
-                        used += lines;
-                        count += 1;
+                        count.max(1)
                     }
-s.visible_message_count = count.max(1);
-                     s.max_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
 
                     // Render tabs
                     let tab_titles = s.dynamic_tabs.all_titles();
@@ -101,15 +104,17 @@ s.visible_message_count = count.max(1);
 
                     // Render tab-specific content with scrolling
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                    s.visible_message_count = chunks[2].height as usize;
                     match &tab_content {
                         TabContent::Chat => {
-                            let visible = s.visible_message_count;
+                            // Calculate visible messages for Chat tab
+                            let chat_msgs: Vec<String> = s.messages.iter().map(|(m, _)| m.clone()).collect();
+                            let visible = calc_visible(&chat_msgs, text_width, usable_height);
+                            s.visible_message_count = visible;
                             let total_items = s.messages.len();
+                            let max_offset = total_items.saturating_sub(visible);
 
                             // For auto-scroll: show last visible messages (newest at bottom)
-                            // For manual scroll: offset counts from OLDEST, so skip(total - offset - visible)
-                            let max_offset = total_items.saturating_sub(visible);
+                            // For manual scroll: offset counts from OLDEST
                             let effective_offset = if s.chat_auto_scroll {
                                 total_items.saturating_sub(visible)
                             } else {
@@ -146,16 +151,21 @@ s.visible_message_count = count.max(1);
                             f.render_widget(peers_list, chunks[2]);
                         }
                         TabContent::Direct(peer_id) => {
-                            let visible = s.visible_message_count;
-                            let messages = s.dm_messages.get(peer_id);
-
-                            if let Some(msgs) = messages {
+                            if let Some(msgs) = s.dm_messages.get(peer_id) {
+                                // Calculate visible messages for this DM tab
+                                let visible = calc_visible(msgs, text_width, usable_height);
                                 let total_items = msgs.len();
                                 let max_offset = total_items.saturating_sub(visible);
-                                let effective_offset = if s.chat_auto_scroll {
+
+                                // Get or initialize per-DM scroll state
+                                let (scroll_offset, auto_scroll) = s.dm_scroll_state
+                                    .entry(peer_id.clone())
+                                    .or_insert((0, true));
+
+                                let effective_offset = if *auto_scroll {
                                     total_items.saturating_sub(visible)
                                 } else {
-                                    s.chat_scroll_offset.min(max_offset)
+                                    (*scroll_offset).min(max_offset)
                                 };
 
                                 let short_id = if peer_id.len() <= 8 {
@@ -164,14 +174,14 @@ s.visible_message_count = count.max(1);
                                     peer_id[peer_id.len()-8..].to_string()
                                 };
 
-                                let visible: Vec<ListItem> = msgs
+                                let visible_msgs: Vec<ListItem> = msgs
                                     .iter()
                                     .skip(effective_offset)
                                     .take(visible)
                                     .map(|m| ListItem::new(m.as_str()))
                                     .collect();
 
-                                let dm_list = ratatui::widgets::List::new(visible)
+                                let dm_list = ratatui::widgets::List::new(visible_msgs)
                                     .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
                                 f.render_widget(dm_list, chunks[2]);
                             } else {
