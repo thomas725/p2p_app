@@ -72,10 +72,10 @@ pub fn get_tui_logs() -> Vec<String> {
 
 /// Clear TUI log storage.
 pub fn clear_tui_logs() {
-    if let Some(logs) = TUI_LOGS.get() {
-        if let Ok(mut l) = logs.lock() {
-            l.clear();
-        }
+    if let Some(logs) = TUI_LOGS.get()
+        && let Ok(mut l) = logs.lock()
+    {
+        l.clear();
     }
 }
 
@@ -85,17 +85,15 @@ pub fn push_log(message: impl Into<String>) {
     let ts = chrono::Local::now().format("%H:%M:%S.%3f");
     let formatted = format!("[{}] {}", ts, msg);
 
-    // Store in TUI logs
-    if let Some(logs) = TUI_LOGS.get() {
-        if let Ok(mut l) = logs.lock() {
-            l.push_back(formatted.clone());
-            if l.len() > MAX_TUI_LOGS {
-                l.pop_front();
-            }
+    if let Some(logs) = TUI_LOGS.get()
+        && let Ok(mut l) = logs.lock()
+    {
+        l.push_back(formatted.clone());
+        if l.len() > MAX_TUI_LOGS {
+            l.pop_front();
         }
     }
 
-    // Forward to TUI callback
     if let Some(callback) = TUI_CALLBACK.get() {
         callback(formatted);
     } else {
@@ -109,17 +107,15 @@ pub fn p2plog(level: &str, msg: String) {
     let ts = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
     let formatted = format!("[{}] [{}] {}", ts, level, msg);
 
-    // Store in TUI logs (skip push_log which adds another timestamp)
-    if let Some(logs) = TUI_LOGS.get() {
-        if let Ok(mut l) = logs.lock() {
-            l.push_back(formatted.clone());
-            if l.len() > MAX_TUI_LOGS {
-                l.pop_front();
-            }
+    if let Some(logs) = TUI_LOGS.get()
+        && let Ok(mut l) = logs.lock()
+    {
+        l.push_back(formatted.clone());
+        if l.len() > MAX_TUI_LOGS {
+            l.pop_front();
         }
     }
 
-    // Forward to TUI callback
     if let Some(callback) = TUI_CALLBACK.get() {
         callback(formatted);
     } else {

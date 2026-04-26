@@ -14,7 +14,7 @@ fn main() {
 use dioxus::prelude::*;
 
 #[cfg(feature = "dioxus-desktop")]
-#[allow(unused_variables)]
+#[allow(dead_code)]
 fn app() -> Element {
     let messages = use_signal(Vec::<Message>::new);
     let input_text = use_signal(String::new);
@@ -78,6 +78,7 @@ fn app() -> Element {
 }
 
 #[cfg(feature = "dioxus-desktop")]
+#[allow(dead_code)]
 #[derive(Clone, PartialEq)]
 enum Tab {
     Chat,
@@ -88,6 +89,7 @@ enum Tab {
 #[cfg(feature = "dioxus-desktop")]
 #[derive(Clone)]
 struct Message {
+    #[allow(dead_code)]
     id: usize,
     sender: String,
     content: String,

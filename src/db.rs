@@ -89,11 +89,8 @@ fn ensure_columns(conn: &mut SqliteConnection) {
 
     for (table, column, col_type) in SCHEMA_ENTRIES {
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
-        match sql_query(&sql).execute(conn) {
-            Ok(_) => {
-                crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
-            }
-            Err(_) => {}
+        if sql_query(&sql).execute(conn).is_ok() {
+            crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table));
         }
     }
 }
@@ -257,10 +254,8 @@ pub fn get_database_url() -> String {
 pub fn release_db_lock() {
     if let Some(db_path) = DB_URL.get() {
         let lock_path = format!("{}.lock", db_path);
-        if std::path::Path::new(&lock_path).exists() {
-            if std::fs::remove_file(&lock_path).is_ok() {
-                eprintln!("[DB] released lock on exit: {}", lock_path);
-            }
+        if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("[DB] released lock on exit: {}", lock_path);
         }
     }
 }
