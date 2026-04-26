@@ -37,6 +37,7 @@ pub struct AppState {
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
+    pub max_scroll_offset: usize,
 
     // Unread Counts
     pub unread_broadcasts: u32,
@@ -69,6 +70,7 @@ impl AppState {
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             visible_message_count: 1,
+            max_scroll_offset: 0,
             own_nickname,
             local_nicknames,
             received_nicknames,

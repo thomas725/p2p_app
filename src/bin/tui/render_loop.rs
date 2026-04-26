@@ -70,6 +70,24 @@ pub fn spawn_render_loop(
                         ])
                         .split(f.area());
 
+                    // Calculate visible messages accounting for text wrapping
+                    let avail_width = chunks[2].width as usize;
+                    let avail_height = chunks[2].height as usize;
+                    let text_width = avail_width.saturating_sub(4); // -4 for block borders
+                    let usable_height = avail_height.saturating_sub(2); // -2 for block borders
+                    let mut used = 0;
+                    let mut count = 0;
+                    for (msg, _) in s.messages.iter().rev() {
+                        let lines = msg.len().saturating_div(text_width).saturating_add(1);
+                        if used + lines > usable_height {
+                            break;
+                        }
+                        used += lines;
+                        count += 1;
+                    }
+                    s.visible_message_count = count.max(1);
+                    s.max_scroll_offset = (s.messages.len().saturating_sub(count)).saturating_sub(1);
+
                     // Render tabs
                     let tab_titles = s.dynamic_tabs.all_titles();
                     let tabs = Tabs::new(tab_titles)
