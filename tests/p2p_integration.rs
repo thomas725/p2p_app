@@ -897,3 +897,63 @@ async fn test_broadcast_flow_from_sender_to_receiver() -> Result<(), Box<dyn std
     assert_eq!(received, "Broadcast from A to B");
     Ok(())
 }
+
+/// Test that headless mode (p2p_chat.rs) and TUI use compatible message formats.
+///
+/// Headless mode sends messages as BroadcastMessage JSON (like TUI does).
+/// This test verifies:
+/// 1. A message formatted as BroadcastMessage JSON can be sent
+/// 2. It is received and can be parsed back
+#[tokio::test]
+async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn std::error::Error>>
+{
+    init_test_tracing();
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
+
+    connect_nodes(&mut node_a, &mut node_b).await?;
+
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+
+    // Simulate what p2p_chat.rs does when sending a message:
+    // 1. Create BroadcastMessage struct
+    // 2. Serialize to JSON
+    // 3. Publish to gossipsub
+    let broadcast_msg = p2p_app::BroadcastMessage {
+        content: "Hello from headless mode!".to_string(),
+        sent_at: Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64(),
+        ),
+        nickname: None,
+    };
+    let json = serde_json::to_string(&broadcast_msg)?;
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic, json.as_bytes())?;
+
+    // Receive and verify it can be parsed back as BroadcastMessage
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break message.data;
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Message not received")?;
+
+    let received_str = String::from_utf8_lossy(&received);
+    let parsed = serde_json::from_str::<p2p_app::BroadcastMessage>(&received_str)?;
+    assert_eq!(parsed.content, "Hello from headless mode!");
+
+    Ok(())
+}
