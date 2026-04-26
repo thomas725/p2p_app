@@ -15,3 +15,9 @@ pub const MAX_PEERS: usize = 10_000;
 
 /// Frame time in milliseconds for 60 FPS rendering
 pub const FRAME_TIME_MS: u64 = 16;
+
+/// Number of lines to scroll for PageUp/PageDown
+pub const PAGE_SIZE: usize = 8;
+
+/// Number of lines to scroll for mouse wheel
+pub const WHEEL_SCROLL_LINES: usize = 3;
