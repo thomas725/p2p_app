@@ -42,16 +42,13 @@ jobs:
           TIMESTAMP=$(date -u +%Y-%m-%d_%H-%M-%S)
           WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
           
-          # Create workflow-specific filenames (CI vs Documentation)
+          # Create workflow-specific timestamped filenames (CI vs Documentation)
           if [[ "$WORKFLOW_NAME" == "CI" ]]; then
             RESULTS_FILE=".github/ci-results/ci_${TIMESTAMP}_${{ github.event.workflow_run.id }}.txt"
-            LATEST_FILE=".github/ci-results/latest-ci.txt"
           elif [[ "$WORKFLOW_NAME" == "Documentation" ]]; then
             RESULTS_FILE=".github/ci-results/docs_${TIMESTAMP}_${{ github.event.workflow_run.id }}.txt"
-            LATEST_FILE=".github/ci-results/latest-docs.txt"
           else
             RESULTS_FILE=".github/ci-results/${WORKFLOW_NAME,,}_${TIMESTAMP}_${{ github.event.workflow_run.id }}.txt"
-            LATEST_FILE=".github/ci-results/latest.txt"
           fi
           
           # Create main results file
