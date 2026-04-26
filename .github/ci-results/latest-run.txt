@@ -1,8 +1,8 @@
 CI Results - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 =====================================
 
-Run ID: 24748332307
-Commit: 2698e0e3f2f43b4c6fa9cedc0db772354849c0ad
+Run ID: 24949707905
+Commit: ab6833393bbee790cfdce7caa27535a7632fe980
 Branch: refs/heads/main
 
 Jobs Status:
@@ -12,4 +12,4 @@ Jobs Status:
 - build-minimal: skipped
 
 Artifacts Available:
-  - ci-artifacts/test-results/FAILURE_REPORT.txt
+  - ci-artifacts/test-results/test-output.txt
