@@ -5,7 +5,8 @@ use p2p_app::release_db_lock;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
 /// Run the new 4-task TUI architecture
@@ -118,18 +119,20 @@ pub async fn run_new_tui(
     let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
     // Spawn tasks
-    // SwarmHandler returns both a handle and a receiver of SwarmEvent
-    let (swarm_handler, swarm_event_rx) = p2p_app::spawn_swarm_handler(swarm);
+    // SwarmHandler returns handle, event receiver, and command sender
+    let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
+        p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
 
     // InputHandler sends InputEvent to this channel
     let input_handler = super::input_handler::spawn_input_handler(input_tx);
 
-    // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent
+    // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent and SwarmCommand
     let (command_processor, _) = super::command_processor::spawn_command_processor(
         state.clone(),
         input_rx,
         swarm_event_rx,
         render_tx,
+        swarm_cmd_tx,
     );
 
     // RenderLoop reads state and renders

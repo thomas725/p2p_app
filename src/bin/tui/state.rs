@@ -1,5 +1,8 @@
 use super::{DynamicTabs, TextArea};
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
+
+pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 
 /// Shared application state for all tasks
 ///

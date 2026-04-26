@@ -1,6 +1,6 @@
 use super::constants::FRAME_TIME_MS;
 use super::main_loop::RenderEvent;
-use super::state::AppState;
+use super::state::SharedState;
 use p2p_app::get_tui_logs;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
@@ -11,7 +11,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
 };
 use std::io::Stdout;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
@@ -36,7 +35,7 @@ use tokio::sync::mpsc;
 /// - Input box: Current message being typed
 /// - Status bar: Peer list, connection status, debug logs
 pub fn spawn_render_loop(
-    state: Arc<Mutex<AppState>>,
+    state: SharedState,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,
     mut render_rx: mpsc::Receiver<RenderEvent>,
 ) -> tokio::task::JoinHandle<()> {
@@ -58,7 +57,7 @@ pub fn spawn_render_loop(
             }
 
             let _ = terminal.draw(|f| {
-                if let Ok(s) = state.lock() {
+                if let Ok(s) = state.try_lock() {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
