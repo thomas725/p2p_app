@@ -113,16 +113,15 @@ pub fn spawn_command_processor(
                                             crossterm::event::KeyCode::Home => {
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                                    s.chat_scroll_offset = 0;
-                                                    s.chat_auto_scroll = true;
+                                                    s.chat_auto_scroll = false;
+                                                    s.chat_scroll_offset = s.max_scroll_offset;
                                                 }
                                                 drop(s);
                                             }
                                             crossterm::event::KeyCode::End => {
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                                if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) && s.messages.len() > s.visible_message_count {
-                                                    s.chat_auto_scroll = false;
-                                                    s.chat_scroll_offset = s.max_scroll_offset;
+                                                if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                                    s.chat_auto_scroll = true;
                                                 }
                                                 drop(s);
                                             }
