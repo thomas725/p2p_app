@@ -25,7 +25,8 @@ pub use fmt::{
     peer_display_name, scroll_title, short_peer_id,
 };
 pub use logging::{
-    get_tui_logs, init_logging, p2plog_debug, push_log, set_tui_callback, strip_ansi_codes,
+    get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
+    set_tui_callback, strip_ansi_codes,
 };
 pub use logging_config::tracing_filter;
 pub use messages::{

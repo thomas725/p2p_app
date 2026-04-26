@@ -1,5 +1,8 @@
 use crate::types::{SwarmCommand, SwarmEvent};
-use crate::{AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv};
+use crate::{
+    AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv, p2plog_debug,
+    p2plog_error,
+};
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub;
 use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
@@ -139,10 +142,10 @@ pub fn spawn_swarm_handler(
                                     .publish(gossipsub::IdentTopic::new(&topic), json.as_bytes())
                                 {
                                     Ok(gossipsub::MessageId(id)) => {
-                                        eprintln!("[SWARM] Published message: {}", String::from_utf8_lossy(&id));
+                                        p2plog_debug(format!("Published broadcast: {}", String::from_utf8_lossy(&id)));
                                     }
                                     Err(e) => {
-                                        eprintln!("[SWARM] Failed to publish: {:?}", e);
+                                        p2plog_error(format!("Failed to publish: {:?}", e));
                                     }
                                 }
                             }
