@@ -272,62 +272,8 @@ jobs:
           path: ci-artifacts
         continue-on-error: true
       
-      - name: Create results summary
-        run: |
-          mkdir -p .github/ci-results
-          
-          cat > .github/ci-results/latest-run.txt << 'RESULTS'
-          CI Results - $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          =====================================
-          
-          Run ID: ${{ github.run_id }}
-          Commit: ${{ github.sha }}
-          Branch: ${{ github.ref }}
-          
-          Jobs Status:
-          - fmt: ${{ needs.fmt.result }}
-          - lint-and-test: ${{ needs.lint-and-test.result }}
-          - build: ${{ needs.build.result }}
-          - build-minimal: ${{ needs.build-minimal.result }}
-          
-          Artifacts Available:
-          RESULTS
-          
-          if [ -d ci-artifacts ]; then
-            find ci-artifacts -type f | sed 's/^/  - /' >> .github/ci-results/latest-run.txt
-          else
-            echo "  (none)" >> .github/ci-results/latest-run.txt
-          fi
-      
-      - name: Create detailed job matrix
-        run: |
-          cat > .github/ci-results/build-matrix.txt << 'MATRIX'
-          Build Matrix Results
-          ====================
-          
-          Platforms Tested:
-          - Linux x86_64 (GNU)
-          - macOS x86_64
-          - macOS ARM64 (Apple Silicon)
-          - Minimal Feature Set (embedded)
-          
-          Build Status:
-          MATRIX
-          
-          if [ -d ci-artifacts ]; then
-            ls -lh ci-artifacts/*/  2>/dev/null | grep -E "x86_64|aarch64|minimal" | sed 's/^/  /' >> .github/ci-results/build-matrix.txt || echo "  Builds in progress or not yet available" >> .github/ci-results/build-matrix.txt
-          fi
-      
-      - name: Commit results back to repo
-        run: |
-          git config --global user.email "claude@anthropic.com"
-          git config --global user.name "Claude CI"
-          
-          if [ -f .github/ci-results/latest-run.txt ]; then
-            git add .github/ci-results/
-            git commit -m "ci: record workflow results for run ${{ github.run_id }}" || echo "No changes to commit"
-            git push || echo "Push failed - may already be up to date"
-          fi
+      # Results are now handled by workflow-results.yml workflow
+      # which creates timestamped files and commits them
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
