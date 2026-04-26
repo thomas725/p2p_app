@@ -1,0 +1,182 @@
+name: Store Workflow Results
+
+on:
+  workflow_run:
+    workflows: ["CI", "Documentation"]
+    types: [completed]
+
+permissions:
+  contents: write
+  checks: read
+
+jobs:
+  collect-and-store:
+    name: Collect & Store All Results
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download CI artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: ci.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          path: ci-artifacts
+        continue-on-error: true
+      
+      - name: Download Documentation artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: documentation.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          path: doc-artifacts
+        continue-on-error: true
+      
+      - name: Collect workflow information
+        id: workflow_info
+        run: |
+          echo "workflow_name=${{ github.event.workflow_run.name }}" >> $GITHUB_OUTPUT
+          echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          echo "conclusion=${{ github.event.workflow_run.conclusion }}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          echo "timestamp=$(date -u +%Y-%m-%d_%H-%M-%S)" >> $GITHUB_OUTPUT
+      
+      - name: Create comprehensive workflow results
+        run: |
+          mkdir -p .github/workflow-results
+          
+          RESULTS_FILE=".github/workflow-results/${{ steps.workflow_info.outputs.timestamp }}_${{ steps.workflow_info.outputs.run_id }}.md"
+          
+          cat > "$RESULTS_FILE" << 'RESULTS'
+          # Workflow Results Summary
+          
+          **Run ID**: ${{ steps.workflow_info.outputs.run_id }}
+          **Workflow**: ${{ steps.workflow_info.outputs.workflow_name }}
+          **Conclusion**: ${{ steps.workflow_info.outputs.conclusion }}
+          **Timestamp**: ${{ steps.workflow_info.outputs.timestamp }}
+          **Commit SHA**: ${{ steps.workflow_info.outputs.commit_sha }}
+          **Branch**: ${{ github.event.workflow_run.head_branch }}
+          
+          ---
+          
+          ## Workflow Details
+          
+          | Field | Value |
+          |-------|-------|
+          | Status | ${{ steps.workflow_info.outputs.conclusion }} |
+          | Event | ${{ github.event.workflow_run.event }} |
+          | Actor | ${{ github.event.workflow_run.actor.login }} |
+          
+          ---
+          
+          ## CI Artifacts
+          
+          RESULTS
+          
+          if [ -d ci-artifacts ]; then
+            find ci-artifacts -type f | while read file; do
+              echo "- $(basename "$file")" >> "$RESULTS_FILE"
+            done
+          else
+            echo "No CI artifacts found" >> "$RESULTS_FILE"
+          fi
+          
+          cat >> "$RESULTS_FILE" << 'RESULTS'
+          
+          ---
+          
+          ## Documentation Artifacts
+          
+          RESULTS
+          
+          if [ -d doc-artifacts ]; then
+            find doc-artifacts -type f | while read file; do
+              echo "- $(basename "$file")" >> "$RESULTS_FILE"
+            done
+          else
+            echo "No documentation artifacts found" >> "$RESULTS_FILE"
+          fi
+          
+          cat >> "$RESULTS_FILE" << 'RESULTS'
+          
+          ---
+          
+          ## View Full Logs
+          
+          Full workflow logs available at:
+          https://github.com/${{ github.repository }}/actions/runs/${{ steps.workflow_info.outputs.run_id }}
+          RESULTS
+          
+          cat "$RESULTS_FILE"
+      
+      - name: Store CI build output
+        if: always()
+        run: |
+          mkdir -p .github/build-outputs
+          
+          # Copy test output from CI artifacts
+          if [ -f "ci-artifacts/test-results/test-output.txt" ]; then
+            cp "ci-artifacts/test-results/test-output.txt" ".github/build-outputs/test-output.txt"
+          fi
+          
+          # Copy any error reports
+          find ci-artifacts -name "*FAILURE*" -o -name "*ERROR*" -o -name "*error*" 2>/dev/null | \
+            while read file; do
+              cp "$file" ".github/build-outputs/" 2>/dev/null || true
+            done
+      
+      - name: Store error details
+        if: always()
+        run: |
+          mkdir -p .github/ci-errors
+          
+          # Extract failure report if it exists
+          if [ -f "ci-artifacts/test-results/FAILURE_REPORT.txt" ]; then
+            cp "ci-artifacts/test-results/FAILURE_REPORT.txt" ".github/ci-errors/latest-failure.txt"
+            
+            # Also create timestamped version
+            TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+            cp "ci-artifacts/test-results/FAILURE_REPORT.txt" \
+              ".github/ci-errors/failure_${TIMESTAMP}_${{ steps.workflow_info.outputs.run_id }}.txt"
+          fi
+          
+          # Copy any other error files from artifacts
+          find ci-artifacts -name "*.txt" -type f 2>/dev/null | while read file; do
+            filename=$(basename "$file")
+            cp "$file" ".github/ci-errors/$filename" 2>/dev/null || true
+          done
+      
+      - name: Commit all results in single commit
+        run: |
+          git config --global user.email "workflow-results@anthropic.com"
+          git config --global user.name "Workflow Results"
+          
+          # Stage all workflow result files
+          git add .github/workflow-results/ .github/build-outputs/ .github/ci-errors/ 2>/dev/null || true
+          
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: unified results for workflows (run ${{ steps.workflow_info.outputs.run_id }})
+
+Batched results from:
+- Workflow: ${{ steps.workflow_info.outputs.workflow_name }}
+- Conclusion: ${{ steps.workflow_info.outputs.conclusion }}
+- Run ID: ${{ steps.workflow_info.outputs.run_id }}
+- Commit: ${{ steps.workflow_info.outputs.commit_sha }}
+
+Results include:
+- Workflow logs and metadata
+- CI build outputs
+- Error reports and diagnostics
+- Documentation build results"
+            
+            git push origin main 2>&1 || git push origin $(git rev-parse --abbrev-ref HEAD) 2>&1 || echo "Could not push"
+          else
+            echo "No changes to commit"
+          fi
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
