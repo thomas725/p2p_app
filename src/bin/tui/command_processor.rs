@@ -59,8 +59,10 @@ pub fn spawn_command_processor(
                                                 } else {
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
-                                                        if s.messages.len() > s.visible_message_count {
-                                                            s.chat_scroll_offset = s.max_scroll_offset;
+                                                    }
+                                                    if s.messages.len() > s.visible_message_count {
+                                                        if s.chat_scroll_offset > 0 {
+                                                            s.chat_scroll_offset -= 1;
                                                         }
                                                     } else if s.chat_scroll_offset > 0 {
                                                         s.chat_scroll_offset -= 1;
@@ -90,8 +92,10 @@ pub fn spawn_command_processor(
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
-                                                        if s.messages.len() > s.visible_message_count {
-                                                            s.chat_scroll_offset = s.max_scroll_offset;
+                                                    }
+                                                    if s.messages.len() > s.visible_message_count {
+                                                        if s.chat_scroll_offset > 0 {
+                                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
                                                         }
                                                     } else {
                                                         s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
@@ -114,7 +118,11 @@ pub fn spawn_command_processor(
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                                     s.chat_auto_scroll = false;
-                                                    s.chat_scroll_offset = s.max_scroll_offset;
+                                                    if s.messages.len() > s.visible_message_count {
+                                                        if s.chat_scroll_offset > 0 {
+                                                            s.chat_scroll_offset -= 1;
+                                                        }
+                                                    }
                                                 }
                                                 drop(s);
                                             }

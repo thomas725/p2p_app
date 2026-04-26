@@ -85,8 +85,8 @@ pub fn spawn_render_loop(
                         used += lines;
                         count += 1;
                     }
-                    s.visible_message_count = count.max(1);
-                    s.max_scroll_offset = (s.messages.len().saturating_sub(count)).saturating_sub(1);
+s.visible_message_count = count.max(1);
+                     s.max_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
 
                     // Render tabs
                     let tab_titles = s.dynamic_tabs.all_titles();
@@ -106,7 +106,7 @@ pub fn spawn_render_loop(
                         TabContent::Chat => {
                             let visible = s.visible_message_count;
                             let total_items = s.messages.len();
-                            
+
                             // For auto-scroll: show last visible messages (newest at bottom)
                             // For manual scroll: offset counts from OLDEST, so skip(total - offset - visible)
                             let max_offset = total_items.saturating_sub(visible);
@@ -115,7 +115,7 @@ pub fn spawn_render_loop(
                             } else {
                                 s.chat_scroll_offset.min(max_offset)
                             };
-                            
+
                             // Get messages starting from offset position
                             let visible_messages: Vec<ListItem> = s.messages
                                 .iter()
@@ -123,7 +123,7 @@ pub fn spawn_render_loop(
                                 .take(visible)
                                 .map(|(msg, _)| ListItem::new(msg.as_str()))
                                 .collect();
-                            
+
                             let messages_list = ratatui::widgets::List::new(visible_messages)
                                 .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
                             f.render_widget(messages_list, chunks[2]);
@@ -148,7 +148,7 @@ pub fn spawn_render_loop(
                         TabContent::Direct(peer_id) => {
                             let visible = s.visible_message_count;
                             let messages = s.dm_messages.get(peer_id);
-                            
+
                             if let Some(msgs) = messages {
                                 let total_items = msgs.len();
                                 let max_offset = total_items.saturating_sub(visible);
@@ -157,20 +157,20 @@ pub fn spawn_render_loop(
                                 } else {
                                     s.chat_scroll_offset.min(max_offset)
                                 };
-                                
+
                                 let short_id = if peer_id.len() <= 8 {
                                     peer_id.clone()
                                 } else {
                                     peer_id[peer_id.len()-8..].to_string()
                                 };
-                                
+
                                 let visible: Vec<ListItem> = msgs
                                     .iter()
                                     .skip(effective_offset)
                                     .take(visible)
                                     .map(|m| ListItem::new(m.as_str()))
                                     .collect();
-                                
+
                                 let dm_list = ratatui::widgets::List::new(visible)
                                     .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
                                 f.render_widget(dm_list, chunks[2]);
