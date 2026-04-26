@@ -53,10 +53,13 @@ pub fn spawn_command_processor(
                                     if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                         s.peer_selection = s.peer_selection.saturating_sub(1);
                                     } else {
+                                        // Scroll up = see newer messages (higher offset)
                                         if s.chat_auto_scroll {
                                             s.chat_auto_scroll = false;
+                                            s.chat_scroll_offset = 0;
+                                        } else {
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(1);
                                         }
-                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(1);
                                     }
                                 }
                                 crossterm::event::KeyCode::Down => {
@@ -66,7 +69,10 @@ pub fn spawn_command_processor(
                                             s.peer_selection += 1;
                                         }
                                     } else {
-                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(1);
+                                        // Scroll down = see older messages (lower offset)
+                                        if s.chat_scroll_offset > 0 {
+                                            s.chat_scroll_offset -= 1;
+                                        }
                                         if s.chat_scroll_offset == 0 {
                                             s.chat_auto_scroll = true;
                                         }
@@ -177,8 +183,37 @@ pub fn spawn_command_processor(
                             send_render().await;
                         }
                         InputEvent::Mouse(mouse_event) => {
+                            let mut s = state.lock().await;
+
+                            // Handle mouse wheel scrolling
+                            match mouse_event.kind {
+                                crossterm::event::MouseEventKind::ScrollUp => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        if s.chat_auto_scroll {
+                                            s.chat_auto_scroll = false;
+                                            s.chat_scroll_offset = 0;
+                                        } else {
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(3);
+                                        }
+                                    }
+                                }
+                                crossterm::event::MouseEventKind::ScrollDown => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        if s.chat_scroll_offset > 0 {
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(3);
+                                        }
+                                        if s.chat_scroll_offset == 0 {
+                                            s.chat_auto_scroll = true;
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+
+                            // Handle left click
                             if let crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) = mouse_event.kind {
-                                let mut s = state.lock().await;
                                 if mouse_event.row == 0 {
                                     let tab_titles = s.dynamic_tabs.all_titles();
                                     let mut col_pos = 0;
