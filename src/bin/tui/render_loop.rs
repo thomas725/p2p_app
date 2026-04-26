@@ -57,7 +57,7 @@ pub fn spawn_render_loop(
             }
 
             let _ = terminal.draw(|f| {
-                if let Ok(s) = state.try_lock() {
+                if let Ok(mut s) = state.try_lock() {
                     let chunks = Layout::default()
                         .direction(Direction::Vertical)
                         .constraints([
@@ -83,16 +83,17 @@ pub fn spawn_render_loop(
 
                     // Render tab-specific content with scrolling
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                    s.visible_message_count = chunks[2].height as usize;
                     match &tab_content {
                         TabContent::Chat => {
-                            let visible_height = chunks[2].height as usize;
+                            let visible = s.visible_message_count;
                             let total_items = s.messages.len();
                             
-                            // For auto-scroll: show last visible_height messages (newest at bottom)
+                            // For auto-scroll: show last visible messages (newest at bottom)
                             // For manual scroll: offset counts from OLDEST, so skip(total - offset - visible)
-                            let max_offset = total_items.saturating_sub(visible_height);
+                            let max_offset = total_items.saturating_sub(visible);
                             let effective_offset = if s.chat_auto_scroll {
-                                total_items.saturating_sub(visible_height)
+                                total_items.saturating_sub(visible)
                             } else {
                                 s.chat_scroll_offset.min(max_offset)
                             };
@@ -101,7 +102,7 @@ pub fn spawn_render_loop(
                             let visible_messages: Vec<ListItem> = s.messages
                                 .iter()
                                 .skip(effective_offset)
-                                .take(visible_height)
+                                .take(visible)
                                 .map(|(msg, _)| ListItem::new(msg.as_str()))
                                 .collect();
                             
@@ -127,14 +128,14 @@ pub fn spawn_render_loop(
                             f.render_widget(peers_list, chunks[2]);
                         }
                         TabContent::Direct(peer_id) => {
-                            let visible_height = chunks[2].height as usize;
+                            let visible = s.visible_message_count;
                             let messages = s.dm_messages.get(peer_id);
                             
                             if let Some(msgs) = messages {
                                 let total_items = msgs.len();
-let max_offset = total_items.saturating_sub(visible_height);
+                                let max_offset = total_items.saturating_sub(visible);
                                 let effective_offset = if s.chat_auto_scroll {
-                                    total_items.saturating_sub(visible_height)
+                                    total_items.saturating_sub(visible)
                                 } else {
                                     s.chat_scroll_offset.min(max_offset)
                                 };
@@ -148,7 +149,7 @@ let max_offset = total_items.saturating_sub(visible_height);
                                 let visible: Vec<ListItem> = msgs
                                     .iter()
                                     .skip(effective_offset)
-                                    .take(visible_height)
+                                    .take(visible)
                                     .map(|m| ListItem::new(m.as_str()))
                                     .collect();
                                 
