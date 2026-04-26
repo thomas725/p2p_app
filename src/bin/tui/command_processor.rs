@@ -1,4 +1,6 @@
-use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, MAX_PEERS};
+use super::constants::{
+    MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, MAX_PEERS, PAGE_SIZE, WHEEL_SCROLL_LINES,
+};
 use super::input_handler::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
@@ -70,12 +72,52 @@ pub fn spawn_command_processor(
                                         }
                                     } else {
                                         // Scroll down = see older messages (lower offset)
-                                        if s.chat_scroll_offset > 0 {
-                                            s.chat_scroll_offset -= 1;
+                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(1);
+                                        if s.chat_scroll_offset == 0 {
+                                            s.chat_auto_scroll = true;
+                                        }
+                                    }
+                                }
+                                crossterm::event::KeyCode::PageUp => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        // Page up = scroll up a full page
+                                        if s.chat_auto_scroll {
+                                            s.chat_auto_scroll = false;
+                                            s.chat_scroll_offset = 0;
+                                        } else {
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(PAGE_SIZE);
+                                        }
+                                    }
+                                }
+                                crossterm::event::KeyCode::PageDown => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        // Page down = scroll down a full page
+                                        if s.chat_scroll_offset >= PAGE_SIZE {
+                                            s.chat_scroll_offset -= PAGE_SIZE;
+                                        } else {
+                                            s.chat_scroll_offset = 0;
                                         }
                                         if s.chat_scroll_offset == 0 {
                                             s.chat_auto_scroll = true;
                                         }
+                                    }
+                                }
+                                crossterm::event::KeyCode::Home => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        // Home = scroll to bottom (newest messages)
+                                        s.chat_auto_scroll = true;
+                                        s.chat_scroll_offset = 0;
+                                    }
+                                }
+                                crossterm::event::KeyCode::End => {
+                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+                                        // End = scroll to top (oldest messages)
+                                        s.chat_auto_scroll = false;
+                                        s.chat_scroll_offset = usize::MAX;
                                     }
                                 }
                                 crossterm::event::KeyCode::F(12) => {
@@ -194,16 +236,15 @@ pub fn spawn_command_processor(
                                             s.chat_auto_scroll = false;
                                             s.chat_scroll_offset = 0;
                                         } else {
-                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(3);
+                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_add(WHEEL_SCROLL_LINES);
                                         }
                                     }
                                 }
                                 crossterm::event::MouseEventKind::ScrollDown => {
                                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                     if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        if s.chat_scroll_offset > 0 {
-                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(3);
-                                        }
+                                        if s.chat_scroll_offset >= WHEEL_SCROLL_LINES {
+                                            s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
                                         if s.chat_scroll_offset == 0 {
                                             s.chat_auto_scroll = true;
                                         }

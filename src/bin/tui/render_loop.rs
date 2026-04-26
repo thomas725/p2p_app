@@ -182,7 +182,7 @@ pub fn spawn_render_loop(
                     }
 
                     // Render keyboard shortcuts
-                    let shortcuts = Paragraph::new("Tab: next tab | Shift+Tab: prev tab | ↑↓: scroll | Enter: send | F12: toggle mouse | Ctrl+Q: quit");
+                    let shortcuts = Paragraph::new("Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit");
                     f.render_widget(shortcuts, chunks[4]);
 
                     // Render status line with mouse mode
