@@ -166,15 +166,3 @@ pub fn strip_ansi_codes(s: &str) -> String {
     }
     result
 }
-
-/// Format a naive UTC datetime as a local time string with timezone.
-pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
-    let local = time.and_utc().with_timezone(&chrono::Local);
-    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
-}
-
-/// Get the current time as a formatted local time string with timezone.
-pub fn now_timestamp() -> String {
-    let local = chrono::Local::now();
-    local.format("%Y-%m-%d %H:%M:%S %z").to_string()
-}
