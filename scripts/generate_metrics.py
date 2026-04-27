@@ -65,6 +65,17 @@ def calculate_max_nesting(filepath: str) -> int:
 
 def get_file_purpose(filepath: str) -> str:
     """Get a brief description of file purpose from first doc comment or context."""
+    # Check path-specific entries first (for nested modules)
+    if 'render_loop/mod.rs' in filepath:
+        return 'Render loop orchestration (60 FPS)'
+    if 'render_loop/visibility.rs' in filepath:
+        return 'Message visibility calculations'
+    if 'render_loop/layout.rs' in filepath:
+        return 'UI layout component rendering'
+    if 'render_loop/tab_renderers.rs' in filepath:
+        return 'Tab-specific renderers'
+
+    # Filename-based entries
     purposes = {
         'build.rs': 'Build script',
         'lib.rs': 'Module declarations & re-exports',
@@ -82,7 +93,6 @@ def get_file_purpose(filepath: str) -> str:
         'tui_tabs.rs': 'Tab management & navigation',
         'tui_test_state.rs': 'TUI test state & mouse handling',
         'tui_events.rs': 'Event/command types & channels',
-        'mod.rs': 'Module declarations',
         'columns.rs': 'Auto-generated column definitions',
         'schema.rs': 'Database schema (Diesel)',
         'models_insertable.rs': 'Insertable data models',
@@ -97,14 +107,10 @@ def get_file_purpose(filepath: str) -> str:
         'click_handlers.rs': 'Click handlers & index mapping',
         'message_handlers.rs': 'Message sending logic',
         'main_loop.rs': 'Task orchestration & async',
-        'render_loop/mod.rs': 'Render loop orchestration (60 FPS)',
-        'render_loop/visibility.rs': 'Message visibility calculations',
-        'render_loop/layout.rs': 'UI layout component rendering',
-        'render_loop/tab_renderers.rs': 'Tab-specific renderers',
         'state.rs': 'Shared application state',
-        'input_handler.rs': 'Terminal event polling',
         'tracing_writer.rs': 'Tracing log output handling',
         'constants.rs': 'TUI constants & config',
+        'mod.rs': 'Module declarations',
     }
     return purposes.get(Path(filepath).name, 'Source file')
 
@@ -114,6 +120,8 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
 
     if path.name == 'build.rs':
         return ('/', 'build.rs')
+    elif 'src/bin/tui/render_loop' in filepath:
+        return ('src/bin/tui/render_loop', path.name)
     elif 'src/bin/tui' in filepath:
         return ('src/bin/tui', path.name)
     elif 'src/bin' in filepath:
@@ -166,15 +174,15 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int]]:
 def generate_markdown_table(files_data: List[Tuple]) -> str:
     """Generate markdown table from file data."""
     output = []
-    output.append('| Folder        | File                 | Lines | Chars | Depth | Purpose                             |')
-    output.append('|---------------|---------------------:|------:|------:|------:|------------------------------------:|')
+    output.append('| Folder                      | File                 | Lines | Chars | Depth | Purpose                             |')
+    output.append('|:---------------------------|---------------------:|------:|------:|------:|------------------------------------:|')
 
     for folder, filename, _, lines, chars, nesting, purpose in files_data:
         # Truncate purpose if too long
         if len(purpose) > 35:
             purpose = purpose[:32] + '...'
 
-        output.append(f'| {folder:<13} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<35} |')
+        output.append(f'| {folder:<25} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<35} |')
 
     return '\n'.join(output)
 
