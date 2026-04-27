@@ -252,11 +252,33 @@ fn render_dm_tab(
             .collect();
         state.dm_broadcast_message_lines.insert(peer_id.to_string(), broadcast_line_counts);
 
+        // Get selected broadcast message index for this peer (if any)
+        let selected_idx = state.dm_broadcast_selection.get(peer_id).copied();
+
+        // Collect indices of messages from this peer to map to selection
+        let peer_message_indices: Vec<usize> = state.messages
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, sender_id))| sender_id.as_ref().map_or(false, |id| id == peer_id))
+            .map(|(idx, _)| idx)
+            .collect();
+
         let visible_broadcast: Vec<ListItem> = broadcast_strings
             .iter()
+            .enumerate()
             .skip(effective_offset)
             .take(visible)
-            .map(|m| ListItem::new(m.as_str()))
+            .map(|(visible_idx, m)| {
+                let broadcast_idx = visible_idx + effective_offset;
+                let global_idx = peer_message_indices.get(broadcast_idx).copied();
+                let is_selected = global_idx.is_some() && global_idx == selected_idx;
+
+                if is_selected {
+                    ListItem::new(m.as_str()).style(Style::default().bg(Color::DarkGray))
+                } else {
+                    ListItem::new(m.as_str())
+                }
+            })
             .collect();
         let broadcast_list = ratatui::widgets::List::new(visible_broadcast)
             .block(Block::default().title(format!("Broadcast from {}", short_id)).borders(Borders::ALL));
