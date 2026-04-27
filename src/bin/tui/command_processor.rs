@@ -13,6 +13,197 @@ enum Event {
     SwarmEvent(SwarmEvent),
 }
 
+async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut super::state::AppState) {
+    match key_code {
+        crossterm::event::KeyCode::Tab => {
+            let max_tabs = state.dynamic_tabs.total_tab_count();
+            state.active_tab = (state.active_tab + 1) % max_tabs;
+            state.chat_scroll_offset = 0;
+            p2plog_debug(format!("Switched to tab {}", state.active_tab));
+        }
+        crossterm::event::KeyCode::BackTab => {
+            let max_tabs = state.dynamic_tabs.total_tab_count();
+            state.active_tab = if state.active_tab == 0 { max_tabs - 1 } else { state.active_tab - 1 };
+            state.chat_scroll_offset = 0;
+            p2plog_debug(format!("Switched to tab {}", state.active_tab));
+        }
+        _ => {}
+    }
+}
+
+async fn send_message(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    text: String,
+    tab_content: p2p_app::tui_tabs::TabContent,
+) {
+    let (topic_str, own_nickname) = (state.topic_str.clone(), state.own_nickname.clone());
+    let is_direct = matches!(tab_content, p2p_app::tui_tabs::TabContent::Direct(_));
+    let dm_target_peer_id: Option<String> = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
+        Some(pid.clone())
+    } else {
+        None
+    };
+    let ts = p2p_app::format_system_time(SystemTime::now());
+
+    if is_direct {
+        if let Some(ref peer_id) = dm_target_peer_id {
+            let msg = format!("{} [{}] {}", ts, own_nickname, &text);
+            let dm_msgs = state.dm_messages.entry(peer_id.clone()).or_default();
+            dm_msgs.push_back(msg);
+            if dm_msgs.len() > MAX_DM_HISTORY {
+                dm_msgs.pop_front();
+            }
+            p2plog_debug(format!("Sent DM to {}: {}", peer_id, text));
+        }
+    } else {
+        let msg = format!("{} [{}] {}", ts, own_nickname, &text);
+        state.messages.push_back((msg, None));
+        if state.messages.len() > MAX_MESSAGE_HISTORY {
+            state.messages.pop_front();
+        }
+        p2plog_debug(format!("Sent broadcast: {}", text));
+    }
+
+    state.chat_input = ratatui_textarea::TextArea::default();
+
+    if is_direct {
+        if let Some(peer_id) = dm_target_peer_id.clone() {
+            let _ = swarm_cmd_tx.send(SwarmCommand::SendDm { peer_id, content: text.clone() }).await;
+        }
+    } else {
+        let _ = swarm_cmd_tx.send(SwarmCommand::Publish(text.clone())).await;
+    }
+
+    if let Err(e) = p2p_app::save_message(&text, None, &topic_str, is_direct, dm_target_peer_id.as_deref()) {
+        p2plog_debug(format!("Failed to save message: {}", e));
+    }
+}
+
+fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str) {
+    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    match scroll_dir {
+        "up" => {
+            if state.chat_auto_scroll {
+                state.chat_auto_scroll = false;
+                state.chat_scroll_offset = max_offset;
+            } else if state.chat_scroll_offset >= WHEEL_SCROLL_LINES {
+                state.chat_scroll_offset -= WHEEL_SCROLL_LINES;
+            } else {
+                state.chat_scroll_offset = 0;
+            }
+        }
+        "down" => {
+            state.chat_auto_scroll = false;
+            state.chat_scroll_offset = (state.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+        }
+        _ => {}
+    }
+}
+
+fn handle_tab_click(state: &mut super::state::AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
+    let mut col_pos = 0;
+    for (idx, title) in tab_titles.iter().enumerate() {
+        let tab_width = title.len() + 3;
+        let tab_end = col_pos + tab_width;
+        if (mouse_column as usize) >= col_pos && (mouse_column as usize) < tab_end {
+            let close_start = tab_end - 4;
+            if (mouse_column as usize) >= close_start && title.contains("(X)") {
+                let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
+                if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
+                    && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
+                {
+                    state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
+                    p2plog_debug(format!("Closed DM tab via mouse: {}", peer_id));
+                }
+                return true;
+            } else if idx != state.active_tab {
+                state.active_tab = idx;
+                state.chat_scroll_offset = 0;
+                p2plog_debug(format!("Switched to tab {} via mouse click", state.active_tab));
+                return true;
+            }
+            break;
+        }
+        col_pos = tab_end;
+    }
+    false
+}
+
+fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
+    let peer_row = (row as usize).saturating_sub(3);
+    if peer_row < state.peers.len() {
+        if let Some((peer_id, _, _)) = state.peers.get(peer_row) {
+            let peer_id_clone = peer_id.clone();
+            let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
+            state.active_tab = tab_idx;
+            p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
+        }
+    }
+}
+
+async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut super::state::AppState) {
+    let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+        match key_code {
+            crossterm::event::KeyCode::Up => {
+                state.peer_selection = state.peer_selection.saturating_sub(1);
+            }
+            crossterm::event::KeyCode::Down => {
+                if state.peer_selection < state.peers.len().saturating_sub(1) {
+                    state.peer_selection += 1;
+                }
+            }
+            _ => {}
+        }
+    } else {
+        match key_code {
+            crossterm::event::KeyCode::Up => {
+                if state.chat_auto_scroll {
+                    state.chat_auto_scroll = false;
+                    state.chat_scroll_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                }
+                if state.chat_scroll_offset > 0 {
+                    state.chat_scroll_offset -= 1;
+                }
+            }
+            crossterm::event::KeyCode::Down => {
+                if state.chat_auto_scroll {
+                    state.chat_auto_scroll = false;
+                    state.chat_scroll_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                }
+                let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                if state.chat_scroll_offset < max_offset {
+                    state.chat_scroll_offset += 1;
+                }
+            }
+            crossterm::event::KeyCode::PageUp => {
+                if state.chat_auto_scroll {
+                    state.chat_auto_scroll = false;
+                    state.chat_scroll_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                }
+                state.chat_scroll_offset = state.chat_scroll_offset.saturating_sub(PAGE_SIZE);
+            }
+            crossterm::event::KeyCode::PageDown => {
+                if state.chat_auto_scroll {
+                    state.chat_auto_scroll = false;
+                    state.chat_scroll_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                }
+                let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+                state.chat_scroll_offset = (state.chat_scroll_offset + PAGE_SIZE).min(max_offset);
+            }
+            crossterm::event::KeyCode::Home => {
+                state.chat_auto_scroll = false;
+                state.chat_scroll_offset = 0;
+            }
+            crossterm::event::KeyCode::End => {
+                state.chat_auto_scroll = true;
+            }
+            _ => {}
+        }
+    }
+}
+
 pub fn spawn_command_processor(
     state: SharedState,
     mut input_rx: mpsc::Receiver<InputEvent>,
@@ -49,89 +240,17 @@ pub fn spawn_command_processor(
 
                             let mut s = state.lock().await;
                             match key_event.code {
-                                crossterm::event::KeyCode::Tab => {
-                                    let max_tabs = s.dynamic_tabs.total_tab_count();
-                                    s.active_tab = (s.active_tab + 1) % max_tabs;
-                                    s.chat_scroll_offset = 0;
-                                    p2plog_debug(format!("Switched to tab {}", s.active_tab));
+                                crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
+                                    handle_navigation_key(key_event.code, &mut s).await;
                                     drop(s);
                                 }
-                                crossterm::event::KeyCode::BackTab => {
-                                    let max_tabs = s.dynamic_tabs.total_tab_count();
-                                    s.active_tab = if s.active_tab == 0 { max_tabs - 1 } else { s.active_tab - 1 };
-                                    s.chat_scroll_offset = 0;
-                                    p2plog_debug(format!("Switched to tab {}", s.active_tab));
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::Up => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        s.peer_selection = s.peer_selection.saturating_sub(1);
-                                    } else {
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                            s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        }
-                                        if s.chat_scroll_offset > 0 {
-                                            s.chat_scroll_offset -= 1;
-                                        }
-                                    }
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::Down => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        if s.peer_selection < s.peers.len().saturating_sub(1) {
-                                            s.peer_selection += 1;
-                                        }
-                                    } else {
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                            s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        }
-                                        let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        if s.chat_scroll_offset < max_offset {
-                                            s.chat_scroll_offset += 1;
-                                        }
-                                    }
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::PageUp => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                            s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        }
-                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
-                                    }
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::PageDown => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        if s.chat_auto_scroll {
-                                            s.chat_auto_scroll = false;
-                                            s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        }
-                                        let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
-                                    }
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::Home => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        s.chat_auto_scroll = false;
-                                        s.chat_scroll_offset = 0;
-                                    }
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::End => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        s.chat_auto_scroll = true;
-                                    }
+                                crossterm::event::KeyCode::Up
+                                | crossterm::event::KeyCode::Down
+                                | crossterm::event::KeyCode::PageUp
+                                | crossterm::event::KeyCode::PageDown
+                                | crossterm::event::KeyCode::Home
+                                | crossterm::event::KeyCode::End => {
+                                    handle_scroll_key(key_event.code, &mut s).await;
                                     drop(s);
                                 }
                                 crossterm::event::KeyCode::F(12) => {
@@ -164,54 +283,9 @@ pub fn spawn_command_processor(
                                     } else if tab_content.is_input_enabled() {
                                         let text: String = s.chat_input.lines().join("\n");
                                         if !text.trim().is_empty() {
-                                            let (topic_str, own_nickname) = (s.topic_str.clone(), s.own_nickname.clone());
-                                            let is_direct = matches!(tab_content, p2p_app::tui_tabs::TabContent::Direct(_));
-                                            let dm_target_peer_id: Option<String> = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
-                                                Some(pid.clone())
-                                            } else {
-                                                None
-                                            };
-                                            let ts = p2p_app::format_system_time(SystemTime::now());
-                                            if is_direct {
-                                                if let Some(ref peer_id) = dm_target_peer_id {
-                                                    let msg = format!("{} [{}] {}", ts, own_nickname, text);
-                                                    let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
-                                                    dm_msgs.push_back(msg);
-                                                    if dm_msgs.len() > MAX_DM_HISTORY {
-                                                        dm_msgs.pop_front();
-                                                    }
-                                                    p2plog_debug(format!("Sent DM to {}: {}", peer_id, text));
-                                                }
-                                            } else {
-                                                let msg = format!("{} [{}] {}", ts, own_nickname, text);
-                                                s.messages.push_back((msg, None));
-                                                if s.messages.len() > MAX_MESSAGE_HISTORY {
-                                                    s.messages.pop_front();
-                                                }
-                                                p2plog_debug(format!("Sent broadcast: {}", text));
-                                            }
-                                            s.chat_input = ratatui_textarea::TextArea::default();
-                                            let (cmd_tx, is_direct_send, dm_target_send, topic_str_for_db, dm_target_for_db) = (
-                                                swarm_cmd_tx.clone(),
-                                                is_direct,
-                                                dm_target_peer_id.clone(),
-                                                topic_str,
-                                                dm_target_peer_id,
-                                            );
-                                            drop(s);
-                                            if is_direct_send {
-                                                if let Some(peer_id) = dm_target_send {
-                                                    let _ = cmd_tx.send(SwarmCommand::SendDm { peer_id, content: text.clone() }).await;
-                                                }
-                                            } else {
-                                                let _ = cmd_tx.send(SwarmCommand::Publish(text.clone())).await;
-                                            }
-                                            if let Err(e) = p2p_app::save_message(&text, None, &topic_str_for_db, is_direct_send, dm_target_for_db.as_deref()) {
-                                                p2plog_debug(format!("Failed to save message: {}", e));
-                                            }
-                                        } else {
-                                            drop(s);
+                                            send_message(&mut s, &swarm_cmd_tx, text, tab_content).await;
                                         }
+                                        drop(s);
                                     } else {
                                         drop(s);
                                     }
@@ -243,56 +317,17 @@ pub fn spawn_command_processor(
 
                             match mouse_event.kind {
                                 crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
-                                    if s.chat_auto_scroll {
-                                        s.chat_auto_scroll = false;
-                                        let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                        s.chat_scroll_offset = max_offset;
-                                    } else if s.chat_scroll_offset >= WHEEL_SCROLL_LINES {
-                                        s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
-                                    } else {
-                                        s.chat_scroll_offset = 0;
-                                    }
+                                    handle_mouse_scroll(&mut s, "up");
                                 }
                                 crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
-                                    s.chat_auto_scroll = false;
-                                    let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
-                                    s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                                    handle_mouse_scroll(&mut s, "down");
                                 }
                                 crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                                     if mouse_event.row == 0 {
                                         let tab_titles = s.dynamic_tabs.all_titles();
-                                        let mut col_pos = 0;
-                                        for (idx, title) in tab_titles.iter().enumerate() {
-                                            let tab_width = title.len() + 3;
-                                            let tab_end = col_pos + tab_width;
-                                            if (mouse_event.column as usize) >= col_pos && (mouse_event.column as usize) < tab_end {
-                                                let close_start = tab_end - 4;
-                                                if (mouse_event.column as usize) >= close_start && title.contains("(X)") {
-                                                    let tab_content = s.dynamic_tabs.tab_index_to_content(idx);
-                                                    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
-                                                        && let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
-                                                            s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
-                                                            p2plog_debug(format!("Closed DM tab via mouse: {}", peer_id));
-                                                        }
-                                                } else if idx != s.active_tab {
-                                                    s.active_tab = idx;
-                                                    s.chat_scroll_offset = 0;
-                                                    p2plog_debug(format!("Switched to tab {} via mouse click", s.active_tab));
-                                                }
-                                                break;
-                                            }
-                                            col_pos = tab_end;
-                                        }
+                                        handle_tab_click(&mut s, mouse_event.column, &tab_titles);
                                     } else if mouse_event.row > 2 && mouse_event.row < 16 && is_chat_tab {
-                                        let peer_row = (mouse_event.row as usize).saturating_sub(3);
-                                        if peer_row < s.peers.len() {
-                                            if let Some((peer_id, _, _)) = s.peers.get(peer_row) {
-                                                let peer_id_clone = peer_id.clone();
-                                                let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
-                                                s.active_tab = tab_idx;
-                                                p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
-                                            }
-                                        }
+                                        handle_peer_row_click(&mut s, mouse_event.row);
                                     }
                                 }
                                 _ => {}
