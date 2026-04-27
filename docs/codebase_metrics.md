@@ -43,7 +43,7 @@
 | src/bin/tui   | constants.rs         |    23 |   759 |     0 | TUI constants & config              |
 | src/bin/tui   | event_source.rs      |    44 |  1631 |     6 | Terminal event polling (60 FPS)     |
 | src/bin/tui   | input_processor.rs   |   190 |  7402 |     5 | Input event routing & processing    |
-| src/bin/tui   | main_loop.rs         |   200 |  7064 |     4 | Task orchestration & async          |
+| src/bin/tui   | main_loop.rs         |   200 |  7055 |     4 | Task orchestration & async          |
 | src/bin/tui   | message_handlers.rs  |    56 |  2161 |     4 | Message sending logic               |
 | src/bin/tui   | render_loop.rs       |   450 | 15358 |     5 | 60 FPS rendering loop               |
 | src/bin/tui   | scroll_handlers.rs   |   294 | 11375 |     6 | Scroll & hover-aware navigation     |
@@ -54,12 +54,8 @@
 | src/generated | models_insertable.rs |    46 |  1108 |     1 | Insertable data models              |
 | src/generated | models_queryable.rs  |    54 |  1321 |     1 | Queryable data models               |
 | src/generated | schema.rs            |    48 |  1125 |     2 | Database schema (Diesel)            |
-| src/generated | mod.rs               |     4 |    86 |     0 | Module declarations                 |
-| src/generated | models_insertable.rs |    46 |  1108 |     1 | Insertable data models              |
-| src/generated | models_queryable.rs  |    54 |  1321 |     1 | Queryable data models               |
-| src/generated | schema.rs            |    48 |  1125 |     2 | Database schema (Diesel)            |
 
-**Total:** 33 files, 4,050 lines, 137,639 characters
+**Total:** 35 files, 4,542 lines, 156,906 characters
 
 ---
 
