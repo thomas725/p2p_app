@@ -193,8 +193,58 @@ fn render_dm_tab(
     state: &mut AppState,
     peer_id: &str,
     text_width: usize,
-    usable_height: usize,
+    _usable_height: usize,
 ) {
+    let short_id = if peer_id.len() <= 8 {
+        peer_id.to_string()
+    } else {
+        peer_id[peer_id.len()-8..].to_string()
+    };
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    let broadcast_area = chunks[0];
+    let dm_area = chunks[1];
+
+    let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
+    let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
+
+    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+        .iter()
+        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .cloned()
+        .collect();
+
+    if !broadcast_messages.is_empty() {
+        let broadcast_strings: std::collections::VecDeque<String> = broadcast_messages
+            .iter()
+            .map(|(msg, _)| msg.clone())
+            .collect();
+        let (visible, effective_offset) = calc_visible_strings(
+            &broadcast_strings,
+            true,
+            0,
+            text_width,
+            broadcast_usable_height,
+        );
+        let visible_broadcast: Vec<ListItem> = broadcast_strings
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .map(|m| ListItem::new(m.as_str()))
+            .collect();
+        let broadcast_list = ratatui::widgets::List::new(visible_broadcast)
+            .block(Block::default().title(format!("Broadcast from {}", short_id)).borders(Borders::ALL));
+        frame.render_widget(broadcast_list, broadcast_area);
+    } else {
+        let broadcast_para = Paragraph::new("No broadcast messages")
+            .block(Block::default().title(format!("Broadcast from {}", short_id)).borders(Borders::ALL));
+        frame.render_widget(broadcast_para, broadcast_area);
+    }
+
     let (scroll_offset_val, auto_scroll_val) = {
         let (offset, auto_scroll) = state.dm_scroll_state
             .entry(peer_id.to_string())
@@ -208,14 +258,8 @@ fn render_dm_tab(
             auto_scroll_val,
             scroll_offset_val,
             text_width,
-            usable_height,
+            dm_usable_height,
         );
-
-        let short_id = if peer_id.len() <= 8 {
-            peer_id.to_string()
-        } else {
-            peer_id[peer_id.len()-8..].to_string()
-        };
 
         let visible_msgs: Vec<ListItem> = msgs
             .iter()
@@ -226,10 +270,11 @@ fn render_dm_tab(
 
         let dm_list = ratatui::widgets::List::new(visible_msgs)
             .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
-        frame.render_widget(dm_list, area);
+        frame.render_widget(dm_list, dm_area);
     } else {
-        let dm_para = Paragraph::new("No messages yet");
-        frame.render_widget(dm_para, area);
+        let dm_para = Paragraph::new("No direct messages")
+            .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
+        frame.render_widget(dm_para, dm_area);
     }
 }
 
