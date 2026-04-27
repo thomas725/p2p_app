@@ -212,7 +212,7 @@ fn handle_mouse_left_click(
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         handle_tab_click(state, mouse_column, &tab_titles);
-    } else if mouse_row > 2 && mouse_row < 16 && is_chat_tab {
+    } else if mouse_row > 2 && mouse_row < 16 && !is_chat_tab {
         handle_peer_row_click(state, mouse_row);
     }
 }
