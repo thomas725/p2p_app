@@ -1,7 +1,7 @@
 use libp2p::{futures::StreamExt, gossipsub, noise, tcp, yamux};
 use p2p_app::logging::p2plog_info;
 use p2p_app::{BroadcastMessage, build_behaviour, get_libp2p_identity, get_network_size};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 
 enum Event {

@@ -65,6 +65,8 @@ mod tui {
     use ratatui_textarea::TextArea;
 
     mod command_processor;
+    mod input_handlers;
+    mod message_handlers;
     pub mod constants;
     mod input_handler;
     pub mod main_loop;
