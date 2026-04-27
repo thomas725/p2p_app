@@ -94,7 +94,8 @@ pub fn spawn_render_loop(
                                     msg_lines += (line.len() + text_width - 1) / text_width;
                                 }
                             }
-                            if used + msg_lines > usable_height {
+                            // Include message if it fits exactly or if it's the first message we're trying to fit
+                            if used > 0 && used + msg_lines > usable_height {
                                 break;
                             }
                             used += msg_lines;
