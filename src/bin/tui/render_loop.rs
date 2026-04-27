@@ -265,11 +265,11 @@ fn render_dm_tab(
 
         let visible_broadcast: Vec<ListItem> = broadcast_strings
             .iter()
-            .enumerate()
             .skip(effective_offset)
+            .enumerate()
             .take(visible)
             .map(|(visible_idx, m)| {
-                let broadcast_idx = visible_idx + effective_offset;
+                let broadcast_idx = effective_offset + visible_idx;
                 let global_idx = peer_message_indices.get(broadcast_idx).copied();
                 let is_selected = global_idx.is_some() && global_idx == selected_idx;
 
