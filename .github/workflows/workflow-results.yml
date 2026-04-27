@@ -3,7 +3,7 @@ name: Store Workflow Results
 on:
   workflow_run:
     workflows: ["CI", "Documentation"]
-    types: [completed]
+    types: [completed]  # Runs on BOTH success AND failure
 
 permissions:
   contents: write
@@ -13,12 +13,13 @@ jobs:
   collect-and-store:
     name: Collect & Store All Results
     runs-on: ubuntu-latest
+    # This job ALWAYS runs, regardless of whether CI/Documentation succeeded or failed
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
-      - name: Download CI artifacts
+      - name: Download CI artifacts (even if failed)
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: ci.yml
@@ -26,7 +27,7 @@ jobs:
           path: ci-artifacts
         continue-on-error: true
       
-      - name: Download Documentation artifacts
+      - name: Download Documentation artifacts (even if failed)
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: documentation.yml
