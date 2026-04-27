@@ -1,17 +1,17 @@
 # P2P Chat Application - Codebase Metrics
 
-**Generated:** 2026-04-27 (updated post-naming refactoring)
+**Generated:** 2026-04-28 (updated post-render_loop refactoring)
 **Script:** Use `python3 scripts/generate_metrics.py` to regenerate this table with accurate measurements
 
 ## Summary
 
 | Metric                      | Count   |
 |-----------------------------|--------:|
-| Total Rust Files            |       35|
-| Total Lines of Code         |    4,542|
-| Total Characters            |  156,915|
-| Average Lines per File      |      129|
-| Average Characters per File |    4,483|
+| Total Rust Files            |       38|
+| Total Lines of Code         |    4,577|
+| Total Characters            |  158,067|
+| Average Lines per File      |      120|
+| Average Characters per File |    4,159|
 
 ---
 
@@ -45,7 +45,10 @@
 | src/bin/tui   | input_processor.rs   |   190 |  7402 |     5 | Input event routing & processing    |
 | src/bin/tui   | main_loop.rs         |   200 |  7055 |     4 | Task orchestration & async          |
 | src/bin/tui   | message_handlers.rs  |    56 |  2161 |     4 | Message sending logic               |
-| src/bin/tui   | render_loop.rs       |   450 | 15358 |     5 | 60 FPS rendering loop               |
+| src/bin/tui/render_loop | mod.rs      |   109 |  3830 |     5 | Render loop orchestration (60 FPS)  |
+| src/bin/tui/render_loop | visibility.rs |   117 |  3401 |     5 | Message visibility calculations     |
+| src/bin/tui/render_loop | layout.rs   |    57 |  2172 |     2 | UI layout component rendering       |
+| src/bin/tui/render_loop | tab_renderers.rs | 202 | 7116 |     4 | Tab-specific renderers              |
 | src/bin/tui   | scroll_handlers.rs   |   294 | 11375 |     6 | Scroll & hover-aware navigation     |
 | src/bin/tui   | state.rs             |   142 |  5399 |     6 | Shared application state            |
 | src/bin/tui   | tracing_writer.rs    |     3 |   246 |     0 | Tracing log output handling         |
@@ -98,7 +101,11 @@ Binaries:
 │   ├── bin/tui/scroll_handlers.rs (scroll logic)
 │   ├── bin/tui/click_handlers.rs (click logic)
 │   ├── bin/tui/message_handlers.rs (message sending)
-│   ├── bin/tui/render_loop.rs (rendering)
+│   ├── bin/tui/render_loop/ (rendering)
+│   │   ├── mod.rs (orchestration)
+│   │   ├── visibility.rs (visibility calculations)
+│   │   ├── layout.rs (UI components)
+│   │   └── tab_renderers.rs (tab rendering)
 │   ├── bin/tui/main_loop.rs (orchestration)
 │   └── bin/tui/tracing_writer.rs (logging)
 ├── p2p_chat.rs (CLI)
@@ -345,7 +352,48 @@ Systematic reduction of nesting depth across all files to meet ≤6 level target
 ### swarm_handler.rs: Maintained at 6 levels ✅
 - Already well-extracted in previous refactoring
 
-#### Naming Clarification (April 27, 2026 - Phase 3) - COMPLETED ✅
+#### Render Loop Refactoring (April 28, 2026 - Phase 4) - COMPLETED ✅
+
+Split monolithic 450-line render_loop.rs into 4 focused submodules:
+
+**Before (single file):**
+- 450 lines with 13 functions
+- 5 nesting levels
+- Mixed concerns: visibility calc, layout, tab rendering, orchestration
+
+**After (modular structure):**
+- render_loop/mod.rs (109 lines, depth 5)
+  - `spawn_render_loop()` - Public API (unchanged)
+  - `render_frame()` - Frame orchestrator
+  - Dispatcher logic for tab rendering
+
+- render_loop/visibility.rs (117 lines, depth 5)
+  - `calc_visible_tuples()` - Visibility for (String, Option<String>) messages
+  - `calc_visible_strings()` - Visibility for String messages
+  - `count_lines()` - ANSI-aware line wrapping counter
+
+- render_loop/layout.rs (57 lines, depth 2) ✨ *Lowest nesting!*
+  - `render_tabs()` - Tab navigation bar
+  - `render_peer_info()` - Peer count display
+  - `render_input_section()` - Input box with nickname editing
+  - `render_shortcuts()` - Help text
+  - `render_status_bar()` - Connection & mouse status
+
+- render_loop/tab_renderers.rs (202 lines, depth 4)
+  - `render_chat_tab()` - Broadcast messages with selection
+  - `render_peers_tab()` - Peers list with selection
+  - `render_dm_tab()` - Split dual-pane (broadcast + DM)
+  - `render_log_tab()` - Application logs
+
+**Benefits:**
+- ✅ Improved code discoverability (related functions grouped)
+- ✅ Single responsibility per module
+- ✅ Public API completely unchanged
+- ✅ 38 files total (35 + 3 new render_loop submodules)
+- ✅ Better cognitive load for navigation
+- ✅ All 84 tests pass
+
+### Naming Clarification (April 27, 2026 - Phase 3) - COMPLETED ✅
 
 Resolved confusing module naming to improve code discoverability:
 
@@ -439,15 +487,16 @@ Decomposed massive 701-line input_handlers.rs into 3 focused modules:
 - ✅ Reduced nesting depth improves readability
 - ✅ All 92 tests pass (15 lib + 44 tui_integration + 8 tui_events + 10 tui_tasks + 15 other)
 
-## Current State (April 27, 2026) - Post-Naming Refactoring
+## Current State (April 28, 2026) - Post-Render_Loop Refactoring
 
-- **34/35 files (97%)** now at ≤6 nesting levels ✅
+- **37/38 files (97%)** now at ≤6 nesting levels ✅
   - 1 exception: p2p_chat_dioxus.rs (8 levels, justified by complex Web UI)
-- **Average nesting depth**: ~3.9 levels
-- **Total files**: 35 (all modules clearly named and focused)
-- **Code clarity**: Excellent through focused modules with clear naming
+- **Average nesting depth**: ~3.7 levels (improved)
+- **Total files**: 38 (35 original + 3 render_loop submodules)
+- **Code clarity**: Excellent through systematic modularization
 - **Tests**: All 84 tests pass ✅
 - **Refactoring phases completed**:
   1. ✅ Input handlers split: 701 → 679 lines (3 focused modules)
   2. ✅ Scroll handlers extracted: 9 → 6 nesting levels
   3. ✅ Naming clarified: event_source.rs & input_processor.rs
+  4. ✅ Render loop modularized: 450 → 485 lines (4 focused modules)
