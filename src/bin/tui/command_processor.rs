@@ -1,5 +1,5 @@
-use super::input_handlers;
-use super::input_handler::InputEvent;
+use super::input_processor;
+use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use super::constants;
@@ -7,7 +7,7 @@ use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
-use input_handlers::process_input_event;
+use input_processor::process_input_event;
 
 enum Event {
     Input(InputEvent),

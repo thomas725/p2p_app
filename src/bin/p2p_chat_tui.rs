@@ -66,8 +66,8 @@ mod tui {
 
     mod command_processor;
     pub mod constants;
-    mod input_handler;
-    mod input_handlers;
+    mod event_source;
+    mod input_processor;
     pub mod scroll_handlers;
     pub mod click_handlers;
     mod message_handlers;

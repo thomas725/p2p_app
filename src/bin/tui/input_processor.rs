@@ -1,4 +1,4 @@
-use super::input_handler::InputEvent;
+use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};

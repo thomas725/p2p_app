@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 ///
 /// Orchestrates the spawning and supervision of the four concurrent tasks:
 /// - **SwarmHandler**: Translates libp2p events to SwarmEvent
-/// - **InputHandler**: Polls terminal for keyboard/mouse input
+/// - **EventSource**: Polls terminal for keyboard/mouse input
 /// - **CommandProcessor**: Receives events, mutates shared AppState
 /// - **RenderLoop**: Renders AppState to terminal at ~60 FPS
 ///
@@ -123,8 +123,8 @@ pub async fn run_new_tui(
     let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
         p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
 
-    // InputHandler sends InputEvent to this channel
-    let input_handler = super::input_handler::spawn_input_handler(input_tx);
+    // EventSource sends InputEvent to this channel
+    let event_source = super::event_source::spawn_input_handler(input_tx);
 
     // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent and SwarmCommand
     let (command_processor, _) = super::command_processor::spawn_command_processor(
@@ -151,13 +151,13 @@ pub async fn run_new_tui(
                 "SwarmHandler completed"
             }
         }
-        result = input_handler => {
+        result = event_source => {
             if result.is_err() {
-                p2plog_debug( "InputHandler panicked".to_string());
-                "InputHandler task error"
+                p2plog_debug( "EventSource panicked".to_string());
+                "EventSource task error"
             } else {
-                p2plog_debug( "InputHandler exited".to_string());
-                "InputHandler completed"
+                p2plog_debug( "EventSource exited".to_string());
+                "EventSource completed"
             }
         }
         result = command_processor => {
