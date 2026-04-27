@@ -152,15 +152,16 @@ pub fn spawn_render_loop(
                         }
                         TabContent::Direct(peer_id) => {
                             if let Some(msgs) = s.dm_messages.get(peer_id) {
-                                // Calculate visible messages for this DM tab
-                                let visible = calc_visible(msgs, text_width, usable_height);
-                                let total_items = msgs.len();
+                                let msgs_vec: Vec<String> = msgs.iter().cloned().collect();
+                                let visible = calc_visible(&msgs_vec, text_width, usable_height);
+                                let total_items = msgs_vec.len();
                                 let max_offset = total_items.saturating_sub(visible);
 
-                                // Get or initialize per-DM scroll state
-                                let (scroll_offset, auto_scroll) = s.dm_scroll_state
-                                    .entry(peer_id.clone())
-                                    .or_insert((0, true));
+                                let (scroll_offset, auto_scroll) = {
+                                    s.dm_scroll_state
+                                        .entry(peer_id.clone())
+                                        .or_insert((0, true))
+                                };
 
                                 let effective_offset = if *auto_scroll {
                                     total_items.saturating_sub(visible)
@@ -174,7 +175,7 @@ pub fn spawn_render_loop(
                                     peer_id[peer_id.len()-8..].to_string()
                                 };
 
-                                let visible_msgs: Vec<ListItem> = msgs
+                                let visible_msgs: Vec<ListItem> = msgs_vec
                                     .iter()
                                     .skip(effective_offset)
                                     .take(visible)
