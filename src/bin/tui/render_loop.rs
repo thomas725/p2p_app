@@ -238,9 +238,19 @@ fn render_dm_tab(
             text_width,
             broadcast_usable_height,
         );
-        // Store visible count for this peer's broadcast section
+        // Store visible count, offset, and line counts for this peer's broadcast section
         let (_, dm_visible) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
         state.dm_visible_counts.insert(peer_id.to_string(), (visible, dm_visible));
+        state.dm_broadcast_offset.insert(peer_id.to_string(), effective_offset);
+
+        // Calculate and store line counts for each visible broadcast message
+        let broadcast_line_counts: Vec<usize> = broadcast_strings
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .map(|msg| count_lines(msg, text_width))
+            .collect();
+        state.dm_broadcast_message_lines.insert(peer_id.to_string(), broadcast_line_counts);
 
         let visible_broadcast: Vec<ListItem> = broadcast_strings
             .iter()

@@ -476,29 +476,53 @@ fn handle_message_click(state: &mut super::state::AppState, row: u16) {
 /// Handles clicks on broadcast messages in DM tab's top section
 fn handle_dm_broadcast_message_click(state: &mut super::state::AppState, row: u16, peer_id: &str) {
     let click_row = row as usize;
-    let broadcast_row = click_row - 3;
 
-    // Collect indices of messages from this peer to map broadcast row to global index
-    let peer_message_indices: Vec<usize> = state.messages
-        .iter()
-        .enumerate()
-        .filter(|(_, (_, sender_id))| sender_id.as_ref().map_or(false, |id| id == peer_id))
-        .map(|(idx, _)| idx)
-        .collect();
+    // Use line counts to find which message was clicked
+    if let Some(line_counts) = state.dm_broadcast_message_lines.get(peer_id) {
+        let mut current_row = 3;
+        let mut message_idx_in_visible = 0;
 
-    if broadcast_row >= peer_message_indices.len() {
-        return;
+        for line_count in line_counts {
+            let message_end_row = current_row + line_count;
+            if click_row < message_end_row {
+                break;
+            }
+            current_row = message_end_row;
+            message_idx_in_visible += 1;
+        }
+
+        if message_idx_in_visible >= line_counts.len() {
+            return;
+        }
+
+        // Get the effective offset (where visible messages start)
+        let effective_offset = state.dm_broadcast_offset.get(peer_id).copied().unwrap_or(0);
+
+        // Map: visible message index + effective offset = index in filtered broadcast messages
+        let broadcast_message_idx = message_idx_in_visible + effective_offset;
+
+        // Now find the global index by collecting all messages from this peer
+        let peer_message_indices: Vec<usize> = state.messages
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, sender_id))| sender_id.as_ref().map_or(false, |id| id == peer_id))
+            .map(|(idx, _)| idx)
+            .collect();
+
+        if broadcast_message_idx >= peer_message_indices.len() {
+            return;
+        }
+
+        let global_idx = peer_message_indices[broadcast_message_idx];
+
+        // Switch to Broadcast Chat tab
+        state.active_tab = 0;
+        state.chat_auto_scroll = false;
+        // Scroll back a bit to show context
+        let offset_padding = (state.visible_message_count / 3).max(1);
+        state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
+        p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", global_idx));
     }
-
-    let global_idx = peer_message_indices[broadcast_row];
-
-    // Switch to Broadcast Chat tab
-    state.active_tab = 0;
-    state.chat_auto_scroll = false;
-    // Scroll back a bit to show context - use visible message count to position message in upper third
-    let offset_padding = (state.visible_message_count / 3).max(1);
-    state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
-    p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", global_idx));
 }
 
 /// Handles clicks on messages in a DM tab's split layout (both broadcast and DM sections)

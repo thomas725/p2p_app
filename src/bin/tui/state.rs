@@ -48,6 +48,10 @@ pub struct AppState {
     pub dm_broadcast_scroll_state: HashMap<String, (usize, bool)>,
     // Visible message counts: peer_id -> (broadcast_count, dm_count)
     pub dm_visible_counts: HashMap<String, (usize, usize)>,
+    // Line counts for broadcast messages in DM tab: peer_id -> Vec of line counts
+    pub dm_broadcast_message_lines: HashMap<String, Vec<usize>>,
+    // Broadcast scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
+    pub dm_broadcast_offset: HashMap<String, usize>,
 
     // Unread Counts
     pub unread_broadcasts: u32,
@@ -90,6 +94,8 @@ impl AppState {
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
             dm_visible_counts: HashMap::new(),
+            dm_broadcast_message_lines: HashMap::new(),
+            dm_broadcast_offset: HashMap::new(),
             own_nickname,
             local_nicknames,
             received_nicknames,
