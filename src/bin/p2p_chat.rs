@@ -9,6 +9,32 @@ enum Event {
     Stdin(Option<String>),
 }
 
+fn extract_tcp_port(address: &libp2p::Multiaddr) -> Option<i32> {
+    address
+        .iter()
+        .find_map(|p| match p {
+            libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+            _ => None,
+        })
+}
+
+#[cfg(feature = "quic")]
+fn extract_udp_port(address: &libp2p::Multiaddr) -> Option<i32> {
+    address
+        .iter()
+        .find_map(|p| match p {
+            libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+            _ => None,
+        })
+}
+
+fn current_timestamp() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -77,23 +103,11 @@ async fn main() -> color_eyre::Result<()> {
                 match event {
                     libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
                         p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
+                        if let Some(port) = extract_tcp_port(&address) {
                             let _ = p2p_app::save_listen_ports(Some(port), None);
                         }
                         #[cfg(feature = "quic")]
-                        if let Some(port) = address
-                            .iter()
-                            .find_map(|p| match p {
-                                libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-                                _ => None,
-                            })
-                        {
+                        if let Some(port) = extract_udp_port(&address) {
                             let (tcp, _) = p2p_app::load_listen_ports().unwrap_or((None, None));
                             let _ = p2p_app::save_listen_ports(tcp, Some(port));
                         }
@@ -126,12 +140,7 @@ async fn main() -> color_eyre::Result<()> {
                 if !text.is_empty() {
                     let msg = BroadcastMessage {
                         content: text,
-                        sent_at: Some(
-                            SystemTime::now()
-                                .duration_since(SystemTime::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs_f64(),
-                        ),
+                        sent_at: Some(current_timestamp()),
                         nickname: None,
                     };
                     if let Ok(json) = serde_json::to_string(&msg) {
