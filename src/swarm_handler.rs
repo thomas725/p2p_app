@@ -26,9 +26,8 @@ async fn handle_swarm_event(
             ..
         })) => {
             let peer_id_str = peer_id.to_string();
-            let raw = String::from_utf8_lossy(&message.data).to_string();
 
-            if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&raw) {
+            if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
                 let content = bcast.content.clone();
                 let latency = Some(crate::format_latency(bcast.sent_at, SystemTime::now()));
 
@@ -39,6 +38,8 @@ async fn handle_swarm_event(
                         latency,
                     })
                     .await;
+            } else {
+                p2plog_debug(format!("Failed to parse broadcast message from peer {}", peer_id_str));
             }
         }
         Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(

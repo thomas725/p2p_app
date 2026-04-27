@@ -44,17 +44,6 @@ static DB_URL: OnceLock<String> = OnceLock::new();
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
 
-    // Register cleanup on panic (for any abnormal exit)
-    let db_path_for_panic = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
-    let db_path_clone = db_path_for_panic.clone();
-    std::panic::set_hook(Box::new(move |_info| {
-        if let Ok(path) = db_path_clone.lock() {
-            let lock_path = format!("{}.lock", path);
-            let _ = std::fs::remove_file(&lock_path);
-            eprintln!("[DB] released lock on panic: {}", lock_path);
-        }
-    }));
-
     // Try to get cached path, or determine it for the first time
     let db_path = if let Some(cached) = DB_URL.get() {
         cached.clone()
@@ -64,8 +53,17 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
         path
     };
 
-    // Store for panic hook
-    *db_path_for_panic.lock().unwrap() = db_path.clone();
+    // Register cleanup on panic after path is determined and cached (to ensure it lives for the app lifetime)
+    static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
+    let _ = PANIC_HOOK_SET.get_or_init(|| {
+        std::panic::set_hook(Box::new(|_info| {
+            if let Some(db_path) = DB_URL.get() {
+                let lock_path = format!("{}.lock", db_path);
+                let _ = std::fs::remove_file(&lock_path);
+                eprintln!("[DB] released lock on panic: {}", lock_path);
+            }
+        }));
+    });
 
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
@@ -89,8 +87,9 @@ fn ensure_columns(conn: &mut SqliteConnection) {
 
     for (table, column, col_type) in SCHEMA_ENTRIES {
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
-        if sql_query(&sql).execute(conn).is_ok() {
-            crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table));
+        match sql_query(&sql).execute(conn) {
+            Ok(_) => crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table)),
+            Err(e) => crate::logging::p2plog_debug(format!("[DB] column {} already exists on table {} (or error: {})", column, table, e)),
         }
     }
 }

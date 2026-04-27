@@ -91,7 +91,11 @@ pub fn handle_message_click(state: &mut AppState, row: u16) {
         return;
     }
 
-    let peer_id = state.messages.iter().skip(state.chat_message_offset).nth(message_idx).map(|(_, pid)| pid.clone());
+    let peer_id = state.messages
+        .iter()
+        .skip(state.chat_message_offset)
+        .nth(message_idx)
+        .map(|(_, pid)| pid.clone());
 
     match peer_id {
         Some(Some(sender_id)) => {
@@ -174,8 +178,10 @@ pub fn handle_mouse_left_click(
         if mouse_row > 2 && mouse_row < max_row {
             if is_peers_tab {
                 handle_peer_row_click(state, mouse_row);
-            } else if is_dm_tab && peer_id.is_some() {
-                handle_dm_broadcast_message_click(state, mouse_row, peer_id.unwrap());
+            } else if is_dm_tab {
+                if let Some(pid) = peer_id {
+                    handle_dm_broadcast_message_click(state, mouse_row, pid);
+                }
             } else {
                 handle_message_click(state, mouse_row);
             }
