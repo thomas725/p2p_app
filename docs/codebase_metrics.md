@@ -1,6 +1,6 @@
 # P2P Chat Application - Codebase Metrics
 
-**Generated:** 2026-04-27 (updated post-input_handlers refactoring)
+**Generated:** 2026-04-27 (updated post-naming refactoring)
 **Script:** Use `python3 scripts/generate_metrics.py` to regenerate this table with accurate measurements
 
 ## Summary
@@ -39,10 +39,10 @@
 | src/bin       | p2p_chat_dioxus.rs   |   208 |  7137 |     8 | Web UI (Dioxus framework)           |
 | src/bin       | p2p_chat_tui.rs      |   137 |  5136 |     4 | Main TUI application entry point    |
 | src/bin/tui   | click_handlers.rs    |   186 |  7259 |     5 | Click handlers & index mapping      |
-| src/bin/tui   | command_processor.rs |   125 |  5493 |     6 | Event routing & state updates       |
+| src/bin/tui   | command_processor.rs |   125 |  5494 |     6 | Event routing & state updates       |
 | src/bin/tui   | constants.rs         |    23 |   759 |     0 | TUI constants & config              |
-| src/bin/tui   | input_handler.rs     |    44 |  1631 |     6 | Terminal event polling              |
-| src/bin/tui   | input_handlers.rs    |   190 |  7403 |     5 | Input dispatcher (refactored)       |
+| src/bin/tui   | event_source.rs      |    44 |  1631 |     6 | Terminal event polling (60 FPS)     |
+| src/bin/tui   | input_processor.rs   |   190 |  7402 |     5 | Input event routing & processing    |
 | src/bin/tui   | main_loop.rs         |   200 |  7064 |     4 | Task orchestration & async          |
 | src/bin/tui   | message_handlers.rs  |    56 |  2161 |     4 | Message sending logic               |
 | src/bin/tui   | render_loop.rs       |   450 | 15358 |     5 | 60 FPS rendering loop               |
@@ -97,11 +97,11 @@ Binaries:
 ├── p2p_chat_tui.rs (main entry point)
 │   ├── bin/tui/state.rs (TUI state)
 │   ├── bin/tui/command_processor.rs (event routing)
-│   ├── bin/tui/input_handlers.rs (input dispatcher - refactored)
-│   ├── bin/tui/scroll_handlers.rs (scroll logic - new)
-│   ├── bin/tui/click_handlers.rs (click logic - new)
+│   ├── bin/tui/event_source.rs (terminal polling)
+│   ├── bin/tui/input_processor.rs (event routing)
+│   ├── bin/tui/scroll_handlers.rs (scroll logic)
+│   ├── bin/tui/click_handlers.rs (click logic)
 │   ├── bin/tui/message_handlers.rs (message sending)
-│   ├── bin/tui/input_handler.rs (input polling)
 │   ├── bin/tui/render_loop.rs (rendering)
 │   ├── bin/tui/main_loop.rs (orchestration)
 │   └── bin/tui/tracing_writer.rs (logging)
@@ -349,7 +349,33 @@ Systematic reduction of nesting depth across all files to meet ≤6 level target
 ### swarm_handler.rs: Maintained at 6 levels ✅
 - Already well-extracted in previous refactoring
 
-#### Scroll Handlers Refactoring (April 27, 2026 - Phase 2) - COMPLETED ✅
+#### Naming Clarification (April 27, 2026 - Phase 3) - COMPLETED ✅
+
+Resolved confusing module naming to improve code discoverability:
+
+**Before (ambiguous):**
+- `input_handler.rs` - Terminal polling (low-level)
+- `input_handlers.rs` - Event processing (high-level)
+- Same prefix but completely different responsibilities ❌
+
+**After (clear semantics):**
+- `event_source.rs` (44 lines) - Terminal event polling
+  - Low-level: Polls terminal for keyboard/mouse at 60 FPS
+  - Sends `InputEvent` to command processor channel
+  - Nesting: 6 levels
+  
+- `input_processor.rs` (190 lines) - Event routing & processing
+  - High-level: Routes events to handlers
+  - Dispatches to scroll_handlers and click_handlers
+  - Nesting: 5 levels
+
+**Result:**
+- ✅ Clear separation: "source" (input) vs "processor" (transform)
+- ✅ Self-documenting: Names explain responsibility
+- ✅ No functional changes, all 84 tests pass
+- ✅ Improved code discoverability and maintenance
+
+### Scroll Handlers Refactoring (April 27, 2026 - Phase 2) - COMPLETED ✅
 
 Reduced nesting depth from 9 → 6 levels through strategic function extraction:
 
@@ -417,15 +443,15 @@ Decomposed massive 701-line input_handlers.rs into 3 focused modules:
 - ✅ Reduced nesting depth improves readability
 - ✅ All 92 tests pass (15 lib + 44 tui_integration + 8 tui_events + 10 tui_tasks + 15 other)
 
-## Current State (April 27, 2026) - Post-Scroll_Handlers Refactoring
+## Current State (April 27, 2026) - Post-Naming Refactoring
 
 - **34/35 files (97%)** now at ≤6 nesting levels ✅
   - 1 exception: p2p_chat_dioxus.rs (8 levels, justified by complex Web UI)
-- **Average nesting depth**: ~3.9 levels (improved from ~4.1)
-- **Total files**: 35 (includes scroll_handlers.rs and click_handlers.rs refactored modules)
-- **Code clarity**: Excellent through focused modules with extracted helpers
+- **Average nesting depth**: ~3.9 levels
+- **Total files**: 35 (all modules clearly named and focused)
+- **Code clarity**: Excellent through focused modules with clear naming
 - **Tests**: All 84 tests pass ✅
-- **Architectural achievements**:
-  - scroll_handlers.rs refactored: 303 → 294 lines, 9 → 6 nesting levels
-  - 9 new helper functions with single responsibilities
-  - All TUI modules now follow architectural best practices
+- **Refactoring phases completed**:
+  1. ✅ Input handlers split: 701 → 679 lines (3 focused modules)
+  2. ✅ Scroll handlers extracted: 9 → 6 nesting levels
+  3. ✅ Naming clarified: event_source.rs & input_processor.rs
