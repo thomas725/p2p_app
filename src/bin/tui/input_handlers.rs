@@ -225,6 +225,20 @@ fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
     }
 }
 
+/// Handles clicks on messages in the chat view
+fn handle_message_click(state: &mut super::state::AppState, row: u16) {
+    let message_row_idx = (row as usize).saturating_sub(3);
+    let start = state.chat_scroll_offset.min(state.messages.len().saturating_sub(state.visible_message_count));
+    let peer_id = state.messages.iter().skip(start).nth(message_row_idx).and_then(|(_, pid)| pid.clone());
+
+    if let Some(sender_id) = peer_id {
+        load_dm_messages(state, &sender_id);
+        let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
+        state.active_tab = tab_idx;
+        p2plog_debug(format!("Opened DM with sender via message click: {}", sender_id));
+    }
+}
+
 /// Handles left mouse button clicks
 fn handle_mouse_left_click(
     state: &mut super::state::AppState,
@@ -235,8 +249,12 @@ fn handle_mouse_left_click(
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         handle_tab_click(state, mouse_column, &tab_titles);
-    } else if mouse_row > 2 && mouse_row < 16 && !is_chat_tab {
-        handle_peer_row_click(state, mouse_row);
+    } else if mouse_row > 2 && mouse_row < 16 {
+        if is_chat_tab {
+            handle_message_click(state, mouse_row);
+        } else {
+            handle_peer_row_click(state, mouse_row);
+        }
     }
 }
 
