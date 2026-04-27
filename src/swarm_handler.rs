@@ -9,6 +9,11 @@ use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
+enum Event {
+    Swarm(Libp2pSwarmEvent<AppEv>),
+    Command(SwarmCommand),
+}
+
 /// Spawns the swarm handler task that processes libp2p events
 /// and translates them to app-level SwarmEvent messages.
 ///
@@ -26,9 +31,14 @@ pub fn spawn_swarm_handler(
 
     let handle = tokio::spawn(async move {
         loop {
-            tokio::select! {
-                // Process swarm events
-                swarm_event = swarm.select_next_some() => {
+            let event = tokio::select! {
+                swarm_event = swarm.select_next_some() => Some(Event::Swarm(swarm_event)),
+                Some(cmd) = cmd_rx.recv() => Some(Event::Command(cmd)),
+                else => None,
+            };
+
+            match event {
+                Some(Event::Swarm(swarm_event)) => {
                     match swarm_event {
                         Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(gossipsub::Event::Message {
                             propagation_source: peer_id,
@@ -121,8 +131,7 @@ pub fn spawn_swarm_handler(
                         _ => {}
                     }
                 }
-                // Process commands from other tasks
-                Some(cmd) = cmd_rx.recv() => {
+                Some(Event::Command(cmd)) => {
                     match cmd {
                         SwarmCommand::Publish(content) => {
                             let msg = BroadcastMessage {
@@ -169,6 +178,7 @@ pub fn spawn_swarm_handler(
                         }
                     }
                 }
+                None => break,
             }
         }
     });
