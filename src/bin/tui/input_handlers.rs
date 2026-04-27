@@ -503,7 +503,9 @@ fn handle_dm_broadcast_message_click(state: &mut super::state::AppState, row: u1
         // Switch to Broadcast Chat tab
         state.active_tab = 0;
         state.chat_auto_scroll = false;
-        state.chat_scroll_offset = idx;
+        // Scroll back a bit to show context - use visible message count to position message in upper third
+        let offset_padding = (state.visible_message_count / 3).max(1);
+        state.chat_scroll_offset = idx.saturating_sub(offset_padding);
         p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", idx));
     }
 }
