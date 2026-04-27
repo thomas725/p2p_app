@@ -189,6 +189,20 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
     };
 }
 
+fn handle_mouse_left_click(
+    state: &mut super::state::AppState,
+    mouse_row: u16,
+    mouse_column: u16,
+    is_chat_tab: bool,
+) {
+    if mouse_row == 0 {
+        let tab_titles = state.dynamic_tabs.all_titles();
+        handle_tab_click(state, mouse_column, &tab_titles);
+    } else if mouse_row > 2 && mouse_row < 16 && is_chat_tab {
+        handle_peer_row_click(state, mouse_row);
+    }
+}
+
 async fn process_swarm_event(
     swarm_event: SwarmEvent,
     state: &SharedState,
@@ -326,12 +340,7 @@ async fn process_input_event(
                     handle_mouse_scroll(&mut s, "down");
                 }
                 crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                    if mouse_event.row == 0 {
-                        let tab_titles = s.dynamic_tabs.all_titles();
-                        handle_tab_click(&mut s, mouse_event.column, &tab_titles);
-                    } else if mouse_event.row > 2 && mouse_event.row < 16 && is_chat_tab {
-                        handle_peer_row_click(&mut s, mouse_event.row);
-                    }
+                    handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_chat_tab);
                 }
                 _ => {}
             }
