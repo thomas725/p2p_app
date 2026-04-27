@@ -217,19 +217,19 @@ fn handle_mouse_left_click(
     }
 }
 
-/// Processes keyboard input events
+/// Processes keyboard input events, returns true if exit requested
 async fn process_key_event(
     key_event: crossterm::event::KeyEvent,
     state: &SharedState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     render_tx: &mpsc::Sender<RenderEvent>,
-) {
+) -> bool {
     if key_event.code == crossterm::event::KeyCode::Esc
         || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
             && key_event.code == crossterm::event::KeyCode::Char('q'))
     {
         p2plog_debug("Exit signal received".to_string());
-        return;
+        return true;
     }
 
     let mut s = state.lock().await;
@@ -266,6 +266,7 @@ async fn process_key_event(
     }
     drop(s);
     let _ = render_tx.send(RenderEvent).await;
+    false
 }
 
 /// Processes mouse input events
@@ -295,18 +296,20 @@ async fn process_mouse_event(
 }
 
 /// Main input event processor - routes keyboard and mouse events
+/// Returns true if exit was requested, false otherwise
 pub async fn process_input_event(
     input_event: InputEvent,
     state: &SharedState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     render_tx: &mpsc::Sender<RenderEvent>,
-) {
+) -> bool {
     match input_event {
         InputEvent::Key(key_event) => {
-            process_key_event(key_event, state, swarm_cmd_tx, render_tx).await;
+            process_key_event(key_event, state, swarm_cmd_tx, render_tx).await
         }
         InputEvent::Mouse(mouse_event) => {
             process_mouse_event(mouse_event, state, render_tx).await;
+            false
         }
     }
 }

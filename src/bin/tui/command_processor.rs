@@ -108,7 +108,9 @@ pub fn spawn_command_processor(
 
             match event {
                 Some(Event::Input(input_event)) => {
-                    process_input_event(input_event, &state, &swarm_cmd_tx, &render_tx).await;
+                    if process_input_event(input_event, &state, &swarm_cmd_tx, &render_tx).await {
+                        break;
+                    }
                 }
                 Some(Event::SwarmEvent(swarm_event)) => {
                     process_swarm_event(swarm_event, &state).await;
