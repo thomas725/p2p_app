@@ -142,6 +142,205 @@ fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
     }
 }
 
+async fn handle_enter_key(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    shift_held: bool,
+    tab_content: p2p_app::tui_tabs::TabContent,
+) {
+    if shift_held {
+        if tab_content.is_input_enabled() {
+            state.chat_input.insert_str("\n");
+        }
+    } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+        if let Some(peer_id) = state.peers.get(state.peer_selection).map(|(id, _, _)| id.clone()) {
+            let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
+            state.active_tab = tab_idx;
+            p2plog_debug(format!("Opened DM with peer: {}", peer_id));
+        }
+    } else if tab_content.is_input_enabled() {
+        let text: String = state.chat_input.lines().join("\n");
+        if !text.trim().is_empty() {
+            send_message(state, swarm_cmd_tx, text, tab_content).await;
+        }
+    }
+}
+
+fn handle_close_dm_tab(state: &mut super::state::AppState, tab_content: p2p_app::tui_tabs::TabContent) {
+    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content {
+        if let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id) {
+            state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
+            state.peer_selection = 0;
+            p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
+        }
+    }
+}
+
+fn toggle_mouse_capture(state: &mut super::state::AppState) {
+    use ratatui::crossterm::execute;
+    state.mouse_capture = !state.mouse_capture;
+    let mode = if state.mouse_capture { "enabled" } else { "disabled" };
+    p2plog_debug(format!("Mouse capture {}", mode));
+    let mut stdout = std::io::stdout();
+    let _ = if state.mouse_capture {
+        execute!(stdout, crossterm::event::EnableMouseCapture)
+    } else {
+        execute!(stdout, crossterm::event::DisableMouseCapture)
+    };
+}
+
+async fn process_swarm_event(
+    swarm_event: SwarmEvent,
+    state: &SharedState,
+) {
+    match swarm_event {
+        SwarmEvent::BroadcastMessage { content, peer_id, latency } => {
+            let mut s = state.lock().await;
+            let ts = p2p_app::format_system_time(SystemTime::now());
+            let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
+            let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
+            s.messages.push_back((msg, Some(peer_id.clone())));
+            if s.messages.len() > MAX_MESSAGE_HISTORY {
+                s.messages.pop_front();
+            }
+            if s.active_tab != 0 {
+                s.unread_broadcasts += 1;
+            }
+            p2plog_debug(format!("Broadcast from {}: {}", sender_display, content));
+            if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None) {
+                p2plog_debug(format!("Failed to save: {}", e));
+            }
+        }
+        SwarmEvent::DirectMessage { content, peer_id, latency } => {
+            let mut s = state.lock().await;
+            let ts = p2p_app::format_system_time(SystemTime::now());
+            let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
+            let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
+            let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
+            dm_msgs.push_back(msg);
+            if dm_msgs.len() > MAX_DM_HISTORY {
+                dm_msgs.pop_front();
+            }
+            *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
+            s.dynamic_tabs.add_dm_tab(peer_id.clone());
+            p2plog_debug(format!("DM from {}: {}", sender_display, content));
+            if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id)) {
+                p2plog_debug(format!("Failed to save DM: {}", e));
+            }
+        }
+        SwarmEvent::PeerConnected(peer_id) => {
+            let mut s = state.lock().await;
+            s.concurrent_peers += 1;
+            p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
+            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
+                if let Ok(peer) = p2p_app::save_peer(&peer_id, &[peer_id.clone()]) {
+                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+                    s.peers.push_front((peer_id, first_seen, last_seen));
+                }
+            }
+        }
+        SwarmEvent::PeerDisconnected(peer_id) => {
+            let mut s = state.lock().await;
+            s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
+            p2plog_debug(format!("Peer disconnected: {} (total: {})", peer_id, s.concurrent_peers));
+        }
+        SwarmEvent::ListenAddrEstablished(addr) => {
+            p2plog_debug(format!("Listening on: {}", addr));
+        }
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerDiscovered { peer_id, .. } => {
+            let mut s = state.lock().await;
+            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
+                s.peers.push_front((peer_id, p2p_app::now_timestamp(), p2p_app::now_timestamp()));
+            }
+        }
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerExpired { peer_id } => {
+            p2plog_debug(format!("Peer expired: {}", peer_id));
+        }
+    }
+}
+
+async fn process_input_event(
+    input_event: InputEvent,
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    render_tx: &mpsc::Sender<RenderEvent>,
+) {
+    match input_event {
+        InputEvent::Key(key_event) => {
+            if key_event.code == crossterm::event::KeyCode::Esc
+                || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+                    && key_event.code == crossterm::event::KeyCode::Char('q'))
+            {
+                p2plog_debug("Exit signal received".to_string());
+                return;
+            }
+
+            let mut s = state.lock().await;
+            match key_event.code {
+                crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
+                    handle_navigation_key(key_event.code, &mut s).await;
+                }
+                crossterm::event::KeyCode::Up
+                | crossterm::event::KeyCode::Down
+                | crossterm::event::KeyCode::PageUp
+                | crossterm::event::KeyCode::PageDown
+                | crossterm::event::KeyCode::Home
+                | crossterm::event::KeyCode::End => {
+                    handle_scroll_key(key_event.code, &mut s).await;
+                }
+                crossterm::event::KeyCode::F(12) => {
+                    toggle_mouse_capture(&mut s);
+                }
+                crossterm::event::KeyCode::Enter => {
+                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                    let shift_held = key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT);
+                    handle_enter_key(&mut s, swarm_cmd_tx, shift_held, tab_content).await;
+                }
+                crossterm::event::KeyCode::Char('w') if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                    handle_close_dm_tab(&mut s, tab_content);
+                }
+                _ => {
+                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                    if tab_content.is_input_enabled() {
+                        s.chat_input.input(key_event);
+                    }
+                }
+            }
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+        }
+        InputEvent::Mouse(mouse_event) => {
+            let mut s = state.lock().await;
+            let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+            let is_chat_tab = !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
+
+            match mouse_event.kind {
+                crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
+                    handle_mouse_scroll(&mut s, "up");
+                }
+                crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
+                    handle_mouse_scroll(&mut s, "down");
+                }
+                crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+                    if mouse_event.row == 0 {
+                        let tab_titles = s.dynamic_tabs.all_titles();
+                        handle_tab_click(&mut s, mouse_event.column, &tab_titles);
+                    } else if mouse_event.row > 2 && mouse_event.row < 16 && is_chat_tab {
+                        handle_peer_row_click(&mut s, mouse_event.row);
+                    }
+                }
+                _ => {}
+            }
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+        }
+    }
+}
+
 async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
@@ -228,188 +427,11 @@ pub fn spawn_command_processor(
 
             match event {
                 Some(Event::Input(input_event)) => {
-                    match input_event {
-                        InputEvent::Key(key_event) => {
-                            if key_event.code == crossterm::event::KeyCode::Esc
-                                || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
-                                    && key_event.code == crossterm::event::KeyCode::Char('q'))
-                            {
-                                p2plog_debug("Exit signal received".to_string());
-                                return;
-                            }
-
-                            let mut s = state.lock().await;
-                            match key_event.code {
-                                crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
-                                    handle_navigation_key(key_event.code, &mut s).await;
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::Up
-                                | crossterm::event::KeyCode::Down
-                                | crossterm::event::KeyCode::PageUp
-                                | crossterm::event::KeyCode::PageDown
-                                | crossterm::event::KeyCode::Home
-                                | crossterm::event::KeyCode::End => {
-                                    handle_scroll_key(key_event.code, &mut s).await;
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::F(12) => {
-                                    s.mouse_capture = !s.mouse_capture;
-                                    let mode = if s.mouse_capture { "enabled" } else { "disabled" };
-                                    p2plog_debug(format!("Mouse capture {}", mode));
-                                    use ratatui::crossterm::execute;
-                                    let mut stdout = std::io::stdout();
-                                    let _ = if s.mouse_capture {
-                                        execute!(stdout, crossterm::event::EnableMouseCapture)
-                                    } else {
-                                        execute!(stdout, crossterm::event::DisableMouseCapture)
-                                    };
-                                    drop(s);
-                                }
-                                crossterm::event::KeyCode::Enter => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
-                                        if tab_content.is_input_enabled() {
-                                            s.chat_input.insert_str("\n");
-                                        }
-                                        drop(s);
-                                    } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                        if let Some(peer_id) = s.peers.get(s.peer_selection).map(|(id, _, _)| id.clone()) {
-                                            let tab_idx = s.dynamic_tabs.add_dm_tab(peer_id.clone());
-                                            s.active_tab = tab_idx;
-                                            p2plog_debug(format!("Opened DM with peer: {}", peer_id));
-                                        }
-                                        drop(s);
-                                    } else if tab_content.is_input_enabled() {
-                                        let text: String = s.chat_input.lines().join("\n");
-                                        if !text.trim().is_empty() {
-                                            send_message(&mut s, &swarm_cmd_tx, text, tab_content).await;
-                                        }
-                                        drop(s);
-                                    } else {
-                                        drop(s);
-                                    }
-                                }
-                                crossterm::event::KeyCode::Char('w') if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
-                                        && let Some(closed_idx) = s.dynamic_tabs.remove_dm_tab(&peer_id) {
-                                            s.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
-                                            s.peer_selection = 0;
-                                            p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
-                                        }
-                                    drop(s);
-                                }
-                                _ => {
-                                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                                    if tab_content.is_input_enabled() {
-                                        s.chat_input.input(key_event);
-                                    }
-                                    drop(s);
-                                }
-                            }
-                            send_render().await;
-                        }
-                        InputEvent::Mouse(mouse_event) => {
-                            let mut s = state.lock().await;
-                            let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                            let is_chat_tab = !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
-
-                            match mouse_event.kind {
-                                crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
-                                    handle_mouse_scroll(&mut s, "up");
-                                }
-                                crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
-                                    handle_mouse_scroll(&mut s, "down");
-                                }
-                                crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-                                    if mouse_event.row == 0 {
-                                        let tab_titles = s.dynamic_tabs.all_titles();
-                                        handle_tab_click(&mut s, mouse_event.column, &tab_titles);
-                                    } else if mouse_event.row > 2 && mouse_event.row < 16 && is_chat_tab {
-                                        handle_peer_row_click(&mut s, mouse_event.row);
-                                    }
-                                }
-                                _ => {}
-                            }
-                            drop(s);
-                        }
-                    }
+                    process_input_event(input_event, &state, &swarm_cmd_tx, &render_tx).await;
                 }
                 Some(Event::SwarmEvent(swarm_event)) => {
-                    match swarm_event {
-                        SwarmEvent::BroadcastMessage { content, peer_id, latency } => {
-                            let mut s = state.lock().await;
-                            let ts = p2p_app::format_system_time(SystemTime::now());
-                            let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-                            let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
-                            s.messages.push_back((msg, Some(peer_id.clone())));
-                            if s.messages.len() > MAX_MESSAGE_HISTORY {
-                                s.messages.pop_front();
-                            }
-                            if s.active_tab != 0 {
-                                s.unread_broadcasts += 1;
-                            }
-                            p2plog_debug(format!("Broadcast from {}: {}", sender_display, content));
-                            if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None) {
-                                p2plog_debug(format!("Failed to save: {}", e));
-                            }
-                            drop(s);
-                        }
-                        SwarmEvent::DirectMessage { content, peer_id, latency } => {
-                            let mut s = state.lock().await;
-                            let ts = p2p_app::format_system_time(SystemTime::now());
-                            let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-                            let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
-                            let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
-                            dm_msgs.push_back(msg);
-                            if dm_msgs.len() > MAX_DM_HISTORY {
-                                dm_msgs.pop_front();
-                            }
-                            *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
-                            s.dynamic_tabs.add_dm_tab(peer_id.clone());
-                            p2plog_debug(format!("DM from {}: {}", sender_display, content));
-                            if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id)) {
-                                p2plog_debug(format!("Failed to save DM: {}", e));
-                            }
-                            drop(s);
-                        }
-                        SwarmEvent::PeerConnected(peer_id) => {
-                            let mut s = state.lock().await;
-                            s.concurrent_peers += 1;
-                            p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
-                            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
-                                if let Ok(peer) = p2p_app::save_peer(&peer_id, &[peer_id.clone()]) {
-                                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-                                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                                    s.peers.push_front((peer_id, first_seen, last_seen));
-                                }
-                            }
-                            drop(s);
-                        }
-                        SwarmEvent::PeerDisconnected(peer_id) => {
-                            let mut s = state.lock().await;
-                            s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
-                            p2plog_debug(format!("Peer disconnected: {} (total: {})", peer_id, s.concurrent_peers));
-                            drop(s);
-                        }
-                        SwarmEvent::ListenAddrEstablished(addr) => {
-                            p2plog_debug(format!("Listening on: {}", addr));
-                        }
-                        #[cfg(feature = "mdns")]
-                        SwarmEvent::PeerDiscovered { peer_id, .. } => {
-                            let mut s = state.lock().await;
-                            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < MAX_PEERS {
-                                s.peers.push_front((peer_id, p2p_app::now_timestamp(), p2p_app::now_timestamp()));
-                            }
-                            drop(s);
-                        }
-                        #[cfg(feature = "mdns")]
-                        SwarmEvent::PeerExpired { peer_id } => {
-                            p2plog_debug(format!("Peer expired: {}", peer_id));
-                        }
-                    }
-                    send_render().await;
+                    process_swarm_event(swarm_event, &state).await;
+                    let _ = render_tx.send(RenderEvent).await;
                 }
                 None => break,
             }
