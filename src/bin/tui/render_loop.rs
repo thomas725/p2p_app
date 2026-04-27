@@ -32,7 +32,7 @@ fn calc_visible_tuples(
         let mut count = 0;
         for (msg, _) in messages.iter().rev() {
             let msg_lines = count_lines(msg, text_width);
-            if used > 0 && used + msg_lines > usable_height {
+            if used + msg_lines > usable_height {
                 break;
             }
             used += msg_lines;
