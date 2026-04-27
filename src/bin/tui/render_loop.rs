@@ -215,6 +215,90 @@ fn render_dm_tab(
     }
 }
 
+fn render_tabs(f: &mut Frame, tab_area: Rect, state: &AppState) {
+    let tab_titles = state.dynamic_tabs.all_titles();
+    let tabs = Tabs::new(tab_titles)
+        .style(Style::default().fg(Color::Cyan))
+        .select(state.active_tab);
+    f.render_widget(tabs, tab_area);
+}
+
+fn render_peer_info(f: &mut Frame, peer_area: Rect, state: &AppState) {
+    let peer_info = Paragraph::new(format!("Peers: {}", state.concurrent_peers));
+    f.render_widget(peer_info, peer_area);
+}
+
+fn render_input_section(f: &mut Frame, input_area: Rect, state: &AppState, tab_content: &TabContent) {
+    let input_block = Block::default()
+        .title("Input")
+        .borders(Borders::ALL);
+    if tab_content.is_input_enabled() {
+        let inner_area = input_block.inner(input_area);
+        f.render_widget(input_block, input_area);
+        let mut textarea = state.chat_input.clone();
+        textarea.set_cursor_line_style(Style::default());
+        f.render_widget(&textarea, inner_area);
+    } else {
+        f.render_widget(input_block, input_area);
+    }
+}
+
+fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect) {
+    let shortcuts = Paragraph::new("Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit");
+    f.render_widget(shortcuts, shortcuts_area);
+}
+
+fn render_status_bar(f: &mut Frame, status_area: Rect, state: &AppState) {
+    let mouse_mode = if state.mouse_capture { "ON" } else { "OFF" };
+    let status = Paragraph::new(format!("Connected [Mouse: {}]", mouse_mode));
+    f.render_widget(status, status_area);
+}
+
+fn render_frame(f: &mut Frame, state: &mut AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),  // tabs
+            Constraint::Length(1),  // peer info
+            Constraint::Min(0),     // messages
+            Constraint::Length(5),  // input area
+            Constraint::Length(1),  // shortcuts
+            Constraint::Length(1),  // status
+        ])
+        .split(f.area());
+
+    let avail_width = chunks[2].width as usize;
+    let avail_height = chunks[2].height as usize;
+    let text_width = avail_width.saturating_sub(4);
+    let usable_height = avail_height.saturating_sub(2);
+
+    render_tabs(f, chunks[0], state);
+    render_peer_info(f, chunks[1], state);
+
+    let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    match &tab_content {
+        TabContent::Chat => {
+            render_chat_tab(f, chunks[2], state, text_width, usable_height);
+        }
+        TabContent::Peers => {
+            render_peers_tab(f, chunks[2], state);
+        }
+        TabContent::Direct(peer_id) => {
+            render_dm_tab(f, chunks[2], state, peer_id, text_width, usable_height);
+        }
+        TabContent::Log => {
+            let log_text = get_tui_logs().join("\n");
+            let log_para = Paragraph::new(log_text)
+                .block(Block::default().title("Logs").borders(Borders::ALL));
+            f.render_widget(log_para, chunks[2]);
+        }
+    }
+
+    render_input_section(f, chunks[3], state, &tab_content);
+    render_shortcuts(f, chunks[4]);
+    render_status_bar(f, chunks[5], state);
+}
+
 /// Spawns the render loop task that continuously renders the TUI
 ///
 /// This task reads the shared AppState on a fixed interval and draws it to the terminal.
@@ -253,70 +337,7 @@ pub fn spawn_render_loop(
 
             let _ = terminal.draw(|f| {
                 if let Ok(mut s) = state.try_lock() {
-                    let chunks = Layout::default()
-                        .direction(Direction::Vertical)
-                        .constraints([
-                            Constraint::Length(1),  // tabs
-                            Constraint::Length(1),  // peer info
-                            Constraint::Min(0),     // messages
-                            Constraint::Length(5),  // input area
-                            Constraint::Length(1),  // shortcuts
-                            Constraint::Length(1),  // status
-                        ])
-                        .split(f.area());
-
-                    let avail_width = chunks[2].width as usize;
-                    let avail_height = chunks[2].height as usize;
-                    let text_width = avail_width.saturating_sub(4);
-                    let usable_height = avail_height.saturating_sub(2);
-
-                    let tab_titles = s.dynamic_tabs.all_titles();
-                    let tabs = Tabs::new(tab_titles)
-                        .style(Style::default().fg(Color::Cyan))
-                        .select(s.active_tab);
-                    f.render_widget(tabs, chunks[0]);
-
-                    let peer_info = Paragraph::new(format!("Peers: {}", s.concurrent_peers));
-                    f.render_widget(peer_info, chunks[1]);
-
-                    let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                    match &tab_content {
-                        TabContent::Chat => {
-                            render_chat_tab(f, chunks[2], &mut s, text_width, usable_height);
-                        }
-                        TabContent::Peers => {
-                            render_peers_tab(f, chunks[2], &s);
-                        }
-                        TabContent::Direct(peer_id) => {
-                            render_dm_tab(f, chunks[2], &mut s, peer_id, text_width, usable_height);
-                        }
-                        TabContent::Log => {
-                            let log_text = get_tui_logs().join("\n");
-                            let log_para = Paragraph::new(log_text)
-                                .block(Block::default().title("Logs").borders(Borders::ALL));
-                            f.render_widget(log_para, chunks[2]);
-                        }
-                    }
-
-                    let input_block = Block::default()
-                        .title("Input")
-                        .borders(Borders::ALL);
-                    if tab_content.is_input_enabled() {
-                        let inner_area = input_block.inner(chunks[3]);
-                        f.render_widget(input_block, chunks[3]);
-                        let mut textarea = s.chat_input.clone();
-                        textarea.set_cursor_line_style(Style::default());
-                        f.render_widget(&textarea, inner_area);
-                    } else {
-                        f.render_widget(input_block, chunks[3]);
-                    }
-
-                    let shortcuts = Paragraph::new("Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit");
-                    f.render_widget(shortcuts, chunks[4]);
-
-                    let mouse_mode = if s.mouse_capture { "ON" } else { "OFF" };
-                    let status = Paragraph::new(format!("Connected [Mouse: {}]", mouse_mode));
-                    f.render_widget(status, chunks[5]);
+                    render_frame(f, &mut s);
                 } else {
                     let para = Paragraph::new("Failed to acquire state lock");
                     f.render_widget(para, f.area());
