@@ -1,8 +1,9 @@
-use super::constants::{PAGE_SIZE, WHEEL_SCROLL_LINES};
+use super::constants::{PAGE_SIZE, WHEEL_SCROLL_LINES, MAX_DM_HISTORY};
 use super::input_handler::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 /// Handles tab navigation (Tab and BackTab keys)
@@ -122,6 +123,7 @@ async fn handle_enter_key(
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
         if let Some(peer_id) = state.peers.get(state.peer_selection).map(|(id, _, _)| id.clone()) {
+            load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
             state.active_tab = tab_idx;
             p2plog_debug(format!("Opened DM with peer: {}", peer_id));
@@ -189,12 +191,33 @@ fn handle_tab_click(state: &mut super::state::AppState, mouse_column: u16, tab_t
     false
 }
 
+/// Loads DM messages from database for a peer
+fn load_dm_messages(state: &mut super::state::AppState, peer_id: &str) {
+    if !state.dm_messages.contains_key(peer_id) {
+        if let Ok(db_messages) = p2p_app::load_direct_messages(peer_id, MAX_DM_HISTORY) {
+            let mut messages = VecDeque::new();
+            for msg in db_messages.iter().rev() {
+                let ts = p2p_app::format_peer_datetime(msg.created_at);
+                let sender_display = msg
+                    .peer_id
+                    .as_ref()
+                    .map(|p| p2p_app::peer_display_name(p, &state.local_nicknames, &state.received_nicknames))
+                    .unwrap_or_else(|| state.own_nickname.clone());
+                messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
+            }
+            state.dm_messages.insert(peer_id.to_string(), messages);
+            p2plog_debug(format!("Loaded {} DM messages for {}", db_messages.len(), peer_id));
+        }
+    }
+}
+
 /// Handles peer row clicks in the Peers tab
 fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
     let peer_row = (row as usize).saturating_sub(3);
     if peer_row < state.peers.len() {
         if let Some((peer_id, _, _)) = state.peers.get(peer_row) {
             let peer_id_clone = peer_id.clone();
+            load_dm_messages(state, &peer_id_clone);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
             state.active_tab = tab_idx;
             p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
