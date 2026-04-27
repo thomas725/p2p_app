@@ -254,16 +254,16 @@ fn handle_mouse_left_click(
     state: &mut super::state::AppState,
     mouse_row: u16,
     mouse_column: u16,
-    is_chat_tab: bool,
+    is_peers_tab: bool,
 ) {
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         handle_tab_click(state, mouse_column, &tab_titles);
     } else if mouse_row > 2 && mouse_row < 16 {
-        if is_chat_tab {
-            handle_message_click(state, mouse_row);
-        } else {
+        if is_peers_tab {
             handle_peer_row_click(state, mouse_row);
+        } else {
+            handle_message_click(state, mouse_row);
         }
     }
 }
@@ -352,17 +352,18 @@ async fn process_mouse_event(
 ) {
     let mut s = state.lock().await;
     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-    let is_chat_tab = !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
+    let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
+    let is_message_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Direct(_));
 
     match mouse_event.kind {
-        crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
+        crossterm::event::MouseEventKind::ScrollUp if is_message_tab => {
             handle_mouse_scroll(&mut s, "up");
         }
-        crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
+        crossterm::event::MouseEventKind::ScrollDown if is_message_tab => {
             handle_mouse_scroll(&mut s, "down");
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-            handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_chat_tab);
+            handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_peers_tab);
         }
         _ => {}
     }

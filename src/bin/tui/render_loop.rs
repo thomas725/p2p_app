@@ -239,10 +239,15 @@ fn render_peer_info(f: &mut Frame, peer_area: Rect, state: &AppState) {
 }
 
 fn render_input_section(f: &mut Frame, input_area: Rect, state: &AppState, tab_content: &TabContent) {
+    let title = if state.editing_nickname {
+        "Edit Nickname (Enter to save, Esc to cancel)"
+    } else {
+        "Input"
+    };
     let input_block = Block::default()
-        .title("Input")
+        .title(title)
         .borders(Borders::ALL);
-    if tab_content.is_input_enabled() {
+    if tab_content.is_input_enabled() || state.editing_nickname {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);
         let mut textarea = state.chat_input.clone();
