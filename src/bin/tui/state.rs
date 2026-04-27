@@ -49,6 +49,9 @@ pub struct AppState {
     // Runtime Context
     pub own_nickname: String,
     pub topic_str: String,
+
+    // Edit Mode
+    pub editing_nickname: bool,
 }
 
 impl AppState {
@@ -81,6 +84,7 @@ impl AppState {
             unread_broadcasts: 0,
             unread_dms: HashMap::new(),
             topic_str,
+            editing_nickname: false,
         }
     }
 }

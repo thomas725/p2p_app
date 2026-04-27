@@ -3,6 +3,7 @@ use super::input_handler::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
+use ratatui_textarea::TextArea;
 use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
@@ -228,13 +229,23 @@ fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
 /// Handles clicks on messages in the chat view
 fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     let message_row_idx = (row as usize).saturating_sub(3);
-    let peer_id = state.messages.iter().skip(state.chat_message_offset).nth(message_row_idx).and_then(|(_, pid)| pid.clone());
+    let peer_id = state.messages.iter().skip(state.chat_message_offset).nth(message_row_idx).map(|(_, pid)| pid.clone());
 
-    if let Some(sender_id) = peer_id {
-        load_dm_messages(state, &sender_id);
-        let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
-        state.active_tab = tab_idx;
-        p2plog_debug(format!("Opened DM with sender via message click: {}", sender_id));
+    match peer_id {
+        Some(Some(sender_id)) => {
+            load_dm_messages(state, &sender_id);
+            let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
+            state.active_tab = tab_idx;
+            p2plog_debug(format!("Opened DM with sender via message click: {}", sender_id));
+        }
+        Some(None) => {
+            state.editing_nickname = true;
+            let mut textarea = TextArea::default();
+            textarea.insert_str(&state.own_nickname);
+            state.chat_input = textarea;
+            p2plog_debug("Started editing nickname".to_string());
+        }
+        None => {}
     }
 }
 
@@ -264,9 +275,23 @@ async fn process_key_event(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     render_tx: &mpsc::Sender<RenderEvent>,
 ) -> bool {
-    if key_event.code == crossterm::event::KeyCode::Esc
-        || (key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
-            && key_event.code == crossterm::event::KeyCode::Char('q'))
+    if key_event.code == crossterm::event::KeyCode::Esc {
+        let mut s = state.lock().await;
+        if s.editing_nickname {
+            s.editing_nickname = false;
+            s.chat_input = TextArea::default();
+            p2plog_debug("Cancelled nickname edit".to_string());
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        drop(s);
+        p2plog_debug("Exit signal received".to_string());
+        return true;
+    }
+
+    if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+        && key_event.code == crossterm::event::KeyCode::Char('q')
     {
         p2plog_debug("Exit signal received".to_string());
         return true;
@@ -289,9 +314,19 @@ async fn process_key_event(
             toggle_mouse_capture(&mut s);
         }
         crossterm::event::KeyCode::Enter => {
-            let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            let shift_held = key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT);
-            handle_enter_key(&mut s, swarm_cmd_tx, shift_held, tab_content).await;
+            if s.editing_nickname {
+                let new_nickname = s.chat_input.lines().join("\n");
+                if !new_nickname.trim().is_empty() {
+                    s.own_nickname = new_nickname.clone();
+                    p2plog_debug(format!("Updated nickname to: {}", new_nickname));
+                }
+                s.editing_nickname = false;
+                s.chat_input = TextArea::default();
+            } else {
+                let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+                let shift_held = key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT);
+                handle_enter_key(&mut s, swarm_cmd_tx, shift_held, tab_content).await;
+            }
         }
         crossterm::event::KeyCode::Char('w') if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
