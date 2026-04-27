@@ -232,9 +232,13 @@ fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     let mut current_row = 3;
     let mut message_idx = 0;
 
+    p2plog_debug(format!("Message click at row {}, chat_message_lines: {:?}, message_count: {}",
+        click_row, state.chat_message_lines, state.visible_message_count));
+
     for line_count in &state.chat_message_lines {
         let message_end_row = current_row + line_count;
         if click_row < message_end_row {
+            p2plog_debug(format!("Found message {} at row range {}-{}", message_idx, current_row, message_end_row - 1));
             break;
         }
         current_row = message_end_row;
@@ -242,6 +246,7 @@ fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     }
 
     if message_idx >= state.chat_message_lines.len() {
+        p2plog_debug(format!("Message idx {} out of bounds (len: {})", message_idx, state.chat_message_lines.len()));
         return;
     }
 
