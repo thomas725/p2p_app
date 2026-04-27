@@ -360,28 +360,49 @@ fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     }
 }
 
+/// Handles clicks on broadcast messages in DM tab's top section
+fn handle_dm_broadcast_message_click(state: &mut super::state::AppState, row: u16, peer_id: &str) {
+    let click_row = row as usize;
+    let broadcast_row = click_row - 3;
+
+    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+        .iter()
+        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .cloned()
+        .collect();
+
+    if broadcast_row >= broadcast_messages.len() {
+        return;
+    }
+
+    let target_message = &broadcast_messages[broadcast_row];
+
+    // Find the message in the full messages list to get its index
+    let mut message_idx = None;
+    for (idx, msg) in state.messages.iter().enumerate() {
+        if msg == target_message {
+            message_idx = Some(idx);
+            break;
+        }
+    }
+
+    if let Some(idx) = message_idx {
+        // Switch to Broadcast Chat tab
+        state.active_tab = 0;
+        state.chat_auto_scroll = false;
+        state.chat_scroll_offset = idx;
+        p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", idx));
+    }
+}
+
 /// Handles clicks on messages in a DM tab's split layout (both broadcast and DM sections)
 fn handle_dm_message_click(state: &mut super::state::AppState, row: u16, peer_id: &str, chat_area_height: usize) {
     let click_row = row as usize;
     let mid_row = 2 + (chat_area_height / 2);
 
     if click_row < mid_row {
-        // Clicked in broadcast section (top half)
-        let broadcast_row = click_row - 3;
-        let broadcast_messages: Vec<(String, Option<String>)> = state.messages
-            .iter()
-            .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
-            .cloned()
-            .collect();
-
-        if broadcast_row < broadcast_messages.len() {
-            if let Some((_, Some(sender_id))) = broadcast_messages.get(broadcast_row) {
-                load_dm_messages(state, sender_id);
-                let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
-                state.active_tab = tab_idx;
-                p2plog_debug(format!("Opened DM with broadcast sender via click: {}", sender_id));
-            }
-        }
+        // Clicked in broadcast section (top half) - switch to broadcast tab
+        handle_dm_broadcast_message_click(state, row, peer_id);
     } else if let Some(dm_msgs) = state.dm_messages.get(peer_id) {
         // Clicked in DM section (bottom half)
         let dm_row = click_row - mid_row - 3;
