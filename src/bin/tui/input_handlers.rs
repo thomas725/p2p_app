@@ -515,11 +515,9 @@ fn handle_dm_broadcast_message_click(state: &mut super::state::AppState, row: u1
 
         let global_idx = peer_message_indices[broadcast_message_idx];
 
-        // Mark this message as selected in the broadcast section
-        state.dm_broadcast_selection.insert(peer_id.to_string(), global_idx);
-
-        // Switch to Broadcast Chat tab
+        // Switch to Broadcast Chat tab and mark the message as selected
         state.active_tab = 0;
+        state.broadcast_selection = Some(global_idx);
         state.chat_auto_scroll = false;
         // Scroll back a bit to show context
         let offset_padding = (state.visible_message_count / 3).max(1);

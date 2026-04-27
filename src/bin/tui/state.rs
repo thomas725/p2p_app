@@ -52,8 +52,8 @@ pub struct AppState {
     pub dm_broadcast_message_lines: HashMap<String, Vec<usize>>,
     // Broadcast scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
     pub dm_broadcast_offset: HashMap<String, usize>,
-    // Selected broadcast message in DM tab: peer_id -> global message index
-    pub dm_broadcast_selection: HashMap<String, usize>,
+    // Selected broadcast message in broadcast chat tab
+    pub broadcast_selection: Option<usize>,
 
     // Unread Counts
     pub unread_broadcasts: u32,
@@ -98,7 +98,7 @@ impl AppState {
             dm_visible_counts: HashMap::new(),
             dm_broadcast_message_lines: HashMap::new(),
             dm_broadcast_offset: HashMap::new(),
-            dm_broadcast_selection: HashMap::new(),
+            broadcast_selection: None,
             own_nickname,
             local_nicknames,
             received_nicknames,
