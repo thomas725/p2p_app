@@ -7,10 +7,10 @@
 | Metric                      | Count   |
 |-----------------------------|--------:|
 | Total Rust Files            |       31|
-| Total Lines of Code         |    4,114|
-| Total Characters            |  152,607|
-| Average Lines per File      |      133|
-| Average Characters per File |    4,923|
+| Total Lines of Code         |    4,009|
+| Total Characters            |  137,072|
+| Average Lines per File      |      129|
+| Average Characters per File |    4,421|
 
 ---
 
@@ -19,38 +19,38 @@
 | Folder         | File                | Lines | Characters | Nesting | Purpose                             |
 |---------------|---------------------:|------:|-----------:|--------:|------------------------------------:|
 | /             | build.rs             |   107 |      3,762 |       5 | Build script                        |
-| src           | lib.rs               |   210 |      6,663 |       3 | Module declarations & re-exports    |
-| src           | db.rs                |   381 |     14,219 |       6 | Database connection & identity mgmt |
-| src           | logging.rs           |   184 |      5,351 |       4 | Logging utilities & setup           |
-| src           | swarm_handler.rs     |   115 |      4,871 |       6 | Network event translation           |
-| src           | messages.rs          |   119 |      4,542 |       4 | Message persistence & retrieval     |
-| src           | peers.rs             |   120 |      4,128 |       3 | Peer management & tracking          |
-| src           | nickname.rs          |   105 |      3,501 |       3 | Nickname management                 |
+| src           | lib.rs               |   207 |      6,555 |       3 | Module declarations & re-exports    |
+| src           | db.rs                |   331 |     11,671 |       6 | Database connection & identity mgmt |
+| src           | logging.rs           |   234 |      6,837 |       4 | Logging utilities & setup           |
+| src           | swarm_handler.rs     |   195 |      6,774 |       6 | Network event translation           |
+| src           | messages.rs          |   123 |      4,797 |       4 | Message persistence & retrieval     |
+| src           | peers.rs             |   120 |      4,348 |       3 | Peer management & tracking          |
+| src           | nickname.rs          |   108 |      3,741 |       3 | Nickname management                 |
 | src           | fmt.rs               |    87 |      2,664 |       4 | Formatting & display utilities      |
 | src           | behavior.rs          |   113 |      3,703 |       4 | Network behavior definitions        |
 | src           | network.rs           |    49 |      1,423 |       3 | Network size classification         |
 | src           | types.rs             |    42 |      1,144 |       2 | Event & command type defs           |
-| src           | logging_config.rs    |    38 |      1,774 |       2 | Tracing configuration               |
+| src           | logging_config.rs    |    38 |      1,772 |       2 | Tracing configuration               |
 | src           | tui_tabs.rs          |   187 |      4,880 |       5 | Tab management & navigation         |
 | src           | tui_test_state.rs    |   152 |      4,506 |       6 | TUI test state & mouse handling     |
 | src           | tui_events.rs        |    51 |      1,377 |       1 | Event/command types & channels      |
-| src/generated | mod.rs               |     5 |        141 |       0 | Module declarations                 |
-| src/generated | columns.rs           |    27 |      1,081 |       1 | Auto-generated column definitions   |
+| src/generated | mod.rs               |     4 |         86 |       0 | Module declarations                 |
+| src/generated | columns.rs           |    27 |      1,082 |       1 | Auto-generated column definitions   |
 | src/generated | schema.rs            |    48 |      1,125 |       2 | Database schema (Diesel)            |
 | src/generated | models_insertable.rs |    46 |      1,108 |       1 | Insertable data models              |
 | src/generated | models_queryable.rs  |    54 |      1,321 |       1 | Queryable data models               |
 | src/bin       | p2p_chat_tui.rs      |   133 |      5,547 |       4 | Main TUI application entry point    |
-| src/bin       | p2p_chat.rs          |   143 |      5,207 |       6 | CLI chat application                |
-| src/bin       | p2p_chat_dioxus.rs   |   206 |      7,100 |       8 | Web UI (Dioxus framework)           |
-| src/bin/tui   | command_processor.rs |   438 |     27,597 |      10 | Event routing & state updates       |
-| src/bin/tui   | main_loop.rs         |   197 |      6,969 |       4 | Task orchestration & async          |
-| src/bin/tui   | render_loop.rs       |   216 |      9,540 |       4 | 60 FPS rendering loop               |
-| src/bin/tui   | state.rs             |   106 |      3,541 |       6 | Shared application state            |
+| src/bin       | p2p_chat.rs          |   161 |      5,832 |       6 | CLI chat application                |
+| src/bin       | p2p_chat_dioxus.rs   |   208 |      7,137 |       8 | Web UI (Dioxus framework)           |
+| src/bin/tui   | command_processor.rs |   451 |     19,134 |      10 | Event routing & state updates       |
+| src/bin/tui   | main_loop.rs         |   200 |      7,064 |       4 | Task orchestration & async          |
+| src/bin/tui   | render_loop.rs       |   348 |     11,166 |       4 | 60 FPS rendering loop               |
+| src/bin/tui   | state.rs             |   115 |      3,878 |       6 | Shared application state            |
 | src/bin/tui   | input_handler.rs     |    44 |      1,633 |       6 | Terminal event polling              |
 | src/bin/tui   | tracing_writer.rs    |     3 |        246 |       0 | Tracing log output handling         |
-| src/bin/tui   | constants.rs         |    17 |        588 |       0 | TUI constants & config              |
+| src/bin/tui   | constants.rs         |    23 |        759 |       0 | TUI constants & config              |
 
-**Total:** 31 files, 3,882 lines, 145,576 characters
+**Total:** 31 files, 4,009 lines, 137,072 characters
 
 ---
 
@@ -160,16 +160,19 @@ Binaries:
 
 ```
 Lines Distribution:
- 400+ lines: 1 file  (command_processor.rs - with extracted helpers)
- 300-399:   1 file  (db.rs)
- 200-299:   2 files (lib.rs, p2p_chat_dioxus.rs)
- 150-199:   4 files (tui_tabs.rs, tui_test_state.rs, main_loop.rs, render_loop.rs)
- 100-149:   9 files (logging, messages, peers, p2p_chat.rs, etc.)
- 50-99:     8 files (fmt, behavior, input_handler.rs, build.rs, etc.)
- <50:       5 files (types, logging_config, network, constants.rs, generated/*)
+ 450+ lines: 1 file  (command_processor.rs - event routing)
+ 400-449:   1 file  (render_loop.rs - rendering loop with helpers)
+ 350-399:   1 file  (db.rs - database & identity management)
+ 300-349:   0 files
+ 250-299:   1 file  (logging.rs - logging setup & utilities)
+ 200-249:   2 files (main_loop.rs, p2p_chat_dioxus.rs)
+ 150-199:   4 files (tui_tabs.rs, swarm_handler.rs, p2p_chat.rs, tui_test_state.rs)
+ 100-149:   9 files (lib.rs, messages.rs, behavior.rs, nickname.rs, tui_test_state.rs, state.rs, logging, p2p_chat_tui.rs, build.rs)
+ 50-99:     6 files (fmt, tui_tabs (duplicate?), input_handler, tui_events, nickname, peers, network)
+ <50:       5 files (types, logging_config, constants, generated/mod, tracing_writer)
 ```
 
-**Ideal Range (75-150 lines):** 12 files achieve this sweet spot
+**Ideal Range (100-200 lines):** 13 files achieve this sweet spot
 - Easy to understand in one sitting
 - Clear single responsibility
 - Low cognitive load
@@ -219,14 +222,14 @@ Nesting Levels by File Count:
 - Whitespace: ~8,000 characters
 
 **Most Verbose Files:**
-1. command_processor.rs: 26,847 characters (refactored with helper functions)
-2. db.rs: 12,902 characters
-3. p2p_chat_dioxus.rs: 7,100 characters
+1. command_processor.rs: 19,134 characters (event routing with extracted handlers)
+2. render_loop.rs: 11,166 characters (60 FPS rendering with helper functions)
+3. db.rs: 11,671 characters (database connection & identity management)
 
 **Most Concise Files:**
-1. build.rs: 107 lines, 3,762 characters
-2. tracing_writer.rs: 246 characters
-3. constants.rs: 588 characters
+1. tracing_writer.rs: 3 lines, 246 characters (logging integration stub)
+2. generated/mod.rs: 4 lines, 86 characters (module declarations)
+3. constants.rs: 23 lines, 759 characters (configuration constants)
 
 ---
 
