@@ -119,6 +119,7 @@ pub fn spawn_render_loop(
                                 (visible, offset)
                             } else {
                                 // For manual scroll: calculate visible from current offset
+                                // Use conservative approach: only add messages that fit
                                 let visible = if s.chat_scroll_offset < total_items {
                                     let mut used = 0;
                                     let mut count = 0;
@@ -131,7 +132,8 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used > 0 && used + msg_lines > usable_height {
+                                        // Break before adding if next message would overflow
+                                        if used + msg_lines > usable_height && count > 0 {
                                             break;
                                         }
                                         used += msg_lines;
@@ -187,7 +189,7 @@ pub fn spawn_render_loop(
                                 let total_items = msgs.len();
 
                                 let (visible, effective_offset) = if auto_scroll_val {
-                                    // For auto_scroll: count backwards from newest
+                                    // For auto_scroll: count backwards from newest, aggressive fill
                                     let mut used = 0;
                                     let mut count = 0;
                                     for msg in msgs.iter().rev() {
@@ -199,7 +201,7 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used > 0 && used + msg_lines > usable_height {
+                                        if count > 0 && used > usable_height {
                                             break;
                                         }
                                         used += msg_lines;
@@ -209,7 +211,7 @@ pub fn spawn_render_loop(
                                     let offset = total_items.saturating_sub(visible);
                                     (visible, offset)
                                 } else {
-                                    // For manual scroll: calculate from current offset
+                                    // For manual scroll: conservative approach
                                     let visible = if scroll_offset_val < total_items {
                                         let mut used = 0;
                                         let mut count = 0;
@@ -222,7 +224,7 @@ pub fn spawn_render_loop(
                                                     msg_lines += (line.len() + text_width - 1) / text_width;
                                                 }
                                             }
-                                            if used > 0 && used + msg_lines > usable_height {
+                                            if used + msg_lines > usable_height && count > 0 {
                                                 break;
                                             }
                                             used += msg_lines;
