@@ -108,7 +108,8 @@ fn calc_visible_strings(
 }
 
 fn count_lines(text: &str, text_width: usize) -> usize {
-    text.split('\n')
+    let clean_text = p2p_app::strip_ansi_codes(text);
+    clean_text.split('\n')
         .map(|line| {
             if line.is_empty() {
                 1
