@@ -18,7 +18,7 @@ CODEBASE METRICS
 ## All Source Files
 
 | Folder                  | File                 | Lines | Chars | Depth | Purpose                             |
-|:----------------------|---------------------:|------:|------:|------:|------------------------------------:|
+|:------------------------:|---------------------:|------:|------:|------:|------------------------------------:|
 | /                       | build.rs             |   107 |  3762 |     5 | Build script                        |
 | src                     | behavior.rs          |   113 |  3703 |     4 | Network behavior definitions        |
 | src                     | db.rs                |   331 | 11671 |     5 | Database connection & identity mgmt |
