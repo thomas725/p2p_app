@@ -76,34 +76,6 @@ pub fn spawn_render_loop(
                     let text_width = avail_width.saturating_sub(4); // -4 for block borders
                     let usable_height = avail_height.saturating_sub(2); // -2 for block borders
 
-                    // Helper to calculate visible message count accounting for wrapping and line breaks
-                    fn calc_visible(messages: &[String], text_width: usize, usable_height: usize) -> usize {
-                        if text_width == 0 || usable_height == 0 {
-                            return messages.len().max(1);
-                        }
-                        let mut used = 0;
-                        let mut count = 0;
-                        for msg in messages.iter().rev() {
-                            // Count display lines: explicit breaks + wrapped lines
-                            let mut msg_lines = 0;
-                            for line in msg.split('\n') {
-                                if line.is_empty() {
-                                    msg_lines += 1; // empty line takes 1 display line
-                                } else {
-                                    // Ceiling division: how many wrapped lines for this line
-                                    msg_lines += (line.len() + text_width - 1) / text_width;
-                                }
-                            }
-                            // Include message if it fits exactly or if it's the first message we're trying to fit
-                            if used > 0 && used + msg_lines > usable_height {
-                                break;
-                            }
-                            used += msg_lines;
-                            count += 1;
-                        }
-                        count.max(1)
-                    }
-
                     // Render tabs
                     let tab_titles = s.dynamic_tabs.all_titles();
                     let tabs = Tabs::new(tab_titles)
@@ -119,20 +91,46 @@ pub fn spawn_render_loop(
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                     match &tab_content {
                         TabContent::Chat => {
-                            // Calculate visible messages for Chat tab
-                            let chat_msgs: Vec<String> = s.messages.iter().map(|(m, _)| m.clone()).collect();
-                            let visible = calc_visible(&chat_msgs, text_width, usable_height);
-                            s.visible_message_count = visible;
+                            // Determine effective offset first
                             let total_items = s.messages.len();
-                            let max_offset = total_items.saturating_sub(visible);
-
-                            // For auto-scroll: show last visible messages (newest at bottom)
-                            // For manual scroll: offset counts from OLDEST
-                            let effective_offset = if s.chat_auto_scroll {
-                                total_items.saturating_sub(visible)
+                            let auto_scroll_offset = if total_items > 0 {
+                                // Start with estimate: use 20 as average lines per message
+                                total_items.saturating_sub((usable_height + 19) / 20)
                             } else {
-                                s.chat_scroll_offset.min(max_offset)
+                                0
                             };
+
+                            let effective_offset = if s.chat_auto_scroll {
+                                auto_scroll_offset
+                            } else {
+                                s.chat_scroll_offset
+                            };
+
+                            // Calculate visible messages starting from the actual offset we're rendering
+                            let visible = if effective_offset < total_items {
+                                let mut used = 0;
+                                let mut count = 0;
+                                for (msg, _) in s.messages.iter().skip(effective_offset) {
+                                    let mut msg_lines = 0;
+                                    for line in msg.split('\n') {
+                                        if line.is_empty() {
+                                            msg_lines += 1;
+                                        } else {
+                                            msg_lines += (line.len() + text_width - 1) / text_width;
+                                        }
+                                    }
+                                    if used > 0 && used + msg_lines > usable_height {
+                                        break;
+                                    }
+                                    used += msg_lines;
+                                    count += 1;
+                                }
+                                count.max(1)
+                            } else {
+                                1
+                            };
+
+                            s.visible_message_count = visible;
 
                             // Get messages starting from offset position
                             let visible_messages: Vec<ListItem> = s.messages
@@ -164,22 +162,53 @@ pub fn spawn_render_loop(
                             f.render_widget(peers_list, chunks[2]);
                         }
                         TabContent::Direct(peer_id) => {
-                            if let Some(msgs) = s.dm_messages.get(peer_id) {
-                                let msgs_vec: Vec<String> = msgs.iter().cloned().collect();
-                                let visible = calc_visible(&msgs_vec, text_width, usable_height);
-                                let total_items = msgs_vec.len();
-                                let max_offset = total_items.saturating_sub(visible);
+                            let (scroll_offset, auto_scroll) = {
+                                s.dm_scroll_state
+                                    .entry(peer_id.clone())
+                                    .or_insert((0, true))
+                            };
+                            let effective_offset_and_scroll = (*scroll_offset, *auto_scroll);
+                            drop(scroll_offset);
+                            drop(auto_scroll);
 
-                                let (scroll_offset, auto_scroll) = {
-                                    s.dm_scroll_state
-                                        .entry(peer_id.clone())
-                                        .or_insert((0, true))
+                            if let Some(msgs) = s.dm_messages.get(peer_id) {
+                                let total_items = msgs.len();
+                                let (scroll_offset_val, auto_scroll_val) = effective_offset_and_scroll;
+
+                                let auto_scroll_offset = if total_items > 0 {
+                                    total_items.saturating_sub((usable_height + 19) / 20)
+                                } else {
+                                    0
                                 };
 
-                                let effective_offset = if *auto_scroll {
-                                    total_items.saturating_sub(visible)
+                                let effective_offset = if auto_scroll_val {
+                                    auto_scroll_offset
                                 } else {
-                                    (*scroll_offset).min(max_offset)
+                                    scroll_offset_val.min(total_items.saturating_sub(1))
+                                };
+
+                                // Calculate visible messages starting from actual offset
+                                let visible = if effective_offset < total_items {
+                                    let mut used = 0;
+                                    let mut count = 0;
+                                    for msg in msgs.iter().skip(effective_offset) {
+                                        let mut msg_lines = 0;
+                                        for line in msg.split('\n') {
+                                            if line.is_empty() {
+                                                msg_lines += 1;
+                                            } else {
+                                                msg_lines += (line.len() + text_width - 1) / text_width;
+                                            }
+                                        }
+                                        if used > 0 && used + msg_lines > usable_height {
+                                            break;
+                                        }
+                                        used += msg_lines;
+                                        count += 1;
+                                    }
+                                    count.max(1)
+                                } else {
+                                    1
                                 };
 
                                 let short_id = if peer_id.len() <= 8 {
@@ -188,7 +217,7 @@ pub fn spawn_render_loop(
                                     peer_id[peer_id.len()-8..].to_string()
                                 };
 
-                                let visible_msgs: Vec<ListItem> = msgs_vec
+                                let visible_msgs: Vec<ListItem> = msgs
                                     .iter()
                                     .skip(effective_offset)
                                     .take(visible)
