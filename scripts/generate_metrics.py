@@ -91,6 +91,8 @@ def get_file_purpose(filepath: str) -> str:
         'p2p_chat.rs': 'CLI chat application',
         'p2p_chat_dioxus.rs': 'Web UI (Dioxus framework)',
         'command_processor.rs': 'Event routing & state updates',
+        'input_handlers.rs': 'Keyboard & mouse input processing',
+        'message_handlers.rs': 'Message sending logic',
         'main_loop.rs': 'Task orchestration & async',
         'render_loop.rs': '60 FPS rendering loop',
         'state.rs': 'Shared application state',
@@ -158,15 +160,15 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int]]:
 def generate_markdown_table(files_data: List[Tuple]) -> str:
     """Generate markdown table from file data."""
     output = []
-    output.append('| Folder         | File                | Lines | Characters | Nesting | Purpose                             |')
-    output.append('|---------------|---------------------:|------:|-----------:|--------:|------------------------------------:|')
+    output.append('| Folder        | File                 | Lines | Chars | Depth | Purpose                             |')
+    output.append('|---------------|---------------------:|------:|------:|------:|------------------------------------:|')
 
     for folder, filename, _, lines, chars, nesting, purpose in files_data:
         # Truncate purpose if too long
         if len(purpose) > 35:
             purpose = purpose[:32] + '...'
 
-        output.append(f'| {folder:<14} | {filename:<20} | {lines:>5} | {chars:>9} | {nesting:>6} | {purpose:<35} |')
+        output.append(f'| {folder:<13} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<35} |')
 
     return '\n'.join(output)
 
