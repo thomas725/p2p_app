@@ -91,26 +91,13 @@ pub fn spawn_render_loop(
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                     match &tab_content {
                         TabContent::Chat => {
-                            // Determine effective offset first
                             let total_items = s.messages.len();
-                            let auto_scroll_offset = if total_items > 0 {
-                                // Start with estimate: use 20 as average lines per message
-                                total_items.saturating_sub((usable_height + 19) / 20)
-                            } else {
-                                0
-                            };
 
-                            let effective_offset = if s.chat_auto_scroll {
-                                auto_scroll_offset
-                            } else {
-                                s.chat_scroll_offset
-                            };
-
-                            // Calculate visible messages starting from the actual offset we're rendering
-                            let visible = if effective_offset < total_items {
+                            let (visible, effective_offset) = if s.chat_auto_scroll {
+                                // For auto_scroll: count backwards from newest to see how many fit
                                 let mut used = 0;
                                 let mut count = 0;
-                                for (msg, _) in s.messages.iter().skip(effective_offset) {
+                                for (msg, _) in s.messages.iter().rev() {
                                     let mut msg_lines = 0;
                                     for line in msg.split('\n') {
                                         if line.is_empty() {
@@ -125,9 +112,34 @@ pub fn spawn_render_loop(
                                     used += msg_lines;
                                     count += 1;
                                 }
-                                count.max(1)
+                                let visible = count.max(1);
+                                let offset = total_items.saturating_sub(visible);
+                                (visible, offset)
                             } else {
-                                1
+                                // For manual scroll: calculate visible from current offset
+                                let visible = if s.chat_scroll_offset < total_items {
+                                    let mut used = 0;
+                                    let mut count = 0;
+                                    for (msg, _) in s.messages.iter().skip(s.chat_scroll_offset) {
+                                        let mut msg_lines = 0;
+                                        for line in msg.split('\n') {
+                                            if line.is_empty() {
+                                                msg_lines += 1;
+                                            } else {
+                                                msg_lines += (line.len() + text_width - 1) / text_width;
+                                            }
+                                        }
+                                        if used > 0 && used + msg_lines > usable_height {
+                                            break;
+                                        }
+                                        used += msg_lines;
+                                        count += 1;
+                                    }
+                                    count.max(1)
+                                } else {
+                                    1
+                                };
+                                (visible, s.chat_scroll_offset)
                             };
 
                             s.visible_message_count = visible;
@@ -167,31 +179,18 @@ pub fn spawn_render_loop(
                                     .entry(peer_id.clone())
                                     .or_insert((0, true))
                             };
-                            let effective_offset_and_scroll = (*scroll_offset, *auto_scroll);
+                            let (scroll_offset_val, auto_scroll_val) = (*scroll_offset, *auto_scroll);
                             drop(scroll_offset);
                             drop(auto_scroll);
 
                             if let Some(msgs) = s.dm_messages.get(peer_id) {
                                 let total_items = msgs.len();
-                                let (scroll_offset_val, auto_scroll_val) = effective_offset_and_scroll;
 
-                                let auto_scroll_offset = if total_items > 0 {
-                                    total_items.saturating_sub((usable_height + 19) / 20)
-                                } else {
-                                    0
-                                };
-
-                                let effective_offset = if auto_scroll_val {
-                                    auto_scroll_offset
-                                } else {
-                                    scroll_offset_val.min(total_items.saturating_sub(1))
-                                };
-
-                                // Calculate visible messages starting from actual offset
-                                let visible = if effective_offset < total_items {
+                                let (visible, effective_offset) = if auto_scroll_val {
+                                    // For auto_scroll: count backwards from newest
                                     let mut used = 0;
                                     let mut count = 0;
-                                    for msg in msgs.iter().skip(effective_offset) {
+                                    for msg in msgs.iter().rev() {
                                         let mut msg_lines = 0;
                                         for line in msg.split('\n') {
                                             if line.is_empty() {
@@ -206,9 +205,34 @@ pub fn spawn_render_loop(
                                         used += msg_lines;
                                         count += 1;
                                     }
-                                    count.max(1)
+                                    let visible = count.max(1);
+                                    let offset = total_items.saturating_sub(visible);
+                                    (visible, offset)
                                 } else {
-                                    1
+                                    // For manual scroll: calculate from current offset
+                                    let visible = if scroll_offset_val < total_items {
+                                        let mut used = 0;
+                                        let mut count = 0;
+                                        for msg in msgs.iter().skip(scroll_offset_val) {
+                                            let mut msg_lines = 0;
+                                            for line in msg.split('\n') {
+                                                if line.is_empty() {
+                                                    msg_lines += 1;
+                                                } else {
+                                                    msg_lines += (line.len() + text_width - 1) / text_width;
+                                                }
+                                            }
+                                            if used > 0 && used + msg_lines > usable_height {
+                                                break;
+                                            }
+                                            used += msg_lines;
+                                            count += 1;
+                                        }
+                                        count.max(1)
+                                    } else {
+                                        1
+                                    };
+                                    (visible, scroll_offset_val)
                                 };
 
                                 let short_id = if peer_id.len() <= 8 {
