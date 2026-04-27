@@ -9,9 +9,9 @@
 |-----------------------------|--------:|
 | Total Rust Files            |       35|
 | Total Lines of Code         |    4,551|
-| Total Characters            |  160,000|
+| Total Characters            |  159,656|
 | Average Lines per File      |      130|
-| Average Characters per File |    4,571|
+| Average Characters per File |    4,561|
 
 ---
 
@@ -37,16 +37,16 @@
 | src           | types.rs             |    42 |  1144 |     2 | Event & command type defs           |
 | src/bin       | p2p_chat.rs          |   161 |  5818 |     6 | CLI chat application                |
 | src/bin       | p2p_chat_dioxus.rs   |   208 |  7137 |     8 | Web UI (Dioxus framework)           |
-| src/bin       | p2p_chat_tui.rs      |   135 |  5079 |     4 | Main TUI application entry point    |
+| src/bin       | p2p_chat_tui.rs      |   137 |  5136 |     4 | Main TUI application entry point    |
+| src/bin/tui   | click_handlers.rs    |   186 |  7259 |     5 | Click handlers & index mapping      |
 | src/bin/tui   | command_processor.rs |   125 |  5493 |     6 | Event routing & state updates       |
 | src/bin/tui   | constants.rs         |    23 |   759 |     0 | TUI constants & config              |
 | src/bin/tui   | input_handler.rs     |    44 |  1631 |     6 | Terminal event polling              |
-| src/bin/tui   | input_handlers.rs    |   190 |  7904 |     3 | Input dispatcher (refactored)       |
-| src/bin/tui   | scroll_handlers.rs   |   303 | 12156 |     4 | Scroll & hover-aware navigation     |
-| src/bin/tui   | click_handlers.rs    |   186 |  7452 |     4 | Click handlers & index mapping      |
+| src/bin/tui   | input_handlers.rs    |   190 |  7403 |     5 | Input dispatcher (refactored)       |
 | src/bin/tui   | main_loop.rs         |   200 |  7064 |     4 | Task orchestration & async          |
 | src/bin/tui   | message_handlers.rs  |    56 |  2161 |     4 | Message sending logic               |
 | src/bin/tui   | render_loop.rs       |   450 | 15358 |     5 | 60 FPS rendering loop               |
+| src/bin/tui   | scroll_handlers.rs   |   303 | 14116 |     9 | Scroll & hover-aware navigation     |
 | src/bin/tui   | state.rs             |   142 |  5399 |     6 | Shared application state            |
 | src/bin/tui   | tracing_writer.rs    |     3 |   246 |     0 | Tracing log output handling         |
 | src/generated | columns.rs           |    27 |  1082 |     1 | Auto-generated column definitions   |
@@ -198,27 +198,28 @@ Lines Distribution (Updated April 27, 2026):
 - ✅ Refactored: Input handlers moved from 701 → 679 lines distributed across 3 modules
 - ✅ Improved: Largest focused module now 303 lines (scroll_handlers.rs) vs 701
 
-## Nesting Depth Distribution
+## Nesting Depth Distribution (Actual - April 27, 2026)
 
 ```
 Nesting Levels by File Count (max indentation depth):
+  9 levels:  1 file  (scroll_handlers.rs - hover-aware routing with section selection)
   8 levels:  1 file  (p2p_chat_dioxus.rs - Web UI with complex JSX/RSX)
-  6 levels:  2 files (input_handler.rs - polling, state.rs - shared state)
-  5 levels:  10 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, fmt.rs, 
-                       behavior.rs, messages.rs, swarm_handler.rs, 
-                       command_processor.rs, input_handlers.rs)
-  4 levels:  10 files (logging.rs, main_loop.rs, p2p_chat_tui.rs, p2p_chat.rs,
-                       nickname.rs, peers.rs, network.rs, logging_config.rs, 
-                       types.rs, message_handlers.rs)
-  3 levels:  4 files (lib.rs, tui_events.rs, tui_test_state.rs, columns.rs)
-  2 levels:  3 files (schema.rs, models_queryable.rs, models_insertable.rs)
-  1 levels:  1 file  (tui_events.rs)
+  6 levels:  4 files (input_handler.rs, state.rs, command_processor.rs, swarm_handler.rs)
+  5 levels:  9 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, input_handlers.rs,
+                      click_handlers.rs, fmt.rs, behavior.rs, messages.rs, tui_test_state.rs)
+  4 levels:  9 files (logging.rs, main_loop.rs, p2p_chat_tui.rs, p2p_chat.rs,
+                      nickname.rs, peers.rs, network.rs, logging_config.rs, 
+                      message_handlers.rs)
+  3 levels:  4 files (lib.rs, types.rs, tui_events.rs, columns.rs)
+  2 levels:  3 files (schema.rs, models_queryable.rs, models_insertable.rs, logging_config.rs)
+  1 levels:  2 files (tui_events.rs, tui_events.rs)
   0 levels:  2 files (constants.rs, tracing_writer.rs - pure declarations)
 ```
 
-**Current State:** 32/33 files (97%) at ≤6 nesting levels ✅
-- Only p2p_chat_dioxus.rs exceeds target (8 levels, justified by complex UI structure)
-- Post-refactoring: command_processor.rs reduced from 11 to 5 levels
+**Current State:** 33/35 files (94%) at ≤6 nesting levels ⚠️
+- scroll_handlers.rs at 9 levels (⚠️ needs future refactoring)
+- p2p_chat_dioxus.rs at 8 levels (justified by complex Web UI)
+- Note: scroll_handlers has deep nesting due to hover-aware routing logic with nested conditionals
 - Script measures maximum indentation level per file (leading whitespace / 4 spaces)
 - This accurately reflects code complexity as seen in the editor
 
@@ -247,7 +248,7 @@ Nesting Levels by File Count (max indentation depth):
 
 **Most Verbose Files (Updated April 27, 2026):**
 1. render_loop.rs: 15,358 characters, 450 lines (60 FPS rendering loop)
-2. scroll_handlers.rs: 12,156 characters, 303 lines (scroll logic - new)
+2. scroll_handlers.rs: 14,116 characters, 303 lines (scroll logic - new)
 3. db.rs: 11,671 characters, 331 lines (database & identity management)
 
 **Most Concise Files:**
@@ -382,9 +383,10 @@ Decomposed massive 701-line input_handlers.rs into 3 focused modules:
 
 ## Current State (April 27, 2026) - Post-Refactoring
 
-- **34/35 files (97%)** now at ≤6 nesting levels ✅
-- **Average nesting depth**: ~3.8 levels (improved)
+- **33/35 files (94%)** now at ≤6 nesting levels ⚠️
+  - 2 exceptions: scroll_handlers.rs (9 levels), p2p_chat_dioxus.rs (8 levels)
+- **Average nesting depth**: ~4.1 levels
 - **Total files**: 35 (added scroll_handlers.rs and click_handlers.rs)
 - **Code clarity**: Significantly improved through focused modules
 - **Tests**: All 92 tests pass ✅
-- **Only exception**: p2p_chat_dioxus.rs at 8 levels (justified by complex Web UI structure)
+- **Note**: scroll_handlers.rs at 9 levels due to complex hover-aware routing with section selection logic - future refactoring opportunity
