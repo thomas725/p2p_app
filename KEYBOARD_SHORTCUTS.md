@@ -13,15 +13,17 @@
 
 | Key/Action | Behavior |
 |------------|----------|
-| `↑` / `↓` | Scroll up/down one line |
-| `PgUp` / `PgDn` | Scroll one page (5 lines) |
-| `Home` | Jump to oldest message |
-| `End` | Jump to newest message (auto-scroll) |
-| `Mouse Wheel Up/Down` | Scroll 3 lines |
+| `↑` / `↓` | Scroll DM section up/down one line |
+| `PgUp` / `PgDn` | Scroll DM section one page (5 lines) |
+| `Home` | Jump to first DM message |
+| `End` | Jump to newest DM (auto-scroll) |
+| `Mouse Wheel Up/Down` | **Hover-based:** Scroll whichever section mouse is over |
 
-### Note on DM Tab:
-- Scrolling targets the **DM section** (bottom half)
-- Broadcast messages (top) always show newest
+### Mouse Hovering in DM Tab:
+- **Top half (broadcast section):** Mouse wheel scrolls broadcast messages
+- **Bottom half (DM section):** Mouse wheel scrolls direct messages
+- Both sections maintain independent scroll position
+- Hover naturally scrolls the section you're reading
 
 ## Message Interaction
 
@@ -60,13 +62,15 @@
 
 ```
 ┌─ Broadcast from peer (top 50%)
-│  └─ Click to start DM with sender
+│  └─ Click to switch to Broadcast tab and show message
+│  └─ Hover & scroll to navigate broadcast history
 │
-├─ Divider (auto-scrolls with newest messages)
+├─ Divider
 │
 └─ DM: peer (bottom 50%)
    └─ Your conversation with this peer
-   └─ Keyboard/mouse scrolling targets this section
+   └─ Hover & scroll to navigate DM history
+   └─ Keyboard shortcuts target DM section
 ```
 
 ---
