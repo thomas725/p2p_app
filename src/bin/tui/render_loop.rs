@@ -106,7 +106,9 @@ pub fn spawn_render_loop(
                                             msg_lines += (line.len() + text_width - 1) / text_width;
                                         }
                                     }
-                                    if used > 0 && used + msg_lines > usable_height {
+                                    // Keep adding messages until we significantly exceed height
+                                    // This fills empty space while allowing partial last messages
+                                    if count > 0 && used > usable_height {
                                         break;
                                     }
                                     used += msg_lines;
