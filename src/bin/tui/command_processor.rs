@@ -8,6 +8,11 @@ use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
+enum Event {
+    Input(InputEvent),
+    SwarmEvent(SwarmEvent),
+}
+
 pub fn spawn_command_processor(
     state: SharedState,
     mut input_rx: mpsc::Receiver<InputEvent>,
@@ -24,8 +29,14 @@ pub fn spawn_command_processor(
         };
 
         loop {
-            tokio::select! {
-                Some(input_event) = input_rx.recv() => {
+            let event = tokio::select! {
+                Some(input_event) = input_rx.recv() => Some(Event::Input(input_event)),
+                Some(swarm_event) = swarm_event_rx.recv() => Some(Event::SwarmEvent(swarm_event)),
+                else => None,
+            };
+
+            match event {
+                Some(Event::Input(input_event)) => {
                     match input_event {
                         InputEvent::Key(key_event) => {
                             if key_event.code == crossterm::event::KeyCode::Esc
@@ -290,7 +301,7 @@ pub fn spawn_command_processor(
                         }
                     }
                 }
-                Some(swarm_event) = swarm_event_rx.recv() => {
+                Some(Event::SwarmEvent(swarm_event)) => {
                     match swarm_event {
                         SwarmEvent::BroadcastMessage { content, peer_id, latency } => {
                             let mut s = state.lock().await;
@@ -365,6 +376,7 @@ pub fn spawn_command_processor(
                     }
                     send_render().await;
                 }
+                None => break,
             }
         }
     });

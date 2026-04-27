@@ -44,16 +44,10 @@ pub fn spawn_render_loop(
 
         loop {
             tokio::select! {
-                _ = interval.tick() => {
-                    // Timeout - still render to handle terminal resize or keepalive
-                }
-                Some(_) = render_rx.recv() => {
-                    // RenderEvent received - state changed, render immediately
-                }
-                else => {
-                    // Channel closed - exit
-                    break;
-                }
+                biased;
+                Some(_) = render_rx.recv() => {}
+                _ = interval.tick() => {}
+                else => break,
             }
 
             let _ = terminal.draw(|f| {
