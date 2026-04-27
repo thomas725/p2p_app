@@ -106,7 +106,7 @@ pub fn spawn_render_loop(
                                             msg_lines += (line.len() + text_width - 1) / text_width;
                                         }
                                     }
-                                    if used >= usable_height {
+                                    if used > 0 && used + msg_lines > usable_height {
                                         break;
                                     }
                                     used += msg_lines;
@@ -129,7 +129,7 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used >= usable_height {
+                                        if used > 0 && used + msg_lines > usable_height {
                                             break;
                                         }
                                         used += msg_lines;
@@ -174,14 +174,12 @@ pub fn spawn_render_loop(
                             f.render_widget(peers_list, chunks[2]);
                         }
                         TabContent::Direct(peer_id) => {
-                            let (scroll_offset, auto_scroll) = {
-                                s.dm_scroll_state
+                            let (scroll_offset_val, auto_scroll_val) = {
+                                let (scroll_offset, auto_scroll) = s.dm_scroll_state
                                     .entry(peer_id.clone())
-                                    .or_insert((0, true))
+                                    .or_insert((0, true));
+                                (*scroll_offset, *auto_scroll)
                             };
-                            let (scroll_offset_val, auto_scroll_val) = (*scroll_offset, *auto_scroll);
-                            drop(scroll_offset);
-                            drop(auto_scroll);
 
                             if let Some(msgs) = s.dm_messages.get(peer_id) {
                                 let total_items = msgs.len();
@@ -199,7 +197,7 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used >= usable_height {
+                                        if used > 0 && used + msg_lines > usable_height {
                                             break;
                                         }
                                         used += msg_lines;
@@ -222,7 +220,7 @@ pub fn spawn_render_loop(
                                                     msg_lines += (line.len() + text_width - 1) / text_width;
                                                 }
                                             }
-                                            if used >= usable_height {
+                                            if used > 0 && used + msg_lines > usable_height {
                                                 break;
                                             }
                                             used += msg_lines;
