@@ -27,66 +27,41 @@ def count_characters(filepath: str) -> int:
 
 def calculate_max_nesting(filepath: str) -> int:
     """
-    Calculate the maximum nesting depth in a file by tracking curly brace depth only.
+    Calculate the maximum nesting depth in a file by counting indentation levels.
 
-    Only counts {} (code block nesting), not [] or () which are function parameters,
-    generics, pattern matching, etc. This gives a more accurate measure of code complexity.
+    Measures the maximum leading whitespace indentation across all non-empty lines.
+    This directly reflects the visual nesting shown in the code editor.
 
-    Ignores strings and comments to avoid false positives.
+    Converts tabs to 4 spaces for consistent measurement.
+    Ignores blank lines and comment-only lines.
     """
-    max_depth = 0
-    current_depth = 0
-    in_string = False
-    string_char = None
-    escape_next = False
+    max_nesting = 0
+    SPACES_PER_TAB = 4
 
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
-                # Skip line comments
-                if '//' in line:
-                    line = line.split('//')[0]
+                # Skip empty lines and line-comment-only lines
+                stripped = line.lstrip()
+                if not stripped or stripped.startswith('//'):
+                    continue
 
-                i = 0
-                while i < len(line):
-                    char = line[i]
+                # Count leading whitespace
+                leading_ws = len(line) - len(stripped)
 
-                    # Handle escape sequences
-                    if escape_next:
-                        escape_next = False
-                        i += 1
-                        continue
+                # Convert tabs to spaces
+                tabs_in_leading = line[:leading_ws].count('\t')
+                spaces_in_leading = line[:leading_ws].count(' ')
+                total_spaces = (tabs_in_leading * SPACES_PER_TAB) + spaces_in_leading
 
-                    if char == '\\' and in_string:
-                        escape_next = True
-                        i += 1
-                        continue
+                # Calculate nesting depth (assuming 4-space indentation)
+                nesting_depth = total_spaces // 4
 
-                    # Handle string delimiters
-                    if char in '"\'':
-                        if not in_string:
-                            in_string = True
-                            string_char = char
-                        elif char == string_char:
-                            in_string = False
-                            string_char = None
-                        i += 1
-                        continue
-
-                    # Only count curly braces outside of strings
-                    # This gives a better measure of code block nesting complexity
-                    if not in_string:
-                        if char == '{':
-                            current_depth += 1
-                            max_depth = max(max_depth, current_depth)
-                        elif char == '}':
-                            current_depth = max(0, current_depth - 1)
-
-                    i += 1
+                max_nesting = max(max_nesting, nesting_depth)
     except Exception:
         pass
 
-    return max_depth
+    return max_nesting
 
 def get_file_purpose(filepath: str) -> str:
     """Get a brief description of file purpose from first doc comment or context."""

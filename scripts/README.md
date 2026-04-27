@@ -60,22 +60,21 @@ Or manually update the "All Source Files" section as needed.
 
 ### Nesting Depth Algorithm
 
-The script calculates nesting depth by:
+The script calculates nesting depth by counting **maximum indentation level** in the file:
 
-1. Tracking **only curly braces** `{}` (code block nesting)
-2. Ignoring parentheses `()` and square brackets `[]` (these are function parameters, 
-   generics, pattern matching - they don't affect code block complexity)
-3. Maintaining a current depth counter
-4. Recording the maximum depth reached
-5. Properly handling:
-   - String literals (ignores braces inside strings)
-   - Character escapes (`\"`, `\\`, etc.)
-   - Line comments (`//` - code after is ignored)
+1. For each non-empty, non-comment line, count leading whitespace (spaces and tabs)
+2. Convert tabs to 4 spaces for consistent measurement
+3. Calculate nesting depth: `depth = leading_spaces / 4`
+4. Track and report the maximum depth found
 
-**Why only `{}`?** In Rust, parentheses and brackets are abundant in type signatures,
-function calls, and pattern matching, but they don't represent actual code nesting
-that increases cognitive complexity. Only curly braces represent control flow structures
-like functions, loops, conditionals, and blocks that actually nest.
+**Why indentation?** This directly measures what developers see in their editor. The 
+visual indentation level is the most accurate representation of code nesting complexity
+because:
 
-This provides a realistic measure of code complexity that correlates with actual
-readability and maintainability.
+- It counts actual code structure (not just parentheses from type signatures)
+- It correlates with cognitive load and readability
+- It's what code formatters enforce (in Rust, `cargo fmt` enforces consistent indentation)
+- It's language-independent and tool-agnostic
+
+This approach is simpler, more accurate, and more intuitive than counting braces,
+since indentation is what humans use to understand nesting depth at a glance.

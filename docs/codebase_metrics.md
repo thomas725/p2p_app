@@ -181,21 +181,24 @@ Lines Distribution:
 ## Nesting Depth Distribution
 
 ```
-Nesting Levels by File Count (curly brace {} nesting only):
+Nesting Levels by File Count (max indentation depth):
   8 levels:  1 file  (p2p_chat_dioxus.rs - Web UI with complex JSX/RSX)
-  6 levels:  5 files (swarm_handler.rs, p2p_chat.rs, command_processor.rs, input_handler.rs)
-  5 levels:  7 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, fmt.rs)
-  4 levels:  7 files (logging.rs, tui_test_state.rs, main_loop.rs, behavior.rs)
-  3 levels:  5 files (lib.rs, network.rs, p2p_chat_tui.rs, behavior.rs, tui_tabs.rs)
-  2 levels:  5 files (logging_config.rs, messages.rs, peers.rs, nickname.rs, types.rs, schema.rs)
-  1 levels:  4 files (tui_events.rs, models_*.rs)
-  0 levels:  2 files (constants.rs, tracing_writer.rs - pure declarations/config)
+  6 levels:  6 files (swarm_handler.rs, p2p_chat.rs, command_processor.rs, 
+                      input_handler.rs, state.rs, tui_test_state.rs)
+  5 levels:  7 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, fmt.rs, 
+                      behavior.rs, messages.rs)
+  4 levels:  8 files (logging.rs, main_loop.rs, p2p_chat_tui.rs, nickname.rs,
+                      peers.rs, network.rs, logging_config.rs, types.rs)
+  3 levels:  4 files (lib.rs, tui_events.rs, columns.rs, models_*.rs)
+  2 levels:  3 files (schema.rs, models_queryable.rs, models_insertable.rs)
+  1 levels:  1 file  (tui_events.rs)
+  0 levels:  2 files (constants.rs, tracing_writer.rs, mod.rs - pure declarations)
 ```
 
 **Current State:** 30/31 files (97%) at ≤6 nesting levels ✅
 - Only p2p_chat_dioxus.rs exceeds target (8 levels, justified by complex UI structure)
-- Script now counts only `{}` (code block nesting), not `()[]` (function parameters/generics)
-- This provides accurate code complexity measurement
+- Script measures maximum indentation level per file (leading whitespace)
+- This accurately reflects code complexity as seen in the editor
 
 ---
 
