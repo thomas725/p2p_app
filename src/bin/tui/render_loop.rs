@@ -153,6 +153,13 @@ fn render_chat_tab(
         .map(|(msg, _)| ListItem::new(msg.as_str()))
         .collect();
 
+    state.chat_message_lines = state.messages
+        .iter()
+        .skip(effective_offset)
+        .take(visible)
+        .map(|(msg, _)| count_lines(msg, text_width))
+        .collect();
+
     let messages_list = ratatui::widgets::List::new(visible_messages)
         .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
     frame.render_widget(messages_list, area);
