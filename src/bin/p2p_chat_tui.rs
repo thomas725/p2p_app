@@ -65,10 +65,12 @@ mod tui {
     use ratatui_textarea::TextArea;
 
     mod command_processor;
-    mod input_handlers;
-    mod message_handlers;
     pub mod constants;
     mod input_handler;
+    mod input_handlers;
+    pub mod scroll_handlers;
+    pub mod click_handlers;
+    mod message_handlers;
     pub mod main_loop;
     mod render_loop;
     mod state;
