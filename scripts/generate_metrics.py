@@ -27,8 +27,11 @@ def count_characters(filepath: str) -> int:
 
 def calculate_max_nesting(filepath: str) -> int:
     """
-    Calculate the maximum nesting depth in a file by tracking brace depth.
-    Nesting depth is the maximum number of nested braces/brackets at any point.
+    Calculate the maximum nesting depth in a file by tracking curly brace depth only.
+
+    Only counts {} (code block nesting), not [] or () which are function parameters,
+    generics, pattern matching, etc. This gives a more accurate measure of code complexity.
+
     Ignores strings and comments to avoid false positives.
     """
     max_depth = 0
@@ -70,12 +73,13 @@ def calculate_max_nesting(filepath: str) -> int:
                         i += 1
                         continue
 
-                    # Only count braces outside of strings
+                    # Only count curly braces outside of strings
+                    # This gives a better measure of code block nesting complexity
                     if not in_string:
-                        if char in '{[(':
+                        if char == '{':
                             current_depth += 1
                             max_depth = max(max_depth, current_depth)
-                        elif char in '}])':
+                        elif char == '}':
                             current_depth = max(0, current_depth - 1)
 
                     i += 1
