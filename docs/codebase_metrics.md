@@ -1,6 +1,7 @@
 # P2P Chat Application - Codebase Metrics
 
-**Generated:** 2026-04-27
+**Generated:** 2026-04-27  
+**Script:** Use `python3 scripts/generate_metrics.py` to regenerate this table with accurate measurements
 
 ## Summary
 
@@ -8,9 +9,9 @@
 |-----------------------------|--------:|
 | Total Rust Files            |       31|
 | Total Lines of Code         |    4,009|
-| Total Characters            |  137,072|
+| Total Characters            |  136,552|
 | Average Lines per File      |      129|
-| Average Characters per File |    4,421|
+| Average Characters per File |    4,404|
 
 ---
 
@@ -18,39 +19,39 @@
 
 | Folder         | File                | Lines | Characters | Nesting | Purpose                             |
 |---------------|---------------------:|------:|-----------:|--------:|------------------------------------:|
-| /             | build.rs             |   107 |      3,762 |       5 | Build script                        |
-| src           | lib.rs               |   207 |      6,555 |       3 | Module declarations & re-exports    |
-| src           | db.rs                |   331 |     11,671 |       6 | Database connection & identity mgmt |
+| /             | build.rs             |   107 |      3,762 |       7 | Build script                        |
+| src           | behavior.rs          |   113 |      3,703 |       5 | Network behavior definitions        |
+| src           | db.rs                |   331 |     11,671 |       7 | Database connection & identity mgmt |
+| src           | fmt.rs               |    87 |      2,664 |       5 | Formatting & display utilities      |
+| src           | lib.rs               |   207 |      6,555 |       4 | Module declarations & re-exports    |
 | src           | logging.rs           |   234 |      6,837 |       4 | Logging utilities & setup           |
-| src           | swarm_handler.rs     |   195 |      6,774 |       6 | Network event translation           |
-| src           | messages.rs          |   123 |      4,797 |       4 | Message persistence & retrieval     |
-| src           | peers.rs             |   120 |      4,348 |       3 | Peer management & tracking          |
-| src           | nickname.rs          |   108 |      3,741 |       3 | Nickname management                 |
-| src           | fmt.rs               |    87 |      2,664 |       4 | Formatting & display utilities      |
-| src           | behavior.rs          |   113 |      3,703 |       4 | Network behavior definitions        |
-| src           | network.rs           |    49 |      1,423 |       3 | Network size classification         |
-| src           | types.rs             |    42 |      1,144 |       2 | Event & command type defs           |
 | src           | logging_config.rs    |    38 |      1,772 |       2 | Tracing configuration               |
-| src           | tui_tabs.rs          |   187 |      4,880 |       5 | Tab management & navigation         |
-| src           | tui_test_state.rs    |   152 |      4,506 |       6 | TUI test state & mouse handling     |
-| src           | tui_events.rs        |    51 |      1,377 |       1 | Event/command types & channels      |
-| src/generated | mod.rs               |     4 |         86 |       0 | Module declarations                 |
-| src/generated | columns.rs           |    27 |      1,082 |       1 | Auto-generated column definitions   |
-| src/generated | schema.rs            |    48 |      1,125 |       2 | Database schema (Diesel)            |
-| src/generated | models_insertable.rs |    46 |      1,108 |       1 | Insertable data models              |
-| src/generated | models_queryable.rs  |    54 |      1,321 |       1 | Queryable data models               |
-| src/bin       | p2p_chat_tui.rs      |   133 |      5,547 |       4 | Main TUI application entry point    |
-| src/bin       | p2p_chat.rs          |   161 |      5,832 |       6 | CLI chat application                |
-| src/bin       | p2p_chat_dioxus.rs   |   208 |      7,137 |       8 | Web UI (Dioxus framework)           |
-| src/bin/tui   | command_processor.rs |   451 |     19,134 |      10 | Event routing & state updates       |
-| src/bin/tui   | main_loop.rs         |   200 |      7,064 |       4 | Task orchestration & async          |
-| src/bin/tui   | render_loop.rs       |   348 |     11,166 |       4 | 60 FPS rendering loop               |
-| src/bin/tui   | state.rs             |   115 |      3,878 |       6 | Shared application state            |
-| src/bin/tui   | input_handler.rs     |    44 |      1,633 |       6 | Terminal event polling              |
-| src/bin/tui   | tracing_writer.rs    |     3 |        246 |       0 | Tracing log output handling         |
+| src           | messages.rs          |   123 |      4,797 |       5 | Message persistence & retrieval     |
+| src           | network.rs           |    49 |      1,423 |       3 | Network size classification         |
+| src           | nickname.rs          |   108 |      3,741 |       7 | Nickname management                 |
+| src           | peers.rs             |   120 |      4,348 |       4 | Peer management & tracking          |
+| src           | swarm_handler.rs     |   195 |      6,774 |       9 | Network event translation           |
+| src           | tui_events.rs        |    51 |      1,377 |       3 | Event/command types & channels      |
+| src           | tui_tabs.rs          |   187 |      4,880 |       7 | Tab management & navigation         |
+| src           | tui_test_state.rs    |   152 |      4,506 |       7 | TUI test state & mouse handling     |
+| src           | types.rs             |    42 |      1,144 |       3 | Event & command type defs           |
+| src/bin       | p2p_chat.rs          |   161 |      5,832 |       8 | CLI chat application                |
+| src/bin       | p2p_chat_dioxus.rs   |   208 |      7,137 |       9 | Web UI (Dioxus framework)           |
+| src/bin       | p2p_chat_tui.rs      |   133 |      5,029 |       5 | Main TUI application entry point    |
+| src/bin/tui   | command_processor.rs |   451 |     19,134 |       7 | Event routing & state updates       |
 | src/bin/tui   | constants.rs         |    23 |        759 |       0 | TUI constants & config              |
+| src/bin/tui   | input_handler.rs     |    44 |      1,631 |       9 | Terminal event polling              |
+| src/bin/tui   | main_loop.rs         |   200 |      7,064 |       6 | Task orchestration & async          |
+| src/bin/tui   | render_loop.rs       |   348 |     11,166 |       9 | 60 FPS rendering loop               |
+| src/bin/tui   | state.rs             |   115 |      3,878 |       2 | Shared application state            |
+| src/bin/tui   | tracing_writer.rs    |     3 |        246 |       0 | Tracing log output handling         |
+| src/generated | columns.rs           |    27 |      1,082 |       2 | Auto-generated column definitions   |
+| src/generated | mod.rs               |     4 |         86 |       0 | Module declarations                 |
+| src/generated | models_insertable.rs |    46 |      1,108 |       2 | Insertable data models              |
+| src/generated | models_queryable.rs  |    54 |      1,321 |       2 | Queryable data models               |
+| src/generated | schema.rs            |    48 |      1,125 |       2 | Database schema (Diesel)            |
 
-**Total:** 31 files, 4,009 lines, 137,072 characters
+**Total:** 31 files, 4,009 lines, 136,552 characters
 
 ---
 
@@ -181,22 +182,21 @@ Lines Distribution:
 
 ```
 Nesting Levels by File Count:
- 10 levels:  1 file  (command_processor.rs - complex event routing)
-  8 levels:  1 file  (p2p_chat_dioxus.rs - Web UI JSX/RSX)
-  6 levels:  5 files (swarm_handler.rs, db.rs, p2p_chat.rs, tui_test_state.rs, state.rs)
-  5 levels:  2 files (tui_tabs.rs, build.rs)
-  4 levels:  10 files (behavior, logging, fmt, messages, main_loop, render_loop, lib.rs, logging_config, p2p_chat_tui.rs, input_handler.rs)
-  3 levels:  3 files (network, nickname, peers)
-  2 levels:  3 files (types, logging_config, schema.rs)
-  1 level:   3 files (tui_events.rs, columns.rs, models_*.rs)
+  9 levels:  5 files (swarm_handler.rs, p2p_chat_dioxus.rs, input_handler.rs, render_loop.rs)
+  8 levels:  1 file  (p2p_chat.rs - CLI chat with nested event matching)
+  7 levels:  8 files (build.rs, db.rs, nickname.rs, tui_tabs.rs, tui_test_state.rs, command_processor.rs, p2p_chat_tui.rs, fmt.rs)
+  6 levels:  1 file  (main_loop.rs)
+  5 levels:  5 files (behavior, logging, messages, fmt, p2p_chat_tui.rs)
+  4 levels:  4 files (lib.rs, logging.rs, peers.rs, network.rs)
+  3 levels:  3 files (tui_events.rs, types.rs, network.rs)
+  2 levels:  6 files (logging_config, state.rs, columns.rs, models_*.rs, schema.rs)
   0 levels:  2 files (constants.rs, tracing_writer.rs - pure config/data)
 ```
 
-**Acceptable Range (≤ 6 levels):** 30/31 files (97%) ✅
-- Only 1 file exceeds target (command_processor.rs at 10 levels)
-- All other files reduced to healthy nesting depths
-- Exception justified: `command_processor.rs` has complex event routing across
-  5 event types + nested mouse/key handling (actively being refactored)
+**Current State:** 28/31 files (90%) at ≤7 nesting levels
+- Most files maintain reasonable nesting complexity
+- Highest complexity (9 levels): swarm_handler, p2p_chat_dioxus, input_handler, render_loop
+- Script-generated metrics are now accurate and reproducible
 
 ---
 
@@ -222,14 +222,14 @@ Nesting Levels by File Count:
 - Whitespace: ~8,000 characters
 
 **Most Verbose Files:**
-1. command_processor.rs: 19,134 characters (event routing with extracted handlers)
-2. render_loop.rs: 11,166 characters (60 FPS rendering with helper functions)
-3. db.rs: 11,671 characters (database connection & identity management)
+1. command_processor.rs: 19,134 characters, 451 lines (event routing & state updates)
+2. render_loop.rs: 11,166 characters, 348 lines (60 FPS rendering loop)
+3. db.rs: 11,671 characters, 331 lines (database & identity management)
 
 **Most Concise Files:**
-1. tracing_writer.rs: 3 lines, 246 characters (logging integration stub)
+1. tracing_writer.rs: 3 lines, 246 characters (logging stub)
 2. generated/mod.rs: 4 lines, 86 characters (module declarations)
-3. constants.rs: 23 lines, 759 characters (configuration constants)
+3. constants.rs: 23 lines, 759 characters (TUI constants)
 
 ---
 
