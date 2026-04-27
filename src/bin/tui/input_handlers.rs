@@ -478,36 +478,27 @@ fn handle_dm_broadcast_message_click(state: &mut super::state::AppState, row: u1
     let click_row = row as usize;
     let broadcast_row = click_row - 3;
 
-    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+    // Collect indices of messages from this peer to map broadcast row to global index
+    let peer_message_indices: Vec<usize> = state.messages
         .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
-        .cloned()
+        .enumerate()
+        .filter(|(_, (_, sender_id))| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .map(|(idx, _)| idx)
         .collect();
 
-    if broadcast_row >= broadcast_messages.len() {
+    if broadcast_row >= peer_message_indices.len() {
         return;
     }
 
-    let target_message = &broadcast_messages[broadcast_row];
+    let global_idx = peer_message_indices[broadcast_row];
 
-    // Find the message in the full messages list to get its index
-    let mut message_idx = None;
-    for (idx, msg) in state.messages.iter().enumerate() {
-        if msg == target_message {
-            message_idx = Some(idx);
-            break;
-        }
-    }
-
-    if let Some(idx) = message_idx {
-        // Switch to Broadcast Chat tab
-        state.active_tab = 0;
-        state.chat_auto_scroll = false;
-        // Scroll back a bit to show context - use visible message count to position message in upper third
-        let offset_padding = (state.visible_message_count / 3).max(1);
-        state.chat_scroll_offset = idx.saturating_sub(offset_padding);
-        p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", idx));
-    }
+    // Switch to Broadcast Chat tab
+    state.active_tab = 0;
+    state.chat_auto_scroll = false;
+    // Scroll back a bit to show context - use visible message count to position message in upper third
+    let offset_padding = (state.visible_message_count / 3).max(1);
+    state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
+    p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", global_idx));
 }
 
 /// Handles clicks on messages in a DM tab's split layout (both broadcast and DM sections)
