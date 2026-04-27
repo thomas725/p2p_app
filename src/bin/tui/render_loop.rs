@@ -148,11 +148,11 @@ fn render_chat_tab(
 
     let visible_messages: Vec<ListItem> = state.messages
         .iter()
-        .enumerate()
         .skip(effective_offset)
+        .enumerate()
         .take(visible)
-        .map(|(msg_idx, (msg, _))| {
-            let global_idx = effective_offset + msg_idx;
+        .map(|(visible_idx, (msg, _))| {
+            let global_idx = effective_offset + visible_idx;
             let is_selected = state.broadcast_selection == Some(global_idx);
             if is_selected {
                 ListItem::new(msg.as_str()).style(Style::default().bg(Color::DarkGray))
