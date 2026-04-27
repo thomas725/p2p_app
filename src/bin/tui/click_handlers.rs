@@ -53,25 +53,23 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
             state.dm_scroll_state.entry(peer_id.to_string()).or_insert((msg_count, true));
             p2plog_debug(format!("Loaded {} DM messages for {}", msg_count, peer_id));
         }
-    } else if !state.dm_scroll_state.contains_key(peer_id) {
-        if let Some(msgs) = state.dm_messages.get(peer_id) {
+    } else if !state.dm_scroll_state.contains_key(peer_id)
+        && let Some(msgs) = state.dm_messages.get(peer_id) {
             state.dm_scroll_state.insert(peer_id.to_string(), (msgs.len(), true));
         }
-    }
 }
 
 /// Handles peer row clicks in the Peers tab
 pub fn handle_peer_row_click(state: &mut AppState, row: u16) {
     let peer_row = (row as usize).saturating_sub(3);
-    if peer_row < state.peers.len() {
-        if let Some((peer_id, _, _)) = state.peers.get(peer_row) {
+    if peer_row < state.peers.len()
+        && let Some((peer_id, _, _)) = state.peers.get(peer_row) {
             let peer_id_clone = peer_id.clone();
             load_dm_messages(state, &peer_id_clone);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
             state.active_tab = tab_idx;
             p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
         }
-    }
 }
 
 /// Handles clicks on messages in the chat view (non-DM tabs)
@@ -140,7 +138,7 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
         let peer_message_indices: Vec<usize> = state.messages
             .iter()
             .enumerate()
-            .filter(|(_, (_, sender_id))| sender_id.as_ref().map_or(false, |id| id == peer_id))
+            .filter(|(_, (_, sender_id))| sender_id.as_ref().is_some_and(|id| id == peer_id))
             .map(|(idx, _)| idx)
             .collect();
 

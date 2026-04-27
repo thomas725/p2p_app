@@ -24,13 +24,12 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
 
 /// Handles Ctrl+W (close DM tab)
 fn handle_close_dm_tab(state: &mut super::state::AppState, tab_content: p2p_app::tui_tabs::TabContent) {
-    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content {
-        if let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id) {
+    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
+        && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id) {
             state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
             state.peer_selection = 0;
             p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
         }
-    }
 }
 
 /// Handles Enter key (send message or multi-line input)

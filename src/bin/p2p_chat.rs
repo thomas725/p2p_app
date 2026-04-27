@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 
 enum Event {
-    Swarm(libp2p::swarm::SwarmEvent<p2p_app::behavior::AppBehaviourEvent>),
+    Swarm(Box<libp2p::swarm::SwarmEvent<p2p_app::behavior::AppBehaviourEvent>>),
     Stdin(Option<String>),
 }
 
@@ -117,13 +117,13 @@ async fn main() -> color_eyre::Result<()> {
 
     loop {
         let event = tokio::select! {
-            swarm_event = swarm.select_next_some() => Some(Event::Swarm(swarm_event)),
+            swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
             line = lines.next_line() => Some(Event::Stdin(line.ok().flatten())),
         };
 
         match event {
             Some(Event::Swarm(event)) => {
-                match event {
+                match *event {
                     libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
                         handle_listen_addr_event(&address);
                     }
@@ -141,20 +141,18 @@ async fn main() -> color_eyre::Result<()> {
                     _ => {}
                 }
             }
-            Some(Event::Stdin(Some(text))) => {
-                if !text.is_empty() {
-                    let msg = BroadcastMessage {
-                        content: text,
-                        sent_at: Some(current_timestamp()),
-                        nickname: None,
-                    };
-                    if let Ok(json) = serde_json::to_string(&msg) {
-                        let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
-                    }
+            Some(Event::Stdin(Some(text))) if !text.is_empty() => {
+                let msg = BroadcastMessage {
+                    content: text,
+                    sent_at: Some(current_timestamp()),
+                    nickname: None,
+                };
+                if let Ok(json) = serde_json::to_string(&msg) {
+                    let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
                 }
             }
-            Some(Event::Stdin(None)) => break,
-            None => {}
+            Some(Event::Stdin(_)) => {}
+            None => break,
         }
     }
     Ok(())

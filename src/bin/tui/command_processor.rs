@@ -58,12 +58,11 @@ async fn process_swarm_event(
             let mut s = state.lock().await;
             s.concurrent_peers += 1;
             p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
-            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < constants::MAX_PEERS {
-                if let Ok(peer) = p2p_app::save_peer(&peer_id, &[peer_id.clone()]) {
-                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                    s.peers.push_front((peer_id, first_seen, last_seen));
-                }
+            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < constants::MAX_PEERS
+                && let Ok(peer) = p2p_app::save_peer(&peer_id, std::slice::from_ref(&peer_id)) {
+                let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+                let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+                s.peers.push_front((peer_id, first_seen, last_seen));
             }
         }
         SwarmEvent::PeerDisconnected(peer_id) => {

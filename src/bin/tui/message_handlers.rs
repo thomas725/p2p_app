@@ -49,7 +49,7 @@ pub async fn send_message(
         let _ = swarm_cmd_tx.send(SwarmCommand::Publish(text.clone())).await;
     }
 
-    let peer_ref = dm_target_peer_id.as_ref().map(|s| s.as_str());
+    let peer_ref = dm_target_peer_id.as_deref();
     if let Err(e) = p2p_app::save_message(&text, peer_ref, &topic_str, is_direct, dm_target_peer_id.as_deref()) {
         p2plog_debug(format!("Failed to save message: {}", e));
     }

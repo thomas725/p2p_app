@@ -107,7 +107,7 @@ pub fn render_dm_tab(
 
     let broadcast_messages: Vec<(String, Option<String>)> = state.messages
         .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
         .collect();
 

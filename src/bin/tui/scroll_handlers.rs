@@ -81,7 +81,7 @@ fn handle_scroll_key_for_section(
 fn scroll_broadcast_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
     let broadcast_messages: Vec<(String, Option<String>)> = state.messages
         .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
         .collect();
 
@@ -98,13 +98,12 @@ fn scroll_broadcast_section(key_code: crossterm::event::KeyCode, state: &mut App
 
 /// Handle scroll key for DM section of DM tab
 fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
-    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
-        if let Some(msgs) = state.dm_messages.get(peer_id) {
+    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
+        && let Some(msgs) = state.dm_messages.get(peer_id) {
             let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
             let max_offset = msgs.len().saturating_sub(visible_count);
             handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
         }
-    }
 }
 
 /// Handle scroll key for Chat tab (broadcast)
@@ -156,11 +155,10 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         crossterm::event::KeyCode::Up => {
             state.peer_selection = state.peer_selection.saturating_sub(1);
         }
-        crossterm::event::KeyCode::Down => {
-            if state.peer_selection < state.peers.len().saturating_sub(1) {
+        crossterm::event::KeyCode::Down
+            if state.peer_selection < state.peers.len().saturating_sub(1) => {
                 state.peer_selection += 1;
             }
-        }
         _ => {}
     }
 }
@@ -191,7 +189,7 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
 fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) {
     let broadcast_messages: Vec<(String, Option<String>)> = state.messages
         .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
         .collect();
 
@@ -225,8 +223,8 @@ fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_i
 
 /// Handle mouse wheel for DM section of DM tab
 fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) {
-    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
-        if let Some(msgs) = state.dm_messages.get(peer_id) {
+    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
+        && let Some(msgs) = state.dm_messages.get(peer_id) {
             let max_offset = msgs.len().saturating_sub(1);
             match scroll_dir {
                 "up" => {
@@ -248,7 +246,6 @@ fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str
                 _ => {}
             }
         }
-    }
 }
 
 /// Handle mouse wheel for Chat tab (broadcast)

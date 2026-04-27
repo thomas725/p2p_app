@@ -110,7 +110,7 @@ pub fn count_lines(text: &str, text_width: usize) -> usize {
                 total += 1;
             }
         } else {
-            total += (line.len() + text_width - 1) / text_width;
+            total += line.len().div_ceil(text_width);
         }
     }
     total.max(1)

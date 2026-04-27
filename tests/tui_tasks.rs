@@ -40,7 +40,7 @@ mod tui_architecture_tests {
             let dm_msgs = self
                 .dm_messages
                 .entry(peer_id.to_string())
-                .or_insert_with(VecDeque::new);
+                .or_default();
             dm_msgs.push_back(msg);
             // Bound: max 1000 per peer
             if dm_msgs.len() > 1000 {

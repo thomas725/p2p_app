@@ -9,7 +9,6 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
 
 #[test]
 fn test_tui_tab_navigation() {
@@ -42,7 +41,7 @@ fn test_tui_tab_navigation() {
 
 #[test]
 fn test_tui_tab_navigation_backward() {
-    let mut state = p2p_app::tui_tabs::DynamicTabs::new();
+    let state = p2p_app::tui_tabs::DynamicTabs::new();
     let max_tabs = state.total_tab_count();
 
     // Start at tab 0 (Chat)

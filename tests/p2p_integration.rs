@@ -60,8 +60,10 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         gossipsub_config,
     )?;
 
-    let mut mdns_config = mdns::Config::default();
-    mdns_config.query_interval = Duration::from_secs(1);
+    let mdns_config = mdns::Config {
+        query_interval: Duration::from_secs(1),
+        ..Default::default()
+    };
     eprintln!(
         "Creating mDNS with config: query_interval={:?}",
         mdns_config.query_interval
@@ -537,8 +539,6 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
 struct NodeWithDB {
     swarm: libp2p::Swarm<TestBehaviour>,
     peer_id: libp2p::PeerId,
-    listen_addr: Option<Multiaddr>,
-    db_path: String,
 }
 
 async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::error::Error>> {
@@ -570,8 +570,10 @@ async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::e
         gossipsub_config,
     )?;
 
-    let mut mdns_config = mdns::Config::default();
-    mdns_config.query_interval = Duration::from_millis(500);
+    let mdns_config = mdns::Config {
+        query_interval: Duration::from_millis(500),
+        ..Default::default()
+    };
     let mdns = mdns::tokio::Behaviour::new(mdns_config, peer_id)?;
 
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
@@ -589,12 +591,7 @@ async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::e
     let topic = gossipsub::IdentTopic::new("test-net");
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
-    Ok(NodeWithDB {
-        swarm,
-        peer_id,
-        listen_addr: None,
-        db_path: db_path.to_string(),
-    })
+    Ok(NodeWithDB { swarm, peer_id })
 }
 
 fn save_stale_peer_to_db(

@@ -10,7 +10,7 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 enum Event {
-    Swarm(Libp2pSwarmEvent<AppEv>),
+    Swarm(Box<Libp2pSwarmEvent<AppEv>>),
     Command(SwarmCommand),
 }
 
@@ -174,14 +174,14 @@ pub fn spawn_swarm_handler(
     let handle = tokio::spawn(async move {
         loop {
             let event = tokio::select! {
-                swarm_event = swarm.select_next_some() => Some(Event::Swarm(swarm_event)),
+                swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
                 Some(cmd) = cmd_rx.recv() => Some(Event::Command(cmd)),
                 else => None,
             };
 
             match event {
                 Some(Event::Swarm(swarm_event)) => {
-                    handle_swarm_event(swarm_event, &event_tx, &mut swarm).await;
+                    handle_swarm_event(*swarm_event, &event_tx, &mut swarm).await;
                 }
                 Some(Event::Command(cmd)) => {
                     handle_command(cmd, &mut swarm, &topic);
