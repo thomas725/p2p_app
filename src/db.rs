@@ -108,6 +108,54 @@ fn determine_db_path() -> color_eyre::Result<String> {
     find_or_create_unused_db()
 }
 
+/// Checks if a database file is locked by examining its lock file.
+fn is_db_locked(lock_path: &std::path::Path) -> bool {
+    use std::fs;
+
+    if !lock_path.exists() {
+        return false; // No lock file = available
+    }
+
+    match fs::read_to_string(lock_path) {
+        Ok(content) => {
+            if let Ok(other_pid) = content.trim().parse::<u32>() {
+                if other_pid == 0 {
+                    return false; // Empty/zero PID = unlocked
+                }
+                #[cfg(target_os = "linux")]
+                {
+                    std::path::Path::new(&format!("/proc/{other_pid}")).exists()
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    true // Assume locked on non-Linux
+                }
+            } else {
+                true // Non-numeric content = locked
+            }
+        }
+        Err(_) => true, // Can't read = locked
+    }
+}
+
+/// Tries to acquire the lock file for a database. Returns Ok if successful.
+fn try_acquire_lock(lock_path: &std::path::Path, pid: u32) -> Result<(), ()> {
+    use std::fs;
+    use std::io::Write;
+
+    match fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(lock_path)
+    {
+        Ok(mut f) => {
+            let _ = f.write_all(pid.to_string().as_bytes());
+            Ok(())
+        }
+        Err(_) => Err(()),
+    }
+}
+
 /// Finds the first unused SQLite database in the current working directory using lock files.
 /// If none is available, creates a new database with the next sequential name.
 fn find_or_create_unused_db() -> color_eyre::Result<String> {
@@ -139,49 +187,17 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         let lock_path = cwd.join(format!("{}.lock", db_file));
         p2plog_debug(format!("[DB] checking {}", db_file));
 
-        let is_locked = if lock_path.exists() {
-            match fs::read_to_string(&lock_path) {
-                Ok(content) => {
-                    if let Ok(other_pid) = content.trim().parse::<u32>() {
-                        if other_pid == 0 {
-                            false // Empty/zero PID = unlocked
-                        } else {
-                            #[cfg(target_os = "linux")]
-                            {
-                                std::path::Path::new(&format!("/proc/{other_pid}")).exists()
-                            }
-                            #[cfg(not(target_os = "linux"))]
-                            {
-                                true // Assume locked on non-Linux
-                            }
-                        }
-                    } else {
-                        true // Non-numeric content = locked
-                    }
-                }
-                Err(_) => true, // Can't read = locked
-            }
-        } else {
-            false // No lock file = available
-        };
-
-        if is_locked {
+        if is_db_locked(&lock_path) {
             p2plog_debug(format!("[DB]   {} has active lock", db_file));
             continue;
         }
 
         // Try to acquire lock (may fail if race)
-        match fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&lock_path)
-        {
-            Ok(mut f) => {
-                use std::io::Write;
-                let _ = f.write_all(pid.to_string().as_bytes());
+        match try_acquire_lock(&lock_path, pid) {
+            Ok(()) => {
                 return Ok(cwd.join(db_file.clone()).to_string_lossy().into_owned());
             }
-            Err(_) => {
+            Err(()) => {
                 p2plog_debug(format!(
                     "[DB] lock for {} already exists, trying next",
                     db_file
