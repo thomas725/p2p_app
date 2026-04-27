@@ -16,39 +16,39 @@
 
 ## All Source Files
 
-| Folder         | File                | Lines | Characters | Max Nesting | Purpose                             |
-|---------------|---------------------:|------:|-----------:|:-----------:|------------------------------------:|
-| /             | build.rs             |   107 |      3,762 |      5      | Build script                        |
-| src           | lib.rs               |   210 |      6,663 |      3      | Module declarations & re-exports    |
-| src           | db.rs                |   349 |     12,902 |      8      | Database connection & identity mgmt |
-| src           | logging.rs           |   184 |      5,351 |      4      | Logging utilities & setup           |
-| src           | swarm_handler.rs     |   115 |      4,871 |     11      | Network event translation           |
-| src           | messages.rs          |   119 |      4,542 |      4      | Message persistence & retrieval     |
-| src           | peers.rs             |   120 |      4,128 |      3      | Peer management & tracking          |
-| src           | nickname.rs          |   105 |      3,501 |      3      | Nickname management                 |
-| src           | fmt.rs               |    87 |      2,664 |      4      | Formatting & display utilities      |
-| src           | behavior.rs          |   113 |      3,703 |      4      | Network behavior definitions        |
-| src           | network.rs           |    49 |      1,423 |      3      | Network size classification         |
-| src           | types.rs             |    42 |      1,144 |      2      | Event & command type defs           |
-| src           | logging_config.rs    |    38 |      1,774 |      2      | Tracing configuration               |
-| src           | tui_tabs.rs          |   187 |      4,880 |      5      | Tab management & navigation         |
-| src           | tui_test_state.rs    |   152 |      4,506 |      6      | TUI test state & mouse handling     |
-| src           | tui_events.rs        |    51 |      1,377 |      1      | Event/command types & channels      |
-| src/generated | mod.rs               |     5 |        141 |      0      | Module declarations                 |
-| src/generated | columns.rs           |    27 |      1,081 |      1      | Auto-generated column definitions   |
-| src/generated | schema.rs            |    48 |      1,125 |      2      | Database schema (Diesel)            |
-| src/generated | models_insertable.rs |    46 |      1,108 |      1      | Insertable data models              |
-| src/generated | models_queryable.rs  |    54 |      1,321 |      1      | Queryable data models               |
-| src/bin       | p2p_chat_tui.rs      |   133 |      5,547 |      4      | Main TUI application entry point    |
-| src/bin       | p2p_chat.rs          |   118 |      4,787 |      8      | CLI chat application                |
-| src/bin       | p2p_chat_dioxus.rs   |   206 |      7,100 |      8      | Web UI (Dioxus framework)           |
-| src/bin/tui   | command_processor.rs |   420 |     26,847 |     11      | Event routing & state updates       |
-| src/bin/tui   | main_loop.rs         |   197 |      6,969 |      4      | Task orchestration & async          |
-| src/bin/tui   | render_loop.rs       |   167 |      8,014 |     13      | 60 FPS rendering loop               |
-| src/bin/tui   | state.rs             |   106 |      3,541 |      6      | Shared application state            |
-| src/bin/tui   | input_handler.rs     |    44 |      1,633 |      6      | Terminal event polling              |
-| src/bin/tui   | tracing_writer.rs    |     3 |        246 |      0      | Tracing log output handling         |
-| src/bin/tui   | constants.rs         |    17 |        588 |      0      | TUI constants & config              |
+| Folder         | File                | Lines | Characters | Nesting | Purpose                             |
+|---------------|---------------------:|------:|-----------:|--------:|------------------------------------:|
+| /             | build.rs             |   107 |      3,762 |       5 | Build script                        |
+| src           | lib.rs               |   210 |      6,663 |       3 | Module declarations & re-exports    |
+| src           | db.rs                |   349 |     12,902 |       8 | Database connection & identity mgmt |
+| src           | logging.rs           |   184 |      5,351 |       4 | Logging utilities & setup           |
+| src           | swarm_handler.rs     |   115 |      4,871 |      11 | Network event translation           |
+| src           | messages.rs          |   119 |      4,542 |       4 | Message persistence & retrieval     |
+| src           | peers.rs             |   120 |      4,128 |       3 | Peer management & tracking          |
+| src           | nickname.rs          |   105 |      3,501 |       3 | Nickname management                 |
+| src           | fmt.rs               |    87 |      2,664 |       4 | Formatting & display utilities      |
+| src           | behavior.rs          |   113 |      3,703 |       4 | Network behavior definitions        |
+| src           | network.rs           |    49 |      1,423 |       3 | Network size classification         |
+| src           | types.rs             |    42 |      1,144 |       2 | Event & command type defs           |
+| src           | logging_config.rs    |    38 |      1,774 |       2 | Tracing configuration               |
+| src           | tui_tabs.rs          |   187 |      4,880 |       5 | Tab management & navigation         |
+| src           | tui_test_state.rs    |   152 |      4,506 |       6 | TUI test state & mouse handling     |
+| src           | tui_events.rs        |    51 |      1,377 |       1 | Event/command types & channels      |
+| src/generated | mod.rs               |     5 |        141 |       0 | Module declarations                 |
+| src/generated | columns.rs           |    27 |      1,081 |       1 | Auto-generated column definitions   |
+| src/generated | schema.rs            |    48 |      1,125 |       2 | Database schema (Diesel)            |
+| src/generated | models_insertable.rs |    46 |      1,108 |       1 | Insertable data models              |
+| src/generated | models_queryable.rs  |    54 |      1,321 |       1 | Queryable data models               |
+| src/bin       | p2p_chat_tui.rs      |   133 |      5,547 |       4 | Main TUI application entry point    |
+| src/bin       | p2p_chat.rs          |   118 |      4,787 |       8 | CLI chat application                |
+| src/bin       | p2p_chat_dioxus.rs   |   206 |      7,100 |       8 | Web UI (Dioxus framework)           |
+| src/bin/tui   | command_processor.rs |   420 |     26,847 |      11 | Event routing & state updates       |
+| src/bin/tui   | main_loop.rs         |   197 |      6,969 |       4 | Task orchestration & async          |
+| src/bin/tui   | render_loop.rs       |   167 |      8,014 |      13 | 60 FPS rendering loop               |
+| src/bin/tui   | state.rs             |   106 |      3,541 |       6 | Shared application state            |
+| src/bin/tui   | input_handler.rs     |    44 |      1,633 |       6 | Terminal event polling              |
+| src/bin/tui   | tracing_writer.rs    |     3 |        246 |       0 | Tracing log output handling         |
+| src/bin/tui   | constants.rs         |    17 |        588 |       0 | TUI constants & config              |
 
 **Total:** 31 files, 3,882 lines, 145,576 characters
 
