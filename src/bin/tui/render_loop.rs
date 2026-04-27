@@ -1,18 +1,219 @@
 use super::constants::FRAME_TIME_MS;
 use super::main_loop::RenderEvent;
-use super::state::SharedState;
+use super::state::{SharedState, AppState};
 use p2p_app::get_tui_logs;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, ListItem, Paragraph, Tabs},
+    Frame,
 };
 use std::io::Stdout;
 use std::time::Duration;
 use tokio::sync::mpsc;
+
+fn calc_visible_tuples(
+    messages: &std::collections::VecDeque<(String, Option<String>)>,
+    auto_scroll: bool,
+    scroll_offset: usize,
+    text_width: usize,
+    usable_height: usize,
+) -> (usize, usize) {
+    let total_items = messages.len();
+    if total_items == 0 {
+        return (1, 0);
+    }
+
+    if auto_scroll {
+        let mut used = 0;
+        let mut count = 0;
+        for (msg, _) in messages.iter().rev() {
+            let msg_lines = count_lines(msg, text_width);
+            if used > 0 && used + msg_lines > usable_height {
+                break;
+            }
+            used += msg_lines;
+            count += 1;
+        }
+        let visible = count.max(1);
+        let offset = total_items.saturating_sub(visible);
+        (visible, offset)
+    } else {
+        let visible = if scroll_offset < total_items {
+            let mut used = 0;
+            let mut count = 0;
+            for (msg, _) in messages.iter().skip(scroll_offset) {
+                let msg_lines = count_lines(msg, text_width);
+                if used > 0 && used + msg_lines > usable_height {
+                    break;
+                }
+                used += msg_lines;
+                count += 1;
+            }
+            count.max(1)
+        } else {
+            1
+        };
+        (visible, scroll_offset)
+    }
+}
+
+fn calc_visible_strings(
+    messages: &std::collections::VecDeque<String>,
+    auto_scroll: bool,
+    scroll_offset: usize,
+    text_width: usize,
+    usable_height: usize,
+) -> (usize, usize) {
+    let total_items = messages.len();
+    if total_items == 0 {
+        return (1, 0);
+    }
+
+    if auto_scroll {
+        let mut used = 0;
+        let mut count = 0;
+        for msg in messages.iter().rev() {
+            let msg_lines = count_lines(msg, text_width);
+            if used > 0 && used + msg_lines > usable_height {
+                break;
+            }
+            used += msg_lines;
+            count += 1;
+        }
+        let visible = count.max(1);
+        let offset = total_items.saturating_sub(visible);
+        (visible, offset)
+    } else {
+        let visible = if scroll_offset < total_items {
+            let mut used = 0;
+            let mut count = 0;
+            for msg in messages.iter().skip(scroll_offset) {
+                let msg_lines = count_lines(msg, text_width);
+                if used > 0 && used + msg_lines > usable_height {
+                    break;
+                }
+                used += msg_lines;
+                count += 1;
+            }
+            count.max(1)
+        } else {
+            1
+        };
+        (visible, scroll_offset)
+    }
+}
+
+fn count_lines(text: &str, text_width: usize) -> usize {
+    text.split('\n')
+        .map(|line| {
+            if line.is_empty() {
+                1
+            } else {
+                (line.len() + text_width - 1) / text_width
+            }
+        })
+        .sum()
+}
+
+fn render_chat_tab(
+    frame: &mut Frame,
+    area: Rect,
+    state: &mut AppState,
+    text_width: usize,
+    usable_height: usize,
+) {
+    let (visible, effective_offset) = calc_visible_tuples(
+        &state.messages,
+        state.chat_auto_scroll,
+        state.chat_scroll_offset,
+        text_width,
+        usable_height,
+    );
+    state.visible_message_count = visible;
+
+    let visible_messages: Vec<ListItem> = state.messages
+        .iter()
+        .skip(effective_offset)
+        .take(visible)
+        .map(|(msg, _)| ListItem::new(msg.as_str()))
+        .collect();
+
+    let messages_list = ratatui::widgets::List::new(visible_messages)
+        .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
+    frame.render_widget(messages_list, area);
+}
+
+fn render_peers_tab(
+    frame: &mut Frame,
+    area: Rect,
+    state: &AppState,
+) {
+    let peer_items: Vec<ListItem> = state.peers
+        .iter()
+        .enumerate()
+        .map(|(idx, (id, _first_seen, last_seen))| {
+            let line = format!("{} ({})", id, last_seen);
+            if idx == state.peer_selection {
+                ListItem::new(line).style(Style::default().bg(Color::DarkGray))
+            } else {
+                ListItem::new(line)
+            }
+        })
+        .collect();
+    let peers_list = ratatui::widgets::List::new(peer_items)
+        .block(Block::default().title("Connected Peers").borders(Borders::ALL));
+    frame.render_widget(peers_list, area);
+}
+
+fn render_dm_tab(
+    frame: &mut Frame,
+    area: Rect,
+    state: &mut AppState,
+    peer_id: &str,
+    text_width: usize,
+    usable_height: usize,
+) {
+    let (scroll_offset_val, auto_scroll_val) = {
+        let (offset, auto_scroll) = state.dm_scroll_state
+            .entry(peer_id.to_string())
+            .or_insert((0, true));
+        (*offset, *auto_scroll)
+    };
+
+    if let Some(msgs) = state.dm_messages.get(peer_id) {
+        let (visible, effective_offset) = calc_visible_strings(
+            msgs,
+            auto_scroll_val,
+            scroll_offset_val,
+            text_width,
+            usable_height,
+        );
+
+        let short_id = if peer_id.len() <= 8 {
+            peer_id.to_string()
+        } else {
+            peer_id[peer_id.len()-8..].to_string()
+        };
+
+        let visible_msgs: Vec<ListItem> = msgs
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .map(|m| ListItem::new(m.as_str()))
+            .collect();
+
+        let dm_list = ratatui::widgets::List::new(visible_msgs)
+            .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
+        frame.render_widget(dm_list, area);
+    } else {
+        let dm_para = Paragraph::new("No messages yet");
+        frame.render_widget(dm_para, area);
+    }
+}
 
 /// Spawns the render loop task that continuously renders the TUI
 ///
@@ -64,189 +265,30 @@ pub fn spawn_render_loop(
                         ])
                         .split(f.area());
 
-                    // Calculate visible messages accounting for text wrapping
                     let avail_width = chunks[2].width as usize;
                     let avail_height = chunks[2].height as usize;
-                    let text_width = avail_width.saturating_sub(4); // -4 for block borders
-                    let usable_height = avail_height.saturating_sub(2); // -2 for block borders
+                    let text_width = avail_width.saturating_sub(4);
+                    let usable_height = avail_height.saturating_sub(2);
 
-                    // Render tabs
                     let tab_titles = s.dynamic_tabs.all_titles();
                     let tabs = Tabs::new(tab_titles)
                         .style(Style::default().fg(Color::Cyan))
                         .select(s.active_tab);
                     f.render_widget(tabs, chunks[0]);
 
-                    // Render peer count info
                     let peer_info = Paragraph::new(format!("Peers: {}", s.concurrent_peers));
                     f.render_widget(peer_info, chunks[1]);
 
-                    // Render tab-specific content with scrolling
                     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                     match &tab_content {
                         TabContent::Chat => {
-                            let total_items = s.messages.len();
-
-                            let (visible, effective_offset) = if s.chat_auto_scroll {
-                                // For auto_scroll: count backwards from newest to find how many fit
-                                let mut used = 0;
-                                let mut count = 0;
-                                for (msg, _) in s.messages.iter().rev() {
-                                    let mut msg_lines = 0;
-                                    for line in msg.split('\n') {
-                                        if line.is_empty() {
-                                            msg_lines += 1;
-                                        } else {
-                                            msg_lines += (line.len() + text_width - 1) / text_width;
-                                        }
-                                    }
-                                    if used > 0 && used + msg_lines > usable_height {
-                                        break;
-                                    }
-                                    used += msg_lines;
-                                    count += 1;
-                                }
-                                let visible = count.max(1);
-                                let offset = total_items.saturating_sub(visible);
-                                (visible, offset)
-                            } else {
-                                // For manual scroll: count forwards from current offset
-                                let visible = if s.chat_scroll_offset < total_items {
-                                    let mut used = 0;
-                                    let mut count = 0;
-                                    for (msg, _) in s.messages.iter().skip(s.chat_scroll_offset) {
-                                        let mut msg_lines = 0;
-                                        for line in msg.split('\n') {
-                                            if line.is_empty() {
-                                                msg_lines += 1;
-                                            } else {
-                                                msg_lines += (line.len() + text_width - 1) / text_width;
-                                            }
-                                        }
-                                        if used > 0 && used + msg_lines > usable_height {
-                                            break;
-                                        }
-                                        used += msg_lines;
-                                        count += 1;
-                                    }
-                                    count.max(1)
-                                } else {
-                                    1
-                                };
-                                (visible, s.chat_scroll_offset)
-                            };
-
-                            s.visible_message_count = visible;
-
-                            // Get messages starting from offset position
-                            let visible_messages: Vec<ListItem> = s.messages
-                                .iter()
-                                .skip(effective_offset)
-                                .take(visible)
-                                .map(|(msg, _)| ListItem::new(msg.as_str()))
-                                .collect();
-
-                            let messages_list = ratatui::widgets::List::new(visible_messages)
-                                .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
-                            f.render_widget(messages_list, chunks[2]);
+                            render_chat_tab(f, chunks[2], &mut s, text_width, usable_height);
                         }
                         TabContent::Peers => {
-                            let peer_items: Vec<ListItem> = s.peers
-                                .iter()
-                                .enumerate()
-                                .map(|(idx, (id, _first_seen, last_seen))| {
-                                    let line = format!("{} ({})", id, last_seen);
-                                    if idx == s.peer_selection {
-                                        ListItem::new(line).style(Style::default().bg(Color::DarkGray))
-                                    } else {
-                                        ListItem::new(line)
-                                    }
-                                })
-                                .collect();
-                            let peers_list = ratatui::widgets::List::new(peer_items)
-                                .block(Block::default().title("Connected Peers").borders(Borders::ALL));
-                            f.render_widget(peers_list, chunks[2]);
+                            render_peers_tab(f, chunks[2], &s);
                         }
                         TabContent::Direct(peer_id) => {
-                            let (scroll_offset_val, auto_scroll_val) = {
-                                let (scroll_offset, auto_scroll) = s.dm_scroll_state
-                                    .entry(peer_id.clone())
-                                    .or_insert((0, true));
-                                (*scroll_offset, *auto_scroll)
-                            };
-
-                            if let Some(msgs) = s.dm_messages.get(peer_id) {
-                                let total_items = msgs.len();
-
-                                let (visible, effective_offset) = if auto_scroll_val {
-                                    // For auto_scroll: count backwards from newest
-                                    let mut used = 0;
-                                    let mut count = 0;
-                                    for msg in msgs.iter().rev() {
-                                        let mut msg_lines = 0;
-                                        for line in msg.split('\n') {
-                                            if line.is_empty() {
-                                                msg_lines += 1;
-                                            } else {
-                                                msg_lines += (line.len() + text_width - 1) / text_width;
-                                            }
-                                        }
-                                        if used > 0 && used + msg_lines > usable_height {
-                                            break;
-                                        }
-                                        used += msg_lines;
-                                        count += 1;
-                                    }
-                                    let visible = count.max(1);
-                                    let offset = total_items.saturating_sub(visible);
-                                    (visible, offset)
-                                } else {
-                                    // For manual scroll: count forwards from current offset
-                                    let visible = if scroll_offset_val < total_items {
-                                        let mut used = 0;
-                                        let mut count = 0;
-                                        for msg in msgs.iter().skip(scroll_offset_val) {
-                                            let mut msg_lines = 0;
-                                            for line in msg.split('\n') {
-                                                if line.is_empty() {
-                                                    msg_lines += 1;
-                                                } else {
-                                                    msg_lines += (line.len() + text_width - 1) / text_width;
-                                                }
-                                            }
-                                            if used > 0 && used + msg_lines > usable_height {
-                                                break;
-                                            }
-                                            used += msg_lines;
-                                            count += 1;
-                                        }
-                                        count.max(1)
-                                    } else {
-                                        1
-                                    };
-                                    (visible, scroll_offset_val)
-                                };
-
-                                let short_id = if peer_id.len() <= 8 {
-                                    peer_id.clone()
-                                } else {
-                                    peer_id[peer_id.len()-8..].to_string()
-                                };
-
-                                let visible_msgs: Vec<ListItem> = msgs
-                                    .iter()
-                                    .skip(effective_offset)
-                                    .take(visible)
-                                    .map(|m| ListItem::new(m.as_str()))
-                                    .collect();
-
-                                let dm_list = ratatui::widgets::List::new(visible_msgs)
-                                    .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
-                                f.render_widget(dm_list, chunks[2]);
-                            } else {
-                                let dm_para = Paragraph::new("No messages yet");
-                                f.render_widget(dm_para, chunks[2]);
-                            }
+                            render_dm_tab(f, chunks[2], &mut s, peer_id, text_width, usable_height);
                         }
                         TabContent::Log => {
                             let log_text = get_tui_logs().join("\n");
@@ -256,15 +298,12 @@ pub fn spawn_render_loop(
                         }
                     }
 
-                    // Render input area (only for chat/DM tabs)
                     let input_block = Block::default()
                         .title("Input")
                         .borders(Borders::ALL);
                     if tab_content.is_input_enabled() {
-                        // Create a wrapper that combines textarea with block styling
                         let inner_area = input_block.inner(chunks[3]);
                         f.render_widget(input_block, chunks[3]);
-                        // Set cursor style without underline
                         let mut textarea = s.chat_input.clone();
                         textarea.set_cursor_line_style(Style::default());
                         f.render_widget(&textarea, inner_area);
@@ -272,11 +311,9 @@ pub fn spawn_render_loop(
                         f.render_widget(input_block, chunks[3]);
                     }
 
-                    // Render keyboard shortcuts
                     let shortcuts = Paragraph::new("Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit");
                     f.render_widget(shortcuts, chunks[4]);
 
-                    // Render status line with mouse mode
                     let mouse_mode = if s.mouse_capture { "ON" } else { "OFF" };
                     let status = Paragraph::new(format!("Connected [Mouse: {}]", mouse_mode));
                     f.render_widget(status, chunks[5]);
