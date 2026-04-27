@@ -1,6 +1,6 @@
 # P2P Chat Application - Codebase Metrics
 
-**Generated:** 2026-04-27 (updated post-refactoring)
+**Generated:** 2026-04-27 (updated post-DM tab enhancements)
 **Script:** Use `python3 scripts/generate_metrics.py` to regenerate this table with accurate measurements
 
 ## Summary
@@ -8,10 +8,10 @@
 | Metric                      | Count   |
 |-----------------------------|--------:|
 | Total Rust Files            |       33|
-| Total Lines of Code         |    4,050|
-| Total Characters            |  137,639|
-| Average Lines per File      |      122|
-| Average Characters per File |    4,170|
+| Total Lines of Code         |    4,571|
+| Total Characters            |  161,145|
+| Average Lines per File      |      138|
+| Average Characters per File |    4,883|
 
 ---
 
@@ -38,16 +38,20 @@
 | src/bin       | p2p_chat.rs          |   161 |  5818 |     6 | CLI chat application                |
 | src/bin       | p2p_chat_dioxus.rs   |   208 |  7137 |     8 | Web UI (Dioxus framework)           |
 | src/bin       | p2p_chat_tui.rs      |   135 |  5079 |     4 | Main TUI application entry point    |
-| src/bin/tui   | command_processor.rs |   123 |  5436 |     5 | Event routing & state updates       |
+| src/bin/tui   | command_processor.rs |   125 |  5493 |     6 | Event routing & state updates       |
 | src/bin/tui   | constants.rs         |    23 |   759 |     0 | TUI constants & config              |
 | src/bin/tui   | input_handler.rs     |    44 |  1631 |     6 | Terminal event polling              |
-| src/bin/tui   | input_handlers.rs    |   312 | 12659 |     5 | Keyboard & mouse input processing   |
+| src/bin/tui   | input_handlers.rs    |   701 | 30324 |     9 | Keyboard & mouse input processing   |
 | src/bin/tui   | main_loop.rs         |   200 |  7064 |     4 | Task orchestration & async          |
-| src/bin/tui   | message_handlers.rs  |    55 |  2090 |     4 | Message sending logic               |
-| src/bin/tui   | render_loop.rs       |   348 | 11166 |     5 | 60 FPS rendering loop               |
-| src/bin/tui   | state.rs             |   115 |  3878 |     6 | Shared application state            |
+| src/bin/tui   | message_handlers.rs  |    56 |  2161 |     4 | Message sending logic               |
+| src/bin/tui   | render_loop.rs       |   450 | 15358 |     5 | 60 FPS rendering loop               |
+| src/bin/tui   | state.rs             |   142 |  5399 |     6 | Shared application state            |
 | src/bin/tui   | tracing_writer.rs    |     3 |   246 |     0 | Tracing log output handling         |
 | src/generated | columns.rs           |    27 |  1082 |     1 | Auto-generated column definitions   |
+| src/generated | mod.rs               |     4 |    86 |     0 | Module declarations                 |
+| src/generated | models_insertable.rs |    46 |  1108 |     1 | Insertable data models              |
+| src/generated | models_queryable.rs  |    54 |  1321 |     1 | Queryable data models               |
+| src/generated | schema.rs            |    48 |  1125 |     2 | Database schema (Diesel)            |
 | src/generated | mod.rs               |     4 |    86 |     0 | Module declarations                 |
 | src/generated | models_insertable.rs |    46 |  1108 |     1 | Insertable data models              |
 | src/generated | models_queryable.rs  |    54 |  1321 |     1 | Queryable data models               |
