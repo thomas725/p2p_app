@@ -38,7 +38,7 @@ fn calc_visible_tuples(
             used += msg_lines;
             count += 1;
         }
-        let visible = count.max(1);
+        let visible = count;
         let offset = total_items.saturating_sub(visible);
         (visible, offset)
     } else {
@@ -84,7 +84,7 @@ fn calc_visible_strings(
             used += msg_lines;
             count += 1;
         }
-        let visible = count.max(1);
+        let visible = count;
         let offset = total_items.saturating_sub(visible);
         (visible, offset)
     } else {
@@ -109,15 +109,23 @@ fn calc_visible_strings(
 
 fn count_lines(text: &str, text_width: usize) -> usize {
     let clean_text = p2p_app::strip_ansi_codes(text);
-    clean_text.split('\n')
-        .map(|line| {
-            if line.is_empty() {
-                1
-            } else {
-                (line.len() + text_width - 1) / text_width
+    let lines: Vec<&str> = clean_text.split('\n').collect();
+
+    if lines.is_empty() {
+        return 1;
+    }
+
+    let mut total = 0;
+    for (i, line) in lines.iter().enumerate() {
+        if line.is_empty() {
+            if i < lines.len() - 1 {
+                total += 1;
             }
-        })
-        .sum()
+        } else {
+            total += (line.len() + text_width - 1) / text_width;
+        }
+    }
+    total.max(1)
 }
 
 fn render_chat_tab(
