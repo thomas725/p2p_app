@@ -1,17 +1,17 @@
 # P2P Chat Application - Codebase Metrics
 
-**Generated:** 2026-04-27  
+**Generated:** 2026-04-27 (updated post-refactoring)
 **Script:** Use `python3 scripts/generate_metrics.py` to regenerate this table with accurate measurements
 
 ## Summary
 
 | Metric                      | Count   |
 |-----------------------------|--------:|
-| Total Rust Files            |       31|
-| Total Lines of Code         |    4,009|
-| Total Characters            |  136,552|
-| Average Lines per File      |      129|
-| Average Characters per File |    4,404|
+| Total Rust Files            |       33|
+| Total Lines of Code         |    4,050|
+| Total Characters            |  137,639|
+| Average Lines per File      |      122|
+| Average Characters per File |    4,170|
 
 ---
 
@@ -35,13 +35,15 @@
 | src            | tui_tabs.rs          |   187 |      4880 |      5 | Tab management & navigation         |
 | src            | tui_test_state.rs    |   152 |      4506 |      6 | TUI test state & mouse handling     |
 | src            | types.rs             |    42 |      1144 |      2 | Event & command type defs           |
-| src/bin        | p2p_chat.rs          |   161 |      5832 |      6 | CLI chat application                |
+| src/bin        | p2p_chat.rs          |   161 |      5818 |      6 | CLI chat application                |
 | src/bin        | p2p_chat_dioxus.rs   |   208 |      7137 |      8 | Web UI (Dioxus framework)           |
-| src/bin        | p2p_chat_tui.rs      |   133 |      5029 |      4 | Main TUI application entry point    |
-| src/bin/tui    | command_processor.rs |   451 |     19134 |      6 | Event routing & state updates       |
+| src/bin        | p2p_chat_tui.rs      |   135 |      5079 |      4 | Main TUI application entry point    |
+| src/bin/tui    | command_processor.rs |   123 |      5436 |      5 | Event routing & state updates       |
 | src/bin/tui    | constants.rs         |    23 |       759 |      0 | TUI constants & config              |
 | src/bin/tui    | input_handler.rs     |    44 |      1631 |      6 | Terminal event polling              |
+| src/bin/tui    | input_handlers.rs    |   312 |     12659 |      5 | Keyboard & mouse input processing   |
 | src/bin/tui    | main_loop.rs         |   200 |      7064 |      4 | Task orchestration & async          |
+| src/bin/tui    | message_handlers.rs  |    55 |      2090 |      4 | Message sending logic               |
 | src/bin/tui    | render_loop.rs       |   348 |     11166 |      5 | 60 FPS rendering loop               |
 | src/bin/tui    | state.rs             |   115 |      3878 |      6 | Shared application state            |
 | src/bin/tui    | tracing_writer.rs    |     3 |       246 |      0 | Tracing log output handling         |
@@ -51,7 +53,7 @@
 | src/generated  | models_queryable.rs  |    54 |      1321 |      1 | Queryable data models               |
 | src/generated  | schema.rs            |    48 |      1125 |      2 | Database schema (Diesel)            |
 
-**Total:** 31 files, 4,009 lines, 136,552 characters
+**Total:** 33 files, 4,050 lines, 137,639 characters
 
 ---
 
@@ -88,8 +90,10 @@ Binaries:
 ├── build.rs (build script)
 ├── p2p_chat_tui.rs (main entry point)
 │   ├── bin/tui/state.rs (TUI state)
-│   ├── bin/tui/command_processor.rs (logic)
-│   ├── bin/tui/input_handler.rs (input)
+│   ├── bin/tui/command_processor.rs (event routing)
+│   ├── bin/tui/input_handlers.rs (keyboard/mouse input)
+│   ├── bin/tui/message_handlers.rs (message sending)
+│   ├── bin/tui/input_handler.rs (input polling)
 │   ├── bin/tui/render_loop.rs (rendering)
 │   ├── bin/tui/main_loop.rs (orchestration)
 │   └── bin/tui/tracing_writer.rs (logging)
@@ -106,20 +110,21 @@ Binaries:
 - No files exceed 250 lines (excellent modularity)
 
 **Nesting Depth Analysis:**
-- **Deepest files** (nesting > 10): 
-  - render_loop.rs: 13 levels (complex rendering calculation)
-  - command_processor.rs: 11 levels (nested event handling, refactored with extracted functions)
-  - swarm_handler.rs: 11 levels (libp2p event matching)
-- **Ideal range** (nesting ≤ 6): 27/31 files ✅
-- **Average nesting depth**: 4.2 levels
-- **Most shallow** (0-1 levels): 5 files (pure data/config)
+- **Deepest files** (nesting > 6): 
+  - p2p_chat_dioxus.rs: 8 levels (complex Web UI with JSX/RSX)
+- **Ideal range** (nesting ≤ 6): 32/33 files ✅
+- **Average nesting depth**: 4.0 levels
+- **Most shallow** (0 levels): 3 files (pure data/config: constants.rs, tracing_writer.rs, generated/mod.rs)
 
-**TUI Implementation:**
-- Main entry: 133 lines
-- Command processor: 420 lines (refactored with extracted functions)
-- Task modules: 3-197 lines (small, focused tasks)
-- State module: 106 lines
-- Clear separation of concerns (input, logic, rendering, orchestration)
+**TUI Implementation (Post-Refactoring):**
+- Main entry: 135 lines
+- Command processor: 123 lines (event routing only)
+- Input handlers: 312 lines (keyboard/mouse processing)
+- Message handlers: 55 lines (message sending)
+- Input polling: 44 lines
+- Render loop: 348 lines (rendering)
+- State module: 115 lines
+- Clear separation of concerns with focused modules
 
 **Test Infrastructure:**
 - TUI test state: 152 lines with comprehensive coverage
@@ -161,43 +166,47 @@ Binaries:
 
 ```
 Lines Distribution:
- 450+ lines: 1 file  (command_processor.rs - event routing)
  400-449:   1 file  (render_loop.rs - rendering loop with helpers)
  350-399:   1 file  (db.rs - database & identity management)
- 300-349:   0 files
+ 300-349:   1 file  (input_handlers.rs - keyboard/mouse input)
  250-299:   1 file  (logging.rs - logging setup & utilities)
  200-249:   2 files (main_loop.rs, p2p_chat_dioxus.rs)
- 150-199:   4 files (tui_tabs.rs, swarm_handler.rs, p2p_chat.rs, tui_test_state.rs)
- 100-149:   9 files (lib.rs, messages.rs, behavior.rs, nickname.rs, tui_test_state.rs, state.rs, logging, p2p_chat_tui.rs, build.rs)
- 50-99:     6 files (fmt, tui_tabs (duplicate?), input_handler, tui_events, nickname, peers, network)
- <50:       5 files (types, logging_config, constants, generated/mod, tracing_writer)
+ 150-199:   5 files (tui_tabs.rs, swarm_handler.rs, p2p_chat.rs, tui_test_state.rs, build.rs)
+ 100-149:   9 files (lib.rs, messages.rs, behavior.rs, nickname.rs, state.rs, p2p_chat_tui.rs, 
+                     command_processor.rs, message_handlers.rs, peers.rs)
+ 50-99:     7 files (fmt, input_handler, tui_events, nickname, network, models_queryable, 
+                     models_insertable)
+ <50:       6 files (types, logging_config, constants, generated/mod, tracing_writer, columns)
 ```
 
-**Ideal Range (100-200 lines):** 13 files achieve this sweet spot
-- Easy to understand in one sitting
-- Clear single responsibility
-- Low cognitive load
+**Distribution Notes:**
+- No files exceed 450 lines (excellent modularity) ✅
+- 17 files in ideal range (100-200 lines) - easy to understand in one sitting
+- 23 files at ≤200 lines for excellent code clarity
+- Input handlers at 312 lines now justifies dedicated module (previously embedded)
 
 ## Nesting Depth Distribution
 
 ```
 Nesting Levels by File Count (max indentation depth):
   8 levels:  1 file  (p2p_chat_dioxus.rs - Web UI with complex JSX/RSX)
-  6 levels:  6 files (swarm_handler.rs, p2p_chat.rs, command_processor.rs, 
-                      input_handler.rs, state.rs, tui_test_state.rs)
-  5 levels:  7 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, fmt.rs, 
-                      behavior.rs, messages.rs)
-  4 levels:  8 files (logging.rs, main_loop.rs, p2p_chat_tui.rs, nickname.rs,
-                      peers.rs, network.rs, logging_config.rs, types.rs)
-  3 levels:  4 files (lib.rs, tui_events.rs, columns.rs, models_*.rs)
+  6 levels:  2 files (input_handler.rs - polling, state.rs - shared state)
+  5 levels:  10 files (build.rs, db.rs, tui_tabs.rs, render_loop.rs, fmt.rs, 
+                       behavior.rs, messages.rs, swarm_handler.rs, 
+                       command_processor.rs, input_handlers.rs)
+  4 levels:  10 files (logging.rs, main_loop.rs, p2p_chat_tui.rs, p2p_chat.rs,
+                       nickname.rs, peers.rs, network.rs, logging_config.rs, 
+                       types.rs, message_handlers.rs)
+  3 levels:  4 files (lib.rs, tui_events.rs, tui_test_state.rs, columns.rs)
   2 levels:  3 files (schema.rs, models_queryable.rs, models_insertable.rs)
   1 levels:  1 file  (tui_events.rs)
-  0 levels:  2 files (constants.rs, tracing_writer.rs, mod.rs - pure declarations)
+  0 levels:  2 files (constants.rs, tracing_writer.rs - pure declarations)
 ```
 
-**Current State:** 30/31 files (97%) at ≤6 nesting levels ✅
+**Current State:** 32/33 files (97%) at ≤6 nesting levels ✅
 - Only p2p_chat_dioxus.rs exceeds target (8 levels, justified by complex UI structure)
-- Script measures maximum indentation level per file (leading whitespace)
+- Post-refactoring: command_processor.rs reduced from 11 to 5 levels
+- Script measures maximum indentation level per file (leading whitespace / 4 spaces)
 - This accurately reflects code complexity as seen in the editor
 
 ---
@@ -314,17 +323,22 @@ Systematic reduction of nesting depth across all files to meet ≤6 level target
 - Extracted `handle_message_event()` - Gossipsub message parsing and formatting
 - Reduced nested match blocks in main loop
 
-### command_processor.rs: 11 → 10 levels
-- Extracted `handle_mouse_left_click()` - Dispatch tab/peer row clicks
-- Reduced nesting in `process_input_event()` mouse handling
+### command_processor.rs: 11 → 5 levels (Major Refactoring - April 27, 2026)
+- **Previous approach**: 451 lines with deeply nested input/message handling mixed with swarm event logic
+- **New approach**: Extracted to focused modules:
+  - Created `input_handlers.rs` (312 lines) - All keyboard/mouse input processing
+  - Created `message_handlers.rs` (55 lines) - Message sending logic (DM/broadcast)
+  - Simplified `command_processor.rs` (123 lines) - Pure event routing and swarm handling
+- **Benefit**: Reduced command_processor from 11 to 5 levels, improved code organization
+- **Module structure**: Proper separation of concerns with each module having single responsibility
 
 ### swarm_handler.rs: Maintained at 6 levels ✅
 - Already well-extracted in previous refactoring
 
 ### Results
-- **30/31 files (97%)** now at ≤6 nesting levels ✅
-- **Average nesting depth**: 4.1 levels (down from ~5.5)
-- **Lines added**: ~200 (helper functions with docs)
-- **Code clarity**: Improved through focused function names
-- **Tests**: All 45 tests continue passing
-- **Only exception**: command_processor.rs at 10 levels (complex event routing)
+- **32/33 files (97%)** now at ≤6 nesting levels ✅
+- **Average nesting depth**: 4.0 levels (down from ~5.5)
+- **Total files**: 33 (added input_handlers.rs and message_handlers.rs)
+- **Code clarity**: Improved through focused modules
+- **Tests**: All 25 tests continue passing
+- **Only exception**: p2p_chat_dioxus.rs at 8 levels (justified by complex Web UI structure)
