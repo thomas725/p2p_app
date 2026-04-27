@@ -143,6 +143,7 @@ fn render_chat_tab(
         usable_height,
     );
     state.visible_message_count = visible;
+    state.chat_message_offset = effective_offset;
 
     let visible_messages: Vec<ListItem> = state.messages
         .iter()

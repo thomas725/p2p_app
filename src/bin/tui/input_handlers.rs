@@ -228,8 +228,7 @@ fn handle_peer_row_click(state: &mut super::state::AppState, row: u16) {
 /// Handles clicks on messages in the chat view
 fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     let message_row_idx = (row as usize).saturating_sub(3);
-    let start = state.chat_scroll_offset.min(state.messages.len().saturating_sub(state.visible_message_count));
-    let peer_id = state.messages.iter().skip(start).nth(message_row_idx).and_then(|(_, pid)| pid.clone());
+    let peer_id = state.messages.iter().skip(state.chat_message_offset).nth(message_row_idx).and_then(|(_, pid)| pid.clone());
 
     if let Some(sender_id) = peer_id {
         load_dm_messages(state, &sender_id);
