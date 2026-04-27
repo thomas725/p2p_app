@@ -233,11 +233,16 @@ fn handle_message_click(state: &mut super::state::AppState, row: u16) {
     let mut message_idx = 0;
 
     for line_count in &state.chat_message_lines {
-        if current_row + line_count > click_row {
+        let message_end_row = current_row + line_count;
+        if click_row < message_end_row {
             break;
         }
-        current_row += line_count;
+        current_row = message_end_row;
         message_idx += 1;
+    }
+
+    if message_idx >= state.chat_message_lines.len() {
+        return;
     }
 
     let peer_id = state.messages.iter().skip(state.chat_message_offset).nth(message_idx).map(|(_, pid)| pid.clone());
