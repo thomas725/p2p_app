@@ -174,8 +174,8 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int]]:
 def generate_markdown_table(files_data: List[Tuple]) -> str:
     """Generate markdown table from file data."""
     output = []
-    output.append('| Folder                 | File                 | Lines | Chars | Depth | Purpose                             |')
-    output.append('|:---------------------|---------------------:|------:|------:|------:|------------------------------------:|')
+    output.append('| Folder                  | File                 | Lines | Chars | Depth | Purpose                             |')
+    output.append('|:----------------------|---------------------:|------:|------:|------:|------------------------------------:|')
 
     for folder, filename, _, lines, chars, nesting, purpose in files_data:
         # Truncate purpose if too long
