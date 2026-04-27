@@ -106,7 +106,7 @@ pub fn spawn_render_loop(
                                             msg_lines += (line.len() + text_width - 1) / text_width;
                                         }
                                     }
-                                    if used > 0 && used + msg_lines > usable_height {
+                                    if used >= usable_height {
                                         break;
                                     }
                                     used += msg_lines;
@@ -129,7 +129,7 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used > 0 && used + msg_lines > usable_height {
+                                        if used >= usable_height {
                                             break;
                                         }
                                         used += msg_lines;
@@ -199,7 +199,7 @@ pub fn spawn_render_loop(
                                                 msg_lines += (line.len() + text_width - 1) / text_width;
                                             }
                                         }
-                                        if used > 0 && used + msg_lines > usable_height {
+                                        if used >= usable_height {
                                             break;
                                         }
                                         used += msg_lines;
@@ -222,7 +222,7 @@ pub fn spawn_render_loop(
                                                     msg_lines += (line.len() + text_width - 1) / text_width;
                                                 }
                                             }
-                                            if used > 0 && used + msg_lines > usable_height {
+                                            if used >= usable_height {
                                                 break;
                                             }
                                             used += msg_lines;
