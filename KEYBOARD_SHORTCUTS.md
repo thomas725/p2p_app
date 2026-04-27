@@ -13,17 +13,18 @@
 
 | Key/Action | Behavior |
 |------------|----------|
-| `↑` / `↓` | Scroll DM section up/down one line |
-| `PgUp` / `PgDn` | Scroll DM section one page (5 lines) |
-| `Home` | Jump to first DM message |
-| `End` | Jump to newest DM (auto-scroll) |
+| `↑` / `↓` | **Hover-based:** Scroll whichever section mouse is over one line |
+| `PgUp` / `PgDn` | **Hover-based:** Page-scroll whichever section mouse is over |
+| `Home` | **Hover-based:** Jump to first message in hovered section |
+| `End` | **Hover-based:** Jump to newest in hovered section (auto-scroll) |
 | `Mouse Wheel Up/Down` | **Hover-based:** Scroll whichever section mouse is over |
 
-### Mouse Hovering in DM Tab:
-- **Top half (broadcast section):** Mouse wheel scrolls broadcast messages
-- **Bottom half (DM section):** Mouse wheel scrolls direct messages
-- Both sections maintain independent scroll position
-- Hover naturally scrolls the section you're reading
+### Hover-Based Scrolling in DM Tab:
+- Keyboard & mouse both respect hover position
+- Hover over **top half (broadcast)** + scroll → scrolls broadcast messages
+- Hover over **bottom half (DM)** + scroll → scrolls DM messages
+- Works with: arrow keys, Page Up/Down, Home, End, mouse wheel
+- Both sections maintain independent scroll position and auto-scroll state
 
 ## Message Interaction
 
