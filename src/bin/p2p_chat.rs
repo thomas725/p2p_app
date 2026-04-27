@@ -3,7 +3,11 @@ use p2p_app::logging::p2plog_info;
 use p2p_app::{BroadcastMessage, build_behaviour, get_libp2p_identity, get_network_size};
 use std::time::{Duration, SystemTime};
 use tokio::io::{AsyncBufReadExt as _, BufReader};
-use tokio::select;
+
+enum Event {
+    Swarm(libp2p::swarm::SwarmEvent<p2p_app::behavior::AppBehaviourEvent>),
+    Stdin(Option<String>),
+}
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -63,8 +67,13 @@ async fn main() -> color_eyre::Result<()> {
     let mut lines = stdin.lines();
 
     loop {
-        select! {
-            event = swarm.select_next_some() => {
+        let event = tokio::select! {
+            swarm_event = swarm.select_next_some() => Some(Event::Swarm(swarm_event)),
+            line = lines.next_line() => Some(Event::Stdin(line.ok().flatten())),
+        };
+
+        match event {
+            Some(Event::Swarm(event)) => {
                 match event {
                     libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
                         p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
@@ -113,26 +122,26 @@ async fn main() -> color_eyre::Result<()> {
                     _ => {}
                 }
             }
-            line = lines.next_line() => {
-                if let Ok(Some(text)) = line {
-                    let text_str: String = text;
-                    if !text_str.is_empty() {
-                        let msg = BroadcastMessage {
-                            content: text_str,
-                            sent_at: Some(
-                                SystemTime::now()
-                                    .duration_since(SystemTime::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs_f64(),
-                            ),
-                            nickname: None,
-                        };
-                        if let Ok(json) = serde_json::to_string(&msg) {
-                            let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
-                        }
+            Some(Event::Stdin(Some(text))) => {
+                if !text.is_empty() {
+                    let msg = BroadcastMessage {
+                        content: text,
+                        sent_at: Some(
+                            SystemTime::now()
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs_f64(),
+                        ),
+                        nickname: None,
+                    };
+                    if let Ok(json) = serde_json::to_string(&msg) {
+                        let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
                     }
                 }
             }
+            Some(Event::Stdin(None)) => break,
+            None => {}
         }
     }
+    Ok(())
 }
