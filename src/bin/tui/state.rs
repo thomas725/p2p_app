@@ -38,6 +38,7 @@ pub struct AppState {
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
     pub chat_message_offset: usize, // Actual starting index for visible messages (set by render loop)
+    pub chat_area_height: usize, // Height of message area in rows (set by render loop)
 
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
@@ -77,6 +78,7 @@ impl AppState {
             chat_auto_scroll: true,
             visible_message_count: 1,
             chat_message_offset: 0,
+            chat_area_height: 0,
             dm_scroll_state: HashMap::new(),
             own_nickname,
             local_nicknames,

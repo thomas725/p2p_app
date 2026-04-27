@@ -135,6 +135,7 @@ fn render_chat_tab(
     text_width: usize,
     usable_height: usize,
 ) {
+    state.chat_area_height = area.height as usize;
     let (visible, effective_offset) = calc_visible_tuples(
         &state.messages,
         state.chat_auto_scroll,

@@ -259,11 +259,14 @@ fn handle_mouse_left_click(
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         handle_tab_click(state, mouse_column, &tab_titles);
-    } else if mouse_row > 2 && mouse_row < 16 {
-        if is_peers_tab {
-            handle_peer_row_click(state, mouse_row);
-        } else {
-            handle_message_click(state, mouse_row);
+    } else {
+        let max_row = state.chat_area_height.saturating_sub(1) as u16;
+        if mouse_row > 2 && mouse_row < max_row {
+            if is_peers_tab {
+                handle_peer_row_click(state, mouse_row);
+            } else {
+                handle_message_click(state, mouse_row);
+            }
         }
     }
 }
