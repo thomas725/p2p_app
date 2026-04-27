@@ -161,13 +161,13 @@ Lines Distribution:
 
 ## Testing Coverage
 
-| Module               | Test Lines             | Test Status                      |
-|---------------------:|:--------------------:|:--------------------------------:|
-| Network sizing      | Included in lib      | ✅ 15 tests                    |
-| Formatting utils  | Included in lib      | ✅ Tests included              |
-| Message models    | Included in lib      | ✅ Serialization tests       |
-| TUI state         | tests/tui_chat.rs    | ✅ 44 tests                  |
-| Integration       | tests/p2p_integration.rs | ✅ 1 test (network)       |
+| Module           | Test Lines               | Test Status            |
+|-----------------:|:------------------------:|:----------------------:|
+| Network sizing   | Included in lib          | ✅ 15 tests            |
+| Formatting utils | Included in lib          | ✅ Tests included      |
+| Message models   | Included in lib          | ✅ Serialization tests |
+| TUI state        | tests/tui_chat.rs        | ✅ 44 tests            |
+| Integration      | tests/p2p_integration.rs | ✅ 1 test (network)    |
 
 **Total Tests:** 64 passing
 
