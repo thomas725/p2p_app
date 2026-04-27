@@ -356,13 +356,16 @@ fn load_dm_messages(state: &mut super::state::AppState, peer_id: &str) {
                 messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
             }
             state.dm_messages.insert(peer_id.to_string(), messages);
-            // Initialize scroll state for this DM (auto_scroll=true by default)
-            state.dm_scroll_state.entry(peer_id.to_string()).or_insert((0, true));
-            p2plog_debug(format!("Loaded {} DM messages for {}", db_messages.len(), peer_id));
+            // Initialize scroll state for this DM (auto_scroll=true by default, start at end)
+            let msg_count = db_messages.len();
+            state.dm_scroll_state.entry(peer_id.to_string()).or_insert((msg_count, true));
+            p2plog_debug(format!("Loaded {} DM messages for {}", msg_count, peer_id));
         }
     } else if !state.dm_scroll_state.contains_key(peer_id) {
         // Messages exist but scroll state hasn't been initialized yet
-        state.dm_scroll_state.insert(peer_id.to_string(), (0, true));
+        if let Some(msgs) = state.dm_messages.get(peer_id) {
+            state.dm_scroll_state.insert(peer_id.to_string(), (msgs.len(), true));
+        }
     }
 }
 

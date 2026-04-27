@@ -227,7 +227,7 @@ fn render_dm_tab(
         let (broadcast_scroll_offset, broadcast_auto_scroll) = {
             let (offset, auto_scroll) = state.dm_broadcast_scroll_state
                 .entry(peer_id.to_string())
-                .or_insert((0, true));
+                .or_insert((broadcast_messages.len(), true));
             (*offset, *auto_scroll)
         };
 
