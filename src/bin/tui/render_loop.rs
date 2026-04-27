@@ -76,16 +76,28 @@ pub fn spawn_render_loop(
                     let text_width = avail_width.saturating_sub(4); // -4 for block borders
                     let usable_height = avail_height.saturating_sub(2); // -2 for block borders
 
-                    // Helper to calculate visible message count
+                    // Helper to calculate visible message count accounting for wrapping and line breaks
                     fn calc_visible(messages: &[String], text_width: usize, usable_height: usize) -> usize {
+                        if text_width == 0 || usable_height == 0 {
+                            return messages.len().max(1);
+                        }
                         let mut used = 0;
                         let mut count = 0;
                         for msg in messages.iter().rev() {
-                            let lines = msg.len().saturating_div(text_width).saturating_add(1);
-                            if used + lines > usable_height {
+                            // Count display lines: explicit breaks + wrapped lines
+                            let mut msg_lines = 0;
+                            for line in msg.split('\n') {
+                                if line.is_empty() {
+                                    msg_lines += 1; // empty line takes 1 display line
+                                } else {
+                                    // Ceiling division: how many wrapped lines for this line
+                                    msg_lines += (line.len() + text_width - 1) / text_width;
+                                }
+                            }
+                            if used + msg_lines > usable_height {
                                 break;
                             }
-                            used += lines;
+                            used += msg_lines;
                             count += 1;
                         }
                         count.max(1)
