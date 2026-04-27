@@ -59,6 +59,7 @@ pub fn spawn_command_processor(
                                                 } else {
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
+                                                        s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
                                                     }
                                                     if s.chat_scroll_offset > 0 {
                                                         s.chat_scroll_offset -= 1;
@@ -73,7 +74,10 @@ pub fn spawn_command_processor(
                                                         s.peer_selection += 1;
                                                     }
                                                 } else {
-                                                    s.chat_auto_scroll = false;
+                                                    if s.chat_auto_scroll {
+                                                        s.chat_auto_scroll = false;
+                                                        s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                    }
                                                     let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
                                                     if s.chat_scroll_offset < max_offset {
                                                         s.chat_scroll_offset += 1;
@@ -86,6 +90,7 @@ pub fn spawn_command_processor(
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
+                                                        s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
                                                     }
                                                     s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
                                                 }
@@ -94,7 +99,10 @@ pub fn spawn_command_processor(
                                             crossterm::event::KeyCode::PageDown => {
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-                                                    s.chat_auto_scroll = false;
+                                                    if s.chat_auto_scroll {
+                                                        s.chat_auto_scroll = false;
+                                                        s.chat_scroll_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                    }
                                                     let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
                                                     s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
                                                 }
