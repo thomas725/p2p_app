@@ -238,6 +238,10 @@ fn render_dm_tab(
             text_width,
             broadcast_usable_height,
         );
+        // Store visible count for this peer's broadcast section
+        let (_, dm_visible) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
+        state.dm_visible_counts.insert(peer_id.to_string(), (visible, dm_visible));
+
         let visible_broadcast: Vec<ListItem> = broadcast_strings
             .iter()
             .skip(effective_offset)
@@ -268,6 +272,9 @@ fn render_dm_tab(
             text_width,
             dm_usable_height,
         );
+        // Store visible count for this peer's DM section
+        let (broadcast_visible, _) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
+        state.dm_visible_counts.insert(peer_id.to_string(), (broadcast_visible, visible));
 
         let visible_msgs: Vec<ListItem> = msgs
             .iter()

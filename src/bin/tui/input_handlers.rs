@@ -170,7 +170,8 @@ fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str, _pe
 
             if !broadcast_messages.is_empty() {
                 if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-                    let max_offset = broadcast_messages.len().saturating_sub(1);
+                    let visible_count = state.dm_visible_counts.get(peer_id).map(|(b, _)| *b).unwrap_or(1);
+                    let max_offset = broadcast_messages.len().saturating_sub(visible_count);
                     match scroll_dir {
                         "up" => {
                             if *auto_scroll {
@@ -194,7 +195,8 @@ fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str, _pe
             // Scroll DM messages (bottom half)
             if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
                 if let Some(msgs) = state.dm_messages.get(peer_id) {
-                    let max_offset = msgs.len().saturating_sub(1);
+                    let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                    let max_offset = msgs.len().saturating_sub(visible_count);
                     match scroll_dir {
                         "up" => {
                             if *auto_scroll {
