@@ -49,7 +49,8 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
                     if *auto_scroll {
                         *auto_scroll = false;
                         if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            *scroll_offset = msgs.len().saturating_sub(1);
+                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                            *scroll_offset = msgs.len().saturating_sub(visible_count);
                         }
                     }
                     if *scroll_offset > 0 {
@@ -60,13 +61,19 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
                     if *auto_scroll {
                         *auto_scroll = false;
                         if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            *scroll_offset = msgs.len().saturating_sub(1);
+                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                            *scroll_offset = msgs.len().saturating_sub(visible_count);
                         }
                     }
                     if let Some(msgs) = state.dm_messages.get(peer_id) {
-                        let max_offset = msgs.len().saturating_sub(1);
+                        let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                        let max_offset = msgs.len().saturating_sub(visible_count);
                         if *scroll_offset < max_offset {
                             *scroll_offset += 1;
+                            // Re-enable auto_scroll if we've reached the end
+                            if *scroll_offset >= max_offset {
+                                *auto_scroll = true;
+                            }
                         }
                     }
                 }
@@ -74,7 +81,8 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
                     if *auto_scroll {
                         *auto_scroll = false;
                         if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            *scroll_offset = msgs.len().saturating_sub(1);
+                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                            *scroll_offset = msgs.len().saturating_sub(visible_count);
                         }
                     }
                     *scroll_offset = scroll_offset.saturating_sub(PAGE_SIZE);
@@ -83,12 +91,18 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
                     if *auto_scroll {
                         *auto_scroll = false;
                         if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            *scroll_offset = msgs.len().saturating_sub(1);
+                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                            *scroll_offset = msgs.len().saturating_sub(visible_count);
                         }
                     }
                     if let Some(msgs) = state.dm_messages.get(peer_id) {
-                        let max_offset = msgs.len().saturating_sub(1);
+                        let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                        let max_offset = msgs.len().saturating_sub(visible_count);
                         *scroll_offset = (*scroll_offset + PAGE_SIZE).min(max_offset);
+                        // Re-enable auto_scroll if we've reached the end
+                        if *scroll_offset >= max_offset {
+                            *auto_scroll = true;
+                        }
                     }
                 }
                 crossterm::event::KeyCode::Home => {
@@ -184,8 +198,11 @@ fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str, _pe
                             }
                         }
                         "down" => {
-                            *auto_scroll = false;
                             *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                            // Re-enable auto_scroll if we've reached the end
+                            if *scroll_offset >= max_offset {
+                                *auto_scroll = true;
+                            }
                         }
                         _ => {}
                     }
@@ -209,8 +226,11 @@ fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str, _pe
                             }
                         }
                         "down" => {
-                            *auto_scroll = false;
                             *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                            // Re-enable auto_scroll if we've reached the end
+                            if *scroll_offset >= max_offset {
+                                *auto_scroll = true;
+                            }
                         }
                         _ => {}
                     }
