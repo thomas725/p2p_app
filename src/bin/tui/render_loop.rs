@@ -218,7 +218,10 @@ pub fn spawn_render_loop(
                         // Create a wrapper that combines textarea with block styling
                         let inner_area = input_block.inner(chunks[3]);
                         f.render_widget(input_block, chunks[3]);
-                        f.render_widget(&s.chat_input, inner_area);
+                        // Set cursor style without underline
+                        let mut textarea = s.chat_input.clone();
+                        textarea.set_cursor_line_style(Style::default());
+                        f.render_widget(&textarea, inner_area);
                     } else {
                         f.render_widget(input_block, chunks[3]);
                     }
