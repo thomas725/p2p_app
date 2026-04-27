@@ -32,6 +32,7 @@ pub struct AppState {
     pub chat_input: TextArea<'static>,
     pub peer_selection: usize, // For navigating peer list
     pub mouse_capture: bool,
+    pub last_mouse_row: u16, // For hover-based scroll targeting in split layouts
 
     // Scroll State (Chat tab)
     pub chat_scroll_offset: usize,
@@ -43,6 +44,8 @@ pub struct AppState {
 
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
+    // Per-DM broadcast scroll state: peer_id -> (scroll_offset, auto_scroll)
+    pub dm_broadcast_scroll_state: HashMap<String, (usize, bool)>,
 
     // Unread Counts
     pub unread_broadcasts: u32,
@@ -75,6 +78,7 @@ impl AppState {
             peer_selection: 0,
             concurrent_peers: 0,
             mouse_capture: true,
+            last_mouse_row: 0,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             visible_message_count: 1,
@@ -82,6 +86,7 @@ impl AppState {
             chat_area_height: 0,
             chat_message_lines: Vec::new(),
             dm_scroll_state: HashMap::new(),
+            dm_broadcast_scroll_state: HashMap::new(),
             own_nickname,
             local_nicknames,
             received_nicknames,

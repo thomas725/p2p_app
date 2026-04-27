@@ -223,10 +223,18 @@ fn render_dm_tab(
             .iter()
             .map(|(msg, _)| msg.clone())
             .collect();
+
+        let (broadcast_scroll_offset, broadcast_auto_scroll) = {
+            let (offset, auto_scroll) = state.dm_broadcast_scroll_state
+                .entry(peer_id.to_string())
+                .or_insert((0, true));
+            (*offset, *auto_scroll)
+        };
+
         let (visible, effective_offset) = calc_visible_strings(
             &broadcast_strings,
-            true,
-            0,
+            broadcast_auto_scroll,
+            broadcast_scroll_offset,
             text_width,
             broadcast_usable_height,
         );

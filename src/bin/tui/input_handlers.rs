@@ -150,31 +150,68 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
     }
 }
 
-/// Handles mouse wheel scrolling (for both Chat and DM tabs)
-fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str) {
+/// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs
+fn handle_mouse_scroll(state: &mut super::state::AppState, scroll_dir: &str, _peer_id: Option<&str>) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
 
     if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = &tab_content {
-        // For DM tabs, scroll in the DM section
-        if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
-            if let Some(msgs) = state.dm_messages.get(peer_id) {
-                let max_offset = msgs.len().saturating_sub(1);
-                match scroll_dir {
-                    "up" => {
-                        if *auto_scroll {
-                            *auto_scroll = false;
-                            *scroll_offset = max_offset;
-                        } else if *scroll_offset >= WHEEL_SCROLL_LINES {
-                            *scroll_offset -= WHEEL_SCROLL_LINES;
-                        } else {
-                            *scroll_offset = 0;
+        // For DM tabs, determine which section to scroll based on mouse hover position
+        let mid_row = 2 + (state.chat_area_height / 2);
+        let mouse_row = state.last_mouse_row as usize;
+        let in_broadcast_section = mouse_row < mid_row;
+
+        if in_broadcast_section {
+            // Scroll broadcast messages (top half)
+            let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+                .iter()
+                .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+                .cloned()
+                .collect();
+
+            if !broadcast_messages.is_empty() {
+                if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
+                    let max_offset = broadcast_messages.len().saturating_sub(1);
+                    match scroll_dir {
+                        "up" => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            } else if *scroll_offset >= WHEEL_SCROLL_LINES {
+                                *scroll_offset -= WHEEL_SCROLL_LINES;
+                            } else {
+                                *scroll_offset = 0;
+                            }
                         }
+                        "down" => {
+                            *auto_scroll = false;
+                            *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                        }
+                        _ => {}
                     }
-                    "down" => {
-                        *auto_scroll = false;
-                        *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                }
+            }
+        } else {
+            // Scroll DM messages (bottom half)
+            if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
+                if let Some(msgs) = state.dm_messages.get(peer_id) {
+                    let max_offset = msgs.len().saturating_sub(1);
+                    match scroll_dir {
+                        "up" => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            } else if *scroll_offset >= WHEEL_SCROLL_LINES {
+                                *scroll_offset -= WHEEL_SCROLL_LINES;
+                            } else {
+                                *scroll_offset = 0;
+                            }
+                        }
+                        "down" => {
+                            *auto_scroll = false;
+                            *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
         }
@@ -521,6 +558,10 @@ async fn process_mouse_event(
     render_tx: &mpsc::Sender<RenderEvent>,
 ) {
     let mut s = state.lock().await;
+
+    // Always track mouse position for hover-based interactions
+    s.last_mouse_row = mouse_event.row;
+
     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
     let is_message_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Direct(_));
@@ -532,10 +573,10 @@ async fn process_mouse_event(
 
     match mouse_event.kind {
         crossterm::event::MouseEventKind::ScrollUp if is_message_tab => {
-            handle_mouse_scroll(&mut s, "up");
+            handle_mouse_scroll(&mut s, "up", peer_id);
         }
         crossterm::event::MouseEventKind::ScrollDown if is_message_tab => {
-            handle_mouse_scroll(&mut s, "down");
+            handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
             handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_peers_tab, is_dm_tab, peer_id);
