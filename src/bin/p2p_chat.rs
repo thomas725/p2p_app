@@ -35,6 +35,29 @@ fn current_timestamp() -> f64 {
         .as_secs_f64()
 }
 
+fn handle_listen_addr_event(address: &libp2p::Multiaddr) {
+    p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
+    if let Some(port) = extract_tcp_port(address) {
+        let _ = p2p_app::save_listen_ports(Some(port), None);
+    }
+    #[cfg(feature = "quic")]
+    if let Some(port) = extract_udp_port(address) {
+        let (tcp, _) = p2p_app::load_listen_ports().unwrap_or((None, None));
+        let _ = p2p_app::save_listen_ports(tcp, Some(port));
+    }
+}
+
+fn handle_message_event(propagation_source: &libp2p::PeerId, message: &gossipsub::Message) {
+    let sender = propagation_source.to_string();
+    let sender_short = &sender[..8.min(sender.len())];
+    let msg_str = String::from_utf8_lossy(&message.data);
+    if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
+        p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));
+    } else {
+        p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, msg_str));
+    }
+}
+
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
@@ -102,15 +125,7 @@ async fn main() -> color_eyre::Result<()> {
             Some(Event::Swarm(event)) => {
                 match event {
                     libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
-                        if let Some(port) = extract_tcp_port(&address) {
-                            let _ = p2p_app::save_listen_ports(Some(port), None);
-                        }
-                        #[cfg(feature = "quic")]
-                        if let Some(port) = extract_udp_port(&address) {
-                            let (tcp, _) = p2p_app::load_listen_ports().unwrap_or((None, None));
-                            let _ = p2p_app::save_listen_ports(tcp, Some(port));
-                        }
+                        handle_listen_addr_event(&address);
                     }
                     libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                         p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
@@ -121,17 +136,7 @@ async fn main() -> color_eyre::Result<()> {
                     libp2p::swarm::SwarmEvent::Behaviour(p2p_app::behavior::AppBehaviourEvent::Gossipsub(
                         libp2p::gossipsub::Event::Message { propagation_source, message, .. }
                     )) => {
-                        let sender = propagation_source.to_string();
-                        let sender_short = &sender[..8.min(sender.len())];
-
-                        // Try to parse as BroadcastMessage
-                        let msg_str = String::from_utf8_lossy(&message.data);
-                        if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
-                            p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));
-                        } else {
-                            // Fallback: display raw message if not valid JSON
-                            p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, msg_str));
-                        }
+                        handle_message_event(&propagation_source, &message);
                     }
                     _ => {}
                 }
