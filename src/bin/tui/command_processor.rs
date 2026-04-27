@@ -60,11 +60,7 @@ pub fn spawn_command_processor(
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
                                                     }
-                                                    if s.messages.len() > s.visible_message_count {
-                                                        if s.chat_scroll_offset > 0 {
-                                                            s.chat_scroll_offset -= 1;
-                                                        }
-                                                    } else if s.chat_scroll_offset > 0 {
+                                                    if s.chat_scroll_offset > 0 {
                                                         s.chat_scroll_offset -= 1;
                                                     }
                                                 }
@@ -78,11 +74,9 @@ pub fn spawn_command_processor(
                                                     }
                                                 } else {
                                                     s.chat_auto_scroll = false;
-                                                    if s.messages.len() > s.visible_message_count {
-                                                        let max_offset = s.max_scroll_offset;
-                                                        if s.chat_scroll_offset < max_offset {
-                                                            s.chat_scroll_offset += 1;
-                                                        }
+                                                    let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                    if s.chat_scroll_offset < max_offset {
+                                                        s.chat_scroll_offset += 1;
                                                     }
                                                 }
                                                 drop(s);
@@ -93,13 +87,7 @@ pub fn spawn_command_processor(
                                                     if s.chat_auto_scroll {
                                                         s.chat_auto_scroll = false;
                                                     }
-                                                    if s.messages.len() > s.visible_message_count {
-                                                        if s.chat_scroll_offset > 0 {
-                                                            s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
-                                                        }
-                                                    } else {
-                                                        s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
-                                                    }
+                                                    s.chat_scroll_offset = s.chat_scroll_offset.saturating_sub(PAGE_SIZE);
                                                 }
                                                 drop(s);
                                             }
@@ -107,10 +95,8 @@ pub fn spawn_command_processor(
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                                     s.chat_auto_scroll = false;
-                                                    if s.messages.len() > s.visible_message_count {
-                                                        let max_offset = s.max_scroll_offset;
-                                                        s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
-                                                    }
+                                                    let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                    s.chat_scroll_offset = (s.chat_scroll_offset + PAGE_SIZE).min(max_offset);
                                                 }
                                                 drop(s);
                                             }
@@ -118,11 +104,7 @@ pub fn spawn_command_processor(
                                                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                                                 if !matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
                                                     s.chat_auto_scroll = false;
-                                                    if s.messages.len() > s.visible_message_count {
-                                                        if s.chat_scroll_offset > 0 {
-                                                            s.chat_scroll_offset -= 1;
-                                                        }
-                                                    }
+                                                    s.chat_scroll_offset = 0;
                                                 }
                                                 drop(s);
                                             }
@@ -242,11 +224,10 @@ pub fn spawn_command_processor(
 
                                         match mouse_event.kind {
                                             crossterm::event::MouseEventKind::ScrollUp if is_chat_tab => {
-            if s.chat_auto_scroll {
-                                                        s.chat_auto_scroll = false;
-                                                        if s.messages.len() > s.visible_message_count {
-                                                            s.chat_scroll_offset = s.max_scroll_offset;
-                                                        }
+                                                if s.chat_auto_scroll {
+                                                    s.chat_auto_scroll = false;
+                                                    let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                    s.chat_scroll_offset = max_offset;
                                                 } else if s.chat_scroll_offset >= WHEEL_SCROLL_LINES {
                                                     s.chat_scroll_offset -= WHEEL_SCROLL_LINES;
                                                 } else {
@@ -255,10 +236,8 @@ pub fn spawn_command_processor(
                                             }
                                             crossterm::event::MouseEventKind::ScrollDown if is_chat_tab => {
                                                 s.chat_auto_scroll = false;
-                                                if s.messages.len() > s.visible_message_count {
-                                                    let max_offset = s.max_scroll_offset;
-                                                    s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-                                                }
+                                                let max_offset = s.messages.len().saturating_sub(s.visible_message_count);
+                                                s.chat_scroll_offset = (s.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
                                             }
                                             crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
                                                 if mouse_event.row == 0 {
