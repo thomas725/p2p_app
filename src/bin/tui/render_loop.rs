@@ -24,7 +24,7 @@ fn calc_visible_tuples(
 ) -> (usize, usize) {
     let total_items = messages.len();
     if total_items == 0 {
-        return (1, 0);
+        return (0, 0);
     }
 
     if auto_scroll {
@@ -70,7 +70,7 @@ fn calc_visible_strings(
 ) -> (usize, usize) {
     let total_items = messages.len();
     if total_items == 0 {
-        return (1, 0);
+        return (0, 0);
     }
 
     if auto_scroll {
