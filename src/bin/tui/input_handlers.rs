@@ -42,77 +42,128 @@ async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut supe
             _ => {}
         }
     } else if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = &tab_content {
-        // For DM tabs, scroll in the DM section (bottom half)
-        if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
-            match key_code {
-                crossterm::event::KeyCode::Up => {
-                    if *auto_scroll {
-                        *auto_scroll = false;
-                        if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                            *scroll_offset = msgs.len().saturating_sub(visible_count);
+        // For DM tabs, determine which section to scroll based on mouse hover position
+        let mid_row = 2 + (state.chat_area_height / 2);
+        let mouse_row = state.last_mouse_row as usize;
+        let in_broadcast_section = mouse_row < mid_row;
+
+        if in_broadcast_section {
+            // Scroll broadcast messages (top half)
+            let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+                .iter()
+                .filter(|(_, sender_id)| sender_id.as_ref().map_or(false, |id| id == peer_id))
+                .cloned()
+                .collect();
+
+            if !broadcast_messages.is_empty() {
+                if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
+                    let visible_count = state.dm_visible_counts.get(peer_id).map(|(b, _)| *b).unwrap_or(1);
+                    let max_offset = broadcast_messages.len().saturating_sub(visible_count);
+                    match key_code {
+                        crossterm::event::KeyCode::Up => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            if *scroll_offset > 0 {
+                                *scroll_offset -= 1;
+                            }
                         }
-                    }
-                    if *scroll_offset > 0 {
-                        *scroll_offset -= 1;
-                    }
-                }
-                crossterm::event::KeyCode::Down => {
-                    if *auto_scroll {
-                        *auto_scroll = false;
-                        if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                            *scroll_offset = msgs.len().saturating_sub(visible_count);
+                        crossterm::event::KeyCode::Down => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            if *scroll_offset < max_offset {
+                                *scroll_offset += 1;
+                                if *scroll_offset >= max_offset {
+                                    *auto_scroll = true;
+                                }
+                            }
                         }
-                    }
-                    if let Some(msgs) = state.dm_messages.get(peer_id) {
-                        let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                        let max_offset = msgs.len().saturating_sub(visible_count);
-                        if *scroll_offset < max_offset {
-                            *scroll_offset += 1;
-                            // Re-enable auto_scroll if we've reached the end
+                        crossterm::event::KeyCode::PageUp => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            *scroll_offset = scroll_offset.saturating_sub(PAGE_SIZE);
+                        }
+                        crossterm::event::KeyCode::PageDown => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            *scroll_offset = (*scroll_offset + PAGE_SIZE).min(max_offset);
                             if *scroll_offset >= max_offset {
                                 *auto_scroll = true;
                             }
                         }
-                    }
-                }
-                crossterm::event::KeyCode::PageUp => {
-                    if *auto_scroll {
-                        *auto_scroll = false;
-                        if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                            *scroll_offset = msgs.len().saturating_sub(visible_count);
+                        crossterm::event::KeyCode::Home => {
+                            *auto_scroll = false;
+                            *scroll_offset = 0;
                         }
-                    }
-                    *scroll_offset = scroll_offset.saturating_sub(PAGE_SIZE);
-                }
-                crossterm::event::KeyCode::PageDown => {
-                    if *auto_scroll {
-                        *auto_scroll = false;
-                        if let Some(msgs) = state.dm_messages.get(peer_id) {
-                            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                            *scroll_offset = msgs.len().saturating_sub(visible_count);
-                        }
-                    }
-                    if let Some(msgs) = state.dm_messages.get(peer_id) {
-                        let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-                        let max_offset = msgs.len().saturating_sub(visible_count);
-                        *scroll_offset = (*scroll_offset + PAGE_SIZE).min(max_offset);
-                        // Re-enable auto_scroll if we've reached the end
-                        if *scroll_offset >= max_offset {
+                        crossterm::event::KeyCode::End => {
                             *auto_scroll = true;
                         }
+                        _ => {}
                     }
                 }
-                crossterm::event::KeyCode::Home => {
-                    *auto_scroll = false;
-                    *scroll_offset = 0;
+            }
+        } else {
+            // Scroll DM messages (bottom half)
+            if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
+                if let Some(msgs) = state.dm_messages.get(peer_id) {
+                    let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
+                    let max_offset = msgs.len().saturating_sub(visible_count);
+                    match key_code {
+                        crossterm::event::KeyCode::Up => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            if *scroll_offset > 0 {
+                                *scroll_offset -= 1;
+                            }
+                        }
+                        crossterm::event::KeyCode::Down => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            if *scroll_offset < max_offset {
+                                *scroll_offset += 1;
+                                if *scroll_offset >= max_offset {
+                                    *auto_scroll = true;
+                                }
+                            }
+                        }
+                        crossterm::event::KeyCode::PageUp => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            *scroll_offset = scroll_offset.saturating_sub(PAGE_SIZE);
+                        }
+                        crossterm::event::KeyCode::PageDown => {
+                            if *auto_scroll {
+                                *auto_scroll = false;
+                                *scroll_offset = max_offset;
+                            }
+                            *scroll_offset = (*scroll_offset + PAGE_SIZE).min(max_offset);
+                            if *scroll_offset >= max_offset {
+                                *auto_scroll = true;
+                            }
+                        }
+                        crossterm::event::KeyCode::Home => {
+                            *auto_scroll = false;
+                            *scroll_offset = 0;
+                        }
+                        crossterm::event::KeyCode::End => {
+                            *auto_scroll = true;
+                        }
+                        _ => {}
+                    }
                 }
-                crossterm::event::KeyCode::End => {
-                    *auto_scroll = true;
-                }
-                _ => {}
             }
         }
     } else {
