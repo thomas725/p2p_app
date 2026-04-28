@@ -76,6 +76,34 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     Ok(conn)
 }
 
+/// Initialize the database once at startup.
+/// Logs the database path and local peer ID.
+/// Returns the connection for use by the application.
+///
+/// This should be called once at application startup before any other DB operations.
+pub fn init_database() -> color_eyre::Result<SqliteConnection> {
+    let db_path = get_database_url();
+    let conn = sqlite_connect()?;
+
+    // Log startup info once
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!("Database: {}", db_path);
+        if let Ok(id) = get_local_peer_id() {
+            tracing::info!("Local peer ID: {}", id);
+        }
+    }
+    #[cfg(not(feature = "tracing"))]
+    {
+        eprintln!("[Startup] Database: {}", db_path);
+        if let Ok(id) = get_local_peer_id() {
+            eprintln!("[Startup] Local peer ID: {}", id);
+        }
+    }
+
+    Ok(conn)
+}
+
 /// Ensures all columns exist in the database schema.
 /// This is needed because SQLite doesn't support "ADD COLUMN IF NOT EXISTS".
 /// We check each table/column pair and add missing ones before migrations run.
@@ -88,7 +116,9 @@ fn ensure_columns(conn: &mut SqliteConnection) {
     for (table, column, col_type) in SCHEMA_ENTRIES {
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
         match sql_query(&sql).execute(conn) {
-            Ok(_) => crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table)),
+            Ok(_) => {
+                crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
+            }
             Err(e) => {
                 // SQLite has no "ADD COLUMN IF NOT EXISTS". The common/expected failure mode
                 // is "duplicate column name: <col>" for already-existing columns; don't spam logs.
@@ -338,4 +368,10 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         }
     }
     Ok(keypair)
+}
+
+/// Get the local peer ID from the stored identity.
+pub fn get_local_peer_id() -> color_eyre::Result<libp2p::PeerId> {
+    let keypair = get_libp2p_identity()?;
+    Ok(keypair.public().to_peer_id())
 }

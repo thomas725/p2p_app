@@ -10,22 +10,18 @@ enum Event {
 }
 
 fn extract_tcp_port(address: &libp2p::Multiaddr) -> Option<i32> {
-    address
-        .iter()
-        .find_map(|p| match p {
-            libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
-            _ => None,
-        })
+    address.iter().find_map(|p| match p {
+        libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+        _ => None,
+    })
 }
 
 #[cfg(feature = "quic")]
 fn extract_udp_port(address: &libp2p::Multiaddr) -> Option<i32> {
-    address
-        .iter()
-        .find_map(|p| match p {
-            libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
-            _ => None,
-        })
+    address.iter().find_map(|p| match p {
+        libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+        _ => None,
+    })
 }
 
 fn current_timestamp() -> f64 {
@@ -64,8 +60,8 @@ async fn main() -> color_eyre::Result<()> {
     p2p_app::logging::init_logging();
     p2plog_info("Starting P2P Chat CLI".to_string());
 
-    let db_url = p2p_app::get_database_url();
-    p2plog_info(format!("Using database: {}", db_url));
+    // Initialize database once at startup (logs database path and peer ID)
+    let _db = p2p_app::init_database()?;
 
     let network_size = match get_network_size() {
         Ok(size) => {
@@ -122,25 +118,29 @@ async fn main() -> color_eyre::Result<()> {
         };
 
         match event {
-            Some(Event::Swarm(event)) => {
-                match *event {
-                    libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
-                        handle_listen_addr_event(&address);
-                    }
-                    libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
-                    }
-                    libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                        p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
-                    }
-                    libp2p::swarm::SwarmEvent::Behaviour(p2p_app::behavior::AppBehaviourEvent::Gossipsub(
-                        libp2p::gossipsub::Event::Message { propagation_source, message, .. }
-                    )) => {
-                        handle_message_event(&propagation_source, &message);
-                    }
-                    _ => {}
+            Some(Event::Swarm(event)) => match *event {
+                libp2p::swarm::SwarmEvent::NewListenAddr { address, .. } => {
+                    handle_listen_addr_event(&address);
                 }
-            }
+                libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                    p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
+                }
+                libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                    p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
+                }
+                libp2p::swarm::SwarmEvent::Behaviour(
+                    p2p_app::behavior::AppBehaviourEvent::Gossipsub(
+                        libp2p::gossipsub::Event::Message {
+                            propagation_source,
+                            message,
+                            ..
+                        },
+                    ),
+                ) => {
+                    handle_message_event(&propagation_source, &message);
+                }
+                _ => {}
+            },
             Some(Event::Stdin(Some(text))) if !text.is_empty() => {
                 let msg = BroadcastMessage {
                     content: text,
@@ -149,7 +149,10 @@ async fn main() -> color_eyre::Result<()> {
                     msg_id: None,
                 };
                 if let Ok(json) = serde_json::to_string(&msg) {
-                    let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());
+                    let _ = swarm
+                        .behaviour_mut()
+                        .gossipsub
+                        .publish(topic.clone(), json.as_bytes());
                 }
             }
             Some(Event::Stdin(_)) => {}

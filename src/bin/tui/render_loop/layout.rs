@@ -1,10 +1,10 @@
 use crate::tui::state::AppState;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
-    Frame,
 };
 
 /// Render the tab navigation bar
@@ -23,15 +23,21 @@ pub fn render_peer_info(f: &mut Frame, peer_area: Rect, state: &AppState) {
 }
 
 /// Render the input section with optional nickname editing
-pub fn render_input_section(f: &mut Frame, input_area: Rect, state: &AppState, tab_content: &TabContent) {
+pub fn render_input_section(
+    f: &mut Frame,
+    input_area: Rect,
+    state: &AppState,
+    tab_content: &TabContent,
+) {
     let title = if state.editing_nickname {
-        "Edit Nickname (Enter to save, Esc to cancel)"
+        format!(
+            "Edit Nickname ({}) - Enter to save, Esc to cancel",
+            p2p_app::short_peer_id(&state.local_peer_id)
+        )
     } else {
-        "Input"
+        "Input".to_string()
     };
-    let input_block = Block::default()
-        .title(title)
-        .borders(Borders::ALL);
+    let input_block = Block::default().title(title).borders(Borders::ALL);
     if tab_content.is_input_enabled() || state.editing_nickname {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);
@@ -45,7 +51,9 @@ pub fn render_input_section(f: &mut Frame, input_area: Rect, state: &AppState, t
 
 /// Render the help text shortcuts
 pub fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect) {
-    let shortcuts = Paragraph::new("Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit");
+    let shortcuts = Paragraph::new(
+        "Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
+    );
     f.render_widget(shortcuts, shortcuts_area);
 }
 

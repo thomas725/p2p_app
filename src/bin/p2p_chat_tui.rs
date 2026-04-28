@@ -64,15 +64,15 @@ mod tui {
     pub use p2p_app::tui_tabs::DynamicTabs;
     use ratatui_textarea::TextArea;
 
+    pub mod click_handlers;
     mod command_processor;
     pub mod constants;
     mod event_source;
     mod input_processor;
-    pub mod scroll_handlers;
-    pub mod click_handlers;
-    mod message_handlers;
     pub mod main_loop;
+    mod message_handlers;
     mod render_loop;
+    pub mod scroll_handlers;
     mod state;
     mod tracing_writer;
 }
@@ -83,8 +83,8 @@ async fn main() -> color_eyre::Result<()> {
     init_logging();
     p2p_app::logging::set_tui_callback(|_| {});
 
-    let db_url = p2p_app::get_database_url();
-    p2plog_info(format!("Using database: {}", db_url));
+    // Initialize database once at startup (logs database path and peer ID)
+    let _db = p2p_app::init_database()?;
 
     let topic = gossipsub::IdentTopic::new("test-net");
 

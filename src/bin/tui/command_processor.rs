@@ -55,7 +55,11 @@ fn upsert_peer_last_seen(
 }
 
 /// Processes network (swarm) events and updates application state
-async fn process_swarm_event(swarm_event: SwarmEvent, state: &SharedState) {
+async fn process_swarm_event(
+    swarm_event: SwarmEvent,
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
     match swarm_event {
         SwarmEvent::BroadcastMessage {
             content,
@@ -184,20 +188,35 @@ async fn process_swarm_event(swarm_event: SwarmEvent, state: &SharedState) {
             let _ = p2p_app::save_receipt(&ack_for, &peer_id, 0, at);
         }
         SwarmEvent::PeerConnected(peer_id) => {
-            let mut s = state.lock().await;
-            s.concurrent_peers += 1;
-            p2plog_debug(format!(
-                "Peer connected: {} (total: {})",
-                peer_id, s.concurrent_peers
-            ));
-            if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
-                && let Ok(peer) = p2p_app::save_peer(&peer_id, std::slice::from_ref(&peer_id))
-            {
-                let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-                let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                s.peers.push_back((peer_id, first_seen, last_seen));
-                sort_peers_by_last_seen(&mut s);
-            }
+            let (own_nickname, _concurrent_peers) = {
+                let mut s = state.lock().await;
+                s.concurrent_peers += 1;
+                p2plog_debug(format!(
+                    "Peer connected: {} (total: {})",
+                    peer_id, s.concurrent_peers
+                ));
+                if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
+                    && let Ok(peer) = p2p_app::save_peer(&peer_id, std::slice::from_ref(&peer_id))
+                {
+                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+                    s.peers.push_back((peer_id.clone(), first_seen, last_seen));
+                    sort_peers_by_last_seen(&mut s);
+                }
+                (s.own_nickname.clone(), s.concurrent_peers)
+            };
+
+            // Exchange nicknames on connection - send our nickname to the new peer
+            let msg_id = p2p_app::gen_msg_id();
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::SendDm {
+                    peer_id: peer_id.clone(),
+                    content: String::new(), // Empty content - just exchange nicknames
+                    nickname: Some(own_nickname),
+                    msg_id: Some(msg_id),
+                    ack_for: None,
+                })
+                .await;
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
@@ -251,7 +270,7 @@ pub fn spawn_command_processor(
                     }
                 }
                 Some(Event::SwarmEvent(swarm_event)) => {
-                    process_swarm_event(swarm_event, &state).await;
+                    process_swarm_event(swarm_event, &state, &swarm_cmd_tx).await;
                     let _ = render_tx.send(RenderEvent).await;
                 }
                 None => break,

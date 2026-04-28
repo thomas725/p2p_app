@@ -162,9 +162,14 @@ pub async fn run_new_tui(
         ));
     }
 
+    let local_peer_id = p2p_app::get_local_peer_id()
+        .map(|id| id.to_string())
+        .unwrap_or_else(|_| "unknown".to_string());
+
     let state = Arc::new(Mutex::new(super::state::AppState::new(
         topic_str.clone(),
         own_nickname.clone(),
+        local_peer_id.clone(),
         local_nicknames,
         received_nicknames,
         self_nicknames_for_peers,

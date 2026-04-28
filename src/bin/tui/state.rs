@@ -84,6 +84,7 @@ pub struct AppState {
 
     // Runtime Context
     pub own_nickname: String,
+    pub local_peer_id: String,
     pub topic_str: String,
 
     // Edit Mode
@@ -107,6 +108,7 @@ impl AppState {
     pub fn new(
         topic_str: String,
         own_nickname: String,
+        local_peer_id: String,
         local_nicknames: HashMap<String, String>,
         received_nicknames: HashMap<String, String>,
         self_nicknames_for_peers: HashMap<String, String>,
@@ -152,6 +154,7 @@ impl AppState {
             dm_area_y: HashMap::new(),
             broadcast_selection: None,
             own_nickname,
+            local_peer_id,
             local_nicknames,
             received_nicknames,
             self_nicknames_for_peers,
