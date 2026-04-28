@@ -34,6 +34,7 @@ diesel::table! {
         target_peer -> Nullable<Text>,
         msg_id -> Nullable<Text>,
         sent_at -> Nullable<Double>,
+        sender_nickname -> Nullable<Text>,
     }
 }
 

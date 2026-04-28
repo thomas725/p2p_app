@@ -17,6 +17,7 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("messages", "is_direct", "INTEGER"),
     ("messages", "msg_id", "TEXT"),
     ("messages", "peer_id", "TEXT"),
+    ("messages", "sender_nickname", "TEXT"),
     ("messages", "sent", "INTEGER"),
     ("messages", "sent_at", "DOUBLE"),
     ("messages", "target_peer", "TEXT"),

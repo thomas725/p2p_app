@@ -29,7 +29,16 @@ pub fn save_message(
     is_direct: bool,
     target_peer: Option<&str>,
 ) -> color_eyre::Result<Message> {
-    save_message_with_meta(content, peer_id, topic, is_direct, target_peer, None, None)
+    save_message_with_meta(
+        content,
+        peer_id,
+        topic,
+        is_direct,
+        target_peer,
+        None,
+        None,
+        None,
+    )
 }
 
 pub fn save_message_with_meta(
@@ -38,6 +47,7 @@ pub fn save_message_with_meta(
     topic: &str,
     is_direct: bool,
     target_peer: Option<&str>,
+    sender_nickname: Option<&str>,
     msg_id: Option<&str>,
     sent_at: Option<f64>,
 ) -> color_eyre::Result<Message> {
@@ -49,6 +59,7 @@ pub fn save_message_with_meta(
         sent: 0,
         is_direct: is_direct as i32,
         target_peer: target_peer.map(|s| s.to_string()),
+        sender_nickname: sender_nickname.map(|s| s.to_string()),
         msg_id: msg_id.map(|s| s.to_string()),
         sent_at,
     };

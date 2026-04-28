@@ -11,6 +11,35 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
 #[test]
+fn test_nickname_display_consistency() {
+    // Test nickname display logic matches between real-time and loaded messages
+    // This reproduces the nickname mismatch issue between sender and receiver
+
+    // Simulate peer with a received nickname
+    let peer_id = "12D3KooWTest123456789";
+    let received_nickname = "Bob";
+    let mut received_nicknames: HashMap<String, String> = HashMap::new();
+    received_nicknames.insert(peer_id.to_string(), received_nickname.to_string());
+
+    // peer_display_name should return the nickname for known peers
+    let display_name = p2p_app::peer_display_name(peer_id, &HashMap::new(), &received_nicknames);
+    assert_eq!(
+        display_name, received_nickname,
+        "Known peer should display their nickname"
+    );
+
+    // For unknown peers, should return short ID (last 8 chars)
+    let unknown_peer = "12D3KooWUnknown999999";
+    let unknown_display =
+        p2p_app::peer_display_name(unknown_peer, &HashMap::new(), &HashMap::new());
+    assert_eq!(
+        unknown_display, "wn999999",
+        "Unknown peer should display short ID (last 8 chars), got: {}",
+        unknown_display
+    );
+}
+
+#[test]
 fn test_tui_tab_navigation() {
     let _logs: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
     let state = p2p_app::tui_tabs::DynamicTabs::new();

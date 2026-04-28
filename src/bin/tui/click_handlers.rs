@@ -25,7 +25,10 @@ pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[S
                 state.active_tab = idx;
                 state.chat_scroll_offset = 0;
                 state.cancel_nickname_edit();
-                p2plog_debug(format!("Switched to tab {} via mouse click", state.active_tab));
+                p2plog_debug(format!(
+                    "Switched to tab {} via mouse click",
+                    state.active_tab
+                ));
                 return true;
             }
             break;
@@ -50,7 +53,13 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
                 let sender_display = msg
                     .peer_id
                     .as_ref()
-                    .map(|p| p2p_app::peer_display_name(p, &state.local_nicknames, &state.received_nicknames))
+                    .map(|p| {
+                        p2p_app::peer_display_name(
+                            p,
+                            &state.local_nicknames,
+                            &state.received_nicknames,
+                        )
+                    })
                     .unwrap_or_else(|| self_nick_for_peer.clone());
                 messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
             }
@@ -62,27 +71,34 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
                     .collect(),
             );
             let msg_count = db_messages.len();
-            state.dm_scroll_state.entry(peer_id.to_string()).or_insert((msg_count, true));
+            state
+                .dm_scroll_state
+                .entry(peer_id.to_string())
+                .or_insert((msg_count, true));
             p2plog_debug(format!("Loaded {} DM messages for {}", msg_count, peer_id));
         }
     } else if !state.dm_scroll_state.contains_key(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id) {
-            state.dm_scroll_state.insert(peer_id.to_string(), (msgs.len(), true));
-        }
+        && let Some(msgs) = state.dm_messages.get(peer_id)
+    {
+        state
+            .dm_scroll_state
+            .insert(peer_id.to_string(), (msgs.len(), true));
+    }
 }
 
 /// Handles peer row clicks in the Peers tab
 pub fn handle_peer_row_click(state: &mut AppState, row: u16) {
     let peer_row = (row as usize).saturating_sub(3);
     if peer_row < state.peers.len()
-        && let Some((peer_id, _, _)) = state.peers.get(peer_row) {
-            let peer_id_clone = peer_id.clone();
-            load_dm_messages(state, &peer_id_clone);
-            let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
-            state.active_tab = tab_idx;
-            state.cancel_nickname_edit();
-            p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
-        }
+        && let Some((peer_id, _, _)) = state.peers.get(peer_row)
+    {
+        let peer_id_clone = peer_id.clone();
+        load_dm_messages(state, &peer_id_clone);
+        let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
+        state.active_tab = tab_idx;
+        state.cancel_nickname_edit();
+        p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
+    }
 }
 
 /// Handles clicks on messages in the chat view (non-DM tabs)
@@ -108,7 +124,10 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
 
     // If the user clicked the receipt marker prefix on one of our outgoing broadcast messages, show receipt details.
     if (column as usize) <= 1
-        && state.messages.get(global_idx).is_some_and(|(_, pid)| pid.is_none())
+        && state
+            .messages
+            .get(global_idx)
+            .is_some_and(|(_, pid)| pid.is_none())
         && let Some(Some(msg_id)) = state.message_ids.get(global_idx)
     {
         let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
@@ -116,15 +135,39 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
             if map.is_empty() {
                 state.popup = Some("No peers have confirmed receipt yet.".to_string());
             } else {
+                let mut nickname_counts: std::collections::HashMap<String, usize> =
+                    std::collections::HashMap::new();
+                for peer_id in state.peers.iter().map(|(id, _, _)| id) {
+                    if let Some(nick) = state
+                        .local_nicknames
+                        .get(peer_id)
+                        .or_else(|| state.received_nicknames.get(peer_id))
+                    {
+                        *nickname_counts.entry(nick.clone()).or_insert(0) += 1;
+                    }
+                }
                 let mut peers: Vec<_> = map.iter().collect();
                 peers.sort_by(|a, b| a.0.cmp(b.0));
                 let mut parts = Vec::new();
                 for (peer, confirmed_at) in peers {
+                    let nick = state
+                        .local_nicknames
+                        .get(peer)
+                        .or_else(|| state.received_nicknames.get(peer));
+                    let peer_display = if let Some(n) = nick
+                        && nickname_counts.get(n).copied().unwrap_or(0) == 1
+                    {
+                        n.clone()
+                    } else if let Some(n) = nick {
+                        format!("{} ({})", n, p2p_app::short_peer_id(peer))
+                    } else {
+                        p2p_app::short_peer_id(peer).to_string()
+                    };
                     let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
                     if let Some(ms) = ms {
-                        parts.push(format!("{}={:.0}ms", p2p_app::short_peer_id(peer), ms));
+                        parts.push(format!("{}={:.0}ms", peer_display, ms));
                     } else {
-                        parts.push(format!("{}=confirmed", p2p_app::short_peer_id(peer)));
+                        parts.push(format!("{}=confirmed", peer_display));
                     }
                 }
                 state.popup = Some(format!("Broadcast receipts:\n{}", parts.join("\n")));
@@ -135,7 +178,8 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
         return;
     }
 
-    let peer_id = state.messages
+    let peer_id = state
+        .messages
         .iter()
         .skip(state.chat_message_offset)
         .nth(message_idx)
@@ -147,7 +191,10 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
             let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
             state.active_tab = tab_idx;
             state.cancel_nickname_edit();
-            p2plog_debug(format!("Opened DM with sender via message click: {}", sender_id));
+            p2plog_debug(format!(
+                "Opened DM with sender via message click: {}",
+                sender_id
+            ));
         }
         Some(None) => {
             state.editing_nickname = true;
@@ -199,7 +246,8 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
         let effective_offset = state.dm_broadcast_offset.get(peer_id).copied().unwrap_or(0);
         let broadcast_message_idx = message_idx_in_visible + effective_offset;
 
-        let peer_message_indices: Vec<usize> = state.messages
+        let peer_message_indices: Vec<usize> = state
+            .messages
             .iter()
             .enumerate()
             .filter(|(_, (_, sender_id))| sender_id.as_ref().is_some_and(|id| id == peer_id))
@@ -218,7 +266,10 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
         let offset_padding = (state.visible_message_count / 3).max(1);
         state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
         state.cancel_nickname_edit();
-        p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", global_idx));
+        p2plog_debug(format!(
+            "Switched to Broadcast tab and scrolled to message at index {}",
+            global_idx
+        ));
     }
 }
 

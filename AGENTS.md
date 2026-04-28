@@ -68,3 +68,21 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+## 5. Database Schema Changes
+
+When modifying the data model (adding columns to tables):
+
+1. **Add columns to CREATE TABLE statements** in the base migration (e.g., `migrations/2026-04-04-225730_messages/up.sql`)
+2. **DO NOT use ALTER TABLE** in new migrations to add columns to existing databases
+3. **Rely on Rust's ensure_columns() logic** in `db.rs` to add columns to pre-existing databases automatically
+
+This approach:
+- Works for fresh installs (column in CREATE TABLE)
+- Works for existing databases (ensure_columns adds missing columns from SCHEMA_ENTRIES)
+- Avoids "duplicate column name" errors on re-run
+
+Example: Adding `sender_nickname` to messages table:
+- Add to CREATE TABLE: `sender_nickname TEXT`
+- Add to SCHEMA_ENTRIES in build.rs: `("messages", "sender_nickname", "TEXT")`
+- Use ensure_columns() logic (already implemented) for existing DBs

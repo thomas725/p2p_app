@@ -87,20 +87,21 @@ pub async fn run_new_tui(
         };
 
     // Load initial messages from database
-    let initial_messages = super::state::load_and_format_messages(
-        &topic_str,
-        super::constants::MAX_MESSAGE_HISTORY,
-        &local_nicknames,
-        &received_nicknames,
-        &own_nickname,
-    );
+    let (initial_messages, initial_message_ids, loaded_sent_at) =
+        super::state::load_and_format_messages(
+            &topic_str,
+            super::constants::MAX_MESSAGE_HISTORY,
+            &local_nicknames,
+            &received_nicknames,
+            &own_nickname,
+        );
     p2plog_debug(format!(
         "Loaded {} messages from database",
         initial_messages.len()
     ));
 
     // Load initial peers from database (including peer IDs that only exist in messages)
-    let initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
+    let mut initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
         let mut peers = VecDeque::new();
         let mut seen_ids = std::collections::HashSet::new();
 
@@ -125,6 +126,11 @@ pub async fn run_new_tui(
         p2plog_debug("No peers found in database".to_string());
         VecDeque::new()
     };
+
+    // Sort by last_seen (latest first) - format is "YYYY-MM-DD HH:MM:SS" so lexicographic works
+    let mut peers_vec: Vec<_> = initial_peers.drain(..).collect();
+    peers_vec.sort_by(|a, b| b.2.cmp(&a.2)); // reverse order for latest first
+    initial_peers = peers_vec.into();
 
     // Load receipts from database
     let mut loaded_broadcast_receipts: std::collections::HashMap<
@@ -163,6 +169,8 @@ pub async fn run_new_tui(
         received_nicknames,
         self_nicknames_for_peers,
         initial_messages,
+        initial_message_ids,
+        loaded_sent_at,
         initial_peers,
         loaded_broadcast_receipts,
         loaded_dm_receipts,

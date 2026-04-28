@@ -13,17 +13,19 @@ pub async fn send_message(
 ) {
     let (topic_str, own_nickname) = (state.topic_str.clone(), state.own_nickname.clone());
     let is_direct = matches!(tab_content, p2p_app::tui_tabs::TabContent::Direct(_));
-    let dm_target_peer_id: Option<String> = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
-        Some(pid.clone())
-    } else {
-        None
-    };
+    let dm_target_peer_id: Option<String> =
+        if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
+            Some(pid.clone())
+        } else {
+            None
+        };
     let ts = p2p_app::format_system_time(SystemTime::now());
     let dm_self_nickname = dm_target_peer_id
         .as_deref()
         .and_then(|pid| state.self_nicknames_for_peers.get(pid).cloned())
         .unwrap_or_else(|| own_nickname.clone());
     let msg_id = p2p_app::gen_msg_id();
+    let msg_id_for_db = msg_id.clone();
     let sent_at = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
@@ -86,7 +88,17 @@ pub async fn send_message(
     let peer_ref = dm_target_peer_id.as_deref();
     // For direct messages, `peer_id` in DB represents the sender. Outgoing DM sender is us -> store None.
     let db_sender_peer_id = if is_direct { None } else { peer_ref };
-    if let Err(e) = p2p_app::save_message(&text, db_sender_peer_id, &topic_str, is_direct, dm_target_peer_id.as_deref()) {
+    // Use own nickname as sender's nickname for outgoing messages
+    if let Err(e) = p2p_app::save_message_with_meta(
+        &text,
+        db_sender_peer_id,
+        &topic_str,
+        is_direct,
+        dm_target_peer_id.as_deref(),
+        Some(&own_nickname),
+        Some(&msg_id_for_db),
+        Some(sent_at),
+    ) {
         p2plog_debug(format!("Failed to save message: {}", e));
     }
 }

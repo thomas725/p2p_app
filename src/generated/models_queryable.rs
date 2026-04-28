@@ -42,6 +42,7 @@ pub struct Message {
     pub target_peer: Option<String>,
     pub msg_id: Option<String>,
     pub sent_at: Option<f64>,
+    pub sender_nickname: Option<String>,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]

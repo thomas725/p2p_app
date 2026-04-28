@@ -1,13 +1,13 @@
-use super::visibility::{calc_visible_tuples, calc_visible_strings, count_lines};
+use super::visibility::{calc_visible_strings, calc_visible_tuples, count_lines};
 use crate::tui::state::AppState;
-use std::collections::VecDeque;
+use p2p_app::get_tui_logs;
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, ListItem, List, Paragraph},
-    Frame,
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
-use p2p_app::get_tui_logs;
+use std::collections::VecDeque;
 
 /// Render the broadcast chat tab with message selection
 pub fn render_chat_tab(
@@ -28,7 +28,8 @@ pub fn render_chat_tab(
     state.visible_message_count = visible;
     state.chat_message_offset = effective_offset;
 
-    let visible_messages: Vec<ListItem> = state.messages
+    let visible_messages: Vec<ListItem> = state
+        .messages
         .iter()
         .skip(effective_offset)
         .enumerate()
@@ -41,7 +42,10 @@ pub fn render_chat_tab(
                 .get(global_idx)
                 .and_then(|id| id.as_ref())
                 .is_some()
-                && state.messages.get(global_idx).is_some_and(|(_, pid)| pid.is_none())
+                && state
+                    .messages
+                    .get(global_idx)
+                    .is_some_and(|(_, pid)| pid.is_none())
             {
                 let msg_id = state.message_ids[global_idx].as_ref().unwrap();
                 let confirmed = state
@@ -62,7 +66,8 @@ pub fn render_chat_tab(
         })
         .collect();
 
-    state.chat_message_lines = state.messages
+    state.chat_message_lines = state
+        .messages
         .iter()
         .skip(effective_offset)
         .take(visible)
@@ -90,18 +95,18 @@ pub fn render_chat_tab(
         })
         .collect();
 
-    let messages_list = List::new(visible_messages)
-        .block(Block::default().title("Broadcast Chat").borders(Borders::ALL));
+    let messages_list = List::new(visible_messages).block(
+        Block::default()
+            .title("Broadcast Chat")
+            .borders(Borders::ALL),
+    );
     frame.render_widget(messages_list, area);
 }
 
 /// Render the peers list with selection
-pub fn render_peers_tab(
-    frame: &mut Frame,
-    area: Rect,
-    state: &AppState,
-) {
-    let mut nickname_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+pub fn render_peers_tab(frame: &mut Frame, area: Rect, state: &AppState) {
+    let mut nickname_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for (peer_id, _first_seen, _last_seen) in state.peers.iter() {
         let nick = state
             .local_nicknames
@@ -114,7 +119,8 @@ pub fn render_peers_tab(
         }
     }
 
-    let peer_items: Vec<ListItem> = state.peers
+    let peer_items: Vec<ListItem> = state
+        .peers
         .iter()
         .enumerate()
         .map(|(idx, (id, _first_seen, last_seen))| {
@@ -124,14 +130,13 @@ pub fn render_peers_tab(
                 .or_else(|| state.received_nicknames.get(id))
                 .map(|s| s.trim())
                 .filter(|s| !s.is_empty());
-            let display = if let Some(n) = nick
+            let line = if let Some(n) = nick
                 && nickname_counts.get(n).copied().unwrap_or(0) == 1
             {
-                n.to_string()
+                format!("{} {} {}", n, id, last_seen)
             } else {
-                p2p_app::short_peer_id(id)
+                format!("{} {}", id, last_seen)
             };
-            let line = format!("{} ({})", display, last_seen);
             if idx == state.peer_selection {
                 ListItem::new(line).style(Style::default().bg(Color::DarkGray))
             } else {
@@ -139,8 +144,11 @@ pub fn render_peers_tab(
             }
         })
         .collect();
-    let peers_list = List::new(peer_items)
-        .block(Block::default().title("Connected Peers").borders(Borders::ALL));
+    let peers_list = List::new(peer_items).block(
+        Block::default()
+            .title("Connected Peers")
+            .borders(Borders::ALL),
+    );
     frame.render_widget(peers_list, area);
 }
 
@@ -157,8 +165,23 @@ pub fn render_dm_tab(
     let short_id = if peer_id.len() <= 8 {
         peer_id.to_string()
     } else {
-        peer_id[peer_id.len()-8..].to_string()
+        peer_id[peer_id.len() - 8..].to_string()
     };
+
+    // Look up first_seen and last_seen for this peer
+    let (first_seen, last_seen) = state
+        .peers
+        .iter()
+        .find(|(id, _, _)| id == peer_id)
+        .map(|(_, f, l)| (Some(f.clone()), Some(l.clone())))
+        .unwrap_or((None, None));
+
+    // Look up nickname for display
+    let nickname = state
+        .local_nicknames
+        .get(peer_id)
+        .or_else(|| state.received_nicknames.get(peer_id))
+        .cloned();
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -172,7 +195,8 @@ pub fn render_dm_tab(
     let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
     let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
 
-    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+    let broadcast_messages: Vec<(String, Option<String>)> = state
+        .messages
         .iter()
         .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
@@ -185,7 +209,8 @@ pub fn render_dm_tab(
             .collect();
 
         let (broadcast_scroll_offset, broadcast_auto_scroll) = {
-            let (offset, auto_scroll) = state.dm_broadcast_scroll_state
+            let (offset, auto_scroll) = state
+                .dm_broadcast_scroll_state
                 .entry(peer_id.to_string())
                 .or_insert((broadcast_messages.len(), true));
             (*offset, *auto_scroll)
@@ -198,9 +223,17 @@ pub fn render_dm_tab(
             text_width,
             broadcast_usable_height,
         );
-        let (_, dm_visible) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
-        state.dm_visible_counts.insert(peer_id.to_string(), (visible, dm_visible));
-        state.dm_broadcast_offset.insert(peer_id.to_string(), effective_offset);
+        let (_, dm_visible) = state
+            .dm_visible_counts
+            .get(peer_id)
+            .copied()
+            .unwrap_or((0, 0));
+        state
+            .dm_visible_counts
+            .insert(peer_id.to_string(), (visible, dm_visible));
+        state
+            .dm_broadcast_offset
+            .insert(peer_id.to_string(), effective_offset);
 
         let broadcast_line_counts: Vec<usize> = broadcast_strings
             .iter()
@@ -208,7 +241,9 @@ pub fn render_dm_tab(
             .take(visible)
             .map(|msg| count_lines(msg, text_width))
             .collect();
-        state.dm_broadcast_message_lines.insert(peer_id.to_string(), broadcast_line_counts);
+        state
+            .dm_broadcast_message_lines
+            .insert(peer_id.to_string(), broadcast_line_counts);
 
         let visible_broadcast: Vec<ListItem> = broadcast_strings
             .iter()
@@ -216,17 +251,38 @@ pub fn render_dm_tab(
             .take(visible)
             .map(|m| ListItem::new(m.as_str()))
             .collect();
-        let broadcast_list = List::new(visible_broadcast)
-            .block(Block::default().title(format!("Broadcast from {}", short_id)).borders(Borders::ALL));
+        let broadcast_list = List::new(visible_broadcast).block(
+            Block::default()
+                .title(format!(
+                    "Broadcast from {}{}",
+                    nickname
+                        .as_ref()
+                        .map(|n| format!("{} ", n))
+                        .unwrap_or_default(),
+                    short_id
+                ))
+                .borders(Borders::ALL),
+        );
         frame.render_widget(broadcast_list, broadcast_area);
     } else {
-        let broadcast_para = Paragraph::new("No broadcast messages")
-            .block(Block::default().title(format!("Broadcast from {}", short_id)).borders(Borders::ALL));
+        let broadcast_para = Paragraph::new("No broadcast messages").block(
+            Block::default()
+                .title(format!(
+                    "Broadcast from {}{}",
+                    nickname
+                        .as_ref()
+                        .map(|n| format!("{} ", n))
+                        .unwrap_or_default(),
+                    short_id
+                ))
+                .borders(Borders::ALL),
+        );
         frame.render_widget(broadcast_para, broadcast_area);
     }
 
     let (scroll_offset_val, auto_scroll_val) = {
-        let (offset, auto_scroll) = state.dm_scroll_state
+        let (offset, auto_scroll) = state
+            .dm_scroll_state
             .entry(peer_id.to_string())
             .or_insert((0, true));
         (*offset, *auto_scroll)
@@ -240,9 +296,17 @@ pub fn render_dm_tab(
             text_width,
             dm_usable_height,
         );
-        let (broadcast_visible, _) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
-        state.dm_visible_counts.insert(peer_id.to_string(), (broadcast_visible, visible));
-        state.dm_offset.insert(peer_id.to_string(), effective_offset);
+        let (broadcast_visible, _) = state
+            .dm_visible_counts
+            .get(peer_id)
+            .copied()
+            .unwrap_or((0, 0));
+        state
+            .dm_visible_counts
+            .insert(peer_id.to_string(), (broadcast_visible, visible));
+        state
+            .dm_offset
+            .insert(peer_id.to_string(), effective_offset);
 
         let dm_line_counts: Vec<usize> = msgs
             .iter()
@@ -267,7 +331,9 @@ pub fn render_dm_tab(
                 count_lines(&format!("{}{}", prefix, msg), text_width)
             })
             .collect();
-        state.dm_message_lines.insert(peer_id.to_string(), dm_line_counts);
+        state
+            .dm_message_lines
+            .insert(peer_id.to_string(), dm_line_counts);
 
         let visible_msgs: Vec<ListItem> = msgs
             .iter()
@@ -293,12 +359,42 @@ pub fn render_dm_tab(
             })
             .collect();
 
-        let dm_list = List::new(visible_msgs)
-            .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
+        let dm_list = List::new(visible_msgs).block(
+            Block::default()
+                .title(format!(
+                    "DM: {}{} | seen: {}{}",
+                    nickname
+                        .as_ref()
+                        .map(|n| format!("{} ", n))
+                        .unwrap_or_default(),
+                    short_id,
+                    last_seen.as_deref().unwrap_or("?"),
+                    first_seen
+                        .as_ref()
+                        .map(|f| format!(" (first: {})", f))
+                        .unwrap_or_default()
+                ))
+                .borders(Borders::ALL),
+        );
         frame.render_widget(dm_list, dm_area);
     } else {
-        let dm_para = Paragraph::new("No direct messages")
-            .block(Block::default().title(format!("DM: {}", short_id)).borders(Borders::ALL));
+        let dm_para = Paragraph::new("No direct messages").block(
+            Block::default()
+                .title(format!(
+                    "DM: {}{} | seen: {}{}",
+                    nickname
+                        .as_ref()
+                        .map(|n| format!("{} ", n))
+                        .unwrap_or_default(),
+                    short_id,
+                    last_seen.as_deref().unwrap_or("?"),
+                    first_seen
+                        .as_ref()
+                        .map(|f| format!(" (first: {})", f))
+                        .unwrap_or_default()
+                ))
+                .borders(Borders::ALL),
+        );
         frame.render_widget(dm_para, dm_area);
     }
 }
@@ -313,8 +409,8 @@ pub fn render_log_tab(
 ) {
     let logs: VecDeque<String> = get_tui_logs().into_iter().collect();
     if logs.is_empty() {
-        let log_para = Paragraph::new("No logs")
-            .block(Block::default().title("Logs").borders(Borders::ALL));
+        let log_para =
+            Paragraph::new("No logs").block(Block::default().title("Logs").borders(Borders::ALL));
         frame.render_widget(log_para, area);
         state.visible_log_count = 1;
         state.log_scroll_offset = 0;
@@ -339,7 +435,7 @@ pub fn render_log_tab(
         .map(|m| ListItem::new(m.as_str()))
         .collect();
 
-    let log_list = List::new(visible_logs)
-        .block(Block::default().title("Logs").borders(Borders::ALL));
+    let log_list =
+        List::new(visible_logs).block(Block::default().title("Logs").borders(Borders::ALL));
     frame.render_widget(log_list, area);
 }

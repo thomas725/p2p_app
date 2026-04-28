@@ -955,3 +955,60 @@ async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn 
 
     Ok(())
 }
+
+/// Test that messages with nicknames are correctly sent and received.
+/// This reproduces the nickname mismatch issue between sender and receiver.
+#[tokio::test]
+async fn test_nickname_in_message_flow() -> Result<(), Box<dyn std::error::Error>> {
+    init_test_tracing();
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
+
+    connect_nodes(&mut node_a, &mut node_b).await?;
+
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+
+    // Node A sends a message with a nickname
+    let nickname_a = "TestNicknameAlice";
+    let broadcast_msg = p2p_app::BroadcastMessage {
+        content: "Hello with nickname".to_string(),
+        sent_at: Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64(),
+        ),
+        nickname: Some(nickname_a.to_string()),
+        msg_id: None,
+    };
+    let json = serde_json::to_string(&broadcast_msg)?;
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic, json.as_bytes())?;
+
+    // Node B receives the message and verifies nickname is present
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break message.data;
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Message not received")?;
+
+    let received_str = String::from_utf8_lossy(&received);
+    let parsed = serde_json::from_str::<p2p_app::BroadcastMessage>(&received_str)?;
+
+    // Verify the nickname is correctly transmitted
+    assert_eq!(parsed.nickname, Some(nickname_a.to_string()));
+    assert_eq!(parsed.content, "Hello with nickname");
+
+    Ok(())
+}

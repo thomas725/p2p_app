@@ -111,19 +111,17 @@ impl AppState {
         received_nicknames: HashMap<String, String>,
         self_nicknames_for_peers: HashMap<String, String>,
         initial_messages: VecDeque<(String, Option<String>)>,
+        initial_message_ids: VecDeque<Option<String>>,
+        initial_sent_at: HashMap<String, f64>,
         initial_peers: VecDeque<(String, String, String)>,
         initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
         initial_dm_receipts: HashMap<String, (String, f64)>,
     ) -> Self {
-        let message_ids = std::iter::repeat_with(|| None)
-            .take(initial_messages.len())
-            .collect::<VecDeque<Option<String>>>();
-
         Self {
             messages: initial_messages,
-            message_ids,
+            message_ids: initial_message_ids,
             broadcast_receipts: initial_broadcast_receipts,
-            sent_at_by_msg_id: HashMap::new(),
+            sent_at_by_msg_id: initial_sent_at,
             dm_messages: HashMap::new(),
             dm_message_ids: HashMap::new(),
             dm_receipts: initial_dm_receipts,
@@ -173,27 +171,50 @@ pub fn load_and_format_messages(
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
     own_nickname: &str,
-) -> VecDeque<(String, Option<String>)> {
+) -> (
+    VecDeque<(String, Option<String>)>,
+    VecDeque<Option<String>>,
+    HashMap<String, f64>,
+) {
     let mut messages = VecDeque::new();
+    let mut message_ids = VecDeque::new();
+    let mut sent_at_by_msg_id = HashMap::new();
     if let Ok(db_messages) = p2p_app::load_messages(topic_str, max_messages) {
         for msg in db_messages.iter().rev() {
             let ts = p2p_app::format_peer_datetime(msg.created_at);
-            let sender = msg
-                .peer_id
-                .as_ref()
-                .map(|p| {
-                    let display =
-                        p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
-                    format!("[{}]", display)
-                })
-                .unwrap_or_else(|| format!("[{}]", own_nickname));
+            // For outgoing messages (peer_id = None), use sender_nickname if stored, else own_nickname
+            // For incoming messages, use stored sender_nickname or fallback to lookup
+            let sender = if msg.peer_id.is_none() {
+                // Outgoing message - use stored sender nickname or current own nickname
+                msg.sender_nickname
+                    .as_ref()
+                    .map(|n| format!("[{}]", n))
+                    .unwrap_or_else(|| format!("[{}]", own_nickname))
+            } else {
+                // Incoming message - prefer stored sender_nickname, fallback to lookup
+                msg.sender_nickname
+                    .as_ref()
+                    .map(|n| format!("[{}]", n))
+                    .unwrap_or_else(|| {
+                        let p = msg.peer_id.as_ref().unwrap();
+                        let display =
+                            p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
+                        format!("[{}]", display)
+                    })
+            };
             messages.push_back((
                 format!("{} {} {}", ts, sender, msg.content),
                 msg.peer_id.clone(),
             ));
+            message_ids.push_back(msg.msg_id.clone());
+            if let Some(msg_id) = &msg.msg_id {
+                if let Some(sent_at) = msg.sent_at {
+                    sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
+                }
+            }
         }
     } else {
         p2p_app::p2plog_debug("Failed to load messages from database");
     }
-    messages
+    (messages, message_ids, sent_at_by_msg_id)
 }
