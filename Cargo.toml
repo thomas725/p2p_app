@@ -115,3 +115,6 @@ required-features = ["tui"]
 name = "p2p_chat_dioxus"
 path = "src/bin/p2p_chat_dioxus.rs"
 required-features = ["dioxus-desktop"]
+
+[patch.crates-io]
+rustls-webpki = { version = ">=0.103.13" }
