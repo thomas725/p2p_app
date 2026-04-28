@@ -1,7 +1,7 @@
 //! Formatting and display utilities
 
-use std::time::SystemTime;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::SystemTime;
 
 /// Format a Chrono NaiveDateTime into "YYYY-MM-DD HH:MM:SS" format
 #[must_use]

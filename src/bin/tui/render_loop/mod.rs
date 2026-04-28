@@ -1,33 +1,31 @@
-mod visibility;
 mod layout;
 mod tab_renderers;
+mod visibility;
 
 use super::constants::FRAME_TIME_MS;
 use super::main_loop::RenderEvent;
-use super::{state::{SharedState, AppState}};
+use super::state::{AppState, SharedState};
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
-    Terminal,
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    Frame,
 };
 use std::io::Stdout;
 use std::time::Duration;
 use tokio::sync::mpsc;
-
 
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
 fn render_frame(f: &mut Frame, state: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),  // tabs
-            Constraint::Length(1),  // peer info
-            Constraint::Min(0),     // messages
-            Constraint::Length(5),  // input area
-            Constraint::Length(1),  // shortcuts
-            Constraint::Length(1),  // status
+            Constraint::Length(1), // tabs
+            Constraint::Length(1), // peer info
+            Constraint::Min(0),    // messages
+            Constraint::Length(5), // input area
+            Constraint::Length(1), // shortcuts
+            Constraint::Length(1), // status
         ])
         .split(f.area());
 

@@ -33,5 +33,5 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("peers", "peer_id", "TEXT"),
     ("peers", "peer_local_nickname", "TEXT"),
     ("peers", "received_nickname", "TEXT"),
-    ("peers", "self_nickname_for_peer", "TEXT")
+    ("peers", "self_nickname_for_peer", "TEXT"),
 ];

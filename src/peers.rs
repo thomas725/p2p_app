@@ -74,8 +74,8 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
 /// This fixes older databases where messages may exist but the `peers` table is empty.
 /// Ordering is by most-recently-seen first (max of peer.last_seen and latest message timestamp).
 pub fn load_known_peers() -> color_eyre::Result<Vec<KnownPeer>> {
-    use diesel::sql_query;
     use diesel::RunQueryDsl;
+    use diesel::sql_query;
 
     let conn = &mut crate::sqlite_connect()?;
     let sql = r#"

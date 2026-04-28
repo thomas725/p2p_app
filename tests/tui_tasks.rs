@@ -37,10 +37,7 @@ mod tui_architecture_tests {
         }
 
         fn add_dm(&mut self, peer_id: &str, msg: String) {
-            let dm_msgs = self
-                .dm_messages
-                .entry(peer_id.to_string())
-                .or_default();
+            let dm_msgs = self.dm_messages.entry(peer_id.to_string()).or_default();
             dm_msgs.push_back(msg);
             // Bound: max 1000 per peer
             if dm_msgs.len() > 1000 {

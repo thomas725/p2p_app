@@ -53,10 +53,16 @@ async fn handle_swarm_event(
                         ack_for: Some(ack_for),
                         received_at: Some(current_timestamp()),
                     };
-                    swarm.behaviour_mut().request_response.send_request(&peer_id, receipt);
+                    swarm
+                        .behaviour_mut()
+                        .request_response
+                        .send_request(&peer_id, receipt);
                 }
             } else {
-                p2plog_debug(format!("Failed to parse broadcast message from peer {}", peer_id_str));
+                p2plog_debug(format!(
+                    "Failed to parse broadcast message from peer {}",
+                    peer_id_str
+                ));
             }
         }
         Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
@@ -64,7 +70,9 @@ async fn handle_swarm_event(
         )) => {
             let peer_id_str = peer.to_string();
             match message {
-                libp2p::request_response::Message::Request { request, channel, .. } => {
+                libp2p::request_response::Message::Request {
+                    request, channel, ..
+                } => {
                     // Receipt-only control message (used to confirm broadcast delivery).
                     if request.content.trim().is_empty()
                         && let Some(ack_for) = request.ack_for.clone()
@@ -78,7 +86,8 @@ async fn handle_swarm_event(
                             .await;
                     } else {
                         let content = request.content.clone();
-                        let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
+                        let latency =
+                            Some(crate::format_latency(request.sent_at, SystemTime::now()));
                         let nickname = request.nickname.clone();
                         let msg_id = request.msg_id.clone();
                         let _ = event_tx
@@ -166,7 +175,11 @@ fn current_timestamp() -> f64 {
 
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
     match cmd {
-        SwarmCommand::Publish { content, nickname, msg_id } => {
+        SwarmCommand::Publish {
+            content,
+            nickname,
+            msg_id,
+        } => {
             let msg = BroadcastMessage {
                 content,
                 sent_at: Some(current_timestamp()),
@@ -180,7 +193,10 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                     .publish(gossipsub::IdentTopic::new(topic), json.as_bytes())
                 {
                     Ok(gossipsub::MessageId(id)) => {
-                        p2plog_debug(format!("Published broadcast: {}", String::from_utf8_lossy(&id)));
+                        p2plog_debug(format!(
+                            "Published broadcast: {}",
+                            String::from_utf8_lossy(&id)
+                        ));
                     }
                     Err(e) => {
                         p2plog_error(format!("Failed to publish: {:?}", e));
@@ -188,7 +204,13 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                 }
             }
         }
-        SwarmCommand::SendDm { peer_id, content, nickname, msg_id, ack_for } => {
+        SwarmCommand::SendDm {
+            peer_id,
+            content,
+            nickname,
+            msg_id,
+            ack_for,
+        } => {
             use libp2p::PeerId;
             if let Ok(peer) = peer_id.parse::<PeerId>() {
                 let msg = crate::DirectMessage {
@@ -200,7 +222,10 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                     ack_for,
                     received_at: None,
                 };
-                swarm.behaviour_mut().request_response.send_request(&peer, msg);
+                swarm
+                    .behaviour_mut()
+                    .request_response
+                    .send_request(&peer, msg);
             }
         }
     }

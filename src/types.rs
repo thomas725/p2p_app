@@ -46,7 +46,17 @@ pub enum SwarmEvent {
 #[derive(Debug, Clone)]
 pub enum SwarmCommand {
     /// Publish a message to the broadcast topic
-    Publish { content: String, nickname: Option<String>, msg_id: Option<String> },
+    Publish {
+        content: String,
+        nickname: Option<String>,
+        msg_id: Option<String>,
+    },
     /// Send a direct message to a peer
-    SendDm { peer_id: String, content: String, nickname: Option<String>, msg_id: Option<String>, ack_for: Option<String> },
+    SendDm {
+        peer_id: String,
+        content: String,
+        nickname: Option<String>,
+        msg_id: Option<String>,
+        ack_for: Option<String>,
+    },
 }

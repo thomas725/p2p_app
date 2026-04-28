@@ -4,14 +4,18 @@ use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
 use tokio::sync::mpsc;
 
-use crate::tui::scroll_handlers::{handle_navigation_key, handle_scroll_key, handle_mouse_scroll};
 use crate::tui::click_handlers::{handle_mouse_left_click, load_dm_messages};
+use crate::tui::scroll_handlers::{handle_mouse_scroll, handle_navigation_key, handle_scroll_key};
 
 /// Toggles mouse capture mode (F12)
 fn toggle_mouse_capture(state: &mut super::state::AppState) {
     use ratatui::crossterm::execute;
     state.mouse_capture = !state.mouse_capture;
-    let mode = if state.mouse_capture { "enabled" } else { "disabled" };
+    let mode = if state.mouse_capture {
+        "enabled"
+    } else {
+        "disabled"
+    };
     p2plog_debug(format!("Mouse capture {}", mode));
     let mut stdout = std::io::stdout();
     let _ = if state.mouse_capture {
@@ -22,13 +26,17 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
 }
 
 /// Handles Ctrl+W (close DM tab)
-fn handle_close_dm_tab(state: &mut super::state::AppState, tab_content: p2p_app::tui_tabs::TabContent) {
+fn handle_close_dm_tab(
+    state: &mut super::state::AppState,
+    tab_content: p2p_app::tui_tabs::TabContent,
+) {
     if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
-        && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id) {
-            state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
-            state.peer_selection = 0;
-            p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
-        }
+        && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
+    {
+        state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
+        state.peer_selection = 0;
+        p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
+    }
 }
 
 /// Handles Enter key (send message or multi-line input)
@@ -43,7 +51,11 @@ async fn handle_enter_key(
             state.chat_input.insert_str("\n");
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
-        if let Some(peer_id) = state.peers.get(state.peer_selection).map(|(id, _, _)| id.clone()) {
+        if let Some(peer_id) = state
+            .peers
+            .get(state.peer_selection)
+            .map(|(id, _, _)| id.clone())
+        {
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
             state.active_tab = tab_idx;
@@ -86,7 +98,9 @@ async fn process_key_event(
         return false;
     }
 
-    if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
+    if key_event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
         && key_event.code == crossterm::event::KeyCode::Char('q')
     {
         p2plog_debug("Exit signal received".to_string());
@@ -128,7 +142,8 @@ async fn process_key_event(
                             .get(&peer_id)
                             .cloned()
                             .unwrap_or_else(|| s.own_nickname.clone());
-                        s.self_nicknames_for_peers.insert(peer_id.clone(), new_nickname.clone());
+                        s.self_nicknames_for_peers
+                            .insert(peer_id.clone(), new_nickname.clone());
                         let _ = p2p_app::set_peer_self_nickname_for_peer(&peer_id, &new_nickname);
                         // Propagate to this peer only.
                         let _ = swarm_cmd_tx
@@ -192,11 +207,17 @@ async fn process_key_event(
                 s.cancel_nickname_edit();
             } else {
                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                let shift_held = key_event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT);
+                let shift_held = key_event
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::SHIFT);
                 handle_enter_key(&mut s, swarm_cmd_tx, shift_held, tab_content).await;
             }
         }
-        crossterm::event::KeyCode::Char('w') if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+        crossterm::event::KeyCode::Char('w')
+            if key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+        {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
             handle_close_dm_tab(&mut s, tab_content);
         }
@@ -250,7 +271,14 @@ async fn process_mouse_event(
                 let _ = render_tx.send(RenderEvent).await;
                 return;
             }
-            handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_peers_tab, is_dm_tab, peer_id);
+            handle_mouse_left_click(
+                &mut s,
+                mouse_event.row,
+                mouse_event.column,
+                is_peers_tab,
+                is_dm_tab,
+                peer_id,
+            );
         }
         _ => {}
     }
