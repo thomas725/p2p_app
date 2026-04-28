@@ -2,7 +2,6 @@ use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
-use ratatui_textarea::TextArea;
 use tokio::sync::mpsc;
 
 use crate::tui::scroll_handlers::{handle_navigation_key, handle_scroll_key, handle_mouse_scroll};
@@ -67,17 +66,24 @@ async fn process_key_event(
 ) -> bool {
     if key_event.code == crossterm::event::KeyCode::Esc {
         let mut s = state.lock().await;
+        // ESC is "back" (exit is Ctrl+Q). Prefer dismissing transient UI states first.
+        if s.popup.is_some() {
+            s.popup = None;
+        }
         if s.editing_nickname {
-            s.editing_nickname = false;
-            s.chat_input = TextArea::default();
+            s.cancel_nickname_edit();
             p2plog_debug("Cancelled nickname edit".to_string());
-            drop(s);
-            let _ = render_tx.send(RenderEvent).await;
-            return false;
+        } else {
+            // Return to broadcast chat.
+            s.active_tab = 0;
+            s.broadcast_selection = None;
+            s.chat_scroll_offset = 0;
+            s.chat_auto_scroll = true;
+            p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
         }
         drop(s);
-        p2plog_debug("Exit signal received".to_string());
-        return true;
+        let _ = render_tx.send(RenderEvent).await;
+        return false;
     }
 
     if key_event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL)
