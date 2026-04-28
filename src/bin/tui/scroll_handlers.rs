@@ -1,7 +1,7 @@
 use super::constants::{PAGE_SIZE, WHEEL_SCROLL_LINES};
 use super::state::AppState;
-use p2p_app::p2plog_debug;
 use p2p_app::get_tui_logs;
+use p2p_app::p2plog_debug;
 
 /// Handles tab navigation (Tab and BackTab keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
@@ -15,7 +15,11 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
         }
         crossterm::event::KeyCode::BackTab => {
             let max_tabs = state.dynamic_tabs.total_tab_count();
-            state.active_tab = if state.active_tab == 0 { max_tabs - 1 } else { state.active_tab - 1 };
+            state.active_tab = if state.active_tab == 0 {
+                max_tabs - 1
+            } else {
+                state.active_tab - 1
+            };
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
@@ -25,7 +29,11 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
 }
 
 /// Disables auto-scroll and sets offset to max if auto-scroll was enabled
-fn disable_auto_scroll_to_max(auto_scroll: &mut bool, scroll_offset: &mut usize, max_offset: usize) {
+fn disable_auto_scroll_to_max(
+    auto_scroll: &mut bool,
+    scroll_offset: &mut usize,
+    max_offset: usize,
+) {
     if *auto_scroll {
         *auto_scroll = false;
         *scroll_offset = max_offset;
@@ -38,7 +46,12 @@ fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
 }
 
 /// Scroll down to target, enabling auto-scroll if reaching max
-fn scroll_down_lines(scroll_offset: &mut usize, auto_scroll: &mut bool, lines: usize, max_offset: usize) {
+fn scroll_down_lines(
+    scroll_offset: &mut usize,
+    auto_scroll: &mut bool,
+    lines: usize,
+    max_offset: usize,
+) {
     *scroll_offset = (*scroll_offset + lines).min(max_offset);
     if *scroll_offset >= max_offset {
         *auto_scroll = true;
@@ -81,8 +94,13 @@ fn handle_scroll_key_for_section(
 }
 
 /// Handle scroll key for broadcast section of DM tab
-fn scroll_broadcast_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
-    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+fn scroll_broadcast_section(
+    key_code: crossterm::event::KeyCode,
+    state: &mut AppState,
+    peer_id: &str,
+) {
+    let broadcast_messages: Vec<(String, Option<String>)> = state
+        .messages
         .iter()
         .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
@@ -93,7 +111,11 @@ fn scroll_broadcast_section(key_code: crossterm::event::KeyCode, state: &mut App
     }
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        let visible_count = state.dm_visible_counts.get(peer_id).map(|(b, _)| *b).unwrap_or(1);
+        let visible_count = state
+            .dm_visible_counts
+            .get(peer_id)
+            .map(|(b, _)| *b)
+            .unwrap_or(1);
         let max_offset = broadcast_messages.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
@@ -102,16 +124,24 @@ fn scroll_broadcast_section(key_code: crossterm::event::KeyCode, state: &mut App
 /// Handle scroll key for DM section of DM tab
 fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
     if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id) {
-            let visible_count = state.dm_visible_counts.get(peer_id).map(|(_, d)| *d).unwrap_or(1);
-            let max_offset = msgs.len().saturating_sub(visible_count);
-            handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
-        }
+        && let Some(msgs) = state.dm_messages.get(peer_id)
+    {
+        let visible_count = state
+            .dm_visible_counts
+            .get(peer_id)
+            .map(|(_, d)| *d)
+            .unwrap_or(1);
+        let max_offset = msgs.len().saturating_sub(visible_count);
+        handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+    }
 }
 
 /// Handle scroll key for Chat tab (broadcast)
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    let max_offset = state
+        .messages
+        .len()
+        .saturating_sub(state.visible_message_count);
     match key_code {
         crossterm::event::KeyCode::Up => {
             if state.chat_auto_scroll {
@@ -125,7 +155,12 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
                 state.chat_auto_scroll = false;
                 state.chat_scroll_offset = max_offset;
             }
-            scroll_down_lines(&mut state.chat_scroll_offset, &mut state.chat_auto_scroll, 1, max_offset);
+            scroll_down_lines(
+                &mut state.chat_scroll_offset,
+                &mut state.chat_auto_scroll,
+                1,
+                max_offset,
+            );
         }
         crossterm::event::KeyCode::PageUp => {
             if state.chat_auto_scroll {
@@ -139,7 +174,12 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
                 state.chat_auto_scroll = false;
                 state.chat_scroll_offset = max_offset;
             }
-            scroll_down_lines(&mut state.chat_scroll_offset, &mut state.chat_auto_scroll, PAGE_SIZE, max_offset);
+            scroll_down_lines(
+                &mut state.chat_scroll_offset,
+                &mut state.chat_auto_scroll,
+                PAGE_SIZE,
+                max_offset,
+            );
         }
         crossterm::event::KeyCode::Home => {
             state.chat_auto_scroll = false;
@@ -171,9 +211,10 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
             state.peer_selection = state.peer_selection.saturating_sub(1);
         }
         crossterm::event::KeyCode::Down
-            if state.peer_selection < state.peers.len().saturating_sub(1) => {
-                state.peer_selection += 1;
-            }
+            if state.peer_selection < state.peers.len().saturating_sub(1) =>
+        {
+            state.peer_selection += 1;
+        }
         _ => {}
     }
 }
@@ -205,7 +246,8 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
 
 /// Handle mouse wheel for broadcast section of DM tab
 fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) {
-    let broadcast_messages: Vec<(String, Option<String>)> = state.messages
+    let broadcast_messages: Vec<(String, Option<String>)> = state
+        .messages
         .iter()
         .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
@@ -216,13 +258,14 @@ fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_i
     }
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
+        // If auto-scroll is enabled, do nothing (user is viewing latest messages)
+        if *auto_scroll {
+            return;
+        }
         let max_offset = broadcast_messages.len().saturating_sub(1);
         match scroll_dir {
             "up" => {
-                if *auto_scroll {
-                    *auto_scroll = false;
-                    *scroll_offset = max_offset;
-                } else if *scroll_offset >= WHEEL_SCROLL_LINES {
+                if *scroll_offset >= WHEEL_SCROLL_LINES {
                     *scroll_offset -= WHEEL_SCROLL_LINES;
                 } else {
                     *scroll_offset = 0;
@@ -230,9 +273,6 @@ fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_i
             }
             "down" => {
                 *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-                if *scroll_offset >= max_offset {
-                    *auto_scroll = true;
-                }
             }
             _ => {}
         }
@@ -242,47 +282,50 @@ fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_i
 /// Handle mouse wheel for DM section of DM tab
 fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) {
     if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id) {
-            let max_offset = msgs.len().saturating_sub(1);
-            match scroll_dir {
-                "up" => {
-                    if *auto_scroll {
-                        *auto_scroll = false;
-                        *scroll_offset = max_offset;
-                    } else if *scroll_offset >= WHEEL_SCROLL_LINES {
-                        *scroll_offset -= WHEEL_SCROLL_LINES;
-                    } else {
-                        *scroll_offset = 0;
-                    }
-                }
-                "down" => {
-                    *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-                    if *scroll_offset >= max_offset {
-                        *auto_scroll = true;
-                    }
-                }
-                _ => {}
-            }
+        && let Some(msgs) = state.dm_messages.get(peer_id)
+    {
+        // If auto-scroll is enabled, do nothing (user is viewing latest messages)
+        if *auto_scroll {
+            return;
         }
+        let max_offset = msgs.len().saturating_sub(1);
+        match scroll_dir {
+            "up" => {
+                if *scroll_offset >= WHEEL_SCROLL_LINES {
+                    *scroll_offset -= WHEEL_SCROLL_LINES;
+                } else {
+                    *scroll_offset = 0;
+                }
+            }
+            "down" => {
+                *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) {
-    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    // If auto-scroll is enabled, do nothing (user is viewing latest messages)
+    if state.chat_auto_scroll {
+        return;
+    }
+    let max_offset = state
+        .messages
+        .len()
+        .saturating_sub(state.visible_message_count);
     match scroll_dir {
         "up" => {
-            if state.chat_auto_scroll {
-                state.chat_auto_scroll = false;
-                state.chat_scroll_offset = max_offset;
-            } else if state.chat_scroll_offset >= WHEEL_SCROLL_LINES {
+            if state.chat_scroll_offset >= WHEEL_SCROLL_LINES {
                 state.chat_scroll_offset -= WHEEL_SCROLL_LINES;
             } else {
                 state.chat_scroll_offset = 0;
             }
         }
         "down" => {
-            state.chat_auto_scroll = false;
-            state.chat_scroll_offset = (state.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+            state.chat_scroll_offset =
+                (state.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
         }
         _ => {}
     }
@@ -290,21 +333,22 @@ fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) {
 
 /// Handle mouse wheel for Log tab
 fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) {
+    // If auto-scroll is enabled, do nothing (user is viewing latest logs)
+    if state.log_auto_scroll {
+        return;
+    }
     let max_offset = get_tui_logs().len().saturating_sub(state.visible_log_count);
     match scroll_dir {
         "up" => {
-            if state.log_auto_scroll {
-                state.log_auto_scroll = false;
-                state.log_scroll_offset = max_offset;
-            } else if state.log_scroll_offset >= WHEEL_SCROLL_LINES {
+            if state.log_scroll_offset >= WHEEL_SCROLL_LINES {
                 state.log_scroll_offset -= WHEEL_SCROLL_LINES;
             } else {
                 state.log_scroll_offset = 0;
             }
         }
         "down" => {
-            state.log_auto_scroll = false;
-            state.log_scroll_offset = (state.log_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+            state.log_scroll_offset =
+                (state.log_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
         }
         _ => {}
     }
