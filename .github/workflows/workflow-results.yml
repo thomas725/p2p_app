@@ -2,8 +2,8 @@ name: Store Workflow Results
 
 on:
   workflow_run:
-    workflows: ["CI", "Documentation"]
-    types: [completed]  # Runs on BOTH success AND failure
+    workflows: ["CI", "Documentation", "Code Coverage", "Debug Fmt"]
+    types: [completed]  # Runs AFTER each workflow completes (success or failure)
 
 permissions:
   contents: write
@@ -13,7 +13,8 @@ jobs:
   collect-and-store:
     name: Collect & Store All Results
     runs-on: ubuntu-latest
-    # This job ALWAYS runs, regardless of whether CI/Documentation succeeded or failed
+    # This job ALWAYS runs, regardless of whether triggered workflows succeeded or failed
+    # workflow_run triggers ensure this runs AFTER the specified workflows complete
     steps:
       - uses: actions/checkout@v4
         with:
