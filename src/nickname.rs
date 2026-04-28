@@ -18,10 +18,9 @@ pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
 
 pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
     let conn = &mut sqlite_connect()?;
-    diesel::insert_or_ignore_into(crate::generated::schema::identities::table)
-        .values(crate::generated::schema::identities::self_nickname.eq(nickname))
-        .on_conflict(crate::generated::schema::identities::id)
-        .do_update()
+    // Use update instead of insert_or_ignore since the identity row already exists
+    // (created during initial key generation)
+    diesel::update(crate::generated::schema::identities::table)
         .set(crate::generated::schema::identities::self_nickname.eq(nickname))
         .execute(conn)?;
     Ok(())
@@ -45,10 +44,10 @@ pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Res
             crate::generated::schema::peers::peer_id.eq(peer_id),
             crate::generated::schema::peers::peer_local_nickname.eq(nickname),
         ))
-    .on_conflict(crate::generated::schema::peers::peer_id)
-    .do_update()
-    .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
-    .execute(conn)?;
+        .on_conflict(crate::generated::schema::peers::peer_id)
+        .do_update()
+        .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
+        .execute(conn)?;
     Ok(())
 }
 
