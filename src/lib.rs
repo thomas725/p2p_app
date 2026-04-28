@@ -41,6 +41,7 @@ pub use nickname::{
 };
 pub use peers::{
     get_average_peer_count, get_recent_peer_count, load_listen_ports, load_peers,
+    load_known_peers,
     save_listen_ports, save_peer, save_peer_session,
 };
 pub use swarm_handler::spawn_swarm_handler;

@@ -73,21 +73,16 @@ pub async fn run_new_tui(
         initial_messages.len()
     ));
 
-    // Load initial peers from database (deduplicated by peer_id)
-    let initial_peers = if let Ok(db_peers) = p2p_app::load_peers() {
+    // Load initial peers from database (including peer IDs that only exist in messages)
+    let initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
         let mut peers = VecDeque::new();
         let mut seen_ids = std::collections::HashSet::new();
 
-        // Deduplicate first, then apply limit
+        // Deduplicate (should be unnecessary, but keeps us resilient to weird legacy data)
         for peer in db_peers.iter() {
             // Skip duplicate peer IDs (keep first occurrence with most recent last_seen)
             if !seen_ids.insert(peer.peer_id.clone()) {
                 continue;
-            }
-
-            // Stop if we've reached MAX_PEERS
-            if peers.len() >= super::constants::MAX_PEERS {
-                break;
             }
 
             let last_seen = p2p_app::format_peer_datetime(peer.last_seen);

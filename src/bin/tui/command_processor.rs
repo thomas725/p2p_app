@@ -2,7 +2,6 @@ use super::input_processor;
 use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
-use super::constants;
 use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
@@ -12,6 +11,39 @@ use input_processor::process_input_event;
 enum Event {
     Input(InputEvent),
     SwarmEvent(SwarmEvent),
+}
+
+fn sort_peers_by_last_seen(state: &mut super::state::AppState) {
+    let selected_peer_id = state
+        .peers
+        .get(state.peer_selection)
+        .map(|(id, _, _)| id.clone());
+
+    let mut peers_vec: Vec<_> = state.peers.drain(..).collect();
+    // last_seen format is "YYYY-MM-DD HH:MM:SS" which sorts lexicographically.
+    peers_vec.sort_by(|a, b| b.2.cmp(&a.2));
+    state.peers = peers_vec.into();
+
+    if let Some(sel_id) = selected_peer_id {
+        if let Some(idx) = state.peers.iter().position(|(id, _, _)| id == &sel_id) {
+            state.peer_selection = idx;
+        }
+    }
+    if state.peer_selection >= state.peers.len() {
+        state.peer_selection = state.peers.len().saturating_sub(1);
+    }
+}
+
+fn upsert_peer_last_seen(state: &mut super::state::AppState, peer_id: &str, seen_at: chrono::NaiveDateTime) {
+    let seen_str = p2p_app::format_peer_datetime(seen_at);
+
+    if let Some((_, _first_seen, last_seen)) = state.peers.iter_mut().find(|(id, _, _)| id == peer_id) {
+        *last_seen = seen_str;
+    } else {
+        // If we only know this peer from message history (no `peers` row), derive first/last from message time.
+        state.peers.push_back((peer_id.to_string(), seen_str.clone(), seen_str));
+    }
+    sort_peers_by_last_seen(state);
 }
 
 /// Processes network (swarm) events and updates application state
@@ -36,6 +68,7 @@ async fn process_swarm_event(
             if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None) {
                 p2plog_debug(format!("Failed to save: {}", e));
             }
+            upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
         SwarmEvent::DirectMessage { content, peer_id, latency } => {
             let mut s = state.lock().await;
@@ -53,16 +86,18 @@ async fn process_swarm_event(
             if let Err(e) = p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id)) {
                 p2plog_debug(format!("Failed to save DM: {}", e));
             }
+            upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let mut s = state.lock().await;
             s.concurrent_peers += 1;
             p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, s.concurrent_peers));
-            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < constants::MAX_PEERS
+            if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
                 && let Ok(peer) = p2p_app::save_peer(&peer_id, std::slice::from_ref(&peer_id)) {
                 let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
                 let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                s.peers.push_front((peer_id, first_seen, last_seen));
+                s.peers.push_back((peer_id, first_seen, last_seen));
+                sort_peers_by_last_seen(&mut s);
             }
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
@@ -76,8 +111,10 @@ async fn process_swarm_event(
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
             let mut s = state.lock().await;
-            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) && s.peers.len() < constants::MAX_PEERS {
-                s.peers.push_front((peer_id, p2p_app::now_timestamp(), p2p_app::now_timestamp()));
+            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
+                let now = p2p_app::now_timestamp();
+                s.peers.push_back((peer_id, now.clone(), now));
+                sort_peers_by_last_seen(&mut s);
             }
         }
         #[cfg(feature = "mdns")]

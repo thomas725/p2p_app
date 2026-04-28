@@ -9,6 +9,17 @@ use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
 
+/// Peer row returned by `load_known_peers()`.
+#[derive(Debug, Clone, diesel::QueryableByName)]
+pub struct KnownPeer {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    pub peer_id: String,
+    #[diesel(sql_type = diesel::sql_types::Timestamp)]
+    pub first_seen: chrono::NaiveDateTime,
+    #[diesel(sql_type = diesel::sql_types::Timestamp)]
+    pub last_seen: chrono::NaiveDateTime,
+}
+
 /// Save or update a peer in the database.
 ///
 /// If peer already exists (by peer_id), updates addresses and last_seen timestamp.
@@ -55,6 +66,50 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
         .select(Peer::as_select())
         .load(conn)?;
     Ok(peers_list)
+}
+
+/// Load all known peers, combining both the `peers` table and any peer IDs present in `messages`.
+///
+/// This fixes older databases where messages may exist but the `peers` table is empty.
+/// Ordering is by most-recently-seen first (max of peer.last_seen and latest message timestamp).
+pub fn load_known_peers() -> color_eyre::Result<Vec<KnownPeer>> {
+    use diesel::sql_query;
+    use diesel::RunQueryDsl;
+
+    let conn = &mut crate::sqlite_connect()?;
+    let sql = r#"
+WITH msg_peers AS (
+    SELECT
+        peer_id AS peer_id,
+        MIN(created_at) AS first_seen,
+        MAX(created_at) AS last_seen
+    FROM messages
+    WHERE peer_id IS NOT NULL
+    GROUP BY peer_id
+),
+peer_peers AS (
+    SELECT
+        peer_id AS peer_id,
+        first_seen AS first_seen,
+        last_seen AS last_seen
+    FROM peers
+),
+merged AS (
+    SELECT peer_id, first_seen, last_seen FROM peer_peers
+    UNION ALL
+    SELECT peer_id, first_seen, last_seen FROM msg_peers
+)
+SELECT
+    peer_id,
+    MIN(first_seen) AS first_seen,
+    MAX(last_seen) AS last_seen
+FROM merged
+GROUP BY peer_id
+ORDER BY last_seen DESC
+    "#;
+
+    let rows = sql_query(sql).load::<KnownPeer>(conn)?;
+    Ok(rows)
 }
 
 /// Record a peer session snapshot with the concurrent peer count.
