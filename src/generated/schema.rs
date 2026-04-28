@@ -21,6 +21,8 @@ diesel::table! {
         sent -> Integer,
         is_direct -> Integer,
         target_peer -> Nullable<Text>,
+        msg_id -> Nullable<Text>,
+        sent_at -> Nullable<Double>,
     }
 }
 

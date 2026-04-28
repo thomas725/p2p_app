@@ -30,6 +30,8 @@ pub struct Message {
     pub sent: i32,
     pub is_direct: i32,
     pub target_peer: Option<String>,
+    pub msg_id: Option<String>,
+    pub sent_at: Option<f64>,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]

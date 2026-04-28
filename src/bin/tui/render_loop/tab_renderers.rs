@@ -101,11 +101,37 @@ pub fn render_peers_tab(
     area: Rect,
     state: &AppState,
 ) {
+    let mut nickname_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for (peer_id, _first_seen, _last_seen) in state.peers.iter() {
+        let nick = state
+            .local_nicknames
+            .get(peer_id)
+            .or_else(|| state.received_nicknames.get(peer_id))
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty());
+        if let Some(n) = nick {
+            *nickname_counts.entry(n.to_string()).or_insert(0) += 1;
+        }
+    }
+
     let peer_items: Vec<ListItem> = state.peers
         .iter()
         .enumerate()
         .map(|(idx, (id, _first_seen, last_seen))| {
-            let line = format!("{} ({})", id, last_seen);
+            let nick = state
+                .local_nicknames
+                .get(id)
+                .or_else(|| state.received_nicknames.get(id))
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty());
+            let display = if let Some(n) = nick
+                && nickname_counts.get(n).copied().unwrap_or(0) == 1
+            {
+                n.to_string()
+            } else {
+                p2p_app::short_peer_id(id)
+            };
+            let line = format!("{} ({})", display, last_seen);
             if idx == state.peer_selection {
                 ListItem::new(line).style(Style::default().bg(Color::DarkGray))
             } else {

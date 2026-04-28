@@ -28,6 +28,18 @@ pub fn save_message(
     is_direct: bool,
     target_peer: Option<&str>,
 ) -> color_eyre::Result<Message> {
+    save_message_with_meta(content, peer_id, topic, is_direct, target_peer, None, None)
+}
+
+pub fn save_message_with_meta(
+    content: &str,
+    peer_id: Option<&str>,
+    topic: &str,
+    is_direct: bool,
+    target_peer: Option<&str>,
+    msg_id: Option<&str>,
+    sent_at: Option<f64>,
+) -> color_eyre::Result<Message> {
     let conn = &mut crate::sqlite_connect()?;
     let new_msg = NewMessage {
         content: content.to_string(),
@@ -36,6 +48,8 @@ pub fn save_message(
         sent: 0,
         is_direct: is_direct as i32,
         target_peer: target_peer.map(|s| s.to_string()),
+        msg_id: msg_id.map(|s| s.to_string()),
+        sent_at,
     };
     diesel::insert_into(crate::generated::schema::messages::table)
         .values(&new_msg)
