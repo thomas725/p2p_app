@@ -25,22 +25,22 @@ diesel migration run
 # Step 2: Generate schema.rs from database
 echo ""
 echo "Step 2: Generating schema.rs..."
-diesel print-schema > src/schema.rs
+diesel print-schema > src/generated/schema.rs
 
 # Step 3: Generate queryable models
 echo ""
 echo "Step 3: Generating queryable models (models_queryable.rs)..."
 diesel_ext \
-  --import-types "crate::schema::*" \
+  --import-types "crate::generated::schema::*" \
   --add-table-name \
   --derive "Queryable, Selectable, Debug, Clone" \
-  > src/models_queryable.rs
+  > src/generated/models_queryable.rs
 
 # Step 4: Generate insertable models (raw output)
 echo ""
 echo "Step 4: Generating insertable models (raw from diesel_ext)..."
 diesel_ext \
-  --import-types "crate::schema::*" \
+  --import-types "crate::generated::schema::*" \
   --insertable \
   --derive "Insertable, Debug" \
   > /tmp/models_insertable_raw.rs
@@ -62,8 +62,8 @@ sed \
   -e "s/Option<&'a str>/Option<String>/g" \
   -e "s/&'a str/String/g" \
   -e "s/<'a>//g" \
-  -e "/^use crate::schema::\*;$/a use diesel::Insertable;" \
-  /tmp/models_insertable_raw.rs > src/models_insertable.rs
+  -e "/^use crate::generated::schema::\*;$/a use diesel::Insertable;" \
+  /tmp/models_insertable_raw.rs > src/generated/models_insertable.rs
 
 # Cleanup temporary file
 rm /tmp/models_insertable_raw.rs
@@ -89,12 +89,12 @@ if ! cargo test --lib --test tui_chat --test p2p_integration 2>&1 | tail -10; th
 fi
 
 echo ""
-echo "✅ SUCCESS: Models regenerated and validated!"
+echo "SUCCESS: Models regenerated and validated!"
 echo ""
 echo "Generated files:"
-echo "  - src/schema.rs"
-echo "  - src/models_queryable.rs"
-echo "  - src/models_insertable.rs"
+echo "  - src/generated/schema.rs"
+echo "  - src/generated/models_queryable.rs"
+echo "  - src/generated/models_insertable.rs"
 echo ""
 echo "Insertable models use owned String types for simplicity and ergonomics."
 echo "No manual editing required - commit these changes directly!"

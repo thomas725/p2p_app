@@ -8,8 +8,11 @@ CREATE TABLE IF NOT EXISTS messages (
     topic TEXT NOT NULL DEFAULT 'test-net',
     sent INTEGER NOT NULL DEFAULT 0,
     is_direct INTEGER NOT NULL DEFAULT 0,
-    target_peer TEXT
+    target_peer TEXT,
+    msg_id TEXT,
+    sent_at DOUBLE
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_topic ON messages(topic);
+CREATE INDEX IF NOT EXISTS idx_messages_msg_id ON messages(msg_id);

@@ -17,6 +17,15 @@ pub struct NewIdentity {
 }
 
 #[derive(Insertable, Debug)]
+#[diesel(table_name = message_receipts)]
+pub struct NewMessageReceipt {
+    pub msg_id: String,
+    pub peer_id: String,
+    pub kind: i32,
+    pub confirmed_at: f64,
+}
+
+#[derive(Insertable, Debug)]
 #[diesel(table_name = messages)]
 pub struct NewMessage {
     pub content: String,

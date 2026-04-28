@@ -51,7 +51,7 @@ pub struct AppState {
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
     pub chat_message_offset: usize, // Actual starting index for visible messages (set by render loop)
-    pub chat_area_height: usize, // Height of message area in rows (set by render loop)
+    pub chat_area_height: usize,    // Height of message area in rows (set by render loop)
     pub chat_message_lines: Vec<usize>, // Line count for each visible message (set by render loop)
 
     // Scroll State (Log tab)
@@ -112,6 +112,8 @@ impl AppState {
         self_nicknames_for_peers: HashMap<String, String>,
         initial_messages: VecDeque<(String, Option<String>)>,
         initial_peers: VecDeque<(String, String, String)>,
+        initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+        initial_dm_receipts: HashMap<String, (String, f64)>,
     ) -> Self {
         let message_ids = std::iter::repeat_with(|| None)
             .take(initial_messages.len())
@@ -120,11 +122,11 @@ impl AppState {
         Self {
             messages: initial_messages,
             message_ids,
-            broadcast_receipts: HashMap::new(),
+            broadcast_receipts: initial_broadcast_receipts,
             sent_at_by_msg_id: HashMap::new(),
             dm_messages: HashMap::new(),
             dm_message_ids: HashMap::new(),
-            dm_receipts: HashMap::new(),
+            dm_receipts: initial_dm_receipts,
             peers: initial_peers,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,

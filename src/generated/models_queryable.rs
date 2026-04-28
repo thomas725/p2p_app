@@ -7,7 +7,6 @@ use crate::generated::schema::*;
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
-
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = identities)]
 pub struct Identity {
@@ -17,6 +16,17 @@ pub struct Identity {
     pub last_tcp_port: Option<i32>,
     pub last_quic_port: Option<i32>,
     pub self_nickname: Option<String>,
+}
+
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = message_receipts)]
+pub struct MessageReceipt {
+    pub id: i32,
+    pub msg_id: String,
+    pub peer_id: String,
+    pub kind: i32,
+    pub confirmed_at: f64,
+    pub created_at: NaiveDateTime,
 }
 
 #[derive(Queryable, Selectable, Debug, Clone)]

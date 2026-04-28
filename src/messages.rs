@@ -1,7 +1,8 @@
 //! Message persistence and retrieval functions
 
 use crate::{
-    generated::models_insertable::NewMessage, generated::models_queryable::Message,
+    generated::models_insertable::{NewMessage, NewMessageReceipt},
+    generated::models_queryable::Message,
     generated::schema::messages::dsl::messages,
 };
 use color_eyre::eyre::Context;
@@ -134,4 +135,42 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
                 target_peer
             )
         })
+}
+
+pub fn save_receipt(
+    msg_id: &str,
+    peer_id: &str,
+    kind: i32,
+    confirmed_at: f64,
+) -> color_eyre::Result<()> {
+    let conn = &mut crate::sqlite_connect()?;
+    let receipt = NewMessageReceipt {
+        msg_id: msg_id.to_string(),
+        peer_id: peer_id.to_string(),
+        kind,
+        confirmed_at,
+    };
+    diesel::insert_into(crate::generated::schema::message_receipts::table)
+        .values(&receipt)
+        .on_conflict((
+            crate::generated::schema::message_receipts::msg_id,
+            crate::generated::schema::message_receipts::peer_id,
+            crate::generated::schema::message_receipts::kind,
+        ))
+        .do_update()
+        .set(crate::generated::schema::message_receipts::confirmed_at.eq(confirmed_at))
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn load_receipts() -> color_eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
+{
+    let conn = &mut crate::sqlite_connect()?;
+    use crate::generated::models_queryable::MessageReceipt;
+    use crate::generated::schema::message_receipts::dsl::message_receipts;
+    use diesel::SelectableHelper;
+    let receipts = message_receipts
+        .select(MessageReceipt::as_select())
+        .load(conn)?;
+    Ok(receipts)
 }

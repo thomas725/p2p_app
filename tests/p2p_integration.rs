@@ -925,6 +925,7 @@ async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn 
                 .as_secs_f64(),
         ),
         nickname: None,
+        msg_id: None,
     };
     let json = serde_json::to_string(&broadcast_msg)?;
     node_a

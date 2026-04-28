@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS message_receipts (
     msg_id TEXT NOT NULL,
     peer_id TEXT NOT NULL,
     kind INTEGER NOT NULL, -- 0=broadcast, 1=dm
-    confirmed_at REAL NOT NULL,
+    confirmed_at DOUBLE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (msg_id, peer_id, kind)
 );

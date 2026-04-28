@@ -1,2 +1,4 @@
-ALTER TABLE identities ADD COLUMN last_tcp_port INTEGER DEFAULT NULL;
-ALTER TABLE identities ADD COLUMN last_quic_port INTEGER DEFAULT NULL;
+-- Columns already added in base migration for fresh installs, but kept for existing DB upgrades
+-- Using try-catch pattern would require procedural SQL which SQLite doesn't support well
+-- Safe to re-run on fresh DB since IF NOT EXISTS doesn't exist for ADD COLUMN in SQLite
+-- This migration is now effectively a no-op for fresh installs

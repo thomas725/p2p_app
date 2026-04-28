@@ -12,6 +12,17 @@ diesel::table! {
 }
 
 diesel::table! {
+    message_receipts (id) {
+        id -> Integer,
+        msg_id -> Text,
+        peer_id -> Text,
+        kind -> Integer,
+        confirmed_at -> Double,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     messages (id) {
         id -> Integer,
         created_at -> Timestamp,
@@ -48,4 +59,10 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(identities, messages, peer_sessions, peers,);
+diesel::allow_tables_to_appear_in_same_query!(
+    identities,
+    message_receipts,
+    messages,
+    peer_sessions,
+    peers,
+);

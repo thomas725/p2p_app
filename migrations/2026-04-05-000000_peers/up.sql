@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS peers (
     first_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     peer_local_nickname TEXT,
+    self_nickname_for_peer TEXT,
     received_nickname TEXT
 );
 

@@ -95,13 +95,17 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn map_sql_type(diesel_type: &str) -> &'static str {
-    match diesel_type {
+    let inner = diesel_type
+        .strip_prefix("Nullable<")
+        .and_then(|s| s.strip_suffix('>'))
+        .unwrap_or(diesel_type);
+    match inner {
         "Integer" => "INTEGER",
         "Timestamp" => "TIMESTAMP",
         "Binary" => "BLOB",
         "Text" => "TEXT",
+        "Double" => "DOUBLE",
         "Bool" => "INTEGER",
-        _ if diesel_type.starts_with("Nullable<") => "TEXT",
         _ => "TEXT",
     }
 }
