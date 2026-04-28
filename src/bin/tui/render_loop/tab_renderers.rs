@@ -36,10 +36,28 @@ pub fn render_chat_tab(
         .map(|(visible_idx, (msg, _))| {
             let global_idx = effective_offset + visible_idx;
             let is_selected = state.broadcast_selection == Some(global_idx);
-            if is_selected {
-                ListItem::new(msg.as_str()).style(Style::default().bg(Color::DarkGray))
+            let prefix = if state
+                .message_ids
+                .get(global_idx)
+                .and_then(|id| id.as_ref())
+                .is_some()
+                && state.messages.get(global_idx).is_some_and(|(_, pid)| pid.is_none())
+            {
+                let msg_id = state.message_ids[global_idx].as_ref().unwrap();
+                let confirmed = state
+                    .broadcast_receipts
+                    .get(msg_id)
+                    .map(|m| m.len())
+                    .unwrap_or(0);
+                if confirmed == 0 { "  " } else { "v " }.to_string()
             } else {
-                ListItem::new(msg.as_str())
+                "  ".to_string()
+            };
+            let display = format!("{}{}", prefix, msg);
+            if is_selected {
+                ListItem::new(display).style(Style::default().bg(Color::DarkGray))
+            } else {
+                ListItem::new(display)
             }
         })
         .collect();
@@ -48,7 +66,28 @@ pub fn render_chat_tab(
         .iter()
         .skip(effective_offset)
         .take(visible)
-        .map(|(msg, _)| count_lines(msg, text_width))
+        .enumerate()
+        .map(|(visible_idx, (msg, pid))| {
+            let global_idx = effective_offset + visible_idx;
+            let prefix = if state
+                .message_ids
+                .get(global_idx)
+                .and_then(|id| id.as_ref())
+                .is_some()
+                && pid.is_none()
+            {
+                let msg_id = state.message_ids[global_idx].as_ref().unwrap();
+                let confirmed = state
+                    .broadcast_receipts
+                    .get(msg_id)
+                    .map(|m| m.len())
+                    .unwrap_or(0);
+                if confirmed == 0 { "  " } else { "v " }.to_string()
+            } else {
+                "  ".to_string()
+            };
+            count_lines(&format!("{}{}", prefix, msg), text_width)
+        })
         .collect();
 
     let messages_list = List::new(visible_messages)
@@ -183,7 +222,24 @@ pub fn render_dm_tab(
             .iter()
             .skip(effective_offset)
             .take(visible)
-            .map(|msg| count_lines(msg, text_width))
+            .enumerate()
+            .map(|(visible_idx, msg)| {
+                let global_idx = effective_offset + visible_idx;
+                let prefix = state
+                    .dm_message_ids
+                    .get(peer_id)
+                    .and_then(|ids| ids.get(global_idx))
+                    .and_then(|id| id.as_ref())
+                    .map(|msg_id| {
+                        if state.dm_receipts.contains_key(msg_id) {
+                            "v ".to_string()
+                        } else {
+                            "  ".to_string()
+                        }
+                    })
+                    .unwrap_or_else(|| "  ".to_string());
+                count_lines(&format!("{}{}", prefix, msg), text_width)
+            })
             .collect();
         state.dm_message_lines.insert(peer_id.to_string(), dm_line_counts);
 
@@ -191,7 +247,24 @@ pub fn render_dm_tab(
             .iter()
             .skip(effective_offset)
             .take(visible)
-            .map(|m| ListItem::new(m.as_str()))
+            .enumerate()
+            .map(|(visible_idx, m)| {
+                let global_idx = effective_offset + visible_idx;
+                let prefix = state
+                    .dm_message_ids
+                    .get(peer_id)
+                    .and_then(|ids| ids.get(global_idx))
+                    .and_then(|id| id.as_ref())
+                    .map(|msg_id| {
+                        if state.dm_receipts.contains_key(msg_id) {
+                            "v ".to_string()
+                        } else {
+                            "  ".to_string()
+                        }
+                    })
+                    .unwrap_or_else(|| "  ".to_string());
+                ListItem::new(format!("{}{}", prefix, m))
+            })
             .collect();
 
         let dm_list = List::new(visible_msgs)

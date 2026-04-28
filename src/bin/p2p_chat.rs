@@ -146,6 +146,7 @@ async fn main() -> color_eyre::Result<()> {
                     content: text,
                     sent_at: Some(current_timestamp()),
                     nickname: None,
+                    msg_id: None,
                 };
                 if let Ok(json) = serde_json::to_string(&msg) {
                     let _ = swarm.behaviour_mut().gossipsub.publish(topic.clone(), json.as_bytes());

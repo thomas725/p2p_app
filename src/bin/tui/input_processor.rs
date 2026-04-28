@@ -88,6 +88,15 @@ async fn process_key_event(
     }
 
     let mut s = state.lock().await;
+
+    // If a popup is open, any key dismisses it (except we still honor exit keys above).
+    if s.popup.is_some() {
+        s.popup = None;
+        drop(s);
+        let _ = render_tx.send(RenderEvent).await;
+        return false;
+    }
+
     match key_event.code {
         crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
             handle_navigation_key(key_event.code, &mut s).await;
@@ -121,6 +130,8 @@ async fn process_key_event(
                                 peer_id: peer_id.clone(),
                                 content: String::new(),
                                 nickname: Some(new_nickname.clone()),
+                                msg_id: None,
+                                ack_for: None,
                             })
                             .await;
                         // Update in-memory DM transcript labels so click-to-edit keeps working.
@@ -148,6 +159,8 @@ async fn process_key_event(
                                     peer_id: peer_id.clone(),
                                     content: String::new(),
                                     nickname: Some(new_nickname.clone()),
+                                    msg_id: None,
+                                    ack_for: None,
                                 })
                                 .await;
                         }
@@ -225,6 +238,12 @@ async fn process_mouse_event(
             handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
+            if s.popup.is_some() {
+                s.popup = None;
+                drop(s);
+                let _ = render_tx.send(RenderEvent).await;
+                return;
+            }
             handle_mouse_left_click(&mut s, mouse_event.row, mouse_event.column, is_peers_tab, is_dm_tab, peer_id);
         }
         _ => {}

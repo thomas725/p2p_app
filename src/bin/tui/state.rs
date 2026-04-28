@@ -18,7 +18,17 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 pub struct AppState {
     // Messages & Chat
     pub messages: VecDeque<(String, Option<String>)>,
+    // Message IDs aligned with `messages` (used for receipts / click actions).
+    pub message_ids: VecDeque<Option<String>>,
+    // Broadcast receipts: msg_id -> (peer_id -> received_at epoch seconds).
+    pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+    // Outgoing message send times (epoch seconds) for receipt timing.
+    pub sent_at_by_msg_id: HashMap<String, f64>,
     pub dm_messages: HashMap<String, VecDeque<String>>,
+    // DM message IDs aligned with dm_messages[peer_id].
+    pub dm_message_ids: HashMap<String, VecDeque<Option<String>>>,
+    // DM receipts: msg_id -> (peer_id, received_at epoch seconds).
+    pub dm_receipts: HashMap<String, (String, f64)>,
 
     // Peer Management
     pub peers: VecDeque<(String, String, String)>, // (id, first_seen, last_seen)
@@ -79,6 +89,9 @@ pub struct AppState {
     // Edit Mode
     pub editing_nickname: bool,
     pub editing_nickname_peer: Option<String>,
+
+    // Ad-hoc UI popup (used for receipt timing details, etc.)
+    pub popup: Option<String>,
 }
 
 impl AppState {
@@ -100,9 +113,18 @@ impl AppState {
         initial_messages: VecDeque<(String, Option<String>)>,
         initial_peers: VecDeque<(String, String, String)>,
     ) -> Self {
+        let message_ids = std::iter::repeat_with(|| None)
+            .take(initial_messages.len())
+            .collect::<VecDeque<Option<String>>>();
+
         Self {
             messages: initial_messages,
+            message_ids,
+            broadcast_receipts: HashMap::new(),
+            sent_at_by_msg_id: HashMap::new(),
             dm_messages: HashMap::new(),
+            dm_message_ids: HashMap::new(),
+            dm_receipts: HashMap::new(),
             peers: initial_peers,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
@@ -138,6 +160,7 @@ impl AppState {
             topic_str,
             editing_nickname: false,
             editing_nickname_peer: None,
+            popup: None,
         }
     }
 }

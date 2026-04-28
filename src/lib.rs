@@ -21,8 +21,8 @@ pub use behavior::{
 };
 pub use db::{get_database_url, get_libp2p_identity, release_db_lock, sqlite_connect};
 pub use fmt::{
-    auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, now_timestamp,
-    peer_display_name, scroll_title, short_peer_id,
+    auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, gen_msg_id,
+    now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
@@ -174,6 +174,9 @@ mod tests {
             timestamp: 1234567890,
             sent_at: Some(1234567890.5),
             nickname: None,
+            msg_id: None,
+            ack_for: None,
+            received_at: None,
         };
         let json = serde_json::to_string(&dm).unwrap();
         assert!(json.contains("Hello"));
@@ -187,6 +190,7 @@ mod tests {
             content: "World".to_string(),
             sent_at: Some(1234567890.5),
             nickname: None,
+            msg_id: None,
         };
         let json = serde_json::to_string(&bm).unwrap();
         assert!(json.contains("World"));

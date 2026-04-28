@@ -9,6 +9,7 @@ pub enum SwarmEvent {
         peer_id: String,
         latency: Option<String>,
         nickname: Option<String>,
+        msg_id: Option<String>,
     },
     /// Direct message received from peer
     DirectMessage {
@@ -16,6 +17,13 @@ pub enum SwarmEvent {
         peer_id: String,
         latency: Option<String>,
         nickname: Option<String>,
+        msg_id: Option<String>,
+    },
+    /// Receipt confirmation received from a peer (for either broadcast or direct messages).
+    Receipt {
+        peer_id: String,
+        ack_for: String,
+        received_at: Option<f64>,
     },
     /// Peer connected to the network
     PeerConnected(String),
@@ -38,7 +46,7 @@ pub enum SwarmEvent {
 #[derive(Debug, Clone)]
 pub enum SwarmCommand {
     /// Publish a message to the broadcast topic
-    Publish { content: String, nickname: Option<String> },
+    Publish { content: String, nickname: Option<String>, msg_id: Option<String> },
     /// Send a direct message to a peer
-    SendDm { peer_id: String, content: String, nickname: Option<String> },
+    SendDm { peer_id: String, content: String, nickname: Option<String>, msg_id: Option<String>, ack_for: Option<String> },
 }

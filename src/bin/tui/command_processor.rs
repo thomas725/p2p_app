@@ -52,7 +52,7 @@ async fn process_swarm_event(
     state: &SharedState,
 ) {
     match swarm_event {
-        SwarmEvent::BroadcastMessage { content, peer_id, latency, nickname } => {
+        SwarmEvent::BroadcastMessage { content, peer_id, latency, nickname, msg_id } => {
             let mut s = state.lock().await;
             if let Some(n) = nickname.as_ref() {
                 s.received_nicknames.insert(peer_id.clone(), n.clone());
@@ -66,8 +66,10 @@ async fn process_swarm_event(
             let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
             s.messages.push_back((msg, Some(peer_id.clone())));
+            s.message_ids.push_back(msg_id);
             if s.messages.len() > super::constants::MAX_MESSAGE_HISTORY {
                 s.messages.pop_front();
+                let _ = s.message_ids.pop_front();
             }
             if s.active_tab != 0 {
                 s.unread_broadcasts += 1;
@@ -78,7 +80,7 @@ async fn process_swarm_event(
             }
             upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
-        SwarmEvent::DirectMessage { content, peer_id, latency, nickname } => {
+        SwarmEvent::DirectMessage { content, peer_id, latency, nickname, msg_id } => {
             let mut s = state.lock().await;
             if let Some(n) = nickname.as_ref() {
                 s.received_nicknames.insert(peer_id.clone(), n.clone());
@@ -91,11 +93,18 @@ async fn process_swarm_event(
             }
             let ts = p2p_app::format_system_time(SystemTime::now());
             let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-            let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
             let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
+            s.dm_message_ids
+                .entry(peer_id.clone())
+                .or_default()
+                .push_back(msg_id);
+            let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
             dm_msgs.push_back(msg);
             if dm_msgs.len() > super::constants::MAX_DM_HISTORY {
                 dm_msgs.pop_front();
+                if let Some(ids) = s.dm_message_ids.get_mut(&peer_id) {
+                    let _ = ids.pop_front();
+                }
             }
             *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
             s.dynamic_tabs.add_dm_tab(peer_id.clone());
@@ -104,6 +113,31 @@ async fn process_swarm_event(
                 p2plog_debug(format!("Failed to save DM: {}", e));
             }
             upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
+        }
+        SwarmEvent::Receipt { peer_id, ack_for, received_at } => {
+            let mut s = state.lock().await;
+            let _ = received_at; // receipt payload is optional; we use local arrival time for timing stability.
+            let at = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64();
+
+            // DM receipt: only if we have an outgoing DM with this msg_id.
+            let mut is_dm = false;
+            for ids in s.dm_message_ids.values() {
+                if ids.iter().any(|id| id.as_ref().is_some_and(|v| v == &ack_for)) {
+                    is_dm = true;
+                    break;
+                }
+            }
+            if is_dm {
+                s.dm_receipts.insert(ack_for.clone(), (peer_id.clone(), at));
+            }
+            // Broadcast receipt
+            s.broadcast_receipts
+                .entry(ack_for)
+                .or_default()
+                .insert(peer_id, at);
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let mut s = state.lock().await;

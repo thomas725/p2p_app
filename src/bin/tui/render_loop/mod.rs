@@ -58,6 +58,38 @@ fn render_frame(f: &mut Frame, state: &mut AppState) {
     layout::render_input_section(f, chunks[3], state, &tab_content);
     layout::render_shortcuts(f, chunks[4]);
     layout::render_status_bar(f, chunks[5], state);
+
+    if let Some(text) = state.popup.clone() {
+        render_popup(f, text);
+    }
+}
+
+fn render_popup(f: &mut Frame, text: String) {
+    use ratatui::layout::{Alignment, Rect};
+    use ratatui::style::{Color, Style};
+    use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
+
+    let area = f.area();
+    let w = (area.width as f32 * 0.70) as u16;
+    let h = (area.height as f32 * 0.40) as u16;
+    let popup = Rect {
+        x: area.x + (area.width.saturating_sub(w)) / 2,
+        y: area.y + (area.height.saturating_sub(h)) / 2,
+        width: w.max(20).min(area.width),
+        height: h.max(6).min(area.height),
+    };
+
+    f.render_widget(Clear, popup);
+    let p = Paragraph::new(text)
+        .block(
+            Block::default()
+                .title("Details (press any key / click to close)")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::Black)),
+        )
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: false });
+    f.render_widget(p, popup);
 }
 
 /// Spawns the render loop task that continuously renders the TUI

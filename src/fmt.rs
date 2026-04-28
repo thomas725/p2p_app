@@ -1,6 +1,7 @@
 //! Formatting and display utilities
 
 use std::time::SystemTime;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Format a Chrono NaiveDateTime into "YYYY-MM-DD HH:MM:SS" format
 #[must_use]
@@ -20,6 +21,20 @@ pub fn format_system_time(time: SystemTime) -> String {
     chrono::DateTime::<chrono::Local>::from(time)
         .format("%H:%M:%S.%3f")
         .to_string()
+}
+
+/// Generate a best-effort unique message ID for receipt tracking.
+///
+/// This is intentionally dependency-free (no uuid crate).
+#[must_use]
+pub fn gen_msg_id() -> String {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let now_ns = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u128;
+    let c = COUNTER.fetch_add(1, Ordering::Relaxed) as u128;
+    format!("{:x}{:x}", now_ns, c)
 }
 
 /// Get the last 8 characters of a peer ID string

@@ -55,6 +55,12 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
                 messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
             }
             state.dm_messages.insert(peer_id.to_string(), messages);
+            state.dm_message_ids.insert(
+                peer_id.to_string(),
+                std::iter::repeat_with(|| None)
+                    .take(db_messages.len())
+                    .collect(),
+            );
             let msg_count = db_messages.len();
             state.dm_scroll_state.entry(peer_id.to_string()).or_insert((msg_count, true));
             p2plog_debug(format!("Loaded {} DM messages for {}", msg_count, peer_id));
@@ -80,7 +86,7 @@ pub fn handle_peer_row_click(state: &mut AppState, row: u16) {
 }
 
 /// Handles clicks on messages in the chat view (non-DM tabs)
-pub fn handle_message_click(state: &mut AppState, row: u16) {
+pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
     let click_row = row as usize;
     let mut current_row = 3;
     let mut message_idx = 0;
@@ -95,6 +101,37 @@ pub fn handle_message_click(state: &mut AppState, row: u16) {
     }
 
     if message_idx >= state.chat_message_lines.len() {
+        return;
+    }
+
+    let global_idx = state.chat_message_offset + message_idx;
+
+    // If the user clicked the receipt marker prefix on one of our outgoing broadcast messages, show receipt details.
+    if (column as usize) <= 1
+        && state.messages.get(global_idx).is_some_and(|(_, pid)| pid.is_none())
+        && let Some(Some(msg_id)) = state.message_ids.get(global_idx)
+    {
+        let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
+        if let Some(map) = state.broadcast_receipts.get(msg_id) {
+            if map.is_empty() {
+                state.popup = Some("No peers have confirmed receipt yet.".to_string());
+            } else {
+                let mut peers: Vec<_> = map.iter().collect();
+                peers.sort_by(|a, b| a.0.cmp(b.0));
+                let mut parts = Vec::new();
+                for (peer, confirmed_at) in peers {
+                    let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
+                    if let Some(ms) = ms {
+                        parts.push(format!("{}={:.0}ms", p2p_app::short_peer_id(peer), ms));
+                    } else {
+                        parts.push(format!("{}=confirmed", p2p_app::short_peer_id(peer)));
+                    }
+                }
+                state.popup = Some(format!("Broadcast receipts:\n{}", parts.join("\n")));
+            }
+        } else {
+            state.popup = Some("No peers have confirmed receipt yet.".to_string());
+        }
         return;
     }
 
@@ -186,7 +223,7 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
 }
 
 /// Handles clicks on DM messages in DM tab's bottom section.
-pub fn handle_dm_message_click(state: &mut AppState, row: u16, peer_id: &str) {
+pub fn handle_dm_message_click(state: &mut AppState, row: u16, column: u16, peer_id: &str) {
     let dm_area_y = state.dm_area_y.get(peer_id).copied().unwrap_or(0);
     let click_row_local = row.saturating_sub(dm_area_y) as usize;
 
@@ -243,6 +280,33 @@ pub fn handle_dm_message_click(state: &mut AppState, row: u16, peer_id: &str) {
     }
 
     let msg = &msgs[dm_message_idx];
+    // Receipt marker click: show confirmation timing for our outgoing DM messages.
+    if (column as usize) <= 1
+        && let Some(Some(msg_id)) = state
+            .dm_message_ids
+            .get(peer_id)
+            .and_then(|ids| ids.get(dm_message_idx))
+    {
+        let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
+        if let Some((confirm_peer, confirmed_at)) = state.dm_receipts.get(msg_id) {
+            let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
+            if let Some(ms) = ms {
+                state.popup = Some(format!(
+                    "DM receipt:\npeer={}\ntime={:.0}ms",
+                    p2p_app::short_peer_id(confirm_peer),
+                    ms
+                ));
+            } else {
+                state.popup = Some(format!(
+                    "DM receipt:\npeer={}\nconfirmed",
+                    p2p_app::short_peer_id(confirm_peer)
+                ));
+            }
+        } else {
+            state.popup = Some("DM not confirmed yet.".to_string());
+        }
+        return;
+    }
     let self_nick = state
         .self_nicknames_for_peers
         .get(peer_id)
@@ -302,11 +366,11 @@ pub fn handle_mouse_left_click(
                             "DM click routed to DM section: peer={} row={} mid_row={}",
                             pid, mouse_row, mid_row
                         ));
-                        handle_dm_message_click(state, mouse_row, pid);
+                        handle_dm_message_click(state, mouse_row, mouse_column, pid);
                     }
                 }
             } else {
-                handle_message_click(state, mouse_row);
+                handle_message_click(state, mouse_row, mouse_column);
             }
         }
     }

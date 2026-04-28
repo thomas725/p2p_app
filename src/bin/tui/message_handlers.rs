@@ -23,22 +23,38 @@ pub async fn send_message(
         .as_deref()
         .and_then(|pid| state.self_nicknames_for_peers.get(pid).cloned())
         .unwrap_or_else(|| own_nickname.clone());
+    let msg_id = p2p_app::gen_msg_id();
+    let sent_at = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64();
+    state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
 
     if is_direct {
         if let Some(ref peer_id) = dm_target_peer_id {
             let msg = format!("{} [{}] {}", ts, dm_self_nickname, &text);
             let dm_msgs = state.dm_messages.entry(peer_id.clone()).or_default();
             dm_msgs.push_back(msg);
+            state
+                .dm_message_ids
+                .entry(peer_id.clone())
+                .or_default()
+                .push_back(Some(msg_id.clone()));
             if dm_msgs.len() > MAX_DM_HISTORY {
                 dm_msgs.pop_front();
+                if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
+                    let _ = ids.pop_front();
+                }
             }
             p2plog_debug(format!("Sent DM to {}: {}", peer_id, text));
         }
     } else {
         let msg = format!("{} [{}] {}", ts, own_nickname, &text);
         state.messages.push_back((msg, None));
+        state.message_ids.push_back(Some(msg_id.clone()));
         if state.messages.len() > MAX_MESSAGE_HISTORY {
             state.messages.pop_front();
+            let _ = state.message_ids.pop_front();
         }
         p2plog_debug(format!("Sent broadcast: {}", text));
     }
@@ -52,6 +68,8 @@ pub async fn send_message(
                     peer_id,
                     content: text.clone(),
                     nickname: Some(dm_self_nickname),
+                    msg_id: Some(msg_id),
+                    ack_for: None,
                 })
                 .await;
         }
@@ -60,6 +78,7 @@ pub async fn send_message(
             .send(SwarmCommand::Publish {
                 content: text.clone(),
                 nickname: Some(own_nickname.clone()),
+                msg_id: Some(msg_id),
             })
             .await;
     }
