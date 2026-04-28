@@ -25,6 +25,8 @@ pub struct AppState {
     pub concurrent_peers: usize,
     pub local_nicknames: HashMap<String, String>,
     pub received_nicknames: HashMap<String, String>,
+    // Per-peer self nickname override: peer_id -> nickname we present to that peer.
+    pub self_nicknames_for_peers: HashMap<String, String>,
 
     // UI State (TUI-specific)
     pub active_tab: usize,
@@ -55,8 +57,14 @@ pub struct AppState {
     pub dm_visible_counts: HashMap<String, (usize, usize)>,
     // Line counts for broadcast messages in DM tab: peer_id -> Vec of line counts
     pub dm_broadcast_message_lines: HashMap<String, Vec<usize>>,
+    // Line counts for DM messages in DM tab: peer_id -> Vec of line counts
+    pub dm_message_lines: HashMap<String, Vec<usize>>,
     // Broadcast scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
     pub dm_broadcast_offset: HashMap<String, usize>,
+    // DM scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
+    pub dm_offset: HashMap<String, usize>,
+    // DM pane Y position for click mapping: peer_id -> dm_area.y
+    pub dm_area_y: HashMap<String, u16>,
     // Selected broadcast message in broadcast chat tab
     pub broadcast_selection: Option<usize>,
 
@@ -70,14 +78,25 @@ pub struct AppState {
 
     // Edit Mode
     pub editing_nickname: bool,
+    pub editing_nickname_peer: Option<String>,
 }
 
 impl AppState {
+    pub fn cancel_nickname_edit(&mut self) {
+        if !self.editing_nickname {
+            return;
+        }
+        self.editing_nickname = false;
+        self.editing_nickname_peer = None;
+        self.chat_input = TextArea::default();
+    }
+
     pub fn new(
         topic_str: String,
         own_nickname: String,
         local_nicknames: HashMap<String, String>,
         received_nicknames: HashMap<String, String>,
+        self_nicknames_for_peers: HashMap<String, String>,
         initial_messages: VecDeque<(String, Option<String>)>,
         initial_peers: VecDeque<(String, String, String)>,
     ) -> Self {
@@ -105,15 +124,20 @@ impl AppState {
             dm_broadcast_scroll_state: HashMap::new(),
             dm_visible_counts: HashMap::new(),
             dm_broadcast_message_lines: HashMap::new(),
+            dm_message_lines: HashMap::new(),
             dm_broadcast_offset: HashMap::new(),
+            dm_offset: HashMap::new(),
+            dm_area_y: HashMap::new(),
             broadcast_selection: None,
             own_nickname,
             local_nicknames,
             received_nicknames,
+            self_nicknames_for_peers,
             unread_broadcasts: 0,
             unread_dms: HashMap::new(),
             topic_str,
             editing_nickname: false,
+            editing_nickname_peer: None,
         }
     }
 }

@@ -88,6 +88,7 @@ pub fn render_dm_tab(
     text_width: usize,
     _usable_height: usize,
 ) {
+    state.chat_area_height = area.height as usize;
     let short_id = if peer_id.len() <= 8 {
         peer_id.to_string()
     } else {
@@ -101,6 +102,7 @@ pub fn render_dm_tab(
 
     let broadcast_area = chunks[0];
     let dm_area = chunks[1];
+    state.dm_area_y.insert(peer_id.to_string(), dm_area.y);
 
     let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
     let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
@@ -175,6 +177,15 @@ pub fn render_dm_tab(
         );
         let (broadcast_visible, _) = state.dm_visible_counts.get(peer_id).copied().unwrap_or((0, 0));
         state.dm_visible_counts.insert(peer_id.to_string(), (broadcast_visible, visible));
+        state.dm_offset.insert(peer_id.to_string(), effective_offset);
+
+        let dm_line_counts: Vec<usize> = msgs
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .map(|msg| count_lines(msg, text_width))
+            .collect();
+        state.dm_message_lines.insert(peer_id.to_string(), dm_line_counts);
 
         let visible_msgs: Vec<ListItem> = msgs
             .iter()

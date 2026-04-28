@@ -42,6 +42,7 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         first_seen: now,
         last_seen: now,
         peer_local_nickname: None,
+        self_nickname_for_peer: None,
         received_nickname: None,
     };
 

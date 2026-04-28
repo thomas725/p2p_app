@@ -42,5 +42,6 @@ pub struct NewPeer {
     pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
     pub peer_local_nickname: Option<String>,
+    pub self_nickname_for_peer: Option<String>,
     pub received_nickname: Option<String>,
 }

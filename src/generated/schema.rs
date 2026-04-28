@@ -41,6 +41,7 @@ diesel::table! {
         first_seen -> Timestamp,
         last_seen -> Timestamp,
         peer_local_nickname -> Nullable<Text>,
+        self_nickname_for_peer -> Nullable<Text>,
         received_nickname -> Nullable<Text>,
     }
 }

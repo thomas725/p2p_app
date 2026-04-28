@@ -60,12 +60,37 @@ pub async fn run_new_tui(
     p2plog_debug(format!("Database: {}", db_info));
     p2plog_debug(format!("Loading data for topic: {}", topic_str));
 
+    // Load nickname maps from database (used for rendering historical messages and peer display).
+    let (local_nicknames, received_nicknames, self_nicknames_for_peers) = if let Ok(db_peers) = p2p_app::load_peers() {
+        let mut local = std::collections::HashMap::new();
+        let mut received = std::collections::HashMap::new();
+        let mut self_for_peer = std::collections::HashMap::new();
+        for p in db_peers {
+            if let Some(n) = p.peer_local_nickname {
+                local.insert(p.peer_id.clone(), n);
+            }
+            if let Some(n) = p.received_nickname {
+                received.insert(p.peer_id.clone(), n);
+            }
+            if let Some(n) = p.self_nickname_for_peer {
+                self_for_peer.insert(p.peer_id.clone(), n);
+            }
+        }
+        (local, received, self_for_peer)
+    } else {
+        (
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+            std::collections::HashMap::new(),
+        )
+    };
+
     // Load initial messages from database
     let initial_messages = super::state::load_and_format_messages(
         &topic_str,
         super::constants::MAX_MESSAGE_HISTORY,
-        &std::collections::HashMap::new(),
-        &std::collections::HashMap::new(),
+        &local_nicknames,
+        &received_nicknames,
         &own_nickname,
     );
     p2plog_debug(format!(
@@ -103,8 +128,9 @@ pub async fn run_new_tui(
     let state = Arc::new(Mutex::new(super::state::AppState::new(
         topic_str.clone(),
         own_nickname.clone(),
-        std::collections::HashMap::new(),
-        std::collections::HashMap::new(),
+        local_nicknames,
+        received_nicknames,
+        self_nicknames_for_peers,
         initial_messages,
         initial_peers,
     )));

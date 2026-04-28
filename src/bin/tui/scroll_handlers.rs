@@ -10,12 +10,14 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
             let max_tabs = state.dynamic_tabs.total_tab_count();
             state.active_tab = (state.active_tab + 1) % max_tabs;
             state.chat_scroll_offset = 0;
+            state.cancel_nickname_edit();
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
         crossterm::event::KeyCode::BackTab => {
             let max_tabs = state.dynamic_tabs.total_tab_count();
             state.active_tab = if state.active_tab == 0 { max_tabs - 1 } else { state.active_tab - 1 };
             state.chat_scroll_offset = 0;
+            state.cancel_nickname_edit();
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
         _ => {}

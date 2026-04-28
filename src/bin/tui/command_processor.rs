@@ -52,8 +52,16 @@ async fn process_swarm_event(
     state: &SharedState,
 ) {
     match swarm_event {
-        SwarmEvent::BroadcastMessage { content, peer_id, latency } => {
+        SwarmEvent::BroadcastMessage { content, peer_id, latency, nickname } => {
             let mut s = state.lock().await;
+            if let Some(n) = nickname.as_ref() {
+                s.received_nicknames.insert(peer_id.clone(), n.clone());
+                let _ = p2p_app::set_peer_received_nickname(&peer_id, n);
+            }
+            // Treat empty-content messages with a nickname as nickname updates only.
+            if content.trim().is_empty() && nickname.is_some() {
+                return;
+            }
             let ts = p2p_app::format_system_time(SystemTime::now());
             let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!("{} {} [{}] {}", ts, latency.unwrap_or_default(), sender_display, content);
@@ -70,8 +78,17 @@ async fn process_swarm_event(
             }
             upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
-        SwarmEvent::DirectMessage { content, peer_id, latency } => {
+        SwarmEvent::DirectMessage { content, peer_id, latency, nickname } => {
             let mut s = state.lock().await;
+            if let Some(n) = nickname.as_ref() {
+                s.received_nicknames.insert(peer_id.clone(), n.clone());
+                let _ = p2p_app::set_peer_received_nickname(&peer_id, n);
+            }
+            // Treat empty-content messages with a nickname as nickname updates only.
+            if content.trim().is_empty() && nickname.is_some() {
+                upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
+                return;
+            }
             let ts = p2p_app::format_system_time(SystemTime::now());
             let sender_display = p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
             let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();

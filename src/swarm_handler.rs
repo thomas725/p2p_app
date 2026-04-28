@@ -36,6 +36,7 @@ async fn handle_swarm_event(
                         content,
                         peer_id: peer_id_str,
                         latency,
+                        nickname: bcast.nickname.clone(),
                     })
                     .await;
             } else {
@@ -55,12 +56,14 @@ async fn handle_swarm_event(
             let peer_id_str = peer.to_string();
             let content = request.content.clone();
             let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
+            let nickname = request.nickname.clone();
 
             let _ = event_tx
                 .send(SwarmEvent::DirectMessage {
                     content,
                     peer_id: peer_id_str,
                     latency,
+                    nickname,
                 })
                 .await;
 
@@ -121,11 +124,11 @@ fn current_timestamp() -> f64 {
 
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
     match cmd {
-        SwarmCommand::Publish(content) => {
+        SwarmCommand::Publish { content, nickname } => {
             let msg = BroadcastMessage {
                 content,
                 sent_at: Some(current_timestamp()),
-                nickname: None,
+                nickname,
             };
             if let Ok(json) = serde_json::to_string(&msg) {
                 match swarm
@@ -142,14 +145,14 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                 }
             }
         }
-        SwarmCommand::SendDm { peer_id, content } => {
+        SwarmCommand::SendDm { peer_id, content, nickname } => {
             use libp2p::PeerId;
             if let Ok(peer) = peer_id.parse::<PeerId>() {
                 let msg = crate::DirectMessage {
                     content,
                     timestamp: chrono::Utc::now().timestamp(),
                     sent_at: Some(current_timestamp()),
-                    nickname: None,
+                    nickname,
                 };
                 swarm.behaviour_mut().request_response.send_request(&peer, msg);
             }

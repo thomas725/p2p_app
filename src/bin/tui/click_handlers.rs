@@ -24,6 +24,7 @@ pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[S
             } else if idx != state.active_tab {
                 state.active_tab = idx;
                 state.chat_scroll_offset = 0;
+                state.cancel_nickname_edit();
                 p2plog_debug(format!("Switched to tab {} via mouse click", state.active_tab));
                 return true;
             }
@@ -39,13 +40,18 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
     if !state.dm_messages.contains_key(peer_id) {
         if let Ok(db_messages) = p2p_app::load_direct_messages(peer_id, MAX_DM_HISTORY) {
             let mut messages = VecDeque::new();
+            let self_nick_for_peer = state
+                .self_nicknames_for_peers
+                .get(peer_id)
+                .cloned()
+                .unwrap_or_else(|| state.own_nickname.clone());
             for msg in db_messages.iter().rev() {
                 let ts = p2p_app::format_peer_datetime(msg.created_at);
                 let sender_display = msg
                     .peer_id
                     .as_ref()
                     .map(|p| p2p_app::peer_display_name(p, &state.local_nicknames, &state.received_nicknames))
-                    .unwrap_or_else(|| state.own_nickname.clone());
+                    .unwrap_or_else(|| self_nick_for_peer.clone());
                 messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
             }
             state.dm_messages.insert(peer_id.to_string(), messages);
@@ -68,6 +74,7 @@ pub fn handle_peer_row_click(state: &mut AppState, row: u16) {
             load_dm_messages(state, &peer_id_clone);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
             state.active_tab = tab_idx;
+            state.cancel_nickname_edit();
             p2plog_debug(format!("Opened DM with peer via mouse: {}", peer_id_clone));
         }
 }
@@ -102,10 +109,12 @@ pub fn handle_message_click(state: &mut AppState, row: u16) {
             load_dm_messages(state, &sender_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(sender_id.clone());
             state.active_tab = tab_idx;
+            state.cancel_nickname_edit();
             p2plog_debug(format!("Opened DM with sender via message click: {}", sender_id));
         }
         Some(None) => {
             state.editing_nickname = true;
+            state.editing_nickname_peer = None;
             let mut textarea = TextArea::default();
             textarea.insert_str(&state.own_nickname);
             state.chat_input = textarea;
@@ -113,6 +122,20 @@ pub fn handle_message_click(state: &mut AppState, row: u16) {
         }
         None => {}
     }
+}
+
+fn start_peer_specific_nickname_edit(state: &mut AppState, peer_id: &str) {
+    state.editing_nickname = true;
+    state.editing_nickname_peer = Some(peer_id.to_string());
+    let initial = state
+        .self_nicknames_for_peers
+        .get(peer_id)
+        .cloned()
+        .unwrap_or_else(|| state.own_nickname.clone());
+    let mut textarea = TextArea::default();
+    textarea.insert_str(&initial);
+    state.chat_input = textarea;
+    p2plog_debug(format!("Started editing nickname for peer {}", peer_id));
 }
 
 /// Handles clicks on broadcast messages in DM tab's top section
@@ -157,7 +180,98 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
         state.chat_auto_scroll = false;
         let offset_padding = (state.visible_message_count / 3).max(1);
         state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
+        state.cancel_nickname_edit();
         p2plog_debug(format!("Switched to Broadcast tab and scrolled to message at index {}", global_idx));
+    }
+}
+
+/// Handles clicks on DM messages in DM tab's bottom section.
+pub fn handle_dm_message_click(state: &mut AppState, row: u16, peer_id: &str) {
+    let dm_area_y = state.dm_area_y.get(peer_id).copied().unwrap_or(0);
+    let click_row_local = row.saturating_sub(dm_area_y) as usize;
+
+    let Some(line_counts) = state.dm_message_lines.get(peer_id) else {
+        p2plog_debug(format!(
+            "DM message click ignored: no dm_message_lines for peer {} (row={})",
+            peer_id, row
+        ));
+        return;
+    };
+
+    // Coordinates are relative to the DM pane; with borders, the first content row is 1.
+    let mut current_row = 1;
+    let mut message_idx_in_visible = 0;
+    for line_count in line_counts {
+        let message_end_row = current_row + line_count;
+        if click_row_local < message_end_row {
+            break;
+        }
+        current_row = message_end_row;
+        message_idx_in_visible += 1;
+    }
+
+    if message_idx_in_visible >= line_counts.len() {
+        p2plog_debug(format!(
+            "DM message click ignored: click below visible msgs (peer={}, row={}, visible_count={})",
+            peer_id,
+            row,
+            line_counts.len()
+        ));
+        return;
+    }
+
+    let effective_offset = state.dm_offset.get(peer_id).copied().unwrap_or(0);
+    let dm_message_idx = message_idx_in_visible + effective_offset;
+
+    let Some(msgs) = state.dm_messages.get(peer_id) else {
+        p2plog_debug(format!(
+            "DM message click ignored: no dm_messages for peer {}",
+            peer_id
+        ));
+        return;
+    };
+    if dm_message_idx >= msgs.len() {
+        p2plog_debug(format!(
+            "DM message click ignored: index out of range (peer={}, idx={}, len={}, offset={}, visible_idx={})",
+            peer_id,
+            dm_message_idx,
+            msgs.len(),
+            effective_offset,
+            message_idx_in_visible
+        ));
+        return;
+    }
+
+    let msg = &msgs[dm_message_idx];
+    let self_nick = state
+        .self_nicknames_for_peers
+        .get(peer_id)
+        .cloned()
+        .unwrap_or_else(|| state.own_nickname.clone());
+
+    // Only enable nickname edit when clicking on our own message line.
+    let matches_self = msg.contains(&format!("[{}] ", self_nick));
+    let matches_global = msg.contains(&format!("[{}] ", state.own_nickname));
+    p2plog_debug(format!(
+        "DM message click: peer={} row={} local_row={} idx={} self_nick='{}' global_nick='{}' matches_self={} matches_global={}",
+        peer_id,
+        row,
+        click_row_local,
+        dm_message_idx,
+        self_nick,
+        state.own_nickname,
+        matches_self,
+        matches_global
+    ));
+    if matches_self || matches_global {
+        start_peer_specific_nickname_edit(state, peer_id);
+    } else {
+        // Avoid logging full message content; just hint why nickname edit didn't start.
+        let snippet: String = msg.chars().take(80).collect();
+        p2plog_debug(format!(
+            "DM message click not on self message (peer={}, idx={}): '{}...'",
+            peer_id, dm_message_idx, snippet
+        ));
     }
 }
 
@@ -180,7 +294,16 @@ pub fn handle_mouse_left_click(
                 handle_peer_row_click(state, mouse_row);
             } else if is_dm_tab {
                 if let Some(pid) = peer_id {
-                    handle_dm_broadcast_message_click(state, mouse_row, pid);
+                    let mid_row = 2 + (state.chat_area_height / 2);
+                    if (mouse_row as usize) < mid_row {
+                        handle_dm_broadcast_message_click(state, mouse_row, pid);
+                    } else {
+                        p2plog_debug(format!(
+                            "DM click routed to DM section: peer={} row={} mid_row={}",
+                            pid, mouse_row, mid_row
+                        ));
+                        handle_dm_message_click(state, mouse_row, pid);
+                    }
                 }
             } else {
                 handle_message_click(state, mouse_row);
