@@ -89,7 +89,18 @@ fn ensure_columns(conn: &mut SqliteConnection) {
         let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
         match sql_query(&sql).execute(conn) {
             Ok(_) => crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table)),
-            Err(e) => crate::logging::p2plog_debug(format!("[DB] column {} already exists on table {} (or error: {})", column, table, e)),
+            Err(e) => {
+                // SQLite has no "ADD COLUMN IF NOT EXISTS". The common/expected failure mode
+                // is "duplicate column name: <col>" for already-existing columns; don't spam logs.
+                let msg = e.to_string();
+                if msg.contains("duplicate column name") {
+                    continue;
+                }
+                crate::logging::p2plog_debug(format!(
+                    "[DB] failed to add column {} to table {}: {}",
+                    column, table, msg
+                ));
+            }
         }
     }
 }

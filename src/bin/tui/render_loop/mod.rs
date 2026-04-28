@@ -51,7 +51,7 @@ fn render_frame(f: &mut Frame, state: &mut AppState) {
             tab_renderers::render_dm_tab(f, chunks[2], state, peer_id, text_width, usable_height);
         }
         TabContent::Log => {
-            tab_renderers::render_log_tab(f, chunks[2]);
+            tab_renderers::render_log_tab(f, chunks[2], state, text_width, usable_height);
         }
     }
 

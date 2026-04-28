@@ -1,6 +1,7 @@
 use super::constants::{PAGE_SIZE, WHEEL_SCROLL_LINES};
 use super::state::AppState;
 use p2p_app::p2plog_debug;
+use p2p_app::get_tui_logs;
 
 /// Handles tab navigation (Tab and BackTab keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
@@ -149,6 +150,18 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     }
 }
 
+/// Handle scroll key for Log tab
+fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+    let log_len = get_tui_logs().len();
+    let max_offset = log_len.saturating_sub(state.visible_log_count);
+    handle_scroll_key_for_section(
+        key_code,
+        &mut state.log_scroll_offset,
+        &mut state.log_auto_scroll,
+        max_offset,
+    );
+}
+
 /// Handle scroll key for Peers tab
 fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     match key_code {
@@ -178,6 +191,9 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
             } else {
                 scroll_dm_section(key_code, state, peer_id);
             }
+        }
+        p2p_app::tui_tabs::TabContent::Log => {
+            scroll_log_tab(key_code, state);
         }
         _ => {
             scroll_chat_tab(key_code, state);
@@ -270,6 +286,28 @@ fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) {
     }
 }
 
+/// Handle mouse wheel for Log tab
+fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) {
+    let max_offset = get_tui_logs().len().saturating_sub(state.visible_log_count);
+    match scroll_dir {
+        "up" => {
+            if state.log_auto_scroll {
+                state.log_auto_scroll = false;
+                state.log_scroll_offset = max_offset;
+            } else if state.log_scroll_offset >= WHEEL_SCROLL_LINES {
+                state.log_scroll_offset -= WHEEL_SCROLL_LINES;
+            } else {
+                state.log_scroll_offset = 0;
+            }
+        }
+        "down" => {
+            state.log_auto_scroll = false;
+            state.log_scroll_offset = (state.log_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
+        }
+        _ => {}
+    }
+}
+
 /// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs
 pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, _peer_id: Option<&str>) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
@@ -283,6 +321,9 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, _peer_id: Opt
             } else {
                 mouse_scroll_dm_section(state, scroll_dir, peer_id);
             }
+        }
+        p2p_app::tui_tabs::TabContent::Log => {
+            mouse_scroll_log_tab(state, scroll_dir);
         }
         _ => {
             mouse_scroll_chat_tab(state, scroll_dir);

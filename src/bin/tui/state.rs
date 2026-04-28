@@ -42,6 +42,11 @@ pub struct AppState {
     pub chat_area_height: usize, // Height of message area in rows (set by render loop)
     pub chat_message_lines: Vec<usize>, // Line count for each visible message (set by render loop)
 
+    // Scroll State (Log tab)
+    pub log_scroll_offset: usize,
+    pub log_auto_scroll: bool,
+    pub visible_log_count: usize,
+
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
     // Per-DM broadcast scroll state: peer_id -> (scroll_offset, auto_scroll)
@@ -93,6 +98,9 @@ impl AppState {
             chat_message_offset: 0,
             chat_area_height: 0,
             chat_message_lines: Vec::new(),
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
+            visible_log_count: 1,
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
             dm_visible_counts: HashMap::new(),

@@ -194,9 +194,42 @@ pub fn render_dm_tab(
 }
 
 /// Render the log tab
-pub fn render_log_tab(frame: &mut Frame, area: Rect) {
-    let log_text = get_tui_logs().join("\n");
-    let log_para = Paragraph::new(log_text)
+pub fn render_log_tab(
+    frame: &mut Frame,
+    area: Rect,
+    state: &mut AppState,
+    text_width: usize,
+    usable_height: usize,
+) {
+    let logs: VecDeque<String> = get_tui_logs().into_iter().collect();
+    if logs.is_empty() {
+        let log_para = Paragraph::new("No logs")
+            .block(Block::default().title("Logs").borders(Borders::ALL));
+        frame.render_widget(log_para, area);
+        state.visible_log_count = 1;
+        state.log_scroll_offset = 0;
+        state.log_auto_scroll = true;
+        return;
+    }
+
+    let (visible, effective_offset) = calc_visible_strings(
+        &logs,
+        state.log_auto_scroll,
+        state.log_scroll_offset,
+        text_width,
+        usable_height,
+    );
+    state.visible_log_count = visible;
+    state.log_scroll_offset = effective_offset;
+
+    let visible_logs: Vec<ListItem> = logs
+        .iter()
+        .skip(effective_offset)
+        .take(visible)
+        .map(|m| ListItem::new(m.as_str()))
+        .collect();
+
+    let log_list = List::new(visible_logs)
         .block(Block::default().title("Logs").borders(Borders::ALL));
-    frame.render_widget(log_para, area);
+    frame.render_widget(log_list, area);
 }

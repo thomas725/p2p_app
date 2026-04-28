@@ -146,7 +146,12 @@ async fn process_mouse_event(
 
     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
-    let is_message_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Direct(_));
+    let is_scrollable_tab = matches!(
+        tab_content,
+        p2p_app::tui_tabs::TabContent::Chat
+            | p2p_app::tui_tabs::TabContent::Direct(_)
+            | p2p_app::tui_tabs::TabContent::Log
+    );
     let (is_dm_tab, peer_id) = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
         (true, Some(pid.as_str()))
     } else {
@@ -154,10 +159,10 @@ async fn process_mouse_event(
     };
 
     match mouse_event.kind {
-        crossterm::event::MouseEventKind::ScrollUp if is_message_tab => {
+        crossterm::event::MouseEventKind::ScrollUp if is_scrollable_tab => {
             handle_mouse_scroll(&mut s, "up", peer_id);
         }
-        crossterm::event::MouseEventKind::ScrollDown if is_message_tab => {
+        crossterm::event::MouseEventKind::ScrollDown if is_scrollable_tab => {
             handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
