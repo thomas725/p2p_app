@@ -152,24 +152,11 @@ jobs:
           git add .github/ci-results/ 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
-            git commit -m "ci: pipeline results for run ${{ github.run_id }}
-
-Unified CI/CD Pipeline Execution
-
-Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
-Commit: ${{ github.sha }}
-Run: ${{ github.run_id }}
-
-All stages executed in single container:
-- Code quality checks (formatting, lints)
-- Build (once, cached)
-- Tests  
-- Security audit
-- Documentation
-- Coverage report
-
-Results stored and committed."
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+            COMMIT_SHA="${{ github.sha }}"
+            RUN_ID="${{ github.run_id }}"
             
+            git commit -m "ci: unified pipeline results for run $RUN_ID at $TIMESTAMP"
             git push origin main 2>&1 || echo "Could not push results"
           else
             echo "No result changes to commit"
