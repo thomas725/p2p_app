@@ -4,6 +4,72 @@ use p2p_app::p2plog_debug;
 use ratatui_textarea::TextArea;
 use std::collections::VecDeque;
 
+fn format_broadcast_receipt_popup(
+    state: &AppState,
+    msg_id: &str,
+    sent_at: Option<f64>,
+) -> Option<String> {
+    let map = state.broadcast_receipts.get(msg_id)?;
+    if map.is_empty() {
+        return Some("No peers have confirmed receipt yet.".to_string());
+    }
+
+    let mut nickname_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    for peer_id in state.peers.iter().map(|(id, _, _)| id) {
+        if let Some(nick) = state
+            .local_nicknames
+            .get(peer_id)
+            .or_else(|| state.received_nicknames.get(peer_id))
+        {
+            *nickname_counts.entry(nick.clone()).or_insert(0) += 1;
+        }
+    }
+    let mut peers: Vec<_> = map.iter().collect();
+    peers.sort_by(|a, b| a.0.cmp(b.0));
+    let mut parts = Vec::new();
+    for (peer, confirmed_at) in peers {
+        let nick = state
+            .local_nicknames
+            .get(peer)
+            .or_else(|| state.received_nicknames.get(peer));
+        let peer_display = if let Some(n) = nick
+            && nickname_counts.get(n).copied().unwrap_or(0) == 1
+        {
+            n.clone()
+        } else if let Some(n) = nick {
+            format!("{} ({})", n, p2p_app::short_peer_id(peer))
+        } else {
+            p2p_app::short_peer_id(peer).to_string()
+        };
+        let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
+        if let Some(ms) = ms {
+            parts.push(format!("{}={:.0}ms", peer_display, ms));
+        } else {
+            parts.push(format!("{}=confirmed", peer_display));
+        }
+    }
+    Some(format!("Broadcast receipts:\n{}", parts.join("\n")))
+}
+
+fn format_dm_receipt_popup(state: &AppState, msg_id: &str) -> Option<String> {
+    let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
+    let (confirm_peer, confirmed_at) = state.dm_receipts.get(msg_id)?;
+    let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
+    if let Some(ms) = ms {
+        Some(format!(
+            "DM receipt:\npeer={}\ntime={:.0}ms",
+            p2p_app::short_peer_id(confirm_peer),
+            ms
+        ))
+    } else {
+        Some(format!(
+            "DM receipt:\npeer={}\nconfirmed",
+            p2p_app::short_peer_id(confirm_peer)
+        ))
+    }
+}
+
 /// Handles tab bar clicks and close button
 pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
     let mut col_pos = 0;
@@ -130,48 +196,12 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
             .is_some_and(|(_, pid)| pid.is_none())
         && let Some(Some(msg_id)) = state.message_ids.get(global_idx)
     {
-        let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
-        if let Some(map) = state.broadcast_receipts.get(msg_id) {
-            if map.is_empty() {
-                state.popup = Some("No peers have confirmed receipt yet.".to_string());
-            } else {
-                let mut nickname_counts: std::collections::HashMap<String, usize> =
-                    std::collections::HashMap::new();
-                for peer_id in state.peers.iter().map(|(id, _, _)| id) {
-                    if let Some(nick) = state
-                        .local_nicknames
-                        .get(peer_id)
-                        .or_else(|| state.received_nicknames.get(peer_id))
-                    {
-                        *nickname_counts.entry(nick.clone()).or_insert(0) += 1;
-                    }
-                }
-                let mut peers: Vec<_> = map.iter().collect();
-                peers.sort_by(|a, b| a.0.cmp(b.0));
-                let mut parts = Vec::new();
-                for (peer, confirmed_at) in peers {
-                    let nick = state
-                        .local_nicknames
-                        .get(peer)
-                        .or_else(|| state.received_nicknames.get(peer));
-                    let peer_display = if let Some(n) = nick
-                        && nickname_counts.get(n).copied().unwrap_or(0) == 1
-                    {
-                        n.clone()
-                    } else if let Some(n) = nick {
-                        format!("{} ({})", n, p2p_app::short_peer_id(peer))
-                    } else {
-                        p2p_app::short_peer_id(peer).to_string()
-                    };
-                    let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
-                    if let Some(ms) = ms {
-                        parts.push(format!("{}={:.0}ms", peer_display, ms));
-                    } else {
-                        parts.push(format!("{}=confirmed", peer_display));
-                    }
-                }
-                state.popup = Some(format!("Broadcast receipts:\n{}", parts.join("\n")));
-            }
+        if let Some(popup) = format_broadcast_receipt_popup(
+            state,
+            msg_id,
+            state.sent_at_by_msg_id.get(msg_id).copied(),
+        ) {
+            state.popup = Some(popup);
         } else {
             state.popup = Some("No peers have confirmed receipt yet.".to_string());
         }
@@ -338,21 +368,8 @@ pub fn handle_dm_message_click(state: &mut AppState, row: u16, column: u16, peer
             .get(peer_id)
             .and_then(|ids| ids.get(dm_message_idx))
     {
-        let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
-        if let Some((confirm_peer, confirmed_at)) = state.dm_receipts.get(msg_id) {
-            let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
-            if let Some(ms) = ms {
-                state.popup = Some(format!(
-                    "DM receipt:\npeer={}\ntime={:.0}ms",
-                    p2p_app::short_peer_id(confirm_peer),
-                    ms
-                ));
-            } else {
-                state.popup = Some(format!(
-                    "DM receipt:\npeer={}\nconfirmed",
-                    p2p_app::short_peer_id(confirm_peer)
-                ));
-            }
+        if let Some(popup) = format_dm_receipt_popup(state, msg_id) {
+            state.popup = Some(popup);
         } else {
             state.popup = Some("DM not confirmed yet.".to_string());
         }

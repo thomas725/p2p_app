@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,151 |
-| Total Characters        | 210,515 |
+| Total Lines of Code     |   6,168 |
+| Total Characters        | 210,311 |
 | Average Lines per File  |     166 |
-| Average Characters/File |   5,689 |
+| Average Characters/File |   5,684 |
 
 ## All Source Files
 
@@ -33,7 +33,7 @@
 | src/bin                 | p2p_chat.rs          |   163 |  5888 |     7 | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   208 |  7137 |     8 | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   136 |  5127 |     4 | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |   428 | 16198 |     7 | Click handlers & index mapping      |
+| src/bin/tui             | click_handlers.rs    |   445 | 15994 |     7 | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |   282 | 10845 |     6 | Event routing & state updates       |
 | src/bin/tui             | constants.rs         |    19 |   609 |     0 | TUI constants & config              |
 | src/bin/tui             | event_source.rs      |    44 |  1631 |     6 | Terminal event polling (60 FPS)     |
@@ -52,4 +52,4 @@
 | src/generated           | models_queryable.rs  |    68 |  1737 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    69 |  1545 |     2 | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,151 lines, 210,515 characters
+**Total:** 37 files, 6,168 lines, 210,311 characters
