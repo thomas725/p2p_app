@@ -202,14 +202,13 @@ def main():
     print()
     print("## Summary")
     print()
-    print("| Metric                      | Count   |")
+    print("| Metric                      | Value   |")
     print("|:--------------------------|--------:|")
-    print(f"| Total Rust Files            | {total_files:>7}|")
-    print(f"| Total Lines of Code         | {total_lines:>7,}|")
-    print(f"| Total Characters            | {total_chars:>7,}|")
-    print(f"| Average Lines per File      | {avg_lines:>7}|")
-    print(f"| Average Characters per File | {avg_chars:>7}|")
-    print()
+    print(f"| Total Rust Files            | {total_files:>6} |")
+    print(f"| Total Lines of Code        | {total_lines:>6,} |")
+    print(f"| Total Characters           | {total_chars:>6,} |")
+    print(f"| Average Lines per File     | {avg_lines:>6} |")
+    print(f"| Average Characters/File    | {avg_chars:>6,} |")
     print()
     print("## All Source Files")
     print()
@@ -217,14 +216,6 @@ def main():
     print(table)
     print()
     print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
-    print()
-
-    # Print individual file details for verification
-    print()
-    print("### File Details")
-    print()
-    for folder, filename, filepath, lines, chars, nesting, purpose in files_data:
-        print(f"{filepath:40} {lines:>5} lines {chars:>8} chars  nesting={nesting:>2}")
 
 if __name__ == '__main__':
     main()
