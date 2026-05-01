@@ -133,7 +133,7 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     else:
         return (str(path.parent), path.name)
 
-def collect_files() -> List[Tuple[str, str, str, int, int, int]]:
+def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
     """Collect all Rust files with their metrics (excluding tests)."""
     files_data = []
 
@@ -188,7 +188,6 @@ def generate_markdown_table(files_data: List[Tuple]) -> str:
 
 def main():
     """Main entry point."""
-    print("Scanning Rust source files...")
     files_data = collect_files()
 
     # Calculate totals
@@ -198,12 +197,9 @@ def main():
     avg_lines = total_lines // total_files if total_files > 0 else 0
     avg_chars = total_chars // total_files if total_files > 0 else 0
 
+    # Output proper markdown heading
+    print("# Codebase Metrics")
     print()
-    print("=" * 80)
-    print("CODEBASE METRICS")
-    print("=" * 80)
-    print()
-
     print("## Summary")
     print()
     print("| Metric                      | Count   |")
@@ -215,7 +211,6 @@ def main():
     print(f"| Average Characters per File | {avg_chars:>7}|")
     print()
     print()
-
     print("## All Source Files")
     print()
     table = generate_markdown_table(files_data)
@@ -226,9 +221,7 @@ def main():
 
     # Print individual file details for verification
     print()
-    print("=" * 80)
-    print("FILE DETAILS (for verification)")
-    print("=" * 80)
+    print("### File Details")
     print()
     for folder, filename, filepath, lines, chars, nesting, purpose in files_data:
         print(f"{filepath:40} {lines:>5} lines {chars:>8} chars  nesting={nesting:>2}")

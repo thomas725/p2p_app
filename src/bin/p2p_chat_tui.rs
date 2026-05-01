@@ -74,7 +74,6 @@ mod tui {
     mod render_loop;
     pub mod scroll_handlers;
     mod state;
-    mod tracing_writer;
 }
 
 #[tokio::main]
