@@ -6,7 +6,7 @@ fn calc_visible_impl<F>(
     messages: &[String],
     auto_scroll: bool,
     scroll_offset: usize,
-    text_width: usize,
+    _text_width: usize,
     usable_height: usize,
     get_lines: F,
 ) -> (usize, usize)
