@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,170 |
-| Total Characters        | 210,393 |
-| Average Lines per File  |     166 |
-| Average Characters/File |   5,686 |
+| Total Lines of Code     |   6,181 |
+| Total Characters        | 210,233 |
+| Average Lines per File  |     167 |
+| Average Characters/File |   5,681 |
 
 ## All Source Files
 
@@ -17,8 +17,8 @@
 | /                       | build.rs             |   111 |  3864 |     5 | Build script                        |
 | src                     | behavior.rs          |   119 |  3888 |     4 | Network behavior definitions        |
 | src                     | db.rs                |   377 | 13271 |     5 | Database connection & identity mgmt |
-| src                     | fmt.rs               |   111 |  3400 |     4 | Formatting & display utilities      |
-| src                     | lib.rs               |   327 | 10252 |     3 | Module declarations & re-exports    |
+| src                     | fmt.rs               |   102 |  3167 |     4 | Formatting & display utilities      |
+| src                     | lib.rs               |   327 | 10233 |     3 | Module declarations & re-exports    |
 | src                     | logging.rs           |   234 |  6837 |     4 | Logging utilities & setup           |
 | src                     | logging_config.rs    |    38 |  1772 |     2 | Tracing configuration               |
 | src                     | messages.rs          |   192 |  6764 |     4 | Message persistence & retrieval     |
@@ -30,7 +30,7 @@
 | src                     | tui_tabs.rs          |   187 |  4880 |     5 | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   152 |  4506 |     6 | TUI test state & mouse handling     |
 | src                     | types.rs             |    62 |  1685 |     2 | Event & command type defs           |
-| src/bin                 | p2p_chat.rs          |   156 |  5718 |     7 | CLI chat application                |
+| src/bin                 | p2p_chat.rs          |   163 |  5888 |     7 | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   208 |  7137 |     8 | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   136 |  5127 |     4 | Main TUI application entry point    |
 | src/bin/tui             | click_handlers.rs    |   445 | 15994 |     7 | Click handlers & index mapping      |
@@ -45,11 +45,11 @@
 | src/bin/tui/render_loop | layout.rs            |    65 |  2294 |     3 | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   139 |  4879 |     5 | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   441 | 14736 |     7 | Tab-specific renderers              |
-| src/bin/tui/render_loop | visibility.rs        |   117 |  3390 |     5 | Message visibility calculations     |
+| src/bin/tui/render_loop | visibility.rs        |   130 |  3312 |     4 | Message visibility calculations     |
 | src/generated           | columns.rs           |    37 |  1539 |     1 | Auto-generated column definitions   |
 | src/generated           | mod.rs               |     4 |    86 |     0 | Module declarations                 |
 | src/generated           | models_insertable.rs |    59 |  1458 |     1 | Insertable data models              |
 | src/generated           | models_queryable.rs  |    68 |  1737 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    69 |  1545 |     2 | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,170 lines, 210,393 characters
+**Total:** 37 files, 6,181 lines, 210,233 characters
