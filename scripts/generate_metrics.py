@@ -65,7 +65,6 @@ def calculate_max_nesting(filepath: str) -> int:
 
 def get_file_purpose(filepath: str) -> str:
     """Get a brief description of file purpose from first doc comment or context."""
-    # Check path-specific entries first (for nested modules)
     if 'render_loop/mod.rs' in filepath:
         return 'Render loop orchestration (60 FPS)'
     if 'render_loop/visibility.rs' in filepath:
@@ -75,7 +74,6 @@ def get_file_purpose(filepath: str) -> str:
     if 'render_loop/tab_renderers.rs' in filepath:
         return 'Tab-specific renderers'
 
-    # Filename-based entries
     purposes = {
         'build.rs': 'Build script',
         'lib.rs': 'Module declarations & re-exports',
@@ -108,7 +106,6 @@ def get_file_purpose(filepath: str) -> str:
         'message_handlers.rs': 'Message sending logic',
         'main_loop.rs': 'Task orchestration & async',
         'state.rs': 'Shared application state',
-        'tracing_writer.rs': 'Tracing log output handling',
         'constants.rs': 'TUI constants & config',
         'mod.rs': 'Module declarations',
     }
@@ -137,10 +134,6 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
     """Collect all Rust files with their metrics (excluding tests)."""
     files_data = []
 
-    # Directories to scan - only src/, src/bin/, src/generated/, and build.rs
-    base_path = Path('.')
-
-    # Collect build.rs
     if Path('build.rs').exists():
         filepath = 'build.rs'
         lines = count_lines(filepath)
@@ -150,11 +143,9 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
         purpose = get_file_purpose(filepath)
         files_data.append((folder, filename, filepath, lines, chars, nesting, purpose))
 
-    # Collect src/ files
     for rs_file in sorted(Path('src').glob('**/*.rs')):
         filepath = str(rs_file)
 
-        # Skip test module files
         if 'tests' in filepath or '#[cfg(test)]' in str(rs_file):
             continue
 
@@ -166,9 +157,7 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
 
         files_data.append((folder, filename, filepath, lines, chars, nesting, purpose))
 
-    # Sort by folder, then by filename for consistent ordering
     files_data.sort(key=lambda x: (x[0], x[1]))
-
     return files_data
 
 def generate_markdown_table(files_data: List[Tuple]) -> str:
@@ -178,7 +167,6 @@ def generate_markdown_table(files_data: List[Tuple]) -> str:
     output.append('|:------------------------|:---------------------|------:|------:|------:|------------------------------------:|')
 
     for folder, filename, _, lines, chars, nesting, purpose in files_data:
-        # Truncate purpose if too long
         if len(purpose) > 35:
             purpose = purpose[:32] + '...'
 
@@ -190,25 +178,32 @@ def main():
     """Main entry point."""
     files_data = collect_files()
 
-    # Calculate totals
     total_lines = sum(f[3] for f in files_data)
     total_chars = sum(f[4] for f in files_data)
     total_files = len(files_data)
     avg_lines = total_lines // total_files if total_files > 0 else 0
     avg_chars = total_chars // total_files if total_files > 0 else 0
 
-    # Output proper markdown heading
+    # Calculate column width for right-aligned values
+    W = max(len(str(total_files)), len(str(total_lines)), len(str(total_chars)), len(str(avg_lines)), len(str(avg_chars)))
+
+    v1 = str(total_files).rjust(W)
+    v2 = f"{total_lines:,}".rjust(W)
+    v3 = f"{total_chars:,}".rjust(W)
+    v4 = str(avg_lines).rjust(W)
+    v5 = f"{avg_chars:,}".rjust(W)
+
     print("# Codebase Metrics")
     print()
     print("## Summary")
     print()
     print("| Metric                  | Value   |")
     print("|:------------------------|--------:|")
-    print(f"| Total Rust Files        | {total_files:>8} |")
-    print(f"| Total Lines of Code     | {total_lines:>8,} |")
-    print(f"| Total Characters        | {total_chars:>8,} |")
-    print(f"| Average Lines per File  | {avg_lines:>8} |")
-    print(f"| Average Characters/File | {avg_chars:>8,} |")
+    print(f"| Total Rust Files        | {v1} |")
+    print(f"| Total Lines of Code     | {v2} |")
+    print(f"| Total Characters        | {v3} |")
+    print(f"| Average Lines per File  | {v4} |")
+    print(f"| Average Characters/File | {v5} |")
     print()
     print("## All Source Files")
     print()
