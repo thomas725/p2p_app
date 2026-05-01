@@ -7,6 +7,23 @@ use tokio::sync::mpsc;
 use crate::tui::click_handlers::{handle_mouse_left_click, load_dm_messages};
 use crate::tui::scroll_handlers::{handle_mouse_scroll, handle_navigation_key, handle_scroll_key};
 
+fn update_dm_transcript_labels(
+    dm_messages: &mut std::collections::HashMap<String, std::collections::VecDeque<String>>,
+    peer_id: &str,
+    old_nick: &str,
+    new_nick: &str,
+) {
+    if let Some(dm_msgs) = dm_messages.get_mut(peer_id) {
+        let from = format!("[{}] ", old_nick);
+        let to = format!("[{}] ", new_nick);
+        for line in dm_msgs.iter_mut() {
+            if line.contains(&from) {
+                *line = line.replace(&from, &to);
+            }
+        }
+    }
+}
+
 /// Toggles mouse capture mode (F12)
 fn toggle_mouse_capture(state: &mut super::state::AppState) {
     use ratatui::crossterm::execute;
@@ -23,6 +40,77 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
     } else {
         execute!(stdout, crossterm::event::DisableMouseCapture)
     };
+}
+
+async fn handle_nickname_submission(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let new_nickname = state.chat_input.lines().join("\n");
+    if new_nickname.trim().is_empty() {
+        state.cancel_nickname_edit();
+        return;
+    }
+
+    if let Some(peer_id) = state.editing_nickname_peer.clone() {
+        let old_nickname = state
+            .self_nicknames_for_peers
+            .get(&peer_id)
+            .cloned()
+            .unwrap_or_else(|| state.own_nickname.clone());
+        state
+            .self_nicknames_for_peers
+            .insert(peer_id.clone(), new_nickname.clone());
+        let _ = p2p_app::set_peer_self_nickname_for_peer(&peer_id, &new_nickname);
+        let _ = swarm_cmd_tx
+            .send(SwarmCommand::SendDm {
+                peer_id: peer_id.clone(),
+                content: String::new(),
+                nickname: Some(new_nickname.clone()),
+                msg_id: None,
+                ack_for: None,
+            })
+            .await;
+        update_dm_transcript_labels(
+            &mut state.dm_messages,
+            &peer_id,
+            &old_nickname,
+            &new_nickname,
+        );
+        p2plog_debug(format!("Updated per-peer nickname to: {}", new_nickname));
+    } else {
+        let old_nickname = state.own_nickname.clone();
+        state.own_nickname = new_nickname.clone();
+        let _ = p2p_app::set_self_nickname(&new_nickname);
+        for (peer_id, _, _) in state.peers.iter() {
+            if state.self_nicknames_for_peers.contains_key(peer_id) {
+                continue;
+            }
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::SendDm {
+                    peer_id: peer_id.clone(),
+                    content: String::new(),
+                    nickname: Some(new_nickname.clone()),
+                    msg_id: None,
+                    ack_for: None,
+                })
+                .await;
+        }
+        let peer_ids: Vec<String> = state.dm_messages.keys().cloned().collect();
+        for peer_id in peer_ids {
+            if state.self_nicknames_for_peers.contains_key(&peer_id) {
+                continue;
+            }
+            update_dm_transcript_labels(
+                &mut state.dm_messages,
+                &peer_id,
+                &old_nickname,
+                &new_nickname,
+            );
+        }
+        p2plog_debug(format!("Updated broadcast nickname to: {}", new_nickname));
+    }
+    state.cancel_nickname_edit();
 }
 
 /// Handles Ctrl+W (close DM tab)
@@ -134,77 +222,7 @@ async fn process_key_event(
         }
         crossterm::event::KeyCode::Enter => {
             if s.editing_nickname {
-                let new_nickname = s.chat_input.lines().join("\n");
-                if !new_nickname.trim().is_empty() {
-                    if let Some(peer_id) = s.editing_nickname_peer.clone() {
-                        let old_nickname = s
-                            .self_nicknames_for_peers
-                            .get(&peer_id)
-                            .cloned()
-                            .unwrap_or_else(|| s.own_nickname.clone());
-                        s.self_nicknames_for_peers
-                            .insert(peer_id.clone(), new_nickname.clone());
-                        let _ = p2p_app::set_peer_self_nickname_for_peer(&peer_id, &new_nickname);
-                        // Propagate to this peer only.
-                        let _ = swarm_cmd_tx
-                            .send(SwarmCommand::SendDm {
-                                peer_id: peer_id.clone(),
-                                content: String::new(),
-                                nickname: Some(new_nickname.clone()),
-                                msg_id: None,
-                                ack_for: None,
-                            })
-                            .await;
-                        // Update in-memory DM transcript labels so click-to-edit keeps working.
-                        if let Some(dm_msgs) = s.dm_messages.get_mut(&peer_id) {
-                            let from = format!("[{}] ", old_nickname);
-                            let to = format!("[{}] ", new_nickname);
-                            for line in dm_msgs.iter_mut() {
-                                if line.contains(&from) {
-                                    *line = line.replace(&from, &to);
-                                }
-                            }
-                        }
-                        p2plog_debug(format!("Updated per-peer nickname to: {}", new_nickname));
-                    } else {
-                        let old_nickname = s.own_nickname.clone();
-                        s.own_nickname = new_nickname.clone();
-                        let _ = p2p_app::set_self_nickname(&new_nickname);
-                        // Propagate to peers that don't have an override configured.
-                        for (peer_id, _, _) in s.peers.iter() {
-                            if s.self_nicknames_for_peers.contains_key(peer_id) {
-                                continue;
-                            }
-                            let _ = swarm_cmd_tx
-                                .send(SwarmCommand::SendDm {
-                                    peer_id: peer_id.clone(),
-                                    content: String::new(),
-                                    nickname: Some(new_nickname.clone()),
-                                    msg_id: None,
-                                    ack_for: None,
-                                })
-                                .await;
-                        }
-                        // Update in-memory DM transcript labels for peers that don't have overrides.
-                        let peer_ids: Vec<String> = s.dm_messages.keys().cloned().collect();
-                        for peer_id in peer_ids {
-                            if s.self_nicknames_for_peers.contains_key(&peer_id) {
-                                continue;
-                            }
-                            if let Some(dm_msgs) = s.dm_messages.get_mut(&peer_id) {
-                                let from = format!("[{}] ", old_nickname);
-                                let to = format!("[{}] ", new_nickname);
-                                for line in dm_msgs.iter_mut() {
-                                    if line.contains(&from) {
-                                        *line = line.replace(&from, &to);
-                                    }
-                                }
-                            }
-                        }
-                        p2plog_debug(format!("Updated broadcast nickname to: {}", new_nickname));
-                    }
-                }
-                s.cancel_nickname_edit();
+                handle_nickname_submission(&mut s, swarm_cmd_tx).await;
             } else {
                 let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
                 let shift_held = key_event

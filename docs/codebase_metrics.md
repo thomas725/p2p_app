@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,133 |
-| Total Characters        | 211,498 |
-| Average Lines per File  |     165 |
-| Average Characters/File |   5,716 |
+| Total Lines of Code     |   6,151 |
+| Total Characters        | 210,515 |
+| Average Lines per File  |     166 |
+| Average Characters/File |   5,689 |
 
 ## All Source Files
 
@@ -37,7 +37,7 @@
 | src/bin/tui             | command_processor.rs |   282 | 10845 |     6 | Event routing & state updates       |
 | src/bin/tui             | constants.rs         |    19 |   609 |     0 | TUI constants & config              |
 | src/bin/tui             | event_source.rs      |    44 |  1631 |     6 | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |   306 | 12138 |    10 | Input event routing & processing    |
+| src/bin/tui             | input_processor.rs   |   324 | 11155 |     5 | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   267 |  9847 |     5 | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   107 |  3919 |     5 | Message sending logic               |
 | src/bin/tui             | scroll_handlers.rs   |   378 | 12888 |     5 | Scroll & hover-aware navigation     |
@@ -52,4 +52,4 @@
 | src/generated           | models_queryable.rs  |    68 |  1737 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    69 |  1545 |     2 | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,133 lines, 211,498 characters
+**Total:** 37 files, 6,151 lines, 210,515 characters
