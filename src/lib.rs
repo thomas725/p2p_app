@@ -33,8 +33,9 @@ pub use logging::{
 };
 pub use logging_config::tracing_filter;
 pub use messages::{
-    get_unsent_direct_messages, get_unsent_messages, load_direct_messages, load_messages,
-    load_receipts, mark_message_sent, save_message, save_message_with_meta, save_receipt,
+    MessageMeta, get_unsent_direct_messages, get_unsent_messages, load_direct_messages,
+    load_messages, load_receipts, mark_message_sent, save_message, save_message_with_meta,
+    save_receipt,
 };
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{

@@ -8,6 +8,23 @@ use crate::{
 use color_eyre::eyre::Context;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
 
+/// Optional metadata for message creation
+pub struct MessageMeta {
+    pub sender_nickname: Option<String>,
+    pub msg_id: Option<String>,
+    pub sent_at: Option<f64>,
+}
+
+impl Default for MessageMeta {
+    fn default() -> Self {
+        Self {
+            sender_nickname: None,
+            msg_id: None,
+            sent_at: None,
+        }
+    }
+}
+
 /// Save a message to the database.
 ///
 /// Inserts a new message with the given content and metadata.
@@ -35,21 +52,18 @@ pub fn save_message(
         topic,
         is_direct,
         target_peer,
-        None,
-        None,
-        None,
+        MessageMeta::default(),
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn save_message_with_meta(
     content: &str,
     peer_id: Option<&str>,
     topic: &str,
     is_direct: bool,
     target_peer: Option<&str>,
-    sender_nickname: Option<&str>,
-    msg_id: Option<&str>,
-    sent_at: Option<f64>,
+    meta: MessageMeta,
 ) -> color_eyre::Result<Message> {
     let conn = &mut crate::sqlite_connect()?;
     let new_msg = NewMessage {
@@ -59,9 +73,9 @@ pub fn save_message_with_meta(
         sent: 0,
         is_direct: is_direct as i32,
         target_peer: target_peer.map(|s| s.to_string()),
-        sender_nickname: sender_nickname.map(|s| s.to_string()),
-        msg_id: msg_id.map(|s| s.to_string()),
-        sent_at,
+        sender_nickname: meta.sender_nickname,
+        msg_id: meta.msg_id,
+        sent_at: meta.sent_at,
     };
     diesel::insert_into(crate::generated::schema::messages::table)
         .values(&new_msg)

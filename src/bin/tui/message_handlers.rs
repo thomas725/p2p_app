@@ -89,15 +89,18 @@ pub async fn send_message(
     // For direct messages, `peer_id` in DB represents the sender. Outgoing DM sender is us -> store None.
     let db_sender_peer_id = if is_direct { None } else { peer_ref };
     // Use own nickname as sender's nickname for outgoing messages
+    let meta = p2p_app::MessageMeta {
+        sender_nickname: Some(own_nickname),
+        msg_id: Some(msg_id_for_db),
+        sent_at: Some(sent_at),
+    };
     if let Err(e) = p2p_app::save_message_with_meta(
         &text,
         db_sender_peer_id,
         &topic_str,
         is_direct,
         dm_target_peer_id.as_deref(),
-        Some(&own_nickname),
-        Some(&msg_id_for_db),
-        Some(sent_at),
+        meta,
     ) {
         p2plog_debug(format!("Failed to save message: {}", e));
     }

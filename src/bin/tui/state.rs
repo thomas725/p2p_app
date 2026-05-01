@@ -105,6 +105,7 @@ impl AppState {
         self.chat_input = TextArea::default();
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         topic_str: String,
         own_nickname: String,
