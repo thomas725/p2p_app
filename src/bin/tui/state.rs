@@ -169,17 +169,20 @@ impl AppState {
     }
 }
 
+type FormattedMessages = (
+    VecDeque<(String, Option<String>)>,
+    VecDeque<Option<String>>,
+    HashMap<String, f64>,
+);
+
+#[allow(clippy::type_complexity)]
 pub fn load_and_format_messages(
     topic_str: &str,
     max_messages: usize,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
     own_nickname: &str,
-) -> (
-    VecDeque<(String, Option<String>)>,
-    VecDeque<Option<String>>,
-    HashMap<String, f64>,
-) {
+) -> FormattedMessages {
     let mut messages = VecDeque::new();
     let mut message_ids = VecDeque::new();
     let mut sent_at_by_msg_id = HashMap::new();
