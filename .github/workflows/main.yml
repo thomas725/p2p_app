@@ -63,23 +63,48 @@ jobs:
             libpango1.0-dev
       
       # ============================================================
+      # Create logs directory
+      # ============================================================
+      
+      - name: Create logs directory
+        run: mkdir -p .github/ci-logs
+      
+      # ============================================================
       # PHASE 1: Code Quality Checks
       # ============================================================
       
       - name: Check code formatting
-        run: cargo fmt -- --check
+        run: |
+          set +e
+          cargo fmt -- --check 2>&1 | tee .github/ci-logs/fmt.log
+          FMT_EXIT=$?
+          set -e
+          echo "Exit code: $FMT_EXIT" >> .github/ci-logs/fmt.log
+          exit $FMT_EXIT
         continue-on-error: true
       
       - name: Run clippy lints
-        run: cargo clippy --all-targets -- -D warnings
+        run: |
+          set +e
+          cargo clippy --all-targets 2>&1 | tee .github/ci-logs/clippy.log
+          CLIPPY_EXIT=$?
+          set -e
+          echo "Exit code: $CLIPPY_EXIT" >> .github/ci-logs/clippy.log
+          exit $CLIPPY_EXIT
         continue-on-error: true
       
       # ============================================================
-      # PHASE 2: Build (once - reused for all subsequent steps)
+      # PHASE 2: Build (once)
       # ============================================================
       
       - name: Build project
-        run: cargo build --release
+        run: |
+          set +e
+          cargo build --release 2>&1 | tee .github/ci-logs/build.log
+          BUILD_EXIT=$?
+          set -e
+          echo "Exit code: $BUILD_EXIT" >> .github/ci-logs/build.log
+          exit $BUILD_EXIT
         continue-on-error: true
       
       # ============================================================
@@ -87,7 +112,13 @@ jobs:
       # ============================================================
       
       - name: Run tests
-        run: cargo test --verbose
+        run: |
+          set +e
+          cargo test --verbose 2>&1 | tee .github/ci-logs/tests.log
+          TEST_EXIT=$?
+          set -e
+          echo "Exit code: $TEST_EXIT" >> .github/ci-logs/tests.log
+          exit $TEST_EXIT
         continue-on-error: true
       
       # ============================================================
@@ -95,11 +126,23 @@ jobs:
       # ============================================================
       
       - name: Security audit
-        run: cargo audit
+        run: |
+          set +e
+          cargo audit 2>&1 | tee .github/ci-logs/audit.log
+          AUDIT_EXIT=$?
+          set -e
+          echo "Exit code: $AUDIT_EXIT" >> .github/ci-logs/audit.log
+          exit $AUDIT_EXIT
         continue-on-error: true
       
       - name: Build documentation
-        run: cargo doc --no-deps
+        run: |
+          set +e
+          cargo doc --no-deps 2>&1 | tee .github/ci-logs/docs.log
+          DOCS_EXIT=$?
+          set -e
+          echo "Exit code: $DOCS_EXIT" >> .github/ci-logs/docs.log
+          exit $DOCS_EXIT
         env:
           RUSTDOCFLAGS: "-W missing-docs"
         continue-on-error: true
@@ -110,15 +153,20 @@ jobs:
       
       - name: Generate code coverage
         run: |
-          cargo install cargo-tarpaulin
-          cargo tarpaulin --out Xml --output-dir coverage
+          set +e
+          cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
+          cargo tarpaulin --out Xml --output-dir coverage 2>&1 | tee -a .github/ci-logs/coverage.log
+          COVERAGE_EXIT=$?
+          set -e
+          echo "Exit code: $COVERAGE_EXIT" >> .github/ci-logs/coverage.log
+          exit $COVERAGE_EXIT
         continue-on-error: true
       
       # ============================================================
-      # FINAL PHASE: Store Results (ALWAYS runs last)
+      # FINAL PHASE: Store Results
       # ============================================================
       
-      - name: Create results file
+      - name: Create comprehensive results file
         if: always()
         run: |
           mkdir -p .github/ci-results
@@ -137,11 +185,21 @@ jobs:
           echo "Branch: ${{ github.ref }}" >> "$RESULTS_FILE"
           echo "Run ID: ${{ github.run_id }}" >> "$RESULTS_FILE"
           echo "" >> "$RESULTS_FILE"
-          echo "Pipeline completed successfully!" >> "$RESULTS_FILE"
-          echo "All stages executed in single container with caching." >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "Detailed Logs" >> "$RESULTS_FILE"
+          echo "============================================================" >> "$RESULTS_FILE"
+          echo "" >> "$RESULTS_FILE"
+          
+          # Append all logs
+          for log in .github/ci-logs/*.log; do
+            if [ -f "$log" ]; then
+              echo "--- $(basename $log) ---" >> "$RESULTS_FILE"
+              cat "$log" >> "$RESULTS_FILE"
+              echo "" >> "$RESULTS_FILE"
+            fi
+          done
           
           echo "Results file created at: $RESULTS_FILE"
-          cat "$RESULTS_FILE"
       
       - name: Commit and push results
         if: always()
@@ -149,11 +207,10 @@ jobs:
           git config --global user.email "ci-pipeline@anthropic.com"
           git config --global user.name "CI Pipeline"
           
-          git add .github/ci-results/ 2>/dev/null || true
+          git add .github/ci-results/ .github/ci-logs/ 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-            COMMIT_SHA="${{ github.sha }}"
             RUN_ID="${{ github.run_id }}"
             
             git commit -m "ci: unified pipeline results for run $RUN_ID at $TIMESTAMP"
