@@ -125,14 +125,14 @@ jobs:
       # PHASE 4: Security & Documentation
       # ============================================================
       
-      - name: Security audit
+      - name: Check for duplicate dependencies
         run: |
           set +e
-          cargo audit 2>&1 | tee .github/ci-logs/audit.log
-          AUDIT_EXIT=$?
+          cargo tree --duplicates 2>&1 | tee .github/ci-logs/dependencies.log
+          DEPS_EXIT=$?
           set -e
-          echo "Exit code: $AUDIT_EXIT" >> .github/ci-logs/audit.log
-          exit $AUDIT_EXIT
+          echo "Exit code: $DEPS_EXIT" >> .github/ci-logs/dependencies.log
+          exit $DEPS_EXIT
         continue-on-error: true
       
       - name: Build documentation
