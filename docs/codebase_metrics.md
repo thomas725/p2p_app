@@ -6,9 +6,9 @@
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
 | Total Lines of Code     |   6,181 |
-| Total Characters        | 210,233 |
+| Total Characters        | 210,234 |
 | Average Lines per File  |     167 |
-| Average Characters/File |   5,681 |
+| Average Characters/File |   5,682 |
 
 ## All Source Files
 
@@ -45,11 +45,11 @@
 | src/bin/tui/render_loop | layout.rs            |    65 |  2294 |     3 | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   139 |  4879 |     5 | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   441 | 14736 |     7 | Tab-specific renderers              |
-| src/bin/tui/render_loop | visibility.rs        |   130 |  3312 |     4 | Message visibility calculations     |
+| src/bin/tui/render_loop | visibility.rs        |   130 |  3313 |     4 | Message visibility calculations     |
 | src/generated           | columns.rs           |    37 |  1539 |     1 | Auto-generated column definitions   |
 | src/generated           | mod.rs               |     4 |    86 |     0 | Module declarations                 |
 | src/generated           | models_insertable.rs |    59 |  1458 |     1 | Insertable data models              |
 | src/generated           | models_queryable.rs  |    68 |  1737 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    69 |  1545 |     2 | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,181 lines, 210,233 characters
+**Total:** 37 files, 6,181 lines, 210,234 characters
