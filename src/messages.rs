@@ -9,20 +9,11 @@ use color_eyre::eyre::Context;
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
 
 /// Optional metadata for message creation
+#[derive(Default)]
 pub struct MessageMeta {
     pub sender_nickname: Option<String>,
     pub msg_id: Option<String>,
     pub sent_at: Option<f64>,
-}
-
-impl Default for MessageMeta {
-    fn default() -> Self {
-        Self {
-            sender_nickname: None,
-            msg_id: None,
-            sent_at: None,
-        }
-    }
 }
 
 /// Save a message to the database.
