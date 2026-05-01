@@ -4,11 +4,11 @@
 
 | Metric                  | Value   |
 |:------------------------|--------:|
-| Total Rust Files        |     37 |
-| Total Lines of Code     |  6,133 |
+| Total Rust Files        |      37 |
+| Total Lines of Code     |   6,133 |
 | Total Characters        | 211,498 |
-| Average Lines per File  |    165 |
-| Average Characters/File |  5,716 |
+| Average Lines per File  |     165 |
+| Average Characters/File |   5,716 |
 
 ## All Source Files
 

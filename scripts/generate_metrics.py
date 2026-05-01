@@ -184,8 +184,14 @@ def main():
     avg_lines = total_lines // total_files if total_files > 0 else 0
     avg_chars = total_chars // total_files if total_files > 0 else 0
 
-    # Calculate column width for right-aligned values
-    W = max(len(str(total_files)), len(str(total_lines)), len(str(total_chars)), len(str(avg_lines)), len(str(avg_chars)))
+    # Column width based on FORMATTED values (with commas for thousands)
+    W = max(
+        len(str(total_files)),
+        len(f"{total_lines:,}"),
+        len(f"{total_chars:,}"),
+        len(str(avg_lines)),
+        len(f"{avg_chars:,}")
+    )
 
     v1 = str(total_files).rjust(W)
     v2 = f"{total_lines:,}".rjust(W)
