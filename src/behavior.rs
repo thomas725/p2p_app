@@ -13,7 +13,7 @@ pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 pub const CHAT_TOPIC: &str = "test-net";
 
 /// Direct message content with timestamp and sender info
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DirectMessage {
     pub content: String,
@@ -26,38 +26,13 @@ pub struct DirectMessage {
 }
 
 /// Broadcast message content with timestamp and sender info
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct BroadcastMessage {
     pub content: String,
     pub sent_at: Option<f64>,
     pub nickname: Option<String>,
     pub msg_id: Option<String>,
-}
-
-impl Default for DirectMessage {
-    fn default() -> Self {
-        Self {
-            content: String::new(),
-            timestamp: 0,
-            sent_at: None,
-            nickname: None,
-            msg_id: None,
-            ack_for: None,
-            received_at: None,
-        }
-    }
-}
-
-impl Default for BroadcastMessage {
-    fn default() -> Self {
-        Self {
-            content: String::new(),
-            sent_at: None,
-            nickname: None,
-            msg_id: None,
-        }
-    }
 }
 
 /// JSON codec for direct message protocol

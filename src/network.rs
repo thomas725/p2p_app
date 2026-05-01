@@ -31,18 +31,6 @@ impl NetworkSize {
     }
 }
 
-impl TryFrom<i32> for NetworkSize {
-    type Error = &'static str;
-
-    fn try_from(value: i32) -> Result<Self, Self::Error> {
-        match value {
-            0..=3 => Ok(Self::Small),
-            4..=15 => Ok(Self::Medium),
-            _ => Ok(Self::Large),
-        }
-    }
-}
-
 pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     let avg = get_average_peer_count()?;
     Ok(NetworkSize::from_peer_count(avg))

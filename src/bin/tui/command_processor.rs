@@ -24,10 +24,10 @@ fn sort_peers_by_last_seen(state: &mut super::state::AppState) {
     peers_vec.sort_by(|a, b| b.2.cmp(&a.2));
     state.peers = peers_vec.into();
 
-    if let Some(sel_id) = selected_peer_id {
-        if let Some(idx) = state.peers.iter().position(|(id, _, _)| id == &sel_id) {
-            state.peer_selection = idx;
-        }
+    if let Some(sel_id) = selected_peer_id
+        && let Some(idx) = state.peers.iter().position(|(id, _, _)| id == &sel_id)
+    {
+        state.peer_selection = idx;
     }
     if state.peer_selection >= state.peers.len() {
         state.peer_selection = state.peers.len().saturating_sub(1);

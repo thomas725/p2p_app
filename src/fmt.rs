@@ -32,7 +32,7 @@ pub fn gen_msg_id() -> String {
     let now_ns = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
-        .as_nanos() as u128;
+        .as_nanos();
     let c = COUNTER.fetch_add(1, Ordering::Relaxed) as u128;
     format!("{:x}{:x}", now_ns, c)
 }

@@ -210,10 +210,10 @@ pub fn load_and_format_messages(
                 msg.peer_id.clone(),
             ));
             message_ids.push_back(msg.msg_id.clone());
-            if let Some(msg_id) = &msg.msg_id {
-                if let Some(sent_at) = msg.sent_at {
-                    sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
-                }
+            if let Some(msg_id) = &msg.msg_id
+                && let Some(sent_at) = msg.sent_at
+            {
+                sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
             }
         }
     } else {
