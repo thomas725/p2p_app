@@ -16,12 +16,19 @@ pub const CHAT_TOPIC: &str = "test-net";
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DirectMessage {
+    /// The message content/text
     pub content: String,
+    /// Unix timestamp when the message was created
     pub timestamp: i64,
+    /// Optional timestamp of when the message was sent to the network
     pub sent_at: Option<f64>,
+    /// Optional nickname of the sender
     pub nickname: Option<String>,
+    /// Optional unique identifier for this message
     pub msg_id: Option<String>,
+    /// Optional ID of the message this is acknowledging/replying to
     pub ack_for: Option<String>,
+    /// Optional timestamp of when this message was received
     pub received_at: Option<f64>,
 }
 
@@ -29,9 +36,13 @@ pub struct DirectMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct BroadcastMessage {
+    /// The message content/text
     pub content: String,
+    /// Optional timestamp of when the message was sent
     pub sent_at: Option<f64>,
+    /// Optional nickname of the sender
     pub nickname: Option<String>,
+    /// Optional unique identifier for this message
     pub msg_id: Option<String>,
 }
 

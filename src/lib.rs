@@ -1,16 +1,50 @@
+//! # p2p_app - Decentralized Peer-to-Peer Chat Application
+//!
+//! A fully decentralized peer-to-peer chat application built on top of libp2p.
+//! This crate provides the core functionality for running a P2P chat node that can
+//! communicate with other peers over a distributed network without requiring
+//! central servers.
+//!
+//! ## Features
+//!
+//! - **Decentralized Messaging**: Send and receive messages directly peer-to-peer
+//! - **Network Discovery**: Automatic peer discovery using mDNS
+//! - **Message Persistence**: Store messages and metadata in SQLite database
+//! - **TUI Interface**: Terminal user interface for interacting with the chat network
+//! - **Direct Messaging**: Send private messages to specific peers
+//! - **Nickname Management**: Set and manage nicknames for yourself and peers
+//! - **Message Receipts**: Track message delivery and read status
+//!
+//! ## Core Modules
+//!
+//! - [`behavior`] - P2P swarm behavior and message handling
+//! - [`network`] - Network size and connectivity information
+//! - [`nickname`] - Nickname management for peers
+//! - [`messages`] - Message storage and retrieval
+//! - [`db`] - Database initialization and management
+//! - [`peers`] - Peer information and session tracking
+//! - [`swarm_handler`] - Swarm event handling
+//! - [`types`] - Core type definitions
+//! - [`logging`] - Logging functionality
+//! - [`fmt`] - Formatting utilities
+
 pub mod behavior;
 pub mod db;
 pub mod fmt;
 pub mod logging;
 pub mod logging_config;
 pub mod messages;
+//! Network functionality for peer-to-peer communication
 pub mod network;
+//! Nickname management for chat users and peers
 pub mod nickname;
 pub mod peers;
+//! Swarm handler for managing P2P network events
 pub mod swarm_handler;
 pub mod tui_events;
 pub mod tui_tabs;
 pub mod tui_test_state;
+//! Core type definitions used throughout the application
 pub mod types;
 
 pub mod generated;
@@ -56,6 +90,11 @@ pub use tui_test_state::{NotificationTarget, TuiTestState};
 pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
+
+/// Database migrations for p2p_app schema initialization and updates.
+///
+/// This constant contains all SQL migrations embedded at compile time.
+/// It's used to initialize and upgrade the database schema when the application starts.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[cfg(test)]
