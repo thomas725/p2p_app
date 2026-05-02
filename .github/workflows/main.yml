@@ -205,8 +205,18 @@ jobs:
       - name: Clean up individual log files
         if: always()
         run: |
+          # Delete individual log files (consolidated into results file)
           rm -rf .github/ci-logs
-          echo "Individual log files deleted (consolidated into results file)"
+          
+          # Delete old legacy result files (replaced by timestamped format)
+          rm -f .github/ci-results/build-matrix.txt
+          rm -f .github/ci-results/latest-run.txt
+          rm -f .github/ci-results/latest.txt
+          
+          echo "Cleanup complete:"
+          echo "  - Individual log files deleted"
+          echo "  - Old legacy result files deleted"
+          echo "  - Timestamped results files preserved"
       
       - name: Commit and push results
         if: always()
