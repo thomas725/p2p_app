@@ -1,72 +1,37 @@
 pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("identities", "created_at", "TIMESTAMP"),
-
     ("identities", "id", "INTEGER"),
-
     ("identities", "key", "BLOB"),
-
     ("identities", "last_quic_port", "INTEGER"),
-
     ("identities", "last_tcp_port", "INTEGER"),
-
     ("identities", "self_nickname", "TEXT"),
-
     ("message_receipts", "confirmed_at", "DOUBLE"),
-
     ("message_receipts", "created_at", "TIMESTAMP"),
-
     ("message_receipts", "id", "INTEGER"),
-
     ("message_receipts", "kind", "INTEGER"),
-
     ("message_receipts", "msg_id", "TEXT"),
-
     ("message_receipts", "peer_id", "TEXT"),
-
     ("messages", "content", "TEXT"),
-
     ("messages", "created_at", "TIMESTAMP"),
-
     ("messages", "id", "INTEGER"),
-
     ("messages", "is_direct", "INTEGER"),
-
     ("messages", "msg_id", "TEXT"),
-
     ("messages", "peer_id", "TEXT"),
-
     ("messages", "sender_nickname", "TEXT"),
-
     ("messages", "sent", "INTEGER"),
-
     ("messages", "sent_at", "DOUBLE"),
-
     ("messages", "target_peer", "TEXT"),
-
     ("messages", "topic", "TEXT"),
-
     ("peer_sessions", "concurrent_peers", "INTEGER"),
-
     ("peer_sessions", "id", "INTEGER"),
-
     ("peer_sessions", "recorded_at", "TIMESTAMP"),
-
     ("peers", "addresses", "TEXT"),
-
     ("peers", "created_at", "TIMESTAMP"),
-
     ("peers", "first_seen", "TIMESTAMP"),
-
     ("peers", "id", "INTEGER"),
-
     ("peers", "last_seen", "TIMESTAMP"),
-
     ("peers", "peer_id", "TEXT"),
-
     ("peers", "peer_local_nickname", "TEXT"),
-
     ("peers", "received_nickname", "TEXT"),
-
-    ("peers", "self_nickname_for_peer", "TEXT")
-
+    ("peers", "self_nickname_for_peer", "TEXT"),
 ];
