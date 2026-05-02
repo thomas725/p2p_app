@@ -8,6 +8,9 @@ permissions:
   contents: write
   checks: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   pipeline:
     name: Complete CI/CD Pipeline
@@ -19,7 +22,7 @@ jobs:
       # ============================================================
       
       - name: Checkout code
-        uses: actions/checkout@v4.3.0
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
@@ -28,23 +31,8 @@ jobs:
         with:
           components: rustfmt
       
-      - name: Cache cargo registry
-        uses: actions/cache@v4.2.0
-        with:
-          path: ~/.cargo/registry/cache
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo index
-        uses: actions/cache@v4.2.0
-        with:
-          path: ~/.cargo/registry/index
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Cache cargo build
-        uses: actions/cache@v4.2.0
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
       
       # ============================================================
       # System Dependencies (once for entire pipeline)
