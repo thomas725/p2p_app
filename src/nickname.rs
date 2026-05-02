@@ -4,7 +4,7 @@ use diesel::{
 };
 
 pub fn generate_self_nickname() -> String {
-    petname::petname(2, "-")
+    petname::petname(2, "-").unwrap_or_else(|| "anonymous-peer".to_string())
 }
 
 pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
