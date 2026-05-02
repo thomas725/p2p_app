@@ -75,8 +75,6 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    use std::fmt::Write as _;
-
     let src_dir = Path::new(&manifest_dir).join("src");
     let dest_path = src_dir.join("generated/columns.rs");
     let mut output = String::from("pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n");
