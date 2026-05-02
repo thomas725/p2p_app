@@ -19,7 +19,7 @@ jobs:
       # ============================================================
       
       - name: Checkout code
-        uses: actions/checkout@v4.2.0
+        uses: actions/checkout@v4.3.0
         with:
           fetch-depth: 0
       
@@ -29,19 +29,19 @@ jobs:
           components: rustfmt
       
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: ~/.cargo/registry/cache
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
       
       - name: Cache cargo index
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: ~/.cargo/registry/index
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
       
       - name: Cache cargo build
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -207,16 +207,7 @@ jobs:
         run: |
           # Delete individual log files (consolidated into results file)
           rm -rf .github/ci-logs
-          
-          # Delete old legacy result files (replaced by timestamped format)
-          rm -f .github/ci-results/build-matrix.txt
-          rm -f .github/ci-results/latest-run.txt
-          rm -f .github/ci-results/latest.txt
-          
-          echo "Cleanup complete:"
-          echo "  - Individual log files deleted"
-          echo "  - Old legacy result files deleted"
-          echo "  - Timestamped results files preserved"
+          echo "Individual log files deleted (consolidated into results file)"
       
       - name: Commit and push results
         if: always()
@@ -224,7 +215,8 @@ jobs:
           git config --global user.email "ci-pipeline@anthropic.com"
           git config --global user.name "CI Pipeline"
           
-          git add .github/ci-results/ .github/ci-logs/ 2>/dev/null || true
+          # Only add results directory (ci-logs already deleted)
+          git add .github/ci-results/ 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
