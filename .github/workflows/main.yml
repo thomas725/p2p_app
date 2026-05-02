@@ -22,7 +22,7 @@ jobs:
       # ============================================================
       
       - name: Checkout code
-        uses: actions/checkout@v4.5.0
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
       
