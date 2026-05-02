@@ -5,16 +5,16 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,181 |
-| Total Characters        | 210,234 |
-| Average Lines per File  |     167 |
-| Average Characters/File |   5,682 |
+| Total Lines of Code     |   6,220 |
+| Total Characters        | 210,354 |
+| Average Lines per File  |     168 |
+| Average Characters/File |   5,685 |
 
 ## All Source Files
 
 | Folder                  | File                 | Lines | Chars | Depth | Purpose                             |
 |:------------------------|:---------------------|------:|------:|------:|------------------------------------:|
-| /                       | build.rs             |   111 |  3864 |     5 | Build script                        |
+| /                       | build.rs             |   115 |  3950 |     5 | Build script                        |
 | src                     | behavior.rs          |   119 |  3888 |     4 | Network behavior definitions        |
 | src                     | db.rs                |   377 | 13271 |     5 | Database connection & identity mgmt |
 | src                     | fmt.rs               |   102 |  3167 |     4 | Formatting & display utilities      |
@@ -46,10 +46,10 @@
 | src/bin/tui/render_loop | mod.rs               |   139 |  4879 |     5 | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   441 | 14736 |     7 | Tab-specific renderers              |
 | src/bin/tui/render_loop | visibility.rs        |   130 |  3313 |     4 | Message visibility calculations     |
-| src/generated           | columns.rs           |    37 |  1539 |     1 | Auto-generated column definitions   |
+| src/generated           | columns.rs           |    72 |  1573 |     1 | Auto-generated column definitions   |
 | src/generated           | mod.rs               |     4 |    86 |     0 | Module declarations                 |
 | src/generated           | models_insertable.rs |    59 |  1458 |     1 | Insertable data models              |
 | src/generated           | models_queryable.rs  |    68 |  1737 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    69 |  1545 |     2 | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,181 lines, 210,234 characters
+**Total:** 37 files, 6,220 lines, 210,354 characters

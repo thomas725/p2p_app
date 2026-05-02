@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=src/generated/schema.rs");
 
     if let Err(e) = parse_schema_rs() {
-        eprintln!("parse_schema_rs error: {}", e);
+        eprintln!("parse_schema_rs error: {e}");
         return Err(e);
     }
 
@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
+    use std::fmt::Write as _;
     use std::fs;
     use std::path::Path;
 
@@ -74,6 +75,8 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    use std::fmt::Write as _;
+
     let src_dir = Path::new(&manifest_dir).join("src");
     let dest_path = src_dir.join("generated/columns.rs");
     let mut output = String::from("pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n");
@@ -82,10 +85,11 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         let escaped_col = entry.1.replace('"', "\\\"");
         let escaped_type = entry.2.replace('"', "\\\"");
         let suffix = if i + 1 == entries.len() { "\n" } else { ",\n" };
-        output.push_str(&format!(
-            "    (\"{}\", \"{}\", \"{}\"){}",
-            escaped_table, escaped_col, escaped_type, suffix
-        ));
+        let _ = writeln!(
+            output,
+            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){}",
+            suffix
+        );
     }
     output.push_str("];\n");
 
@@ -100,12 +104,12 @@ fn map_sql_type(diesel_type: &str) -> &'static str {
         .and_then(|s| s.strip_suffix('>'))
         .unwrap_or(diesel_type);
     match inner {
-        "Integer" => "INTEGER",
+        "Integer" | "Bool" => "INTEGER",
         "Timestamp" => "TIMESTAMP",
         "Binary" => "BLOB",
         "Text" => "TEXT",
         "Double" => "DOUBLE",
-        "Bool" => "INTEGER",
+        #[allow(clippy::match_same_arms)]
         _ => "TEXT",
     }
 }
