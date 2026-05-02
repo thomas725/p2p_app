@@ -194,13 +194,11 @@ pub fn p2plog_debug(msg: impl Into<String>) {
 }
 
 /// Info log alias
-#[allow(unused_variables)]
 pub fn p2plog_info(msg: impl Into<String>) {
     p2plog("INFO", msg.into());
 }
 
 /// Warn log alias
-#[allow(unused_variables)]
 pub fn p2plog_warn(msg: impl Into<String>) {
     p2plog("WARN", msg.into());
 }
