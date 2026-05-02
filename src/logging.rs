@@ -167,8 +167,7 @@ pub fn push_log(message: impl Into<String>) {
     }
 }
 
-/// Legacy log function (maintained for backward compatibility)
-#[allow(dead_code)]
+/// Log function implementation
 pub fn p2plog(level: &str, msg: String) {
     let ts = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
     let formatted = format!("[{}] [{}] {}", ts, level, msg);
@@ -189,26 +188,24 @@ pub fn p2plog(level: &str, msg: String) {
     }
 }
 
-/// Legacy debug log alias
-#[allow(dead_code)]
+/// Debug log alias
 pub fn p2plog_debug(msg: impl Into<String>) {
     p2plog("DEBUG", msg.into());
 }
 
-/// Legacy info log alias
-#[allow(dead_code)]
+/// Info log alias
+#[allow(unused_variables)]
 pub fn p2plog_info(msg: impl Into<String>) {
     p2plog("INFO", msg.into());
 }
 
-/// Legacy warn log alias
-#[allow(dead_code)]
+/// Warn log alias
+#[allow(unused_variables)]
 pub fn p2plog_warn(msg: impl Into<String>) {
     p2plog("WARN", msg.into());
 }
 
-/// Legacy error log alias
-#[allow(dead_code)]
+/// Error log alias
 pub fn p2plog_error(msg: impl Into<String>) {
     p2plog("ERROR", msg.into());
 }
