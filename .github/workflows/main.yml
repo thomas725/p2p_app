@@ -22,7 +22,7 @@ jobs:
       # ============================================================
       
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.5.0
         with:
           fetch-depth: 0
       
@@ -144,7 +144,7 @@ jobs:
         run: |
           set +e
           cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
-          cargo tarpaulin --out Xml --output-dir coverage 2>&1 | tee -a .github/ci-logs/coverage.log
+          cargo tarpaulin --out Xml --output-dir coverage --skip-clean 2>&1 | tee -a .github/ci-logs/coverage.log
           COVERAGE_EXIT=$?
           set -e
           echo "Exit code: $COVERAGE_EXIT" >> .github/ci-logs/coverage.log
