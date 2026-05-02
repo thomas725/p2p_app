@@ -43,7 +43,7 @@ dioxus-desktop = { version = "0.7", optional = true }
 tokio-stream = "0.1"
 
 # ORM mapper we use to access our SQLite database
-diesel = { version = "=2.3.7", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
+diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 # feature "chrono" used for TIMESTAMP columns
 # by default we dynamically link to SQLite installed in your system.
 # to instead bundle SQLite, you could uncomment the next line:
@@ -51,7 +51,7 @@ libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }
 #libsqlite3-sys = "0.35.0"
 
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
-diesel_migrations = { version = "=2.3.1" }
+diesel_migrations = { version = "^2.3" }
 
 # this library allows us to load environment variables from a .env file.
 # This allows users a second way to specify the path to the database (with variable name: "DATABASE_URL")
@@ -96,7 +96,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 futures = "0.3"
 petname = "3.0"
-rand = "0.8"
+rand = "0.10"
 
 [dev-dependencies]
 tempfile = "3"
