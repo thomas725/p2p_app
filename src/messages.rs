@@ -11,8 +11,11 @@ use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as 
 /// Optional metadata for message creation
 #[derive(Default)]
 pub struct MessageMeta {
+    /// Optional nickname of the message sender
     pub sender_nickname: Option<String>,
+    /// Optional unique identifier for the message
     pub msg_id: Option<String>,
+    /// Optional timestamp of when the message was sent
     pub sent_at: Option<f64>,
 }
 
@@ -48,6 +51,21 @@ pub fn save_message(
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Save a message with optional metadata.
+///
+/// Inserts a new message with the given content and optional metadata including
+/// sender nickname, message ID, and send timestamp.
+///
+/// # Arguments
+/// * `content` - Message text
+/// * `peer_id` - Optional peer ID of the sender
+/// * `topic` - Topic/channel where message was sent
+/// * `is_direct` - Whether this is a direct message (true) or broadcast (false)
+/// * `target_peer` - Optional recipient peer ID for direct messages
+/// * `meta` - Optional metadata (nickname, message ID, timestamp)
+///
+/// # Returns
+/// The saved message with database-assigned ID
 pub fn save_message_with_meta(
     content: &str,
     peer_id: Option<&str>,
@@ -153,6 +171,16 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
         })
 }
 
+/// Save a message receipt (delivery/read confirmation).
+///
+/// Records when a message was delivered to or read by a peer.
+/// Receipts track message acknowledgments and read status.
+///
+/// # Arguments
+/// * `msg_id` - ID of the message being acknowledged
+/// * `peer_id` - ID of the peer sending the receipt
+/// * `kind` - Receipt type (0=sent, 1=delivered, 2=read)
+/// * `confirmed_at` - Timestamp when the receipt was confirmed
 pub fn save_receipt(
     msg_id: &str,
     peer_id: &str,
@@ -179,6 +207,12 @@ pub fn save_receipt(
     Ok(())
 }
 
+/// Load all message receipts from the database.
+///
+/// Retrieves all stored message receipts (delivery/read confirmations).
+///
+/// # Returns
+/// Vector of all message receipts
 pub fn load_receipts() -> color_eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
 {
     let conn = &mut crate::sqlite_connect()?;

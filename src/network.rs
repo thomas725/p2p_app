@@ -31,6 +31,13 @@ impl NetworkSize {
     }
 }
 
+/// Determine the current network size classification.
+///
+/// Calculates the average peer count from historical data and returns
+/// a NetworkSize classification for configuring gossipsub behavior.
+///
+/// # Returns
+/// The current NetworkSize (Small, Medium, or Large)
 pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     let avg = get_average_peer_count()?;
     Ok(NetworkSize::from_peer_count(avg))

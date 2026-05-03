@@ -52,8 +52,11 @@ pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, 
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
+    /// Gossipsub protocol handler for broadcast messages
     pub gossipsub: gossipsub::Behaviour,
+    /// Request-response protocol handler for direct messages
     pub request_response: request_response::Behaviour<ChatCodec>,
+    /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
 }
