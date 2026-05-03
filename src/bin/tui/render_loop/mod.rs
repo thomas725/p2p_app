@@ -16,7 +16,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
-fn render_frame(f: &mut Frame, state: &mut AppState) {
+pub fn render_frame(f: &mut Frame, state: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -91,25 +91,6 @@ fn render_popup(f: &mut Frame, text: String) {
 }
 
 /// Spawns the render loop task that continuously renders the TUI
-///
-/// This task reads the shared AppState on a fixed interval and draws it to the terminal.
-///
-/// **Rendering strategy:**
-/// - Fixed 60 FPS (~16ms per frame) via tokio::time::interval
-/// - Always renders regardless of changes (time-based, not event-driven)
-/// - Acquires AppState lock briefly for each frame, then releases
-/// - Handles partial redraws via ratatui library
-///
-/// **Future optimization:**
-/// Could implement event-driven rendering by using a notification channel:
-/// CommandProcessor would send a "state changed" signal, and RenderLoop
-/// would only redraw on updates or timeout. This would reduce CPU usage.
-///
-/// **Layout:**
-/// - Top tabs: Broadcast channel + DM tabs (for peer conversations)
-/// - Chat area: Messages from selected tab
-/// - Input box: Current message being typed
-/// - Status bar: Peer list, connection status, debug logs
 pub fn spawn_render_loop(
     state: SharedState,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,

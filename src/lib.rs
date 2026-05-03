@@ -90,6 +90,16 @@ pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 pub mod tui_helpers;
 #[cfg(feature = "tui")]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
+#[cfg(feature = "tui")]
+pub mod tui_render;
+#[cfg(feature = "tui")]
+pub mod tui_render_state;
+#[cfg(feature = "tui")]
+pub use tui_render::{
+    render_chat_content, render_frame, render_peer_info, render_tab_content, render_tabs,
+};
+#[cfg(feature = "tui")]
+pub use tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
 pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};

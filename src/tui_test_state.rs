@@ -144,6 +144,63 @@ impl Default for TuiTestState {
     }
 }
 
+impl TuiTestState {
+    /// Get tab titles for rendering Tabs widget
+    pub fn tab_titles(&self) -> Vec<&str> {
+        vec!["Chat", "Peers", "Log"]
+    }
+
+    /// Get peer info text
+    pub fn peer_info(&self) -> String {
+        format!("Peers: {} | Network: test-net", self.messages.len())
+    }
+
+    /// Get tab content
+    pub fn tab_content(&self) -> crate::tui_tabs::TabContent {
+        match self.active_tab {
+            0 => crate::tui_tabs::TabContent::Chat,
+            1 => crate::tui_tabs::TabContent::Peers,
+            _ => crate::tui_tabs::TabContent::Log,
+        }
+    }
+
+    /// Get formatted messages for chat tab
+    pub fn formatted_messages(&self) -> Vec<String> {
+        self.messages.iter().cloned().collect()
+    }
+
+    /// Get formatted peer list
+    pub fn formatted_peers(&self) -> Vec<String> {
+        vec![
+            "Alice (12D3) - Online".to_string(),
+            "Bob (12D4) - Online".to_string(),
+        ]
+    }
+
+    /// Get formatted DM messages
+    pub fn formatted_dm_messages(&self, _peer_id: &str) -> Vec<String> {
+        self.messages.iter().cloned().collect()
+    }
+
+    /// Get formatted logs
+    pub fn formatted_logs(&self) -> Vec<String> {
+        vec![
+            "[12:00:00] Connected to test-net".to_string(),
+            "[12:00:01] Discovered 2 peers".to_string(),
+        ]
+    }
+
+    /// Get input text
+    pub fn input_text(&self) -> &str {
+        ""
+    }
+
+    /// Get status bar text
+    pub fn status_text(&self) -> String {
+        "Ready | 0 peers connected".to_string()
+    }
+}
+
 /// Notification click target
 #[derive(Clone, Debug)]
 pub enum NotificationTarget {
