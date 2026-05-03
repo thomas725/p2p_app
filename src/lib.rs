@@ -47,6 +47,7 @@ pub mod tui_test_state;
 /// Core type definitions used throughout the application
 pub mod types;
 
+/// Auto-generated database models and schema types
 pub mod generated;
 
 pub use behavior::{
