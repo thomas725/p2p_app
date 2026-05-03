@@ -169,3 +169,110 @@ pub fn format_peer_list_item(
         None => format!("{} - {}", &peer_id[..8.min(peer_id.len())], last_seen),
     }
 }
+
+// ============================================
+// Scroll handler pure functions
+// ============================================
+
+/// Default page size for scrolling
+pub const PAGE_SIZE: usize = 8;
+
+/// Default wheel scroll lines
+pub const WHEEL_SCROLL_LINES: usize = 3;
+
+/// Disables auto-scroll and sets offset to max if auto-scroll was enabled
+pub fn disable_auto_scroll_to_max(
+    auto_scroll: &mut bool,
+    scroll_offset: &mut usize,
+    max_offset: usize,
+) {
+    if *auto_scroll {
+        *auto_scroll = false;
+        *scroll_offset = max_offset;
+    }
+}
+
+/// Scroll up by one line or page
+pub fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
+    *scroll_offset = scroll_offset.saturating_sub(lines);
+}
+
+/// Scroll down to target, enabling auto-scroll if reaching max
+pub fn scroll_down_lines(
+    scroll_offset: &mut usize,
+    auto_scroll: &mut bool,
+    lines: usize,
+    max_offset: usize,
+) {
+    *scroll_offset = (*scroll_offset + lines).min(max_offset);
+    if *scroll_offset >= max_offset {
+        *auto_scroll = true;
+    }
+}
+
+/// Maximum scroll offset calculation
+pub fn calc_max_scroll(total_items: usize, visible_count: usize) -> usize {
+    total_items.saturating_sub(visible_count)
+}
+
+/// Handle scroll key for a section - returns new (scroll_offset, auto_scroll)
+pub fn handle_scroll_key_for_section(
+    key_code: &str,
+    scroll_offset: usize,
+    auto_scroll: bool,
+    max_offset: usize,
+) -> (usize, bool) {
+    let mut new_offset = scroll_offset;
+    let mut new_auto = auto_scroll;
+
+    match key_code {
+        "Up" => {
+            disable_auto_scroll_to_max(&mut new_auto, &mut new_offset, max_offset);
+            scroll_up_lines(&mut new_offset, 1);
+        }
+        "Down" => {
+            disable_auto_scroll_to_max(&mut new_auto, &mut new_offset, max_offset);
+            scroll_down_lines(&mut new_offset, &mut new_auto, 1, max_offset);
+        }
+        "PageUp" => {
+            disable_auto_scroll_to_max(&mut new_auto, &mut new_offset, max_offset);
+            scroll_up_lines(&mut new_offset, PAGE_SIZE);
+        }
+        "PageDown" => {
+            disable_auto_scroll_to_max(&mut new_auto, &mut new_offset, max_offset);
+            scroll_down_lines(&mut new_offset, &mut new_auto, PAGE_SIZE, max_offset);
+        }
+        "Home" => {
+            new_auto = false;
+            new_offset = 0;
+        }
+        "End" => {
+            new_auto = true;
+            new_offset = max_offset;
+        }
+        _ => {}
+    }
+    (new_offset, new_auto)
+}
+
+/// Handle mouse wheel scroll
+pub fn handle_mouse_wheel_scroll(
+    direction: &str,
+    scroll_offset: usize,
+    max_offset: usize,
+) -> usize {
+    match direction {
+        "up" => scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
+        "down" => (scroll_offset + WHEEL_SCROLL_LINES).min(max_offset),
+        _ => scroll_offset,
+    }
+}
+
+/// Calculate tab index from current + delta (wrapping)
+pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
+    if max_tabs == 0 {
+        return 0;
+    }
+    let sum = current as isize + delta;
+    ((sum % max_tabs as isize) + max_tabs as isize) as usize % max_tabs
+}
