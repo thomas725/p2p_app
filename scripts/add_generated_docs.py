@@ -161,36 +161,6 @@ def process_columns(path: str) -> None:
     print(f"  Documented {path}")
 
 
-def process_mod(path: str) -> None:
-    """Write mod.rs with doc comments on every pub mod line."""
-    MOD_DOCS = {
-        "columns":           "Auto-generated column constants from the Diesel schema.",
-        "models_insertable": "Auto-generated insertable (New*) model structs from the Diesel schema.",
-        "models_queryable":  "Auto-generated queryable model structs from the Diesel schema.",
-        "schema":            "Auto-generated Diesel table definitions from the Diesel schema.",
-    }
-
-    with open(path) as f:
-        src = f.read()
-
-    lines = src.splitlines()
-    out = []
-    for line in lines:
-        import re
-        m = re.match(r'^pub mod (\w+);', line)
-        if m:
-            name = m.group(1)
-            doc = MOD_DOCS.get(name, f"Auto-generated module `{name}`.")
-            if out and not out[-1].startswith("///"):
-                out.append(f"/// {doc}")
-        out.append(line)
-    result = "\n".join(out) + "\n"
-
-    with open(path, "w") as f:
-        f.write(result)
-
-    print(f"  Documented {path}")
-
 
 # ---------------------------------------------------------------------------
 # Main
@@ -199,7 +169,6 @@ def process_mod(path: str) -> None:
 if __name__ == "__main__":
     process_schema("src/generated/schema.rs")
     process_columns("src/generated/columns.rs")
-    process_mod("src/generated/mod.rs")
     process_model_file(
         "src/generated/models_queryable.rs",
         "Auto-generated queryable model structs from the Diesel schema.",
