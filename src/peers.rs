@@ -13,10 +13,13 @@ use diesel::{
 #[derive(Debug, Clone, diesel::QueryableByName)]
 pub struct KnownPeer {
     #[diesel(sql_type = diesel::sql_types::Text)]
+    /// Unique libp2p peer identifier
     pub peer_id: String,
     #[diesel(sql_type = diesel::sql_types::Timestamp)]
+    /// Timestamp when this peer was first observed
     pub first_seen: chrono::NaiveDateTime,
     #[diesel(sql_type = diesel::sql_types::Timestamp)]
+    /// Timestamp when this peer was most recently observed
     pub last_seen: chrono::NaiveDateTime,
 }
 

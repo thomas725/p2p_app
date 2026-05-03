@@ -5,10 +5,14 @@ use std::collections::VecDeque;
 /// Tab identifier enumeration
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum TabId {
+    /// Broadcast chat tab (default)
     #[default]
     Chat,
+    /// Peer list tab
     Peers,
+    /// Direct message tab
     Direct,
+    /// Debug/log tab
     Log,
 }
 
@@ -38,7 +42,9 @@ impl TabId {
 /// Direct message tab with peer ID and message history
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DmTab {
+    /// The full peer ID this DM tab is associated with
     pub peer_id: String,
+    /// Scrollback buffer of messages in this conversation
     pub messages: VecDeque<String>,
 }
 
@@ -73,6 +79,7 @@ impl DmTab {
 /// Dynamic tab management for direct message conversations
 #[derive(Clone, Debug, Default)]
 pub struct DynamicTabs {
+    /// Active DM tabs, one per open conversation
     pub dm_tabs: Vec<DmTab>,
 }
 
@@ -163,9 +170,13 @@ impl DynamicTabs {
 /// Content type for active tab
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TabContent {
+    /// Broadcast chat view
     Chat,
+    /// Peer list view
     Peers,
+    /// Direct message view for the given peer ID
     Direct(String),
+    /// Debug/log view
     Log,
 }
 
