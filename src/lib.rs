@@ -34,17 +34,17 @@ pub mod fmt;
 pub mod logging;
 pub mod logging_config;
 pub mod messages;
-//! Network functionality for peer-to-peer communication
+/// Network functionality for peer-to-peer communication
 pub mod network;
-//! Nickname management for chat users and peers
+/// Nickname management for chat users and peers
 pub mod nickname;
 pub mod peers;
-//! Swarm handler for managing P2P network events
+/// Swarm handler for managing P2P network events
 pub mod swarm_handler;
 pub mod tui_events;
 pub mod tui_tabs;
 pub mod tui_test_state;
-//! Core type definitions used throughout the application
+/// Core type definitions used throughout the application
 pub mod types;
 
 pub mod generated;
