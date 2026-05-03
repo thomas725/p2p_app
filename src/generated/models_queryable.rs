@@ -13,6 +13,7 @@ use chrono::NaiveDateTime;
 use diesel::prelude::*;
 /// Queryable struct for the `identities` table
 /// Queryable struct for the `identities` table
+/// Queryable struct for the `identities` table
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = identities)]
 pub struct Identity {
@@ -32,6 +33,7 @@ pub struct Identity {
 
 /// Queryable struct for the `message_receipts` table
 /// Queryable struct for the `message_receipts` table
+/// Queryable struct for the `message_receipts` table
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = message_receipts)]
 pub struct MessageReceipt {
@@ -49,6 +51,7 @@ pub struct MessageReceipt {
     pub created_at: NaiveDateTime,
 }
 
+/// Queryable struct for the `messages` table
 /// Queryable struct for the `messages` table
 /// Queryable struct for the `messages` table
 #[derive(Queryable, Selectable, Debug, Clone)]
@@ -80,6 +83,7 @@ pub struct Message {
 
 /// Queryable struct for the `peer_sessions` table
 /// Queryable struct for the `peer_sessions` table
+/// Queryable struct for the `peer_sessions` table
 #[derive(Queryable, Selectable, Debug, Clone)]
 #[diesel(table_name = peer_sessions)]
 pub struct PeerSession {
@@ -91,6 +95,7 @@ pub struct PeerSession {
     pub recorded_at: NaiveDateTime,
 }
 
+/// Queryable struct for the `peers` table
 /// Queryable struct for the `peers` table
 /// Queryable struct for the `peers` table
 #[derive(Queryable, Selectable, Debug, Clone)]

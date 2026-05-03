@@ -13,6 +13,7 @@ use diesel::Insertable;
 use chrono::NaiveDateTime;
 /// Insertable struct for the `identities` table
 /// Insertable struct for the `identities` table
+/// Insertable struct for the `identities` table
 #[derive(Insertable, Debug)]
 #[diesel(table_name = identities)]
 pub struct NewIdentity {
@@ -28,6 +29,7 @@ pub struct NewIdentity {
 
 /// Insertable struct for the `message_receipts` table
 /// Insertable struct for the `message_receipts` table
+/// Insertable struct for the `message_receipts` table
 #[derive(Insertable, Debug)]
 #[diesel(table_name = message_receipts)]
 pub struct NewMessageReceipt {
@@ -41,6 +43,7 @@ pub struct NewMessageReceipt {
     pub confirmed_at: f64,
 }
 
+/// Insertable struct for the `messages` table
 /// Insertable struct for the `messages` table
 /// Insertable struct for the `messages` table
 #[derive(Insertable, Debug)]
@@ -68,6 +71,7 @@ pub struct NewMessage {
 
 /// Insertable struct for the `peer_sessions` table
 /// Insertable struct for the `peer_sessions` table
+/// Insertable struct for the `peer_sessions` table
 #[derive(Insertable, Debug)]
 #[diesel(table_name = peer_sessions)]
 pub struct NewPeerSession {
@@ -77,6 +81,7 @@ pub struct NewPeerSession {
     pub recorded_at: NaiveDateTime,
 }
 
+/// Insertable struct for the `peers` table
 /// Insertable struct for the `peers` table
 /// Insertable struct for the `peers` table
 #[derive(Insertable, Debug)]

@@ -58,7 +58,7 @@ mod tui {
     //!
     //! ## Key Design Decisions
     //!
-    //! - **Arc<Mutex> over RwLock**: Simplicity. Most operations read and modify multiple fields atomically.
+    //! - **`Arc<Mutex>` over RwLock**: Simplicity. Most operations read and modify multiple fields atomically.
     //! - **Polling input instead of event subscriptions**: Works on all platforms with crossterm.
     //! - **60 FPS render loop**: UI responsiveness. Could optimize to event-driven in future.
     //! - **Immutable channel types**: Each task has dedicated input/output channels, no shared mutable channels.

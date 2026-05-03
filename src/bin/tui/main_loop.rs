@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 /// - **RenderLoop**: Renders AppState to terminal at ~60 FPS
 ///
 /// All tasks communicate via bounded MPSC channels (capacity: 100 events).
-/// State is shared behind Arc<Mutex<AppState>> for safe concurrent access.
+/// State is shared behind `Arc<Mutex<AppState>>` for safe concurrent access.
 ///
 /// The function sets up terminal mode (alternate screen, raw mode, mouse capture),
 /// initializes the state from database, and waits for any task to exit (indicating error).

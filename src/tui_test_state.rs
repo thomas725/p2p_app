@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, VecDeque};
 
+/// Sample messages used as default test fixtures in TUI rendering tests.
 pub const TEST_MESSAGES: &[&str] = &[
     "[You] Hello world",
     "[Peer1] How are you?",
