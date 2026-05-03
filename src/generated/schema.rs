@@ -1,5 +1,7 @@
 // @generated automatically by Diesel CLI.
 
+#![allow(missing_docs)]
+
 diesel::table! {
     identities (id) {
         id -> Integer,

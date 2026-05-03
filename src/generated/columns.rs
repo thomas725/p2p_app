@@ -1,3 +1,7 @@
+//! Auto-generated column constants from the Diesel schema.
+
+#![allow(missing_docs)]
+
 pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("identities", "created_at", "TIMESTAMP"),
     ("identities", "id", "INTEGER"),

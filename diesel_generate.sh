@@ -68,9 +68,14 @@ sed \
 # Cleanup temporary file
 rm /tmp/models_insertable_raw.rs
 
-# Step 6: Verify the build works
+# Step 6: Inject #![allow(missing_docs)] and doc comments into generated files
 echo ""
-echo "Step 6: Verifying build..."
+echo "Step 6: Adding documentation to generated files..."
+python3 scripts/add_generated_docs.py
+
+# Step 7: Verify the build works
+echo ""
+echo "Step 7: Verifying build..."
 if ! cargo build 2>&1 | tail -5; then
     echo ""
     echo "ERROR: Build failed after model generation!"
@@ -78,9 +83,9 @@ if ! cargo build 2>&1 | tail -5; then
     exit 1
 fi
 
-# Step 7: Run tests to ensure models work correctly
+# Step 8: Run tests to ensure models work correctly
 echo ""
-echo "Step 7: Running tests..."
+echo "Step 8: Running tests..."
 if ! cargo test --lib --test tui_chat --test p2p_integration 2>&1 | tail -10; then
     echo ""
     echo "WARNING: Some tests failed after model generation."
