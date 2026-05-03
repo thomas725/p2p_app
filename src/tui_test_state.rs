@@ -13,12 +13,19 @@ pub const TEST_MESSAGES: &[&str] = &[
 /// Test state for TUI rendering tests
 #[derive(Clone, Debug)]
 pub struct TuiTestState {
+    /// Message history displayed in the chat view
     pub messages: VecDeque<String>,
+    /// Extracted sender label for each message (parallel to `messages`)
     pub chat_message_peers: Vec<String>,
+    /// Currently active tab index
     pub active_tab: usize,
+    /// Scroll offset for the chat message list
     pub chat_list_state_offset: usize,
+    /// Number of unread broadcast messages
     pub unread_broadcasts: u32,
+    /// Unread DM counts keyed by peer ID
     pub unread_dms: BTreeMap<String, u32>,
+    /// Simulated terminal width in columns
     pub terminal_width: usize,
 }
 
@@ -147,6 +154,8 @@ impl Default for TuiTestState {
 /// Notification click target
 #[derive(Clone, Debug)]
 pub enum NotificationTarget {
+    /// Clicked on the unread broadcast notification
     Broadcasts,
+    /// Clicked on a DM notification for the given peer ID
     Dm(String),
 }

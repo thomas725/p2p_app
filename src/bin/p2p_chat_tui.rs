@@ -1,3 +1,5 @@
+//! TUI binary — ratatui-based terminal interface and headless fallback entry point.
+
 use libp2p::{gossipsub, noise, tcp, yamux};
 use p2p_app::build_behaviour;
 use p2p_app::logging::{init_logging, p2plog_info};
