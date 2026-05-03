@@ -23,7 +23,7 @@ fn test_sort_peers_by_last_seen() {
         ),
     ]);
 
-    let new_sel = sort_peers_by_last_seen(&mut peers, 0);
+    let _new_sel = sort_peers_by_last_seen(&mut peers, 0);
 
     assert_eq!(peers[0].0, "peer3");
     assert_eq!(peers[1].0, "peer1");
@@ -130,7 +130,7 @@ fn test_message_line_count() {
     assert_eq!(message_line_count("short", 80), 1);
     assert_eq!(message_line_count("line1\nline2", 80), 2);
     // Test wrapping: 50 chars at width 20 = 3 lines
-    let long = std::iter::repeat('a').take(50).collect::<String>();
+    let long = "a".repeat(50);
     assert_eq!(message_line_count(&long, 20), 3);
 }
 
@@ -198,7 +198,7 @@ fn test_scroll_up_lines() {
 
 #[test]
 fn test_scroll_down_lines() {
-    use p2p_app::tui_helpers::{PAGE_SIZE, scroll_down_lines};
+    use p2p_app::tui_helpers::scroll_down_lines;
 
     let mut offset = 0;
     let mut auto = false;
@@ -232,11 +232,11 @@ fn test_handle_scroll_key_for_section() {
     assert!(!auto);
 
     // Down key
-    let (offset, auto) = handle_scroll_key_for_section("Down", 50, false, 80);
+    let (offset, _auto) = handle_scroll_key_for_section("Down", 50, false, 80);
     assert_eq!(offset, 51);
 
     // PageUp
-    let (offset, auto) = handle_scroll_key_for_section("PageUp", 50, false, 80);
+    let (offset, _auto) = handle_scroll_key_for_section("PageUp", 50, false, 80);
     assert_eq!(offset, 42); // 50 - 8
 
     // PageDown - auto at max
@@ -250,7 +250,7 @@ fn test_handle_scroll_key_for_section() {
     assert!(!auto);
 
     // End - go to bottom
-    let (offset, auto) = handle_scroll_key_for_section("End", 50, false, 80);
+    let (_offset, auto) = handle_scroll_key_for_section("End", 50, false, 80);
     assert!(auto);
 
     // Unknown key - no change

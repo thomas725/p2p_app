@@ -3,7 +3,7 @@
 
 #[cfg(feature = "tui")]
 mod render_tests {
-    use p2p_app::tui_render_state::{TuiTabContent, get_tab_content};
+    use p2p_app::tui_render_state::get_tab_content;
     use p2p_app::{
         TuiRenderState,
         tui_render::{
@@ -22,7 +22,7 @@ mod render_tests {
     #[test]
     fn test_render_frame_with_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
 
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
     }
@@ -48,7 +48,7 @@ mod render_tests {
     #[test]
     fn test_render_chat_content_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
 
         terminal
             .draw(|f| render_chat_content(f, f.area(), &state))
@@ -58,7 +58,7 @@ mod render_tests {
     #[test]
     fn test_render_peers_content_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
 
         terminal
             .draw(|f| render_peers_content(f, f.area(), &state))
@@ -68,7 +68,7 @@ mod render_tests {
     #[test]
     fn test_render_dm_content_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
         state.add_dm_message("Alice", "<Alice> Hello!");
 
         terminal
@@ -86,7 +86,7 @@ mod render_tests {
     #[test]
     fn test_render_log_content_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
 
         terminal
             .draw(|f| render_log_content(f, f.area(), &state))
@@ -96,7 +96,7 @@ mod render_tests {
     #[test]
     fn test_render_input_section_library() {
         let mut terminal = create_test_terminal();
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
 
         terminal
             .draw(|f| {
@@ -138,7 +138,7 @@ mod render_tests {
         let mut terminal = create_test_terminal();
 
         // Test Chat tab
-        let mut state = TuiRenderState::with_sample_data();
+        let state = TuiRenderState::with_sample_data();
         state.active_tab = 0;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
 

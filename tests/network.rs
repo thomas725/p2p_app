@@ -1,6 +1,6 @@
 //! Tests for network.rs module
 
-use p2p_app::network::{NetworkSize, get_network_size};
+use p2p_app::network::NetworkSize;
 
 #[test]
 fn test_network_size_small() {
@@ -35,7 +35,7 @@ fn test_network_size_debug() {
 #[test]
 fn test_network_size_clone() {
     let small = NetworkSize::Small;
-    let cloned = small.clone();
+    let cloned = small;
     assert_eq!(small, cloned);
 }
 

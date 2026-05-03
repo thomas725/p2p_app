@@ -115,7 +115,7 @@ pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
         if line_len == 0 {
             lines += 1;
         } else {
-            lines += (line_len + terminal_width - 1) / terminal_width;
+            lines += line_len.div_ceil(terminal_width);
         }
     }
     lines.max(1)
@@ -136,13 +136,10 @@ pub fn short_peer_id(id: &str) -> String {
 pub fn parse_latency(latency: &str) -> Option<f64> {
     if latency == "<1ms" {
         Some(0.5)
-    } else if latency.ends_with("ms") {
-        latency[..latency.len() - 2].parse().ok()
-    } else if latency.ends_with('s') {
-        latency[..latency.len() - 1]
-            .parse::<f64>()
-            .ok()
-            .map(|s| s * 1000.0)
+    } else if let Some(ms) = latency.strip_suffix("ms") {
+        ms.parse().ok()
+    } else if let Some(s) = latency.strip_suffix('s') {
+        s.parse::<f64>().ok().map(|s| s * 1000.0)
     } else {
         None
     }

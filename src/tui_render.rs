@@ -114,7 +114,7 @@ pub fn render_dm_content(
 }
 
 /// Render log content
-pub fn render_log_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
+pub fn render_log_content(f: &mut ratatui::Frame, area: Rect, _state: &TuiRenderState) {
     let log_text = "[12:00] Connected to test-net\n[12:00] Discovered 2 peers";
     let log = Paragraph::new(log_text).block(Block::default().title("Logs").borders(Borders::ALL));
     f.render_widget(log, area);

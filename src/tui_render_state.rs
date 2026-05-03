@@ -3,7 +3,7 @@
 //! This module provides a render state that can be used by both the binary
 //! and integration tests. The binary uses AppState, tests use this abstraction.
 
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
 
 /// Minimum state needed to render a TUI frame
 #[derive(Clone, Debug)]
@@ -41,6 +41,7 @@ impl Default for TuiRenderState {
 }
 
 impl TuiRenderState {
+    /// Creates a new empty [`TuiRenderState`].
     pub fn new() -> Self {
         Self {
             tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into()],
@@ -65,9 +66,10 @@ impl TuiRenderState {
         messages.push_back("[Peer1] How are you?".into());
         messages.push_back("[You] I'm good!".into());
 
-        let mut peers = Vec::new();
-        peers.push(("12D3KooWH123456".into(), "Alice".into(), "Online".into()));
-        peers.push(("12D3KooWH789012".into(), "Bob".into(), "Online".into()));
+        let peers = vec![
+        ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
+        ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
+        ];
 
         let mut dm_messages = BTreeMap::new();
         dm_messages.insert("Alice".into(), VecDeque::new());
@@ -111,7 +113,7 @@ impl TuiRenderState {
     /// Add a DM message for a peer
     pub fn add_dm_message(&mut self, peer: impl Into<String>, msg: impl Into<String>) {
         let peer = peer.into();
-        let entry = self.dm_messages.entry(peer).or_insert_with(VecDeque::new);
+        let entry = self.dm_messages.entry(peer).or_default();
         entry.push_back(msg.into());
     }
 }
@@ -139,13 +141,18 @@ pub fn get_tab_content(state: &TuiRenderState) -> TuiTabContent {
 /// Tab content enum
 #[derive(Clone, Debug)]
 pub enum TuiTabContent {
+    /// Broadcast chat view
     Chat,
+    /// Peer list view
     Peers,
+    /// Direct message view for the given peer ID
     Direct(String),
+    /// Debug/log view
     Log,
 }
 
 impl TuiTabContent {
+    /// Returns `true` if the input box should be enabled for this tab.
     pub fn is_input_enabled(&self) -> bool {
         matches!(self, TuiTabContent::Chat | TuiTabContent::Direct(_))
     }
