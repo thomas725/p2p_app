@@ -10,6 +10,7 @@ mod event_tests {
         PeerConnected(String),
         PeerDisconnected(String),
         MessageReceived { from: String, content: String },
+        #[allow(dead_code)]
         ListenAddrEstablished(String),
     }
 
@@ -17,6 +18,7 @@ mod event_tests {
     #[derive(Debug, Clone, PartialEq)]
     enum MockInputEvent {
         KeyPress { key: String },
+        #[allow(dead_code)]
         MouseClick { x: u16, y: u16 },
     }
 
