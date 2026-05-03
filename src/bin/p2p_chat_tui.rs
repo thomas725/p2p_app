@@ -5,7 +5,7 @@ use std::time::Duration;
 
 #[cfg(feature = "tui")]
 mod tui {
-    pub mod helpers;
+    pub use p2p_app::tui_helpers;
     pub use p2p_app::tui_tabs::DynamicTabs;
     use ratatui_textarea::TextArea;
 

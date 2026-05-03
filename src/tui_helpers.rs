@@ -85,7 +85,7 @@ pub fn get_command_name(input: &str) -> Option<&str> {
     parse_command(input).map(|(cmd, _)| cmd)
 }
 
-/// Get command argument from input  
+/// Get command argument from input
 pub fn get_command_arg(input: &str) -> Option<&str> {
     parse_command(input).and_then(|(_, arg)| if arg.is_empty() { None } else { Some(arg) })
 }
@@ -139,8 +139,10 @@ pub fn parse_latency(latency: &str) -> Option<f64> {
     } else if latency.ends_with("ms") {
         latency[..latency.len() - 2].parse().ok()
     } else if latency.ends_with('s') {
-        let parsed: Result<f64, _> = latency[..latency.len() - 1].parse();
-        parsed.ok().map(|s| s * 1000.0)
+        latency[..latency.len() - 1]
+            .parse::<f64>()
+            .ok()
+            .map(|s| s * 1000.0)
     } else {
         None
     }
