@@ -77,7 +77,14 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
 
     let src_dir = Path::new(&manifest_dir).join("src");
     let dest_path = src_dir.join("generated/columns.rs");
-    let mut output = String::from("pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n");
+    let mut output = String::from(
+        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+        "\n"
+        "#![allow(missing_docs)]\n"
+        "\n"
+        "#[doc(hidden)]\n"
+        "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+    );
     for (i, entry) in entries.iter().enumerate() {
         let escaped_table = entry.0.replace('"', "\\\"");
         let escaped_col = entry.1.replace('"', "\\\"");

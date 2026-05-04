@@ -6,6 +6,8 @@ Injects #![allow(missing_docs)] and doc comments into the auto-generated
 Diesel model files so they compile cleanly under -W missing-docs without
 requiring manual edits after each regeneration.
 
+Note: columns.rs is handled by build.rs directly and is not touched here.
+
 Usage: python3 scripts/add_generated_docs.py
 """
 
@@ -139,27 +141,6 @@ def process_schema(path: str) -> None:
     print(f"  Documented {path}")
 
 
-def process_columns(path: str) -> None:
-    """Prepend module doc + allow to columns.rs, and doc the SCHEMA_ENTRIES constant."""
-    with open(path) as f:
-        src = f.read()
-
-    if "#![allow(missing_docs)]" not in src:
-        header = "//! Auto-generated column constants from the Diesel schema.\n\n#![allow(missing_docs)]\n\n"
-        src = header + src
-
-    # Add doc comment to SCHEMA_ENTRIES if missing
-    if "#[doc(hidden)]" not in src:
-        src = src.replace(
-            "pub const SCHEMA_ENTRIES",
-            "#[doc(hidden)]\npub const SCHEMA_ENTRIES",
-        )
-
-    with open(path, "w") as f:
-        f.write(src)
-
-    print(f"  Documented {path}")
-
 
 
 # ---------------------------------------------------------------------------
@@ -168,7 +149,6 @@ def process_columns(path: str) -> None:
 
 if __name__ == "__main__":
     process_schema("src/generated/schema.rs")
-    process_columns("src/generated/columns.rs")
     process_model_file(
         "src/generated/models_queryable.rs",
         "Auto-generated queryable model structs from the Diesel schema.",
