@@ -1,0 +1,1452 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-05-04 20:40:05 UTC
+Commit: 4b2c1dd1b8905fc79da85c86aa5ea7fa03ec2d57
+Branch: refs/heads/main
+Run ID: 25342274970
+
+============================================================
+Detailed Logs
+============================================================
+
+--- audit.log ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1067 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (886 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+[0m[0m[1m[31mDependency tree:
+[0mhickory-proto 0.25.2
+├── libp2p-mdns 0.48.0
+│   └── libp2p 0.56.0
+│       └── p2p_app 0.1.0
+└── hickory-resolver 0.25.2
+    └── libp2p-dns 0.44.0
+        └── libp2p 0.56.0
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+[0m[0m[1m[33mDependency tree:
+[0matk 0.18.2
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    │   └── dioxus-desktop 0.7.7
+    │       └── p2p_app 0.1.0
+    ├── webkit2gtk 2.0.1
+    │   └── wry 0.53.5
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.7
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.7
+    │   └── dioxus-desktop 0.7.7
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+[0m[0m[1m[33mDependency tree:
+[0matk-sys 0.18.2
+├── gtk-sys 0.18.2
+│   ├── webkit2gtk-sys 2.0.1
+│   │   ├── wry 0.53.5
+│   │   │   └── dioxus-desktop 0.7.7
+│   │   │       └── p2p_app 0.1.0
+│   │   └── webkit2gtk 2.0.1
+│   │       └── wry 0.53.5
+│   ├── webkit2gtk 2.0.1
+│   ├── libappindicator-sys 0.9.0
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   │           └── dioxus-desktop 0.7.7
+│   ├── libappindicator 0.9.0
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       ├── webkit2gtk 2.0.1
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.7
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   └── dioxus-desktop 0.7.7
+│       └── libappindicator 0.9.0
+└── atk 0.18.2
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+[0m[0m[1m[33mDependency tree:
+[0mfxhash 0.2.1
+└── selectors 0.24.0
+    └── kuchikiki 0.8.8-speedreader
+        └── wry 0.53.5
+            └── dioxus-desktop 0.7.7
+                └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+[0m[0m[1m[33mDependency tree:
+[0mgdk 0.18.2
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+│       └── dioxus-desktop 0.7.7
+│           └── p2p_app 0.1.0
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    ├── webkit2gtk 2.0.1
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.7
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.7
+    │   └── dioxus-desktop 0.7.7
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+[0m[0m[1m[33mDependency tree:
+[0mgdk-sys 0.18.2
+├── webkit2gtk-sys 2.0.1
+│   ├── wry 0.53.5
+│   │   └── dioxus-desktop 0.7.7
+│   │       └── p2p_app 0.1.0
+│   └── webkit2gtk 2.0.1
+│       └── wry 0.53.5
+├── webkit2gtk 2.0.1
+├── gtk-sys 0.18.2
+│   ├── webkit2gtk-sys 2.0.1
+│   ├── webkit2gtk 2.0.1
+│   ├── libappindicator-sys 0.9.0
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   │           └── dioxus-desktop 0.7.7
+│   ├── libappindicator 0.9.0
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       ├── webkit2gtk 2.0.1
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.7
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   └── dioxus-desktop 0.7.7
+│       └── libappindicator 0.9.0
+├── gdkx11-sys 0.18.2
+│   └── tao 0.34.8
+├── gdkwayland-sys 0.18.2
+│   └── tao 0.34.8
+└── gdk 0.18.2
+    ├── webkit2gtk 2.0.1
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+[0m[0m[1m[33mDependency tree:
+[0mgdkwayland-sys 0.18.2
+└── tao 0.34.8
+    └── dioxus-desktop 0.7.7
+        └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+[0m[0m[1m[33mDependency tree:
+[0mgdkx11-sys 0.18.2
+└── tao 0.34.8
+    └── dioxus-desktop 0.7.7
+        └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+[0m[0m[1m[33mDependency tree:
+[0mgtk 0.18.2
+├── wry 0.53.5
+│   └── dioxus-desktop 0.7.7
+│       └── p2p_app 0.1.0
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+├── tao 0.34.8
+│   └── dioxus-desktop 0.7.7
+├── muda 0.17.2
+│   ├── tray-icon 0.21.3
+│   │   └── dioxus-desktop 0.7.7
+│   └── dioxus-desktop 0.7.7
+└── libappindicator 0.9.0
+    └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+[0m[0m[1m[33mDependency tree:
+[0mgtk-sys 0.18.2
+├── webkit2gtk-sys 2.0.1
+│   ├── wry 0.53.5
+│   │   └── dioxus-desktop 0.7.7
+│   │       └── p2p_app 0.1.0
+│   └── webkit2gtk 2.0.1
+│       └── wry 0.53.5
+├── webkit2gtk 2.0.1
+├── libappindicator-sys 0.9.0
+│   └── libappindicator 0.9.0
+│       └── tray-icon 0.21.3
+│           └── dioxus-desktop 0.7.7
+├── libappindicator 0.9.0
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    ├── webkit2gtk 2.0.1
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.7
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   └── dioxus-desktop 0.7.7
+    └── libappindicator 0.9.0
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+[0m[0m[1m[33mDependency tree:
+[0mgtk3-macros 0.18.2
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    │   └── dioxus-desktop 0.7.7
+    │       └── p2p_app 0.1.0
+    ├── webkit2gtk 2.0.1
+    │   └── wry 0.53.5
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.7
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.7
+    │   └── dioxus-desktop 0.7.7
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+[0m[0m[1m[33mDependency tree:
+[0mpaste 1.0.15
+├── rav1e 0.8.1
+│   └── ravif 0.13.0
+│       └── image 0.25.10
+│           └── dioxus-desktop 0.7.7
+│               └── p2p_app 0.1.0
+└── netlink-packet-core 0.8.1
+    ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    │       ├── libp2p-tcp 0.44.1
+    │       │   └── libp2p 0.56.0
+    │       │       └── p2p_app 0.1.0
+    │       ├── libp2p-quic 0.13.0
+    │       │   ├── p2p_app 0.1.0
+    │       │   └── libp2p 0.56.0
+    │       └── libp2p-mdns 0.48.0
+    │           └── libp2p 0.56.0
+    ├── netlink-proto 0.12.0
+    │   ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    ├── netlink-packet-route 0.28.0
+    │   ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    └── if-watch 3.2.2
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+[0m[0m[1m[33mDependency tree:
+[0mproc-macro-error 1.0.4
+├── gtk3-macros 0.18.2
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       │   └── dioxus-desktop 0.7.7
+│       │       └── p2p_app 0.1.0
+│       ├── webkit2gtk 2.0.1
+│       │   └── wry 0.53.5
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.7
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   │   └── dioxus-desktop 0.7.7
+│       │   └── dioxus-desktop 0.7.7
+│       └── libappindicator 0.9.0
+│           └── tray-icon 0.21.3
+└── glib-macros 0.18.5
+    └── glib 0.18.5
+        ├── webkit2gtk 2.0.1
+        ├── soup3 0.5.0
+        │   ├── wry 0.53.5
+        │   └── webkit2gtk 2.0.1
+        ├── pango 0.18.3
+        │   ├── gtk 0.18.2
+        │   └── gdk 0.18.2
+        │       ├── webkit2gtk 2.0.1
+        │       └── gtk 0.18.2
+        ├── libappindicator 0.9.0
+        ├── javascriptcore-rs 1.1.2
+        │   ├── wry 0.53.5
+        │   └── webkit2gtk 2.0.1
+        ├── gtk 0.18.2
+        ├── gio 0.18.4
+        │   ├── webkit2gtk 2.0.1
+        │   ├── soup3 0.5.0
+        │   ├── pango 0.18.3
+        │   ├── gtk 0.18.2
+        │   ├── gdk-pixbuf 0.18.5
+        │   │   ├── gtk 0.18.2
+        │   │   └── gdk 0.18.2
+        │   └── gdk 0.18.2
+        ├── gdk-pixbuf 0.18.5
+        ├── gdk 0.18.2
+        ├── cairo-rs 0.18.5
+        │   ├── webkit2gtk 2.0.1
+        │   ├── gtk 0.18.2
+        │   └── gdk 0.18.2
+        └── atk 0.18.2
+            └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+[0m[0m[1m[33mDependency tree:
+[0mglib 0.18.5
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+│       └── dioxus-desktop 0.7.7
+│           └── p2p_app 0.1.0
+├── soup3 0.5.0
+│   ├── wry 0.53.5
+│   └── webkit2gtk 2.0.1
+├── pango 0.18.3
+│   ├── gtk 0.18.2
+│   │   ├── wry 0.53.5
+│   │   ├── webkit2gtk 2.0.1
+│   │   ├── tao 0.34.8
+│   │   │   └── dioxus-desktop 0.7.7
+│   │   ├── muda 0.17.2
+│   │   │   ├── tray-icon 0.21.3
+│   │   │   │   └── dioxus-desktop 0.7.7
+│   │   │   └── dioxus-desktop 0.7.7
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   └── gdk 0.18.2
+│       ├── webkit2gtk 2.0.1
+│       └── gtk 0.18.2
+├── libappindicator 0.9.0
+├── javascriptcore-rs 1.1.2
+│   ├── wry 0.53.5
+│   └── webkit2gtk 2.0.1
+├── gtk 0.18.2
+├── gio 0.18.4
+│   ├── webkit2gtk 2.0.1
+│   ├── soup3 0.5.0
+│   ├── pango 0.18.3
+│   ├── gtk 0.18.2
+│   ├── gdk-pixbuf 0.18.5
+│   │   ├── gtk 0.18.2
+│   │   └── gdk 0.18.2
+│   └── gdk 0.18.2
+├── gdk-pixbuf 0.18.5
+├── gdk 0.18.2
+├── cairo-rs 0.18.5
+│   ├── webkit2gtk 2.0.1
+│   ├── gtk 0.18.2
+│   └── gdk 0.18.2
+└── atk 0.18.2
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+[0m[0m[1m[33mDependency tree:
+[0mrand 0.7.3
+└── phf_generator 0.8.0
+    └── phf_codegen 0.8.0
+        └── selectors 0.24.0
+            └── kuchikiki 0.8.8-speedreader
+                └── wry 0.53.5
+                    └── dioxus-desktop 0.7.7
+                        └── p2p_app 0.1.0
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 14 allowed warnings found
+Exit code: 0
+
+--- build.log ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:82:9
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   [1m[94m|[0m                                                                                     [1m[94m-[0m
+   [1m[94m|[0m                                                                                     [1m[94m|[0m
+   [1m[94m|[0m                                                                                     [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                                                                     [1m[94mhelp: missing `,`[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#![allow(missing_docs)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:83:9
+   [1m[94m|[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:84:9
+   [1m[94m|[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m                                    [1m[94m-[0m
+   [1m[94m|[0m                                    [1m[94m|[0m
+   [1m[94m|[0m                                    [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                    [1m[94mhelp: missing `,`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#[doc(hidden)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:85:9
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n"`[0m
+  [1m[94m--> [0mbuild.rs:86:9
+   [1m[94m|[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m                           [1m[94m-[0m
+   [1m[94m|[0m                           [1m[94m|[0m
+   [1m[94m|[0m                           [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                           [1m[94mhelp: missing `,`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 1 argument but 6 arguments were supplied[0m
+  [1m[94m--> [0mbuild.rs:80:22
+   [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m     let mut output = String::from(
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #2 of type `&'static str`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[94m---------------------------[0m [1m[94munexpected argument #3 of type `&'static str`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #4 of type `&'static str`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[94m------------------[0m [1m[94munexpected argument #5 of type `&'static str`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[94m--------------------------------------------------------[0m [1m[94munexpected argument #6 of type `&'static str`[0m
+   [1m[94m|[0m
+[1m[92mnote[0m: associated function defined here
+  [1m[94m--> [0m/rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/convert/mod.rs:592:7
+[1m[96mhelp[0m: remove the extra arguments
+   [1m[94m|[0m
+[1m[94m81[0m [91m- [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [91m-         "\n"[0m
+[1m[94m83[0m [91m-         "#![allow(missing_docs)]\n"[0m
+[1m[94m84[0m [91m- [0m        "\n"
+[1m[94m85[0m [91m- [0m        "#[doc(hidden)]\n"
+[1m[94m86[0m [91m- [0m        "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+[1m[94m81[0m [92m+ [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n",
+   [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0061`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (build script) due to 6 previous errors
+Exit code: 0
+
+--- clippy.log ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:82:9
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   [1m[94m|[0m                                                                                     [1m[94m-[0m
+   [1m[94m|[0m                                                                                     [1m[94m|[0m
+   [1m[94m|[0m                                                                                     [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                                                                     [1m[94mhelp: missing `,`[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#![allow(missing_docs)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:83:9
+   [1m[94m|[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:84:9
+   [1m[94m|[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m                                    [1m[94m-[0m
+   [1m[94m|[0m                                    [1m[94m|[0m
+   [1m[94m|[0m                                    [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                    [1m[94mhelp: missing `,`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#[doc(hidden)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:85:9
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n"`[0m
+  [1m[94m--> [0mbuild.rs:86:9
+   [1m[94m|[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m                           [1m[94m-[0m
+   [1m[94m|[0m                           [1m[94m|[0m
+   [1m[94m|[0m                           [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                           [1m[94mhelp: missing `,`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 1 argument but 6 arguments were supplied[0m
+  [1m[94m--> [0mbuild.rs:80:22
+   [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m     let mut output = String::from(
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #2 of type `&'static str`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[94m---------------------------[0m [1m[94munexpected argument #3 of type `&'static str`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #4 of type `&'static str`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[94m------------------[0m [1m[94munexpected argument #5 of type `&'static str`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[94m--------------------------------------------------------[0m [1m[94munexpected argument #6 of type `&'static str`[0m
+   [1m[94m|[0m
+[1m[92mnote[0m: associated function defined here
+  [1m[94m--> [0m/rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/convert/mod.rs:592:7
+[1m[96mhelp[0m: remove the extra arguments
+   [1m[94m|[0m
+[1m[94m81[0m [91m- [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [91m-         "\n"[0m
+[1m[94m83[0m [91m-         "#![allow(missing_docs)]\n"[0m
+[1m[94m84[0m [91m- [0m        "\n"
+[1m[94m85[0m [91m- [0m        "#[doc(hidden)]\n"
+[1m[94m86[0m [91m- [0m        "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+[1m[94m81[0m [92m+ [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n",
+   [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0061`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (build script) due to 6 previous errors
+Exit code: 0
+
+--- coverage-install.log ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m cargo-tarpaulin v0.35.4
+[1m[92m     Ignored[0m package `cargo-tarpaulin v0.35.4` is already installed, use --force to override
+
+--- coverage.log ---
+[2m2026-05-04T20:40:02.931954Z[0m [32m INFO[0m [2mcargo_tarpaulin::config[0m[2m:[0m Creating config
+[2m2026-05-04T20:40:04.277664Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Running Tarpaulin
+[2m2026-05-04T20:40:04.277679Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Building project
+   Compiling p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+error: Broken pipe (os error 32)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `p2p_app` (build script) due to 6 previous errors
+[2m2026-05-04T20:40:05.017108Z[0m [31mERROR[0m [2mcargo_tarpaulin[0m[2m:[0m Failed to compile tests!
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`
+  --> build.rs:82:9
+   |
+81 |         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   |                                                                                     -
+   |                                                                                     |
+   |                                                                                     expected one of `)`, `,`, `.`, `?`, or an operator
+   |                                                                                     help: missing `,`
+82 |         "\n"
+   |         ^^^^ unexpected token
+
+
+Error: "Failed to compile tests!\nerror: expected one of `)`, `,`, `.`, `?`, or an operator, found `\"\\n\"`\n  --> build.rs:82:9\n   |\n81 |         \"//! Auto-generated column constants from the Diesel schema. Do not edit.\\n\"\n   |                                                                                     -\n   |                                                                                     |\n   |                                                                                     expected one of `)`, `,`, `.`, `?`, or an operator\n   |                                                                                     help: missing `,`\n82 |         \"\\n\"\n   |         ^^^^ unexpected token\n\n"
+Exit code: 0
+
+--- docs.log ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:82:9
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   [1m[94m|[0m                                                                                     [1m[94m-[0m
+   [1m[94m|[0m                                                                                     [1m[94m|[0m
+   [1m[94m|[0m                                                                                     [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                                                                     [1m[94mhelp: missing `,`[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#![allow(missing_docs)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:83:9
+   [1m[94m|[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:84:9
+   [1m[94m|[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m                                    [1m[94m-[0m
+   [1m[94m|[0m                                    [1m[94m|[0m
+   [1m[94m|[0m                                    [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                    [1m[94mhelp: missing `,`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#[doc(hidden)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:85:9
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n"`[0m
+  [1m[94m--> [0mbuild.rs:86:9
+   [1m[94m|[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m                           [1m[94m-[0m
+   [1m[94m|[0m                           [1m[94m|[0m
+   [1m[94m|[0m                           [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                           [1m[94mhelp: missing `,`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 1 argument but 6 arguments were supplied[0m
+  [1m[94m--> [0mbuild.rs:80:22
+   [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m     let mut output = String::from(
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #2 of type `&'static str`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[94m---------------------------[0m [1m[94munexpected argument #3 of type `&'static str`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #4 of type `&'static str`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[94m------------------[0m [1m[94munexpected argument #5 of type `&'static str`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[94m--------------------------------------------------------[0m [1m[94munexpected argument #6 of type `&'static str`[0m
+   [1m[94m|[0m
+[1m[92mnote[0m: associated function defined here
+  [1m[94m--> [0m/rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/convert/mod.rs:592:7
+[1m[96mhelp[0m: remove the extra arguments
+   [1m[94m|[0m
+[1m[94m81[0m [91m- [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [91m-         "\n"[0m
+[1m[94m83[0m [91m-         "#![allow(missing_docs)]\n"[0m
+[1m[94m84[0m [91m- [0m        "\n"
+[1m[94m85[0m [91m- [0m        "#[doc(hidden)]\n"
+[1m[94m86[0m [91m- [0m        "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+[1m[94m81[0m [92m+ [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n",
+   [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0061`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (build script) due to 6 previous errors
+Exit code: 0
+
+--- fmt.log ---
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`
+  --> /home/runner/work/p2p_app/p2p_app/build.rs:82:9
+   |
+81 |         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   |                                                                                     -
+   |                                                                                     |
+   |                                                                                     expected one of `)`, `,`, `.`, `?`, or an operator
+   |                                                                                     help: missing `,`
+82 |         "\n"
+   |         ^^^^ unexpected token
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#![allow(missing_docs)]\n"`
+  --> /home/runner/work/p2p_app/p2p_app/build.rs:83:9
+   |
+82 |         "\n"
+   |             -
+   |             |
+   |             expected one of `)`, `,`, `.`, `?`, or an operator
+   |             help: missing `,`
+83 |         "#![allow(missing_docs)]\n"
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`
+  --> /home/runner/work/p2p_app/p2p_app/build.rs:84:9
+   |
+83 |         "#![allow(missing_docs)]\n"
+   |                                    -
+   |                                    |
+   |                                    expected one of `)`, `,`, `.`, `?`, or an operator
+   |                                    help: missing `,`
+84 |         "\n"
+   |         ^^^^ unexpected token
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#[doc(hidden)]\n"`
+  --> /home/runner/work/p2p_app/p2p_app/build.rs:85:9
+   |
+84 |         "\n"
+   |             -
+   |             |
+   |             expected one of `)`, `,`, `.`, `?`, or an operator
+   |             help: missing `,`
+85 |         "#[doc(hidden)]\n"
+   |         ^^^^^^^^^^^^^^^^^^ unexpected token
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `"pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n"`
+  --> /home/runner/work/p2p_app/p2p_app/build.rs:86:9
+   |
+85 |         "#[doc(hidden)]\n"
+   |                           -
+   |                           |
+   |                           expected one of `)`, `,`, `.`, `?`, or an operator
+   |                           help: missing `,`
+86 |         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unexpected token
+
+Diff in /home/runner/work/p2p_app/p2p_app/src/generated/columns.rs:5:
+ #[doc(hidden)]
+ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
+     ("identities", "created_at", "TIMESTAMP"),
+-
+     ("identities", "id", "INTEGER"),
+-
+     ("identities", "key", "BLOB"),
+-
+     ("identities", "last_quic_port", "INTEGER"),
+-
+     ("identities", "last_tcp_port", "INTEGER"),
+-
+     ("identities", "self_nickname", "TEXT"),
+-
+     ("message_receipts", "confirmed_at", "DOUBLE"),
+-
+     ("message_receipts", "created_at", "TIMESTAMP"),
+-
+     ("message_receipts", "id", "INTEGER"),
+-
+     ("message_receipts", "kind", "INTEGER"),
+-
+     ("message_receipts", "msg_id", "TEXT"),
+-
+     ("message_receipts", "peer_id", "TEXT"),
+-
+     ("messages", "content", "TEXT"),
+-
+     ("messages", "created_at", "TIMESTAMP"),
+-
+     ("messages", "id", "INTEGER"),
+-
+     ("messages", "is_direct", "INTEGER"),
+-
+     ("messages", "msg_id", "TEXT"),
+-
+     ("messages", "peer_id", "TEXT"),
+-
+     ("messages", "sender_nickname", "TEXT"),
+-
+     ("messages", "sent", "INTEGER"),
+-
+     ("messages", "sent_at", "DOUBLE"),
+-
+     ("messages", "target_peer", "TEXT"),
+-
+     ("messages", "topic", "TEXT"),
+-
+     ("peer_sessions", "concurrent_peers", "INTEGER"),
+-
+     ("peer_sessions", "id", "INTEGER"),
+-
+     ("peer_sessions", "recorded_at", "TIMESTAMP"),
+-
+     ("peers", "addresses", "TEXT"),
+-
+     ("peers", "created_at", "TIMESTAMP"),
+-
+     ("peers", "first_seen", "TIMESTAMP"),
+-
+     ("peers", "id", "INTEGER"),
+-
+     ("peers", "last_seen", "TIMESTAMP"),
+-
+     ("peers", "peer_id", "TEXT"),
+-
+     ("peers", "peer_local_nickname", "TEXT"),
+-
+     ("peers", "received_nickname", "TEXT"),
+-
+-    ("peers", "self_nickname_for_peer", "TEXT")
+-
++    ("peers", "self_nickname_for_peer", "TEXT"),
+ ];
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/generated/models_insertable.rs:1:
+ //! Auto-generated insertable (New*) model structs from the Diesel schema.
+ 
+ #![allow(missing_docs)]
+-
+ // Generated by diesel_ext (insertable structs)
+-
+ #![allow(unused)]
+ #![allow(clippy::all)]
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/generated/models_queryable.rs:1:
+ //! Auto-generated queryable model structs from the Diesel schema.
+ 
+ #![allow(missing_docs)]
+-
+ // Generated by diesel_ext
+-
+ #![allow(unused)]
+ #![allow(clippy::all)]
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render_state.rs:67:
+         messages.push_back("[You] I'm good!".into());
+ 
+         let peers = vec![
+-        ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
+-        ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
++            ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
++            ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
+         ];
+ 
+         let mut dm_messages = BTreeMap::new();
+Diff in /home/runner/work/p2p_app/p2p_app/tests/db.rs:52:
+     let s = peer_id.to_string();
+     assert!(!s.is_empty());
+     // libp2p peer IDs start with "12D3KooW" for Ed25519
+-    assert!(s.starts_with("12D3KooW"), "unexpected peer ID format: {}", s);
++    assert!(
++        s.starts_with("12D3KooW"),
++        "unexpected peer ID format: {}",
++        s
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/tests/db.rs:61:
+     // Verify migrations ran by successfully saving and loading a message
+     p2p_app::save_message("migration-check", None, "topic", false, None)
+         .expect("messages table should exist after migration");
+-    p2p_app::save_peer("peer-check", &[])
+-        .expect("peers table should exist after migration");
++    p2p_app::save_peer("peer-check", &[]).expect("peers table should exist after migration");
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/tests/messages.rs:73:
+         msg_id: Some("msg-42".into()),
+         sent_at: Some(9999.0),
+     };
+-    let msg = p2p_app::save_message_with_meta("meta msg", None, "topic", false, None, meta).unwrap();
++    let msg =
++        p2p_app::save_message_with_meta("meta msg", None, "topic", false, None, meta).unwrap();
+     assert_eq!(msg.content, "meta msg");
+     assert_eq!(msg.sender_nickname.as_deref(), Some("bob"));
+     assert_eq!(msg.msg_id.as_deref(), Some("msg-42"));
+Diff in /home/runner/work/p2p_app/p2p_app/tests/nickname.rs:24:
+ #[test]
+ fn test_generate_self_nickname_contains_hyphen() {
+     let nick = p2p_app::nickname::generate_self_nickname();
+-    assert!(nick.contains('-'), "expected two-word nickname separated by '-', got: {}", nick);
++    assert!(
++        nick.contains('-'),
++        "expected two-word nickname separated by '-', got: {}",
++        nick
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/tests/nickname.rs:37:
+ #[test]
+ fn test_generate_self_nickname_uniqueness() {
+     // With a 2-word petname space this will virtually never collide
+-    let nicks: std::collections::HashSet<String> =
+-        (0..10).map(|_| p2p_app::nickname::generate_self_nickname()).collect();
++    let nicks: std::collections::HashSet<String> = (0..10)
++        .map(|_| p2p_app::nickname::generate_self_nickname())
++        .collect();
+     assert!(nicks.len() > 1, "all 10 generated nicknames were identical");
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/tests/nickname.rs:128:
+     p2p_app::nickname::set_peer_local_nickname("peer-a", "Alpha").unwrap();
+     p2p_app::nickname::set_peer_local_nickname("peer-b", "Beta").unwrap();
+     assert_eq!(
+-        p2p_app::nickname::get_peer_local_nickname("peer-a").unwrap().as_deref(),
++        p2p_app::nickname::get_peer_local_nickname("peer-a")
++            .unwrap()
++            .as_deref(),
+         Some("Alpha")
+     );
+     assert_eq!(
+Diff in /home/runner/work/p2p_app/p2p_app/tests/nickname.rs:135:
+-        p2p_app::nickname::get_peer_local_nickname("peer-b").unwrap().as_deref(),
++        p2p_app::nickname::get_peer_local_nickname("peer-b")
++            .unwrap()
++            .as_deref(),
+         Some("Beta")
+     );
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_events.rs:9:
+     enum MockSwarmEvent {
+         PeerConnected(String),
+         PeerDisconnected(String),
+-        MessageReceived { from: String, content: String },
++        MessageReceived {
++            from: String,
++            content: String,
++        },
+         #[allow(dead_code)]
+         ListenAddrEstablished(String),
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_events.rs:17:
+     /// Mock InputEvent for testing
+     #[derive(Debug, Clone, PartialEq)]
+     enum MockInputEvent {
+-        KeyPress { key: String },
++        KeyPress {
++            key: String,
++        },
+         #[allow(dead_code)]
+-        MouseClick { x: u16, y: u16 },
++        MouseClick {
++            x: u16,
++            y: u16,
++        },
+     }
+ 
+     #[test]
+Exit code: 0
+
+--- tests.log ---
+[1m[92m       Fresh[0m unicode-ident v1.0.24
+[1m[92m       Fresh[0m proc-macro2 v1.0.106
+[1m[92m       Fresh[0m cfg-if v1.0.4
+[1m[92m       Fresh[0m quote v1.0.45
+[1m[92m       Fresh[0m libc v0.2.186
+[1m[92m       Fresh[0m memchr v2.8.0
+[1m[92m       Fresh[0m pin-project-lite v0.2.17
+[1m[92m       Fresh[0m syn v2.0.117
+[1m[92m       Fresh[0m log v0.4.29
+[1m[92m       Fresh[0m synstructure v0.13.2
+[1m[92m       Fresh[0m critical-section v1.2.0
+[1m[92m       Fresh[0m portable-atomic v1.13.1
+[1m[92m       Fresh[0m thiserror-impl v2.0.18
+[1m[92m       Fresh[0m smallvec v1.15.1
+[1m[92m       Fresh[0m futures-core v0.3.32
+[1m[92m       Fresh[0m once_cell v1.21.4
+[1m[92m       Fresh[0m thiserror v2.0.18
+[1m[92m       Fresh[0m version_check v0.9.5
+[1m[92m       Fresh[0m futures-io v0.3.32
+[1m[92m       Fresh[0m slab v0.4.12
+[1m[92m       Fresh[0m zerofrom-derive v0.1.7
+[1m[92m       Fresh[0m displaydoc v0.2.5
+[1m[92m       Fresh[0m futures-sink v0.3.32
+[1m[92m       Fresh[0m zerofrom v0.1.7
+[1m[92m       Fresh[0m yoke-derive v0.8.2
+[1m[92m       Fresh[0m futures-channel v0.3.32
+[1m[92m       Fresh[0m zerocopy v0.8.48
+[1m[92m       Fresh[0m futures-macro v0.3.32
+[1m[92m       Fresh[0m getrandom v0.2.17
+[1m[92m       Fresh[0m futures-task v0.3.32
+[1m[92m       Fresh[0m stable_deref_trait v1.2.1
+[1m[92m       Fresh[0m subtle v2.6.1
+[1m[92m       Fresh[0m yoke v0.8.2
+[1m[92m       Fresh[0m futures-util v0.3.32
+[1m[92m       Fresh[0m zeroize_derive v1.4.3
+[1m[92m       Fresh[0m zerovec-derive v0.11.3
+[1m[92m       Fresh[0m zerovec v0.11.6
+[1m[92m       Fresh[0m zeroize v1.8.2
+[1m[92m       Fresh[0m tracing-core v0.1.36
+[1m[92m       Fresh[0m heck v0.5.0
+[1m[92m       Fresh[0m typenum v1.20.0
+[1m[92m       Fresh[0m generic-array v0.14.7
+[1m[92m       Fresh[0m serde_core v1.0.228
+[1m[92m       Fresh[0m ppv-lite86 v0.2.21
+[1m[92m       Fresh[0m tracing-attributes v0.1.31
+[1m[92m       Fresh[0m bytes v1.11.1
+[1m[92m       Fresh[0m semver v1.0.28
+[1m[92m       Fresh[0m static_assertions v1.1.0
+[1m[92m       Fresh[0m tracing v0.1.44
+[1m[92m       Fresh[0m rustc_version v0.4.1
+[1m[92m       Fresh[0m crypto-common v0.1.7
+[1m[92m       Fresh[0m block-buffer v0.10.4
+[1m[92m       Fresh[0m tinystr v0.8.3
+[1m[92m       Fresh[0m writeable v0.6.3
+[1m[92m       Fresh[0m litemap v0.8.2
+[1m[92m       Fresh[0m digest v0.10.7
+[1m[92m       Fresh[0m icu_locale_core v2.2.0
+[1m[92m       Fresh[0m potential_utf v0.1.5
+[1m[92m       Fresh[0m zerotrie v0.2.4
+[1m[92m       Fresh[0m futures-executor v0.3.32
+[1m[92m       Fresh[0m mio v1.2.0
+[1m[92m       Fresh[0m fnv v1.0.7
+[1m[92m       Fresh[0m scopeguard v1.2.0
+[1m[92m       Fresh[0m utf8_iter v1.0.4
+[1m[92m       Fresh[0m icu_collections v2.2.0
+[1m[92m       Fresh[0m lock_api v0.4.14
+[1m[92m       Fresh[0m futures v0.3.32
+[1m[92m       Fresh[0m icu_provider v2.2.0
+[1m[92m       Fresh[0m parking_lot_core v0.9.12
+[1m[92m       Fresh[0m rand_core v0.6.4
+[1m[92m       Fresh[0m serde_derive v1.0.228
+[1m[92m       Fresh[0m icu_normalizer_data v2.2.0
+[1m[92m       Fresh[0m serde v1.0.228
+[1m[92m       Fresh[0m parking_lot v0.12.5
+[1m[92m       Fresh[0m icu_properties_data v2.2.0
+[1m[92m       Fresh[0m itoa v1.0.18
+[1m[92m       Fresh[0m strsim v0.11.1
+[1m[92m       Fresh[0m cpufeatures v0.2.17
+[1m[92m       Fresh[0m icu_properties v2.2.0
+[1m[92m       Fresh[0m icu_normalizer v2.2.0
+[1m[92m       Fresh[0m pin-project-internal v1.1.11
+[1m[92m       Fresh[0m curve25519-dalek-derive v0.1.1
+[1m[92m       Fresh[0m bitflags v2.11.1
+[1m[92m       Fresh[0m idna_adapter v1.2.2
+[1m[92m       Fresh[0m pin-project v1.1.11
+[1m[92m       Fresh[0m curve25519-dalek v4.1.3
+[1m[92m       Fresh[0m rand_chacha v0.3.1
+[1m[92m       Fresh[0m socket2 v0.6.3
+[1m[92m       Fresh[0m byteorder v1.5.0
+[1m[92m       Fresh[0m find-msvc-tools v0.1.9
+[1m[92m       Fresh[0m shlex v1.3.0
+[1m[92m       Fresh[0m signature v2.2.0
+[1m[92m       Fresh[0m data-encoding v2.11.0
+[1m[92m       Fresh[0m unsigned-varint v0.8.0
+[1m[92m       Fresh[0m percent-encoding v2.3.2
+[1m[92m       Fresh[0m cc v1.2.61
+[1m[92m       Fresh[0m ed25519 v2.2.3
+[1m[92m       Fresh[0m form_urlencoded v1.2.2
+[1m[92m       Fresh[0m data-encoding-macro-internal v0.1.18
+[1m[92m       Fresh[0m quick-protobuf v0.8.1
+[1m[92m       Fresh[0m rand v0.8.6
+[1m[92m       Fresh[0m idna v1.1.0
+[1m[92m       Fresh[0m sha2 v0.10.9
+[1m[92m       Fresh[0m hmac v0.12.1
+[1m[92m       Fresh[0m match-lookup v0.1.2
+[1m[92m       Fresh[0m tokio-macros v2.7.0
+[1m[92m       Fresh[0m ident_case v1.0.1
+[1m[92m       Fresh[0m const-str v0.4.3
+[1m[92m       Fresh[0m ed25519-dalek v2.2.0
+[1m[92m       Fresh[0m base256emoji v1.0.2
+[1m[92m       Fresh[0m tokio v1.52.1
+[1m[92m       Fresh[0m url v2.5.8
+[1m[92m       Fresh[0m hkdf v0.12.4
+[1m[92m       Fresh[0m data-encoding-macro v0.1.20
+[1m[92m       Fresh[0m multihash v0.19.5
+[1m[92m       Fresh[0m powerfmt v0.2.0
+[1m[92m       Fresh[0m autocfg v1.5.0
+[1m[92m       Fresh[0m bs58 v0.5.1
+[1m[92m       Fresh[0m base-x v0.2.11
+[1m[92m       Fresh[0m cfg_aliases v0.2.1
+[1m[92m       Fresh[0m num-conv v0.2.1
+[1m[92m       Fresh[0m time-core v0.1.8
+[1m[92m       Fresh[0m libp2p-identity v0.2.13
+[1m[92m       Fresh[0m time-macros v0.2.27
+[1m[92m       Fresh[0m multibase v0.9.2
+[1m[92m       Fresh[0m deranged v0.5.8
+[1m[92m       Fresh[0m web-time v1.1.0
+[1m[92m       Fresh[0m futures-timer v3.0.3
+[1m[92m       Fresh[0m unsigned-varint v0.7.2
+[1m[92m       Fresh[0m arrayref v0.3.9
+[1m[92m       Fresh[0m num_threads v0.1.7
+[1m[92m       Fresh[0m multiaddr v0.18.2
+[1m[92m       Fresh[0m multistream-select v0.13.0
+[1m[92m       Fresh[0m time v0.3.47
+[1m[92m       Fresh[0m rw-stream-sink v0.4.0
+[1m[92m       Fresh[0m num-traits v0.2.19
+[1m[92m       Fresh[0m libp2p-core v0.43.2
+[1m[92m       Fresh[0m untrusted v0.9.0
+[1m[92m       Fresh[0m unicode-segmentation v1.13.2
+[1m[92m       Fresh[0m getrandom v0.3.4
+[1m[92m       Fresh[0m ring v0.17.14
+[1m[92m       Fresh[0m rand_core v0.9.5
+[1m[92m       Fresh[0m paste v1.0.15
+[1m[92m       Fresh[0m rand_chacha v0.9.0
+[1m[92m       Fresh[0m rustls-pki-types v1.14.1
+[1m[92m       Fresh[0m thiserror-impl v1.0.69
+[1m[92m       Fresh[0m aho-corasick v1.1.4
+[1m[92m       Fresh[0m lazy_static v1.5.0
+[1m[92m       Fresh[0m equivalent v1.0.2
+[1m[92m       Fresh[0m minimal-lexical v0.2.1
+[1m[92m       Fresh[0m allocator-api2 v0.2.21
+[1m[92m       Fresh[0m foldhash v0.2.0
+[1m[92m       Fresh[0m regex-syntax v0.8.10
+[1m[92m       Fresh[0m foldhash v0.1.5
+[1m[92m       Fresh[0m nom v7.1.3
+[1m[92m       Fresh[0m hashbrown v0.16.1
+[1m[92m       Fresh[0m regex-automata v0.4.14
+[1m[92m       Fresh[0m hashbrown v0.15.5
+[1m[92m       Fresh[0m thiserror v1.0.69
+[1m[92m       Fresh[0m rand v0.9.4
+[1m[92m       Fresh[0m netlink-packet-core v0.8.1
+[1m[92m       Fresh[0m rustversion v1.0.22
+[1m[92m       Fresh[0m darling_core v0.23.0
+[1m[92m       Fresh[0m darling_macro v0.23.0
+[1m[92m       Fresh[0m castaway v0.2.4
+[1m[92m       Fresh[0m hashlink v0.10.0
+[1m[92m       Fresh[0m rusticata-macros v4.1.0
+[1m[92m       Fresh[0m rustls-webpki v0.103.13
+[1m[92m       Fresh[0m netlink-sys v0.8.8
+[1m[92m       Fresh[0m itertools v0.14.0
+[1m[92m       Fresh[0m libp2p-swarm-derive v0.35.1
+[1m[92m       Fresh[0m strum_macros v0.27.2
+[1m[92m       Fresh[0m asn1-rs-derive v0.6.0
+[1m[92m       Fresh[0m asn1-rs-impl v0.2.0
+[1m[92m       Fresh[0m errno v0.3.14
+[1m[92m       Fresh[0m indoc v2.0.7
+[1m[92m       Fresh[0m ryu v1.0.23
+[1m[92m       Fresh[0m unicode-width v0.2.2
+[1m[92m       Fresh[0m tinyvec_macros v0.1.1
+[1m[92m       Fresh[0m unicode-truncate v2.0.1
+[1m[92m       Fresh[0m compact_str v0.9.0
+[1m[92m       Fresh[0m tinyvec v1.11.0
+[1m[92m       Fresh[0m asn1-rs v0.7.1
+[1m[92m       Fresh[0m signal-hook-registry v1.4.8
+[1m[92m       Fresh[0m strum v0.27.2
+[1m[92m       Fresh[0m netlink-proto v0.12.0
+[1m[92m       Fresh[0m libp2p-swarm v0.47.1
+[1m[92m       Fresh[0m rustls v0.23.40
+[1m[92m       Fresh[0m crossbeam-utils v0.8.21
+[1m[92m       Fresh[0m nix v0.30.1
+[1m[92m       Fresh[0m darling v0.23.0
+[1m[92m       Fresh[0m netlink-packet-route v0.28.0
+[1m[92m       Fresh[0m lru v0.16.4
+[1m[92m       Fresh[0m kasuari v0.4.12
+[1m[92m       Fresh[0m convert_case v0.10.0
+[1m[92m       Fresh[0m num-integer v0.1.46
+[1m[92m       Fresh[0m darling_core v0.21.3
+[1m[92m       Fresh[0m linux-raw-sys v0.12.1
+[1m[92m       Fresh[0m base64 v0.22.1
+[1m[92m       Fresh[0m ipnet v2.12.0
+[1m[92m       Fresh[0m rustix v1.1.4
+[1m[92m       Fresh[0m num-bigint v0.4.6
+[1m[92m       Fresh[0m darling_macro v0.21.3
+[1m[92m       Fresh[0m derive_more-impl v2.1.1
+[1m[92m       Fresh[0m ratatui-core v0.1.0
+[1m[92m       Fresh[0m rtnetlink v0.20.0
+[1m[92m       Fresh[0m instability v0.3.12
+[1m[92m       Fresh[0m concurrent-queue v2.5.0
+[1m[92m       Fresh[0m signal-hook v0.3.18
+[1m[92m       Fresh[0m utf8parse v0.2.2
+[1m[92m       Fresh[0m litrs v1.0.0
+[1m[92m       Fresh[0m vcpkg v0.2.15
+[1m[92m       Fresh[0m parking v2.2.1
+[1m[92m       Fresh[0m pkg-config v0.3.33
+[1m[92m       Fresh[0m winnow v1.0.2
+[1m[92m       Fresh[0m rand_core v0.10.1
+[1m[92m       Fresh[0m toml_parser v1.1.2+spec-1.1.0
+[1m[92m       Fresh[0m event-listener v5.4.1
+[1m[92m       Fresh[0m document-features v0.2.12
+[1m[92m       Fresh[0m anstyle-parse v1.0.0
+[1m[92m       Fresh[0m if-watch v3.2.2
+[1m[92m       Fresh[0m signal-hook-mio v0.2.5
+[1m[92m       Fresh[0m darling v0.21.3
+[1m[92m       Fresh[0m derive_more v2.1.1
+[1m[92m       Fresh[0m der-parser v10.0.0
+[1m[92m       Fresh[0m ahash v0.8.12
+[1m[92m       Fresh[0m oid-registry v0.8.1
+[1m[92m       Fresh[0m pem v3.0.6
+[1m[92m       Fresh[0m matchers v0.2.0
+[1m[92m       Fresh[0m sharded-slab v0.1.7
+[1m[92m       Fresh[0m yasna v0.5.2
+[1m[92m       Fresh[0m line-clipping v0.3.7
+[1m[92m       Fresh[0m asynchronous-codec v0.7.0
+[1m[92m       Fresh[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m       Fresh[0m serde_spanned v1.1.1
+[1m[92m       Fresh[0m tracing-log v0.2.0
+[1m[92m       Fresh[0m async-trait v0.1.89
+[1m[92m       Fresh[0m socket2 v0.5.10
+[1m[92m       Fresh[0m thread_local v1.1.9
+[1m[92m       Fresh[0m rustc-hash v2.1.2
+[1m[92m       Fresh[0m anstyle-query v1.1.5
+[1m[92m       Fresh[0m either v1.15.0
+[1m[92m       Fresh[0m nu-ansi-term v0.50.3
+[1m[92m       Fresh[0m winnow v0.7.15
+[1m[92m       Fresh[0m is_terminal_polyfill v1.70.2
+[1m[92m       Fresh[0m nohash-hasher v0.2.0
+[1m[92m       Fresh[0m anstyle v1.0.14
+[1m[92m       Fresh[0m lru-slab v0.1.2
+[1m[92m       Fresh[0m colorchoice v1.0.5
+[1m[92m       Fresh[0m anstream v1.0.0
+[1m[92m       Fresh[0m quinn-proto v0.11.14
+[1m[92m       Fresh[0m tracing-subscriber v0.3.23
+[1m[92m       Fresh[0m dsl_auto_type v0.2.0
+[1m[92m       Fresh[0m toml v0.9.12+spec-1.1.0
+[1m[92m       Fresh[0m rcgen v0.13.2
+[1m[92m       Fresh[0m ratatui-widgets v0.3.0
+[1m[92m       Fresh[0m x509-parser v0.17.0
+[1m[92m       Fresh[0m hashbrown v0.14.5
+[1m[92m       Fresh[0m crossterm v0.29.0
+[1m[92m       Fresh[0m quinn-udp v0.5.14
+[1m[92m       Fresh[0m getrandom v0.4.2
+[1m[92m       Fresh[0m zmij v1.0.21
+[1m[92m       Fresh[0m event-listener-strategy v0.5.4
+[1m[92m       Fresh[0m futures-rustls v0.26.0
+[1m[92m       Fresh[0m enum-as-inner v0.6.1
+[1m[92m       Fresh[0m diesel_table_macro_syntax v0.3.0
+[1m[92m       Fresh[0m cpufeatures v0.3.0
+[1m[92m       Fresh[0m gimli v0.32.3
+[1m[92m       Fresh[0m iana-time-zone v0.1.65
+[1m[92m       Fresh[0m clap_lex v1.1.0
+[1m[92m       Fresh[0m adler2 v2.0.1
+[1m[92m       Fresh[0m clap_builder v4.6.0
+[1m[92m       Fresh[0m chrono v0.4.44
+[1m[92m       Fresh[0m miniz_oxide v0.8.9
+[1m[92m       Fresh[0m addr2line v0.25.1
+[1m[92m       Fresh[0m diesel_derives v2.3.9
+[1m[92m       Fresh[0m chacha20 v0.10.0
+[1m[92m       Fresh[0m hickory-proto v0.25.2
+[1m[92m       Fresh[0m serde_json v1.0.149
+[1m[92m       Fresh[0m libp2p-tls v0.6.2
+[1m[92m       Fresh[0m async-channel v2.5.0
+[1m[92m       Fresh[0m ratatui-crossterm v0.1.0
+[1m[92m       Fresh[0m quinn v0.11.9
+[1m[92m       Fresh[0m libsqlite3-sys v0.36.0
+[1m[92m       Fresh[0m hashlink v0.9.1
+[1m[92m       Fresh[0m snow v0.9.6
+[1m[92m       Fresh[0m migrations_internals v2.3.0
+[1m[92m       Fresh[0m object v0.37.3
+[1m[92m       Fresh[0m tracing-error v0.2.1
+[1m[92m       Fresh[0m owo-colors v4.3.0
+[1m[92m       Fresh[0m yamux v0.12.1
+[1m[92m       Fresh[0m yamux v0.13.10
+[1m[92m       Fresh[0m quick-protobuf-codec v0.3.1
+[1m[92m       Fresh[0m regex v1.12.3
+[1m[92m       Fresh[0m futures-bounded v0.2.4
+[1m[92m       Fresh[0m x25519-dalek v2.0.1
+[1m[92m       Fresh[0m clap_derive v4.6.1
+[1m[92m       Fresh[0m rustc-demangle v0.1.27
+[1m[92m       Fresh[0m downcast-rs v2.0.2
+[1m[92m       Fresh[0m indenter v0.3.4
+[1m[92m       Fresh[0m hex_fmt v0.3.0
+[1m[92m       Fresh[0m libp2p-gossipsub v0.49.4
+[1m[92m       Fresh[0m eyre v0.6.12
+[1m[92m       Fresh[0m backtrace v0.3.76
+[1m[92m       Fresh[0m diesel v2.3.9
+[1m[92m       Fresh[0m clap v4.6.1
+[1m[92m       Fresh[0m libp2p-noise v0.46.1
+[1m[92m       Fresh[0m libp2p-request-response v0.29.0
+[1m[92m       Fresh[0m color-spantrace v0.3.0
+[1m[92m       Fresh[0m libp2p-yamux v0.47.0
+[1m[92m       Fresh[0m migrations_macros v2.3.0
+[1m[92m       Fresh[0m libp2p-quic v0.13.0
+[1m[92m       Fresh[0m libp2p-mdns v0.48.0
+[1m[92m       Fresh[0m rand v0.10.1
+[1m[92m       Fresh[0m ratatui-macros v0.7.0
+[1m[92m       Fresh[0m libp2p-tcp v0.44.1
+[1m[92m       Fresh[0m libp2p-allow-block-list v0.6.0
+[1m[92m       Fresh[0m libp2p-connection-limits v0.6.0
+[1m[92m       Fresh[0m petname-macros v3.0.0
+[1m[92m       Fresh[0m async-stream-impl v0.3.6
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m       Fresh[0m petname v3.0.0
+[1m[92m       Fresh[0m libp2p v0.56.0
+[1m[92m       Fresh[0m async-stream v0.3.6
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name build_script_build --edition=2024 build.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --cfg 'feature="default"' --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "tracing", "tui"))' -C metadata=2b4fd026e88d66fd -C extra-filename=-8362189db28e0265 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/build/p2p_app-8362189db28e0265 -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps`
+[1m[92m       Fresh[0m ratatui v0.30.0
+[1m[92m       Fresh[0m diesel_migrations v2.3.2
+[1m[92m       Fresh[0m color-eyre v0.6.5
+[1m[92m       Fresh[0m ratatui-textarea v0.8.0
+[1m[92m       Fresh[0m tokio-stream v0.1.18
+[1m[92m       Fresh[0m dotenvy v0.15.7
+[1m[92m       Fresh[0m fastrand v2.4.1
+[1m[92m       Fresh[0m tempfile v3.27.0
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:82:9
+   [1m[94m|[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+   [1m[94m|[0m                                                                                     [1m[94m-[0m
+   [1m[94m|[0m                                                                                     [1m[94m|[0m
+   [1m[94m|[0m                                                                                     [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                                                                     [1m[94mhelp: missing `,`[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#![allow(missing_docs)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:83:9
+   [1m[94m|[0m
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"\n"`[0m
+  [1m[94m--> [0mbuild.rs:84:9
+   [1m[94m|[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m                                    [1m[94m-[0m
+   [1m[94m|[0m                                    [1m[94m|[0m
+   [1m[94m|[0m                                    [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                                    [1m[94mhelp: missing `,`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[91m^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"#[doc(hidden)]\n"`[0m
+  [1m[94m--> [0mbuild.rs:85:9
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m             [1m[94m-[0m
+   [1m[94m|[0m             [1m[94m|[0m
+   [1m[94m|[0m             [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m             [1m[94mhelp: missing `,`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[0m[1m: expected one of `)`, `,`, `.`, `?`, or an operator, found `"pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n"`[0m
+  [1m[94m--> [0mbuild.rs:86:9
+   [1m[94m|[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m                           [1m[94m-[0m
+   [1m[94m|[0m                           [1m[94m|[0m
+   [1m[94m|[0m                           [1m[94mexpected one of `)`, `,`, `.`, `?`, or an operator[0m
+   [1m[94m|[0m                           [1m[94mhelp: missing `,`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munexpected token[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 1 argument but 6 arguments were supplied[0m
+  [1m[94m--> [0mbuild.rs:80:22
+   [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m     let mut output = String::from(
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^[0m
+[1m[94m81[0m [1m[94m|[0m         "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #2 of type `&'static str`[0m
+[1m[94m83[0m [1m[94m|[0m         "#![allow(missing_docs)]\n"
+   [1m[94m|[0m         [1m[94m---------------------------[0m [1m[94munexpected argument #3 of type `&'static str`[0m
+[1m[94m84[0m [1m[94m|[0m         "\n"
+   [1m[94m|[0m         [1m[94m----[0m [1m[94munexpected argument #4 of type `&'static str`[0m
+[1m[94m85[0m [1m[94m|[0m         "#[doc(hidden)]\n"
+   [1m[94m|[0m         [1m[94m------------------[0m [1m[94munexpected argument #5 of type `&'static str`[0m
+[1m[94m86[0m [1m[94m|[0m         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+   [1m[94m|[0m         [1m[94m--------------------------------------------------------[0m [1m[94munexpected argument #6 of type `&'static str`[0m
+   [1m[94m|[0m
+[1m[92mnote[0m: associated function defined here
+  [1m[94m--> [0m/rustc/59807616e1fa2540724bfbac14d7976d7e4a3860/library/core/src/convert/mod.rs:592:7
+[1m[96mhelp[0m: remove the extra arguments
+   [1m[94m|[0m
+[1m[94m81[0m [91m- [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n"
+[1m[94m82[0m [91m-         "\n"[0m
+[1m[94m83[0m [91m-         "#![allow(missing_docs)]\n"[0m
+[1m[94m84[0m [91m- [0m        "\n"
+[1m[94m85[0m [91m- [0m        "#[doc(hidden)]\n"
+[1m[94m86[0m [91m- [0m        "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
+[1m[94m81[0m [92m+ [0m        "//! Auto-generated column constants from the Diesel schema. Do not edit.\n",
+   [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0061`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (build script) due to 6 previous errors
+
+Caused by:
+  process didn't exit successfully: `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name build_script_build --edition=2024 build.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --cfg 'feature="default"' --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "tracing", "tui"))' -C metadata=2b4fd026e88d66fd -C extra-filename=-8362189db28e0265 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/build/p2p_app-8362189db28e0265 -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps` (exit status: 1)
+Exit code: 0
+
