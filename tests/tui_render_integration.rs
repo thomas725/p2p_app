@@ -22,7 +22,7 @@ mod render_tests {
     #[test]
     fn test_render_frame_with_library() {
         let mut terminal = create_test_terminal();
-        let state = TuiRenderState::with_sample_data();
+        let mut state = TuiRenderState::with_sample_data();
 
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
     }
@@ -68,7 +68,7 @@ mod render_tests {
     #[test]
     fn test_render_dm_content_library() {
         let mut terminal = create_test_terminal();
-        let state = TuiRenderState::with_sample_data();
+        let mut state = TuiRenderState::with_sample_data();
         state.add_dm_message("Alice", "<Alice> Hello!");
 
         terminal
@@ -138,7 +138,7 @@ mod render_tests {
         let mut terminal = create_test_terminal();
 
         // Test Chat tab
-        let state = TuiRenderState::with_sample_data();
+        let mut state = TuiRenderState::with_sample_data();
         state.active_tab = 0;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
 
