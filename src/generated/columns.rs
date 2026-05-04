@@ -2,7 +2,7 @@
 
 #![allow(missing_docs)]
 
-/// Column metadata for all tables: (table, column, sql_type) triples used for schema introspection.
+#[doc(hidden)]
 pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("identities", "created_at", "TIMESTAMP"),
 

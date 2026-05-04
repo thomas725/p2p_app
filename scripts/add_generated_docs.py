@@ -149,10 +149,10 @@ def process_columns(path: str) -> None:
         src = header + src
 
     # Add doc comment to SCHEMA_ENTRIES if missing
-    if "/// Column metadata" not in src:
+    if "#[doc(hidden)]" not in src:
         src = src.replace(
             "pub const SCHEMA_ENTRIES",
-            "/// Column metadata for all tables: (table, column, sql_type) triples used for schema introspection.\npub const SCHEMA_ENTRIES",
+            "#[doc(hidden)]\npub const SCHEMA_ENTRIES",
         )
 
     with open(path, "w") as f:
