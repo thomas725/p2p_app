@@ -28,36 +28,6 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
     }
 }
 
-/// Disables auto-scroll and sets offset to max if auto-scroll was enabled
-fn disable_auto_scroll_to_max(
-    auto_scroll: &mut bool,
-    scroll_offset: &mut usize,
-    max_offset: usize,
-) {
-    if *auto_scroll {
-        *auto_scroll = false;
-        *scroll_offset = max_offset;
-    }
-}
-
-/// Scroll up by one line or page
-fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
-    *scroll_offset = scroll_offset.saturating_sub(lines);
-}
-
-/// Scroll down to target, enabling auto-scroll if reaching max
-fn scroll_down_lines(
-    scroll_offset: &mut usize,
-    auto_scroll: &mut bool,
-    lines: usize,
-    max_offset: usize,
-) {
-    *scroll_offset = (*scroll_offset + lines).min(max_offset);
-    if *scroll_offset >= max_offset {
-        *auto_scroll = true;
-    }
-}
-
 /// Handle a single scroll key press for broadcast/DM section with mutable state
 fn handle_scroll_key_for_section(
     key_code: crossterm::event::KeyCode,
@@ -65,32 +35,19 @@ fn handle_scroll_key_for_section(
     auto_scroll: &mut bool,
     max_offset: usize,
 ) {
-    match key_code {
-        crossterm::event::KeyCode::Up => {
-            disable_auto_scroll_to_max(auto_scroll, scroll_offset, max_offset);
-            scroll_up_lines(scroll_offset, 1);
-        }
-        crossterm::event::KeyCode::Down => {
-            disable_auto_scroll_to_max(auto_scroll, scroll_offset, max_offset);
-            scroll_down_lines(scroll_offset, auto_scroll, 1, max_offset);
-        }
-        crossterm::event::KeyCode::PageUp => {
-            disable_auto_scroll_to_max(auto_scroll, scroll_offset, max_offset);
-            scroll_up_lines(scroll_offset, PAGE_SIZE);
-        }
-        crossterm::event::KeyCode::PageDown => {
-            disable_auto_scroll_to_max(auto_scroll, scroll_offset, max_offset);
-            scroll_down_lines(scroll_offset, auto_scroll, PAGE_SIZE, max_offset);
-        }
-        crossterm::event::KeyCode::Home => {
-            *auto_scroll = false;
-            *scroll_offset = 0;
-        }
-        crossterm::event::KeyCode::End => {
-            *auto_scroll = true;
-        }
-        _ => {}
-    }
+    let action = match key_code {
+        crossterm::event::KeyCode::Up => "Up",
+        crossterm::event::KeyCode::Down => "Down",
+        crossterm::event::KeyCode::PageUp => "PageUp",
+        crossterm::event::KeyCode::PageDown => "PageDown",
+        crossterm::event::KeyCode::Home => "Home",
+        crossterm::event::KeyCode::End => "End",
+        _ => return,
+    };
+    let (new_offset, new_auto) =
+        p2p_app::tui_helpers::handle_scroll_key_for_section(action, *scroll_offset, *auto_scroll, max_offset);
+    *scroll_offset = new_offset;
+    *auto_scroll = new_auto;
 }
 
 /// Handle scroll key for broadcast section of DM tab
@@ -138,58 +95,21 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
 
 /// Handle scroll key for Chat tab (broadcast)
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let max_offset = state
-        .messages
-        .len()
-        .saturating_sub(state.visible_message_count);
-    match key_code {
-        crossterm::event::KeyCode::Up => {
-            if state.chat_auto_scroll {
-                state.chat_auto_scroll = false;
-                state.chat_scroll_offset = max_offset;
-            }
-            scroll_up_lines(&mut state.chat_scroll_offset, 1);
-        }
-        crossterm::event::KeyCode::Down => {
-            if state.chat_auto_scroll {
-                state.chat_auto_scroll = false;
-                state.chat_scroll_offset = max_offset;
-            }
-            scroll_down_lines(
-                &mut state.chat_scroll_offset,
-                &mut state.chat_auto_scroll,
-                1,
-                max_offset,
-            );
-        }
-        crossterm::event::KeyCode::PageUp => {
-            if state.chat_auto_scroll {
-                state.chat_auto_scroll = false;
-                state.chat_scroll_offset = max_offset;
-            }
-            scroll_up_lines(&mut state.chat_scroll_offset, PAGE_SIZE);
-        }
-        crossterm::event::KeyCode::PageDown => {
-            if state.chat_auto_scroll {
-                state.chat_auto_scroll = false;
-                state.chat_scroll_offset = max_offset;
-            }
-            scroll_down_lines(
-                &mut state.chat_scroll_offset,
-                &mut state.chat_auto_scroll,
-                PAGE_SIZE,
-                max_offset,
-            );
-        }
-        crossterm::event::KeyCode::Home => {
-            state.chat_auto_scroll = false;
-            state.chat_scroll_offset = 0;
-        }
-        crossterm::event::KeyCode::End => {
-            state.chat_auto_scroll = true;
-        }
-        _ => {}
-    }
+    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    let action = match key_code {
+        crossterm::event::KeyCode::Up => "Up",
+        crossterm::event::KeyCode::Down => "Down",
+        crossterm::event::KeyCode::PageUp => "PageUp",
+        crossterm::event::KeyCode::PageDown => "PageDown",
+        crossterm::event::KeyCode::Home => "Home",
+        crossterm::event::KeyCode::End => "End",
+        _ => return,
+    };
+    let (new_offset, new_auto) = p2p_app::tui_helpers::handle_scroll_key_for_section(
+        action, state.chat_scroll_offset, state.chat_auto_scroll, max_offset,
+    );
+    state.chat_scroll_offset = new_offset;
+    state.chat_auto_scroll = new_auto;
 }
 
 /// Handle scroll key for Log tab
@@ -307,28 +227,11 @@ fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) {
-    // If auto-scroll is enabled, do nothing (user is viewing latest messages)
-    if state.chat_auto_scroll {
-        return;
-    }
-    let max_offset = state
-        .messages
-        .len()
-        .saturating_sub(state.visible_message_count);
-    match scroll_dir {
-        "up" => {
-            if state.chat_scroll_offset >= WHEEL_SCROLL_LINES {
-                state.chat_scroll_offset -= WHEEL_SCROLL_LINES;
-            } else {
-                state.chat_scroll_offset = 0;
-            }
-        }
-        "down" => {
-            state.chat_scroll_offset =
-                (state.chat_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-        }
-        _ => {}
-    }
+    if state.chat_auto_scroll { return; }
+    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    state.chat_scroll_offset = p2p_app::tui_helpers::handle_mouse_wheel_scroll(
+        scroll_dir, state.chat_scroll_offset, max_offset,
+    );
 }
 
 /// Handle mouse wheel for Log tab

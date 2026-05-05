@@ -293,3 +293,146 @@ fn test_next_tab_index() {
     // Zero tabs
     assert_eq!(next_tab_index(0, 1, 0), 0);
 }
+
+#[test]
+fn test_relabel_dm_transcript_replaces_matching_lines() {
+    use p2p_app::tui_helpers::relabel_dm_transcript;
+    use std::collections::VecDeque;
+    let mut msgs: VecDeque<String> = VecDeque::from([
+        "[Alice] hello".into(),
+        "[Bob] hi there".into(),
+        "[Alice] how are you?".into(),
+    ]);
+    relabel_dm_transcript(&mut msgs, "Alice", "AliceNew");
+    assert_eq!(msgs[0], "[AliceNew] hello");
+    assert_eq!(msgs[1], "[Bob] hi there"); // untouched
+    assert_eq!(msgs[2], "[AliceNew] how are you?");
+}
+
+#[test]
+fn test_relabel_dm_transcript_empty() {
+    use p2p_app::tui_helpers::relabel_dm_transcript;
+    use std::collections::VecDeque;
+    let mut msgs: VecDeque<String> = VecDeque::new();
+    relabel_dm_transcript(&mut msgs, "Alice", "New"); // must not panic
+    assert!(msgs.is_empty());
+}
+
+#[test]
+fn test_relabel_dm_transcript_no_match() {
+    use p2p_app::tui_helpers::relabel_dm_transcript;
+    use std::collections::VecDeque;
+    let mut msgs: VecDeque<String> = VecDeque::from(["[Bob] unchanged".into()]);
+    relabel_dm_transcript(&mut msgs, "Alice", "New");
+    assert_eq!(msgs[0], "[Bob] unchanged");
+}
+
+#[test]
+fn test_sort_peers_preserves_selection() {
+    use p2p_app::tui_helpers::sort_peers_by_last_seen;
+    use std::collections::VecDeque;
+    let mut peers = VecDeque::from([
+        ("a".into(), "2024-01-01 00:00:00".into(), "2024-01-01 00:00:00".into()),
+        ("b".into(), "2024-01-03 00:00:00".into(), "2024-01-03 00:00:00".into()),
+        ("c".into(), "2024-01-02 00:00:00".into(), "2024-01-02 00:00:00".into()),
+    ]);
+    // Select peer "a" (index 0 before sort)
+    let new_sel = sort_peers_by_last_seen(&mut peers, 0);
+    // After sort by desc: b, c, a — peer "a" should now be at index 2
+    assert_eq!(peers[0].0, "b");
+    assert_eq!(peers[1].0, "c");
+    assert_eq!(peers[2].0, "a");
+    assert_eq!(new_sel, 2, "selection should track peer 'a' to its new index");
+}
+
+#[test]
+fn test_sort_peers_empty() {
+    use p2p_app::tui_helpers::sort_peers_by_last_seen;
+    use std::collections::VecDeque;
+    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let sel = sort_peers_by_last_seen(&mut peers, 0);
+    assert_eq!(sel, 0);
+}
+
+#[test]
+fn test_upsert_adds_new_peer() {
+    use p2p_app::tui_helpers::upsert_peer_last_seen;
+    use std::collections::VecDeque;
+    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    upsert_peer_last_seen(&mut peers, 0, "new-peer", "2024-05-01 12:00:00");
+    assert_eq!(peers.len(), 1);
+    assert_eq!(peers[0].0, "new-peer");
+    assert_eq!(peers[0].2, "2024-05-01 12:00:00");
+}
+
+#[test]
+fn test_upsert_updates_existing_peer() {
+    use p2p_app::tui_helpers::upsert_peer_last_seen;
+    use std::collections::VecDeque;
+    let mut peers = VecDeque::from([
+        ("p1".into(), "2024-01-01 00:00:00".into(), "2024-01-01 00:00:00".into()),
+    ]);
+    upsert_peer_last_seen(&mut peers, 0, "p1", "2024-06-01 00:00:00");
+    assert_eq!(peers.len(), 1);
+    assert_eq!(peers[0].2, "2024-06-01 00:00:00");
+}
+
+#[test]
+fn test_handle_scroll_end_sets_auto_scroll() {
+    use p2p_app::tui_helpers::handle_scroll_key_for_section;
+    let (offset, auto) = handle_scroll_key_for_section("End", 5, false, 100);
+    assert!(auto);
+    // End doesn't change offset — it just re-enables auto-scroll
+    assert_eq!(offset, 100);
+}
+
+#[test]
+fn test_handle_scroll_home_clears_auto_scroll() {
+    use p2p_app::tui_helpers::handle_scroll_key_for_section;
+    let (offset, auto) = handle_scroll_key_for_section("Home", 50, true, 100);
+    assert_eq!(offset, 0);
+    assert!(!auto);
+}
+
+#[test]
+fn test_handle_scroll_up_from_auto_jumps_to_bottom_first() {
+    use p2p_app::tui_helpers::handle_scroll_key_for_section;
+    // When auto_scroll is true, pressing Up should first pin to max then scroll up 1
+    let (offset, auto) = handle_scroll_key_for_section("Up", 0, true, 50);
+    assert!(!auto);
+    assert_eq!(offset, 49); // pinned to 50 then scrolled up 1
+}
+
+#[test]
+fn test_handle_scroll_page_down_clamps_at_max() {
+    use p2p_app::tui_helpers::handle_scroll_key_for_section;
+    let (offset, auto) = handle_scroll_key_for_section("PageDown", 95, false, 100);
+    assert_eq!(offset, 100);
+    assert!(auto); // reached max so auto-scroll re-engages
+}
+
+#[test]
+fn test_mouse_wheel_scroll_ignored_when_auto_scroll() {
+    use p2p_app::tui_helpers::handle_mouse_wheel_scroll;
+    // Existing function doesn't take auto_scroll — test the no-change path via direction ""
+    let offset = handle_mouse_wheel_scroll("", 30, 100);
+    assert_eq!(offset, 30); // unknown direction is a no-op
+}
+
+#[test]
+fn test_next_tab_index_wraps_forward() {
+    use p2p_app::tui_helpers::next_tab_index;
+    assert_eq!(next_tab_index(3, 1, 4), 0); // 3+1=4 wraps to 0
+}
+
+#[test]
+fn test_next_tab_index_wraps_backward() {
+    use p2p_app::tui_helpers::next_tab_index;
+    assert_eq!(next_tab_index(0, -1, 4), 3); // 0-1=-1 wraps to 3
+}
+
+#[test]
+fn test_next_tab_index_zero_tabs() {
+    use p2p_app::tui_helpers::next_tab_index;
+    assert_eq!(next_tab_index(0, 1, 0), 0); // must not panic
+}

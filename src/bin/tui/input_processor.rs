@@ -14,13 +14,7 @@ fn update_dm_transcript_labels(
     new_nick: &str,
 ) {
     if let Some(dm_msgs) = dm_messages.get_mut(peer_id) {
-        let from = format!("[{}] ", old_nick);
-        let to = format!("[{}] ", new_nick);
-        for line in dm_msgs.iter_mut() {
-            if line.contains(&from) {
-                *line = line.replace(&from, &to);
-            }
-        }
+        p2p_app::tui_helpers::relabel_dm_transcript(dm_msgs, old_nick, new_nick);
     }
 }
 

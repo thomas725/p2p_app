@@ -14,24 +14,8 @@ enum Event {
 }
 
 fn sort_peers_by_last_seen(state: &mut super::state::AppState) {
-    let selected_peer_id = state
-        .peers
-        .get(state.peer_selection)
-        .map(|(id, _, _)| id.clone());
-
-    let mut peers_vec: Vec<_> = state.peers.drain(..).collect();
-    // last_seen format is "YYYY-MM-DD HH:MM:SS" which sorts lexicographically.
-    peers_vec.sort_by(|a, b| b.2.cmp(&a.2));
-    state.peers = peers_vec.into();
-
-    if let Some(sel_id) = selected_peer_id
-        && let Some(idx) = state.peers.iter().position(|(id, _, _)| id == &sel_id)
-    {
-        state.peer_selection = idx;
-    }
-    if state.peer_selection >= state.peers.len() {
-        state.peer_selection = state.peers.len().saturating_sub(1);
-    }
+    state.peer_selection =
+        p2p_app::tui_helpers::sort_peers_by_last_seen(&mut state.peers, state.peer_selection);
 }
 
 fn upsert_peer_last_seen(
@@ -40,18 +24,12 @@ fn upsert_peer_last_seen(
     seen_at: chrono::NaiveDateTime,
 ) {
     let seen_str = p2p_app::format_peer_datetime(seen_at);
-
-    if let Some((_, _first_seen, last_seen)) =
-        state.peers.iter_mut().find(|(id, _, _)| id == peer_id)
-    {
-        *last_seen = seen_str;
-    } else {
-        // If we only know this peer from message history (no `peers` row), derive first/last from message time.
-        state
-            .peers
-            .push_back((peer_id.to_string(), seen_str.clone(), seen_str));
-    }
-    sort_peers_by_last_seen(state);
+    state.peer_selection = p2p_app::tui_helpers::upsert_peer_last_seen(
+        &mut state.peers,
+        state.peer_selection,
+        peer_id,
+        &seen_str,
+    );
 }
 
 /// Processes network (swarm) events and updates application state

@@ -265,6 +265,21 @@ pub fn handle_mouse_wheel_scroll(
     }
 }
 
+
+/// Rename sender labels in a DM transcript when a nickname changes.
+///
+/// Replaces all occurrences of `[old_nick] ` with `[new_nick] ` so the
+/// conversation history stays consistent after a nickname update.
+pub fn relabel_dm_transcript(messages: &mut std::collections::VecDeque<String>, old_nick: &str, new_nick: &str) {
+    let from = format!("[{}] ", old_nick);
+    let to   = format!("[{}] ", new_nick);
+    for line in messages.iter_mut() {
+        if line.contains(&from) {
+            *line = line.replace(&from, &to);
+        }
+    }
+}
+
 /// Calculate tab index from current + delta (wrapping)
 pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
     if max_tabs == 0 {
