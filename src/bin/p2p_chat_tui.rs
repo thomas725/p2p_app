@@ -73,6 +73,7 @@ mod tui {
     mod input_processor;
     pub mod main_loop;
     mod message_handlers;
+    mod presentation;
     mod render_loop;
     pub mod scroll_handlers;
     mod state;

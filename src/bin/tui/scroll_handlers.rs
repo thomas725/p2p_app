@@ -44,8 +44,12 @@ fn handle_scroll_key_for_section(
         crossterm::event::KeyCode::End => "End",
         _ => return,
     };
-    let (new_offset, new_auto) =
-        p2p_app::tui_helpers::handle_scroll_key_for_section(action, *scroll_offset, *auto_scroll, max_offset);
+    let (new_offset, new_auto) = p2p_app::tui_helpers::handle_scroll_key_for_section(
+        action,
+        *scroll_offset,
+        *auto_scroll,
+        max_offset,
+    );
     *scroll_offset = new_offset;
     *auto_scroll = new_auto;
 }
@@ -95,7 +99,10 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
 
 /// Handle scroll key for Chat tab (broadcast)
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    let max_offset = state
+        .messages
+        .len()
+        .saturating_sub(state.visible_message_count);
     let action = match key_code {
         crossterm::event::KeyCode::Up => "Up",
         crossterm::event::KeyCode::Down => "Down",
@@ -106,7 +113,10 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         _ => return,
     };
     let (new_offset, new_auto) = p2p_app::tui_helpers::handle_scroll_key_for_section(
-        action, state.chat_scroll_offset, state.chat_auto_scroll, max_offset,
+        action,
+        state.chat_scroll_offset,
+        state.chat_auto_scroll,
+        max_offset,
     );
     state.chat_scroll_offset = new_offset;
     state.chat_auto_scroll = new_auto;
@@ -227,10 +237,17 @@ fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) {
-    if state.chat_auto_scroll { return; }
-    let max_offset = state.messages.len().saturating_sub(state.visible_message_count);
+    if state.chat_auto_scroll {
+        return;
+    }
+    let max_offset = state
+        .messages
+        .len()
+        .saturating_sub(state.visible_message_count);
     state.chat_scroll_offset = p2p_app::tui_helpers::handle_mouse_wheel_scroll(
-        scroll_dir, state.chat_scroll_offset, max_offset,
+        scroll_dir,
+        state.chat_scroll_offset,
+        max_offset,
     );
 }
 

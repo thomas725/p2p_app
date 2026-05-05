@@ -2,6 +2,7 @@
 
 #[test]
 fn test_get_database_url_env_set() {
+    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/test.db") };
     let url = p2p_app::db::get_database_url();
     unsafe { std::env::remove_var("DATABASE_URL") };
@@ -13,13 +14,36 @@ fn test_release_db_lock() {
     p2p_app::db::release_db_lock();
 }
 
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
 
-fn setup_test_db() -> TempDir {
+fn test_db_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct TestDb {
+    _dir: TempDir,
+    _guard: MutexGuard<'static, ()>,
+}
+
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        p2p_app::db::release_db_lock();
+        unsafe { std::env::remove_var("DATABASE_URL") };
+    }
+}
+
+fn setup_test_db() -> TestDb {
+    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
-    dir
+    p2p_app::db::init_database().unwrap();
+    TestDb {
+        _dir: dir,
+        _guard: guard,
+    }
 }
 
 #[test]
@@ -52,7 +76,11 @@ fn test_get_local_peer_id() {
     let s = peer_id.to_string();
     assert!(!s.is_empty());
     // libp2p peer IDs start with "12D3KooW" for Ed25519
-    assert!(s.starts_with("12D3KooW"), "unexpected peer ID format: {}", s);
+    assert!(
+        s.starts_with("12D3KooW"),
+        "unexpected peer ID format: {}",
+        s
+    );
 }
 
 #[test]
@@ -61,12 +89,12 @@ fn test_sqlite_connect_runs_migrations() {
     // Verify migrations ran by successfully saving and loading a message
     p2p_app::save_message("migration-check", None, "topic", false, None)
         .expect("messages table should exist after migration");
-    p2p_app::save_peer("peer-check", &[])
-        .expect("peers table should exist after migration");
+    p2p_app::save_peer("peer-check", &[]).expect("peers table should exist after migration");
 }
 
 #[test]
 fn test_get_database_url_from_env() {
+    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/explicit.db") };
     let url = p2p_app::db::get_database_url();
     unsafe { std::env::remove_var("DATABASE_URL") };

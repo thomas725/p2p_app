@@ -64,15 +64,12 @@ pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Res
     // Ensure a peers row exists (older DBs may only have messages).
     let _ = crate::save_peer(peer_id, &[]);
     let conn = &mut sqlite_connect()?;
-    diesel::insert_or_ignore_into(crate::generated::schema::peers::table)
-        .values((
-            crate::generated::schema::peers::peer_id.eq(peer_id),
-            crate::generated::schema::peers::peer_local_nickname.eq(nickname),
-        ))
-        .on_conflict(crate::generated::schema::peers::peer_id)
-        .do_update()
-        .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
-        .execute(conn)?;
+    diesel::update(
+        crate::generated::schema::peers::table
+            .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
+    )
+    .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
+    .execute(conn)?;
     Ok(())
 }
 

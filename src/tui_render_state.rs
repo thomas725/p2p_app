@@ -67,8 +67,8 @@ impl TuiRenderState {
         messages.push_back("[You] I'm good!".into());
 
         let peers = vec![
-        ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
-        ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
+            ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
+            ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
         ];
 
         let mut dm_messages = BTreeMap::new();

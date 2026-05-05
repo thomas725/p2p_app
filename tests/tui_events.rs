@@ -9,7 +9,10 @@ mod event_tests {
     enum MockSwarmEvent {
         PeerConnected(String),
         PeerDisconnected(String),
-        MessageReceived { from: String, content: String },
+        MessageReceived {
+            from: String,
+            content: String,
+        },
         #[allow(dead_code)]
         ListenAddrEstablished(String),
     }
@@ -17,9 +20,14 @@ mod event_tests {
     /// Mock InputEvent for testing
     #[derive(Debug, Clone, PartialEq)]
     enum MockInputEvent {
-        KeyPress { key: String },
+        KeyPress {
+            key: String,
+        },
         #[allow(dead_code)]
-        MouseClick { x: u16, y: u16 },
+        MouseClick {
+            x: u16,
+            y: u16,
+        },
     }
 
     #[test]

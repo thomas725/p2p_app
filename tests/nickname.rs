@@ -1,16 +1,37 @@
 //! Tests for nickname.rs module
 
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-fn setup_test_db() -> TempDir {
+fn test_db_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct TestDb {
+    _dir: TempDir,
+    _guard: MutexGuard<'static, ()>,
+}
+
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        p2p_app::db::release_db_lock();
+        unsafe { std::env::remove_var("DATABASE_URL") };
+    }
+}
+
+fn setup_test_db() -> TestDb {
+    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
-    // Initialise schema
-    p2p_app::db::get_libp2p_identity().ok();
-    dir
+    p2p_app::db::init_database().unwrap();
+    TestDb {
+        _dir: dir,
+        _guard: guard,
+    }
 }
 
 // ── generate_self_nickname ───────────────────────────────────────────────────
@@ -24,7 +45,11 @@ fn test_generate_self_nickname_not_empty() {
 #[test]
 fn test_generate_self_nickname_contains_hyphen() {
     let nick = p2p_app::nickname::generate_self_nickname();
-    assert!(nick.contains('-'), "expected two-word nickname separated by '-', got: {}", nick);
+    assert!(
+        nick.contains('-'),
+        "expected two-word nickname separated by '-', got: {}",
+        nick
+    );
 }
 
 #[test]
@@ -37,8 +62,9 @@ fn test_generate_self_nickname_two_parts() {
 #[test]
 fn test_generate_self_nickname_uniqueness() {
     // With a 2-word petname space this will virtually never collide
-    let nicks: std::collections::HashSet<String> =
-        (0..10).map(|_| p2p_app::nickname::generate_self_nickname()).collect();
+    let nicks: std::collections::HashSet<String> = (0..10)
+        .map(|_| p2p_app::nickname::generate_self_nickname())
+        .collect();
     assert!(nicks.len() > 1, "all 10 generated nicknames were identical");
 }
 
@@ -128,11 +154,15 @@ fn test_peer_local_nicknames_are_isolated() {
     p2p_app::nickname::set_peer_local_nickname("peer-a", "Alpha").unwrap();
     p2p_app::nickname::set_peer_local_nickname("peer-b", "Beta").unwrap();
     assert_eq!(
-        p2p_app::nickname::get_peer_local_nickname("peer-a").unwrap().as_deref(),
+        p2p_app::nickname::get_peer_local_nickname("peer-a")
+            .unwrap()
+            .as_deref(),
         Some("Alpha")
     );
     assert_eq!(
-        p2p_app::nickname::get_peer_local_nickname("peer-b").unwrap().as_deref(),
+        p2p_app::nickname::get_peer_local_nickname("peer-b")
+            .unwrap()
+            .as_deref(),
         Some("Beta")
     );
 }

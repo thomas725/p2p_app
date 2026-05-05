@@ -1,4 +1,8 @@
 use super::visibility::{calc_visible_strings, calc_visible_tuples, count_lines};
+use crate::tui::presentation::{
+    broadcast_receipt_prefix, dm_receipt_prefix, format_broadcast_title, format_dm_title,
+    format_peer_line, nickname_counts,
+};
 use crate::tui::state::AppState;
 use p2p_app::get_tui_logs;
 use ratatui::{
@@ -37,26 +41,17 @@ pub fn render_chat_tab(
         .map(|(visible_idx, (msg, _))| {
             let global_idx = effective_offset + visible_idx;
             let is_selected = state.broadcast_selection == Some(global_idx);
-            let prefix = if state
-                .message_ids
-                .get(global_idx)
-                .and_then(|id| id.as_ref())
-                .is_some()
-                && state
+            let prefix = broadcast_receipt_prefix(
+                state
+                    .message_ids
+                    .get(global_idx)
+                    .and_then(|id| id.as_deref()),
+                state
                     .messages
                     .get(global_idx)
-                    .is_some_and(|(_, pid)| pid.is_none())
-            {
-                let msg_id = state.message_ids[global_idx].as_ref().unwrap();
-                let confirmed = state
-                    .broadcast_receipts
-                    .get(msg_id)
-                    .map(|m| m.len())
-                    .unwrap_or(0);
-                if confirmed == 0 { "  " } else { "v " }.to_string()
-            } else {
-                "  ".to_string()
-            };
+                    .and_then(|(_, peer_id)| peer_id.as_deref()),
+                &state.broadcast_receipts,
+            );
             let display = format!("{}{}", prefix, msg);
             if is_selected {
                 ListItem::new(display).style(Style::default().bg(Color::DarkGray))
@@ -74,23 +69,14 @@ pub fn render_chat_tab(
         .enumerate()
         .map(|(visible_idx, (msg, pid))| {
             let global_idx = effective_offset + visible_idx;
-            let prefix = if state
-                .message_ids
-                .get(global_idx)
-                .and_then(|id| id.as_ref())
-                .is_some()
-                && pid.is_none()
-            {
-                let msg_id = state.message_ids[global_idx].as_ref().unwrap();
-                let confirmed = state
-                    .broadcast_receipts
-                    .get(msg_id)
-                    .map(|m| m.len())
-                    .unwrap_or(0);
-                if confirmed == 0 { "  " } else { "v " }.to_string()
-            } else {
-                "  ".to_string()
-            };
+            let prefix = broadcast_receipt_prefix(
+                state
+                    .message_ids
+                    .get(global_idx)
+                    .and_then(|id| id.as_deref()),
+                pid.as_deref(),
+                &state.broadcast_receipts,
+            );
             count_lines(&format!("{}{}", prefix, msg), text_width)
         })
         .collect();
@@ -105,19 +91,7 @@ pub fn render_chat_tab(
 
 /// Render the peers list with selection
 pub fn render_peers_tab(frame: &mut Frame, area: Rect, state: &AppState) {
-    let mut nickname_counts: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for (peer_id, _first_seen, _last_seen) in state.peers.iter() {
-        let nick = state
-            .local_nicknames
-            .get(peer_id)
-            .or_else(|| state.received_nicknames.get(peer_id))
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty());
-        if let Some(n) = nick {
-            *nickname_counts.entry(n.to_string()).or_insert(0) += 1;
-        }
-    }
+    let nickname_counts = nickname_counts(state);
 
     let peer_items: Vec<ListItem> = state
         .peers
@@ -130,13 +104,7 @@ pub fn render_peers_tab(frame: &mut Frame, area: Rect, state: &AppState) {
                 .or_else(|| state.received_nicknames.get(id))
                 .map(|s| s.trim())
                 .filter(|s| !s.is_empty());
-            let line = if let Some(n) = nick
-                && nickname_counts.get(n).copied().unwrap_or(0) == 1
-            {
-                format!("{} {} {}", n, id, last_seen)
-            } else {
-                format!("{} {}", id, last_seen)
-            };
+            let line = format_peer_line(id, last_seen, nick, &nickname_counts);
             if idx == state.peer_selection {
                 ListItem::new(line).style(Style::default().bg(Color::DarkGray))
             } else {
@@ -253,28 +221,14 @@ pub fn render_dm_tab(
             .collect();
         let broadcast_list = List::new(visible_broadcast).block(
             Block::default()
-                .title(format!(
-                    "Broadcast from {}{}",
-                    nickname
-                        .as_ref()
-                        .map(|n| format!("{} ", n))
-                        .unwrap_or_default(),
-                    short_id
-                ))
+                .title(format_broadcast_title(nickname.as_deref(), &short_id))
                 .borders(Borders::ALL),
         );
         frame.render_widget(broadcast_list, broadcast_area);
     } else {
         let broadcast_para = Paragraph::new("No broadcast messages").block(
             Block::default()
-                .title(format!(
-                    "Broadcast from {}{}",
-                    nickname
-                        .as_ref()
-                        .map(|n| format!("{} ", n))
-                        .unwrap_or_default(),
-                    short_id
-                ))
+                .title(format_broadcast_title(nickname.as_deref(), &short_id))
                 .borders(Borders::ALL),
         );
         frame.render_widget(broadcast_para, broadcast_area);
@@ -315,19 +269,14 @@ pub fn render_dm_tab(
             .enumerate()
             .map(|(visible_idx, msg)| {
                 let global_idx = effective_offset + visible_idx;
-                let prefix = state
-                    .dm_message_ids
-                    .get(peer_id)
-                    .and_then(|ids| ids.get(global_idx))
-                    .and_then(|id| id.as_ref())
-                    .map(|msg_id| {
-                        if state.dm_receipts.contains_key(msg_id) {
-                            "v ".to_string()
-                        } else {
-                            "  ".to_string()
-                        }
-                    })
-                    .unwrap_or_else(|| "  ".to_string());
+                let prefix = dm_receipt_prefix(
+                    state
+                        .dm_message_ids
+                        .get(peer_id)
+                        .and_then(|ids| ids.get(global_idx))
+                        .and_then(|id| id.as_deref()),
+                    &state.dm_receipts,
+                );
                 count_lines(&format!("{}{}", prefix, msg), text_width)
             })
             .collect();
@@ -342,37 +291,25 @@ pub fn render_dm_tab(
             .enumerate()
             .map(|(visible_idx, m)| {
                 let global_idx = effective_offset + visible_idx;
-                let prefix = state
-                    .dm_message_ids
-                    .get(peer_id)
-                    .and_then(|ids| ids.get(global_idx))
-                    .and_then(|id| id.as_ref())
-                    .map(|msg_id| {
-                        if state.dm_receipts.contains_key(msg_id) {
-                            "v ".to_string()
-                        } else {
-                            "  ".to_string()
-                        }
-                    })
-                    .unwrap_or_else(|| "  ".to_string());
+                let prefix = dm_receipt_prefix(
+                    state
+                        .dm_message_ids
+                        .get(peer_id)
+                        .and_then(|ids| ids.get(global_idx))
+                        .and_then(|id| id.as_deref()),
+                    &state.dm_receipts,
+                );
                 ListItem::new(format!("{}{}", prefix, m))
             })
             .collect();
 
         let dm_list = List::new(visible_msgs).block(
             Block::default()
-                .title(format!(
-                    "DM: {}{} | seen: {}{}",
-                    nickname
-                        .as_ref()
-                        .map(|n| format!("{} ", n))
-                        .unwrap_or_default(),
-                    short_id,
-                    last_seen.as_deref().unwrap_or("?"),
-                    first_seen
-                        .as_ref()
-                        .map(|f| format!(" (first: {})", f))
-                        .unwrap_or_default()
+                .title(format_dm_title(
+                    nickname.as_deref(),
+                    &short_id,
+                    last_seen.as_deref(),
+                    first_seen.as_deref(),
                 ))
                 .borders(Borders::ALL),
         );
@@ -380,18 +317,11 @@ pub fn render_dm_tab(
     } else {
         let dm_para = Paragraph::new("No direct messages").block(
             Block::default()
-                .title(format!(
-                    "DM: {}{} | seen: {}{}",
-                    nickname
-                        .as_ref()
-                        .map(|n| format!("{} ", n))
-                        .unwrap_or_default(),
-                    short_id,
-                    last_seen.as_deref().unwrap_or("?"),
-                    first_seen
-                        .as_ref()
-                        .map(|f| format!(" (first: {})", f))
-                        .unwrap_or_default()
+                .title(format_dm_title(
+                    nickname.as_deref(),
+                    &short_id,
+                    last_seen.as_deref(),
+                    first_seen.as_deref(),
                 ))
                 .borders(Borders::ALL),
         );

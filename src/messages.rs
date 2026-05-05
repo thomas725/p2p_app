@@ -109,7 +109,8 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
         .filter(crate::generated::schema::messages::topic.eq(topic))
         .filter(crate::generated::schema::messages::sent.eq(0))
         .filter(crate::generated::schema::messages::is_direct.eq(0))
-        .order(crate::generated::schema::messages::created_at.asc())
+        .order_by(crate::generated::schema::messages::created_at.asc())
+        .then_order_by(crate::generated::schema::messages::id.asc())
         .select(Message::as_select())
         .load(conn)
         .wrap_err_with(|| format!("Failed to load unsent messages for topic: {}", topic))
@@ -133,7 +134,8 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
     let msgs = messages
         .filter(crate::generated::schema::messages::topic.eq(topic))
         .filter(crate::generated::schema::messages::is_direct.eq(0))
-        .order(crate::generated::schema::messages::created_at.desc())
+        .order_by(crate::generated::schema::messages::created_at.desc())
+        .then_order_by(crate::generated::schema::messages::id.desc())
         .limit(limit as i64)
         .select(Message::as_select())
         .load(conn)?;
@@ -146,7 +148,8 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
     let msgs = messages
         .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
         .filter(crate::generated::schema::messages::is_direct.eq(1))
-        .order(crate::generated::schema::messages::created_at.asc())
+        .order_by(crate::generated::schema::messages::created_at.asc())
+        .then_order_by(crate::generated::schema::messages::id.asc())
         .limit(limit as i64)
         .select(Message::as_select())
         .load(conn)?;
@@ -160,7 +163,8 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
         .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
         .filter(crate::generated::schema::messages::sent.eq(0))
         .filter(crate::generated::schema::messages::is_direct.eq(1))
-        .order(crate::generated::schema::messages::created_at.asc())
+        .order_by(crate::generated::schema::messages::created_at.asc())
+        .then_order_by(crate::generated::schema::messages::id.asc())
         .select(Message::as_select())
         .load(conn)
         .wrap_err_with(|| {

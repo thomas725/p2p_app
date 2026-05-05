@@ -1,15 +1,38 @@
 //! Tests for messages.rs module
 
 use p2p_app::messages::MessageMeta;
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-fn setup_test_db() -> TempDir {
+fn test_db_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct TestDb {
+    _dir: TempDir,
+    _guard: MutexGuard<'static, ()>,
+}
+
+impl Drop for TestDb {
+    fn drop(&mut self) {
+        p2p_app::db::release_db_lock();
+        unsafe { std::env::remove_var("DATABASE_URL") };
+    }
+}
+
+fn setup_test_db() -> TestDb {
+    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
-    dir
+    p2p_app::db::init_database().unwrap();
+    TestDb {
+        _dir: dir,
+        _guard: guard,
+    }
 }
 
 // ── MessageMeta struct ───────────────────────────────────────────────────────
@@ -73,7 +96,8 @@ fn test_save_message_with_meta() {
         msg_id: Some("msg-42".into()),
         sent_at: Some(9999.0),
     };
-    let msg = p2p_app::save_message_with_meta("meta msg", None, "topic", false, None, meta).unwrap();
+    let msg =
+        p2p_app::save_message_with_meta("meta msg", None, "topic", false, None, meta).unwrap();
     assert_eq!(msg.content, "meta msg");
     assert_eq!(msg.sender_nickname.as_deref(), Some("bob"));
     assert_eq!(msg.msg_id.as_deref(), Some("msg-42"));

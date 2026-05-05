@@ -18,12 +18,19 @@ use diesel::{
 use diesel_migrations::MigrationHarness;
 use dotenvy::dotenv;
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 pub use crate::MIGRATIONS;
 
 /// Cache the database URL after first connection to avoid repeated lock file checks.
-static DB_URL: OnceLock<String> = OnceLock::new();
+///
+/// Explicit `DATABASE_URL` values always refresh this cache, which keeps integration tests
+/// isolated even when they point each test at a different temporary database.
+static DB_URL: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+fn db_url_cache() -> &'static Mutex<Option<String>> {
+    DB_URL.get_or_init(|| Mutex::new(None))
+}
 
 /// Establish a connection to the SQLite database and run pending migrations.
 ///
@@ -44,20 +51,13 @@ static DB_URL: OnceLock<String> = OnceLock::new();
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     dotenv().ok();
 
-    // Try to get cached path, or determine it for the first time
-    let db_path = if let Some(cached) = DB_URL.get() {
-        cached.clone()
-    } else {
-        let path = determine_db_path()?;
-        let _ = DB_URL.set(path.clone());
-        path
-    };
+    let db_path = get_database_url();
 
     // Register cleanup on panic after path is determined and cached (to ensure it lives for the app lifetime)
     static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
     let _ = PANIC_HOOK_SET.get_or_init(|| {
         std::panic::set_hook(Box::new(|_info| {
-            if let Some(db_path) = DB_URL.get() {
+            if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
                 let lock_path = format!("{}.lock", db_path);
                 let _ = std::fs::remove_file(&lock_path);
                 eprintln!("[DB] released lock on panic: {}", lock_path);
@@ -295,20 +295,32 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 /// Caches result in DB_URL so subsequent calls (like from sqlite_connect) use same db.
 #[must_use]
 pub fn get_database_url() -> String {
-    if let Some(cached) = DB_URL.get() {
-        return cached.clone();
-    }
     dotenv().ok();
-    let url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned()));
-    let _ = DB_URL.set(url.clone());
+
+    if let Ok(url) = env::var("DATABASE_URL") {
+        if let Ok(mut cached) = db_url_cache().lock() {
+            *cached = Some(url.clone());
+        }
+        return url;
+    }
+
+    if let Ok(cached) = db_url_cache().lock()
+        && let Some(url) = cached.clone()
+    {
+        return url;
+    }
+
+    let url = determine_db_path().unwrap_or_else(|_| "sqlite.db".to_owned());
+    if let Ok(mut cached) = db_url_cache().lock() {
+        *cached = Some(url.clone());
+    }
     url
 }
 
 /// Release the database lock file by deleting the .lock file.
 /// Called on normal exit to clean up the lock file.
 pub fn release_db_lock() {
-    if let Some(db_path) = DB_URL.get() {
+    if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
         let lock_path = format!("{}.lock", db_path);
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
             eprintln!("[DB] released lock on exit: {}", lock_path);

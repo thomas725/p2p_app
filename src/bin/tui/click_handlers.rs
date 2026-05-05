@@ -1,4 +1,5 @@
 use super::constants::MAX_DM_HISTORY;
+use super::presentation::row_to_visible_index;
 use super::state::AppState;
 use p2p_app::p2plog_debug;
 use ratatui_textarea::TextArea;
@@ -170,21 +171,9 @@ pub fn handle_peer_row_click(state: &mut AppState, row: u16) {
 /// Handles clicks on messages in the chat view (non-DM tabs)
 pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) {
     let click_row = row as usize;
-    let mut current_row = 3;
-    let mut message_idx = 0;
-
-    for line_count in &state.chat_message_lines {
-        let message_end_row = current_row + line_count;
-        if click_row < message_end_row {
-            break;
-        }
-        current_row = message_end_row;
-        message_idx += 1;
-    }
-
-    if message_idx >= state.chat_message_lines.len() {
+    let Some(message_idx) = row_to_visible_index(&state.chat_message_lines, 3, click_row) else {
         return;
-    }
+    };
 
     let global_idx = state.chat_message_offset + message_idx;
 
@@ -257,21 +246,9 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
     let click_row = row as usize;
 
     if let Some(line_counts) = state.dm_broadcast_message_lines.get(peer_id) {
-        let mut current_row = 3;
-        let mut message_idx_in_visible = 0;
-
-        for line_count in line_counts {
-            let message_end_row = current_row + line_count;
-            if click_row < message_end_row {
-                break;
-            }
-            current_row = message_end_row;
-            message_idx_in_visible += 1;
-        }
-
-        if message_idx_in_visible >= line_counts.len() {
+        let Some(message_idx_in_visible) = row_to_visible_index(line_counts, 3, click_row) else {
             return;
-        }
+        };
 
         let effective_offset = state.dm_broadcast_offset.get(peer_id).copied().unwrap_or(0);
         let broadcast_message_idx = message_idx_in_visible + effective_offset;
@@ -316,19 +293,7 @@ pub fn handle_dm_message_click(state: &mut AppState, row: u16, column: u16, peer
         return;
     };
 
-    // Coordinates are relative to the DM pane; with borders, the first content row is 1.
-    let mut current_row = 1;
-    let mut message_idx_in_visible = 0;
-    for line_count in line_counts {
-        let message_end_row = current_row + line_count;
-        if click_row_local < message_end_row {
-            break;
-        }
-        current_row = message_end_row;
-        message_idx_in_visible += 1;
-    }
-
-    if message_idx_in_visible >= line_counts.len() {
+    let Some(message_idx_in_visible) = row_to_visible_index(line_counts, 1, click_row_local) else {
         p2plog_debug(format!(
             "DM message click ignored: click below visible msgs (peer={}, row={}, visible_count={})",
             peer_id,
@@ -336,7 +301,7 @@ pub fn handle_dm_message_click(state: &mut AppState, row: u16, column: u16, peer
             line_counts.len()
         ));
         return;
-    }
+    };
 
     let effective_offset = state.dm_offset.get(peer_id).copied().unwrap_or(0);
     let dm_message_idx = message_idx_in_visible + effective_offset;
@@ -441,5 +406,100 @@ pub fn handle_mouse_left_click(
                 handle_message_click(state, mouse_row, mouse_column);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{handle_dm_broadcast_message_click, handle_dm_message_click, handle_message_click};
+    use crate::tui::state::AppState;
+    use std::collections::{HashMap, VecDeque};
+
+    fn empty_state() -> AppState {
+        AppState::new(
+            "topic".to_string(),
+            "me".to_string(),
+            "local-peer".to_string(),
+            HashMap::new(),
+            HashMap::new(),
+            HashMap::new(),
+            VecDeque::new(),
+            VecDeque::new(),
+            HashMap::new(),
+            VecDeque::new(),
+            HashMap::new(),
+            HashMap::new(),
+        )
+    }
+
+    #[test]
+    fn message_click_on_broadcast_receipt_prefix_opens_popup() {
+        let mut state = empty_state();
+        state.messages.push_back(("hello".to_string(), None));
+        state.message_ids.push_back(Some("msg-1".to_string()));
+        state.chat_message_lines = vec![1];
+        state.chat_message_offset = 0;
+        state.broadcast_receipts.insert(
+            "msg-1".to_string(),
+            HashMap::from([("peer-1".to_string(), 2.0)]),
+        );
+        state.sent_at_by_msg_id.insert("msg-1".to_string(), 1.0);
+
+        handle_message_click(&mut state, 3, 0);
+
+        assert_eq!(
+            state.popup.as_deref(),
+            Some("Broadcast receipts:\npeer-1=1000ms")
+        );
+    }
+
+    #[test]
+    fn dm_broadcast_click_selects_original_broadcast_message() {
+        let mut state = empty_state();
+        state.messages = VecDeque::from([
+            ("from peer".to_string(), Some("peer-1".to_string())),
+            ("other".to_string(), Some("peer-2".to_string())),
+        ]);
+        state.visible_message_count = 6;
+        state.chat_auto_scroll = true;
+        state.active_tab = 2;
+        state
+            .dm_broadcast_message_lines
+            .insert("peer-1".to_string(), vec![1]);
+        state.dm_broadcast_offset.insert("peer-1".to_string(), 0);
+
+        handle_dm_broadcast_message_click(&mut state, 3, "peer-1");
+
+        assert_eq!(state.active_tab, 0);
+        assert_eq!(state.broadcast_selection, Some(0));
+        assert!(!state.chat_auto_scroll);
+        assert_eq!(state.chat_scroll_offset, 0);
+    }
+
+    #[test]
+    fn dm_message_click_on_receipt_prefix_opens_popup() {
+        let mut state = empty_state();
+        state.dm_messages.insert(
+            "peer-1".to_string(),
+            VecDeque::from(["[me] hi".to_string()]),
+        );
+        state.dm_message_ids.insert(
+            "peer-1".to_string(),
+            VecDeque::from([Some("dm-1".to_string())]),
+        );
+        state
+            .dm_receipts
+            .insert("dm-1".to_string(), ("peer-1".to_string(), 2.5));
+        state.sent_at_by_msg_id.insert("dm-1".to_string(), 1.0);
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 10);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+
+        handle_dm_message_click(&mut state, 11, 0, "peer-1");
+
+        assert_eq!(
+            state.popup.as_deref(),
+            Some("DM receipt:\npeer=peer-1\ntime=1500ms")
+        );
     }
 }
