@@ -27,9 +27,9 @@
 | src                     | peers.rs             |   179 |  6113 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   378 | 12846 |     7 |   30% | Network event translation           |
 | src                     | tui_events.rs        |    76 |  2586 |     1 |  100% | Event/command types & channels      |
-| src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | Source file                         |
-| src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | Source file                         |
-| src                     | tui_render_state.rs  |   159 |  4608 |     4 |    -  | Source file                         |
+| src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | TUI helper functions & utilities    |
+| src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | TUI rendering & state management    |
+| src                     | tui_render_state.rs  |   159 |  4608 |     4 |    -  | TUI render state & tab content      |
 | src                     | tui_tabs.rs          |   198 |  5277 |     5 |    -  | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
 | src                     | types.rs             |    88 |  2735 |     2 |  100% | Event & command type defs           |
@@ -43,7 +43,7 @@
 | src/bin/tui             | input_processor.rs   |   318 | 10992 |     5 |    -  | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   267 |  9849 |     5 |    -  | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   107 |  3919 |     5 |    -  | Message sending logic               |
-| src/bin/tui             | presentation.rs      |   220 |  6472 |     3 |   52% | Source file                         |
+| src/bin/tui             | presentation.rs      |   220 |  6472 |     3 |   52% | TUI presentation & formatting he... |
 | src/bin/tui             | scroll_handlers.rs   |   298 | 10313 |     5 |    -  | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |   227 |  9290 |     7 |    -  | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    65 |  2294 |     3 |    -  | UI layout component rendering       |
@@ -57,3 +57,33 @@
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
 **Total:** 41 files, 7,587 lines, 256,264 characters
+
+## Test Files
+
+| Folder      | File                    | Lines | Chars | Description                           |
+|:------------|:------------------------|------:|------:|--------------------------------------:|
+| models     | insertable_tests.rs     |    77 |  2371 | Diesel insertable model tests        |
+| models     | queryable_tests.rs      |   156 |  4797 | Diesel queryable model tests         |
+| tests      | additional_coverage.rs  |   119 |  3866 | Additional coverage tests            |
+| tests      | behavior.rs             |   127 |  3613 | behavior module tests                |
+| tests      | db.rs                   |   111 |  3274 | database module tests                |
+| tests      | db_selection.rs         |    59 |  1721 | Database selection tests             |
+| tests      | fmt.rs                  |   141 |  3755 | fmt module tests                     |
+| tests      | logging.rs              |   258 |  7421 | logging module tests                 |
+| tests      | messages.rs             |   366 | 11326 | messages module tests                |
+| tests      | network.rs              |    46 |  1419 | network module tests                 |
+| tests      | nickname.rs             |   298 |  9827 | nickname module tests                |
+| tests      | p2p_integration.rs      |  1014 | 36315 | P2P integration tests                |
+| tests      | peers.rs                |   231 |  6768 | peers module tests                   |
+| tests      | test_utils.rs           |    59 |  1855 | Test utilities                       |
+| tests      | tui_binary_integration.rs |   284 |  8853 | TUI binary integration tests         |
+| tests      | tui_chat.rs             |   672 | 21332 | TUI chat functionality tests         |
+| tests      | tui_events.rs           |   182 |  5613 | TUI events tests                     |
+| tests      | tui_helpers.rs          |   667 | 19923 | TUI helpers tests                    |
+| tests      | tui_integration.rs      |   443 | 14004 | TUI integration tests                |
+| tests      | tui_render_integration.rs |   265 |  8257 | TUI render integration tests         |
+| tests      | tui_state.rs            |   249 |  7557 | TUI state tests                      |
+| tests      | tui_tasks.rs            |   234 |  7567 | TUI task tests                       |
+| tests      | types.rs                |   104 |  3099 | types module tests                   |
+
+**Total:** 23 test files, 6,162 lines, 194,533 characters

@@ -165,6 +165,10 @@ def get_file_purpose(filepath: str) -> str:
         'state.rs': 'Shared application state',
         'constants.rs': 'TUI constants & config',
         'mod.rs': 'Module declarations',
+        'tui_helpers.rs': 'TUI helper functions & utilities',
+        'tui_render.rs': 'TUI rendering & state management',
+        'tui_render_state.rs': 'TUI render state & tab content',
+        'presentation.rs': 'TUI presentation & formatting helpers',
     }
     return purposes.get(Path(filepath).name, 'Source file')
 
@@ -178,6 +182,84 @@ def get_test_coverage_str(coverage: Optional[float]) -> str:
         return f" {coverage:>3.0f}%"
     else:
         return f" {coverage:>4.1f}%"
+
+def get_test_file_purpose(filepath: str) -> str:
+    """Get a brief description of what each test file tests."""
+    purposes = {
+        'fmt.rs': 'fmt module tests',
+        'logging.rs': 'logging module tests',
+        'messages.rs': 'messages module tests',
+        'nickname.rs': 'nickname module tests',
+        'peers.rs': 'peers module tests',
+        'db.rs': 'database module tests',
+        'behavior.rs': 'behavior module tests',
+        'network.rs': 'network module tests',
+        'types.rs': 'types module tests',
+        'tui_helpers.rs': 'TUI helpers tests',
+        'tui_state.rs': 'TUI state tests',
+        'tui_events.rs': 'TUI events tests',
+        'tui_chat.rs': 'TUI chat functionality tests',
+        'tui_integration.rs': 'TUI integration tests',
+        'tui_render_integration.rs': 'TUI render integration tests',
+        'tui_tasks.rs': 'TUI task tests',
+        'tui_binary_integration.rs': 'TUI binary integration tests',
+        'additional_coverage.rs': 'Additional coverage tests',
+        'p2p_integration.rs': 'P2P integration tests',
+        'db_selection.rs': 'Database selection tests',
+        'test_utils.rs': 'Test utilities',
+        'queryable_tests.rs': 'Diesel queryable model tests',
+        'insertable_tests.rs': 'Diesel insertable model tests',
+    }
+    return purposes.get(Path(filepath).name, 'Test file')
+
+def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
+    """Collect all test files with their metrics."""
+    test_files = []
+    
+    for pattern in ['tests/*.rs', 'tests/**/*.rs']:
+        for test_file in sorted(Path('.').glob(pattern)):
+            filepath = str(test_file)
+            if not filepath.endswith('.rs'):
+                continue
+            
+            lines = count_lines(filepath)
+            chars = count_characters(filepath)
+            
+            folder = str(test_file.parent)
+            if folder == '.':
+                folder = 'tests'
+            elif folder.startswith('tests/'):
+                folder = folder[6:]  # Remove 'tests/' prefix
+            
+            purpose = get_test_file_purpose(filepath)
+            test_files.append((folder, test_file.name, lines, chars, purpose))
+    
+    # Remove duplicates (since glob matches twice)
+    seen = set()
+    unique_tests = []
+    for item in test_files:
+        key = (item[0], item[1])
+        if key not in seen:
+            seen.add(key)
+            unique_tests.append(item)
+    
+    unique_tests.sort(key=lambda x: (x[0], x[1]))
+    return unique_tests
+
+def generate_test_files_table(test_files: List[Tuple]) -> str:
+    """Generate markdown table for test files."""
+    output = []
+    output.append('| Folder      | File                    | Lines | Chars | Description                           |')
+    output.append('|:------------|:------------------------|------:|------:|--------------------------------------:|')
+    
+    for folder, filename, lines, chars, purpose in test_files:
+        if len(purpose) > 36:
+            purpose = purpose[:33] + '...'
+        
+        folder_display = folder if folder else 'tests'
+        output.append(f'| {folder_display:<10} | {filename:<23} | {lines:>5} | {chars:>5} | {purpose:<36} |')
+    
+    return '\n'.join(output)
 
 def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     """Convert filepath to display folder and filename."""
@@ -289,6 +371,20 @@ def main():
     print(table)
     print()
     print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
+    print()
+
+    # Test files section
+    test_files = collect_test_files()
+    test_total_lines = sum(f[2] for f in test_files)
+    test_total_chars = sum(f[3] for f in test_files)
+    test_total_files = len(test_files)
+
+    print("## Test Files")
+    print()
+    test_table = generate_test_files_table(test_files)
+    print(test_table)
+    print()
+    print(f"**Total:** {test_total_files} test files, {test_total_lines:,} lines, {test_total_chars:,} characters")
 
 if __name__ == '__main__':
     main()
