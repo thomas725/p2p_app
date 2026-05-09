@@ -2,6 +2,85 @@ use std::collections::VecDeque;
 
 const MIN_VISIBLE: usize = 1;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_count_lines_single_short_line() {
+        assert_eq!(count_lines("hello", 80), 1);
+    }
+
+    #[test]
+    fn test_count_lines_wraps_long_line() {
+        assert_eq!(count_lines("hello world foo bar baz quux", 10), 3);
+    }
+
+    #[test]
+    fn test_count_lines_empty_string() {
+        assert_eq!(count_lines("", 80), 1);
+    }
+
+    #[test]
+    fn test_count_lines_newlines() {
+        assert_eq!(count_lines("line1\nline2\nline3", 80), 3);
+    }
+
+    #[test]
+    fn test_count_lines_empty_lines_between() {
+        assert_eq!(count_lines("line1\n\nline2", 80), 3);
+    }
+
+    #[test]
+    fn test_count_lines_with_ansi_codes() {
+        assert_eq!(count_lines("\x1b[32mgreen\x1b[0m", 80), 1);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_empty() {
+        let msgs: VecDeque<String> = VecDeque::new();
+        let (visible, offset) = calc_visible_strings(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 0);
+        assert_eq!(offset, 0);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_auto_scroll_shows_all() {
+        let msgs: VecDeque<String> = VecDeque::from(vec!["a".to_string(), "b".to_string()]);
+        let (visible, offset) = calc_visible_strings(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 2);
+        assert_eq!(offset, 0);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_manual_scroll() {
+        let msgs: VecDeque<String> =
+            VecDeque::from(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        let (visible, offset) = calc_visible_strings(&msgs, false, 1, 80, 10);
+        assert_eq!(visible, 2);
+        assert_eq!(offset, 1);
+    }
+
+    #[test]
+    fn test_calc_visible_tuples_empty() {
+        let msgs: VecDeque<(String, Option<String>)> = VecDeque::new();
+        let (visible, offset) = calc_visible_tuples(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 0);
+        assert_eq!(offset, 0);
+    }
+
+    #[test]
+    fn test_calc_visible_tuples_auto_scroll() {
+        let msgs: VecDeque<(String, Option<String>)> = VecDeque::from(vec![
+            ("msg1".to_string(), Some("peer1".to_string())),
+            ("msg2".to_string(), Some("peer2".to_string())),
+        ]);
+        let (visible, offset) = calc_visible_tuples(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 2);
+        assert_eq!(offset, 0);
+    }
+}
+
 fn calc_visible_impl<F>(
     messages: &[String],
     auto_scroll: bool,
