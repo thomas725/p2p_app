@@ -47,3 +47,61 @@ fn test_broadcast_message_serialization() {
     let json = serde_json::to_string(&bm).unwrap();
     assert!(json.contains("broadcast test"));
 }
+
+mod test_utils;
+use serial_test::serial;
+use test_utils::setup_test_db;
+
+#[serial]
+#[test]
+fn test_build_behaviour_creates_app_behaviour() {
+    let _db = setup_test_db();
+    let keypair = p2p_app::get_libp2p_identity().unwrap();
+    // build_behaviour should not panic with a valid keypair
+    let _behaviour = p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
+}
+
+#[serial]
+#[test]
+fn test_build_behaviour_medium_network() {
+    let _db = setup_test_db();
+    let keypair = p2p_app::get_libp2p_identity().unwrap();
+    let _behaviour = p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium);
+}
+
+#[serial]
+#[test]
+fn test_build_behaviour_large_network() {
+    let _db = setup_test_db();
+    let keypair = p2p_app::get_libp2p_identity().unwrap();
+    let _behaviour = p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large);
+}
+
+#[test]
+fn test_direct_message_fields() {
+    let dm = p2p_app::behavior::DirectMessage {
+        content: "test".to_string(),
+        timestamp: 99,
+        sent_at: Some(1.0),
+        nickname: Some("nick".to_string()),
+        msg_id: Some("id".to_string()),
+        ack_for: Some("orig".to_string()),
+        received_at: Some(2.0),
+    };
+    assert_eq!(dm.content, "test");
+    assert_eq!(dm.timestamp, 99);
+    assert_eq!(dm.ack_for.as_deref(), Some("orig"));
+    assert_eq!(dm.received_at, Some(2.0));
+}
+
+#[test]
+fn test_broadcast_message_fields() {
+    let bm = p2p_app::behavior::BroadcastMessage {
+        content: "hello".to_string(),
+        sent_at: Some(3.0),
+        nickname: None,
+        msg_id: Some("bm-id".to_string()),
+    };
+    assert_eq!(bm.content, "hello");
+    assert!(bm.nickname.is_none());
+}

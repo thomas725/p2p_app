@@ -128,3 +128,65 @@ fn test_strip_ansi_codes_preserves_all_non_escape_chars() {
     let input = "hello\nworld\t!";
     assert_eq!(p2p_app::logging::strip_ansi_codes(input), input);
 }
+
+// ── TuiTracingLayer coverage via tracing macros ────────────────────────────
+// These tests fire real tracing events to exercise on_event() and FormatVisitor.
+
+use serial_test::serial as _serial; // already imported above, just note it
+
+#[serial]
+#[test]
+fn test_tracing_info_captured_in_logs() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    tracing::info!("tracing-info-test-marker");
+    let logs = p2p_app::logging::get_tui_logs();
+    // TuiTracingLayer writes tracing events to TUI_LOGS
+    assert!(logs.iter().any(|l| l.contains("tracing-info-test-marker")),
+        "tracing INFO not found in logs: {:?}", logs);
+}
+
+#[serial]
+#[test]
+fn test_tracing_warn_captured_in_logs() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    tracing::warn!("tracing-warn-test-marker");
+    let logs = p2p_app::logging::get_tui_logs();
+    assert!(logs.iter().any(|l| l.contains("tracing-warn-test-marker")),
+        "tracing WARN not found in logs: {:?}", logs);
+}
+
+#[serial]
+#[test]
+fn test_tracing_error_captured_in_logs() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    tracing::error!("tracing-error-test-marker");
+    let logs = p2p_app::logging::get_tui_logs();
+    assert!(logs.iter().any(|l| l.contains("tracing-error-test-marker")),
+        "tracing ERROR not found in logs: {:?}", logs);
+}
+
+#[serial]
+#[test]
+fn test_tracing_event_with_fields_captured() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    tracing::info!(user = "alice", count = 42u64, "field-test-marker");
+    let logs = p2p_app::logging::get_tui_logs();
+    let combined = logs.join(" ");
+    assert!(combined.contains("field-test-marker"), "marker not found: {:?}", logs);
+}
+
+#[serial]
+#[test]
+fn test_set_tui_callback_receives_push_log() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    // The callback is a OnceLock — we can only set it once per process,
+    // so just verify push_log still flows through after init.
+    p2p_app::logging::push_log("callback-flow-check");
+    let logs = p2p_app::logging::get_tui_logs();
+    assert!(logs.iter().any(|l| l.contains("callback-flow-check")));
+}

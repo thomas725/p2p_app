@@ -177,4 +177,41 @@ mod tests {
             "DM: alice 12345678 | seen: now (first: earlier)"
         );
     }
+
+    #[test]
+    fn titles_work_without_nickname() {
+        assert_eq!(
+            format_broadcast_title(None, "12345678"),
+            "Broadcast from 12345678"
+        );
+        assert_eq!(
+            format_dm_title(None, "12345678", Some("now"), None),
+            "DM: 12345678 | seen: now"
+        );
+        assert_eq!(
+            format_dm_title(None, "12345678", None, None),
+            "DM: 12345678 | seen: ?"
+        );
+    }
+
+    #[test]
+    fn format_peer_line_no_nickname() {
+        let counts = std::collections::HashMap::new();
+        assert_eq!(
+            format_peer_line("peer-1", "just now", None, &counts),
+            "peer-1 just now"
+        );
+    }
+
+    #[test]
+    fn row_to_visible_index_empty_line_counts() {
+        assert_eq!(row_to_visible_index(&[], 3, 3), None);
+    }
+
+    #[test]
+    fn row_to_visible_index_before_content_start() {
+        let line_counts = vec![2, 1];
+        // row 0 and 1 are before first_content_row=3 — content only starts at row 3
+        assert_eq!(row_to_visible_index(&line_counts, 3, 0), None);
+    }
 }
