@@ -15,6 +15,15 @@ pub fn now_timestamp() -> String {
     format_peer_datetime(chrono::Local::now().naive_local())
 }
 
+/// Get current timestamp as seconds since UNIX epoch (f64)
+#[must_use]
+pub fn current_timestamp() -> f64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs_f64()
+}
+
 /// Format SystemTime into "HH:MM:SS.mmm" format (hours:minutes:seconds.milliseconds)
 #[must_use]
 pub fn format_system_time(time: SystemTime) -> String {

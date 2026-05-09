@@ -59,8 +59,8 @@ pub use db::{
     sqlite_connect,
 };
 pub use fmt::{
-    auto_scroll_offset, format_latency, format_peer_datetime, format_system_time, gen_msg_id,
-    now_timestamp, peer_display_name, scroll_title, short_peer_id,
+    auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
+    format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,

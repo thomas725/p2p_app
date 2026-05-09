@@ -1,6 +1,7 @@
 //! Headless CLI binary — minimal footprint, reads from stdin, writes to stderr.
 
 use libp2p::{futures::StreamExt, gossipsub, noise, tcp, yamux};
+use p2p_app::current_timestamp;
 use p2p_app::logging::p2plog_info;
 use p2p_app::{BroadcastMessage, build_behaviour, get_libp2p_identity, get_network_size};
 use std::time::Duration;
@@ -24,13 +25,6 @@ fn extract_udp_port(address: &libp2p::Multiaddr) -> Option<i32> {
         libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
         _ => None,
     })
-}
-
-fn current_timestamp() -> f64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs_f64()
 }
 
 fn handle_listen_addr_event(address: &libp2p::Multiaddr) {

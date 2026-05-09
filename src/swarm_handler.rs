@@ -1,7 +1,7 @@
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
-    AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv, p2plog_debug,
-    p2plog_error,
+    AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv, current_timestamp,
+    p2plog_debug, p2plog_error,
 };
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub;
@@ -164,13 +164,6 @@ async fn handle_request_response(
             }
         }
     }
-}
-
-fn current_timestamp() -> f64 {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs_f64()
 }
 
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
