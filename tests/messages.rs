@@ -3,6 +3,7 @@
 use p2p_app::messages::MessageMeta;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
+use serial_test::serial;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ fn setup_test_db() -> TestDb {
 
 // ── MessageMeta struct ───────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_message_meta_default() {
     let meta = MessageMeta::default();
@@ -45,6 +47,7 @@ fn test_message_meta_default() {
     assert!(meta.sent_at.is_none());
 }
 
+#[serial]
 #[test]
 fn test_message_meta_with_all_fields() {
     let meta = MessageMeta {
@@ -59,6 +62,7 @@ fn test_message_meta_with_all_fields() {
 
 // ── save_message ─────────────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_save_broadcast_message() {
     let _db = setup_test_db();
@@ -70,6 +74,7 @@ fn test_save_broadcast_message() {
     assert_eq!(msg.sent, 0); // unsent initially
 }
 
+#[serial]
 #[test]
 fn test_save_incoming_broadcast_message() {
     let _db = setup_test_db();
@@ -79,6 +84,7 @@ fn test_save_incoming_broadcast_message() {
     assert_eq!(msg.is_direct, 0);
 }
 
+#[serial]
 #[test]
 fn test_save_direct_message() {
     let _db = setup_test_db();
@@ -88,6 +94,7 @@ fn test_save_direct_message() {
     assert_eq!(msg.target_peer.as_deref(), Some("peer-xyz"));
 }
 
+#[serial]
 #[test]
 fn test_save_message_with_meta() {
     let _db = setup_test_db();
@@ -104,6 +111,7 @@ fn test_save_message_with_meta() {
     assert_eq!(msg.sent_at, Some(9999.0));
 }
 
+#[serial]
 #[test]
 fn test_save_message_with_empty_content() {
     let _db = setup_test_db();
@@ -113,6 +121,7 @@ fn test_save_message_with_empty_content() {
 
 // ── load_messages ────────────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_load_messages_empty() {
     let _db = setup_test_db();
@@ -120,6 +129,7 @@ fn test_load_messages_empty() {
     assert!(msgs.is_empty());
 }
 
+#[serial]
 #[test]
 fn test_load_messages_returns_broadcast_only() {
     let _db = setup_test_db();
@@ -131,6 +141,7 @@ fn test_load_messages_returns_broadcast_only() {
     assert_eq!(msgs[0].content, "broadcast");
 }
 
+#[serial]
 #[test]
 fn test_load_messages_limit() {
     let _db = setup_test_db();
@@ -141,6 +152,7 @@ fn test_load_messages_limit() {
     assert_eq!(msgs.len(), 3);
 }
 
+#[serial]
 #[test]
 fn test_load_messages_newest_first() {
     let _db = setup_test_db();
@@ -153,6 +165,7 @@ fn test_load_messages_newest_first() {
     assert_eq!(msgs[2].content, "first");
 }
 
+#[serial]
 #[test]
 fn test_load_messages_topic_isolation() {
     let _db = setup_test_db();
@@ -169,6 +182,7 @@ fn test_load_messages_topic_isolation() {
 
 // ── load_direct_messages ─────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_load_direct_messages_empty() {
     let _db = setup_test_db();
@@ -176,6 +190,7 @@ fn test_load_direct_messages_empty() {
     assert!(msgs.is_empty());
 }
 
+#[serial]
 #[test]
 fn test_load_direct_messages_oldest_first() {
     let _db = setup_test_db();
@@ -189,6 +204,7 @@ fn test_load_direct_messages_oldest_first() {
     assert_eq!(msgs[2].content, "dm-c");
 }
 
+#[serial]
 #[test]
 fn test_load_direct_messages_peer_isolation() {
     let _db = setup_test_db();
@@ -203,6 +219,7 @@ fn test_load_direct_messages_peer_isolation() {
     assert_eq!(bob_msgs[0].content, "to-bob");
 }
 
+#[serial]
 #[test]
 fn test_load_direct_messages_limit() {
     let _db = setup_test_db();
@@ -215,6 +232,7 @@ fn test_load_direct_messages_limit() {
 
 // ── get_unsent_messages ───────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_unsent_messages_empty() {
     let _db = setup_test_db();
@@ -222,6 +240,7 @@ fn test_get_unsent_messages_empty() {
     assert!(msgs.is_empty());
 }
 
+#[serial]
 #[test]
 fn test_get_unsent_messages_returns_only_unsent() {
     let _db = setup_test_db();
@@ -236,6 +255,7 @@ fn test_get_unsent_messages_returns_only_unsent() {
     assert_eq!(unsent[0].content, "also-unsent");
 }
 
+#[serial]
 #[test]
 fn test_get_unsent_messages_excludes_direct() {
     let _db = setup_test_db();
@@ -249,6 +269,7 @@ fn test_get_unsent_messages_excludes_direct() {
 
 // ── get_unsent_direct_messages ────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_unsent_direct_messages_empty() {
     let _db = setup_test_db();
@@ -256,6 +277,7 @@ fn test_get_unsent_direct_messages_empty() {
     assert!(msgs.is_empty());
 }
 
+#[serial]
 #[test]
 fn test_get_unsent_direct_messages_after_sent() {
     let _db = setup_test_db();
@@ -270,6 +292,7 @@ fn test_get_unsent_direct_messages_after_sent() {
 
 // ── mark_message_sent ─────────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_mark_message_sent() {
     let _db = setup_test_db();
@@ -285,6 +308,7 @@ fn test_mark_message_sent() {
 
 // ── save_receipt / load_receipts ──────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_save_and_load_receipt() {
     let _db = setup_test_db();
@@ -298,6 +322,7 @@ fn test_save_and_load_receipt() {
     assert_eq!(receipts[0].confirmed_at, 1234.5);
 }
 
+#[serial]
 #[test]
 fn test_save_receipt_upsert() {
     let _db = setup_test_db();
@@ -310,6 +335,7 @@ fn test_save_receipt_upsert() {
     assert_eq!(receipts[0].confirmed_at, 200.0);
 }
 
+#[serial]
 #[test]
 fn test_save_receipt_multiple_peers() {
     let _db = setup_test_db();
@@ -320,6 +346,7 @@ fn test_save_receipt_multiple_peers() {
     assert_eq!(receipts.len(), 2);
 }
 
+#[serial]
 #[test]
 fn test_save_receipt_different_kinds() {
     let _db = setup_test_db();
@@ -330,6 +357,7 @@ fn test_save_receipt_different_kinds() {
     assert_eq!(receipts.len(), 2);
 }
 
+#[serial]
 #[test]
 fn test_load_receipts_empty() {
     let _db = setup_test_db();

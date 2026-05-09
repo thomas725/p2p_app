@@ -12,6 +12,7 @@ use std::{
 };
 use tokio::time::timeout;
 use tracing_subscriber::prelude::*;
+use serial_test::serial;
 
 const TEST_TOPIC: &str = "test-integration";
 

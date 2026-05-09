@@ -1,5 +1,6 @@
 //! Tests for db.rs module - database URL and identity functions
 
+#[serial]
 #[test]
 fn test_get_database_url_env_set() {
     let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
@@ -9,6 +10,7 @@ fn test_get_database_url_env_set() {
     assert_eq!(url, "/tmp/test.db");
 }
 
+#[serial]
 #[test]
 fn test_release_db_lock() {
     p2p_app::db::release_db_lock();
@@ -16,6 +18,7 @@ fn test_release_db_lock() {
 
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
+use serial_test::serial;
 
 fn test_db_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -46,12 +49,14 @@ fn setup_test_db() -> TestDb {
     }
 }
 
+#[serial]
 #[test]
 fn test_init_database_succeeds() {
     let _db = setup_test_db();
     p2p_app::db::init_database().expect("init_database should succeed");
 }
 
+#[serial]
 #[test]
 fn test_get_libp2p_identity_creates_keypair() {
     let _db = setup_test_db();
@@ -60,6 +65,7 @@ fn test_get_libp2p_identity_creates_keypair() {
     assert!(!peer_id.to_string().is_empty());
 }
 
+#[serial]
 #[test]
 fn test_get_libp2p_identity_is_stable() {
     let _db = setup_test_db();
@@ -69,6 +75,7 @@ fn test_get_libp2p_identity_is_stable() {
     assert_eq!(id1, id2, "peer ID should be stable across calls");
 }
 
+#[serial]
 #[test]
 fn test_get_local_peer_id() {
     let _db = setup_test_db();
@@ -83,6 +90,7 @@ fn test_get_local_peer_id() {
     );
 }
 
+#[serial]
 #[test]
 fn test_sqlite_connect_runs_migrations() {
     let _db = setup_test_db();
@@ -92,6 +100,7 @@ fn test_sqlite_connect_runs_migrations() {
     p2p_app::save_peer("peer-check", &[]).expect("peers table should exist after migration");
 }
 
+#[serial]
 #[test]
 fn test_get_database_url_from_env() {
     let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());

@@ -5,11 +5,13 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+use serial_test::serial;
 
 fn safe_remove_env(key: &str) {
     unsafe { std::env::remove_var(key) }
 }
 
+#[serial]
 #[test]
 fn test_two_instances_get_different_databases_parallel() {
     let temp_dir = TempDir::new().unwrap();

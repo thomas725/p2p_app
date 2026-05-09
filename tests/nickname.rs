@@ -2,6 +2,7 @@
 
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
+use serial_test::serial;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,12 +37,14 @@ fn setup_test_db() -> TestDb {
 
 // ── generate_self_nickname ───────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_generate_self_nickname_not_empty() {
     let nick = p2p_app::nickname::generate_self_nickname();
     assert!(!nick.is_empty());
 }
 
+#[serial]
 #[test]
 fn test_generate_self_nickname_contains_hyphen() {
     let nick = p2p_app::nickname::generate_self_nickname();
@@ -52,6 +55,7 @@ fn test_generate_self_nickname_contains_hyphen() {
     );
 }
 
+#[serial]
 #[test]
 fn test_generate_self_nickname_two_parts() {
     let nick = p2p_app::nickname::generate_self_nickname();
@@ -59,6 +63,7 @@ fn test_generate_self_nickname_two_parts() {
     assert_eq!(parts.len(), 2, "expected exactly 2 parts, got: {:?}", parts);
 }
 
+#[serial]
 #[test]
 fn test_generate_self_nickname_uniqueness() {
     // With a 2-word petname space this will virtually never collide
@@ -70,6 +75,7 @@ fn test_generate_self_nickname_uniqueness() {
 
 // ── get/set self nickname ─────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_self_nickname_none_initially() {
     let _db = setup_test_db();
@@ -79,6 +85,7 @@ fn test_get_self_nickname_none_initially() {
     assert!(result.is_ok());
 }
 
+#[serial]
 #[test]
 fn test_set_and_get_self_nickname() {
     let _db = setup_test_db();
@@ -87,6 +94,7 @@ fn test_set_and_get_self_nickname() {
     assert_eq!(nick.as_deref(), Some("test-nick"));
 }
 
+#[serial]
 #[test]
 fn test_set_self_nickname_overwrite() {
     let _db = setup_test_db();
@@ -98,6 +106,7 @@ fn test_set_self_nickname_overwrite() {
 
 // ── ensure_self_nickname ──────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_ensure_self_nickname_generates_if_missing() {
     let _db = setup_test_db();
@@ -106,6 +115,7 @@ fn test_ensure_self_nickname_generates_if_missing() {
     assert!(nick.contains('-'));
 }
 
+#[serial]
 #[test]
 fn test_ensure_self_nickname_returns_existing() {
     let _db = setup_test_db();
@@ -114,6 +124,7 @@ fn test_ensure_self_nickname_returns_existing() {
     assert_eq!(nick, "my-name");
 }
 
+#[serial]
 #[test]
 fn test_ensure_self_nickname_idempotent() {
     let _db = setup_test_db();
@@ -124,6 +135,7 @@ fn test_ensure_self_nickname_idempotent() {
 
 // ── peer local nickname ───────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_peer_local_nickname_none_for_unknown() {
     let _db = setup_test_db();
@@ -131,6 +143,7 @@ fn test_get_peer_local_nickname_none_for_unknown() {
     assert!(nick.is_none());
 }
 
+#[serial]
 #[test]
 fn test_set_and_get_peer_local_nickname() {
     let _db = setup_test_db();
@@ -139,6 +152,7 @@ fn test_set_and_get_peer_local_nickname() {
     assert_eq!(nick.as_deref(), Some("Alice"));
 }
 
+#[serial]
 #[test]
 fn test_set_peer_local_nickname_overwrite() {
     let _db = setup_test_db();
@@ -148,6 +162,7 @@ fn test_set_peer_local_nickname_overwrite() {
     assert_eq!(nick.as_deref(), Some("New"));
 }
 
+#[serial]
 #[test]
 fn test_peer_local_nicknames_are_isolated() {
     let _db = setup_test_db();
@@ -169,6 +184,7 @@ fn test_peer_local_nicknames_are_isolated() {
 
 // ── peer received nickname ────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_peer_received_nickname_none_for_unknown() {
     let _db = setup_test_db();
@@ -176,6 +192,7 @@ fn test_get_peer_received_nickname_none_for_unknown() {
     assert!(nick.is_none());
 }
 
+#[serial]
 #[test]
 fn test_set_and_get_peer_received_nickname() {
     let _db = setup_test_db();
@@ -185,6 +202,7 @@ fn test_set_and_get_peer_received_nickname() {
     assert_eq!(nick.as_deref(), Some("Bob"));
 }
 
+#[serial]
 #[test]
 fn test_set_peer_received_nickname_overwrite() {
     let _db = setup_test_db();
@@ -197,6 +215,7 @@ fn test_set_peer_received_nickname_overwrite() {
 
 // ── self nickname for peer ────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_peer_self_nickname_for_peer_none_initially() {
     let _db = setup_test_db();
@@ -204,6 +223,7 @@ fn test_get_peer_self_nickname_for_peer_none_initially() {
     assert!(nick.is_none());
 }
 
+#[serial]
 #[test]
 fn test_set_and_get_peer_self_nickname_for_peer() {
     let _db = setup_test_db();
@@ -213,6 +233,7 @@ fn test_set_and_get_peer_self_nickname_for_peer() {
     assert_eq!(nick.as_deref(), Some("MyNameForThem"));
 }
 
+#[serial]
 #[test]
 fn test_set_peer_self_nickname_for_peer_overwrite() {
     let _db = setup_test_db();
@@ -225,6 +246,7 @@ fn test_set_peer_self_nickname_for_peer_overwrite() {
 
 // ── get_peer_display_name ─────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_get_peer_display_name_short_id_fallback() {
     let _db = setup_test_db();
@@ -235,6 +257,7 @@ fn test_get_peer_display_name_short_id_fallback() {
     assert!(name.contains("ABCDEFGH") || name.len() <= 8);
 }
 
+#[serial]
 #[test]
 fn test_get_peer_display_name_uses_local_nickname() {
     let _db = setup_test_db();
@@ -243,6 +266,7 @@ fn test_get_peer_display_name_uses_local_nickname() {
     assert!(name.starts_with("LocalNick"), "got: {}", name);
 }
 
+#[serial]
 #[test]
 fn test_get_peer_display_name_prefers_local_over_received() {
     let _db = setup_test_db();
@@ -253,6 +277,7 @@ fn test_get_peer_display_name_prefers_local_over_received() {
     assert!(name.starts_with("LocalWins"), "got: {}", name);
 }
 
+#[serial]
 #[test]
 fn test_get_peer_display_name_uses_received_when_no_local() {
     let _db = setup_test_db();
@@ -262,6 +287,7 @@ fn test_get_peer_display_name_uses_received_when_no_local() {
     assert!(name.starts_with("ReceivedNick"), "got: {}", name);
 }
 
+#[serial]
 #[test]
 fn test_get_peer_display_name_includes_short_id_suffix() {
     let _db = setup_test_db();
