@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,444 |
-| Total Characters        | 252,060 |
-| Average Lines per File  |     181 |
-| Average Characters/File |   6,147 |
+| Total Lines of Code     |   7,472 |
+| Total Characters        | 252,803 |
+| Average Lines per File  |     182 |
+| Average Characters/File |   6,165 |
 
 ## All Source Files
 
@@ -20,7 +20,7 @@
 | src                     | fmt.rs               |   111 |  3400 |     4 | Formatting & display utilities      |
 | src                     | lib.rs               |   379 | 12541 |     3 | Module declarations & re-exports    |
 | src                     | logging.rs           |   229 |  6677 |     4 | Logging utilities & setup           |
-| src                     | logging_config.rs    |    38 |  1772 |     2 | Tracing configuration               |
+| src                     | logging_config.rs    |    66 |  2515 |     2 | Tracing configuration               |
 | src                     | messages.rs          |   230 |  8437 |     4 | Message persistence & retrieval     |
 | src                     | network.rs           |    44 |  1414 |     3 | Network size classification         |
 | src                     | nickname.rs          |   201 |  6997 |     3 | Nickname management                 |
@@ -56,4 +56,4 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,444 lines, 252,060 characters
+**Total:** 41 files, 7,472 lines, 252,803 characters
