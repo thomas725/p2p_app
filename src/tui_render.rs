@@ -1,5 +1,6 @@
 //! TUI rendering functions for both binary and tests
 
+use crate::fmt::short_peer_id;
 use crate::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
 use ratatui::{
     layout::Alignment,
@@ -188,12 +189,7 @@ pub fn render_popup(f: &mut ratatui::Frame, text: String) {
     f.render_widget(p, popup);
 }
 
-/// Get short peer ID (last 4 chars)
+/// Get short peer ID (last 8 chars) - uses shared implementation
 fn short_id(id: &str) -> String {
-    let len = id.len();
-    if len > 4 {
-        id[len - 4..].to_string()
-    } else {
-        id.to_string()
-    }
+    short_peer_id(id)
 }
