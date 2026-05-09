@@ -1,5 +1,33 @@
 //! Tracing and logging configuration
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_returns_targets() {
+        let filter = tracing_filter();
+        assert!(!format!("{:?}", filter).is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_has_default_warn() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("WARN"));
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_enables_debug_targets() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("DEBUG") || filter_str.contains("debug"));
+    }
+}
+
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
 ///
