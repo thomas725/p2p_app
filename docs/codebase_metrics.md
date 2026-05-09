@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   8,049 |
-| Total Characters        | 270,618 |
-| Average Lines per File  |     196 |
-| Average Characters/File |   6,600 |
+| Total Lines of Code     |   8,207 |
+| Total Characters        | 275,306 |
+| Average Lines per File  |     200 |
+| Average Characters/File |   6,714 |
 
 ## All Source Files
 
@@ -32,7 +32,7 @@
 | src                     | tui_render_state.rs  |   284 |  8383 |     4 |   44% | TUI render state & tab content      |
 | src                     | tui_tabs.rs          |   357 | 10222 |     5 |   44% | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
-| src                     | types.rs             |    88 |  2735 |     2 |  100% | Event & command type defs           |
+| src                     | types.rs             |   246 |  7423 |     4 |  100% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   205 |  7073 |     8 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5237 |     4 |    -  | Main TUI application entry point    |
@@ -56,7 +56,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 8,049 lines, 270,618 characters
+**Total:** 41 files, 8,207 lines, 275,306 characters
 
 ## Test Files
 
