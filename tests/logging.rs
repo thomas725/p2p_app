@@ -1,5 +1,7 @@
 //! Tests for logging.rs module
 
+use serial_test::serial;
+
 #[test]
 fn test_push_log() {
     p2p_app::logging::push_log("test log message");
@@ -20,65 +22,84 @@ fn test_strip_ansi_codes_plain() {
 }
 
 // ── get_tui_logs / clear_tui_logs ─────────────────────────────────────────────
+// NOTE: TUI_LOGS is a OnceLock, only initialised when init_logging() is called.
+// All tests that use get_tui_logs() must call init_logging() first.
 
+#[serial]
 #[test]
 fn test_get_tui_logs_returns_vec() {
-    // get_tui_logs returns empty vec or whatever is in the global store
+    p2p_app::logging::init_logging();
     let logs = p2p_app::logging::get_tui_logs();
-    // Just check it doesn't panic and returns a Vec
-    let _ = logs.len();
+    let _ = logs.len(); // must not panic
 }
 
+#[serial]
 #[test]
 fn test_push_log_appears_in_get_tui_logs() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
     let unique = format!("unique-marker-{}", std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
     p2p_app::logging::push_log(unique.clone());
     let logs = p2p_app::logging::get_tui_logs();
     assert!(logs.iter().any(|l| l.contains(&unique)),
-        "pushed log should appear in get_tui_logs");
+        "pushed log should appear in get_tui_logs, got: {:?}", logs);
 }
 
+#[serial]
 #[test]
 fn test_clear_tui_logs_empties_store() {
+    p2p_app::logging::init_logging();
     p2p_app::logging::push_log("to-be-cleared");
     p2p_app::logging::clear_tui_logs();
     let logs = p2p_app::logging::get_tui_logs();
-    assert!(logs.is_empty(), "logs should be empty after clear");
+    assert!(logs.is_empty(), "logs should be empty after clear, got: {:?}", logs);
 }
 
 // ── p2plog level aliases ──────────────────────────────────────────────────────
 
+#[serial]
 #[test]
 fn test_p2plog_debug_contains_level() {
+    p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     p2p_app::logging::p2plog_debug("debug-msg");
     let logs = p2p_app::logging::get_tui_logs();
-    assert!(logs.iter().any(|l| l.contains("DEBUG") && l.contains("debug-msg")));
+    assert!(logs.iter().any(|l| l.contains("DEBUG") && l.contains("debug-msg")),
+        "got: {:?}", logs);
 }
 
+#[serial]
 #[test]
 fn test_p2plog_info_contains_level() {
+    p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     p2p_app::logging::p2plog_info("info-msg");
     let logs = p2p_app::logging::get_tui_logs();
-    assert!(logs.iter().any(|l| l.contains("INFO") && l.contains("info-msg")));
+    assert!(logs.iter().any(|l| l.contains("INFO") && l.contains("info-msg")),
+        "got: {:?}", logs);
 }
 
+#[serial]
 #[test]
 fn test_p2plog_warn_contains_level() {
+    p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     p2p_app::logging::p2plog_warn("warn-msg");
     let logs = p2p_app::logging::get_tui_logs();
-    assert!(logs.iter().any(|l| l.contains("WARN") && l.contains("warn-msg")));
+    assert!(logs.iter().any(|l| l.contains("WARN") && l.contains("warn-msg")),
+        "got: {:?}", logs);
 }
 
+#[serial]
 #[test]
 fn test_p2plog_error_contains_level() {
+    p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     p2p_app::logging::p2plog_error("error-msg");
     let logs = p2p_app::logging::get_tui_logs();
-    assert!(logs.iter().any(|l| l.contains("ERROR") && l.contains("error-msg")));
+    assert!(logs.iter().any(|l| l.contains("ERROR") && l.contains("error-msg")),
+        "got: {:?}", logs);
 }
 
 // ── strip_ansi_codes edge cases ───────────────────────────────────────────────
