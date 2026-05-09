@@ -17,22 +17,22 @@
 | /                       | build.rs             |   121 |  4147 |     5 |    -  | Build script                        |
 | src                     | behavior.rs          |   142 |  4933 |     4 |   89% | Network behavior definitions        |
 | src                     | db.rs                |   403 | 14294 |     5 |   28% | Database connection & identity mgmt |
-| src                     | fmt.rs               |   111 |  3400 |     4 | 100% | Formatting & display utilities      |
+| src                     | fmt.rs               |   111 |  3400 |     4 |  100% | Formatting & display utilities      |
 | src                     | lib.rs               |   379 | 12541 |     3 |   70% | Module declarations & re-exports    |
-| src                     | logging.rs           |   229 |  6677 |     4 | 100% | Logging utilities & setup           |
+| src                     | logging.rs           |   229 |  6677 |     4 |  100% | Logging utilities & setup           |
 | src                     | logging_config.rs    |    66 |  2515 |     2 |   97% | Tracing configuration               |
-| src                     | messages.rs          |   230 |  8437 |     4 | 100% | Message persistence & retrieval     |
-| src                     | network.rs           |    44 |  1414 |     3 | 100% | Network size classification         |
-| src                     | nickname.rs          |   201 |  6997 |     3 | 100% | Nickname management                 |
-| src                     | peers.rs             |   179 |  6113 |     3 | 100% | Peer management & tracking          |
+| src                     | messages.rs          |   230 |  8437 |     4 |  100% | Message persistence & retrieval     |
+| src                     | network.rs           |    44 |  1414 |     3 |  100% | Network size classification         |
+| src                     | nickname.rs          |   201 |  6997 |     3 |  100% | Nickname management                 |
+| src                     | peers.rs             |   179 |  6113 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   378 | 12846 |     7 |   30% | Network event translation           |
-| src                     | tui_events.rs        |    76 |  2586 |     1 | 100% | Event/command types & channels      |
-| src                     | tui_helpers.rs       |   293 |  8662 |     3 | 100% | Source file                         |
+| src                     | tui_events.rs        |    76 |  2586 |     1 |  100% | Event/command types & channels      |
+| src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | Source file                         |
 | src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | Source file                         |
 | src                     | tui_render_state.rs  |   159 |  4608 |     4 |    -  | Source file                         |
 | src                     | tui_tabs.rs          |   198 |  5277 |     5 |    -  | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
-| src                     | types.rs             |    88 |  2735 |     2 | 100% | Event & command type defs           |
+| src                     | types.rs             |    88 |  2735 |     2 |  100% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   205 |  7073 |     8 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5237 |     4 |    -  | Main TUI application entry point    |

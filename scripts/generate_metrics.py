@@ -173,11 +173,11 @@ def get_test_coverage_str(coverage: Optional[float]) -> str:
     if coverage is None:
         return "   - "
     elif coverage >= 100:
-        return "100%"
+        return " 100%"
     elif coverage >= 10:
-        return f"{coverage:>4.0f}%"
+        return f" {coverage:>3.0f}%"
     else:
-        return f"{coverage:>4.1f}%"
+        return f" {coverage:>4.1f}%"
 
 def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     """Convert filepath to display folder and filename."""
