@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,472 |
-| Total Characters        | 252,803 |
-| Average Lines per File  |     182 |
-| Average Characters/File |   6,165 |
+| Total Lines of Code     |   7,587 |
+| Total Characters        | 256,264 |
+| Average Lines per File  |     185 |
+| Average Characters/File |   6,250 |
 
 ## All Source Files
 
@@ -25,7 +25,7 @@
 | src                     | network.rs           |    44 |  1414 |     3 | Network size classification         |
 | src                     | nickname.rs          |   201 |  6997 |     3 | Nickname management                 |
 | src                     | peers.rs             |   179 |  6113 |     3 | Peer management & tracking          |
-| src                     | swarm_handler.rs     |   263 |  9385 |     7 | Network event translation           |
+| src                     | swarm_handler.rs     |   378 | 12846 |     7 | Network event translation           |
 | src                     | tui_events.rs        |    76 |  2586 |     1 | Event/command types & channels      |
 | src                     | tui_helpers.rs       |   293 |  8662 |     3 | Source file                         |
 | src                     | tui_render.rs        |   195 |  6221 |     4 | Source file                         |
@@ -56,4 +56,4 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,472 lines, 252,803 characters
+**Total:** 41 files, 7,587 lines, 256,264 characters
