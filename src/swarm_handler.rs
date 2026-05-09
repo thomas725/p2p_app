@@ -68,71 +68,7 @@ async fn handle_swarm_event(
         Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            let peer_id_str = peer.to_string();
-            match message {
-                libp2p::request_response::Message::Request {
-                    request, channel, ..
-                } => {
-                    // Receipt-only control message (used to confirm broadcast delivery).
-                    if request.content.trim().is_empty()
-                        && let Some(ack_for) = request.ack_for.clone()
-                    {
-                        let _ = event_tx
-                            .send(SwarmEvent::Receipt {
-                                peer_id: peer_id_str.clone(),
-                                ack_for,
-                                received_at: request.received_at,
-                            })
-                            .await;
-                    } else {
-                        let content = request.content.clone();
-                        let latency =
-                            Some(crate::format_latency(request.sent_at, SystemTime::now()));
-                        let nickname = request.nickname.clone();
-                        let msg_id = request.msg_id.clone();
-                        let _ = event_tx
-                            .send(SwarmEvent::DirectMessage {
-                                content,
-                                peer_id: peer_id_str,
-                                latency,
-                                nickname,
-                                msg_id,
-                            })
-                            .await;
-                    }
-
-                    // Always respond; response doubles as a receipt for DMs when msg_id is present.
-                    let response = crate::DirectMessage {
-                        content: "ok".to_string(),
-                        timestamp: chrono::Utc::now().timestamp(),
-                        sent_at: Some(
-                            SystemTime::now()
-                                .duration_since(SystemTime::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs_f64(),
-                        ),
-                        nickname: None,
-                        msg_id: None,
-                        ack_for: request.msg_id.clone(),
-                        received_at: Some(current_timestamp()),
-                    };
-                    let _ = swarm
-                        .behaviour_mut()
-                        .request_response
-                        .send_response(channel, response);
-                }
-                libp2p::request_response::Message::Response { response, .. } => {
-                    if let Some(ack_for) = response.ack_for.clone() {
-                        let _ = event_tx
-                            .send(SwarmEvent::Receipt {
-                                peer_id: peer_id_str,
-                                ack_for,
-                                received_at: response.received_at,
-                            })
-                            .await;
-                    }
-                }
-            }
+            handle_request_response(message, peer, event_tx, swarm).await;
         }
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
@@ -163,6 +99,70 @@ async fn handle_swarm_event(
                 .await;
         }
         _ => {}
+    }
+}
+
+async fn handle_request_response(
+    message: libp2p::request_response::Message<crate::DirectMessage, crate::DirectMessage>,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let peer_id_str = peer.to_string();
+    match message {
+        libp2p::request_response::Message::Request {
+            request, channel, ..
+        } => {
+            if request.content.trim().is_empty() {
+                if let Some(ack_for) = &request.ack_for {
+                    let _ = event_tx
+                        .send(SwarmEvent::Receipt {
+                            peer_id: peer_id_str.clone(),
+                            ack_for: ack_for.clone(),
+                            received_at: request.received_at,
+                        })
+                        .await;
+                }
+            } else {
+                let content = request.content.clone();
+                let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
+                let msg_id = request.msg_id.clone();
+                let _ = event_tx
+                    .send(SwarmEvent::DirectMessage {
+                        content,
+                        peer_id: peer_id_str,
+                        latency,
+                        nickname: request.nickname,
+                        msg_id,
+                    })
+                    .await;
+            }
+
+            let response = crate::DirectMessage {
+                content: "ok".to_string(),
+                timestamp: chrono::Utc::now().timestamp(),
+                sent_at: Some(current_timestamp()),
+                nickname: None,
+                msg_id: None,
+                ack_for: request.msg_id,
+                received_at: Some(current_timestamp()),
+            };
+            let _ = swarm
+                .behaviour_mut()
+                .request_response
+                .send_response(channel, response);
+        }
+        libp2p::request_response::Message::Response { response, .. } => {
+            if let Some(ack_for) = response.ack_for {
+                let _ = event_tx
+                    .send(SwarmEvent::Receipt {
+                        peer_id: peer_id_str,
+                        ack_for,
+                        received_at: response.received_at,
+                    })
+                    .await;
+            }
+        }
     }
 }
 

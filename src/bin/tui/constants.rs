@@ -12,9 +12,5 @@ pub const MAX_DM_HISTORY: usize = 1000;
 /// Frame time in milliseconds for 60 FPS rendering
 pub const FRAME_TIME_MS: u64 = 16;
 
-/// Number of lines to scroll for PageUp/PageDown
-#[allow(dead_code)]
-pub const PAGE_SIZE: usize = 8;
-
 /// Number of lines to scroll for mouse wheel
 pub const WHEEL_SCROLL_LINES: usize = 3;
