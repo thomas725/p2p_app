@@ -196,3 +196,124 @@ impl TabContent {
         matches!(self, TabContent::Chat | TabContent::Direct(_))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tab_id_index() {
+        assert_eq!(TabId::Chat.index(), 0);
+        assert_eq!(TabId::Peers.index(), 1);
+        assert_eq!(TabId::Direct.index(), 2);
+        assert_eq!(TabId::Log.index(), 3);
+    }
+
+    #[test]
+    fn test_tab_id_from_index() {
+        assert_eq!(TabId::from_index(0), TabId::Chat);
+        assert_eq!(TabId::from_index(1), TabId::Peers);
+        assert_eq!(TabId::from_index(2), TabId::Direct);
+        assert_eq!(TabId::from_index(3), TabId::Log);
+        assert_eq!(TabId::from_index(99), TabId::Chat);
+    }
+
+    #[test]
+    fn test_dm_tab_new() {
+        let dm = DmTab::new("12D3KooWABCDEFGH".to_string());
+        assert_eq!(dm.peer_id, "12D3KooWABCDEFGH");
+        assert!(dm.messages.is_empty());
+    }
+
+    #[test]
+    fn test_dm_tab_with_messages() {
+        let msgs = VecDeque::from(vec!["msg1".to_string(), "msg2".to_string()]);
+        let dm = DmTab::with_messages("peer1".to_string(), msgs.clone());
+        assert_eq!(dm.peer_id, "peer1");
+        assert_eq!(dm.messages.len(), 2);
+    }
+
+    #[test]
+    fn test_dm_tab_short_id() {
+        let dm = DmTab::new("12D3KooWABCDEFGH".to_string());
+        assert_eq!(dm.short_id(), "ABCDEFGH");
+    }
+
+    #[test]
+    fn test_dm_tab_short_id_short_peer() {
+        let dm = DmTab::new("short".to_string());
+        assert_eq!(dm.short_id(), "short");
+    }
+
+    #[test]
+    fn test_dynamic_tabs_new() {
+        let tabs = DynamicTabs::new();
+        assert_eq!(tabs.dm_tab_count(), 0);
+        assert_eq!(tabs.total_tab_count(), 3);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_add_dm_tab() {
+        let mut tabs = DynamicTabs::new();
+        let idx = tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(idx, 2);
+        assert_eq!(tabs.dm_tab_count(), 1);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_remove_dm_tab() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        let idx = tabs.remove_dm_tab("peer1");
+        assert_eq!(idx, Some(2));
+        assert_eq!(tabs.dm_tab_count(), 0);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_get_dm_tab() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        let dm = tabs.get_dm_tab("peer1");
+        assert!(dm.is_some());
+        assert_eq!(dm.unwrap().peer_id, "peer1");
+    }
+
+    #[test]
+    fn test_dynamic_tabs_dm_tab_titles() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        tabs.add_dm_tab("peer2".to_string());
+        let titles = tabs.dm_tab_titles();
+        assert_eq!(titles.len(), 2);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_all_titles() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        let titles = tabs.all_titles();
+        assert_eq!(titles.len(), 4);
+        assert_eq!(titles[0], "Chat");
+        assert_eq!(titles[1], "Peers");
+        assert_eq!(titles[3], "Log");
+    }
+
+    #[test]
+    fn test_tab_content_peer_id() {
+        assert_eq!(
+            TabContent::Direct("peer1".to_string()).peer_id(),
+            Some("peer1")
+        );
+        assert_eq!(TabContent::Chat.peer_id(), None);
+        assert_eq!(TabContent::Peers.peer_id(), None);
+        assert_eq!(TabContent::Log.peer_id(), None);
+    }
+
+    #[test]
+    fn test_tab_content_is_input_enabled() {
+        assert!(TabContent::Chat.is_input_enabled());
+        assert!(TabContent::Direct("peer1".to_string()).is_input_enabled());
+        assert!(!TabContent::Peers.is_input_enabled());
+        assert!(!TabContent::Log.is_input_enabled());
+    }
+}

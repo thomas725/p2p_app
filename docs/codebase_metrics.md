@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,587 |
-| Total Characters        | 256,264 |
-| Average Lines per File  |     185 |
-| Average Characters/File |   6,250 |
+| Total Lines of Code     |   7,882 |
+| Total Characters        | 265,132 |
+| Average Lines per File  |     192 |
+| Average Characters/File |   6,466 |
 
 ## All Source Files
 
@@ -26,11 +26,11 @@
 | src                     | nickname.rs          |   201 |  6997 |     3 |  100% | Nickname management                 |
 | src                     | peers.rs             |   179 |  6113 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   378 | 12846 |     7 |   30% | Network event translation           |
-| src                     | tui_events.rs        |    76 |  2586 |     1 |  100% | Event/command types & channels      |
+| src                     | tui_events.rs        |   154 |  4916 |     3 |  100% | Event/command types & channels      |
 | src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | TUI rendering & state management    |
-| src                     | tui_render_state.rs  |   159 |  4608 |     4 |    -  | TUI render state & tab content      |
-| src                     | tui_tabs.rs          |   198 |  5277 |     5 |    -  | Tab management & navigation         |
+| src                     | tui_render_state.rs  |   255 |  7513 |     4 |   37% | TUI render state & tab content      |
+| src                     | tui_tabs.rs          |   319 |  8910 |     5 |   38% | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
 | src                     | types.rs             |    88 |  2735 |     2 |  100% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
@@ -56,7 +56,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,587 lines, 256,264 characters
+**Total:** 41 files, 7,882 lines, 265,132 characters
 
 ## Test Files
 

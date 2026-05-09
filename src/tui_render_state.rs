@@ -139,7 +139,7 @@ pub fn get_tab_content(state: &TuiRenderState) -> TuiTabContent {
 }
 
 /// Tab content enum
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TuiTabContent {
     /// Broadcast chat view
     Chat,
@@ -155,5 +155,101 @@ impl TuiTabContent {
     /// Returns `true` if the input box should be enabled for this tab.
     pub fn is_input_enabled(&self) -> bool {
         matches!(self, TuiTabContent::Chat | TuiTabContent::Direct(_))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tui_render_state_default() {
+        let state = TuiRenderState::default();
+        assert_eq!(state.active_tab, 0);
+        assert_eq!(state.tab_titles.len(), 3);
+        assert!(state.messages.is_empty());
+        assert!(state.peers.is_empty());
+    }
+
+    #[test]
+    fn test_tui_render_state_new() {
+        let state = TuiRenderState::new();
+        assert!(state.connected);
+        assert!(!state.mouse_capture);
+        assert!(state.popup.is_none());
+    }
+
+    #[test]
+    fn test_tui_render_state_with_sample_data() {
+        let state = TuiRenderState::with_sample_data();
+        assert_eq!(state.messages.len(), 3);
+        assert_eq!(state.peers.len(), 2);
+        assert_eq!(state.peer_count, 2);
+    }
+
+    #[test]
+    fn test_tui_render_state_add_message() {
+        let mut state = TuiRenderState::new();
+        state.add_message("Hello");
+        assert_eq!(state.messages.len(), 1);
+        assert_eq!(state.messages[0], "Hello");
+    }
+
+    #[test]
+    fn test_tui_render_state_add_peer() {
+        let mut state = TuiRenderState::new();
+        state.add_peer("peer1", "Alice", "Online");
+        assert_eq!(state.peers.len(), 1);
+        assert_eq!(state.peers[0].0, "peer1");
+        assert_eq!(state.peers[0].1, "Alice");
+    }
+
+    #[test]
+    fn test_tui_render_state_add_dm_message() {
+        let mut state = TuiRenderState::new();
+        state.add_dm_message("peer1", "Hello there");
+        assert!(state.dm_messages.contains_key("peer1"));
+        assert_eq!(state.dm_messages["peer1"].len(), 1);
+    }
+
+    #[test]
+    fn test_get_tab_content_chat() {
+        let mut state = TuiRenderState::new();
+        state.active_tab = 0;
+        assert_eq!(get_tab_content(&state), TuiTabContent::Chat);
+    }
+
+    #[test]
+    fn test_get_tab_content_peers() {
+        let mut state = TuiRenderState::new();
+        state.active_tab = 1;
+        assert_eq!(get_tab_content(&state), TuiTabContent::Peers);
+    }
+
+    #[test]
+    fn test_get_tab_content_log() {
+        let mut state = TuiRenderState::new();
+        state.active_tab = 2;
+        assert_eq!(get_tab_content(&state), TuiTabContent::Log);
+    }
+
+    #[test]
+    fn test_get_tab_content_direct() {
+        let mut state = TuiRenderState::new();
+        state.tab_titles.push("DM: Alice".to_string());
+        state.active_tab = 3;
+        if let TuiTabContent::Direct(peer) = get_tab_content(&state) {
+            assert_eq!(peer, "Alice");
+        } else {
+            panic!("expected Direct");
+        }
+    }
+
+    #[test]
+    fn test_tui_tab_content_is_input_enabled() {
+        assert!(TuiTabContent::Chat.is_input_enabled());
+        assert!(TuiTabContent::Direct("peer".to_string()).is_input_enabled());
+        assert!(!TuiTabContent::Peers.is_input_enabled());
+        assert!(!TuiTabContent::Log.is_input_enabled());
     }
 }

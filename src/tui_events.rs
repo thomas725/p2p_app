@@ -74,3 +74,81 @@ pub struct TuiThreads {
     /// Join handle for the input processing task
     pub input_handle: tokio::task::JoinHandle<()>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_channels_returns_four_channels() {
+        let (event_tx, event_rx, input_tx, input_rx) = create_channels();
+        assert!(!event_tx.is_closed());
+        assert!(!event_rx.is_closed());
+        assert!(!input_tx.is_closed());
+        assert!(!input_rx.is_closed());
+    }
+
+    #[test]
+    fn test_tui_event_variants() {
+        let msg = TuiEvent::Message("hello".to_string(), None);
+        let broadcast = TuiEvent::Broadcast(
+            "msg".to_string(),
+            "peer1".to_string(),
+            Some("id1".to_string()),
+        );
+        let direct = TuiEvent::Direct("peer2".to_string(), "dm".to_string());
+        let exit = TuiEvent::Exit;
+
+        match msg {
+            TuiEvent::Message(_, _) => {}
+            _ => panic!("expected Message"),
+        }
+        match broadcast {
+            TuiEvent::Broadcast(_, _, _) => {}
+            _ => panic!("expected Broadcast"),
+        }
+        match direct {
+            TuiEvent::Direct(_, _) => {}
+            _ => panic!("expected Direct"),
+        }
+        match exit {
+            TuiEvent::Exit => {}
+            _ => panic!("expected Exit"),
+        }
+    }
+
+    #[test]
+    fn test_input_command_variants() {
+        let send_broadcast = InputCommand::SendBroadcast("hello".to_string());
+        let send_dm = InputCommand::SendDm("hi".to_string(), libp2p::PeerId::random());
+        let set_nickname = InputCommand::SetNickname("Alice".to_string());
+        let open_dm = InputCommand::OpenDm("peer1".to_string());
+        let scroll_up = InputCommand::ScrollUp;
+        let scroll_down = InputCommand::ScrollDown;
+
+        match send_broadcast {
+            InputCommand::SendBroadcast(_) => {}
+            _ => panic!(),
+        }
+        match send_dm {
+            InputCommand::SendDm(_, _) => {}
+            _ => panic!(),
+        }
+        match set_nickname {
+            InputCommand::SetNickname(_) => {}
+            _ => panic!(),
+        }
+        match open_dm {
+            InputCommand::OpenDm(_) => {}
+            _ => panic!(),
+        }
+        match scroll_up {
+            InputCommand::ScrollUp => {}
+            _ => panic!(),
+        }
+        match scroll_down {
+            InputCommand::ScrollDown => {}
+            _ => panic!(),
+        }
+    }
+}
