@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,373 |
-| Total Characters        | 249,765 |
+| Total Lines of Code     |   7,365 |
+| Total Characters        | 249,697 |
 | Average Lines per File  |     179 |
-| Average Characters/File |   6,091 |
+| Average Characters/File |   6,090 |
 
 ## All Source Files
 
@@ -17,23 +17,23 @@
 | /                       | build.rs             |   121 |  4147 |     5 | Build script                        |
 | src                     | behavior.rs          |   142 |  4933 |     4 | Network behavior definitions        |
 | src                     | db.rs                |   403 | 14294 |     5 | Database connection & identity mgmt |
-| src                     | fmt.rs               |   102 |  3167 |     4 | Formatting & display utilities      |
-| src                     | lib.rs               |   379 | 12522 |     3 | Module declarations & re-exports    |
+| src                     | fmt.rs               |   111 |  3400 |     4 | Formatting & display utilities      |
+| src                     | lib.rs               |   379 | 12541 |     3 | Module declarations & re-exports    |
 | src                     | logging.rs           |   229 |  6677 |     4 | Logging utilities & setup           |
 | src                     | logging_config.rs    |    38 |  1772 |     2 | Tracing configuration               |
 | src                     | messages.rs          |   230 |  8437 |     4 | Message persistence & retrieval     |
 | src                     | network.rs           |    44 |  1414 |     3 | Network size classification         |
 | src                     | nickname.rs          |   201 |  6997 |     3 | Nickname management                 |
 | src                     | peers.rs             |   179 |  6113 |     3 | Peer management & tracking          |
-| src                     | swarm_handler.rs     |   270 |  9523 |     7 | Network event translation           |
+| src                     | swarm_handler.rs     |   263 |  9385 |     7 | Network event translation           |
 | src                     | tui_events.rs        |    76 |  2586 |     1 | Event/command types & channels      |
 | src                     | tui_helpers.rs       |   293 |  8662 |     3 | Source file                         |
-| src                     | tui_render.rs        |   199 |  6256 |     4 | Source file                         |
+| src                     | tui_render.rs        |   195 |  6221 |     4 | Source file                         |
 | src                     | tui_render_state.rs  |   159 |  4608 |     4 | Source file                         |
 | src                     | tui_tabs.rs          |   198 |  5277 |     5 | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 | TUI test state & mouse handling     |
 | src                     | types.rs             |    88 |  2735 |     2 | Event & command type defs           |
-| src/bin                 | p2p_chat.rs          |   165 |  5970 |     7 | CLI chat application                |
+| src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   205 |  7073 |     8 | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5237 |     4 | Main TUI application entry point    |
 | src/bin/tui             | click_handlers.rs    |   505 | 18240 |     7 | Click handlers & index mapping      |
@@ -56,4 +56,4 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,373 lines, 249,765 characters
+**Total:** 41 files, 7,365 lines, 249,697 characters
