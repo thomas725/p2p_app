@@ -185,3 +185,81 @@ mod render_tests {
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
     }
 }
+
+// ── TuiRenderState builder methods + get_tab_content ─────────────────────────
+
+#[test]
+fn test_add_message() {
+    use p2p_app::tui_render_state::TuiRenderState;
+    let mut state = TuiRenderState::new();
+    state.add_message("hello");
+    state.add_message("world");
+    assert_eq!(state.messages.len(), 2);
+    assert_eq!(state.messages[0], "hello");
+}
+
+#[test]
+fn test_add_peer() {
+    use p2p_app::tui_render_state::TuiRenderState;
+    let mut state = TuiRenderState::new();
+    state.add_peer("peer-1", "Alice", "Online");
+    assert_eq!(state.peers.len(), 1);
+    assert_eq!(state.peers[0].0, "peer-1");
+    assert_eq!(state.peers[0].1, "Alice");
+}
+
+#[test]
+fn test_add_dm_message() {
+    use p2p_app::tui_render_state::TuiRenderState;
+    let mut state = TuiRenderState::new();
+    state.add_dm_message("peer-dm", "hello dm");
+    state.add_dm_message("peer-dm", "second dm");
+    let msgs = state.dm_messages.get("peer-dm").unwrap();
+    assert_eq!(msgs.len(), 2);
+    assert_eq!(msgs[0], "hello dm");
+}
+
+#[test]
+fn test_get_tab_content_chat() {
+    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    let mut state = TuiRenderState::new();
+    state.active_tab = 0; // "Chat"
+    assert!(matches!(get_tab_content(&state), TuiTabContent::Chat));
+}
+
+#[test]
+fn test_get_tab_content_peers() {
+    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    let mut state = TuiRenderState::new();
+    state.active_tab = 1; // "Peers"
+    assert!(matches!(get_tab_content(&state), TuiTabContent::Peers));
+}
+
+#[test]
+fn test_get_tab_content_log() {
+    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    let mut state = TuiRenderState::new();
+    state.active_tab = 2; // "Log"
+    assert!(matches!(get_tab_content(&state), TuiTabContent::Log));
+}
+
+#[test]
+fn test_get_tab_content_dm() {
+    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    let mut state = TuiRenderState::new();
+    state.tab_titles.push("DM: peer-xyz".to_string());
+    state.active_tab = state.tab_titles.len() - 1;
+    match get_tab_content(&state) {
+        TuiTabContent::Direct(peer) => assert_eq!(peer, "peer-xyz"),
+        other => panic!("expected Direct, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_tui_tab_content_is_input_enabled() {
+    use p2p_app::tui_render_state::TuiTabContent;
+    assert!(TuiTabContent::Chat.is_input_enabled());
+    assert!(TuiTabContent::Direct("p".into()).is_input_enabled());
+    assert!(!TuiTabContent::Peers.is_input_enabled());
+    assert!(!TuiTabContent::Log.is_input_enabled());
+}

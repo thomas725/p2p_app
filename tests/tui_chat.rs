@@ -568,3 +568,104 @@ mod tests {
         assert_eq!(titles[2], "Log");
     }
 }
+
+// ── TuiTestState accessor methods ─────────────────────────────────────────────
+
+#[test]
+fn test_tab_titles() {
+    let state = p2p_app::TuiTestState::new();
+    let titles = state.tab_titles();
+    assert!(titles.contains(&"Chat"));
+    assert!(titles.contains(&"Peers"));
+    assert!(titles.contains(&"Log"));
+}
+
+#[test]
+fn test_peer_info_no_peers() {
+    let state = p2p_app::TuiTestState::new();
+    let info = state.peer_info();
+    assert!(info.contains('0') || info.is_empty() || info.contains("peer"),
+        "got: {}", info);
+}
+
+#[test]
+fn test_tab_content_chat() {
+    let mut state = p2p_app::TuiTestState::new();
+    state.active_tab = 0;
+    assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Chat);
+}
+
+#[test]
+fn test_tab_content_peers() {
+    let mut state = p2p_app::TuiTestState::new();
+    state.active_tab = 1;
+    assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Peers);
+}
+
+#[test]
+fn test_tab_content_log() {
+    let mut state = p2p_app::TuiTestState::new();
+    // Log is the last tab (index = total - 1)
+    state.active_tab = state.tab_titles().len() - 1;
+    assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Log);
+}
+
+#[test]
+fn test_formatted_messages_empty() {
+    let state = p2p_app::TuiTestState::new();
+    let msgs = state.formatted_messages();
+    // empty state should return empty or placeholder
+    let _ = msgs.len();
+}
+
+#[test]
+fn test_formatted_messages_with_content() {
+    use std::collections::VecDeque;
+    let msgs = VecDeque::from(["[Alice] hello".to_string(), "[Bob] hi".to_string()]);
+    let state = p2p_app::TuiTestState::with_messages(msgs);
+    let formatted = state.formatted_messages();
+    assert!(!formatted.is_empty());
+}
+
+#[test]
+fn test_formatted_peers_empty() {
+    let state = p2p_app::TuiTestState::new();
+    let peers = state.formatted_peers();
+    let _ = peers.len(); // must not panic
+}
+
+#[test]
+fn test_formatted_logs_empty() {
+    let state = p2p_app::TuiTestState::new();
+    let logs = state.formatted_logs();
+    let _ = logs.len(); // must not panic
+}
+
+#[test]
+fn test_formatted_dm_messages_unknown_peer() {
+    let state = p2p_app::TuiTestState::new();
+    let msgs = state.formatted_dm_messages("unknown-peer");
+    let _ = msgs.len(); // must not panic
+}
+
+#[test]
+fn test_input_text_empty_initially() {
+    let state = p2p_app::TuiTestState::new();
+    assert_eq!(state.input_text(), "");
+}
+
+#[test]
+fn test_status_text() {
+    let state = p2p_app::TuiTestState::new();
+    let status = state.status_text();
+    // just check it returns something without panicking
+    let _ = status.len();
+}
+
+#[test]
+fn test_handle_tab_click_chat() {
+    let mut state = p2p_app::TuiTestState::new();
+    let tab_row = state.list_header_start_row().saturating_sub(1);
+    state.handle_tab_click(tab_row);
+    // just confirm it doesn't panic — tab_click only fires on the tab row
+}

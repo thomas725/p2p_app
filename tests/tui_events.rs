@@ -158,3 +158,21 @@ mod event_tests {
         assert!(debug_str.contains("test"));
     }
 }
+
+#[tokio::test]
+async fn test_create_channels_can_send_receive() {
+    let (event_tx, mut event_rx, _input_tx, _input_rx) =
+        p2p_app::tui_events::create_channels();
+    event_tx.send(p2p_app::tui_events::TuiEvent::Exit).await.unwrap();
+    let msg = event_rx.recv().await.unwrap();
+    assert!(matches!(msg, p2p_app::tui_events::TuiEvent::Exit));
+}
+
+#[tokio::test]
+async fn test_create_channels_input_roundtrip() {
+    let (_event_tx, _event_rx, input_tx, mut input_rx) =
+        p2p_app::tui_events::create_channels();
+    input_tx.send(p2p_app::tui_events::InputCommand::ScrollUp).await.unwrap();
+    let cmd = input_rx.recv().await.unwrap();
+    assert!(matches!(cmd, p2p_app::tui_events::InputCommand::ScrollUp));
+}
