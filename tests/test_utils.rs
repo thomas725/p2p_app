@@ -20,14 +20,15 @@ pub fn test_db_lock() -> &'static Mutex<()> {
 /// 3. Runs migrations so the schema is ready.
 /// 4. On drop: releases the DB lock and removes `DATABASE_URL` from env.
 pub struct TestDb {
-    pub dir: TempDir,
+    pub _dir: TempDir,
     _guard: MutexGuard<'static, ()>,
 }
 
 impl TestDb {
+    #[allow(dead_code)]
     /// Path to the SQLite file for this test.
     pub fn path(&self) -> String {
-        self.dir.path().join("test.db").to_str().unwrap().to_string()
+        self._dir.path().join("test.db").to_str().unwrap().to_string()
     }
 }
 
@@ -45,5 +46,5 @@ pub fn setup_test_db() -> TestDb {
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
     p2p_app::db::init_database().unwrap();
-    TestDb { dir, _guard: guard }
+    TestDb { _dir: dir, _guard: guard }
 }

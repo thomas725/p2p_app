@@ -1,4 +1,4 @@
-use super::constants::{PAGE_SIZE, WHEEL_SCROLL_LINES};
+use super::constants::WHEEL_SCROLL_LINES;
 use super::state::AppState;
 use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
