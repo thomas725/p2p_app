@@ -252,4 +252,33 @@ mod tests {
         assert!(!TuiTabContent::Peers.is_input_enabled());
         assert!(!TuiTabContent::Log.is_input_enabled());
     }
+
+    #[test]
+    fn test_tui_render_state_clone() {
+        let state = TuiRenderState::new();
+        let cloned = state.clone();
+        assert_eq!(cloned.active_tab, state.active_tab);
+        assert_eq!(cloned.messages.len(), state.messages.len());
+    }
+
+    #[test]
+    fn test_tui_render_state_debug_format() {
+        let state = TuiRenderState::new();
+        let debug_str = format!("{:?}", state);
+        assert!(debug_str.contains("TuiRenderState"));
+    }
+
+    #[test]
+    fn test_tui_tab_content_clone() {
+        let content = TuiTabContent::Direct("peer1".to_string());
+        let cloned = content.clone();
+        assert_eq!(cloned, content);
+    }
+
+    #[test]
+    fn test_tui_tab_content_debug_format() {
+        let content = TuiTabContent::Chat;
+        let debug_str = format!("{:?}", content);
+        assert!(debug_str.contains("Chat"));
+    }
 }

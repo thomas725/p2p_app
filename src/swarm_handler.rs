@@ -337,6 +337,46 @@ mod tests {
         let json = serialize_broadcast_message(&msg).unwrap();
         assert!(json.contains("content"));
     }
+
+    #[test]
+    fn test_build_broadcast_message_with_all_fields() {
+        let msg = build_broadcast_message(
+            "test content".to_string(),
+            Some("Tester".to_string()),
+            Some("msg-123".to_string()),
+        );
+        assert_eq!(msg.content, "test content");
+        assert_eq!(msg.nickname, Some("Tester".to_string()));
+        assert_eq!(msg.msg_id, Some("msg-123".to_string()));
+    }
+
+    #[test]
+    fn test_build_direct_message_with_all_fields() {
+        let msg = build_direct_message(
+            "direct message".to_string(),
+            Some("Sender".to_string()),
+            Some("msg-456".to_string()),
+            Some("ack-789".to_string()),
+        );
+        assert_eq!(msg.content, "direct message");
+        assert_eq!(msg.nickname, Some("Sender".to_string()));
+        assert_eq!(msg.msg_id, Some("msg-456".to_string()));
+        assert_eq!(msg.ack_for, Some("ack-789".to_string()));
+    }
+
+    #[test]
+    fn test_serialize_broadcast_message_preserves_fields() {
+        let msg = BroadcastMessage {
+            content: "hello".to_string(),
+            sent_at: Some(123456.0),
+            nickname: Some("Nick".to_string()),
+            msg_id: Some("id123".to_string()),
+        };
+        let json = serialize_broadcast_message(&msg).unwrap();
+        assert!(json.contains("hello"));
+        assert!(json.contains("Nick"));
+        assert!(json.contains("id123"));
+    }
 }
 
 /// Spawns the swarm handler task that processes libp2p events

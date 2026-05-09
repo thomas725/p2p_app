@@ -316,4 +316,42 @@ mod tests {
         assert!(!TabContent::Peers.is_input_enabled());
         assert!(!TabContent::Log.is_input_enabled());
     }
+
+    #[test]
+    fn test_dynamic_tabs_get_dm_tab_mut() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        let dm = tabs.get_dm_tab_mut("peer1");
+        assert!(dm.is_some());
+        dm.unwrap().messages.push_back("Hello".to_string());
+        let dm2 = tabs.get_dm_tab("peer1");
+        assert_eq!(dm2.unwrap().messages.len(), 1);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_total_tab_count() {
+        let mut tabs = DynamicTabs::new();
+        assert_eq!(tabs.total_tab_count(), 3);
+        tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(tabs.total_tab_count(), 4);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_tab_index_to_content() {
+        let mut tabs = DynamicTabs::new();
+        assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
+        assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
+        tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(
+            tabs.tab_index_to_content(2),
+            TabContent::Direct("peer1".to_string())
+        );
+        assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
+    }
+
+    #[test]
+    fn test_dynamic_tabs_tab_index_to_content_out_of_bounds() {
+        let tabs = DynamicTabs::new();
+        assert_eq!(tabs.tab_index_to_content(99), TabContent::Chat);
+    }
 }
