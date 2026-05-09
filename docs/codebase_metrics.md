@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,365 |
-| Total Characters        | 249,697 |
-| Average Lines per File  |     179 |
-| Average Characters/File |   6,090 |
+| Total Lines of Code     |   7,444 |
+| Total Characters        | 252,060 |
+| Average Lines per File  |     181 |
+| Average Characters/File |   6,147 |
 
 ## All Source Files
 
@@ -49,11 +49,11 @@
 | src/bin/tui/render_loop | layout.rs            |    65 |  2294 |     3 | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   120 |  4010 |     5 | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   371 | 12155 |     6 | Tab-specific renderers              |
-| src/bin/tui/render_loop | visibility.rs        |   130 |  3313 |     4 | Message visibility calculations     |
+| src/bin/tui/render_loop | visibility.rs        |   209 |  5676 |     4 | Message visibility calculations     |
 | src/generated           | columns.rs           |    42 |  1653 |     1 | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 | Module declarations                 |
 | src/generated           | models_insertable.rs |   102 |  3689 |     1 | Insertable data models              |
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,365 lines, 249,697 characters
+**Total:** 41 files, 7,444 lines, 252,060 characters
