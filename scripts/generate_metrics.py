@@ -249,15 +249,15 @@ def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
 def generate_test_files_table(test_files: List[Tuple]) -> str:
     """Generate markdown table for test files."""
     output = []
-    output.append('| Folder      | File                    | Lines | Chars | Description                           |')
-    output.append('|:------------|:------------------------|------:|------:|--------------------------------------:|')
+    output.append('| Folder | File                      | Lines | Chars | Description                   |')
+    output.append('|:-------|:--------------------------|------:|------:|------------------------------:|')
     
     for folder, filename, lines, chars, purpose in test_files:
         if len(purpose) > 36:
             purpose = purpose[:33] + '...'
         
         folder_display = folder if folder else 'tests'
-        output.append(f'| {folder_display:<10} | {filename:<23} | {lines:>5} | {chars:>5} | {purpose:<36} |')
+        output.append(f'| {folder_display:<6} | {filename:<25} | {lines:>5} | {chars:>5} | {purpose:<29} |')
     
     return '\n'.join(output)
 
