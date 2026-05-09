@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,989 |
-| Total Characters        | 268,746 |
-| Average Lines per File  |     194 |
-| Average Characters/File |   6,554 |
+| Total Lines of Code     |   8,049 |
+| Total Characters        | 270,618 |
+| Average Lines per File  |     196 |
+| Average Characters/File |   6,600 |
 
 ## All Source Files
 
@@ -43,7 +43,7 @@
 | src/bin/tui             | input_processor.rs   |   318 | 10992 |     5 |    -  | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   267 |  9849 |     5 |    -  | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   107 |  3919 |     5 |    -  | Message sending logic               |
-| src/bin/tui             | presentation.rs      |   220 |  6472 |     3 |   52% | TUI presentation & formatting he... |
+| src/bin/tui             | presentation.rs      |   280 |  8344 |     3 |   62% | TUI presentation & formatting he... |
 | src/bin/tui             | scroll_handlers.rs   |   298 | 10313 |     5 |    -  | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |   227 |  9290 |     7 |    -  | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    65 |  2294 |     3 |    -  | UI layout component rendering       |
@@ -56,7 +56,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,989 lines, 268,746 characters
+**Total:** 41 files, 8,049 lines, 270,618 characters
 
 ## Test Files
 

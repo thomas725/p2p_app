@@ -217,4 +217,64 @@ mod tests {
         // row 0 and 1 are before first_content_row=3 — content only starts at row 3
         assert_eq!(row_to_visible_index(&line_counts, 3, 0), None);
     }
+
+    #[test]
+    fn broadcast_receipt_prefix_no_receipts() {
+        let receipts = std::collections::HashMap::new();
+        assert_eq!(
+            broadcast_receipt_prefix(Some("msg-1"), None, &receipts),
+            "  "
+        );
+    }
+
+    #[test]
+    fn broadcast_receipt_prefix_with_sender_id() {
+        let mut receipts = std::collections::HashMap::new();
+        receipts.insert("msg-1".to_string(), std::collections::HashMap::new());
+        assert_eq!(
+            broadcast_receipt_prefix(Some("msg-1"), Some("peer-1"), &receipts),
+            "  "
+        );
+    }
+
+    #[test]
+    fn dm_receipt_prefix_no_receipt() {
+        let receipts = std::collections::HashMap::new();
+        assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "  ");
+    }
+
+    #[test]
+    fn dm_receipt_prefix_with_receipt() {
+        let mut receipts = std::collections::HashMap::new();
+        receipts.insert("msg-1".to_string(), ("peer-1".to_string(), 1.0));
+        assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "v ");
+    }
+
+    #[test]
+    fn format_broadcast_title_with_nickname() {
+        assert_eq!(
+            format_broadcast_title(Some("Alice"), "12345678"),
+            "Broadcast from Alice 12345678"
+        );
+    }
+
+    #[test]
+    fn format_peer_line_with_unique_nickname() {
+        let mut counts = std::collections::HashMap::new();
+        counts.insert("Alice".to_string(), 1);
+        assert_eq!(
+            format_peer_line("peer-1", "just now", Some("Alice"), &counts),
+            "Alice peer-1 just now"
+        );
+    }
+
+    #[test]
+    fn format_peer_line_with_duplicate_nickname() {
+        let mut counts = std::collections::HashMap::new();
+        counts.insert("Alice".to_string(), 2);
+        assert_eq!(
+            format_peer_line("peer-1", "just now", Some("Alice"), &counts),
+            "peer-1 just now"
+        );
+    }
 }
