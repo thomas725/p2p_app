@@ -453,3 +453,211 @@ fn test_next_tab_index_zero_tabs() {
     use p2p_app::tui_helpers::next_tab_index;
     assert_eq!(next_tab_index(0, 1, 0), 0); // must not panic
 }
+
+// ── validate_nickname edge cases ──────────────────────────────────────────────
+
+#[test]
+fn test_validate_nickname_valid() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(validate_nickname("alice"));
+    assert!(validate_nickname("Alice123"));
+    assert!(validate_nickname("cool-nick"));
+    assert!(validate_nickname("A")); // single char
+}
+
+#[test]
+fn test_validate_nickname_empty_rejected() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(!validate_nickname(""));
+}
+
+#[test]
+fn test_validate_nickname_too_long_rejected() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(!validate_nickname("this-nickname-is-way-too-long-123"));
+}
+
+#[test]
+fn test_validate_nickname_invalid_chars_rejected() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(!validate_nickname("has space"));
+    assert!(!validate_nickname("has@symbol"));
+    assert!(!validate_nickname("has.dot"));
+}
+
+#[test]
+fn test_validate_nickname_exactly_20_chars() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(validate_nickname("abcdefghijklmnopqrst")); // exactly 20
+    assert!(!validate_nickname("abcdefghijklmnopqrstu")); // 21
+}
+
+// ── truncate_message ──────────────────────────────────────────────────────────
+
+#[test]
+fn test_truncate_message_short_unchanged() {
+    use p2p_app::tui_helpers::truncate_message;
+    assert_eq!(truncate_message("hello", 20), "hello");
+}
+
+#[test]
+fn test_truncate_message_exact_length_unchanged() {
+    use p2p_app::tui_helpers::truncate_message;
+    assert_eq!(truncate_message("hello", 5), "hello");
+}
+
+#[test]
+fn test_truncate_message_long_gets_ellipsis() {
+    use p2p_app::tui_helpers::truncate_message;
+    let result = truncate_message("hello world this is a long message", 10);
+    assert!(result.ends_with("..."));
+    assert!(result.len() <= 10);
+}
+
+// ── message_line_count ────────────────────────────────────────────────────────
+
+#[test]
+fn test_message_line_count_zero_width_returns_one() {
+    use p2p_app::tui_helpers::message_line_count;
+    assert_eq!(message_line_count("hello", 0), 1);
+}
+
+#[test]
+fn test_message_line_count_empty_string() {
+    use p2p_app::tui_helpers::message_line_count;
+    // Empty string has no lines(), returns max(0,1) = 1
+    assert_eq!(message_line_count("", 80), 1);
+}
+
+#[test]
+fn test_message_line_count_single_short_line() {
+    use p2p_app::tui_helpers::message_line_count;
+    assert_eq!(message_line_count("hello", 80), 1);
+}
+
+#[test]
+fn test_message_line_count_wraps_long_line() {
+    use p2p_app::tui_helpers::message_line_count;
+    // 100 chars in a 40-wide terminal → ceil(100/40) = 3 lines
+    let msg = "a".repeat(100);
+    assert_eq!(message_line_count(&msg, 40), 3);
+}
+
+#[test]
+fn test_message_line_count_multiline_with_empty_line() {
+    use p2p_app::tui_helpers::message_line_count;
+    // "hello\n\nworld" → 3 lines (hello=1, empty=1, world=1)
+    assert_eq!(message_line_count("hello\n\nworld", 80), 3);
+}
+
+// ── format_peer_list_item ─────────────────────────────────────────────────────
+
+#[test]
+fn test_format_peer_list_item_with_nickname() {
+    use p2p_app::tui_helpers::format_peer_list_item;
+    let result = format_peer_list_item("12D3KooWABCDEFGH", Some("Alice"), "2024-01-01");
+    assert!(result.contains("Alice"));
+    assert!(result.contains("ABCDEFGH"));
+    assert!(result.contains("2024-01-01"));
+}
+
+#[test]
+fn test_format_peer_list_item_no_nickname() {
+    use p2p_app::tui_helpers::format_peer_list_item;
+    let result = format_peer_list_item("12D3KooWABCDEFGH", None, "2024-01-01");
+    assert!(result.contains("ABCDEFGH"));
+    assert!(result.contains("2024-01-01"));
+    assert!(!result.contains("Alice"));
+}
+
+// ── is_at_bottom ─────────────────────────────────────────────────────────────
+
+#[test]
+fn test_is_at_bottom_when_at_end() {
+    use p2p_app::tui_helpers::is_at_bottom;
+    assert!(is_at_bottom(90, 100, 10)); // 90 >= 100-10=90
+}
+
+#[test]
+fn test_is_at_bottom_when_not_at_end() {
+    use p2p_app::tui_helpers::is_at_bottom;
+    assert!(!is_at_bottom(50, 100, 10)); // 50 < 90
+}
+
+#[test]
+fn test_is_at_bottom_empty_list() {
+    use p2p_app::tui_helpers::is_at_bottom;
+    assert!(is_at_bottom(0, 0, 10)); // 0 >= 0.saturating_sub(10)=0
+}
+
+// ── parse_command edge cases ──────────────────────────────────────────────────
+
+#[test]
+fn test_parse_command_with_arg() {
+    use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
+    let parsed = parse_command("/nick alice");
+    assert_eq!(get_command_name(&parsed), Some("nick"));
+    assert_eq!(get_command_arg(&parsed), Some("alice"));
+}
+
+#[test]
+fn test_parse_command_no_arg() {
+    use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
+    let parsed = parse_command("/quit");
+    assert_eq!(get_command_name(&parsed), Some("quit"));
+    assert!(get_command_arg(&parsed).is_none());
+}
+
+#[test]
+fn test_parse_command_not_a_command() {
+    use p2p_app::tui_helpers::{parse_command, get_command_name};
+    let parsed = parse_command("hello world");
+    assert!(get_command_name(&parsed).is_none());
+}
+
+#[test]
+fn test_parse_command_empty_arg() {
+    use p2p_app::tui_helpers::{parse_command, get_command_arg};
+    let parsed = parse_command("/nick ");
+    // trailing space — arg is empty or None
+    let arg = get_command_arg(&parsed);
+    assert!(arg.map_or(true, |a| a.is_empty()), "got: {:?}", arg);
+}
+
+// ── scroll calc helpers ───────────────────────────────────────────────────────
+
+#[test]
+fn test_calc_max_scroll_fewer_items_than_visible() {
+    use p2p_app::tui_helpers::calc_max_scroll;
+    assert_eq!(calc_max_scroll(5, 10), 0);
+}
+
+#[test]
+fn test_calc_max_scroll_more_items_than_visible() {
+    use p2p_app::tui_helpers::calc_max_scroll;
+    assert_eq!(calc_max_scroll(100, 20), 80);
+}
+
+#[test]
+fn test_calculate_visible_range_normal() {
+    use p2p_app::tui_helpers::calculate_visible_range;
+    let (start, end) = calculate_visible_range(100, 10, 20);
+    assert_eq!(start, 10);
+    assert_eq!(end, 30);
+}
+
+#[test]
+fn test_calculate_visible_range_near_end() {
+    use p2p_app::tui_helpers::calculate_visible_range;
+    let (start, end) = calculate_visible_range(100, 90, 20);
+    assert_eq!(start, 90);
+    assert_eq!(end, 100); // clamped
+}
+
+#[test]
+fn test_calculate_visible_range_empty() {
+    use p2p_app::tui_helpers::calculate_visible_range;
+    let (start, end) = calculate_visible_range(0, 0, 20);
+    assert_eq!(start, 0);
+    assert_eq!(end, 0);
+}
