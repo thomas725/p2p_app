@@ -1,9 +1,9 @@
 //! Tests for messages.rs module
 
 use p2p_app::messages::MessageMeta;
+use serial_test::serial;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
-use serial_test::serial;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

@@ -6,6 +6,9 @@ pub fn row_to_visible_index(
     first_content_row: usize,
     click_row: usize,
 ) -> Option<usize> {
+    if click_row < first_content_row {
+        return None;
+    }
     let mut current_row = first_content_row;
 
     for (idx, line_count) in line_counts.iter().copied().enumerate() {

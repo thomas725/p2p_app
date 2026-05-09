@@ -596,7 +596,7 @@ fn test_is_at_bottom_empty_list() {
 
 #[test]
 fn test_parse_command_with_arg() {
-    use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
+    use p2p_app::tui_helpers::{get_command_arg, get_command_name, parse_command};
     // parse_command returns the raw tuple
     let parsed = parse_command("/nick alice");
     assert_eq!(parsed, Some(("/nick", "alice")));
@@ -607,7 +607,7 @@ fn test_parse_command_with_arg() {
 
 #[test]
 fn test_parse_command_no_arg() {
-    use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
+    use p2p_app::tui_helpers::{get_command_arg, get_command_name, parse_command};
     let parsed = parse_command("/quit");
     assert_eq!(parsed, Some(("/quit", "")));
     assert_eq!(get_command_name("/quit"), Some("/quit"));
@@ -616,7 +616,7 @@ fn test_parse_command_no_arg() {
 
 #[test]
 fn test_parse_command_not_a_command() {
-    use p2p_app::tui_helpers::{parse_command, get_command_name};
+    use p2p_app::tui_helpers::{get_command_name, parse_command};
     assert!(parse_command("hello world").is_none());
     assert!(get_command_name("hello world").is_none());
 }

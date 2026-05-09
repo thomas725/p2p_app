@@ -217,7 +217,10 @@ fn test_dynamic_tabs_tab_index_to_content() {
     tabs.add_dm_tab("peer-c".to_string());
     assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
     assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
-    assert_eq!(tabs.tab_index_to_content(2), TabContent::Direct("peer-c".to_string()));
+    assert_eq!(
+        tabs.tab_index_to_content(2),
+        TabContent::Direct("peer-c".to_string())
+    );
     assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
     assert_eq!(tabs.tab_index_to_content(99), TabContent::Chat); // out of range
 }
@@ -227,7 +230,10 @@ fn test_dynamic_tabs_tab_index_to_content() {
 #[test]
 fn test_tab_content_peer_id() {
     use p2p_app::tui_tabs::TabContent;
-    assert_eq!(TabContent::Direct("peer-x".to_string()).peer_id(), Some("peer-x"));
+    assert_eq!(
+        TabContent::Direct("peer-x".to_string()).peer_id(),
+        Some("peer-x")
+    );
     assert!(TabContent::Chat.peer_id().is_none());
     assert!(TabContent::Peers.peer_id().is_none());
     assert!(TabContent::Log.peer_id().is_none());

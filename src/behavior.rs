@@ -3,6 +3,7 @@
 //! P2P network behavior and protocol definitions
 
 use crate::network::NetworkSize;
+use crate::p2plog_debug;
 use libp2p::gossipsub;
 use libp2p::request_response;
 use libp2p::swarm::NetworkBehaviour;
@@ -71,6 +72,10 @@ pub struct AppBehaviour {
 /// * `key` - libp2p identity keypair
 /// * `network_size` - Network size enum for tuning behavior parameters
 pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
+    p2plog_debug(format!(
+        "Building behavior for network size: {:?}",
+        network_size
+    ));
     // Configure Gossipsub based on network size
     let gossipsub_config = match network_size {
         NetworkSize::Small => {
@@ -109,7 +114,9 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         gossipsub::MessageAuthenticity::Signed(key.clone()),
         gossipsub_config,
     )
-    .expect("valid gossipsub");
+    .unwrap_or_else(|e| {
+        panic!("Failed to create gossipsub behavior: {}", e);
+    });
 
     let request_response = request_response::Behaviour::new(
         [(

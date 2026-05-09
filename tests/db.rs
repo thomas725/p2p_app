@@ -16,9 +16,9 @@ fn test_release_db_lock() {
     p2p_app::db::release_db_lock();
 }
 
+use serial_test::serial;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
-use serial_test::serial;
 
 fn test_db_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();

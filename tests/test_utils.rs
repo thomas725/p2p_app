@@ -28,13 +28,19 @@ impl TestDb {
     #[allow(dead_code)]
     /// Path to the SQLite file for this test.
     pub fn path(&self) -> String {
-        self._dir.path().join("test.db").to_str().unwrap().to_string()
+        self._dir
+            .path()
+            .join("test.db")
+            .to_str()
+            .unwrap()
+            .to_string()
     }
 }
 
 impl Drop for TestDb {
     fn drop(&mut self) {
         p2p_app::db::release_db_lock();
+        p2p_app::db::reset_db_url_cache();
         unsafe { std::env::remove_var("DATABASE_URL") };
     }
 }
@@ -46,5 +52,8 @@ pub fn setup_test_db() -> TestDb {
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
     p2p_app::db::init_database().unwrap();
-    TestDb { _dir: dir, _guard: guard }
+    TestDb {
+        _dir: dir,
+        _guard: guard,
+    }
 }

@@ -1,8 +1,8 @@
 //! Tests for nickname.rs module
 
+use serial_test::serial;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
-use serial_test::serial;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

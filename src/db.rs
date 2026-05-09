@@ -32,6 +32,14 @@ fn db_url_cache() -> &'static Mutex<Option<String>> {
     DB_URL.get_or_init(|| Mutex::new(None))
 }
 
+/// Reset the cached database URL. Useful for tests that need to switch databases.
+#[allow(dead_code)]
+pub fn reset_db_url_cache() {
+    if let Ok(mut cached) = db_url_cache().lock() {
+        *cached = None;
+    }
+}
+
 /// Establish a connection to the SQLite database and run pending migrations.
 ///
 /// If DATABASE_URL is set, uses that file directly.
@@ -68,11 +76,12 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
 
-    // Ensure columns that may be missing from older schemas
-    ensure_columns(&mut conn);
-
+    // Run migrations first to create tables
     conn.run_pending_migrations(MIGRATIONS)
         .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
+
+    // Then ensure columns that may be missing from older schemas
+    ensure_columns(&mut conn);
     Ok(conn)
 }
 
@@ -106,7 +115,7 @@ pub fn init_database() -> color_eyre::Result<SqliteConnection> {
 
 /// Ensures all columns exist in the database schema.
 /// This is needed because SQLite doesn't support "ADD COLUMN IF NOT EXISTS".
-/// We check each table/column pair and add missing ones before migrations run.
+/// We check each table/column pair and add missing ones.
 ///
 /// This handles legacy databases created before certain columns were added.
 fn ensure_columns(conn: &mut SqliteConnection) {
@@ -120,10 +129,11 @@ fn ensure_columns(conn: &mut SqliteConnection) {
                 crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
             }
             Err(e) => {
-                // SQLite has no "ADD COLUMN IF NOT EXISTS". The common/expected failure mode
-                // is "duplicate column name: <col>" for already-existing columns; don't spam logs.
+                // SQLite has no "ADD COLUMN IF NOT EXISTS". The common/expected failure modes
+                // are "duplicate column name" (already exists) or "no such table" (fresh DB).
+                // Don't spam logs for expected cases.
                 let msg = e.to_string();
-                if msg.contains("duplicate column name") {
+                if msg.contains("duplicate column name") || msg.contains("no such table") {
                     continue;
                 }
                 crate::logging::p2plog_debug(format!(
@@ -297,19 +307,23 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 pub fn get_database_url() -> String {
     dotenv().ok();
 
+    // Always check the environment variable first - it may have changed (e.g., tests)
     if let Ok(url) = env::var("DATABASE_URL") {
+        // Only update cache if we have a new value
         if let Ok(mut cached) = db_url_cache().lock() {
             *cached = Some(url.clone());
         }
         return url;
     }
 
+    // No DATABASE_URL env - check if we have a cached value from an earlier call
     if let Ok(cached) = db_url_cache().lock()
         && let Some(url) = cached.clone()
     {
         return url;
     }
 
+    // No env var and no cache - determine a new path (first-time startup)
     let url = determine_db_path().unwrap_or_else(|_| "sqlite.db".to_owned());
     if let Ok(mut cached) = db_url_cache().lock() {
         *cached = Some(url.clone());

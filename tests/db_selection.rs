@@ -1,11 +1,11 @@
 //! Tests for database selection logic
 
+use serial_test::serial;
 use std::fs;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
-use serial_test::serial;
 
 fn safe_remove_env(key: &str) {
     unsafe { std::env::remove_var(key) }

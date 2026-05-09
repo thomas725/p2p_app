@@ -212,7 +212,9 @@ fn test_get_network_size_small_when_empty() {
 #[test]
 fn test_get_network_size_medium() {
     let _db = setup_test_db();
-    for _ in 0..5 { p2p_app::save_peer_session(8).unwrap(); }
+    for _ in 0..5 {
+        p2p_app::save_peer_session(8).unwrap();
+    }
     let size = p2p_app::get_network_size().unwrap();
     assert_eq!(size, p2p_app::network::NetworkSize::Medium);
 }
@@ -221,7 +223,9 @@ fn test_get_network_size_medium() {
 #[test]
 fn test_get_network_size_large() {
     let _db = setup_test_db();
-    for _ in 0..5 { p2p_app::save_peer_session(20).unwrap(); }
+    for _ in 0..5 {
+        p2p_app::save_peer_session(20).unwrap();
+    }
     let size = p2p_app::get_network_size().unwrap();
     assert_eq!(size, p2p_app::network::NetworkSize::Large);
 }
