@@ -132,8 +132,6 @@ fn test_strip_ansi_codes_preserves_all_non_escape_chars() {
 // ── TuiTracingLayer coverage via tracing macros ────────────────────────────
 // These tests fire real tracing events to exercise on_event() and FormatVisitor.
 
-use serial_test::serial as _serial; // already imported above, just note it
-
 #[serial]
 #[test]
 fn test_tracing_info_captured_in_logs() {

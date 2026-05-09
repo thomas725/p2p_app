@@ -555,9 +555,10 @@ fn test_message_line_count_multiline_with_empty_line() {
 #[test]
 fn test_format_peer_list_item_with_nickname() {
     use p2p_app::tui_helpers::format_peer_list_item;
+    // function uses first 8 chars of peer_id
     let result = format_peer_list_item("12D3KooWABCDEFGH", Some("Alice"), "2024-01-01");
     assert!(result.contains("Alice"));
-    assert!(result.contains("ABCDEFGH"));
+    assert!(result.contains("12D3KooW")); // first 8 chars
     assert!(result.contains("2024-01-01"));
 }
 
@@ -565,7 +566,7 @@ fn test_format_peer_list_item_with_nickname() {
 fn test_format_peer_list_item_no_nickname() {
     use p2p_app::tui_helpers::format_peer_list_item;
     let result = format_peer_list_item("12D3KooWABCDEFGH", None, "2024-01-01");
-    assert!(result.contains("ABCDEFGH"));
+    assert!(result.contains("12D3KooW")); // first 8 chars
     assert!(result.contains("2024-01-01"));
     assert!(!result.contains("Alice"));
 }
