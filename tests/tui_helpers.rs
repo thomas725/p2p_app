@@ -591,37 +591,40 @@ fn test_is_at_bottom_empty_list() {
 }
 
 // ── parse_command edge cases ──────────────────────────────────────────────────
+// parse_command returns Option<(&str,&str)>; get_command_name/arg take &str directly
 
 #[test]
 fn test_parse_command_with_arg() {
     use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
+    // parse_command returns the raw tuple
     let parsed = parse_command("/nick alice");
-    assert_eq!(get_command_name(&parsed), Some("nick"));
-    assert_eq!(get_command_arg(&parsed), Some("alice"));
+    assert_eq!(parsed, Some(("/nick", "alice")));
+    // get_command_name/arg accept the original &str input
+    assert_eq!(get_command_name("/nick alice"), Some("/nick"));
+    assert_eq!(get_command_arg("/nick alice"), Some("alice"));
 }
 
 #[test]
 fn test_parse_command_no_arg() {
     use p2p_app::tui_helpers::{parse_command, get_command_name, get_command_arg};
     let parsed = parse_command("/quit");
-    assert_eq!(get_command_name(&parsed), Some("quit"));
-    assert!(get_command_arg(&parsed).is_none());
+    assert_eq!(parsed, Some(("/quit", "")));
+    assert_eq!(get_command_name("/quit"), Some("/quit"));
+    assert!(get_command_arg("/quit").is_none());
 }
 
 #[test]
 fn test_parse_command_not_a_command() {
     use p2p_app::tui_helpers::{parse_command, get_command_name};
-    let parsed = parse_command("hello world");
-    assert!(get_command_name(&parsed).is_none());
+    assert!(parse_command("hello world").is_none());
+    assert!(get_command_name("hello world").is_none());
 }
 
 #[test]
-fn test_parse_command_empty_arg() {
-    use p2p_app::tui_helpers::{parse_command, get_command_arg};
-    let parsed = parse_command("/nick ");
-    // trailing space — arg is empty or None
-    let arg = get_command_arg(&parsed);
-    assert!(arg.map_or(true, |a| a.is_empty()), "got: {:?}", arg);
+fn test_parse_command_empty_arg_stripped() {
+    use p2p_app::tui_helpers::get_command_arg;
+    // trailing space — get_command_arg returns None for empty arg
+    assert!(get_command_arg("/nick ").is_none());
 }
 
 // ── scroll calc helpers ───────────────────────────────────────────────────────
