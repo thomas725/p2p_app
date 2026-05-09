@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 Generate codebase metrics table by analyzing all Rust source files.
-Counts lines, characters, and determines maximum nesting depth for each file.
+Counts lines, characters, determines maximum nesting depth, and estimates test coverage.
 """
 
 import os
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 def count_lines(filepath: str) -> int:
     """Count the number of lines in a file."""
@@ -63,6 +63,63 @@ def calculate_max_nesting(filepath: str) -> int:
 
     return max_nesting
 
+def count_inline_test_lines(filepath: str) -> int:
+    """Count lines in #[cfg(test)] modules within a source file."""
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+        
+        # Find all #[cfg(test)] blocks and count their content
+        test_lines = 0
+        in_test_module = False
+        brace_count = 0
+        
+        for line in content.split('\n'):
+            if '#[cfg(test)]' in line:
+                in_test_module = True
+                brace_count = 0
+                continue
+            
+            if in_test_module:
+                test_lines += 1
+                brace_count += line.count('{') - line.count('}')
+                if brace_count < 0:
+                    in_test_module = False
+                    brace_count = 0
+        
+        return test_lines
+    except Exception:
+        return 0
+
+def find_test_coverage(source_filepath: str, source_lines: int) -> Optional[float]:
+    """
+    Find test coverage for a source file by looking for:
+    1. Matching test file in tests/ directory
+    2. Inline tests in the source file itself
+    Returns coverage as a percentage, or None if no tests found.
+    """
+    path = Path(source_filepath)
+    base_name = path.stem  # e.g., "fmt" from "fmt.rs"
+    test_lines = 0
+    
+    # Check for matching test file in tests/ directory
+    test_file_patterns = [
+        f"tests/{base_name}.rs",
+    ]
+    
+    for pattern in test_file_patterns:
+        test_path = Path(pattern)
+        if test_path.exists():
+            test_lines += count_lines(str(test_path))
+    
+    # Check for inline tests in source file
+    test_lines += count_inline_test_lines(source_filepath)
+    
+    if test_lines > 0 and source_lines > 0:
+        return (test_lines / source_lines) * 100
+    
+    return None
+
 def get_file_purpose(filepath: str) -> str:
     """Get a brief description of file purpose from first doc comment or context."""
     if 'render_loop/mod.rs' in filepath:
@@ -111,6 +168,17 @@ def get_file_purpose(filepath: str) -> str:
     }
     return purposes.get(Path(filepath).name, 'Source file')
 
+def get_test_coverage_str(coverage: Optional[float]) -> str:
+    """Format test coverage as a string."""
+    if coverage is None:
+        return "   - "
+    elif coverage >= 100:
+        return "100%"
+    elif coverage >= 10:
+        return f"{coverage:>4.0f}%"
+    else:
+        return f"{coverage:>4.1f}%"
+
 def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     """Convert filepath to display folder and filename."""
     path = Path(filepath)
@@ -130,7 +198,7 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     else:
         return (str(path.parent), path.name)
 
-def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
+def collect_files() -> List[Tuple[str, str, str, int, int, int, str, Optional[float]]]:
     """Collect all Rust files with their metrics (excluding tests)."""
     files_data = []
 
@@ -139,9 +207,10 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
         lines = count_lines(filepath)
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
+        coverage = find_test_coverage(filepath, lines)
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose))
+        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, coverage))
 
     for rs_file in sorted(Path('src').glob('**/*.rs')):
         filepath = str(rs_file)
@@ -152,10 +221,11 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
         lines = count_lines(filepath)
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
+        coverage = find_test_coverage(filepath, lines)
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
 
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose))
+        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, coverage))
 
     files_data.sort(key=lambda x: (x[0], x[1]))
     return files_data
@@ -163,14 +233,16 @@ def collect_files() -> List[Tuple[str, str, str, int, int, int, str]]:
 def generate_markdown_table(files_data: List[Tuple]) -> str:
     """Generate markdown table from file data."""
     output = []
-    output.append('| Folder                  | File                 | Lines | Chars | Depth | Purpose                             |')
-    output.append('|:------------------------|:---------------------|------:|------:|------:|------------------------------------:|')
+    output.append('| Folder                  | File                 | Lines | Chars | Depth | Cover | Purpose                             |')
+    output.append('|:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|')
 
-    for folder, filename, _, lines, chars, nesting, purpose in files_data:
+    for folder, filename, _, lines, chars, nesting, purpose, coverage in files_data:
         if len(purpose) > 35:
             purpose = purpose[:32] + '...'
+        
+        coverage_str = get_test_coverage_str(coverage)
 
-        output.append(f'| {folder:<23} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<35} |')
+        output.append(f'| {folder:<23} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {coverage_str} | {purpose:<35} |')
 
     return '\n'.join(output)
 
