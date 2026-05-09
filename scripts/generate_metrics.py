@@ -212,7 +212,7 @@ def get_test_file_purpose(filepath: str) -> str:
     }
     return purposes.get(Path(filepath).name, 'Test file')
 
-def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
+def collect_test_files() -> List[Tuple[str, str, int, int, int, str]]:
     """Collect all test files with their metrics."""
     test_files = []
     
@@ -224,6 +224,7 @@ def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
             
             lines = count_lines(filepath)
             chars = count_characters(filepath)
+            nesting = calculate_max_nesting(filepath)
             
             folder = str(test_file.parent)
             if folder == '.':
@@ -232,7 +233,7 @@ def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
                 folder = folder[6:]  # Remove 'tests/' prefix
             
             purpose = get_test_file_purpose(filepath)
-            test_files.append((folder, test_file.name, lines, chars, purpose))
+            test_files.append((folder, test_file.name, lines, chars, nesting, purpose))
     
     # Remove duplicates (since glob matches twice)
     seen = set()
@@ -249,15 +250,15 @@ def collect_test_files() -> List[Tuple[str, str, int, int, str]]:
 def generate_test_files_table(test_files: List[Tuple]) -> str:
     """Generate markdown table for test files."""
     output = []
-    output.append('| Folder | File                      | Lines | Chars | Description                   |')
-    output.append('|:-------|:--------------------------|------:|------:|------------------------------:|')
+    output.append('| Folder | File                      | Lines | Chars | Depth | Description                   |')
+    output.append('|:-------|:--------------------------|------:|------:|------:|------------------------------:|')
     
-    for folder, filename, lines, chars, purpose in test_files:
-        if len(purpose) > 36:
-            purpose = purpose[:33] + '...'
+    for folder, filename, lines, chars, nesting, purpose in test_files:
+        if len(purpose) > 29:
+            purpose = purpose[:26] + '...'
         
         folder_display = folder if folder else 'tests'
-        output.append(f'| {folder_display:<6} | {filename:<25} | {lines:>5} | {chars:>5} | {purpose:<29} |')
+        output.append(f'| {folder_display:<6} | {filename:<25} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<29} |')
     
     return '\n'.join(output)
 

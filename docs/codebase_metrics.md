@@ -60,30 +60,30 @@
 
 ## Test Files
 
-| Folder | File                      | Lines | Chars | Description                   |
-|:-------|:--------------------------|------:|------:|------------------------------:|
-| models | insertable_tests.rs       |    77 |  2371 | Diesel insertable model tests |
-| models | queryable_tests.rs        |   156 |  4797 | Diesel queryable model tests  |
-| tests  | additional_coverage.rs    |   119 |  3866 | Additional coverage tests     |
-| tests  | behavior.rs               |   127 |  3613 | behavior module tests         |
-| tests  | db.rs                     |   111 |  3274 | database module tests         |
-| tests  | db_selection.rs           |    59 |  1721 | Database selection tests      |
-| tests  | fmt.rs                    |   141 |  3755 | fmt module tests              |
-| tests  | logging.rs                |   258 |  7421 | logging module tests          |
-| tests  | messages.rs               |   366 | 11326 | messages module tests         |
-| tests  | network.rs                |    46 |  1419 | network module tests          |
-| tests  | nickname.rs               |   298 |  9827 | nickname module tests         |
-| tests  | p2p_integration.rs        |  1014 | 36315 | P2P integration tests         |
-| tests  | peers.rs                  |   231 |  6768 | peers module tests            |
-| tests  | test_utils.rs             |    59 |  1855 | Test utilities                |
-| tests  | tui_binary_integration.rs |   284 |  8853 | TUI binary integration tests  |
-| tests  | tui_chat.rs               |   672 | 21332 | TUI chat functionality tests  |
-| tests  | tui_events.rs             |   182 |  5613 | TUI events tests              |
-| tests  | tui_helpers.rs            |   667 | 19923 | TUI helpers tests             |
-| tests  | tui_integration.rs        |   443 | 14004 | TUI integration tests         |
-| tests  | tui_render_integration.rs |   265 |  8257 | TUI render integration tests  |
-| tests  | tui_state.rs              |   249 |  7557 | TUI state tests               |
-| tests  | tui_tasks.rs              |   234 |  7567 | TUI task tests                |
-| tests  | types.rs                  |   104 |  3099 | types module tests            |
+| Folder | File                      | Lines | Chars | Depth | Description                   |
+|:-------|:--------------------------|------:|------:|------:|------------------------------:|
+| models | insertable_tests.rs       |    77 |  2371 |     3 | Diesel insertable model tests |
+| models | queryable_tests.rs        |   156 |  4797 |     3 | Diesel queryable model tests  |
+| tests  | additional_coverage.rs    |   119 |  3866 |     2 | Additional coverage tests     |
+| tests  | behavior.rs               |   127 |  3613 |     4 | behavior module tests         |
+| tests  | db.rs                     |   111 |  3274 |     2 | database module tests         |
+| tests  | db_selection.rs           |    59 |  1721 |     3 | Database selection tests      |
+| tests  | fmt.rs                    |   141 |  3755 |     2 | fmt module tests              |
+| tests  | logging.rs                |   258 |  7421 |     3 | logging module tests          |
+| tests  | messages.rs               |   366 | 11326 |     2 | messages module tests         |
+| tests  | network.rs                |    46 |  1419 |     1 | network module tests          |
+| tests  | nickname.rs               |   298 |  9827 |     3 | nickname module tests         |
+| tests  | p2p_integration.rs        |  1014 | 36315 |    10 | P2P integration tests         |
+| tests  | peers.rs                  |   231 |  6768 |     2 | peers module tests            |
+| tests  | test_utils.rs             |    59 |  1855 |     3 | Test utilities                |
+| tests  | tui_binary_integration.rs |   284 |  8853 |     3 | TUI binary integration tests  |
+| tests  | tui_chat.rs               |   672 | 21332 |     4 | TUI chat functionality tests  |
+| tests  | tui_events.rs             |   182 |  5613 |     4 | TUI events tests              |
+| tests  | tui_helpers.rs            |   667 | 19923 |     3 | TUI helpers tests             |
+| tests  | tui_integration.rs        |   443 | 14004 |     4 | TUI integration tests         |
+| tests  | tui_render_integration.rs |   265 |  8257 |     5 | TUI render integration tests  |
+| tests  | tui_state.rs              |   249 |  7557 |     2 | TUI state tests               |
+| tests  | tui_tasks.rs              |   234 |  7567 |     7 | TUI task tests                |
+| tests  | types.rs                  |   104 |  3099 |     2 | types module tests            |
 
 **Total:** 23 test files, 6,162 lines, 194,533 characters
