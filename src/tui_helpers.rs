@@ -121,17 +121,6 @@ pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
     lines.max(1)
 }
 
-/// Get short peer ID (last 8 chars)
-pub fn short_peer_id(id: &str) -> String {
-    id.chars()
-        .rev()
-        .take(8)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect()
-}
-
 /// Parse latency string to milliseconds
 pub fn parse_latency(latency: &str) -> Option<f64> {
     if latency == "<1ms" {

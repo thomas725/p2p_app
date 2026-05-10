@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,996 |
-| Total Characters        | 268,104 |
+| Total Lines of Code     |   8,020 |
+| Total Characters        | 267,928 |
 | Average Lines per File  |     195 |
-| Average Characters/File |   6,539 |
+| Average Characters/File |   6,534 |
 
 ## All Source Files
 
@@ -27,7 +27,7 @@
 | src                     | peers.rs             |   179 |  6113 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   418 | 14278 |     7 |   37% | Network event translation           |
 | src                     | tui_events.rs        |   154 |  4916 |     3 |  100% | Event/command types & channels      |
-| src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | TUI helper functions & utilities    |
+| src                     | tui_helpers.rs       |   282 |  8452 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |   284 |  8383 |     4 |   44% | TUI render state & tab content      |
 | src                     | tui_tabs.rs          |   340 |  9689 |     5 |   41% | Tab management & navigation         |
@@ -50,13 +50,13 @@
 | src/bin/tui/render_loop | mod.rs               |   120 |  4010 |     5 |    -  | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   371 | 12155 |     6 |    -  | Tab-specific renderers              |
 | src/bin/tui/render_loop | visibility.rs        |   209 |  5676 |     4 |   98% | Message visibility calculations     |
-| src/generated           | columns.rs           |    42 |  1653 |     1 |    -  | Auto-generated column definitions   |
+| src/generated           | columns.rs           |    77 |  1687 |     1 |    -  | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 |    -  | Module declarations                 |
 | src/generated           | models_insertable.rs |   102 |  3689 |     1 |    -  | Insertable data models              |
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,996 lines, 268,104 characters
+**Total:** 41 files, 8,020 lines, 267,928 characters
 
 ## Test Files
 
