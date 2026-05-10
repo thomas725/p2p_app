@@ -65,14 +65,7 @@ impl DmTab {
     /// Get last 8 characters of peer ID for display
     #[must_use]
     pub fn short_id(&self) -> String {
-        self.peer_id
-            .chars()
-            .rev()
-            .take(8)
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect()
+        crate::fmt::short_peer_id(&self.peer_id)
     }
 }
 

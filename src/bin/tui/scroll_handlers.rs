@@ -2,6 +2,7 @@ use super::constants::WHEEL_SCROLL_LINES;
 use super::state::AppState;
 use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
+use p2p_app::tui_helpers::key_code_to_scroll_action;
 
 /// Handles tab navigation (Tab and BackTab keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
@@ -35,14 +36,8 @@ fn handle_scroll_key_for_section(
     auto_scroll: &mut bool,
     max_offset: usize,
 ) {
-    let action = match key_code {
-        crossterm::event::KeyCode::Up => "Up",
-        crossterm::event::KeyCode::Down => "Down",
-        crossterm::event::KeyCode::PageUp => "PageUp",
-        crossterm::event::KeyCode::PageDown => "PageDown",
-        crossterm::event::KeyCode::Home => "Home",
-        crossterm::event::KeyCode::End => "End",
-        _ => return,
+    let Some(action) = key_code_to_scroll_action(key_code) else {
+        return;
     };
     let (new_offset, new_auto) = p2p_app::tui_helpers::handle_scroll_key_for_section(
         action,
@@ -103,23 +98,12 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         .messages
         .len()
         .saturating_sub(state.visible_message_count);
-    let action = match key_code {
-        crossterm::event::KeyCode::Up => "Up",
-        crossterm::event::KeyCode::Down => "Down",
-        crossterm::event::KeyCode::PageUp => "PageUp",
-        crossterm::event::KeyCode::PageDown => "PageDown",
-        crossterm::event::KeyCode::Home => "Home",
-        crossterm::event::KeyCode::End => "End",
-        _ => return,
-    };
-    let (new_offset, new_auto) = p2p_app::tui_helpers::handle_scroll_key_for_section(
-        action,
-        state.chat_scroll_offset,
-        state.chat_auto_scroll,
+    handle_scroll_key_for_section(
+        key_code,
+        &mut state.chat_scroll_offset,
+        &mut state.chat_auto_scroll,
         max_offset,
     );
-    state.chat_scroll_offset = new_offset;
-    state.chat_auto_scroll = new_auto;
 }
 
 /// Handle scroll key for Log tab

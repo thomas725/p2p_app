@@ -52,10 +52,10 @@ fn test_is_nickname_update() {
 
 #[test]
 fn test_calculate_auto_scroll() {
-    use p2p_app::tui_helpers::calculate_auto_scroll;
+    use p2p_app::tui_helpers::calc_max_scroll;
 
-    assert_eq!(calculate_auto_scroll(100, 20), 80);
-    assert_eq!(calculate_auto_scroll(10, 20), 0);
+    assert_eq!(calc_max_scroll(100, 20), 80);
+    assert_eq!(calc_max_scroll(10, 20), 0);
 }
 
 #[test]

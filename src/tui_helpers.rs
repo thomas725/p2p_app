@@ -48,9 +48,9 @@ pub fn is_nickname_update(content: &str, nickname: Option<&str>) -> bool {
     content.trim().is_empty() && nickname.is_some()
 }
 
-/// Calculate scroll offset for auto-scrolling
-pub fn calculate_auto_scroll(total_messages: usize, visible_count: usize) -> usize {
-    total_messages.saturating_sub(visible_count)
+/// Maximum scroll offset calculation
+pub fn calc_max_scroll(total_items: usize, visible_count: usize) -> usize {
+    crate::fmt::auto_scroll_offset(total_items, visible_count)
 }
 
 /// Calculate first visible message index accounting for scroll
@@ -109,16 +109,7 @@ pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
     if terminal_width == 0 {
         return 1;
     }
-    let mut lines = 0;
-    for line in message.lines() {
-        let line_len = line.len();
-        if line_len == 0 {
-            lines += 1;
-        } else {
-            lines += line_len.div_ceil(terminal_width);
-        }
-    }
-    lines.max(1)
+    crate::count_lines(message, terminal_width)
 }
 
 /// Parse latency string to milliseconds
@@ -196,9 +187,17 @@ pub fn scroll_down_lines(
     }
 }
 
-/// Maximum scroll offset calculation
-pub fn calc_max_scroll(total_items: usize, visible_count: usize) -> usize {
-    total_items.saturating_sub(visible_count)
+/// Convert crossterm KeyCode to scroll action string
+pub fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
+    match key_code {
+        crossterm::event::KeyCode::Up => Some("Up"),
+        crossterm::event::KeyCode::Down => Some("Down"),
+        crossterm::event::KeyCode::PageUp => Some("PageUp"),
+        crossterm::event::KeyCode::PageDown => Some("PageDown"),
+        crossterm::event::KeyCode::Home => Some("Home"),
+        crossterm::event::KeyCode::End => Some("End"),
+        _ => None,
+    }
 }
 
 /// Handle scroll key for a section - returns new (scroll_offset, auto_scroll)
