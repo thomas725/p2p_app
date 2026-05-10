@@ -8,29 +8,53 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 /// Minimum state needed to render a TUI frame
 #[derive(Clone, Debug)]
 pub struct TuiRenderState {
+    /// Names of tabs for display (Chat, Peers, Log, plus DM tabs)
     pub tab_titles: Vec<String>,
+    /// Currently active tab index
     pub active_tab: usize,
+    /// Broadcast messages in chat tab
     pub messages: VecDeque<String>,
+    /// Message IDs for sent messages (None if from other peers)
     pub message_ids: VecDeque<Option<String>>,
+    /// Receipt status for broadcast messages: peer_id -> (msg_id -> timestamp)
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+    /// Known peers: (peer_id, first_seen, last_seen)
     pub peers: Vec<(String, String, String)>,
+    /// Direct messages per peer
     pub dm_messages: BTreeMap<String, VecDeque<String>>,
+    /// Message IDs for DMs per peer
     pub dm_message_ids: BTreeMap<String, VecDeque<Option<String>>>,
+    /// DM receipt status per peer: (source_peer, timestamp)
     pub dm_receipts: HashMap<String, (String, f64)>,
+    /// Current input text in message box
     pub input_text: String,
+    /// Whether we're editing a peer's nickname
     pub editing_nickname: bool,
+    /// Peer ID being edited (if editing_nickname is true)
     pub nickname_peer_id: String,
+    /// Whether connected to the network
     pub connected: bool,
+    /// Number of connected peers
     pub peer_count: usize,
+    /// Whether mouse is captured (for text input)
     pub mouse_capture: bool,
+    /// Optional popup message to display
     pub popup: Option<String>,
+    /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
+    /// Whether chat tab is auto-scrolling to bottom
     pub chat_auto_scroll: bool,
+    /// Scroll offset for log tab
     pub log_scroll_offset: usize,
+    /// Whether log tab is auto-scrolling to bottom
     pub log_auto_scroll: bool,
+    /// Scroll state per DM peer: (offset, auto_scroll)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
+    /// Scroll state for DM+broadcast view per peer
     pub dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)>,
+    /// Index of selected broadcast message (for receipt popup)
     pub broadcast_selection: Option<usize>,
+    /// Index of selected peer in peer list
     pub peer_selection: usize,
 }
 
