@@ -100,7 +100,7 @@ mod tests {
             SwarmCommand::Publish {
                 content,
                 nickname,
-                msg_id,
+                msg_id: _,
             } => {
                 assert_eq!(content, "hello");
                 assert_eq!(nickname, Some("Alice".to_string()));

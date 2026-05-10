@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   8,207 |
-| Total Characters        | 275,306 |
-| Average Lines per File  |     200 |
-| Average Characters/File |   6,714 |
+| Total Lines of Code     |   8,190 |
+| Total Characters        | 274,776 |
+| Average Lines per File  |     199 |
+| Average Characters/File |   6,701 |
 
 ## All Source Files
 
@@ -30,9 +30,9 @@
 | src                     | tui_helpers.rs       |   293 |  8662 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   195 |  6221 |     4 |    -  | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |   284 |  8383 |     4 |   44% | TUI render state & tab content      |
-| src                     | tui_tabs.rs          |   357 | 10222 |     5 |   44% | Tab management & navigation         |
+| src                     | tui_tabs.rs          |   340 |  9689 |     5 |   41% | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
-| src                     | types.rs             |   246 |  7423 |     4 |  100% | Event & command type defs           |
+| src                     | types.rs             |   246 |  7426 |     4 |  100% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   205 |  7073 |     8 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5237 |     4 |    -  | Main TUI application entry point    |
@@ -56,7 +56,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 8,207 lines, 275,306 characters
+**Total:** 41 files, 8,190 lines, 274,776 characters
 
 ## Test Files
 

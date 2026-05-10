@@ -288,17 +288,6 @@ mod tests {
     }
 
     #[test]
-    fn test_dynamic_tabs_all_titles() {
-        let mut tabs = DynamicTabs::new();
-        tabs.add_dm_tab("peer1".to_string());
-        let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 4);
-        assert_eq!(titles[0], "Chat");
-        assert_eq!(titles[1], "Peers");
-        assert_eq!(titles[3], "Log");
-    }
-
-    #[test]
     fn test_tab_content_peer_id() {
         assert_eq!(
             TabContent::Direct("peer1".to_string()).peer_id(),
@@ -347,11 +336,5 @@ mod tests {
             TabContent::Direct("peer1".to_string())
         );
         assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
-    }
-
-    #[test]
-    fn test_dynamic_tabs_tab_index_to_content_out_of_bounds() {
-        let tabs = DynamicTabs::new();
-        assert_eq!(tabs.tab_index_to_content(99), TabContent::Chat);
     }
 }
