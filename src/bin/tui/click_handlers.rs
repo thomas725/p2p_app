@@ -3,7 +3,96 @@ use super::presentation::row_to_visible_index;
 use super::state::AppState;
 use p2p_app::p2plog_debug;
 use ratatui_textarea::TextArea;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+
+fn count_nicknames<'a>(
+    peers: impl Iterator<Item = &'a (String, String, String)>,
+    local_nicknames: &HashMap<String, String>,
+    received_nicknames: &HashMap<String, String>,
+) -> HashMap<String, usize> {
+    let mut counts = HashMap::new();
+    for (peer_id, _, _) in peers {
+        if let Some(nick) = local_nicknames
+            .get(peer_id)
+            .or_else(|| received_nicknames.get(peer_id))
+        {
+            *counts.entry(nick.clone()).or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn format_peer_display(
+    peer_id: &str,
+    nick: Option<&String>,
+    nickname_counts: &HashMap<String, usize>,
+    short_peer_id_fn: impl Fn(&str) -> String,
+) -> String {
+    if let Some(n) = nick {
+        if nickname_counts.get(n).copied().unwrap_or(0) == 1 {
+            return n.clone();
+        } else {
+            return format!("{} ({})", n, short_peer_id_fn(peer_id));
+        }
+    }
+    short_peer_id_fn(peer_id)
+}
+
+pub fn format_broadcast_receipt_popup_impl(
+    receipts: &HashMap<String, f64>,
+    peers: &VecDeque<(String, String, String)>,
+    local_nicknames: &HashMap<String, String>,
+    received_nicknames: &HashMap<String, String>,
+    sent_at: Option<f64>,
+) -> Option<String> {
+    if receipts.is_empty() {
+        return Some("No peers have confirmed receipt yet.".to_string());
+    }
+
+    let nickname_counts = count_nicknames(peers.iter(), local_nicknames, received_nicknames);
+    let mut peer_list: Vec<_> = receipts.iter().collect();
+    peer_list.sort_by(|a, b| a.0.cmp(b.0));
+
+    let parts: Vec<String> = peer_list
+        .iter()
+        .map(|(peer, confirmed_at)| {
+            let peer_str = peer.as_str();
+            let nick = local_nicknames
+                .get(peer_str)
+                .or_else(|| received_nicknames.get(peer_str));
+            let peer_display =
+                format_peer_display(peer_str, nick, &nickname_counts, p2p_app::short_peer_id);
+            let ms = sent_at.map(|s| (*confirmed_at - s) * 1000.0);
+            if let Some(ms) = ms {
+                format!("{}={:.0}ms", peer_display, ms.max(0.0))
+            } else {
+                format!("{}=confirmed", peer_display)
+            }
+        })
+        .collect();
+
+    Some(format!("Broadcast receipts:\n{}", parts.join("\n")))
+}
+
+pub fn format_dm_receipt_popup_impl(
+    confirm_peer: &str,
+    confirmed_at: f64,
+    sent_at: Option<f64>,
+) -> String {
+    let ms = sent_at.map(|s| (confirmed_at - s) * 1000.0);
+    if let Some(ms) = ms {
+        format!(
+            "DM receipt:\npeer={}\ntime={:.0}ms",
+            p2p_app::short_peer_id(confirm_peer),
+            ms.max(0.0)
+        )
+    } else {
+        format!(
+            "DM receipt:\npeer={}\nconfirmed",
+            p2p_app::short_peer_id(confirm_peer)
+        )
+    }
+}
 
 fn format_broadcast_receipt_popup(
     state: &AppState,
@@ -11,64 +100,23 @@ fn format_broadcast_receipt_popup(
     sent_at: Option<f64>,
 ) -> Option<String> {
     let map = state.broadcast_receipts.get(msg_id)?;
-    if map.is_empty() {
-        return Some("No peers have confirmed receipt yet.".to_string());
-    }
-
-    let mut nickname_counts: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for peer_id in state.peers.iter().map(|(id, _, _)| id) {
-        if let Some(nick) = state
-            .local_nicknames
-            .get(peer_id)
-            .or_else(|| state.received_nicknames.get(peer_id))
-        {
-            *nickname_counts.entry(nick.clone()).or_insert(0) += 1;
-        }
-    }
-    let mut peers: Vec<_> = map.iter().collect();
-    peers.sort_by(|a, b| a.0.cmp(b.0));
-    let mut parts = Vec::new();
-    for (peer, confirmed_at) in peers {
-        let nick = state
-            .local_nicknames
-            .get(peer)
-            .or_else(|| state.received_nicknames.get(peer));
-        let peer_display = if let Some(n) = nick
-            && nickname_counts.get(n).copied().unwrap_or(0) == 1
-        {
-            n.clone()
-        } else if let Some(n) = nick {
-            format!("{} ({})", n, p2p_app::short_peer_id(peer))
-        } else {
-            p2p_app::short_peer_id(peer).to_string()
-        };
-        let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
-        if let Some(ms) = ms {
-            parts.push(format!("{}={:.0}ms", peer_display, ms));
-        } else {
-            parts.push(format!("{}=confirmed", peer_display));
-        }
-    }
-    Some(format!("Broadcast receipts:\n{}", parts.join("\n")))
+    format_broadcast_receipt_popup_impl(
+        map,
+        &state.peers,
+        &state.local_nicknames,
+        &state.received_nicknames,
+        sent_at,
+    )
 }
 
 fn format_dm_receipt_popup(state: &AppState, msg_id: &str) -> Option<String> {
     let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
     let (confirm_peer, confirmed_at) = state.dm_receipts.get(msg_id)?;
-    let ms = sent_at.map(|s| ((*confirmed_at - s) * 1000.0).max(0.0));
-    if let Some(ms) = ms {
-        Some(format!(
-            "DM receipt:\npeer={}\ntime={:.0}ms",
-            p2p_app::short_peer_id(confirm_peer),
-            ms
-        ))
-    } else {
-        Some(format!(
-            "DM receipt:\npeer={}\nconfirmed",
-            p2p_app::short_peer_id(confirm_peer)
-        ))
-    }
+    Some(format_dm_receipt_popup_impl(
+        confirm_peer,
+        *confirmed_at,
+        sent_at,
+    ))
 }
 
 /// Handles tab bar clicks and close button
@@ -501,5 +549,134 @@ mod tests {
             state.popup.as_deref(),
             Some("DM receipt:\npeer=peer-1\ntime=1500ms")
         );
+    }
+
+    #[test]
+    fn test_count_nicknames() {
+        let peers: VecDeque<_> = VecDeque::from(vec![
+            (
+                "peer1".to_string(),
+                "seen1".to_string(),
+                "last1".to_string(),
+            ),
+            (
+                "peer2".to_string(),
+                "seen2".to_string(),
+                "last2".to_string(),
+            ),
+        ]);
+        let local = HashMap::from([("peer1".to_string(), "Alice".to_string())]);
+        let received = HashMap::from([("peer2".to_string(), "Bob".to_string())]);
+
+        let counts = super::count_nicknames(peers.iter(), &local, &received);
+        assert_eq!(counts.get("Alice"), Some(&1));
+        assert_eq!(counts.get("Bob"), Some(&1));
+    }
+
+    #[test]
+    fn test_count_nicknames_duplicates() {
+        let peers: VecDeque<_> = VecDeque::from(vec![
+            (
+                "peer1".to_string(),
+                "seen1".to_string(),
+                "last1".to_string(),
+            ),
+            (
+                "peer2".to_string(),
+                "seen2".to_string(),
+                "last2".to_string(),
+            ),
+        ]);
+        let local = HashMap::from([
+            ("peer1".to_string(), "Alice".to_string()),
+            ("peer2".to_string(), "Alice".to_string()),
+        ]);
+        let received = HashMap::new();
+
+        let counts = super::count_nicknames(peers.iter(), &local, &received);
+        assert_eq!(counts.get("Alice"), Some(&2));
+    }
+
+    #[test]
+    fn test_format_peer_display_with_nickname_unique() {
+        let counts = HashMap::from([("Alice".to_string(), 1usize)]);
+        let result =
+            super::format_peer_display("peer1", Some(&"Alice".to_string()), &counts, |id| {
+                id.chars().rev().take(8).collect()
+            });
+        assert_eq!(result, "Alice");
+    }
+
+    #[test]
+    fn test_format_peer_display_with_nickname_duplicate() {
+        let counts = HashMap::from([("Alice".to_string(), 2usize)]);
+        let result =
+            super::format_peer_display("peer1", Some(&"Alice".to_string()), &counts, |id| {
+                id.chars().rev().take(8).collect()
+            });
+        assert!(result.contains("Alice"));
+        // The short_peer_id function reverses and takes last 8 chars, so "peer1" -> "1reep"
+        assert!(result.contains("1reep"));
+    }
+
+    #[test]
+    fn test_format_peer_display_no_nickname() {
+        let counts = HashMap::new();
+        let result = super::format_peer_display("peer1", None, &counts, |id| {
+            id.chars().rev().take(8).collect()
+        });
+        // The short_peer_id function reverses and takes last 8 chars
+        assert_eq!(result, "1reep");
+    }
+
+    #[test]
+    fn test_format_broadcast_receipt_popup_impl_empty() {
+        let receipts = HashMap::new();
+        let peers: VecDeque<(String, String, String)> = VecDeque::new();
+        let local = HashMap::new();
+        let received = HashMap::new();
+        let result =
+            super::format_broadcast_receipt_popup_impl(&receipts, &peers, &local, &received, None);
+        assert_eq!(
+            result,
+            Some("No peers have confirmed receipt yet.".to_string())
+        );
+    }
+
+    #[test]
+    fn test_format_broadcast_receipt_popup_impl_with_data() {
+        let receipts = HashMap::from([("peer1".to_string(), 2.0), ("peer2".to_string(), 3.0)]);
+        let peers: VecDeque<_> = VecDeque::from(vec![
+            ("peer1".to_string(), "s1".to_string(), "l1".to_string()),
+            ("peer2".to_string(), "s2".to_string(), "l2".to_string()),
+        ]);
+        let local = HashMap::new();
+        let received = HashMap::new();
+        let result = super::format_broadcast_receipt_popup_impl(
+            &receipts,
+            &peers,
+            &local,
+            &received,
+            Some(1.0),
+        );
+        assert!(result.is_some());
+        let s = result.unwrap();
+        assert!(s.contains("peer1"));
+        assert!(s.contains("peer2"));
+        assert!(s.contains("1000ms"));
+    }
+
+    #[test]
+    fn test_format_dm_receipt_popup_impl_with_time() {
+        let result = super::format_dm_receipt_popup_impl("peer1", 2.0, Some(1.0));
+        assert!(result.contains("peer1"));
+        assert!(result.contains("1000ms"));
+    }
+
+    #[test]
+    fn test_format_dm_receipt_popup_impl_confirmed() {
+        let result = super::format_dm_receipt_popup_impl("peer1", 2.0, None);
+        assert!(result.contains("peer1"));
+        assert!(result.contains("confirmed"));
     }
 }

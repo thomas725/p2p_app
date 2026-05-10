@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   8,020 |
-| Total Characters        | 267,928 |
-| Average Lines per File  |     195 |
-| Average Characters/File |   6,534 |
+| Total Lines of Code     |   8,162 |
+| Total Characters        | 273,594 |
+| Average Lines per File  |     199 |
+| Average Characters/File |   6,673 |
 
 ## All Source Files
 
@@ -36,7 +36,7 @@
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |    11 |   401 |     1 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5237 |     4 |    -  | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |   505 | 18240 |     7 |   19% | Click handlers & index mapping      |
+| src/bin/tui             | click_handlers.rs    |   682 | 23940 |     7 |   33% | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |   260 | 10064 |     6 |    -  | Event routing & state updates       |
 | src/bin/tui             | constants.rs         |    16 |   526 |     0 |    -  | TUI constants & config              |
 | src/bin/tui             | event_source.rs      |    44 |  1631 |     6 |    -  | Terminal event polling (60 FPS)     |
@@ -50,13 +50,13 @@
 | src/bin/tui/render_loop | mod.rs               |   120 |  4010 |     5 |    -  | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   371 | 12155 |     6 |    -  | Tab-specific renderers              |
 | src/bin/tui/render_loop | visibility.rs        |   209 |  5676 |     4 |   98% | Message visibility calculations     |
-| src/generated           | columns.rs           |    77 |  1687 |     1 |    -  | Auto-generated column definitions   |
+| src/generated           | columns.rs           |    42 |  1653 |     1 |    -  | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 |    -  | Module declarations                 |
 | src/generated           | models_insertable.rs |   102 |  3689 |     1 |    -  | Insertable data models              |
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 8,020 lines, 267,928 characters
+**Total:** 41 files, 8,162 lines, 273,594 characters
 
 ## Test Files
 
