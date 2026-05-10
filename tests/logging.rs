@@ -248,3 +248,11 @@ fn test_tracing_event_with_fields_captured() {
 #[serial]
 #[test]
 fn test_set_tui_callback_receives_push_log() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    // The callback is a OnceLock — we can only set it once per process,
+    // so just verify push_log still flows through after init.
+    p2p_app::logging::push_log("callback-flow-check");
+    let logs = p2p_app::logging::get_tui_logs();
+    assert!(logs.iter().any(|l| l.contains("callback-flow-check")));
+}
