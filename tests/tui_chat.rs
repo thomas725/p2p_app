@@ -670,3 +670,112 @@ fn test_handle_tab_click_chat() {
     state.handle_tab_click(tab_row);
     // just confirm it doesn't panic — tab_click only fires on the tab row
 }
+
+// ── TuiTestState uncovered branches ──────────────────────────────────────────
+
+#[test]
+fn test_with_messages_and_width() {
+    use std::collections::VecDeque;
+    let msgs = VecDeque::from(["[Alice] hello".to_string()]);
+    let state = p2p_app::TuiTestState::with_messages_and_width(msgs, 40);
+    assert_eq!(state.terminal_width, 40);
+    assert_eq!(state.messages.len(), 1);
+}
+
+#[test]
+fn test_list_header_start_row_with_unread_broadcasts() {
+    let mut state = p2p_app::TuiTestState::new();
+    state.unread_broadcasts = 3;
+    // with notification row: tabs(3) + notifications(1) = 4
+    assert_eq!(state.list_header_start_row(), 4);
+}
+
+#[test]
+fn test_list_header_start_row_with_unread_dms() {
+    use std::collections::BTreeMap;
+    let mut state = p2p_app::TuiTestState::new();
+    state.unread_dms.insert("peer-x".to_string(), 2);
+    assert_eq!(state.list_header_start_row(), 4);
+}
+
+#[test]
+fn test_list_header_start_row_no_unread() {
+    let state = p2p_app::TuiTestState::new();
+    // no notifications: just tabs(3)
+    assert_eq!(state.list_header_start_row(), 3);
+}
+
+#[test]
+fn test_handle_notification_click_broadcasts_col() {
+    let mut state = p2p_app::TuiTestState::new();
+    state.unread_broadcasts = 1;
+    let result = state.handle_notification_click(5); // col < 20 → Broadcasts
+    assert!(matches!(result, Some(p2p_app::tui_test_state::NotificationTarget::Broadcasts)));
+}
+
+#[test]
+fn test_handle_notification_click_dm_col() {
+    let mut state = p2p_app::TuiTestState::new();
+    state.unread_dms.insert("peer-dm".to_string(), 1);
+    let result = state.handle_notification_click(25); // col >= 20 → Dm
+    assert!(matches!(result, Some(p2p_app::tui_test_state::NotificationTarget::Dm(_))));
+}
+
+#[test]
+fn test_handle_notification_click_none_when_no_unread() {
+    let state = p2p_app::TuiTestState::new();
+    assert!(state.handle_notification_click(5).is_none());
+}
+
+#[test]
+fn test_handle_mouse_click_returns_peer_for_message() {
+    use std::collections::VecDeque;
+    let msgs = VecDeque::from([
+        "[Alice] first message".to_string(),
+        "[Bob] second message".to_string(),
+    ]);
+    let state = p2p_app::TuiTestState::with_messages(msgs);
+    let first_row = state.first_message_row();
+    // Click on the first message row
+    let peer = state.handle_mouse_click(first_row, 0);
+    assert!(peer.is_some(), "should return a peer for valid message row");
+}
+
+#[test]
+fn test_handle_mouse_click_before_first_row_returns_none() {
+    use std::collections::VecDeque;
+    let msgs = VecDeque::from(["[Alice] msg".to_string()]);
+    let state = p2p_app::TuiTestState::with_messages(msgs);
+    let first_row = state.first_message_row();
+    // Click before message area
+    assert!(state.handle_mouse_click(first_row - 1, 0).is_none());
+}
+
+#[test]
+fn test_handle_mouse_click_past_last_message_returns_none() {
+    use std::collections::VecDeque;
+    let msgs = VecDeque::from(["[Alice] only message".to_string()]);
+    let state = p2p_app::TuiTestState::with_messages(msgs);
+    // Click far below all messages
+    assert!(state.handle_mouse_click(200, 0).is_none());
+}
+
+#[test]
+fn test_first_message_row_equals_header_plus_two() {
+    let state = p2p_app::TuiTestState::new();
+    assert_eq!(state.first_message_row(), state.list_header_start_row() + 2);
+}
+
+#[test]
+fn test_calculate_content_start_row_equals_first_message_row() {
+    let state = p2p_app::TuiTestState::new();
+    assert_eq!(state.calculate_content_start_row(), state.first_message_row());
+}
+
+#[test]
+fn test_tui_test_state_default_equals_new() {
+    let a = p2p_app::TuiTestState::new();
+    let b = p2p_app::TuiTestState::default();
+    assert_eq!(a.active_tab, b.active_tab);
+    assert_eq!(a.terminal_width, b.terminal_width);
+}
