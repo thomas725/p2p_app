@@ -69,14 +69,13 @@ mod tui {
     pub mod click_handlers;
     mod command_processor;
     pub mod constants;
-    mod event_source;
-    mod input_processor;
+    pub mod event_source;
+    pub mod input_processor;
     pub mod main_loop;
-    mod message_handlers;
-    mod presentation;
-    mod render_loop;
+    pub mod message_handlers;
+    pub mod render_loop;
     pub mod scroll_handlers;
-    mod state;
+    pub mod state;
 }
 
 #[tokio::main]

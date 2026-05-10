@@ -1,7 +1,7 @@
 use super::constants::MAX_DM_HISTORY;
-use super::presentation::row_to_visible_index;
 use super::state::AppState;
 use p2p_app::p2plog_debug;
+use p2p_app::row_to_visible_index;
 use ratatui_textarea::TextArea;
 use std::collections::{HashMap, VecDeque};
 

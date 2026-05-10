@@ -48,10 +48,10 @@ mod render_tests {
     #[test]
     fn test_render_chat_content_library() {
         let mut terminal = create_test_terminal();
-        let state = TuiRenderState::with_sample_data();
+        let mut state = TuiRenderState::with_sample_data();
 
         terminal
-            .draw(|f| render_chat_content(f, f.area(), &state))
+            .draw(|f| render_chat_content(f, f.area(), &mut state))
             .unwrap();
     }
 
@@ -78,7 +78,7 @@ mod render_tests {
                     .title("DM: Alice")
                     .borders(ratatui::widgets::Borders::ALL);
                 let inner = block.inner(area);
-                render_dm_content(f, inner, "Alice", &state);
+                render_dm_content(f, inner, "Alice", &mut state);
             })
             .unwrap();
     }

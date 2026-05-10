@@ -3,24 +3,9 @@ use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, Borders, Paragraph},
 };
-
-/// Render the tab navigation bar
-pub fn render_tabs(f: &mut Frame, tab_area: Rect, state: &AppState) {
-    let tab_titles = state.dynamic_tabs.all_titles();
-    let tabs = ratatui::widgets::Tabs::new(tab_titles)
-        .style(Style::default().fg(Color::Cyan))
-        .select(state.active_tab);
-    f.render_widget(tabs, tab_area);
-}
-
-/// Render the peer count display
-pub fn render_peer_info(f: &mut Frame, peer_area: Rect, state: &AppState) {
-    let peer_info = Paragraph::new(format!("Peers: {}", state.concurrent_peers));
-    f.render_widget(peer_info, peer_area);
-}
 
 /// Render the input section with optional nickname editing
 pub fn render_input_section(

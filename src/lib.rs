@@ -99,7 +99,10 @@ pub use tui_render::{
     render_chat_content, render_frame, render_peer_info, render_tab_content, render_tabs,
 };
 #[cfg(feature = "tui")]
-pub use tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+pub use tui_render_state::{
+    TuiRenderState, TuiTabContent, broadcast_receipt_prefix, calc_visible_strings, count_lines,
+    dm_receipt_prefix, get_tab_content, row_to_visible_index,
+};
 pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};

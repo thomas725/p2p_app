@@ -1,10 +1,9 @@
 mod layout;
-mod tab_renderers;
-mod visibility;
 
 use super::constants::FRAME_TIME_MS;
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
+use p2p_app::tui_render;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Frame, Terminal,
@@ -14,6 +13,68 @@ use ratatui::{
 use std::io::Stdout;
 use std::time::Duration;
 use tokio::sync::mpsc;
+
+/// Convert AppState to TuiRenderState for library rendering
+fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
+    use std::collections::{BTreeMap, VecDeque};
+
+    let tab_titles: Vec<String> = state.dynamic_tabs.all_titles();
+
+    let dm_messages: BTreeMap<String, VecDeque<String>> = state
+        .dm_messages
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let dm_message_ids: BTreeMap<String, VecDeque<Option<String>>> = state
+        .dm_message_ids
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let dm_scroll_state: BTreeMap<String, (usize, bool)> = state
+        .dm_scroll_state
+        .iter()
+        .map(|(k, v)| (k.clone(), *v))
+        .collect();
+
+    let dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)> = state
+        .dm_broadcast_scroll_state
+        .iter()
+        .map(|(k, v)| (k.clone(), *v))
+        .collect();
+
+    p2p_app::TuiRenderState {
+        tab_titles,
+        active_tab: state.active_tab,
+        messages: state.messages.iter().map(|(m, _)| m.clone()).collect(),
+        message_ids: state.message_ids.clone(),
+        broadcast_receipts: state.broadcast_receipts.clone(),
+        peers: state
+            .peers
+            .iter()
+            .map(|(a, b, c)| (a.clone(), b.clone(), c.clone()))
+            .collect(),
+        dm_messages,
+        dm_message_ids,
+        dm_receipts: state.dm_receipts.clone(),
+        input_text: state.chat_input.lines().join("\n"),
+        editing_nickname: state.editing_nickname,
+        nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
+        connected: true,
+        peer_count: state.concurrent_peers,
+        mouse_capture: state.mouse_capture,
+        popup: state.popup.clone(),
+        chat_scroll_offset: state.chat_scroll_offset,
+        chat_auto_scroll: state.chat_auto_scroll,
+        log_scroll_offset: state.log_scroll_offset,
+        log_auto_scroll: state.log_auto_scroll,
+        dm_scroll_state,
+        dm_broadcast_scroll_state,
+        broadcast_selection: state.broadcast_selection,
+        peer_selection: state.peer_selection,
+    }
+}
 
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
 pub fn render_frame(f: &mut Frame, state: &mut AppState) {
@@ -29,27 +90,24 @@ pub fn render_frame(f: &mut Frame, state: &mut AppState) {
         ])
         .split(f.area());
 
-    let avail_width = chunks[2].width as usize;
-    let avail_height = chunks[2].height as usize;
-    let text_width = avail_width.saturating_sub(4);
-    let usable_height = avail_height.saturating_sub(2);
+    let mut render_state = app_state_to_render_state(state);
 
-    layout::render_tabs(f, chunks[0], state);
-    layout::render_peer_info(f, chunks[1], state);
+    tui_render::render_tabs(f, chunks[0], &render_state);
+    tui_render::render_peer_info(f, chunks[1], &render_state);
 
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
         TabContent::Chat => {
-            tab_renderers::render_chat_tab(f, chunks[2], state, text_width, usable_height);
+            tui_render::render_chat_content(f, chunks[2], &mut render_state);
         }
         TabContent::Peers => {
-            tab_renderers::render_peers_tab(f, chunks[2], state);
+            tui_render::render_peers_content(f, chunks[2], &render_state);
         }
         TabContent::Direct(peer_id) => {
-            tab_renderers::render_dm_tab(f, chunks[2], state, peer_id, text_width, usable_height);
+            tui_render::render_dm_content(f, chunks[2], peer_id, &mut render_state);
         }
         TabContent::Log => {
-            tab_renderers::render_log_tab(f, chunks[2], state, text_width, usable_height);
+            tui_render::render_log_content(f, chunks[2], &render_state);
         }
     }
 

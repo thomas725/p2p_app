@@ -1,18 +1,16 @@
 //! TUI rendering functions for both binary and tests
 
 use crate::fmt::short_peer_id;
-use crate::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+use crate::tui_render_state::{
+    TuiRenderState, TuiTabContent, broadcast_receipt_prefix, calc_visible_strings,
+    dm_receipt_prefix, get_tab_content,
+};
 use ratatui::{
-    layout::Alignment,
-    layout::Constraint,
-    layout::Direction,
-    layout::Layout,
-    layout::Rect,
-    style::Color,
-    style::Modifier,
-    style::Style,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
 };
+use std::collections::VecDeque;
 
 /// Render a full TUI frame
 pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
@@ -64,7 +62,7 @@ pub fn render_tab_content(
     f: &mut ratatui::Frame,
     area: Rect,
     tab_content: &TuiTabContent,
-    state: &TuiRenderState,
+    state: &mut TuiRenderState,
 ) {
     match tab_content {
         TuiTabContent::Chat => render_chat_content(f, area, state),
@@ -74,44 +72,193 @@ pub fn render_tab_content(
     }
 }
 
-/// Render chat messages
-pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let items: Vec<ListItem> = state
+/// Render chat messages with scroll support and receipt markers
+pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRenderState) {
+    let text_width = area.width.saturating_sub(4) as usize;
+    let usable_height = area.height.saturating_sub(2) as usize;
+
+    let (visible, effective_offset) = calc_visible_strings(
+        &state.messages,
+        state.chat_auto_scroll,
+        state.chat_scroll_offset,
+        text_width,
+        usable_height,
+    );
+
+    let visible_messages: Vec<ListItem> = state
         .messages
         .iter()
-        .map(|m| ListItem::new(m.as_str()))
-        .collect();
-    let list = List::new(items);
-    f.render_widget(list, area);
-}
-
-/// Render peer list
-pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let items: Vec<ListItem> = state
-        .peers
-        .iter()
-        .map(|(id, name, status)| {
-            ListItem::new(format!("{} ({}) - {}", name, short_id(id), status))
+        .skip(effective_offset)
+        .enumerate()
+        .take(visible)
+        .map(|(visible_idx, msg)| {
+            let global_idx = effective_offset + visible_idx;
+            let is_selected = state.broadcast_selection == Some(global_idx);
+            let msg_id = state
+                .message_ids
+                .get(global_idx)
+                .and_then(|id| id.as_deref());
+            let prefix = broadcast_receipt_prefix(msg_id, &state.broadcast_receipts);
+            let display = format!("{}{}", prefix, msg);
+            if is_selected {
+                ListItem::new(display).style(Style::default().bg(Color::DarkGray))
+            } else {
+                ListItem::new(display)
+            }
         })
         .collect();
-    let list = List::new(items);
-    f.render_widget(list, area);
+
+    let messages_list = List::new(visible_messages).block(
+        Block::default()
+            .title("Broadcast Chat")
+            .borders(Borders::ALL),
+    );
+    f.render_widget(messages_list, area);
 }
 
-/// Render DM conversation
+/// Render peer list with selection support
+pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
+    let peer_items: Vec<ListItem> = state
+        .peers
+        .iter()
+        .enumerate()
+        .map(|(idx, (id, name, status))| {
+            let line = format!("{} ({}) - {}", name, short_id(id), status);
+            if idx == state.peer_selection {
+                ListItem::new(line).style(Style::default().bg(Color::DarkGray))
+            } else {
+                ListItem::new(line)
+            }
+        })
+        .collect();
+    let peers_list = List::new(peer_items).block(
+        Block::default()
+            .title("Connected Peers")
+            .borders(Borders::ALL),
+    );
+    f.render_widget(peers_list, area);
+}
+
+/// Render DM conversation with split view (broadcast messages on top, DM on bottom)
 pub fn render_dm_content(
     f: &mut ratatui::Frame,
     area: Rect,
     peer_id: &str,
-    state: &TuiRenderState,
+    state: &mut TuiRenderState,
 ) {
-    let messages = state.dm_messages.get(peer_id).cloned().unwrap_or_default();
-    let block = Block::default()
-        .title(format!("DM: {}", peer_id))
-        .borders(Borders::ALL);
-    let items: Vec<ListItem> = messages.iter().map(|m| ListItem::new(m.as_str())).collect();
-    let list = List::new(items);
-    f.render_widget(list.block(block), area);
+    let text_width = area.width.saturating_sub(4) as usize;
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    let broadcast_area = chunks[0];
+    let dm_area = chunks[1];
+
+    let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
+    let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
+
+    let short_id = if peer_id.len() <= 8 {
+        peer_id.to_string()
+    } else {
+        peer_id[peer_id.len() - 8..].to_string()
+    };
+
+    let broadcast_messages: VecDeque<String> = state
+        .messages
+        .iter()
+        .filter(|msg| msg.starts_with(&format!("[{}]", peer_id)))
+        .cloned()
+        .collect();
+
+    if !broadcast_messages.is_empty() {
+        let (broadcast_scroll_offset, broadcast_auto_scroll) = {
+            let (offset, auto_scroll) = state
+                .dm_broadcast_scroll_state
+                .entry(peer_id.to_string())
+                .or_insert((broadcast_messages.len(), true));
+            (*offset, *auto_scroll)
+        };
+
+        let (visible, effective_offset) = calc_visible_strings(
+            &broadcast_messages,
+            broadcast_auto_scroll,
+            broadcast_scroll_offset,
+            text_width,
+            broadcast_usable_height,
+        );
+
+        let visible_broadcast: Vec<ListItem> = broadcast_messages
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .map(|m| ListItem::new(m.as_str()))
+            .collect();
+
+        let broadcast_list = List::new(visible_broadcast).block(
+            Block::default()
+                .title(format!("Broadcast from {}", short_id))
+                .borders(Borders::ALL),
+        );
+        f.render_widget(broadcast_list, broadcast_area);
+    } else {
+        let broadcast_para = Paragraph::new("No broadcast messages").block(
+            Block::default()
+                .title(format!("Broadcast from {}", short_id))
+                .borders(Borders::ALL),
+        );
+        f.render_widget(broadcast_para, broadcast_area);
+    }
+
+    let (scroll_offset_val, auto_scroll_val) = {
+        let (offset, auto_scroll) = state
+            .dm_scroll_state
+            .entry(peer_id.to_string())
+            .or_insert((0, true));
+        (*offset, *auto_scroll)
+    };
+
+    if let Some(msgs) = state.dm_messages.get(peer_id) {
+        let (visible, effective_offset) = calc_visible_strings(
+            msgs,
+            auto_scroll_val,
+            scroll_offset_val,
+            text_width,
+            dm_usable_height,
+        );
+
+        let visible_msgs: Vec<ListItem> = msgs
+            .iter()
+            .skip(effective_offset)
+            .take(visible)
+            .enumerate()
+            .map(|(visible_idx, m)| {
+                let global_idx = effective_offset + visible_idx;
+                let msg_id = state
+                    .dm_message_ids
+                    .get(peer_id)
+                    .and_then(|ids| ids.get(global_idx))
+                    .and_then(|id| id.as_deref());
+                let prefix = dm_receipt_prefix(msg_id, &state.dm_receipts);
+                ListItem::new(format!("{}{}", prefix, m))
+            })
+            .collect();
+
+        let dm_list = List::new(visible_msgs).block(
+            Block::default()
+                .title(format!("DM: {}", short_id))
+                .borders(Borders::ALL),
+        );
+        f.render_widget(dm_list, dm_area);
+    } else {
+        let dm_para = Paragraph::new("No direct messages").block(
+            Block::default()
+                .title(format!("DM: {}", short_id))
+                .borders(Borders::ALL),
+        );
+        f.render_widget(dm_para, dm_area);
+    }
 }
 
 /// Render log content

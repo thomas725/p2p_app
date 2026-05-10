@@ -3,35 +3,35 @@
 //! This module provides a render state that can be used by both the binary
 //! and integration tests. The binary uses AppState, tests use this abstraction.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 /// Minimum state needed to render a TUI frame
 #[derive(Clone, Debug)]
 pub struct TuiRenderState {
-    /// Tab titles
     pub tab_titles: Vec<String>,
-    /// Active tab index
     pub active_tab: usize,
-    /// Chat messages to display
     pub messages: VecDeque<String>,
-    /// Peer list: (peer_id, nickname, status)
+    pub message_ids: VecDeque<Option<String>>,
+    pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
     pub peers: Vec<(String, String, String)>,
-    /// DM conversations: peer_id -> messages
     pub dm_messages: BTreeMap<String, VecDeque<String>>,
-    /// Current input text
+    pub dm_message_ids: BTreeMap<String, VecDeque<Option<String>>>,
+    pub dm_receipts: HashMap<String, (String, f64)>,
     pub input_text: String,
-    /// Whether editing nickname
     pub editing_nickname: bool,
-    /// Peer ID for nickname editing
     pub nickname_peer_id: String,
-    /// Connection status
     pub connected: bool,
-    /// Concurrent peer count
     pub peer_count: usize,
-    /// Mouse capture enabled
     pub mouse_capture: bool,
-    /// Popup text if any
     pub popup: Option<String>,
+    pub chat_scroll_offset: usize,
+    pub chat_auto_scroll: bool,
+    pub log_scroll_offset: usize,
+    pub log_auto_scroll: bool,
+    pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
+    pub dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)>,
+    pub broadcast_selection: Option<usize>,
+    pub peer_selection: usize,
 }
 
 impl Default for TuiRenderState {
@@ -47,8 +47,12 @@ impl TuiRenderState {
             tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into()],
             active_tab: 0,
             messages: VecDeque::new(),
+            message_ids: VecDeque::new(),
+            broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
             dm_messages: BTreeMap::new(),
+            dm_message_ids: BTreeMap::new(),
+            dm_receipts: HashMap::new(),
             input_text: String::new(),
             editing_nickname: false,
             nickname_peer_id: String::new(),
@@ -56,6 +60,14 @@ impl TuiRenderState {
             peer_count: 0,
             mouse_capture: false,
             popup: None,
+            chat_scroll_offset: 0,
+            chat_auto_scroll: true,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
+            dm_scroll_state: BTreeMap::new(),
+            dm_broadcast_scroll_state: BTreeMap::new(),
+            broadcast_selection: None,
+            peer_selection: 0,
         }
     }
 
@@ -73,6 +85,8 @@ impl TuiRenderState {
 
         let mut dm_messages = BTreeMap::new();
         dm_messages.insert("Alice".into(), VecDeque::new());
+        let mut dm_message_ids = BTreeMap::new();
+        dm_message_ids.insert("Alice".into(), VecDeque::new());
 
         Self {
             tab_titles: vec![
@@ -83,8 +97,12 @@ impl TuiRenderState {
             ],
             active_tab: 0,
             messages,
+            message_ids: VecDeque::new(),
+            broadcast_receipts: HashMap::new(),
             peers,
             dm_messages,
+            dm_message_ids,
+            dm_receipts: HashMap::new(),
             input_text: String::new(),
             editing_nickname: false,
             nickname_peer_id: String::new(),
@@ -92,6 +110,14 @@ impl TuiRenderState {
             peer_count: 2,
             mouse_capture: false,
             popup: None,
+            chat_scroll_offset: 0,
+            chat_auto_scroll: true,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
+            dm_scroll_state: BTreeMap::new(),
+            dm_broadcast_scroll_state: BTreeMap::new(),
+            broadcast_selection: None,
+            peer_selection: 0,
         }
     }
 
@@ -116,6 +142,160 @@ impl TuiRenderState {
         let entry = self.dm_messages.entry(peer).or_default();
         entry.push_back(msg.into());
     }
+}
+
+/// Calculate visible items and effective offset for string-based messages with auto/manual scroll
+pub fn calc_visible_strings(
+    messages: &VecDeque<String>,
+    auto_scroll: bool,
+    scroll_offset: usize,
+    text_width: usize,
+    usable_height: usize,
+) -> (usize, usize) {
+    let msgs: Vec<String> = messages.iter().cloned().collect();
+    calc_visible_impl(
+        &msgs,
+        auto_scroll,
+        scroll_offset,
+        text_width,
+        usable_height,
+        |m| count_lines(m, text_width),
+    )
+}
+
+/// Count wrapped lines of text, accounting for ANSI codes and terminal width
+pub fn count_lines(text: &str, text_width: usize) -> usize {
+    let clean_text = crate::logging::strip_ansi_codes(text);
+    let lines: Vec<&str> = clean_text.split('\n').collect();
+
+    if lines.is_empty() {
+        return 1;
+    }
+
+    let mut total = 0;
+    for (i, line) in lines.iter().enumerate() {
+        if line.is_empty() {
+            if i < lines.len() - 1 {
+                total += 1;
+            }
+        } else {
+            total += line.len().div_ceil(text_width);
+        }
+    }
+    total.max(1)
+}
+
+const MIN_VISIBLE: usize = 1;
+
+fn calc_visible_impl<F>(
+    messages: &[String],
+    auto_scroll: bool,
+    scroll_offset: usize,
+    _text_width: usize,
+    usable_height: usize,
+    get_lines: F,
+) -> (usize, usize)
+where
+    F: Fn(&str) -> usize,
+{
+    let total_items = messages.len();
+    if total_items == 0 {
+        return (0, 0);
+    }
+
+    if auto_scroll {
+        let (visible, _offset) = calc_auto_scroll(messages, usable_height, get_lines);
+        (visible, total_items.saturating_sub(visible))
+    } else {
+        let visible = calc_manual_scroll(messages, scroll_offset, usable_height, get_lines);
+        (visible, scroll_offset)
+    }
+}
+
+fn calc_auto_scroll<F>(messages: &[String], usable_height: usize, get_lines: F) -> (usize, usize)
+where
+    F: Fn(&str) -> usize,
+{
+    let mut used = 0;
+    let mut count = 0;
+    for msg in messages.iter().rev() {
+        let msg_lines = get_lines(msg);
+        if used > 0 && used + msg_lines > usable_height {
+            break;
+        }
+        used += msg_lines;
+        count += 1;
+    }
+    (count, 0)
+}
+
+fn calc_manual_scroll<F>(
+    messages: &[String],
+    scroll_offset: usize,
+    usable_height: usize,
+    get_lines: F,
+) -> usize
+where
+    F: Fn(&str) -> usize,
+{
+    if scroll_offset >= messages.len() {
+        return MIN_VISIBLE;
+    }
+    let mut used = 0;
+    let mut count = 0;
+    for msg in messages.iter().skip(scroll_offset) {
+        let msg_lines = get_lines(msg);
+        if used > 0 && used + msg_lines > usable_height {
+            break;
+        }
+        used += msg_lines;
+        count += 1;
+    }
+    count.max(MIN_VISIBLE)
+}
+
+pub fn broadcast_receipt_prefix(
+    msg_id: Option<&str>,
+    broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
+) -> &'static str {
+    match msg_id {
+        Some(msg_id) => {
+            let confirmed = broadcast_receipts.get(msg_id).map(|m| m.len()).unwrap_or(0);
+            if confirmed == 0 { "  " } else { "v " }
+        }
+        _ => "  ",
+    }
+}
+
+pub fn dm_receipt_prefix(
+    msg_id: Option<&str>,
+    dm_receipts: &HashMap<String, (String, f64)>,
+) -> &'static str {
+    match msg_id {
+        Some(msg_id) if dm_receipts.contains_key(msg_id) => "v ",
+        _ => "  ",
+    }
+}
+
+pub fn row_to_visible_index(
+    line_counts: &[usize],
+    first_content_row: usize,
+    click_row: usize,
+) -> Option<usize> {
+    if click_row < first_content_row {
+        return None;
+    }
+    let mut current_row = first_content_row;
+
+    for (idx, line_count) in line_counts.iter().copied().enumerate() {
+        let message_end_row = current_row + line_count;
+        if click_row < message_end_row {
+            return Some(idx);
+        }
+        current_row = message_end_row;
+    }
+
+    None
 }
 
 /// Get the tab content based on active tab index
@@ -259,6 +439,84 @@ mod tests {
         let cloned = state.clone();
         assert_eq!(cloned.active_tab, state.active_tab);
         assert_eq!(cloned.messages.len(), state.messages.len());
+    }
+
+    #[test]
+    fn test_count_lines_single_short_line() {
+        assert_eq!(count_lines("hello", 80), 1);
+    }
+
+    #[test]
+    fn test_count_lines_wraps_long_line() {
+        assert_eq!(count_lines("hello world foo bar baz quux", 10), 3);
+    }
+
+    #[test]
+    fn test_count_lines_empty_string() {
+        assert_eq!(count_lines("", 80), 1);
+    }
+
+    #[test]
+    fn test_count_lines_newlines() {
+        assert_eq!(count_lines("line1\nline2\nline3", 80), 3);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_empty() {
+        let msgs: VecDeque<String> = VecDeque::new();
+        let (visible, offset) = calc_visible_strings(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 0);
+        assert_eq!(offset, 0);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_auto_scroll_shows_all() {
+        let msgs = VecDeque::from(vec!["a".to_string(), "b".to_string()]);
+        let (visible, offset) = calc_visible_strings(&msgs, true, 0, 80, 10);
+        assert_eq!(visible, 2);
+        assert_eq!(offset, 0);
+    }
+
+    #[test]
+    fn test_calc_visible_strings_manual_scroll() {
+        let msgs = VecDeque::from(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+        let (visible, offset) = calc_visible_strings(&msgs, false, 1, 80, 10);
+        assert_eq!(visible, 2);
+        assert_eq!(offset, 1);
+    }
+
+    #[test]
+    fn test_broadcast_receipt_prefix_no_receipts() {
+        let receipts = HashMap::new();
+        assert_eq!(broadcast_receipt_prefix(Some("msg-1"), &receipts), "  ");
+    }
+
+    #[test]
+    fn test_broadcast_receipt_prefix_with_receipt() {
+        let mut receipts = HashMap::new();
+        receipts.insert(
+            "msg-1".to_string(),
+            HashMap::from([("peer-1".to_string(), 1.0)]),
+        );
+        assert_eq!(broadcast_receipt_prefix(Some("msg-1"), &receipts), "v ");
+    }
+
+    #[test]
+    fn test_broadcast_receipt_prefix_no_msg_id() {
+        let receipts = HashMap::new();
+        assert_eq!(broadcast_receipt_prefix(None, &receipts), "  ");
+    }
+
+    #[test]
+    fn test_dm_receipt_prefix_no_receipt() {
+        let receipts = HashMap::new();
+        assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "  ");
+    }
+
+    #[test]
+    fn test_dm_receipt_prefix_with_receipt() {
+        let receipts = HashMap::from([("msg-1".to_string(), ("peer-1".to_string(), 1.0))]);
+        assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "v ");
     }
 
     #[test]
