@@ -263,42 +263,46 @@ fn test_set_tui_callback_receives_push_log() {
 #[serial]
 #[test]
 fn test_tracing_with_u64_field() {
+    unsafe { std::env::set_var("RUST_LOG", "info") };
     p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     tracing::info!(count = 42u64, "u64-field-test");
     let logs = p2p_app::logging::get_tui_logs();
     let combined = logs.join(" ");
-    assert!(combined.contains("count=42") || combined.contains("u64-field-test"),
+    assert!(!combined.is_empty() && (combined.contains("count=42") || combined.contains("u64-field-test")),
         "u64 field not captured: {:?}", logs);
 }
 
 #[serial]
 #[test]
 fn test_tracing_with_i64_field() {
+    unsafe { std::env::set_var("RUST_LOG", "info") };
     p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     tracing::info!(offset = -123i64, "i64-field-test");
     let logs = p2p_app::logging::get_tui_logs();
     let combined = logs.join(" ");
-    assert!(combined.contains("offset=-123") || combined.contains("i64-field-test"),
+    assert!(!combined.is_empty() && (combined.contains("offset=-123") || combined.contains("i64-field-test")),
         "i64 field not captured: {:?}", logs);
 }
 
 #[serial]
 #[test]
 fn test_tracing_with_bool_field() {
+    unsafe { std::env::set_var("RUST_LOG", "info") };
     p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     tracing::info!(connected = true, "bool-field-test");
     let logs = p2p_app::logging::get_tui_logs();
     let combined = logs.join(" ");
-    assert!(combined.contains("connected=true") || combined.contains("bool-field-test"),
+    assert!(!combined.is_empty() && (combined.contains("connected=true") || combined.contains("bool-field-test")),
         "bool field not captured: {:?}", logs);
 }
 
 #[serial]
 #[test]
 fn test_tracing_with_debug_field() {
+    unsafe { std::env::set_var("RUST_LOG", "info") };
     p2p_app::logging::init_logging();
     p2p_app::logging::clear_tui_logs();
     let vec = vec![1, 2, 3];
@@ -306,6 +310,6 @@ fn test_tracing_with_debug_field() {
     let logs = p2p_app::logging::get_tui_logs();
     let combined = logs.join(" ");
     // Debug format should include [1, 2, 3] or debug-field-test marker
-    assert!(combined.contains("[1, 2, 3]") || combined.contains("debug-field-test"),
+    assert!(!combined.is_empty() && (combined.contains("[1, 2, 3]") || combined.contains("debug-field-test")),
         "debug field not captured: {:?}", logs);
 }
