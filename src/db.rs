@@ -252,7 +252,6 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
                     "[DB] lock for {} already exists, trying next",
                     db_file
                 ));
-                continue; // Lost race, try next
             }
         }
     }

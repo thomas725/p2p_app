@@ -81,7 +81,7 @@ pub fn load_known_peers() -> color_eyre::Result<Vec<KnownPeer>> {
     use diesel::sql_query;
 
     let conn = &mut crate::sqlite_connect()?;
-    let sql = r#"
+    let sql = r"
 WITH msg_peers AS (
     SELECT
         peer_id AS peer_id,
@@ -110,7 +110,7 @@ SELECT
 FROM merged
 GROUP BY peer_id
 ORDER BY last_seen DESC
-    "#;
+    ";
 
     let rows = sql_query(sql).load::<KnownPeer>(conn)?;
     Ok(rows)

@@ -5,18 +5,18 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   8,162 |
-| Total Characters        | 273,594 |
+| Total Lines of Code     |   8,195 |
+| Total Characters        | 273,566 |
 | Average Lines per File  |     199 |
-| Average Characters/File |   6,673 |
+| Average Characters/File |   6,672 |
 
 ## All Source Files
 
 | Folder                  | File                 | Lines | Chars | Depth | Cover | Purpose                             |
 |:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|
-| /                       | build.rs             |   121 |  4147 |     5 |    -  | Build script                        |
-| src                     | behavior.rs          |   142 |  4933 |     4 |   89% | Network behavior definitions        |
-| src                     | db.rs                |   403 | 14294 |     5 |   28% | Database connection & identity mgmt |
+| /                       | build.rs             |   120 |  4133 |     5 |    -  | Build script                        |
+| src                     | behavior.rs          |   142 |  4936 |     4 |   89% | Network behavior definitions        |
+| src                     | db.rs                |   402 | 14245 |     5 |   28% | Database connection & identity mgmt |
 | src                     | fmt.rs               |   111 |  3400 |     4 |  100% | Formatting & display utilities      |
 | src                     | lib.rs               |   379 | 12541 |     3 |   70% | Module declarations & re-exports    |
 | src                     | logging.rs           |   229 |  6677 |     4 |  100% | Logging utilities & setup           |
@@ -24,7 +24,7 @@
 | src                     | messages.rs          |   230 |  8437 |     4 |  100% | Message persistence & retrieval     |
 | src                     | network.rs           |    44 |  1414 |     3 |  100% | Network size classification         |
 | src                     | nickname.rs          |   201 |  6997 |     3 |  100% | Nickname management                 |
-| src                     | peers.rs             |   179 |  6113 |     3 |  100% | Peer management & tracking          |
+| src                     | peers.rs             |   179 |  6111 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   418 | 14278 |     7 |   37% | Network event translation           |
 | src                     | tui_events.rs        |   154 |  4916 |     3 |  100% | Event/command types & channels      |
 | src                     | tui_helpers.rs       |   282 |  8452 |     3 |  100% | TUI helper functions & utilities    |
@@ -50,13 +50,13 @@
 | src/bin/tui/render_loop | mod.rs               |   120 |  4010 |     5 |    -  | Render loop orchestration (60 FPS)  |
 | src/bin/tui/render_loop | tab_renderers.rs     |   371 | 12155 |     6 |    -  | Tab-specific renderers              |
 | src/bin/tui/render_loop | visibility.rs        |   209 |  5676 |     4 |   98% | Message visibility calculations     |
-| src/generated           | columns.rs           |    42 |  1653 |     1 |    -  | Auto-generated column definitions   |
+| src/generated           | columns.rs           |    77 |  1687 |     1 |    -  | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 |    -  | Module declarations                 |
 | src/generated           | models_insertable.rs |   102 |  3689 |     1 |    -  | Insertable data models              |
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 41 files, 8,162 lines, 273,594 characters
+**Total:** 41 files, 8,195 lines, 273,566 characters
 
 ## Test Files
 

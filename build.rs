@@ -93,8 +93,7 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         let suffix = if i + 1 == entries.len() { "\n" } else { ",\n" };
         let _ = writeln!(
             output,
-            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){}",
-            suffix
+            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){suffix}"
         );
     }
     output.push_str("];\n");

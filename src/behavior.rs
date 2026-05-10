@@ -81,7 +81,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         NetworkSize::Small => {
             // 0-3 peers: aggressive message propagation
             gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262144)
+                .max_transmit_size(262_144)
                 .history_gossip(3)
                 .history_length(20)
                 .heartbeat_interval(std::time::Duration::from_secs(1))
@@ -91,7 +91,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         NetworkSize::Medium => {
             // 4-15 peers: balanced settings
             gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262144)
+                .max_transmit_size(262_144)
                 .history_gossip(6)
                 .history_length(30)
                 .heartbeat_interval(std::time::Duration::from_secs(2))
@@ -101,7 +101,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         NetworkSize::Large => {
             // 16+ peers: conservative settings
             gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262144)
+                .max_transmit_size(262_144)
                 .history_gossip(12)
                 .history_length(50)
                 .heartbeat_interval(std::time::Duration::from_secs(5))
