@@ -221,47 +221,51 @@ fn test_add_dm_message() {
 
 #[test]
 fn test_get_tab_content_chat() {
-    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
+    use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
     state.active_tab = 0; // "Chat"
-    assert!(matches!(get_tab_content(&state), TuiTabContent::Chat));
+    assert!(matches!(get_tab_content(&state), TabContent::Chat));
 }
 
 #[test]
 fn test_get_tab_content_peers() {
-    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
+    use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
     state.active_tab = 1; // "Peers"
-    assert!(matches!(get_tab_content(&state), TuiTabContent::Peers));
+    assert!(matches!(get_tab_content(&state), TabContent::Peers));
 }
 
 #[test]
 fn test_get_tab_content_log() {
-    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
+    use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
     state.active_tab = 2; // "Log"
-    assert!(matches!(get_tab_content(&state), TuiTabContent::Log));
+    assert!(matches!(get_tab_content(&state), TabContent::Log));
 }
 
 #[test]
 fn test_get_tab_content_dm() {
-    use p2p_app::tui_render_state::{TuiRenderState, TuiTabContent, get_tab_content};
+    use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
+    use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
     state.tab_titles.push("DM: peer-xyz".to_string());
     state.active_tab = state.tab_titles.len() - 1;
     match get_tab_content(&state) {
-        TuiTabContent::Direct(peer) => assert_eq!(peer, "peer-xyz"),
+        TabContent::Direct(peer) => assert_eq!(peer, "peer-xyz"),
         other => panic!("expected Direct, got {:?}", other),
     }
 }
 
 #[test]
 fn test_tui_tab_content_is_input_enabled() {
-    use p2p_app::tui_render_state::TuiTabContent;
-    assert!(TuiTabContent::Chat.is_input_enabled());
-    assert!(TuiTabContent::Direct("p".into()).is_input_enabled());
-    assert!(!TuiTabContent::Peers.is_input_enabled());
-    assert!(!TuiTabContent::Log.is_input_enabled());
+    use p2p_app::tui_tabs::TabContent;
+    assert!(TabContent::Chat.is_input_enabled());
+    assert!(TabContent::Direct("p".into()).is_input_enabled());
+    assert!(!TabContent::Peers.is_input_enabled());
+    assert!(!TabContent::Log.is_input_enabled());
 }
 
 // ── tui_render_state pure helper functions ────────────────────────────────────
@@ -275,7 +279,7 @@ fn test_count_lines_single_line() {
 #[test]
 fn test_count_lines_empty_string() {
     use p2p_app::tui_render_state::count_lines;
-    assert_eq!(count_lines("", 80), 0);
+    assert_eq!(count_lines("", 80), 1);
 }
 
 #[test]
@@ -295,50 +299,65 @@ fn test_count_lines_wrapping() {
 #[test]
 fn test_count_lines_zero_width() {
     use p2p_app::tui_render_state::count_lines;
-    // zero width should treat as 1 line (avoid div by zero)
     assert_eq!(count_lines("hello", 0), 1);
 }
 
 #[test]
-fn test_broadcast_receipt_prefix_unread() {
+fn test_broadcast_receipt_prefix_no_receipts() {
     use p2p_app::tui_render_state::broadcast_receipt_prefix;
-    let prefix = broadcast_receipt_prefix(false, 1);
-    assert!(prefix.contains('↷') || prefix.contains('(1)'));
+    use std::collections::HashMap;
+    let receipts: HashMap<String, HashMap<String, f64>> = HashMap::new();
+    assert_eq!(broadcast_receipt_prefix(Some("msg-1"), &receipts), "  ");
 }
 
 #[test]
-fn test_broadcast_receipt_prefix_read() {
+fn test_broadcast_receipt_prefix_with_receipt() {
     use p2p_app::tui_render_state::broadcast_receipt_prefix;
-    let prefix = broadcast_receipt_prefix(true, 0);
-    assert_eq!(prefix, "");
+    use std::collections::HashMap;
+    let mut receipts: HashMap<String, HashMap<String, f64>> = HashMap::new();
+    receipts.insert(
+        "msg-1".to_string(),
+        HashMap::from([("p1".to_string(), 1.0)]),
+    );
+    assert_eq!(broadcast_receipt_prefix(Some("msg-1"), &receipts), "v ");
 }
 
 #[test]
 fn test_dm_receipt_prefix_present() {
     use p2p_app::tui_render_state::dm_receipt_prefix;
-    let prefix = dm_receipt_prefix(Some(1.5));
-    assert!(!prefix.is_empty());
+    use std::collections::HashMap;
+    let receipts = HashMap::from([("msg-1".to_string(), ("p1".to_string(), 1.0))]);
+    assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "v ");
 }
 
 #[test]
 fn test_dm_receipt_prefix_absent() {
     use p2p_app::tui_render_state::dm_receipt_prefix;
-    let prefix = dm_receipt_prefix(None);
-    assert_eq!(prefix, "");
+    use std::collections::HashMap;
+    let receipts: HashMap<String, (String, f64)> = HashMap::new();
+    assert_eq!(dm_receipt_prefix(Some("msg-1"), &receipts), "  ");
 }
 
 #[test]
 fn test_calc_visible_strings() {
     use p2p_app::tui_render_state::calc_visible_strings;
-    let strings = vec!["line1".to_string(), "line2".to_string(), "line3".to_string()];
-    let visible = calc_visible_strings(&strings, 0, 10);
-    assert!(visible.len() <= strings.len());
+    use std::collections::VecDeque;
+    let strings = VecDeque::from(vec![
+        "line1".to_string(),
+        "line2".to_string(),
+        "line3".to_string(),
+    ]);
+    let (visible, offset) = calc_visible_strings(&strings, false, 0, 80, 10);
+    assert!(visible <= strings.len());
+    assert_eq!(offset, 0);
 }
 
 #[test]
 fn test_calc_visible_strings_empty() {
     use p2p_app::tui_render_state::calc_visible_strings;
-    let strings: Vec<String> = vec![];
-    let visible = calc_visible_strings(&strings, 0, 10);
-    assert!(visible.is_empty());
+    use std::collections::VecDeque;
+    let strings: VecDeque<String> = VecDeque::new();
+    let (visible, offset) = calc_visible_strings(&strings, true, 0, 80, 10);
+    assert_eq!(visible, 0);
+    assert_eq!(offset, 0);
 }

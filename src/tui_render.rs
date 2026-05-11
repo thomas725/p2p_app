@@ -2,9 +2,10 @@
 
 use crate::fmt::short_peer_id;
 use crate::tui_render_state::{
-    TuiRenderState, TuiTabContent, broadcast_receipt_prefix, calc_visible_strings,
-    dm_receipt_prefix, get_tab_content,
+    TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, dm_receipt_prefix,
+    get_tab_content,
 };
+use crate::tui_tabs::TabContent;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -61,14 +62,14 @@ pub fn render_peer_info(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSta
 pub fn render_tab_content(
     f: &mut ratatui::Frame,
     area: Rect,
-    tab_content: &TuiTabContent,
+    tab_content: &TabContent,
     state: &mut TuiRenderState,
 ) {
     match tab_content {
-        TuiTabContent::Chat => render_chat_content(f, area, state),
-        TuiTabContent::Peers => render_peers_content(f, area, state),
-        TuiTabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
-        TuiTabContent::Log => render_log_content(f, area, state),
+        TabContent::Chat => render_chat_content(f, area, state),
+        TabContent::Peers => render_peers_content(f, area, state),
+        TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
+        TabContent::Log => render_log_content(f, area, state),
     }
 }
 
@@ -273,7 +274,7 @@ pub fn render_input_section(
     f: &mut ratatui::Frame,
     area: Rect,
     state: &TuiRenderState,
-    tab_content: &TuiTabContent,
+    tab_content: &TabContent,
 ) {
     let title = if state.editing_nickname {
         format!("Edit Nickname ({})", short_id(&state.nickname_peer_id))

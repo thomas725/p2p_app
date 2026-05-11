@@ -100,8 +100,8 @@ pub use tui_render::{
 };
 #[cfg(feature = "tui")]
 pub use tui_render_state::{
-    TuiRenderState, TuiTabContent, broadcast_receipt_prefix, calc_visible_strings, count_lines,
-    dm_receipt_prefix, get_tab_content, row_to_visible_index,
+    TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, count_lines, dm_receipt_prefix,
+    get_tab_content, row_to_visible_index,
 };
 pub use types::{SwarmCommand, SwarmEvent};
 

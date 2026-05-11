@@ -189,12 +189,11 @@ pub fn calc_visible_strings(
 
 /// Count wrapped lines of text, accounting for ANSI codes and terminal width
 pub fn count_lines(text: &str, text_width: usize) -> usize {
-    let clean_text = crate::logging::strip_ansi_codes(text);
-    let lines: Vec<&str> = clean_text.split('\n').collect();
-
-    if lines.is_empty() {
+    if text_width == 0 || text.is_empty() {
         return 1;
     }
+    let clean_text = crate::logging::strip_ansi_codes(text);
+    let lines: Vec<&str> = clean_text.split('\n').collect();
 
     let mut total = 0;
     for (i, line) in lines.iter().enumerate() {
@@ -323,7 +322,7 @@ pub fn row_to_visible_index(
 }
 
 /// Get the tab content based on active tab index
-pub fn get_tab_content(state: &TuiRenderState) -> TuiTabContent {
+pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
     let tab_title = state
         .tab_titles
         .get(state.active_tab)
@@ -332,39 +331,20 @@ pub fn get_tab_content(state: &TuiRenderState) -> TuiTabContent {
 
     if tab_title.starts_with("DM: ") {
         let peer = tab_title.trim_start_matches("DM: ").to_string();
-        TuiTabContent::Direct(peer)
+        crate::tui_tabs::TabContent::Direct(peer)
     } else if tab_title == "Peers" {
-        TuiTabContent::Peers
+        crate::tui_tabs::TabContent::Peers
     } else if tab_title == "Log" {
-        TuiTabContent::Log
+        crate::tui_tabs::TabContent::Log
     } else {
-        TuiTabContent::Chat
-    }
-}
-
-/// Tab content enum
-#[derive(Clone, Debug, PartialEq)]
-pub enum TuiTabContent {
-    /// Broadcast chat view
-    Chat,
-    /// Peer list view
-    Peers,
-    /// Direct message view for the given peer ID
-    Direct(String),
-    /// Debug/log view
-    Log,
-}
-
-impl TuiTabContent {
-    /// Returns `true` if the input box should be enabled for this tab.
-    pub fn is_input_enabled(&self) -> bool {
-        matches!(self, TuiTabContent::Chat | TuiTabContent::Direct(_))
+        crate::tui_tabs::TabContent::Chat
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tui_tabs::TabContent;
 
     #[test]
     fn test_tui_render_state_default() {
@@ -420,21 +400,21 @@ mod tests {
     fn test_get_tab_content_chat() {
         let mut state = TuiRenderState::new();
         state.active_tab = 0;
-        assert_eq!(get_tab_content(&state), TuiTabContent::Chat);
+        assert_eq!(get_tab_content(&state), TabContent::Chat);
     }
 
     #[test]
     fn test_get_tab_content_peers() {
         let mut state = TuiRenderState::new();
         state.active_tab = 1;
-        assert_eq!(get_tab_content(&state), TuiTabContent::Peers);
+        assert_eq!(get_tab_content(&state), TabContent::Peers);
     }
 
     #[test]
     fn test_get_tab_content_log() {
         let mut state = TuiRenderState::new();
         state.active_tab = 2;
-        assert_eq!(get_tab_content(&state), TuiTabContent::Log);
+        assert_eq!(get_tab_content(&state), TabContent::Log);
     }
 
     #[test]
@@ -442,7 +422,7 @@ mod tests {
         let mut state = TuiRenderState::new();
         state.tab_titles.push("DM: Alice".to_string());
         state.active_tab = 3;
-        if let TuiTabContent::Direct(peer) = get_tab_content(&state) {
+        if let TabContent::Direct(peer) = get_tab_content(&state) {
             assert_eq!(peer, "Alice");
         } else {
             panic!("expected Direct");
@@ -451,10 +431,10 @@ mod tests {
 
     #[test]
     fn test_tui_tab_content_is_input_enabled() {
-        assert!(TuiTabContent::Chat.is_input_enabled());
-        assert!(TuiTabContent::Direct("peer".to_string()).is_input_enabled());
-        assert!(!TuiTabContent::Peers.is_input_enabled());
-        assert!(!TuiTabContent::Log.is_input_enabled());
+        assert!(TabContent::Chat.is_input_enabled());
+        assert!(TabContent::Direct("peer".to_string()).is_input_enabled());
+        assert!(!TabContent::Peers.is_input_enabled());
+        assert!(!TabContent::Log.is_input_enabled());
     }
 
     #[test]
@@ -552,14 +532,14 @@ mod tests {
 
     #[test]
     fn test_tui_tab_content_clone() {
-        let content = TuiTabContent::Direct("peer1".to_string());
+        let content = TabContent::Direct("peer1".to_string());
         let cloned = content.clone();
         assert_eq!(cloned, content);
     }
 
     #[test]
     fn test_tui_tab_content_debug_format() {
-        let content = TuiTabContent::Chat;
+        let content = TabContent::Chat;
         let debug_str = format!("{:?}", content);
         assert!(debug_str.contains("Chat"));
     }
