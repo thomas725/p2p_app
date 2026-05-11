@@ -180,30 +180,6 @@ pub fn build_broadcast_message(
     }
 }
 
-/// Build a DirectMessage from command input (pure function for testing)
-#[allow(dead_code)]
-pub fn build_direct_message(
-    content: String,
-    nickname: Option<String>,
-    msg_id: Option<String>,
-    ack_for: Option<String>,
-) -> crate::DirectMessage {
-    crate::DirectMessage {
-        content,
-        timestamp: chrono::Utc::now().timestamp(),
-        sent_at: Some(current_timestamp()),
-        nickname,
-        msg_id,
-        ack_for,
-        received_at: None,
-    }
-}
-
-/// Serialize broadcast message to JSON (pure function for testing)
-pub fn serialize_broadcast_message(msg: &BroadcastMessage) -> Option<String> {
-    serde_json::to_string(msg).ok()
-}
-
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
     match cmd {
         SwarmCommand::Publish {
@@ -288,57 +264,6 @@ mod tests {
     }
 
     #[test]
-    fn test_build_direct_message() {
-        let msg = build_direct_message(
-            "Hi there".to_string(),
-            Some("Bob".to_string()),
-            Some("dm-456".to_string()),
-            Some("original-msg".to_string()),
-        );
-        assert_eq!(msg.content, "Hi there");
-        assert_eq!(msg.nickname, Some("Bob".to_string()));
-        assert_eq!(msg.msg_id, Some("dm-456".to_string()));
-        assert_eq!(msg.ack_for, Some("original-msg".to_string()));
-        assert!(msg.received_at.is_none());
-    }
-
-    #[test]
-    fn test_build_direct_message_no_optional_fields() {
-        let msg = build_direct_message("Message".to_string(), None, None, None);
-        assert_eq!(msg.content, "Message");
-        assert!(msg.nickname.is_none());
-        assert!(msg.msg_id.is_none());
-        assert!(msg.ack_for.is_none());
-    }
-
-    #[test]
-    fn test_serialize_broadcast_message() {
-        let msg = BroadcastMessage {
-            content: "Test".to_string(),
-            sent_at: Some(1234567890.0),
-            nickname: Some("Nick".to_string()),
-            msg_id: Some("id".to_string()),
-        };
-        let json = serialize_broadcast_message(&msg);
-        assert!(json.is_some());
-        let json_str = json.unwrap();
-        assert!(json_str.contains("Test"));
-        assert!(json_str.contains("Nick"));
-    }
-
-    #[test]
-    fn test_serialize_broadcast_message_empty() {
-        let msg = BroadcastMessage {
-            content: "".to_string(),
-            sent_at: None,
-            nickname: None,
-            msg_id: None,
-        };
-        let json = serialize_broadcast_message(&msg).unwrap();
-        assert!(json.contains("content"));
-    }
-
-    #[test]
     fn test_build_broadcast_message_with_all_fields() {
         let msg = build_broadcast_message(
             "test content".to_string(),
@@ -348,34 +273,6 @@ mod tests {
         assert_eq!(msg.content, "test content");
         assert_eq!(msg.nickname, Some("Tester".to_string()));
         assert_eq!(msg.msg_id, Some("msg-123".to_string()));
-    }
-
-    #[test]
-    fn test_build_direct_message_with_all_fields() {
-        let msg = build_direct_message(
-            "direct message".to_string(),
-            Some("Sender".to_string()),
-            Some("msg-456".to_string()),
-            Some("ack-789".to_string()),
-        );
-        assert_eq!(msg.content, "direct message");
-        assert_eq!(msg.nickname, Some("Sender".to_string()));
-        assert_eq!(msg.msg_id, Some("msg-456".to_string()));
-        assert_eq!(msg.ack_for, Some("ack-789".to_string()));
-    }
-
-    #[test]
-    fn test_serialize_broadcast_message_preserves_fields() {
-        let msg = BroadcastMessage {
-            content: "hello".to_string(),
-            sent_at: Some(123456.0),
-            nickname: Some("Nick".to_string()),
-            msg_id: Some("id123".to_string()),
-        };
-        let json = serialize_broadcast_message(&msg).unwrap();
-        assert!(json.contains("hello"));
-        assert!(json.contains("Nick"));
-        assert!(json.contains("id123"));
     }
 }
 
