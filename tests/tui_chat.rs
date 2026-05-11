@@ -710,7 +710,10 @@ fn test_handle_notification_click_broadcasts_col() {
     let mut state = p2p_app::TuiTestState::new();
     state.unread_broadcasts = 1;
     let result = state.handle_notification_click(5); // col < 20 → Broadcasts
-    assert!(matches!(result, Some(p2p_app::tui_test_state::NotificationTarget::Broadcasts)));
+    assert!(matches!(
+        result,
+        Some(p2p_app::tui_test_state::NotificationTarget::Broadcasts)
+    ));
 }
 
 #[test]
@@ -718,7 +721,10 @@ fn test_handle_notification_click_dm_col() {
     let mut state = p2p_app::TuiTestState::new();
     state.unread_dms.insert("peer-dm".to_string(), 1);
     let result = state.handle_notification_click(25); // col >= 20 → Dm
-    assert!(matches!(result, Some(p2p_app::tui_test_state::NotificationTarget::Dm(_))));
+    assert!(matches!(
+        result,
+        Some(p2p_app::tui_test_state::NotificationTarget::Dm(_))
+    ));
 }
 
 #[test]
@@ -769,7 +775,10 @@ fn test_first_message_row_equals_header_plus_two() {
 #[test]
 fn test_calculate_content_start_row_equals_first_message_row() {
     let state = p2p_app::TuiTestState::new();
-    assert_eq!(state.calculate_content_start_row(), state.first_message_row());
+    assert_eq!(
+        state.calculate_content_start_row(),
+        state.first_message_row()
+    );
 }
 
 #[test]

@@ -670,50 +670,53 @@ fn test_calculate_visible_range_empty() {
 
 #[test]
 fn test_key_code_to_scroll_action_up() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::Up), Some("Up"));
 }
 
 #[test]
 fn test_key_code_to_scroll_action_down() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::Down), Some("Down"));
 }
 
 #[test]
 fn test_key_code_to_scroll_action_page_up() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::PageUp), Some("PageUp"));
 }
 
 #[test]
 fn test_key_code_to_scroll_action_page_down() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
-    assert_eq!(key_code_to_scroll_action(KeyCode::PageDown), Some("PageDown"));
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
+    assert_eq!(
+        key_code_to_scroll_action(KeyCode::PageDown),
+        Some("PageDown")
+    );
 }
 
 #[test]
 fn test_key_code_to_scroll_action_home() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::Home), Some("Home"));
 }
 
 #[test]
 fn test_key_code_to_scroll_action_end() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::End), Some("End"));
 }
 
 #[test]
 fn test_key_code_to_scroll_action_invalid() {
-    use p2p_app::tui_helpers::key_code_to_scroll_action;
     use crossterm::event::KeyCode;
+    use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::Enter), None);
     assert_eq!(key_code_to_scroll_action(KeyCode::Backspace), None);
 }
