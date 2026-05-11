@@ -44,10 +44,6 @@ pub struct TuiRenderState {
     pub chat_scroll_offset: usize,
     /// Whether chat tab is auto-scrolling to bottom
     pub chat_auto_scroll: bool,
-    /// Scroll offset for log tab
-    pub log_scroll_offset: usize,
-    /// Whether log tab is auto-scrolling to bottom
-    pub log_auto_scroll: bool,
     /// Scroll state per DM peer: (offset, auto_scroll)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Scroll state for DM+broadcast view per peer
@@ -86,8 +82,6 @@ impl TuiRenderState {
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
-            log_scroll_offset: 0,
-            log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
@@ -136,8 +130,6 @@ impl TuiRenderState {
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
-            log_scroll_offset: 0,
-            log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,

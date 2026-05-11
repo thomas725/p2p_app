@@ -71,9 +71,6 @@ async fn process_swarm_event(
                 s.messages.pop_front();
                 let _ = s.message_ids.pop_front();
             }
-            if s.active_tab != 0 {
-                s.unread_broadcasts += 1;
-            }
             p2plog_debug(format!("Broadcast from {}: {}", sender_display, content));
             if let Err(e) =
                 p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None)
@@ -121,7 +118,6 @@ async fn process_swarm_event(
                     let _ = ids.pop_front();
                 }
             }
-            *s.unread_dms.entry(peer_id.clone()).or_insert(0) += 1;
             s.dynamic_tabs.add_dm_tab(peer_id.clone());
             p2plog_debug(format!("DM from {}: {}", sender_display, content));
             if let Err(e) =

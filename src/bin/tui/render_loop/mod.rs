@@ -67,8 +67,6 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         popup: state.popup.clone(),
         chat_scroll_offset: state.chat_scroll_offset,
         chat_auto_scroll: state.chat_auto_scroll,
-        log_scroll_offset: state.log_scroll_offset,
-        log_auto_scroll: state.log_auto_scroll,
         dm_scroll_state,
         dm_broadcast_scroll_state,
         broadcast_selection: state.broadcast_selection,

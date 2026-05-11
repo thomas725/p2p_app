@@ -166,7 +166,7 @@ async fn handle_request_response(
     }
 }
 
-/// Build a BroadcastMessage from command input (pure function for testing)
+/// Build a BroadcastMessage from component parts
 pub fn build_broadcast_message(
     content: String,
     nickname: Option<String>,
@@ -187,12 +187,7 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             nickname,
             msg_id,
         } => {
-            let msg = BroadcastMessage {
-                content,
-                sent_at: Some(current_timestamp()),
-                nickname,
-                msg_id,
-            };
+            let msg = build_broadcast_message(content, nickname, msg_id);
             if let Ok(json) = serde_json::to_string(&msg) {
                 match swarm
                     .behaviour_mut()

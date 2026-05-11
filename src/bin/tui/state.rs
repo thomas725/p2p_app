@@ -78,10 +78,6 @@ pub struct AppState {
     // Selected broadcast message in broadcast chat tab
     pub broadcast_selection: Option<usize>,
 
-    // Unread Counts
-    pub unread_broadcasts: u32,
-    pub unread_dms: HashMap<String, u32>,
-
     // Runtime Context
     pub own_nickname: String,
     pub local_peer_id: String,
@@ -159,8 +155,6 @@ impl AppState {
             local_nicknames,
             received_nicknames,
             self_nicknames_for_peers,
-            unread_broadcasts: 0,
-            unread_dms: HashMap::new(),
             topic_str,
             editing_nickname: false,
             editing_nickname_peer: None,

@@ -168,7 +168,7 @@ pub fn push_log(message: impl Into<String>) {
 }
 
 /// Log function implementation
-pub fn p2plog(level: &str, msg: String) {
+fn p2plog(level: &str, msg: String) {
     let ts = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
     let formatted = format!("[{}] [{}] {}", ts, level, msg);
 
