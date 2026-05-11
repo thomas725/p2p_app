@@ -692,7 +692,6 @@ fn test_list_header_start_row_with_unread_broadcasts() {
 
 #[test]
 fn test_list_header_start_row_with_unread_dms() {
-    use std::collections::BTreeMap;
     let mut state = p2p_app::TuiTestState::new();
     state.unread_dms.insert("peer-x".to_string(), 2);
     assert_eq!(state.list_header_start_row(), 4);
