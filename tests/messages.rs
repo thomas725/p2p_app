@@ -364,3 +364,58 @@ fn test_load_receipts_empty() {
     let receipts = p2p_app::load_receipts().unwrap();
     assert!(receipts.is_empty());
 }
+
+// ── Edge cases for messages functions ──────────────────────────────────────────
+
+#[serial]
+#[test]
+fn test_load_messages_limit_zero() {
+    let _db = setup_test_db();
+    p2p_app::save_message("msg", None, "topic", false, None).unwrap();
+    // limit=0 should return empty
+    let msgs = p2p_app::load_messages("topic", 0).unwrap();
+    assert!(msgs.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_load_messages_nonexistent_topic() {
+    let _db = setup_test_db();
+    let msgs = p2p_app::load_messages("does-not-exist", 100).unwrap();
+    assert!(msgs.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_load_direct_messages_limit_zero() {
+    let _db = setup_test_db();
+    p2p_app::save_message("dm", Some("peer"), "topic", false, None).unwrap();
+    let msgs = p2p_app::load_direct_messages("peer", 0).unwrap();
+    assert!(msgs.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_get_unsent_direct_messages_empty() {
+    let _db = setup_test_db();
+    let msgs = p2p_app::get_unsent_direct_messages("unknown-peer").unwrap();
+    assert!(msgs.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_save_message_empty_content() {
+    let _db = setup_test_db();
+    // Empty content is allowed
+    let msg = p2p_app::save_message("", None, "topic", false, None).unwrap();
+    assert_eq!(msg.content, "");
+}
+
+#[serial]
+#[test]
+fn test_mark_message_sent_invalid_id() {
+    let _db = setup_test_db();
+    // Marking non-existent message sent should not error
+    let result = p2p_app::mark_message_sent(99999);
+    assert!(result.is_ok());
+}
