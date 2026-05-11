@@ -263,3 +263,82 @@ fn test_tui_tab_content_is_input_enabled() {
     assert!(!TuiTabContent::Peers.is_input_enabled());
     assert!(!TuiTabContent::Log.is_input_enabled());
 }
+
+// ── tui_render_state pure helper functions ────────────────────────────────────
+
+#[test]
+fn test_count_lines_single_line() {
+    use p2p_app::tui_render_state::count_lines;
+    assert_eq!(count_lines("hello", 80), 1);
+}
+
+#[test]
+fn test_count_lines_empty_string() {
+    use p2p_app::tui_render_state::count_lines;
+    assert_eq!(count_lines("", 80), 0);
+}
+
+#[test]
+fn test_count_lines_with_newlines() {
+    use p2p_app::tui_render_state::count_lines;
+    assert_eq!(count_lines("line1\nline2\nline3", 80), 3);
+}
+
+#[test]
+fn test_count_lines_wrapping() {
+    use p2p_app::tui_render_state::count_lines;
+    // 100 chars in 40-width = ceil(100/40) = 3 lines
+    let text = "a".repeat(100);
+    assert_eq!(count_lines(&text, 40), 3);
+}
+
+#[test]
+fn test_count_lines_zero_width() {
+    use p2p_app::tui_render_state::count_lines;
+    // zero width should treat as 1 line (avoid div by zero)
+    assert_eq!(count_lines("hello", 0), 1);
+}
+
+#[test]
+fn test_broadcast_receipt_prefix_unread() {
+    use p2p_app::tui_render_state::broadcast_receipt_prefix;
+    let prefix = broadcast_receipt_prefix(false, 1);
+    assert!(prefix.contains('↷') || prefix.contains('(1)'));
+}
+
+#[test]
+fn test_broadcast_receipt_prefix_read() {
+    use p2p_app::tui_render_state::broadcast_receipt_prefix;
+    let prefix = broadcast_receipt_prefix(true, 0);
+    assert_eq!(prefix, "");
+}
+
+#[test]
+fn test_dm_receipt_prefix_present() {
+    use p2p_app::tui_render_state::dm_receipt_prefix;
+    let prefix = dm_receipt_prefix(Some(1.5));
+    assert!(!prefix.is_empty());
+}
+
+#[test]
+fn test_dm_receipt_prefix_absent() {
+    use p2p_app::tui_render_state::dm_receipt_prefix;
+    let prefix = dm_receipt_prefix(None);
+    assert_eq!(prefix, "");
+}
+
+#[test]
+fn test_calc_visible_strings() {
+    use p2p_app::tui_render_state::calc_visible_strings;
+    let strings = vec!["line1".to_string(), "line2".to_string(), "line3".to_string()];
+    let visible = calc_visible_strings(&strings, 0, 10);
+    assert!(visible.len() <= strings.len());
+}
+
+#[test]
+fn test_calc_visible_strings_empty() {
+    use p2p_app::tui_render_state::calc_visible_strings;
+    let strings: Vec<String> = vec![];
+    let visible = calc_visible_strings(&strings, 0, 10);
+    assert!(visible.is_empty());
+}
