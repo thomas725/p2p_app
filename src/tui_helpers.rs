@@ -64,32 +64,6 @@ pub fn calculate_visible_range(
     (start, end)
 }
 
-/// Parse command string into command parts
-pub fn parse_command(input: &str) -> Option<(&str, &str)> {
-    let input = input.trim();
-    if input.starts_with('/') {
-        let parts: Vec<&str> = input.splitn(2, ' ').collect();
-        Some((parts[0], parts.get(1).copied().unwrap_or("")))
-    } else {
-        None
-    }
-}
-
-/// Check if input is a command
-pub fn is_command(input: &str) -> bool {
-    input.trim().starts_with('/')
-}
-
-/// Get command name from input
-pub fn get_command_name(input: &str) -> Option<&str> {
-    parse_command(input).map(|(cmd, _)| cmd)
-}
-
-/// Get command argument from input
-pub fn get_command_arg(input: &str) -> Option<&str> {
-    parse_command(input).and_then(|(_, arg)| if arg.is_empty() { None } else { Some(arg) })
-}
-
 /// Validate nickname (alphanumeric and dash only, max 20 chars)
 pub fn validate_nickname(nick: &str) -> bool {
     !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')

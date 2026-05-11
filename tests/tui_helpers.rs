@@ -68,42 +68,6 @@ fn test_calculate_visible_range() {
 }
 
 #[test]
-fn test_parse_command() {
-    use p2p_app::tui_helpers::parse_command;
-
-    assert_eq!(parse_command("/nick Alice"), Some(("/nick", "Alice")));
-    assert_eq!(parse_command("/quit"), Some(("/quit", "")));
-    assert_eq!(parse_command("hello"), None);
-}
-
-#[test]
-fn test_is_command() {
-    use p2p_app::tui_helpers::is_command;
-
-    assert!(is_command("/nick"));
-    assert!(is_command("/msg peer hello"));
-    assert!(!is_command("Just a message"));
-}
-
-#[test]
-fn test_get_command_name() {
-    use p2p_app::tui_helpers::get_command_name;
-
-    assert_eq!(get_command_name("/nick Alice"), Some("/nick"));
-    assert_eq!(get_command_name("/quit"), Some("/quit"));
-    assert_eq!(get_command_name("hello"), None);
-}
-
-#[test]
-fn test_get_command_arg() {
-    use p2p_app::tui_helpers::get_command_arg;
-
-    assert_eq!(get_command_arg("/nick Alice"), Some("Alice"));
-    assert_eq!(get_command_arg("/nick"), None);
-    assert_eq!(get_command_arg("hello"), None);
-}
-
-#[test]
 fn test_validate_nickname() {
     use p2p_app::tui_helpers::validate_nickname;
 
@@ -589,43 +553,6 @@ fn test_is_at_bottom_when_not_at_end() {
 fn test_is_at_bottom_empty_list() {
     use p2p_app::tui_helpers::is_at_bottom;
     assert!(is_at_bottom(0, 0, 10)); // 0 >= 0.saturating_sub(10)=0
-}
-
-// ── parse_command edge cases ──────────────────────────────────────────────────
-// parse_command returns Option<(&str,&str)>; get_command_name/arg take &str directly
-
-#[test]
-fn test_parse_command_with_arg() {
-    use p2p_app::tui_helpers::{get_command_arg, get_command_name, parse_command};
-    // parse_command returns the raw tuple
-    let parsed = parse_command("/nick alice");
-    assert_eq!(parsed, Some(("/nick", "alice")));
-    // get_command_name/arg accept the original &str input
-    assert_eq!(get_command_name("/nick alice"), Some("/nick"));
-    assert_eq!(get_command_arg("/nick alice"), Some("alice"));
-}
-
-#[test]
-fn test_parse_command_no_arg() {
-    use p2p_app::tui_helpers::{get_command_arg, get_command_name, parse_command};
-    let parsed = parse_command("/quit");
-    assert_eq!(parsed, Some(("/quit", "")));
-    assert_eq!(get_command_name("/quit"), Some("/quit"));
-    assert!(get_command_arg("/quit").is_none());
-}
-
-#[test]
-fn test_parse_command_not_a_command() {
-    use p2p_app::tui_helpers::{get_command_name, parse_command};
-    assert!(parse_command("hello world").is_none());
-    assert!(get_command_name("hello world").is_none());
-}
-
-#[test]
-fn test_parse_command_empty_arg_stripped() {
-    use p2p_app::tui_helpers::get_command_arg;
-    // trailing space — get_command_arg returns None for empty arg
-    assert!(get_command_arg("/nick ").is_none());
 }
 
 // ── scroll calc helpers ───────────────────────────────────────────────────────
