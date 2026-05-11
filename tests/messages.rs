@@ -396,7 +396,7 @@ fn test_load_direct_messages_limit_zero() {
 
 #[serial]
 #[test]
-fn test_get_unsent_direct_messages_empty() {
+fn test_get_unsent_direct_messages_unknown_peer() {
     let _db = setup_test_db();
     let msgs = p2p_app::get_unsent_direct_messages("unknown-peer").unwrap();
     assert!(msgs.is_empty());
