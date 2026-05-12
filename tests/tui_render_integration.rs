@@ -361,3 +361,42 @@ fn test_calc_visible_strings_empty() {
     assert_eq!(visible, 0);
     assert_eq!(offset, 0);
 }
+
+#[test]
+fn test_tui_render_state_with_sample_data() {
+    use p2p_app::tui_render_state::TuiRenderState;
+    let state = TuiRenderState::with_sample_data();
+    assert!(!state.messages.is_empty(), "sample data should have messages");
+    assert!(!state.peers.is_empty(), "sample data should have peers");
+    assert!(!state.tab_titles.is_empty(), "sample data should have tab titles");
+}
+
+#[test]
+fn test_row_to_visible_index_in_range() {
+    use p2p_app::tui_render_state::row_to_visible_index;
+    let line_counts = vec![1, 2, 1, 3]; // 4 visible items
+    let first_content = 5;
+    // Row 5: first item
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 5), Some(0));
+    // Row 6-7: second item (2 lines)
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 6), Some(1));
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 7), Some(1));
+}
+
+#[test]
+fn test_row_to_visible_index_out_of_bounds() {
+    use p2p_app::tui_render_state::row_to_visible_index;
+    let line_counts = vec![1, 1];
+    let first_content = 10;
+    // Click way beyond content
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 100), None);
+}
+
+#[test]
+fn test_row_to_visible_index_exact_last_item() {
+    use p2p_app::tui_render_state::row_to_visible_index;
+    let line_counts = vec![2, 1];
+    let first_content = 5;
+    // Rows 5-6 are first item, row 7 is second item
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 7), Some(1));
+}

@@ -247,3 +247,57 @@ fn test_tab_content_is_input_enabled() {
     assert!(!TabContent::Peers.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
 }
+
+// ── DynamicTabs additional methods ─────────────────────────────────────────────
+
+#[test]
+fn test_add_dm_tab_returns_index_and_deduplicates() {
+    use p2p_app::tui_tabs::DynamicTabs;
+    let mut tabs = DynamicTabs::new();
+    let idx1 = tabs.add_dm_tab("peer-1".to_string());
+    let idx2 = tabs.add_dm_tab("peer-1".to_string());
+    assert_eq!(idx1, idx2, "adding same peer twice should return same index");
+    assert_eq!(tabs.dm_tab_count(), 1, "should have only 1 DM tab");
+}
+
+#[test]
+fn test_remove_dm_tab_by_peer_id() {
+    use p2p_app::tui_tabs::DynamicTabs;
+    let mut tabs = DynamicTabs::new();
+    tabs.add_dm_tab("peer-to-remove".to_string());
+    tabs.add_dm_tab("peer-keep".to_string());
+    assert_eq!(tabs.dm_tab_count(), 2);
+    let removed = tabs.remove_dm_tab("peer-to-remove");
+    assert!(removed);
+    assert_eq!(tabs.dm_tab_count(), 1);
+}
+
+#[test]
+fn test_remove_dm_tab_nonexistent() {
+    use p2p_app::tui_tabs::DynamicTabs;
+    let mut tabs = DynamicTabs::new();
+    let removed = tabs.remove_dm_tab("nonexistent");
+    assert!(!removed, "removing nonexistent tab should return false");
+}
+
+#[test]
+fn test_dm_tab_count() {
+    use p2p_app::tui_tabs::DynamicTabs;
+    let mut tabs = DynamicTabs::new();
+    assert_eq!(tabs.dm_tab_count(), 0);
+    tabs.add_dm_tab("peer-1".to_string());
+    assert_eq!(tabs.dm_tab_count(), 1);
+    tabs.add_dm_tab("peer-2".to_string());
+    assert_eq!(tabs.dm_tab_count(), 2);
+}
+
+#[test]
+fn test_dm_tab_count_after_remove() {
+    use p2p_app::tui_tabs::DynamicTabs;
+    let mut tabs = DynamicTabs::new();
+    tabs.add_dm_tab("p1".to_string());
+    tabs.add_dm_tab("p2".to_string());
+    tabs.add_dm_tab("p3".to_string());
+    tabs.remove_dm_tab("p2");
+    assert_eq!(tabs.dm_tab_count(), 2);
+}

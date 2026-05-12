@@ -139,3 +139,18 @@ fn test_format_latency_none() {
     let result = p2p_app::fmt::format_latency(None, now);
     assert_eq!(result, "?");
 }
+
+#[test]
+fn test_current_timestamp_returns_positive() {
+    let ts = p2p_app::current_timestamp();
+    assert!(ts > 0.0, "timestamp should be positive");
+    assert!(ts < 2_000_000_000.0, "timestamp should be reasonable (before year 2033)");
+}
+
+#[test]
+fn test_current_timestamp_increases() {
+    let ts1 = p2p_app::current_timestamp();
+    std::thread::sleep(std::time::Duration::from_millis(1));
+    let ts2 = p2p_app::current_timestamp();
+    assert!(ts2 >= ts1, "later timestamp should be >= earlier");
+}

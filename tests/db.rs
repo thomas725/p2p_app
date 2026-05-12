@@ -109,3 +109,29 @@ fn test_get_database_url_from_env() {
     unsafe { std::env::remove_var("DATABASE_URL") };
     assert_eq!(url, "/tmp/explicit.db");
 }
+
+#[serial]
+#[test]
+fn test_reset_db_url_cache() {
+    // Set a URL
+    unsafe { std::env::set_var("DATABASE_URL", "/tmp/test.db") };
+    let url1 = p2p_app::get_database_url();
+    assert_eq!(url1, "/tmp/test.db");
+    
+    // Change env var
+    unsafe { std::env::set_var("DATABASE_URL", "/tmp/other.db") };
+    
+    // Without reset, still returns cached value
+    let url2 = p2p_app::get_database_url();
+    // May still be cached, so just verify it's set
+    assert!(!url2.is_empty());
+    
+    // Reset the cache
+    p2p_app::db::reset_db_url_cache();
+    
+    // Now should get new value
+    let url3 = p2p_app::get_database_url();
+    assert_eq!(url3, "/tmp/other.db");
+    
+    unsafe { std::env::remove_var("DATABASE_URL") };
+}
