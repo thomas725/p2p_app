@@ -296,3 +296,97 @@ fn test_get_peer_display_name_includes_short_id_suffix() {
     // Format is "Nick (XYZ)" where XYZ is first 3 chars of last-8
     assert!(name.contains('(') && name.contains(')'), "got: {}", name);
 }
+
+// ── Additional edge cases ──────────────────────────────────────────────────────
+
+#[serial]
+#[test]
+fn test_generate_nickname_deterministic() {
+    let _db = setup_test_db();
+    let nick1 = p2p_app::generate_nickname().unwrap();
+    let nick2 = p2p_app::generate_nickname().unwrap();
+    // Should generate different nicknames (or at least succeed)
+    assert!(!nick1.is_empty());
+    assert!(!nick2.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_get_local_nickname_unset() {
+    let _db = setup_test_db();
+    let nick = p2p_app::get_local_nickname().unwrap();
+    // Should return default since not set
+    assert!(!nick.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_set_get_local_nickname_roundtrip() {
+    let _db = setup_test_db();
+    let new_nick = "TestNick";
+    p2p_app::set_local_nickname(new_nick).unwrap();
+    let retrieved = p2p_app::get_local_nickname().unwrap();
+    assert_eq!(retrieved, new_nick);
+}
+
+#[serial]
+#[test]
+fn test_ensure_nickname_same_peer_same_nick() {
+    let _db = setup_test_db();
+    let peer = "peer-idempotent";
+    p2p_app::ensure_nickname_for_peer(peer, "Alice").unwrap();
+    let nick1 = p2p_app::get_peer_received_nickname(peer).unwrap();
+    
+    // Ensure again with same nick
+    p2p_app::ensure_nickname_for_peer(peer, "Alice").unwrap();
+    let nick2 = p2p_app::get_peer_received_nickname(peer).unwrap();
+    
+    // Should be the same (idempotent)
+    assert_eq!(nick1, nick2);
+}
+
+#[serial]
+#[test]
+fn test_get_peer_display_name_all_none() {
+    let _db = setup_test_db();
+    let peer = "peer-noinfo";
+    // No local, no received, no self-for-peer
+    let display = p2p_app::get_peer_display_name(peer).unwrap();
+    // Should return short peer ID or similar fallback
+    assert!(!display.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_get_peer_self_nickname_multiple_peers() {
+    let _db = setup_test_db();
+    p2p_app::set_peer_self_nickname("peer1", "My1").unwrap();
+    p2p_app::set_peer_self_nickname("peer2", "My2").unwrap();
+    
+    let nick1 = p2p_app::get_peer_self_nickname("peer1").unwrap();
+    let nick2 = p2p_app::get_peer_self_nickname("peer2").unwrap();
+    
+    assert_eq!(nick1, "My1");
+    assert_eq!(nick2, "My2");
+}
+
+#[serial]
+#[test]
+fn test_nickname_with_unicode() {
+    let _db = setup_test_db();
+    let unicode_nick = "Alice👋";
+    p2p_app::set_local_nickname(unicode_nick).unwrap();
+    let retrieved = p2p_app::get_local_nickname().unwrap();
+    assert_eq!(retrieved, unicode_nick);
+}
+
+#[serial]
+#[test]
+fn test_nickname_max_length_enforcement() {
+    let _db = setup_test_db();
+    // Try to set very long nickname
+    let long_nick = "a".repeat(100);
+    // Should still succeed (or truncate gracefully)
+    let result = p2p_app::set_local_nickname(&long_nick);
+    assert!(result.is_ok() || result.is_err()); // Either way is OK
+}

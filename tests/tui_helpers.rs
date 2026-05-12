@@ -647,3 +647,137 @@ fn test_key_code_to_scroll_action_invalid() {
     assert_eq!(key_code_to_scroll_action(KeyCode::Enter), None);
     assert_eq!(key_code_to_scroll_action(KeyCode::Backspace), None);
 }
+
+// ── Additional edge case coverage ──────────────────────────────────────────────
+
+#[test]
+fn test_is_command_empty_string() {
+    use p2p_app::tui_helpers::is_command;
+    assert!(!is_command(""));
+}
+
+#[test]
+fn test_is_command_slash_only() {
+    use p2p_app::tui_helpers::is_command;
+    assert!(is_command("/"));
+}
+
+#[test]
+fn test_is_command_with_leading_whitespace() {
+    use p2p_app::tui_helpers::is_command;
+    // Slash after whitespace is not a command
+    assert!(!is_command("  /nick"));
+    // But trimmed slash is a command
+    assert!(is_command("/nick"));
+}
+
+#[test]
+fn test_get_command_name_without_slash() {
+    use p2p_app::tui_helpers::get_command_name;
+    assert_eq!(get_command_name("hello"), None);
+}
+
+#[test]
+fn test_get_command_name_slash_only() {
+    use p2p_app::tui_helpers::get_command_name;
+    assert_eq!(get_command_name("/"), Some("/"));
+}
+
+#[test]
+fn test_get_command_arg_with_multiple_spaces() {
+    use p2p_app::tui_helpers::get_command_arg;
+    // Only first space separates command from arg
+    assert_eq!(get_command_arg("/nick   alice"), Some("  alice"));
+}
+
+#[test]
+fn test_validate_nickname_with_numbers() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(validate_nickname("alice123"));
+    assert!(validate_nickname("123"));
+}
+
+#[test]
+fn test_validate_nickname_with_dashes() {
+    use p2p_app::tui_helpers::validate_nickname;
+    assert!(validate_nickname("alice-bob"));
+    assert!(validate_nickname("a-b-c-d"));
+}
+
+#[test]
+fn test_truncate_message_exact_fit() {
+    use p2p_app::tui_helpers::truncate_message;
+    assert_eq!(truncate_message("12345", 5), "12345");
+    assert_eq!(truncate_message("12345", 6), "12345");
+}
+
+#[test]
+fn test_truncate_message_unicode() {
+    use p2p_app::tui_helpers::truncate_message;
+    let emoji_str = "hello 👋 world";
+    let result = truncate_message(emoji_str, 8);
+    // Should truncate and add ellipsis
+    assert!(result.len() <= 8);
+    assert!(result.ends_with("..."));
+}
+
+#[test]
+fn test_message_line_count_all_newlines() {
+    use p2p_app::tui_helpers::message_line_count;
+    assert_eq!(message_line_count("\n\n\n", 80), 4); // 4 lines (empty + 3 newlines)
+}
+
+#[test]
+fn test_format_peer_list_item_long_id() {
+    use p2p_app::tui_helpers::format_peer_list_item;
+    let long_id = "12D3KooWVeryLongPeerIdHere";
+    let result = format_peer_list_item(long_id, None, "now");
+    assert!(result.contains("12D3KooW")); // First 8 chars
+}
+
+#[test]
+fn test_parse_latency_exactly_one_second() {
+    use p2p_app::tui_helpers::parse_latency;
+    let result = parse_latency(Some(0.0), std::time::SystemTime::now() + std::time::Duration::from_secs(1));
+    assert!(result.contains("1") || result.contains("1s"));
+}
+
+#[test]
+fn test_parse_latency_milliseconds_boundary() {
+    use p2p_app::tui_helpers::parse_latency;
+    // Exactly 999ms
+    let result = parse_latency(Some(0.0), std::time::SystemTime::now() + std::time::Duration::from_millis(999));
+    assert!(result.contains("ms") || result.contains("999"));
+}
+
+#[test]
+fn test_sort_peers_with_same_timestamp() {
+    use p2p_app::tui_helpers::sort_peers_by_last_seen;
+    use std::collections::VecDeque;
+    let mut peers = VecDeque::from([
+        ("p1".into(), "2024-01-01 12:00:00".into(), "2024-01-01 12:00:00".into()),
+        ("p2".into(), "2024-01-01 12:00:00".into(), "2024-01-01 12:00:00".into()),
+    ]);
+    let sel = sort_peers_by_last_seen(&mut peers, 0);
+    // Both have same timestamp, order may not change but selection should be preserved
+    assert!(sel < peers.len());
+}
+
+#[test]
+fn test_scroll_down_with_auto_scroll_already_active() {
+    use p2p_app::tui_helpers::scroll_down;
+    let mut offset = 50;
+    let mut auto_scroll = true;
+    scroll_down(&mut offset, &mut auto_scroll, 10, 100);
+    assert!(auto_scroll); // Should remain true
+    assert_eq!(offset, 60);
+}
+
+#[test]
+fn test_handle_scroll_key_invalid_action() {
+    use p2p_app::tui_helpers::handle_scroll_key_for_section;
+    let (offset, auto) = handle_scroll_key_for_section("Invalid", 10, false, 100);
+    // Invalid action should be no-op
+    assert_eq!(offset, 10);
+    assert!(!auto);
+}

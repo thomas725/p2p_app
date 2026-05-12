@@ -419,3 +419,59 @@ fn test_mark_message_sent_invalid_id() {
     let result = p2p_app::mark_message_sent(99999);
     assert!(result.is_ok());
 }
+
+// ── Additional edge cases ──────────────────────────────────────────────────────
+
+#[serial]
+#[test]
+fn test_save_message_very_large_content() {
+    let _db = setup_test_db();
+    let large_content = "x".repeat(10000);
+    let msg = p2p_app::save_message(&large_content, None, "topic", false, None).unwrap();
+    assert_eq!(msg.content.len(), 10000);
+}
+
+#[serial]
+#[test]
+fn test_save_message_with_special_characters() {
+    let _db = setup_test_db();
+    let special = "Hello! @#$%^&*() 你好 🚀";
+    let msg = p2p_app::save_message(special, None, "topic", false, None).unwrap();
+    assert_eq!(msg.content, special);
+}
+
+#[serial]
+#[test]
+fn test_load_messages_preserves_order() {
+    let _db = setup_test_db();
+    p2p_app::save_message("first", None, "t", false, None).unwrap();
+    p2p_app::save_message("second", None, "t", false, None).unwrap();
+    p2p_app::save_message("third", None, "t", false, None).unwrap();
+    let msgs = p2p_app::load_messages("t", 100).unwrap();
+    // Messages are ordered by ID (insertion order)
+    assert_eq!(msgs[0].content, "first");
+    assert_eq!(msgs[1].content, "second");
+    assert_eq!(msgs[2].content, "third");
+}
+
+#[serial]
+#[test]
+fn test_save_direct_message_same_peer_different_topics() {
+    let _db = setup_test_db();
+    p2p_app::save_message("msg1", Some("peer"), "topic1", false, None).unwrap();
+    p2p_app::save_message("msg2", Some("peer"), "topic2", false, None).unwrap();
+    let msgs1 = p2p_app::load_direct_messages("peer", 100).unwrap();
+    // Should get both, as they're for the same peer
+    assert_eq!(msgs1.len(), 2);
+}
+
+#[serial]
+#[test]
+fn test_save_message_boolean_variants() {
+    let _db = setup_test_db();
+    // Test both broadcast (false) and direct-related flags
+    let broadcast = p2p_app::save_message("b", None, "t", false, None).unwrap();
+    let sent = p2p_app::save_message("s", None, "t", true, None).unwrap();
+    assert_eq!(broadcast.content, "b");
+    assert_eq!(sent.content, "s");
+}
