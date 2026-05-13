@@ -135,3 +135,37 @@ fn test_reset_db_url_cache() {
     
     unsafe { std::env::remove_var("DATABASE_URL") };
 }
+
+// ── Additional database edge cases ─────────────────────────────────────────────
+
+#[serial]
+#[test]
+fn test_get_local_peer_id_deterministic() {
+    let _db = setup_test_db();
+    let id1 = p2p_app::get_local_peer_id().unwrap();
+    let id2 = p2p_app::get_local_peer_id().unwrap();
+    // Same database session should return same peer ID
+    assert_eq!(id1.to_string(), id2.to_string());
+}
+
+#[serial]
+#[test]
+fn test_get_libp2p_identity_format() {
+    let _db = setup_test_db();
+    let keypair = p2p_app::get_libp2p_identity().unwrap();
+    // Just verify it's a valid keypair (doesn't panic)
+    let peer_id = libp2p::PeerId::from_public_key(&keypair.public());
+    assert!(!peer_id.to_string().is_empty());
+}
+
+#[serial]
+#[test]
+fn test_get_local_peer_id_matches_keypair() {
+    let _db = setup_test_db();
+    let keypair = p2p_app::get_libp2p_identity().unwrap();
+    let stored_id = p2p_app::get_local_peer_id().unwrap();
+    
+    // Peer ID from keypair should match stored
+    let computed_id = libp2p::PeerId::from_public_key(&keypair.public());
+    assert_eq!(computed_id, stored_id);
+}
