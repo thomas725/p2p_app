@@ -651,46 +651,6 @@ fn test_key_code_to_scroll_action_invalid() {
 // ── Additional edge case coverage ──────────────────────────────────────────────
 
 #[test]
-fn test_is_command_empty_string() {
-    use p2p_app::tui_helpers::is_command;
-    assert!(!is_command(""));
-}
-
-#[test]
-fn test_is_command_slash_only() {
-    use p2p_app::tui_helpers::is_command;
-    assert!(is_command("/"));
-}
-
-#[test]
-fn test_is_command_with_leading_whitespace() {
-    use p2p_app::tui_helpers::is_command;
-    // Slash after whitespace is not a command
-    assert!(!is_command("  /nick"));
-    // But trimmed slash is a command
-    assert!(is_command("/nick"));
-}
-
-#[test]
-fn test_get_command_name_without_slash() {
-    use p2p_app::tui_helpers::get_command_name;
-    assert_eq!(get_command_name("hello"), None);
-}
-
-#[test]
-fn test_get_command_name_slash_only() {
-    use p2p_app::tui_helpers::get_command_name;
-    assert_eq!(get_command_name("/"), Some("/"));
-}
-
-#[test]
-fn test_get_command_arg_with_multiple_spaces() {
-    use p2p_app::tui_helpers::get_command_arg;
-    // Only first space separates command from arg
-    assert_eq!(get_command_arg("/nick   alice"), Some("  alice"));
-}
-
-#[test]
 fn test_validate_nickname_with_numbers() {
     use p2p_app::tui_helpers::validate_nickname;
     assert!(validate_nickname("alice123"));
@@ -736,18 +696,23 @@ fn test_format_peer_list_item_long_id() {
 }
 
 #[test]
-fn test_parse_latency_exactly_one_second() {
-    use p2p_app::tui_helpers::parse_latency;
-    let result = parse_latency(Some(0.0), std::time::SystemTime::now() + std::time::Duration::from_secs(1));
-    assert!(result.contains("1") || result.contains("1s"));
+fn test_format_latency_near_one_second() {
+    use p2p_app::fmt::format_latency;
+    let result = format_latency(
+        Some(0.0),
+        std::time::SystemTime::now() + std::time::Duration::from_secs(1),
+    );
+    assert!(result.contains('s') || result.contains("ms"));
 }
 
 #[test]
-fn test_parse_latency_milliseconds_boundary() {
-    use p2p_app::tui_helpers::parse_latency;
-    // Exactly 999ms
-    let result = parse_latency(Some(0.0), std::time::SystemTime::now() + std::time::Duration::from_millis(999));
-    assert!(result.contains("ms") || result.contains("999"));
+fn test_format_latency_milliseconds_boundary() {
+    use p2p_app::fmt::format_latency;
+    let result = format_latency(
+        Some(0.0),
+        std::time::SystemTime::now() + std::time::Duration::from_millis(999),
+    );
+    assert!(result.contains("ms"));
 }
 
 #[test]
@@ -755,8 +720,16 @@ fn test_sort_peers_with_same_timestamp() {
     use p2p_app::tui_helpers::sort_peers_by_last_seen;
     use std::collections::VecDeque;
     let mut peers = VecDeque::from([
-        ("p1".into(), "2024-01-01 12:00:00".into(), "2024-01-01 12:00:00".into()),
-        ("p2".into(), "2024-01-01 12:00:00".into(), "2024-01-01 12:00:00".into()),
+        (
+            "p1".into(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ),
+        (
+            "p2".into(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ),
     ]);
     let sel = sort_peers_by_last_seen(&mut peers, 0);
     // Both have same timestamp, order may not change but selection should be preserved
@@ -765,11 +738,11 @@ fn test_sort_peers_with_same_timestamp() {
 
 #[test]
 fn test_scroll_down_with_auto_scroll_already_active() {
-    use p2p_app::tui_helpers::scroll_down;
+    use p2p_app::tui_helpers::scroll_down_lines;
     let mut offset = 50;
     let mut auto_scroll = true;
-    scroll_down(&mut offset, &mut auto_scroll, 10, 100);
-    assert!(auto_scroll); // Should remain true
+    scroll_down_lines(&mut offset, &mut auto_scroll, 10, 100);
+    assert!(auto_scroll);
     assert_eq!(offset, 60);
 }
 

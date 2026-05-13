@@ -30,6 +30,8 @@
 
 pub mod behavior;
 pub mod db;
+#[cfg(feature = "dioxus")]
+pub mod dioxus_app;
 pub mod fmt;
 pub mod logging;
 pub mod logging_config;

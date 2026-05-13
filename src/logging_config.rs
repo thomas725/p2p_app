@@ -1,33 +1,5 @@
 //! Tracing and logging configuration
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[cfg(feature = "tracing")]
-    fn test_tracing_filter_returns_targets() {
-        let filter = tracing_filter();
-        assert!(!format!("{:?}", filter).is_empty());
-    }
-
-    #[test]
-    #[cfg(feature = "tracing")]
-    fn test_tracing_filter_has_default_warn() {
-        let filter = tracing_filter();
-        let filter_str = format!("{:?}", filter);
-        assert!(filter_str.contains("WARN"));
-    }
-
-    #[test]
-    #[cfg(feature = "tracing")]
-    fn test_tracing_filter_enables_debug_targets() {
-        let filter = tracing_filter();
-        let filter_str = format!("{:?}", filter);
-        assert!(filter_str.contains("DEBUG") || filter_str.contains("debug"));
-    }
-}
-
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
 ///
@@ -63,4 +35,32 @@ pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
         .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
         .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
         .with_default(LevelFilter::WARN)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_returns_targets() {
+        let filter = tracing_filter();
+        assert!(!format!("{:?}", filter).is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_has_default_warn() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("WARN"));
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_enables_debug_targets() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("DEBUG") || filter_str.contains("debug"));
+    }
 }

@@ -14,6 +14,16 @@ pub enum NetworkSize {
     Large,
 }
 
+impl std::fmt::Display for NetworkSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Small => write!(f, "Small"),
+            Self::Medium => write!(f, "Medium"),
+            Self::Large => write!(f, "Large"),
+        }
+    }
+}
+
 impl NetworkSize {
     /// Classify network size based on average peer count.
     ///

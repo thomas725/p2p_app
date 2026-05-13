@@ -233,44 +233,6 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_build_broadcast_message() {
-        let msg = build_broadcast_message(
-            "Hello world".to_string(),
-            Some("Alice".to_string()),
-            Some("msg-123".to_string()),
-        );
-        assert_eq!(msg.content, "Hello world");
-        assert_eq!(msg.nickname, Some("Alice".to_string()));
-        assert_eq!(msg.msg_id, Some("msg-123".to_string()));
-        assert!(msg.sent_at.is_some());
-    }
-
-    #[test]
-    fn test_build_broadcast_message_empty_content() {
-        let msg = build_broadcast_message("".to_string(), None, None);
-        assert!(msg.content.is_empty());
-        assert!(msg.nickname.is_none());
-        assert!(msg.msg_id.is_none());
-    }
-
-    #[test]
-    fn test_build_broadcast_message_with_all_fields() {
-        let msg = build_broadcast_message(
-            "test content".to_string(),
-            Some("Tester".to_string()),
-            Some("msg-123".to_string()),
-        );
-        assert_eq!(msg.content, "test content");
-        assert_eq!(msg.nickname, Some("Tester".to_string()));
-        assert_eq!(msg.msg_id, Some("msg-123".to_string()));
-    }
-}
-
 /// Spawns the swarm handler task that processes libp2p events
 /// and translates them to app-level SwarmEvent messages.
 ///
@@ -307,4 +269,42 @@ pub fn spawn_swarm_handler(
     });
 
     (handle, event_rx, cmd_tx)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_broadcast_message() {
+        let msg = build_broadcast_message(
+            "Hello world".to_string(),
+            Some("Alice".to_string()),
+            Some("msg-123".to_string()),
+        );
+        assert_eq!(msg.content, "Hello world");
+        assert_eq!(msg.nickname, Some("Alice".to_string()));
+        assert_eq!(msg.msg_id, Some("msg-123".to_string()));
+        assert!(msg.sent_at.is_some());
+    }
+
+    #[test]
+    fn test_build_broadcast_message_empty_content() {
+        let msg = build_broadcast_message("".to_string(), None, None);
+        assert!(msg.content.is_empty());
+        assert!(msg.nickname.is_none());
+        assert!(msg.msg_id.is_none());
+    }
+
+    #[test]
+    fn test_build_broadcast_message_with_all_fields() {
+        let msg = build_broadcast_message(
+            "test content".to_string(),
+            Some("Tester".to_string()),
+            Some("msg-123".to_string()),
+        );
+        assert_eq!(msg.content, "test content");
+        assert_eq!(msg.nickname, Some("Tester".to_string()));
+        assert_eq!(msg.msg_id, Some("msg-123".to_string()));
+    }
 }

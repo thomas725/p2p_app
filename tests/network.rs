@@ -4,33 +4,32 @@ use p2p_app::network::NetworkSize;
 
 #[test]
 fn test_network_size_display() {
-    assert_eq!(format!("{}", NetworkSize::Small), "Small");
-    assert_eq!(format!("{}", NetworkSize::Medium), "Medium");
-    assert_eq!(format!("{}", NetworkSize::Large), "Large");
+    assert_eq!(NetworkSize::Small.to_string(), "Small");
+    assert_eq!(NetworkSize::Medium.to_string(), "Medium");
+    assert_eq!(NetworkSize::Large.to_string(), "Large");
 }
 
 #[test]
 fn test_network_size_from_peer_count() {
     // Small: 0-20 peers
-    assert_eq!(NetworkSize::from_peer_count(5), NetworkSize::Small);
-    assert_eq!(NetworkSize::from_peer_count(20), NetworkSize::Small);
-    
+    assert_eq!(NetworkSize::from_peer_count(5.0), NetworkSize::Small);
+    assert_eq!(NetworkSize::from_peer_count(20.0), NetworkSize::Small);
+
     // Medium: 21-100 peers
-    assert_eq!(NetworkSize::from_peer_count(50), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(100), NetworkSize::Medium);
-    
+    assert_eq!(NetworkSize::from_peer_count(50.0), NetworkSize::Medium);
+    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Medium);
+
     // Large: 100+ peers
-    assert_eq!(NetworkSize::from_peer_count(101), NetworkSize::Large);
-    assert_eq!(NetworkSize::from_peer_count(1000), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(101.0), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(1000.0), NetworkSize::Large);
 }
 
 #[test]
 fn test_network_size_boundaries() {
-    // Test exact boundaries
-    assert_eq!(NetworkSize::from_peer_count(0), NetworkSize::Small);
-    assert_eq!(NetworkSize::from_peer_count(21), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(100), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(101), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(0.0), NetworkSize::Small);
+    assert_eq!(NetworkSize::from_peer_count(21.0), NetworkSize::Medium);
+    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Medium);
+    assert_eq!(NetworkSize::from_peer_count(101.0), NetworkSize::Large);
 }
 
 #[test]
@@ -43,8 +42,8 @@ fn test_network_size_equality() {
 }
 
 #[test]
-fn test_network_size_clone() {
+fn test_network_size_copy() {
     let size = NetworkSize::Large;
-    let cloned = size.clone();
-    assert_eq!(size, cloned);
+    let copied = size;
+    assert_eq!(size, copied);
 }

@@ -144,7 +144,10 @@ fn test_format_latency_none() {
 fn test_current_timestamp_returns_positive() {
     let ts = p2p_app::current_timestamp();
     assert!(ts > 0.0, "timestamp should be positive");
-    assert!(ts < 2_000_000_000.0, "timestamp should be reasonable (before year 2033)");
+    assert!(
+        ts < 2_000_000_000.0,
+        "timestamp should be reasonable (before year 2033)"
+    );
 }
 
 #[test]

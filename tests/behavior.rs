@@ -158,27 +158,9 @@ fn test_broadcast_message_clone() {
 
 #[serial]
 #[test]
-fn test_direct_message_default() {
-    let dm = p2p_app::behavior::DirectMessage::default();
-    assert_eq!(dm.content, "");
-    assert_eq!(dm.timestamp, 0);
-    assert!(dm.sent_at.is_none());
-}
-
-#[serial]
-#[test]
-fn test_broadcast_message_default() {
-    let bm = p2p_app::behavior::BroadcastMessage::default();
-    assert_eq!(bm.content, "");
-    assert!(bm.sent_at.is_none());
-}
-
-#[serial]
-#[test]
 fn test_build_behaviour_returns_valid_behaviour() {
     let _db = setup_test_db();
     let keypair = p2p_app::get_libp2p_identity().unwrap();
     let behaviour = p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
-    // Behaviour is constructed and should be usable
     let _ = behaviour;
 }

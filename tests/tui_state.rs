@@ -256,7 +256,10 @@ fn test_add_dm_tab_returns_index_and_deduplicates() {
     let mut tabs = DynamicTabs::new();
     let idx1 = tabs.add_dm_tab("peer-1".to_string());
     let idx2 = tabs.add_dm_tab("peer-1".to_string());
-    assert_eq!(idx1, idx2, "adding same peer twice should return same index");
+    assert_eq!(
+        idx1, idx2,
+        "adding same peer twice should return same index"
+    );
     assert_eq!(tabs.dm_tab_count(), 1, "should have only 1 DM tab");
 }
 
@@ -268,7 +271,7 @@ fn test_remove_dm_tab_by_peer_id() {
     tabs.add_dm_tab("peer-keep".to_string());
     assert_eq!(tabs.dm_tab_count(), 2);
     let removed = tabs.remove_dm_tab("peer-to-remove");
-    assert!(removed);
+    assert!(removed.is_some());
     assert_eq!(tabs.dm_tab_count(), 1);
 }
 
@@ -277,7 +280,10 @@ fn test_remove_dm_tab_nonexistent() {
     use p2p_app::tui_tabs::DynamicTabs;
     let mut tabs = DynamicTabs::new();
     let removed = tabs.remove_dm_tab("nonexistent");
-    assert!(!removed, "removing nonexistent tab should return false");
+    assert!(
+        removed.is_none(),
+        "removing nonexistent tab should return None"
+    );
 }
 
 #[test]

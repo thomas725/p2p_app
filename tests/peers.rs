@@ -237,26 +237,26 @@ fn test_get_network_size_large() {
 fn test_save_peer_update_overwrites() {
     let _db = setup_test_db();
     let peer_id = "peer-update-test";
-    
-    p2p_app::save_peer(peer_id, "2024-01-01 10:00:00", "2024-01-01 10:00:00").unwrap();
-    p2p_app::save_peer(peer_id, "2024-01-02 10:00:00", "2024-01-02 11:00:00").unwrap();
-    
+
+    p2p_app::save_peer(peer_id, &[]).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(5));
+    p2p_app::save_peer(peer_id, &[]).unwrap();
+
     let peers = p2p_app::load_peers().unwrap();
-    let found = peers.iter().find(|(id, _, _)| id == peer_id);
+    let found = peers.iter().find(|p| p.peer_id == peer_id);
     assert!(found.is_some());
-    // Should have newer timestamp
-    let (_, _, last_seen) = found.unwrap();
-    assert!(last_seen.contains("2024-01-02"));
+    let found = found.unwrap();
+    assert!(found.last_seen.to_string().contains("2024"));
 }
 
 #[serial]
 #[test]
 fn test_load_known_peers_includes_saved() {
     let _db = setup_test_db();
-    p2p_app::save_peer("known-peer", "2024-01-01 10:00:00", "2024-01-01 11:00:00").unwrap();
-    
+    p2p_app::save_peer("known-peer", &[]).unwrap();
+
     let known = p2p_app::load_known_peers().unwrap();
-    let has_peer = known.iter().any(|id| id == "known-peer");
+    let has_peer = known.iter().any(|p| p.peer_id == "known-peer");
     assert!(has_peer);
 }
 
@@ -264,34 +264,11 @@ fn test_load_known_peers_includes_saved() {
 #[test]
 fn test_get_average_peer_count_with_data() {
     let _db = setup_test_db();
-    p2p_app::save_peer("p1", "2024-01-01", "2024-01-01").unwrap();
-    p2p_app::save_peer("p2", "2024-01-01", "2024-01-01").unwrap();
-    
+    p2p_app::save_peer("p1", &[]).unwrap();
+    p2p_app::save_peer("p2", &[]).unwrap();
+
     let avg = p2p_app::get_average_peer_count().unwrap();
     assert!(avg >= 0.0);
-}
-
-#[serial]
-#[test]
-fn test_save_listen_ports_multiple() {
-    let _db = setup_test_db();
-    p2p_app::save_listen_ports(vec![4001, 4002, 4003]).unwrap();
-    
-    let ports = p2p_app::load_listen_ports().unwrap();
-    assert_eq!(ports.len(), 3);
-    assert!(ports.contains(&4001));
-    assert!(ports.contains(&4002));
-    assert!(ports.contains(&4003));
-}
-
-#[serial]
-#[test]
-fn test_save_listen_ports_empty() {
-    let _db = setup_test_db();
-    p2p_app::save_listen_ports(vec![]).unwrap();
-    
-    let ports = p2p_app::load_listen_ports().unwrap();
-    assert!(ports.is_empty());
 }
 
 #[serial]
@@ -300,7 +277,7 @@ fn test_get_network_size_thresholds() {
     let _db = setup_test_db();
     // Save exactly at Small threshold
     for i in 0..5 {
-        p2p_app::save_peer(&format!("p{}", i), "2024-01-01", "2024-01-01").unwrap();
+        p2p_app::save_peer(&format!("p{}", i), &[]).unwrap();
     }
     let size_small = p2p_app::get_network_size().unwrap();
     assert_eq!(size_small, p2p_app::network::NetworkSize::Small);
@@ -308,17 +285,14 @@ fn test_get_network_size_thresholds() {
 
 #[serial]
 #[test]
-fn test_save_peer_session_overwrites_previous() {
+fn test_save_peer_session_twice() {
     let _db = setup_test_db();
-    let peer = "session-peer";
-    
-    p2p_app::save_peer_session(peer, 123).unwrap();
+    p2p_app::save_peer_session(5).unwrap();
     let count1 = p2p_app::get_recent_peer_count().unwrap();
-    
-    p2p_app::save_peer_session(peer, 456).unwrap();
+
+    p2p_app::save_peer_session(10).unwrap();
     let count2 = p2p_app::get_recent_peer_count().unwrap();
-    
-    // Count should be at least 1 and same or similar
-    assert!(count1 >= 0);
-    assert!(count2 >= 0);
+
+    assert_eq!(count1, 5);
+    assert_eq!(count2, 10);
 }

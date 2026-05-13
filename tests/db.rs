@@ -117,22 +117,22 @@ fn test_reset_db_url_cache() {
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/test.db") };
     let url1 = p2p_app::get_database_url();
     assert_eq!(url1, "/tmp/test.db");
-    
+
     // Change env var
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/other.db") };
-    
+
     // Without reset, still returns cached value
     let url2 = p2p_app::get_database_url();
     // May still be cached, so just verify it's set
     assert!(!url2.is_empty());
-    
+
     // Reset the cache
     p2p_app::db::reset_db_url_cache();
-    
+
     // Now should get new value
     let url3 = p2p_app::get_database_url();
     assert_eq!(url3, "/tmp/other.db");
-    
+
     unsafe { std::env::remove_var("DATABASE_URL") };
 }
 
@@ -164,7 +164,7 @@ fn test_get_local_peer_id_matches_keypair() {
     let _db = setup_test_db();
     let keypair = p2p_app::get_libp2p_identity().unwrap();
     let stored_id = p2p_app::get_local_peer_id().unwrap();
-    
+
     // Peer ID from keypair should match stored
     let computed_id = libp2p::PeerId::from_public_key(&keypair.public());
     assert_eq!(computed_id, stored_id);

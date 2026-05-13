@@ -37,6 +37,7 @@
               gcc
               # Dioxus Desktop dependencies
               gtk3
+              xdotool
               # libsoup_2_4 # insecure! let's comment this out for now..
               webkitgtk_4_1
               glib
