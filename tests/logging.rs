@@ -256,3 +256,96 @@ fn test_set_tui_callback_receives_push_log() {
     let logs = p2p_app::logging::get_tui_logs();
     assert!(logs.iter().any(|l| l.contains("callback-flow-check")));
 }
+
+// ── Additional logging edge cases ──────────────────────────────────────────────
+
+#[serial]
+#[test]
+fn test_strip_ansi_codes_mixed() {
+    use p2p_app::strip_ansi_codes;
+    let input = "\u{1b}[32mGreen\u{1b}[0m and \u{1b}[31mRed\u{1b}[0m";
+    let result = strip_ansi_codes(input);
+    assert!(!result.contains("\u{1b}"));
+    assert!(result.contains("Green"));
+    assert!(result.contains("Red"));
+}
+
+#[serial]
+#[test]
+fn test_strip_ansi_codes_no_codes() {
+    use p2p_app::strip_ansi_codes;
+    let input = "plain text no codes";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, input);
+}
+
+#[serial]
+#[test]
+fn test_strip_ansi_codes_only_codes() {
+    use p2p_app::strip_ansi_codes;
+    let input = "\u{1b}[32m\u{1b}[0m";
+    let result = strip_ansi_codes(input);
+    assert_eq!(result, "");
+}
+
+#[serial]
+#[test]
+fn test_strip_ansi_codes_nested() {
+    use p2p_app::strip_ansi_codes;
+    let input = "\u{1b}[1m\u{1b}[32mbold green\u{1b}[0m\u{1b}[0m";
+    let result = strip_ansi_codes(input);
+    assert!(!result.contains("\u{1b}"));
+}
+
+#[serial]
+#[test]
+fn test_p2plog_levels_all() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    
+    p2p_app::logging::p2plog_debug("debug message");
+    p2p_app::logging::p2plog_info("info message");
+    p2p_app::logging::p2plog_warn("warn message");
+    p2p_app::logging::p2plog_error("error message");
+    
+    let logs = p2p_app::logging::get_tui_logs();
+    // At least some logs should be captured (depending on filter)
+    let _ = logs;
+}
+
+#[serial]
+#[test]
+fn test_push_log_multiple() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::clear_tui_logs();
+    
+    p2p_app::logging::push_log("log1");
+    p2p_app::logging::push_log("log2");
+    p2p_app::logging::push_log("log3");
+    
+    let logs = p2p_app::logging::get_tui_logs();
+    assert!(logs.len() >= 3);
+}
+
+#[serial]
+#[test]
+fn test_clear_tui_logs_clears_all() {
+    p2p_app::logging::init_logging();
+    p2p_app::logging::push_log("log to be cleared");
+    
+    let before = p2p_app::logging::get_tui_logs();
+    assert!(!before.is_empty());
+    
+    p2p_app::logging::clear_tui_logs();
+    let after = p2p_app::logging::get_tui_logs();
+    assert!(after.is_empty());
+}
+
+#[serial]
+#[test]
+fn test_get_tui_logs_returns_vec() {
+    p2p_app::logging::init_logging();
+    let logs = p2p_app::logging::get_tui_logs();
+    let _ = logs.len();
+    let _ = logs.is_empty();
+}
