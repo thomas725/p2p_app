@@ -144,7 +144,6 @@ def get_file_purpose(filepath: str) -> str:
         'behavior.rs': 'Network behavior definitions',
         'network.rs': 'Network size classification',
         'types.rs': 'Event & command type defs',
-        'logging_config.rs': 'Tracing configuration',
         'tui_tabs.rs': 'Tab management & navigation',
         'tui_test_state.rs': 'TUI test state & mouse handling',
         'tui_events.rs': 'Event/command types & channels',
