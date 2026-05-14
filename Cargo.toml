@@ -20,7 +20,7 @@ strip = false
 panic = 'unwind'
 
 [features]
-default = [ "mdns", "tracing", "quic", "tui", "test-utils" ]
+default = [ "mdns", "tracing", "quic", "tui" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]

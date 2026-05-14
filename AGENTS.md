@@ -86,3 +86,22 @@ Example: Adding `sender_nickname` to messages table:
 - Add to CREATE TABLE: `sender_nickname TEXT`
 - Add to SCHEMA_ENTRIES in build.rs: `("messages", "sender_nickname", "TEXT")`
 - Use ensure_columns() logic (already implemented) for existing DBs
+
+## 6. Test Utilities Feature
+
+Several items are gated behind the `test-utils` feature (not in default) and marked
+`#[cfg(any(test, feature = "test-utils"))]`:
+- `tracing_filter`, `clear_tui_logs` (src/logging.rs)
+- `reset_db_url_cache` (src/db.rs)
+- `DmTab::with_messages` (src/tui_tabs.rs)
+- Entire `tui_test_state` module (src/tui_test_state.rs)
+
+Use the cargo aliases defined in `.cargo/config.toml` to auto-include the feature:
+
+| Command | Alias | Expands to |
+|---------|-------|------------|
+| Run tests | `cargo t` | `cargo test --features test-utils` |
+| Lint all | `cargo ct` | `cargo clippy --all-targets --features test-utils` |
+
+For other commands that need `test-utils` (e.g. `cargo check --tests`), pass
+`--features test-utils` explicitly.
