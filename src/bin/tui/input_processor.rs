@@ -24,6 +24,37 @@ fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
     state.mouse_capture
 }
 
+/// Pure: dismiss the popup if one is open. Returns true if a popup was dismissed.
+fn dismiss_popup(state: &mut super::state::AppState) -> bool {
+    if state.popup.is_some() {
+        state.popup = None;
+        true
+    } else {
+        false
+    }
+}
+
+/// Pure: extract nickname update data from state. Returns None if the new nickname is empty.
+fn prepare_nickname_update(
+    state: &super::state::AppState,
+) -> Option<(String, String, Option<String>)> {
+    let new_nickname = state.chat_input.lines().join("\n");
+    if new_nickname.trim().is_empty() {
+        return None;
+    }
+    let (old_nickname, peer_id) = if let Some(pid) = &state.editing_nickname_peer {
+        let old = state
+            .self_nicknames_for_peers
+            .get(pid)
+            .cloned()
+            .unwrap_or_else(|| state.own_nickname.clone());
+        (old, Some(pid.clone()))
+    } else {
+        (state.own_nickname.clone(), None)
+    };
+    Some((new_nickname, old_nickname, peer_id))
+}
+
 /// Toggles mouse capture mode (F12)
 fn toggle_mouse_capture(state: &mut super::state::AppState) {
     use ratatui::crossterm::execute;
@@ -46,18 +77,12 @@ async fn handle_nickname_submission(
     state: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) {
-    let new_nickname = state.chat_input.lines().join("\n");
-    if new_nickname.trim().is_empty() {
+    let Some((new_nickname, old_nickname, peer_id)) = prepare_nickname_update(state) else {
         state.cancel_nickname_edit();
         return;
-    }
+    };
 
-    if let Some(peer_id) = state.editing_nickname_peer.clone() {
-        let old_nickname = state
-            .self_nicknames_for_peers
-            .get(&peer_id)
-            .cloned()
-            .unwrap_or_else(|| state.own_nickname.clone());
+    if let Some(peer_id) = peer_id {
         state
             .self_nicknames_for_peers
             .insert(peer_id.clone(), new_nickname.clone());
@@ -79,7 +104,6 @@ async fn handle_nickname_submission(
         );
         p2plog_debug(format!("Updated per-peer nickname to: {new_nickname}"));
     } else {
-        let old_nickname = state.own_nickname.clone();
         state.own_nickname = new_nickname.clone();
         let _ = p2p_app::set_self_nickname(&new_nickname);
         for (peer_id, _, _) in &state.peers {
@@ -167,9 +191,7 @@ async fn process_key_event(
     if key_event.code == crossterm::event::KeyCode::Esc {
         let mut s = state.lock().await;
         // ESC is "back" (exit is Ctrl+Q). Prefer dismissing transient UI states first.
-        if s.popup.is_some() {
-            s.popup = None;
-        }
+        dismiss_popup(&mut s);
         if s.editing_nickname {
             s.cancel_nickname_edit();
             p2plog_debug("Cancelled nickname edit".to_string());
@@ -198,8 +220,7 @@ async fn process_key_event(
     let mut s = state.lock().await;
 
     // If a popup is open, any key dismisses it (except we still honor exit keys above).
-    if s.popup.is_some() {
-        s.popup = None;
+    if dismiss_popup(&mut s) {
         drop(s);
         let _ = render_tx.send(RenderEvent).await;
         return false;
@@ -283,8 +304,7 @@ async fn process_mouse_event(
             handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
-            if s.popup.is_some() {
-                s.popup = None;
+            if dismiss_popup(&mut s) {
                 drop(s);
                 let _ = render_tx.send(RenderEvent).await;
                 return;
@@ -417,5 +437,78 @@ mod tests {
     fn test_flip_mouse_capture_returns_new_state() {
         let mut state = test_app_state();
         assert_eq!(flip_mouse_capture_state(&mut state), state.mouse_capture);
+    }
+
+    // ── dismiss_popup ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_dismiss_popup_clears_when_set() {
+        let mut state = test_app_state();
+        state.popup = Some("test".to_string());
+        assert!(dismiss_popup(&mut state));
+        assert_eq!(state.popup, None);
+    }
+
+    #[test]
+    fn test_dismiss_popup_noop_when_none() {
+        let mut state = test_app_state();
+        state.popup = None;
+        assert!(!dismiss_popup(&mut state));
+        assert_eq!(state.popup, None);
+    }
+
+    // ── prepare_nickname_update ───────────────────────────────────────────
+
+    #[test]
+    fn test_prepare_nickname_update_returns_none_when_empty() {
+        let state = test_app_state();
+        let result = prepare_nickname_update(&state);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_prepare_nickname_update_global_nick() {
+        let mut state = test_app_state();
+        state.own_nickname = "Global".to_string();
+        state.editing_nickname_peer = None;
+        state.chat_input.insert_str("NewNick");
+        let result = prepare_nickname_update(&state);
+        assert_eq!(
+            result,
+            Some(("NewNick".to_string(), "Global".to_string(), None))
+        );
+    }
+
+    #[test]
+    fn test_prepare_nickname_update_per_peer() {
+        let mut state = test_app_state();
+        state.own_nickname = "Global".to_string();
+        state
+            .self_nicknames_for_peers
+            .insert("peer-1".to_string(), "PerPeer".to_string());
+        state.editing_nickname_peer = Some("peer-1".to_string());
+        state.chat_input.insert_str("NewNick");
+        let result = prepare_nickname_update(&state);
+        assert_eq!(
+            result,
+            Some((
+                "NewNick".to_string(),
+                "PerPeer".to_string(),
+                Some("peer-1".to_string())
+            ))
+        );
+    }
+
+    #[test]
+    fn test_prepare_nickname_update_falls_back_to_own_nickname() {
+        let mut state = test_app_state();
+        state.own_nickname = "Global".to_string();
+        state.editing_nickname_peer = Some("peer-1".to_string());
+        state.chat_input.insert_str("NewNick");
+        let result = prepare_nickname_update(&state);
+        assert_eq!(
+            result.as_ref().map(|(_, old, _)| old.as_str()),
+            Some("Global")
+        );
     }
 }

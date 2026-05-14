@@ -111,18 +111,23 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 }
 
 /// Handle scroll key for Peers tab
-fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+fn compute_new_peer_selection(
+    key_code: crossterm::event::KeyCode,
+    current_selection: usize,
+    peer_count: usize,
+) -> usize {
     match key_code {
-        crossterm::event::KeyCode::Up => {
-            state.peer_selection = state.peer_selection.saturating_sub(1);
+        crossterm::event::KeyCode::Up => current_selection.saturating_sub(1),
+        crossterm::event::KeyCode::Down if current_selection < peer_count.saturating_sub(1) => {
+            current_selection + 1
         }
-        crossterm::event::KeyCode::Down
-            if state.peer_selection < state.peers.len().saturating_sub(1) =>
-        {
-            state.peer_selection += 1;
-        }
-        _ => {}
+        _ => current_selection,
     }
+}
+
+fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+    state.peer_selection =
+        compute_new_peer_selection(key_code, state.peer_selection, state.peers.len());
 }
 
 /// Handles scroll keys (arrow keys, Page Up/Down, Home, End) with hover-aware targeting
@@ -379,6 +384,38 @@ mod tests {
         let mut state = test_app_state();
         scroll_peers_tab(KeyCode::Down, &mut state);
         assert_eq!(state.peer_selection, 0);
+    }
+
+    // ── compute_new_peer_selection ─────────────────────────────────────────────
+
+    #[test]
+    fn test_compute_peer_selection_up() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Up, 5, 10), 4);
+    }
+
+    #[test]
+    fn test_compute_peer_selection_up_clamps_at_zero() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Up, 0, 10), 0);
+    }
+
+    #[test]
+    fn test_compute_peer_selection_down() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 10), 1);
+    }
+
+    #[test]
+    fn test_compute_peer_selection_down_clamps_at_max() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Down, 9, 10), 9);
+    }
+
+    #[test]
+    fn test_compute_peer_selection_down_on_empty_list() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 0), 0);
+    }
+
+    #[test]
+    fn test_compute_peer_selection_other_key_noop() {
+        assert_eq!(compute_new_peer_selection(KeyCode::Home, 3, 10), 3);
     }
 
     // ── scroll_chat_tab ─────────────────────────────────────────────────────
