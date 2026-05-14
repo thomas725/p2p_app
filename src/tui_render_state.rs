@@ -1,7 +1,7 @@
 //! TUI rendering state abstraction for testing
 //!
 //! This module provides a render state that can be used by both the binary
-//! and integration tests. The binary uses AppState, tests use this abstraction.
+//! and integration tests. The binary uses `AppState`, tests use this abstraction.
 
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -16,21 +16,21 @@ pub struct TuiRenderState {
     pub messages: VecDeque<String>,
     /// Message IDs for sent messages (None if from other peers)
     pub message_ids: VecDeque<Option<String>>,
-    /// Receipt status for broadcast messages: peer_id -> (msg_id -> timestamp)
+    /// Receipt status for broadcast messages: `peer_id` -> (`msg_id` -> timestamp)
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-    /// Known peers: (peer_id, first_seen, last_seen)
+    /// Known peers: (`peer_id`, `first_seen`, `last_seen`)
     pub peers: Vec<(String, String, String)>,
     /// Direct messages per peer
     pub dm_messages: BTreeMap<String, VecDeque<String>>,
     /// Message IDs for DMs per peer
     pub dm_message_ids: BTreeMap<String, VecDeque<Option<String>>>,
-    /// DM receipt status per peer: (source_peer, timestamp)
+    /// DM receipt status per peer: (`source_peer`, timestamp)
     pub dm_receipts: HashMap<String, (String, f64)>,
     /// Current input text in message box
     pub input_text: String,
     /// Whether we're editing a peer's nickname
     pub editing_nickname: bool,
-    /// Peer ID being edited (if editing_nickname is true)
+    /// Peer ID being edited (if `editing_nickname` is true)
     pub nickname_peer_id: String,
     /// Whether connected to the network
     pub connected: bool,
@@ -44,7 +44,7 @@ pub struct TuiRenderState {
     pub chat_scroll_offset: usize,
     /// Whether chat tab is auto-scrolling to bottom
     pub chat_auto_scroll: bool,
-    /// Scroll state per DM peer: (offset, auto_scroll)
+    /// Scroll state per DM peer: (offset, `auto_scroll`)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Scroll state for DM+broadcast view per peer
     pub dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)>,
@@ -62,6 +62,7 @@ impl Default for TuiRenderState {
 
 impl TuiRenderState {
     /// Creates a new empty [`TuiRenderState`].
+    #[must_use]
     pub fn new() -> Self {
         Self {
             tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into()],
@@ -90,6 +91,7 @@ impl TuiRenderState {
     }
 
     /// Create with sample data for testing
+    #[must_use]
     pub fn with_sample_data() -> Self {
         let mut messages = VecDeque::new();
         messages.push_back("[You] Hello world".into());
@@ -161,6 +163,7 @@ impl TuiRenderState {
 }
 
 /// Calculate visible items and effective offset for string-based messages with auto/manual scroll
+#[must_use]
 pub fn calc_visible_strings(
     messages: &VecDeque<String>,
     auto_scroll: bool,
@@ -180,6 +183,7 @@ pub fn calc_visible_strings(
 }
 
 /// Count wrapped lines of text, accounting for ANSI codes and terminal width
+#[must_use]
 pub fn count_lines(text: &str, text_width: usize) -> usize {
     if text_width == 0 || text.is_empty() {
         return 1;
@@ -269,19 +273,23 @@ where
     count.max(MIN_VISIBLE)
 }
 
+#[must_use]
 pub fn broadcast_receipt_prefix(
     msg_id: Option<&str>,
     broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
 ) -> &'static str {
     match msg_id {
         Some(msg_id) => {
-            let confirmed = broadcast_receipts.get(msg_id).map(|m| m.len()).unwrap_or(0);
+            let confirmed = broadcast_receipts
+                .get(msg_id)
+                .map_or(0, std::collections::HashMap::len);
             if confirmed == 0 { "  " } else { "v " }
         }
         _ => "  ",
     }
 }
 
+#[must_use]
 pub fn dm_receipt_prefix(
     msg_id: Option<&str>,
     dm_receipts: &HashMap<String, (String, f64)>,
@@ -292,6 +300,7 @@ pub fn dm_receipt_prefix(
     }
 }
 
+#[must_use]
 pub fn row_to_visible_index(
     line_counts: &[usize],
     first_content_row: usize,
@@ -314,6 +323,7 @@ pub fn row_to_visible_index(
 }
 
 /// Get the tab content based on active tab index
+#[must_use]
 pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
     let tab_title = state
         .tab_titles
@@ -518,7 +528,7 @@ mod tests {
     #[test]
     fn test_tui_render_state_debug_format() {
         let state = TuiRenderState::new();
-        let debug_str = format!("{:?}", state);
+        let debug_str = format!("{state:?}");
         assert!(debug_str.contains("TuiRenderState"));
     }
 
@@ -532,7 +542,7 @@ mod tests {
     #[test]
     fn test_tui_tab_content_debug_format() {
         let content = TabContent::Chat;
-        let debug_str = format!("{:?}", content);
+        let debug_str = format!("{content:?}");
         assert!(debug_str.contains("Chat"));
     }
 

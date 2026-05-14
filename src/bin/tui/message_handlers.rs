@@ -48,7 +48,7 @@ pub async fn send_message(
                     let _ = ids.pop_front();
                 }
             }
-            p2plog_debug(format!("Sent DM to {}: {}", peer_id, text));
+            p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
         }
     } else {
         let msg = format!("{} [{}] {}", ts, own_nickname, &text);
@@ -58,7 +58,7 @@ pub async fn send_message(
             state.messages.pop_front();
             let _ = state.message_ids.pop_front();
         }
-        p2plog_debug(format!("Sent broadcast: {}", text));
+        p2plog_debug(format!("Sent broadcast: {text}"));
     }
 
     state.chat_input = ratatui_textarea::TextArea::default();
@@ -102,6 +102,6 @@ pub async fn send_message(
         dm_target_peer_id.as_deref(),
         meta,
     ) {
-        p2plog_debug(format!("Failed to save message: {}", e));
+        p2plog_debug(format!("Failed to save message: {e}"));
     }
 }

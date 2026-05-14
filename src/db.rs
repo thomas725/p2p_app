@@ -1,6 +1,6 @@
 //! Database connection and identity key management
 //!
-//! This module manages SQLite connections. To avoid connection overhead,
+//! This module manages `SQLite` connections. To avoid connection overhead,
 //! a single connection is established and reused for the lifetime of the application.
 //! While this is not suitable for high-concurrency scenarios, it's appropriate for
 //! this single-threaded TUI application.
@@ -39,10 +39,10 @@ pub fn reset_db_url_cache() {
     }
 }
 
-/// Establish a connection to the SQLite database and run pending migrations.
+/// Establish a connection to the `SQLite` database and run pending migrations.
 ///
-/// If DATABASE_URL is set, uses that file directly.
-/// Otherwise, finds the first unused SQLite database in the current working directory
+/// If `DATABASE_URL` is set, uses that file directly.
+/// Otherwise, finds the first unused `SQLite` database in the current working directory
 /// using lock files (`.lock` files with our PID), or creates a new one.
 /// Automatically runs all pending Diesel migrations on first call.
 ///
@@ -50,7 +50,7 @@ pub fn reset_db_url_cache() {
 /// avoiding expensive lock file checks on subsequent operations.
 ///
 /// # Returns
-/// A new SqliteConnection with all migrations applied, or an error if connection/migration fails
+/// A new `SqliteConnection` with all migrations applied, or an error if connection/migration fails
 ///
 /// # Errors
 /// - If database file cannot be found or created
@@ -62,12 +62,12 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
 
     // Register cleanup on panic after path is determined and cached (to ensure it lives for the app lifetime)
     static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
-    let _ = PANIC_HOOK_SET.get_or_init(|| {
+    let () = PANIC_HOOK_SET.get_or_init(|| {
         std::panic::set_hook(Box::new(|_info| {
             if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
-                let lock_path = format!("{}.lock", db_path);
+                let lock_path = format!("{db_path}.lock");
                 let _ = std::fs::remove_file(&lock_path);
-                eprintln!("[DB] released lock on panic: {}", lock_path);
+                eprintln!("[DB] released lock on panic: {lock_path}");
             }
         }));
     });
@@ -113,7 +113,7 @@ pub fn init_database() -> color_eyre::Result<SqliteConnection> {
 }
 
 /// Ensures all columns exist in the database schema.
-/// This is needed because SQLite doesn't support "ADD COLUMN IF NOT EXISTS".
+/// This is needed because `SQLite` doesn't support "ADD COLUMN IF NOT EXISTS".
 /// We check each table/column pair and add missing ones.
 ///
 /// This handles legacy databases created before certain columns were added.
@@ -122,10 +122,10 @@ fn ensure_columns(conn: &mut SqliteConnection) {
     use diesel::sql_query;
 
     for (table, column, col_type) in SCHEMA_ENTRIES {
-        let sql = format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, col_type);
+        let sql = format!("ALTER TABLE {table} ADD COLUMN {column} {col_type}");
         match sql_query(&sql).execute(conn) {
             Ok(_) => {
-                crate::logging::p2plog_debug(format!("[DB] added {} to table {}", column, table))
+                crate::logging::p2plog_debug(format!("[DB] added {column} to table {table}"));
             }
             Err(e) => {
                 // SQLite has no "ADD COLUMN IF NOT EXISTS". The common/expected failure modes
@@ -136,8 +136,7 @@ fn ensure_columns(conn: &mut SqliteConnection) {
                     continue;
                 }
                 crate::logging::p2plog_debug(format!(
-                    "[DB] failed to add column {} to table {}: {}",
-                    column, table, msg
+                    "[DB] failed to add column {column} to table {table}: {msg}"
                 ));
             }
         }
@@ -203,7 +202,7 @@ fn try_acquire_lock(lock_path: &std::path::Path, pid: u32) -> Result<(), ()> {
     }
 }
 
-/// Finds the first unused SQLite database in the current working directory using lock files.
+/// Finds the first unused `SQLite` database in the current working directory using lock files.
 /// If none is available, creates a new database with the next sequential name.
 fn find_or_create_unused_db() -> color_eyre::Result<String> {
     use crate::logging::p2plog_debug;
@@ -231,11 +230,11 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
 
     // Check each db file in order, return first available
     for db_file in &db_files {
-        let lock_path = cwd.join(format!("{}.lock", db_file));
-        p2plog_debug(format!("[DB] checking {}", db_file));
+        let lock_path = cwd.join(format!("{db_file}.lock"));
+        p2plog_debug(format!("[DB] checking {db_file}"));
 
         if is_db_locked(&lock_path) {
-            p2plog_debug(format!("[DB]   {} has active lock", db_file));
+            p2plog_debug(format!("[DB]   {db_file} has active lock"));
             continue;
         }
 
@@ -246,8 +245,7 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
             }
             Err(()) => {
                 p2plog_debug(format!(
-                    "[DB] lock for {} already exists, trying next",
-                    db_file
+                    "[DB] lock for {db_file} already exists, trying next"
                 ));
             }
         }
@@ -276,21 +274,17 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
         if attempts > 1000 {
             return "sqlite.db".to_string(); // Give up
         }
-        let lock_path = cwd.join(format!("{}.lock", candidate));
-        match fs::OpenOptions::new()
+        let lock_path = cwd.join(format!("{candidate}.lock"));
+        if let Ok(mut f) = fs::OpenOptions::new()
             .create_new(true)
             .write(true)
             .open(&lock_path)
         {
-            Ok(mut f) => {
-                let _ = f.write_all(pid.to_string().as_bytes());
-                return candidate;
-            }
-            Err(_) => {
-                attempts += 1;
-                candidate = format!("sqlite_{}.db", max_n + attempts);
-            }
+            let _ = f.write_all(pid.to_string().as_bytes());
+            return candidate;
         }
+        attempts += 1;
+        candidate = format!("sqlite_{}.db", max_n + attempts);
     }
 }
 
@@ -298,7 +292,7 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 ///
 /// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
 /// Get the database URL from environment or default value.
-/// Caches result in DB_URL so subsequent calls (like from sqlite_connect) use same db.
+/// Caches result in `DB_URL` so subsequent calls (like from `sqlite_connect`) use same db.
 #[must_use]
 pub fn get_database_url() -> String {
     dotenv().ok();
@@ -331,9 +325,9 @@ pub fn get_database_url() -> String {
 /// Called on normal exit to clean up the lock file.
 pub fn release_db_lock() {
     if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
-        let lock_path = format!("{}.lock", db_path);
+        let lock_path = format!("{db_path}.lock");
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
-            eprintln!("[DB] released lock on exit: {}", lock_path);
+            eprintln!("[DB] released lock on exit: {lock_path}");
         }
     }
 }

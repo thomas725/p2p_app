@@ -1,4 +1,4 @@
-//! # p2p_app - Decentralized Peer-to-Peer Chat Application
+//! # `p2p_app` - Decentralized Peer-to-Peer Chat Application
 //!
 //! A fully decentralized peer-to-peer chat application built on top of libp2p.
 //! This crate provides the core functionality for running a P2P chat node that can
@@ -9,7 +9,7 @@
 //!
 //! - **Decentralized Messaging**: Send and receive messages directly peer-to-peer
 //! - **Network Discovery**: Automatic peer discovery using mDNS
-//! - **Message Persistence**: Store messages and metadata in SQLite database
+//! - **Message Persistence**: Store messages and metadata in `SQLite` database
 //! - **TUI Interface**: Terminal user interface for interacting with the chat network
 //! - **Direct Messaging**: Send private messages to specific peers
 //! - **Nickname Management**: Set and manage nicknames for yourself and peers
@@ -107,7 +107,7 @@ pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 
-/// Database migrations for p2p_app schema initialization and updates.
+/// Database migrations for `p2p_app` schema initialization and updates.
 ///
 /// This constant contains all SQL migrations embedded at compile time.
 /// It's used to initialize and upgrade the database schema when the application starts.

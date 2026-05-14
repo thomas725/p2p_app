@@ -14,7 +14,7 @@ enum Event {
 
 fn extract_tcp_port(address: &libp2p::Multiaddr) -> Option<i32> {
     address.iter().find_map(|p| match p {
-        libp2p::multiaddr::Protocol::Tcp(port) => Some(port as i32),
+        libp2p::multiaddr::Protocol::Tcp(port) => Some(i32::from(port)),
         _ => None,
     })
 }
@@ -22,13 +22,13 @@ fn extract_tcp_port(address: &libp2p::Multiaddr) -> Option<i32> {
 #[cfg(feature = "quic")]
 fn extract_udp_port(address: &libp2p::Multiaddr) -> Option<i32> {
     address.iter().find_map(|p| match p {
-        libp2p::multiaddr::Protocol::Udp(port) => Some(port as i32),
+        libp2p::multiaddr::Protocol::Udp(port) => Some(i32::from(port)),
         _ => None,
     })
 }
 
 fn handle_listen_addr_event(address: &libp2p::Multiaddr) {
-    p2p_app::logging::p2plog_info(format!("Listening on: {}", address));
+    p2p_app::logging::p2plog_info(format!("Listening on: {address}"));
     if let Some(port) = extract_tcp_port(address) {
         let _ = p2p_app::save_listen_ports(Some(port), None);
     }
@@ -46,7 +46,7 @@ fn handle_message_event(propagation_source: &libp2p::PeerId, message: &gossipsub
     if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
         p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));
     } else {
-        p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, msg_str));
+        p2p_app::logging::p2plog_info(format!("[{sender_short}] {msg_str}"));
     }
 }
 
@@ -61,13 +61,12 @@ async fn main() -> color_eyre::Result<()> {
 
     let network_size = match get_network_size() {
         Ok(size) => {
-            p2plog_info(format!("Network size detected: {:?}", size));
+            p2plog_info(format!("Network size detected: {size:?}"));
             size
         }
         Err(e) => {
             p2plog_info(format!(
-                "Could not determine network size, defaulting to Small: {}",
-                e
+                "Could not determine network size, defaulting to Small: {e}"
             ));
             p2p_app::NetworkSize::Small
         }
@@ -86,7 +85,7 @@ async fn main() -> color_eyre::Result<()> {
         let swarm = base
             .with_quic()
             .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
             .build();
 
         #[cfg(not(feature = "quic"))]
@@ -119,10 +118,10 @@ async fn main() -> color_eyre::Result<()> {
                     handle_listen_addr_event(&address);
                 }
                 libp2p::swarm::SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                    p2p_app::logging::p2plog_info(format!("Connected to: {} (peers: 1)", peer_id));
+                    p2p_app::logging::p2plog_info(format!("Connected to: {peer_id} (peers: 1)"));
                 }
                 libp2p::swarm::SwarmEvent::ConnectionClosed { peer_id, .. } => {
-                    p2p_app::logging::p2plog_info(format!("Disconnected from: {}", peer_id));
+                    p2p_app::logging::p2plog_info(format!("Disconnected from: {peer_id}"));
                 }
                 libp2p::swarm::SwarmEvent::Behaviour(
                     p2p_app::behavior::AppBehaviourEvent::Gossipsub(

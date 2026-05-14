@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
-/// Format a Chrono NaiveDateTime into "YYYY-MM-DD HH:MM:SS" format
+/// Format a Chrono `NaiveDateTime` into "YYYY-MM-DD HH:MM:SS" format
 #[must_use]
 pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {
     time.format("%Y-%m-%d %H:%M:%S").to_string()
@@ -24,7 +24,7 @@ pub fn current_timestamp() -> f64 {
         .as_secs_f64()
 }
 
-/// Format SystemTime into "HH:MM:SS.mmm" format (hours:minutes:seconds.milliseconds)
+/// Format `SystemTime` into "HH:MM:SS.mmm" format (hours:minutes:seconds.milliseconds)
 #[must_use]
 pub fn format_system_time(time: SystemTime) -> String {
     chrono::DateTime::<chrono::Local>::from(time)
@@ -42,8 +42,8 @@ pub fn gen_msg_id() -> String {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
-    let c = COUNTER.fetch_add(1, Ordering::Relaxed) as u128;
-    format!("{:x}{:x}", now_ns, c)
+    let c = u128::from(COUNTER.fetch_add(1, Ordering::Relaxed));
+    format!("{now_ns:x}{c:x}")
 }
 
 /// Get the last 8 characters of a peer ID string
@@ -103,7 +103,7 @@ pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
             } else if elapsed < 1.0 {
                 format!("{:.0}ms", elapsed * 1000.0)
             } else {
-                format!("{:.1}s", elapsed)
+                format!("{elapsed:.1}s")
             }
         }
         None => "?".to_string(),

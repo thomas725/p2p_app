@@ -32,7 +32,7 @@ fn test_two_instances_get_different_databases_parallel() {
         safe_remove_env("DATABASE_URL");
         let url = p2p_app::db::get_database_url();
         if let Ok(mut e) = errors_clone.lock() {
-            e.push(format!("A: {}", url));
+            e.push(format!("A: {url}"));
         }
     });
 
@@ -46,14 +46,14 @@ fn test_two_instances_get_different_databases_parallel() {
         safe_remove_env("DATABASE_URL");
         let url = p2p_app::db::get_database_url();
         if let Ok(mut e) = errors_clone.lock() {
-            e.push(format!("B: {}", url));
+            e.push(format!("B: {url}"));
         }
     });
 
     thread::sleep(Duration::from_millis(200));
 
     let urls = errors.lock().unwrap();
-    println!("URLs: {:?}", urls);
+    println!("URLs: {urls:?}");
 
     assert_ne!(urls[0], urls[1], "Both picked same database!");
 }

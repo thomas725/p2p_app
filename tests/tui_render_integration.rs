@@ -1,4 +1,4 @@
-//! Integration tests for TUI rendering using ratatui TestBackend
+//! Integration tests for TUI rendering using ratatui `TestBackend`
 //! These tests verify the TUI rendering logic using the library module
 
 #[cfg(feature = "tui")]
@@ -255,7 +255,7 @@ fn test_get_tab_content_dm() {
     state.active_tab = state.tab_titles.len() - 1;
     match get_tab_content(&state) {
         TabContent::Direct(peer) => assert_eq!(peer, "peer-xyz"),
-        other => panic!("expected Direct, got {:?}", other),
+        other => panic!("expected Direct, got {other:?}"),
     }
 }
 

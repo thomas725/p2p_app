@@ -7,6 +7,7 @@ use diesel::{
 ///
 /// Creates a two-word random nickname (e.g., "happy-squirrel").
 /// Falls back to "anonymous-peer" if generation fails.
+#[must_use]
 pub fn generate_self_nickname() -> String {
     petname::petname(2, "-").unwrap_or_else(|| "anonymous-peer".to_string())
 }
@@ -128,10 +129,10 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     let short_id = crate::fmt::short_peer_id(peer_id);
     let suffix = &short_id[..3.min(short_id.len())];
     if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
-        return Ok(format!("{} ({})", local_nick, suffix));
+        return Ok(format!("{local_nick} ({suffix})"));
     }
     if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
-        return Ok(format!("{} ({})", received_nick, suffix));
+        return Ok(format!("{received_nick} ({suffix})"));
     }
     Ok(short_id)
 }

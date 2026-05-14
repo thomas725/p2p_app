@@ -9,7 +9,7 @@ fn test_swarm_event_debug() {
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
     };
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("BroadcastMessage"));
     assert!(debug.contains("hello"));
 }
@@ -23,7 +23,7 @@ fn test_swarm_event_direct_message() {
         nickname: None,
         msg_id: None,
     };
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("DirectMessage"));
 }
 
@@ -34,7 +34,7 @@ fn test_swarm_event_receipt() {
         ack_for: "msg-abc".to_string(),
         received_at: Some(1234567890.0),
     };
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("Receipt"));
     assert!(debug.contains("msg-abc"));
 }
@@ -42,14 +42,14 @@ fn test_swarm_event_receipt() {
 #[test]
 fn test_swarm_event_peer_connected() {
     let event = p2p_app::types::SwarmEvent::PeerConnected("PeerABC".to_string());
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("PeerConnected"));
 }
 
 #[test]
 fn test_swarm_event_peer_disconnected() {
     let event = p2p_app::types::SwarmEvent::PeerDisconnected("PeerDEF".to_string());
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("PeerDisconnected"));
 }
 
@@ -57,7 +57,7 @@ fn test_swarm_event_peer_disconnected() {
 fn test_swarm_event_listen_addr() {
     let event =
         p2p_app::types::SwarmEvent::ListenAddrEstablished("/ip4/127.0.0.1/tcp/8080".to_string());
-    let debug = format!("{:?}", event);
+    let debug = format!("{event:?}");
     assert!(debug.contains("ListenAddrEstablished"));
 }
 
@@ -68,7 +68,7 @@ fn test_swarm_command_publish() {
         nickname: Some("Bob".to_string()),
         msg_id: Some("msg-xyz".to_string()),
     };
-    let debug = format!("{:?}", cmd);
+    let debug = format!("{cmd:?}");
     assert!(debug.contains("Publish"));
 }
 
@@ -81,7 +81,7 @@ fn test_swarm_command_send_dm() {
         msg_id: Some("dm-1".to_string()),
         ack_for: Some("orig-msg".to_string()),
     };
-    let debug = format!("{:?}", cmd);
+    let debug = format!("{cmd:?}");
     assert!(debug.contains("SendDm"));
 }
 
@@ -89,7 +89,7 @@ fn test_swarm_command_send_dm() {
 fn test_swarm_event_clone() {
     let event1 = p2p_app::types::SwarmEvent::PeerConnected("PeerClone".to_string());
     let event2 = event1.clone();
-    assert_eq!(format!("{:?}", event1), format!("{:?}", event2));
+    assert_eq!(format!("{event1:?}"), format!("{:?}", event2));
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn test_swarm_command_clone() {
         msg_id: None,
     };
     let cmd2 = cmd1.clone();
-    assert_eq!(format!("{:?}", cmd1), format!("{:?}", cmd2));
+    assert_eq!(format!("{cmd1:?}"), format!("{:?}", cmd2));
 }
 
 // ── Additional type tests ──────────────────────────────────────────────────────

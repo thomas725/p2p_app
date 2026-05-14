@@ -25,7 +25,9 @@ impl Drop for TestDb {
 }
 
 fn setup_test_db() -> TestDb {
-    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
@@ -146,7 +148,7 @@ fn test_load_messages_returns_broadcast_only() {
 fn test_load_messages_limit() {
     let _db = setup_test_db();
     for i in 0..5 {
-        p2p_app::save_message(&format!("msg {}", i), None, "limited", false, None).unwrap();
+        p2p_app::save_message(&format!("msg {i}"), None, "limited", false, None).unwrap();
     }
     let msgs = p2p_app::load_messages("limited", 3).unwrap();
     assert_eq!(msgs.len(), 3);
@@ -224,7 +226,7 @@ fn test_load_direct_messages_peer_isolation() {
 fn test_load_direct_messages_limit() {
     let _db = setup_test_db();
     for i in 0..6 {
-        p2p_app::save_message(&format!("dm {}", i), None, "t", true, Some("peer-lim")).unwrap();
+        p2p_app::save_message(&format!("dm {i}"), None, "t", true, Some("peer-lim")).unwrap();
     }
     let msgs = p2p_app::load_direct_messages("peer-lim", 4).unwrap();
     assert_eq!(msgs.len(), 4);

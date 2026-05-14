@@ -49,8 +49,7 @@ fn test_push_log_appears_in_get_tui_logs() {
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
         logs.iter().any(|l| l.contains(&unique)),
-        "pushed log should appear in get_tui_logs, got: {:?}",
-        logs
+        "pushed log should appear in get_tui_logs, got: {logs:?}"
     );
 }
 
@@ -63,8 +62,7 @@ fn test_clear_tui_logs_empties_store() {
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
         logs.is_empty(),
-        "logs should be empty after clear, got: {:?}",
-        logs
+        "logs should be empty after clear, got: {logs:?}"
     );
 }
 
@@ -80,8 +78,7 @@ fn test_p2plog_debug_contains_level() {
     assert!(
         logs.iter()
             .any(|l| l.contains("DEBUG") && l.contains("debug-msg")),
-        "got: {:?}",
-        logs
+        "got: {logs:?}"
     );
 }
 
@@ -95,8 +92,7 @@ fn test_p2plog_info_contains_level() {
     assert!(
         logs.iter()
             .any(|l| l.contains("INFO") && l.contains("info-msg")),
-        "got: {:?}",
-        logs
+        "got: {logs:?}"
     );
 }
 
@@ -110,8 +106,7 @@ fn test_p2plog_warn_contains_level() {
     assert!(
         logs.iter()
             .any(|l| l.contains("WARN") && l.contains("warn-msg")),
-        "got: {:?}",
-        logs
+        "got: {logs:?}"
     );
 }
 
@@ -125,8 +120,7 @@ fn test_p2plog_error_contains_level() {
     assert!(
         logs.iter()
             .any(|l| l.contains("ERROR") && l.contains("error-msg")),
-        "got: {:?}",
-        logs
+        "got: {logs:?}"
     );
 }
 
@@ -178,8 +172,7 @@ fn test_tracing_info_captured_in_logs() {
     // TuiTracingLayer writes tracing events to TUI_LOGS
     assert!(
         logs.iter().any(|l| l.contains("tracing-info-test-marker")),
-        "tracing INFO not found in logs: {:?}",
-        logs
+        "tracing INFO not found in logs: {logs:?}"
     );
 }
 
@@ -198,8 +191,7 @@ fn test_tracing_warn_captured_in_logs() {
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
         logs.iter().any(|l| l.contains("tracing-warn-test-marker")),
-        "tracing WARN not found in logs: {:?}",
-        logs
+        "tracing WARN not found in logs: {logs:?}"
     );
 }
 
@@ -218,8 +210,7 @@ fn test_tracing_error_captured_in_logs() {
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
         logs.iter().any(|l| l.contains("tracing-error-test-marker")),
-        "tracing ERROR not found in logs: {:?}",
-        logs
+        "tracing ERROR not found in logs: {logs:?}"
     );
 }
 
@@ -240,8 +231,7 @@ fn test_tracing_event_with_fields_captured() {
     let combined = logs.join(" ");
     assert!(
         combined.contains("field-test-marker"),
-        "marker not found: {:?}",
-        logs
+        "marker not found: {logs:?}"
     );
 }
 
@@ -265,7 +255,7 @@ fn test_strip_ansi_codes_mixed() {
     use p2p_app::strip_ansi_codes;
     let input = "\u{1b}[32mGreen\u{1b}[0m and \u{1b}[31mRed\u{1b}[0m";
     let result = strip_ansi_codes(input);
-    assert!(!result.contains("\u{1b}"));
+    assert!(!result.contains('\u{1b}'));
     assert!(result.contains("Green"));
     assert!(result.contains("Red"));
 }
@@ -294,7 +284,7 @@ fn test_strip_ansi_codes_nested() {
     use p2p_app::strip_ansi_codes;
     let input = "\u{1b}[1m\u{1b}[32mbold green\u{1b}[0m\u{1b}[0m";
     let result = strip_ansi_codes(input);
-    assert!(!result.contains("\u{1b}"));
+    assert!(!result.contains('\u{1b}'));
 }
 
 #[serial]

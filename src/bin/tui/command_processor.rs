@@ -71,11 +71,11 @@ async fn process_swarm_event(
                 s.messages.pop_front();
                 let _ = s.message_ids.pop_front();
             }
-            p2plog_debug(format!("Broadcast from {}: {}", sender_display, content));
+            p2plog_debug(format!("Broadcast from {sender_display}: {content}"));
             if let Err(e) =
                 p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None)
             {
-                p2plog_debug(format!("Failed to save: {}", e));
+                p2plog_debug(format!("Failed to save: {e}"));
             }
             upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
@@ -119,11 +119,11 @@ async fn process_swarm_event(
                 }
             }
             s.dynamic_tabs.add_dm_tab(peer_id.clone());
-            p2plog_debug(format!("DM from {}: {}", sender_display, content));
+            p2plog_debug(format!("DM from {sender_display}: {content}"));
             if let Err(e) =
                 p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id))
             {
-                p2plog_debug(format!("Failed to save DM: {}", e));
+                p2plog_debug(format!("Failed to save DM: {e}"));
             }
             upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
         }
@@ -201,7 +201,7 @@ async fn process_swarm_event(
             ));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
-            p2plog_debug(format!("Listening on: {}", addr));
+            p2plog_debug(format!("Listening on: {addr}"));
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
@@ -214,7 +214,7 @@ async fn process_swarm_event(
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {
-            p2plog_debug(format!("Peer expired: {}", peer_id));
+            p2plog_debug(format!("Peer expired: {peer_id}"));
         }
     }
 }

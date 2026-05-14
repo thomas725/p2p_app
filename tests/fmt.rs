@@ -23,7 +23,7 @@ fn test_now_timestamp() {
 
 #[test]
 fn test_format_system_time() {
-    let time = UNIX_EPOCH + std::time::Duration::from_millis(1700000000);
+    let time = UNIX_EPOCH + std::time::Duration::from_secs(1700000);
     let result = p2p_app::fmt::format_system_time(time);
     assert!(result.contains(':'));
     assert!(result.contains("000"));

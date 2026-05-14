@@ -15,7 +15,7 @@ fn test_direct_message_debug() {
         received_at: None,
     };
 
-    let debug = format!("{:?}", dm);
+    let debug = format!("{dm:?}");
     assert!(debug.contains("test"));
     assert!(debug.contains("TestNick"));
 }
@@ -31,7 +31,7 @@ fn test_broadcast_message_debug() {
         msg_id: Some("bcast-1".to_string()),
     };
 
-    let debug = format!("{:?}", bm);
+    let debug = format!("{bm:?}");
     assert!(debug.contains("broadcast"));
     assert!(debug.contains("Broadcaster"));
 }
@@ -59,7 +59,7 @@ fn test_swarm_command_debug() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
     };
-    let publish_debug = format!("{:?}", publish);
+    let publish_debug = format!("{publish:?}");
     assert!(publish_debug.contains("msg"));
 
     let send_dm = SwarmCommand::SendDm {
@@ -69,7 +69,7 @@ fn test_swarm_command_debug() {
         msg_id: Some("dm-1".to_string()),
         ack_for: Some("original".to_string()),
     };
-    let dm_debug = format!("{:?}", send_dm);
+    let dm_debug = format!("{send_dm:?}");
     assert!(dm_debug.contains("peer123"));
 }
 
@@ -84,7 +84,7 @@ fn test_swarm_event_debug() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
     };
-    let bcast_debug = format!("{:?}", bcast);
+    let bcast_debug = format!("{bcast:?}");
     assert!(bcast_debug.contains("msg"));
 
     let direct = SwarmEvent::DirectMessage {
@@ -94,7 +94,7 @@ fn test_swarm_event_debug() {
         nickname: None,
         msg_id: None,
     };
-    let direct_debug = format!("{:?}", direct);
+    let direct_debug = format!("{direct:?}");
     assert!(direct_debug.contains("direct"));
 
     let receipt = SwarmEvent::Receipt {
@@ -102,18 +102,18 @@ fn test_swarm_event_debug() {
         ack_for: "msg-abc".to_string(),
         received_at: Some(1234567890.0),
     };
-    let receipt_debug = format!("{:?}", receipt);
+    let receipt_debug = format!("{receipt:?}");
     assert!(receipt_debug.contains("msg-abc"));
 
     let connected = SwarmEvent::PeerConnected("peer4".to_string());
-    let connected_debug = format!("{:?}", connected);
+    let connected_debug = format!("{connected:?}");
     assert!(connected_debug.contains("peer4"));
 
     let disconnected = SwarmEvent::PeerDisconnected("peer5".to_string());
-    let disconnected_debug = format!("{:?}", disconnected);
+    let disconnected_debug = format!("{disconnected:?}");
     assert!(disconnected_debug.contains("peer5"));
 
     let listen = SwarmEvent::ListenAddrEstablished("/ip4/127.0.0.1/tcp/8080".to_string());
-    let listen_debug = format!("{:?}", listen);
+    let listen_debug = format!("{listen:?}");
     assert!(listen_debug.contains("8080"));
 }

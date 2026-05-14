@@ -79,7 +79,7 @@ async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
         )?
         .with_quic()
         .with_behaviour(|_| Ok(TestBehaviour { gossipsub, mdns }))?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
         .build();
 
     let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
@@ -146,14 +146,13 @@ async fn connect_nodes(
 
     if !a_connected || !b_connected {
         let msg = format!(
-            "Failed to establish connection: a_connected={}, b_connected={}",
-            a_connected, b_connected
+            "Failed to establish connection: a_connected={a_connected}, b_connected={b_connected}"
         );
         return Err(msg.into());
     }
 
     eprintln!("Connection established: both nodes connected to each other");
-    tokio::time::sleep(Duration::from_millis(1000)).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     node_a
         .swarm
@@ -174,31 +173,25 @@ async fn connect_nodes(
         loop {
             tokio::select! {
                 event = node_a.swarm.select_next_some() => {
-                    match &event {
-                        SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) => {
-                            eprintln!("Node A: Gossipsub Subscribed event from peer {}", peer_id);
-                            if peer_id == &peer_b {
-                                subscribed_a = true;
-                                eprintln!("Node A subscribed to B!");
-                            }
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) = &event {
+                        eprintln!("Node A: Gossipsub Subscribed event from peer {peer_id}");
+                        if peer_id == &peer_b {
+                            subscribed_a = true;
+                            eprintln!("Node A subscribed to B!");
                         }
-                        _ => {
-                            // Log other events for debugging
-                        }
+                    } else {
+                        // Log other events for debugging
                     }
                 }
                 event = node_b.swarm.select_next_some() => {
-                    match &event {
-                        SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) => {
-                            eprintln!("Node B: Gossipsub Subscribed event from peer {}", peer_id);
-                            if peer_id == &peer_a {
-                                subscribed_b = true;
-                                eprintln!("Node B subscribed to A!");
-                            }
+                    if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed { peer_id, .. })) = &event {
+                        eprintln!("Node B: Gossipsub Subscribed event from peer {peer_id}");
+                        if peer_id == &peer_a {
+                            subscribed_b = true;
+                            eprintln!("Node B subscribed to A!");
                         }
-                        _ => {
-                            // Log other events for debugging
-                        }
+                    } else {
+                        // Log other events for debugging
                     }
                 }
             }
@@ -214,12 +207,12 @@ async fn connect_nodes(
 }
 
 /// Test that a message published via gossipsub actually reaches peers.
-/// This verifies the critical broadcast path: gossipsub.publish() -> network -> other peers.
+/// This verifies the critical broadcast path: `gossipsub.publish()` -> network -> other peers.
 ///
 /// This test would catch bugs where:
 /// - Messages are saved to UI/Database but never published to gossipsub
-/// - The swarm handler doesn't properly call gossipsub.publish()
-/// - SwarmCommand::Publish is never sent or handled
+/// - The swarm handler doesn't properly call `gossipsub.publish()`
+/// - `SwarmCommand::Publish` is never sent or handled
 #[tokio::test]
 async fn test_p2p_message_transfer() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
@@ -330,7 +323,7 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     let peer_a = node_a.peer_id;
     let peer_b = node_b.peer_id;
 
-    println!("Peer A: {}, Peer B: {}", peer_a, peer_b);
+    println!("Peer A: {peer_a}, Peer B: {peer_b}");
 
     let mut a_discovered_b = false;
     let mut b_discovered_a = false;
@@ -342,12 +335,12 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                 event = node_a.swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            println!("Node A listening on {}", address);
+                            println!("Node A listening on {address}");
                         }
                         SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                            println!("Node A mDNS discovered: {:?}", list);
+                            println!("Node A mDNS discovered: {list:?}");
                             for (peer_id, multiaddr) in list {
-                                println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
+                                println!("  -> peer: {peer_id}, addr: {multiaddr}");
                                 if peer_id == peer_b {
                                     println!("Node A discovered node B via mDNS, dialing...");
                                     let _ = node_a.swarm.dial(multiaddr.clone());
@@ -362,12 +355,12 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                 event = node_b.swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            println!("Node B listening on {}", address);
+                            println!("Node B listening on {address}");
                         }
                         SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                            println!("Node B mDNS discovered: {:?}", list);
+                            println!("Node B mDNS discovered: {list:?}");
                             for (peer_id, multiaddr) in list {
-                                println!("  -> peer: {}, addr: {}", peer_id, multiaddr);
+                                println!("  -> peer: {peer_id}, addr: {multiaddr}");
                                 if peer_id == peer_a {
                                     println!("Node B discovered node A via mDNS, dialing...");
                                     let _ = node_b.swarm.dial(multiaddr.clone());
@@ -448,20 +441,20 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                         SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gs_event)) => {
                             match gs_event {
                                 gossipsub::Event::Subscribed { peer_id, topic } => {
-                                    println!("Node A received subscription from {} for topic {}", peer_id, topic);
+                                    println!("Node A received subscription from {peer_id} for topic {topic}");
                                     if peer_id == peer_b {
                                         subscribed_a = true;
                                     }
                                 }
-                                _ => println!("Node A Gossipsub event: {:?}", gs_event),
+                                _ => println!("Node A Gossipsub event: {gs_event:?}"),
                             }
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
-                            println!("Node A: ConnectionEstablished with {}, endpoint: {:?}", peer_id, endpoint);
+                            println!("Node A: ConnectionEstablished with {peer_id}, endpoint: {endpoint:?}");
                         }
                         _ => {
                             if event_count_a % 100 == 0 {
-                                println!("Node A: event #{} (various events, not logging all)", event_count_a);
+                                println!("Node A: event #{event_count_a} (various events, not logging all)");
                             }
                         }
                     }
@@ -472,20 +465,20 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                         SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gs_event)) => {
                             match gs_event {
                                 gossipsub::Event::Subscribed { peer_id, topic } => {
-                                    println!("Node B received subscription from {} for topic {}", peer_id, topic);
+                                    println!("Node B received subscription from {peer_id} for topic {topic}");
                                     if peer_id == peer_a {
                                         subscribed_b = true;
                                     }
                                 }
-                                _ => println!("Node B Gossipsub event: {:?}", gs_event),
+                                _ => println!("Node B Gossipsub event: {gs_event:?}"),
                             }
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, endpoint, .. } => {
-                            println!("Node B: ConnectionEstablished with {}, endpoint: {:?}", peer_id, endpoint);
+                            println!("Node B: ConnectionEstablished with {peer_id}, endpoint: {endpoint:?}");
                         }
                         _ => {
                             if event_count_b % 100 == 0 {
-                                println!("Node B: event #{} (various events, not logging all)", event_count_b);
+                                println!("Node B: event #{event_count_b} (various events, not logging all)");
                             }
                         }
                     }
@@ -585,7 +578,7 @@ async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::e
         )?
         .with_quic()
         .with_behaviour(|_| Ok(TestBehaviour { gossipsub, mdns }))?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
         .build();
 
     let topic = gossipsub::IdentTopic::new("test-net");
@@ -634,7 +627,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
                 && address.to_string().contains("/tcp/")
             {
                 a_listen_addr = Some(address.clone());
-                eprintln!("Node A listening on: {}", address);
+                eprintln!("Node A listening on: {address}");
                 break;
             }
         }
@@ -651,15 +644,15 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
         .parse::<u16>()
         .unwrap();
     let stale_port = tcp_port + 1000;
-    let stale_addr = format!("/ip4/127.0.0.1/tcp/{}/p2p/{}", stale_port, peer_a);
+    let stale_addr = format!("/ip4/127.0.0.1/tcp/{stale_port}/p2p/{peer_a}");
 
-    eprintln!("Stale address for DB: {}", stale_addr);
+    eprintln!("Stale address for DB: {stale_addr}");
     save_stale_peer_to_db(db_path_2, &peer_a.to_string(), &stale_addr)?;
 
     let mut node_b = create_node_with_db(db_path_2).await?;
     let peer_b = node_b.peer_id;
 
-    eprintln!("Node B will try stale address: {}", stale_addr);
+    eprintln!("Node B will try stale address: {stale_addr}");
 
     let stale_addr_parsed: Multiaddr = stale_addr.parse()?;
     eprintln!("Node B dialing stale address...");
@@ -676,23 +669,23 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
                 event = node_a.swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            eprintln!("Node A new listen addr: {}", address);
+                            eprintln!("Node A new listen addr: {address}");
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            eprintln!("Node A connected to: {}", peer_id);
+                            eprintln!("Node A connected to: {peer_id}");
                             if peer_id == peer_b {
                                 connected = true;
                             }
                         }
                         SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                            eprintln!("Node A outgoing connection error: peer={:?}, error={:?}", peer_id, error);
+                            eprintln!("Node A outgoing connection error: peer={peer_id:?}, error={error:?}");
                         }
                         SwarmEvent::IncomingConnectionError { error, .. } => {
-                            eprintln!("Node A incoming connection error: {:?}", error);
+                            eprintln!("Node A incoming connection error: {error:?}");
                         }
                         SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                             for (pid, addr) in list {
-                                eprintln!("Node A mDNS discovered: {} at {}", pid, addr);
+                                eprintln!("Node A mDNS discovered: {pid} at {addr}");
                                 let _ = node_a.swarm.dial(addr.clone());
                                 node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
                             }
@@ -703,27 +696,27 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
                 event = node_b.swarm.select_next_some() => {
                     match event {
                         SwarmEvent::NewListenAddr { address, .. } => {
-                            eprintln!("Node B new listen addr: {}", address);
+                            eprintln!("Node B new listen addr: {address}");
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            eprintln!("Node B connected to: {}", peer_id);
+                            eprintln!("Node B connected to: {peer_id}");
                             if peer_id == peer_a {
                                 connected = true;
                             }
                         }
                         SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                            eprintln!("Node B outgoing connection error: peer={:?}, error={:?}", peer_id, error);
+                            eprintln!("Node B outgoing connection error: peer={peer_id:?}, error={error:?}");
                             dial_failed = true;
                         }
                         SwarmEvent::IncomingConnectionError { error, .. } => {
-                            eprintln!("Node B incoming connection error: {:?}", error);
+                            eprintln!("Node B incoming connection error: {error:?}");
                         }
                         SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                             for (pid, addr) in list {
-                                eprintln!("Node B mDNS discovered: {} at {}", pid, addr);
+                                eprintln!("Node B mDNS discovered: {pid} at {addr}");
                                 if pid == peer_a {
                                     mdns_discovered = true;
-                                    eprintln!("Node B dialing mDNS address: {}", addr);
+                                    eprintln!("Node B dialing mDNS address: {addr}");
                                     let _ = node_b.swarm.dial(addr.clone());
                                     node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
                                 }
@@ -732,8 +725,8 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
                         _ => {}
                     }
                 }
-                _ = tokio::time::sleep(Duration::from_secs(1)) => {
-                    eprintln!("Still waiting... connected={}, dial_failed={}, mdns_discovered={}", connected, dial_failed, mdns_discovered);
+                () = tokio::time::sleep(Duration::from_secs(1)) => {
+                    eprintln!("Still waiting... connected={connected}, dial_failed={dial_failed}, mdns_discovered={mdns_discovered}");
                 }
             }
 
@@ -745,8 +738,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
 
     if !connected {
         return Err(format!(
-            "Connection timed out: dial_failed={}, mdns_discovered={}",
-            dial_failed, mdns_discovered
+            "Connection timed out: dial_failed={dial_failed}, mdns_discovered={mdns_discovered}"
         )
         .into());
     }
@@ -854,8 +846,8 @@ async fn test_message_deduplication() -> Result<(), Box<dyn std::error::Error>> 
 /// 2. Network delivers message to receiver
 /// 3. Receiver receives the message
 ///
-/// This is the critical path for the fix: SwarmCommand::Publish must
-/// actually result in gossipsub.publish() being called.
+/// This is the critical path for the fix: `SwarmCommand::Publish` must
+/// actually result in `gossipsub.publish()` being called.
 #[tokio::test]
 async fn test_broadcast_flow_from_sender_to_receiver() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
@@ -895,11 +887,11 @@ async fn test_broadcast_flow_from_sender_to_receiver() -> Result<(), Box<dyn std
     Ok(())
 }
 
-/// Test that headless mode (p2p_chat.rs) and TUI use compatible message formats.
+/// Test that headless mode (`p2p_chat.rs`) and TUI use compatible message formats.
 ///
-/// Headless mode sends messages as BroadcastMessage JSON (like TUI does).
+/// Headless mode sends messages as `BroadcastMessage` JSON (like TUI does).
 /// This test verifies:
-/// 1. A message formatted as BroadcastMessage JSON can be sent
+/// 1. A message formatted as `BroadcastMessage` JSON can be sent
 /// 2. It is received and can be parsed back
 #[tokio::test]
 async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn std::error::Error>>

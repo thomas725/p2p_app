@@ -5,7 +5,7 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 
-use crate::generated::schema::*;
+use crate::generated::schema::{identities, message_receipts, messages, peer_sessions, peers};
 use diesel::Insertable;
 
 use chrono::NaiveDateTime;

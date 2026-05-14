@@ -36,9 +36,9 @@ where
         let level = event.metadata().level().to_string();
         let target = event.metadata().target();
         let msg = if buf.is_empty() {
-            format!("{} [{}] {}", ts, level, target)
+            format!("{ts} [{level}] {target}")
         } else {
-            format!("{} [{}] {} {}", ts, level, target, buf)
+            format!("{ts} [{level}] {target} {buf}")
         };
 
         if let Some(logs) = TUI_LOGS.get()
@@ -149,7 +149,7 @@ pub fn clear_tui_logs() {
 pub fn push_log(message: impl Into<String>) {
     let msg = message.into();
     let ts = chrono::Local::now().format("%H:%M:%S.%3f");
-    let formatted = format!("[{}] {}", ts, msg);
+    let formatted = format!("[{ts}] {msg}");
 
     if let Some(logs) = TUI_LOGS.get()
         && let Ok(mut l) = logs.lock()
@@ -163,13 +163,13 @@ pub fn push_log(message: impl Into<String>) {
     if let Some(callback) = TUI_CALLBACK.get() {
         callback(formatted);
     } else {
-        eprintln!("{}", formatted);
+        eprintln!("{formatted}");
     }
 }
 
 /// Log function implementation
 fn p2plog(level: &str, msg: String) {
-    push_log(format!("[{}] {}", level, msg));
+    push_log(format!("[{level}] {msg}"));
 }
 
 /// Debug log alias
@@ -195,6 +195,7 @@ pub fn p2plog_error(msg: impl Into<String>) {
 /// Remove ANSI escape codes from a string (e.g., color/formatting codes).
 ///
 /// Useful for cleaning terminal output before storing in logs or displaying in TUI.
+#[must_use]
 pub fn strip_ansi_codes(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     let mut in_escape = false;
@@ -215,6 +216,7 @@ pub fn strip_ansi_codes(s: &str) -> String {
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
 #[cfg(feature = "tracing")]
+#[must_use]
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};
     Targets::new()
@@ -238,14 +240,14 @@ mod tests {
     #[cfg(feature = "tracing")]
     fn test_tracing_filter_returns_targets() {
         let filter = tracing_filter();
-        assert!(!format!("{:?}", filter).is_empty());
+        assert!(!format!("{filter:?}").is_empty());
     }
 
     #[test]
     #[cfg(feature = "tracing")]
     fn test_tracing_filter_has_default_warn() {
         let filter = tracing_filter();
-        let filter_str = format!("{:?}", filter);
+        let filter_str = format!("{filter:?}");
         assert!(filter_str.contains("WARN"));
     }
 
@@ -253,7 +255,7 @@ mod tests {
     #[cfg(feature = "tracing")]
     fn test_tracing_filter_enables_debug_targets() {
         let filter = tracing_filter();
-        let filter_str = format!("{:?}", filter);
+        let filter_str = format!("{filter:?}");
         assert!(filter_str.contains("DEBUG") || filter_str.contains("debug"));
     }
 }

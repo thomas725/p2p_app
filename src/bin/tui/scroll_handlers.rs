@@ -4,7 +4,7 @@ use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
 use p2p_app::tui_helpers::key_code_to_scroll_action;
 
-/// Handles tab navigation (Tab and BackTab keys)
+/// Handles tab navigation (Tab and `BackTab` keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     match key_code {
         crossterm::event::KeyCode::Tab => {
@@ -67,11 +67,7 @@ fn scroll_broadcast_section(
     }
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        let visible_count = state
-            .dm_visible_counts
-            .get(peer_id)
-            .map(|(b, _)| *b)
-            .unwrap_or(1);
+        let visible_count = state.dm_visible_counts.get(peer_id).map_or(1, |(b, _)| *b);
         let max_offset = broadcast_messages.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
@@ -82,11 +78,7 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
     if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
         && let Some(msgs) = state.dm_messages.get(peer_id)
     {
-        let visible_count = state
-            .dm_visible_counts
-            .get(peer_id)
-            .map(|(_, d)| *d)
-            .unwrap_or(1);
+        let visible_count = state.dm_visible_counts.get(peer_id).map_or(1, |(_, d)| *d);
         let max_offset = msgs.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }

@@ -18,6 +18,7 @@ pub enum TabId {
 
 impl TabId {
     /// Convert to numeric index
+    #[must_use]
     pub fn index(&self) -> usize {
         match self {
             TabId::Chat => 0,
@@ -28,6 +29,7 @@ impl TabId {
     }
 
     /// Convert from numeric index
+    #[must_use]
     pub fn from_index(idx: usize) -> Self {
         match idx {
             0 => TabId::Chat,
@@ -50,6 +52,7 @@ pub struct DmTab {
 
 impl DmTab {
     /// Create a new DM tab for a peer
+    #[must_use]
     pub fn new(peer_id: String) -> Self {
         Self {
             peer_id,
@@ -58,6 +61,7 @@ impl DmTab {
     }
 
     /// Create DM tab with initial messages
+    #[must_use]
     pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
         Self { peer_id, messages }
     }
@@ -78,6 +82,7 @@ pub struct DynamicTabs {
 
 impl DynamicTabs {
     /// Create new empty dynamic tabs
+    #[must_use]
     pub fn new() -> Self {
         Self {
             dm_tabs: Vec::new(),
@@ -103,6 +108,7 @@ impl DynamicTabs {
     }
 
     /// Get DM tab by peer ID (read-only)
+    #[must_use]
     pub fn get_dm_tab(&self, peer_id: &str) -> Option<&DmTab> {
         self.dm_tabs.iter().find(|t| t.peer_id == peer_id)
     }
@@ -119,6 +125,7 @@ impl DynamicTabs {
     }
 
     /// Get display titles for all DM tabs
+    #[must_use]
     pub fn dm_tab_titles(&self) -> Vec<String> {
         self.dm_tabs
             .iter()
@@ -127,6 +134,7 @@ impl DynamicTabs {
     }
 
     /// Get display titles for all tabs (Chat, Peers, DMs..., Log)
+    #[must_use]
     pub fn all_titles(&self) -> Vec<String> {
         let mut titles = vec!["Chat".to_string(), "Peers".to_string()];
         titles.extend(self.dm_tab_titles());
@@ -135,6 +143,7 @@ impl DynamicTabs {
     }
 
     /// Convert tab index to content type
+    #[must_use]
     pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
         let log_index = 2 + self.dm_tabs.len();
         match tab_idx {

@@ -44,16 +44,19 @@ pub fn upsert_peer_last_seen(
 }
 
 /// Check if message content indicates a nickname-only update
+#[must_use]
 pub fn is_nickname_update(content: &str, nickname: Option<&str>) -> bool {
     content.trim().is_empty() && nickname.is_some()
 }
 
 /// Maximum scroll offset calculation
+#[must_use]
 pub fn calc_max_scroll(total_items: usize, visible_count: usize) -> usize {
     crate::fmt::auto_scroll_offset(total_items, visible_count)
 }
 
 /// Calculate first visible message index accounting for scroll
+#[must_use]
 pub fn calculate_visible_range(
     total_messages: usize,
     scroll_offset: usize,
@@ -65,11 +68,13 @@ pub fn calculate_visible_range(
 }
 
 /// Validate nickname (alphanumeric and dash only, max 20 chars)
+#[must_use]
 pub fn validate_nickname(nick: &str) -> bool {
     !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
 }
 
 /// Truncate message for display
+#[must_use]
 pub fn truncate_message(msg: &str, max_len: usize) -> String {
     if msg.len() <= max_len {
         msg.to_string()
@@ -79,6 +84,7 @@ pub fn truncate_message(msg: &str, max_len: usize) -> String {
 }
 
 /// Calculate how many lines a message will occupy given terminal width
+#[must_use]
 pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
     if terminal_width == 0 {
         return 1;
@@ -87,6 +93,7 @@ pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
 }
 
 /// Parse latency string to milliseconds
+#[must_use]
 pub fn parse_latency(latency: &str) -> Option<f64> {
     if latency == "<1ms" {
         Some(0.5)
@@ -100,11 +107,13 @@ pub fn parse_latency(latency: &str) -> Option<f64> {
 }
 
 /// Check if scroll position indicates at bottom
+#[must_use]
 pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool {
     scroll_offset >= total.saturating_sub(visible)
 }
 
 /// Format peer list item
+#[must_use]
 pub fn format_peer_list_item(
     peer_id: &str,
     local_nickname: Option<&str>,
@@ -161,7 +170,8 @@ pub fn scroll_down_lines(
     }
 }
 
-/// Convert crossterm KeyCode to scroll action string
+/// Convert crossterm `KeyCode` to scroll action string
+#[must_use]
 pub fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
     match key_code {
         crossterm::event::KeyCode::Up => Some("Up"),
@@ -174,7 +184,8 @@ pub fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<
     }
 }
 
-/// Handle scroll key for a section - returns new (scroll_offset, auto_scroll)
+/// Handle scroll key for a section - returns new (`scroll_offset`, `auto_scroll`)
+#[must_use]
 pub fn handle_scroll_key_for_section(
     key_code: &str,
     scroll_offset: usize,
@@ -215,6 +226,7 @@ pub fn handle_scroll_key_for_section(
 }
 
 /// Handle mouse wheel scroll
+#[must_use]
 pub fn handle_mouse_wheel_scroll(
     direction: &str,
     scroll_offset: usize,
@@ -236,8 +248,8 @@ pub fn relabel_dm_transcript(
     old_nick: &str,
     new_nick: &str,
 ) {
-    let from = format!("[{}] ", old_nick);
-    let to = format!("[{}] ", new_nick);
+    let from = format!("[{old_nick}] ");
+    let to = format!("[{new_nick}] ");
     for line in messages.iter_mut() {
         if line.contains(&from) {
             *line = line.replace(&from, &to);
@@ -246,6 +258,7 @@ pub fn relabel_dm_transcript(
 }
 
 /// Calculate tab index from current + delta (wrapping)
+#[must_use]
 pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
     if max_tabs == 0 {
         return 0;

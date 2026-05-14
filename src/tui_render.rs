@@ -44,7 +44,11 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
 
 /// Render the tab bar
 pub fn render_tabs(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let titles: Vec<&str> = state.tab_titles.iter().map(|s| s.as_str()).collect();
+    let titles: Vec<&str> = state
+        .tab_titles
+        .iter()
+        .map(std::string::String::as_str)
+        .collect();
     let tabs = Tabs::new(titles)
         .style(Style::default().fg(Color::Cyan))
         .select(state.active_tab)
@@ -100,7 +104,7 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
                 .get(global_idx)
                 .and_then(|id| id.as_deref());
             let prefix = broadcast_receipt_prefix(msg_id, &state.broadcast_receipts);
-            let display = format!("{}{}", prefix, msg);
+            let display = format!("{prefix}{msg}");
             if is_selected {
                 ListItem::new(display).style(Style::default().bg(Color::DarkGray))
             } else {
@@ -169,11 +173,18 @@ pub fn render_dm_content(
     let broadcast_messages: VecDeque<String> = state
         .messages
         .iter()
-        .filter(|msg| msg.starts_with(&format!("[{}]", peer_id)))
+        .filter(|msg| msg.starts_with(&format!("[{peer_id}]")))
         .cloned()
         .collect();
 
-    if !broadcast_messages.is_empty() {
+    if broadcast_messages.is_empty() {
+        let broadcast_para = Paragraph::new("No broadcast messages").block(
+            Block::default()
+                .title(format!("Broadcast from {short_id}"))
+                .borders(Borders::ALL),
+        );
+        f.render_widget(broadcast_para, broadcast_area);
+    } else {
         let (broadcast_scroll_offset, broadcast_auto_scroll) = {
             let (offset, auto_scroll) = state
                 .dm_broadcast_scroll_state
@@ -199,17 +210,10 @@ pub fn render_dm_content(
 
         let broadcast_list = List::new(visible_broadcast).block(
             Block::default()
-                .title(format!("Broadcast from {}", short_id))
+                .title(format!("Broadcast from {short_id}"))
                 .borders(Borders::ALL),
         );
         f.render_widget(broadcast_list, broadcast_area);
-    } else {
-        let broadcast_para = Paragraph::new("No broadcast messages").block(
-            Block::default()
-                .title(format!("Broadcast from {}", short_id))
-                .borders(Borders::ALL),
-        );
-        f.render_widget(broadcast_para, broadcast_area);
     }
 
     let (scroll_offset_val, auto_scroll_val) = {
@@ -242,20 +246,20 @@ pub fn render_dm_content(
                     .and_then(|ids| ids.get(global_idx))
                     .and_then(|id| id.as_deref());
                 let prefix = dm_receipt_prefix(msg_id, &state.dm_receipts);
-                ListItem::new(format!("{}{}", prefix, m))
+                ListItem::new(format!("{prefix}{m}"))
             })
             .collect();
 
         let dm_list = List::new(visible_msgs).block(
             Block::default()
-                .title(format!("DM: {}", short_id))
+                .title(format!("DM: {short_id}"))
                 .borders(Borders::ALL),
         );
         f.render_widget(dm_list, dm_area);
     } else {
         let dm_para = Paragraph::new("No direct messages").block(
             Block::default()
-                .title(format!("DM: {}", short_id))
+                .title(format!("DM: {short_id}"))
                 .borders(Borders::ALL),
         );
         f.render_widget(dm_para, dm_area);
@@ -308,15 +312,15 @@ pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSt
     } else {
         "Disconnected"
     };
-    let status = Paragraph::new(format!("{} [Mouse: {}]", conn, mouse));
+    let status = Paragraph::new(format!("{conn} [Mouse: {mouse}]"));
     f.render_widget(status, area);
 }
 
 /// Render popup
 pub fn render_popup(f: &mut ratatui::Frame, text: String) {
     let area = f.area();
-    let w = (area.width as f32 * 0.70) as u16;
-    let h = (area.height as f32 * 0.40) as u16;
+    let w = (f32::from(area.width) * 0.70) as u16;
+    let h = (f32::from(area.height) * 0.40) as u16;
     let popup = Rect {
         x: area.x + (area.width.saturating_sub(w)) / 2,
         y: area.y + (area.height.saturating_sub(h)) / 2,

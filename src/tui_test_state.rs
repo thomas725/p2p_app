@@ -32,16 +32,24 @@ pub struct TuiTestState {
 
 impl TuiTestState {
     /// Create default test state
+    #[must_use]
     pub fn new() -> Self {
-        Self::with_messages(TEST_MESSAGES.iter().map(|s| s.to_string()).collect())
+        Self::with_messages(
+            TEST_MESSAGES
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+        )
     }
 
     /// Create with custom messages
+    #[must_use]
     pub fn with_messages(messages: VecDeque<String>) -> Self {
         Self::with_messages_and_width(messages, 80)
     }
 
     /// Create with messages and terminal width
+    #[must_use]
     pub fn with_messages_and_width(messages: VecDeque<String>, width: usize) -> Self {
         let chat_message_peers: Vec<String> = messages
             .iter()
@@ -71,6 +79,7 @@ impl TuiTestState {
     }
 
     /// Handle mouse click event and return clicked peer if applicable
+    #[must_use]
     pub fn handle_mouse_click(&self, row: u16, _col: u16) -> Option<String> {
         let first_msg_row = self.first_message_row();
         if row < first_msg_row {
@@ -100,22 +109,22 @@ impl TuiTestState {
     }
 
     /// Get row where list header starts (tabs + notifications)
+    #[must_use]
     pub fn list_header_start_row(&self) -> u16 {
         let tabs_rows = 3;
-        let notification_rows = if self.unread_broadcasts > 0 || !self.unread_dms.is_empty() {
-            1
-        } else {
-            0
-        };
+        let notification_rows =
+            u16::from(self.unread_broadcasts > 0 || !self.unread_dms.is_empty());
         tabs_rows + notification_rows
     }
 
     /// Get row where first message appears
+    #[must_use]
     pub fn first_message_row(&self) -> u16 {
         self.list_header_start_row() + 2
     }
 
     /// Get starting row for message content
+    #[must_use]
     pub fn calculate_content_start_row(&self) -> u16 {
         self.first_message_row()
     }
@@ -154,16 +163,19 @@ impl Default for TuiTestState {
 
 impl TuiTestState {
     /// Get tab titles for rendering Tabs widget
+    #[must_use]
     pub fn tab_titles(&self) -> Vec<&str> {
         vec!["Chat", "Peers", "Log"]
     }
 
     /// Get peer info text
+    #[must_use]
     pub fn peer_info(&self) -> String {
         format!("Peers: {} | Network: test-net", self.messages.len())
     }
 
     /// Get tab content
+    #[must_use]
     pub fn tab_content(&self) -> crate::tui_tabs::TabContent {
         match self.active_tab {
             0 => crate::tui_tabs::TabContent::Chat,
@@ -173,11 +185,13 @@ impl TuiTestState {
     }
 
     /// Get formatted messages for chat tab
+    #[must_use]
     pub fn formatted_messages(&self) -> Vec<String> {
         self.messages.iter().cloned().collect()
     }
 
     /// Get formatted peer list
+    #[must_use]
     pub fn formatted_peers(&self) -> Vec<String> {
         vec![
             "Alice (12D3) - Online".to_string(),
@@ -186,11 +200,13 @@ impl TuiTestState {
     }
 
     /// Get formatted DM messages
+    #[must_use]
     pub fn formatted_dm_messages(&self, _peer_id: &str) -> Vec<String> {
         self.messages.iter().cloned().collect()
     }
 
     /// Get formatted logs
+    #[must_use]
     pub fn formatted_logs(&self) -> Vec<String> {
         vec![
             "[12:00:00] Connected to test-net".to_string(),
@@ -199,11 +215,13 @@ impl TuiTestState {
     }
 
     /// Get input text
-    pub fn input_text(&self) -> &str {
+    #[must_use]
+    pub fn input_text(&self) -> &'static str {
         ""
     }
 
     /// Get status bar text
+    #[must_use]
     pub fn status_text(&self) -> String {
         "Ready | 0 peers connected".to_string()
     }

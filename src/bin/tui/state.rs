@@ -8,11 +8,11 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 ///
 /// This struct centralizes all mutable state needed by the TUI.
 ///
-/// Only the CommandProcessor task directly mutates this state.
+/// Only the `CommandProcessor` task directly mutates this state.
 /// Other tasks:
-/// - **RenderLoop**: Read-only access to render current state
-/// - **InputHandler**: No direct access, sends InputEvent to CommandProcessor
-/// - **SwarmHandler**: No direct access, sends SwarmEvent to CommandProcessor
+/// - **`RenderLoop`**: Read-only access to render current state
+/// - **`InputHandler`**: No direct access, sends `InputEvent` to `CommandProcessor`
+/// - **`SwarmHandler`**: No direct access, sends `SwarmEvent` to `CommandProcessor`
 ///
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
 pub struct AppState {
@@ -189,19 +189,18 @@ pub fn load_and_format_messages(
                 // Outgoing message - use stored sender nickname or current own nickname
                 msg.sender_nickname
                     .as_ref()
-                    .map(|n| format!("[{}]", n))
-                    .unwrap_or_else(|| format!("[{}]", own_nickname))
+                    .map_or_else(|| format!("[{own_nickname}]"), |n| format!("[{n}]"))
             } else {
                 // Incoming message - prefer stored sender_nickname, fallback to lookup
-                msg.sender_nickname
-                    .as_ref()
-                    .map(|n| format!("[{}]", n))
-                    .unwrap_or_else(|| {
+                msg.sender_nickname.as_ref().map_or_else(
+                    || {
                         let p = msg.peer_id.as_ref().unwrap();
                         let display =
                             p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
-                        format!("[{}]", display)
-                    })
+                        format!("[{display}]")
+                    },
+                    |n| format!("[{n}]"),
+                )
             };
             messages.push_back((
                 format!("{} {} {}", ts, sender, msg.content),

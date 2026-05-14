@@ -12,10 +12,10 @@ use tokio::sync::mpsc;
 /// Run the new 4-task TUI architecture
 ///
 /// Orchestrates the spawning and supervision of the four concurrent tasks:
-/// - **SwarmHandler**: Translates libp2p events to SwarmEvent
-/// - **EventSource**: Polls terminal for keyboard/mouse input
-/// - **CommandProcessor**: Receives events, mutates shared AppState
-/// - **RenderLoop**: Renders AppState to terminal at ~60 FPS
+/// - **`SwarmHandler`**: Translates libp2p events to `SwarmEvent`
+/// - **`EventSource`**: Polls terminal for keyboard/mouse input
+/// - **`CommandProcessor`**: Receives events, mutates shared `AppState`
+/// - **`RenderLoop`**: Renders `AppState` to terminal at ~60 FPS
 ///
 /// All tasks communicate via bounded MPSC channels (capacity: 100 events).
 /// State is shared behind `Arc<Mutex<AppState>>` for safe concurrent access.
@@ -57,8 +57,8 @@ pub async fn run_new_tui(
 
     // Get database URL (uses cached value from startup)
     let db_info = p2p_app::get_database_url();
-    p2plog_debug(format!("Database: {}", db_info));
-    p2plog_debug(format!("Loading data for topic: {}", topic_str));
+    p2plog_debug(format!("Database: {db_info}"));
+    p2plog_debug(format!("Loading data for topic: {topic_str}"));
 
     // Load nickname maps from database (used for rendering historical messages and peer display).
     let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
@@ -106,7 +106,7 @@ pub async fn run_new_tui(
         let mut seen_ids = std::collections::HashSet::new();
 
         // Deduplicate (should be unnecessary, but keeps us resilient to weird legacy data)
-        for peer in db_peers.iter() {
+        for peer in &db_peers {
             // Skip duplicate peer IDs (keep first occurrence with most recent last_seen)
             if !seen_ids.insert(peer.peer_id.clone()) {
                 continue;
@@ -162,9 +162,8 @@ pub async fn run_new_tui(
         ));
     }
 
-    let local_peer_id = p2p_app::get_local_peer_id()
-        .map(|id| id.to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
+    let local_peer_id =
+        p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
 
     let state = Arc::new(Mutex::new(super::state::AppState::new(
         topic_str.clone(),
@@ -248,7 +247,7 @@ pub async fn run_new_tui(
     };
 
     // Signal graceful shutdown to remaining tasks
-    p2plog_debug(format!("Initiating shutdown: {}", exit_reason));
+    p2plog_debug(format!("Initiating shutdown: {exit_reason}"));
 
     // Cleanup terminal state
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
@@ -257,7 +256,7 @@ pub async fn run_new_tui(
 
     // Print cached logs to stdout
     for log in get_tui_logs() {
-        println!("{}", log);
+        println!("{log}");
     }
 
     // Release database lock file

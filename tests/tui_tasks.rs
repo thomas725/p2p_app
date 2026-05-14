@@ -1,7 +1,7 @@
 //! Tests for the 4-task TUI architecture
 //!
 //! These tests verify the core components of the concurrent TUI:
-//! - AppState mutations under concurrent access
+//! - `AppState` mutations under concurrent access
 //! - Event handling and propagation
 //! - Bounds checking on collections
 
@@ -10,7 +10,7 @@ mod tui_architecture_tests {
     use std::collections::{HashMap, VecDeque};
     use std::sync::{Arc, Mutex};
 
-    /// Mock AppState for testing (simplified version)
+    /// Mock `AppState` for testing (simplified version)
     struct MockAppState {
         messages: VecDeque<(String, Option<String>)>,
         dm_messages: HashMap<String, VecDeque<String>>,
@@ -76,7 +76,7 @@ mod tui_architecture_tests {
 
         // Add 1100 messages
         for i in 0..1100 {
-            state.add_message(format!("Message {}", i), None);
+            state.add_message(format!("Message {i}"), None);
         }
 
         // Should be bounded at 1000
@@ -91,7 +91,7 @@ mod tui_architecture_tests {
 
         // Add 1100 DMs from peer1
         for i in 0..1100 {
-            state.add_dm("peer1", format!("DM {}", i));
+            state.add_dm("peer1", format!("DM {i}"));
         }
 
         // Should be bounded at 1000
@@ -106,12 +106,11 @@ mod tui_architecture_tests {
 
         // Add 10,100 peers
         for i in 0..10_100 {
-            let result =
-                state.add_peer(format!("peer_{}", i), "now".to_string(), "now".to_string());
+            let result = state.add_peer(format!("peer_{i}"), "now".to_string(), "now".to_string());
             if i < 10_000 {
-                assert!(result, "Should add peer {}", i);
+                assert!(result, "Should add peer {i}");
             } else {
-                assert!(!result, "Should reject peer {} (over limit)", i);
+                assert!(!result, "Should reject peer {i} (over limit)");
             }
         }
 
@@ -161,11 +160,11 @@ mod tui_architecture_tests {
                 for i in 0..200 {
                     if let Ok(mut s) = state_clone.lock() {
                         s.add_message(
-                            format!("Task {} Message {}", task_id, i),
-                            Some(format!("peer_{}", task_id)),
+                            format!("Task {task_id} Message {i}"),
+                            Some(format!("peer_{task_id}")),
                         );
                         if i % 3 == 0 {
-                            s.add_dm(&format!("peer_{}", task_id), format!("DM {}", i));
+                            s.add_dm(&format!("peer_{task_id}"), format!("DM {i}"));
                         }
                     }
                 }
@@ -222,7 +221,7 @@ mod tui_architecture_tests {
         // Add DMs from multiple peers
         for peer_id in &["peer1", "peer2", "peer3"] {
             for i in 0..100 {
-                state.add_dm(peer_id, format!("Message {}", i));
+                state.add_dm(peer_id, format!("Message {i}"));
             }
         }
 

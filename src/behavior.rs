@@ -71,10 +71,10 @@ pub struct AppBehaviour {
 /// # Arguments
 /// * `key` - libp2p identity keypair
 /// * `network_size` - Network size enum for tuning behavior parameters
+#[must_use]
 pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
     p2plog_debug(format!(
-        "Building behavior for network size: {:?}",
-        network_size
+        "Building behavior for network size: {network_size:?}"
     ));
     // Configure Gossipsub based on network size
     let gossipsub_config = match network_size {
@@ -115,7 +115,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         gossipsub_config,
     )
     .unwrap_or_else(|e| {
-        panic!("Failed to create gossipsub behavior: {}", e);
+        panic!("Failed to create gossipsub behavior: {e}");
     });
 
     let request_response = request_response::Behaviour::new(

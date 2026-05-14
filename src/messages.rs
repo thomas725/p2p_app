@@ -77,11 +77,11 @@ pub fn save_message_with_meta(
     let conn = &mut crate::sqlite_connect()?;
     let new_msg = NewMessage {
         content: content.to_string(),
-        peer_id: peer_id.map(|s| s.to_string()),
+        peer_id: peer_id.map(std::string::ToString::to_string),
         topic: topic.to_string(),
         sent: 0,
-        is_direct: is_direct as i32,
-        target_peer: target_peer.map(|s| s.to_string()),
+        is_direct: i32::from(is_direct),
+        target_peer: target_peer.map(std::string::ToString::to_string),
         sender_nickname: meta.sender_nickname,
         msg_id: meta.msg_id,
         sent_at: meta.sent_at,
@@ -92,8 +92,7 @@ pub fn save_message_with_meta(
         .get_result(conn)
         .wrap_err_with(|| {
             format!(
-                "Failed to save message: content='{}', topic='{}', is_direct={}",
-                content, topic, is_direct
+                "Failed to save message: content='{content}', topic='{topic}', is_direct={is_direct}"
             )
         })
         .inspect(|msg| {
@@ -113,7 +112,7 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
         .then_order_by(crate::generated::schema::messages::id.asc())
         .select(Message::as_select())
         .load(conn)
-        .wrap_err_with(|| format!("Failed to load unsent messages for topic: {}", topic))
+        .wrap_err_with(|| format!("Failed to load unsent messages for topic: {topic}"))
 }
 
 /// Mark a message as sent by ID.
@@ -167,12 +166,7 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
         .then_order_by(crate::generated::schema::messages::id.asc())
         .select(Message::as_select())
         .load(conn)
-        .wrap_err_with(|| {
-            format!(
-                "Failed to load unsent direct messages for peer: {}",
-                target_peer
-            )
-        })
+        .wrap_err_with(|| format!("Failed to load unsent direct messages for peer: {target_peer}"))
 }
 
 /// Save a message receipt (delivery/read confirmation).

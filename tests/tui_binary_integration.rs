@@ -52,7 +52,7 @@ fn test_swarm_command_variants() {
         msg_id: Some("msg-123".to_string()),
     };
 
-    let debug = format!("{:?}", publish);
+    let debug = format!("{publish:?}");
     assert!(debug.contains("Publish"));
 
     // Test clone
@@ -73,7 +73,7 @@ fn test_swarm_command_variants() {
         ack_for: Some("ack-msg".to_string()),
     };
 
-    let dm_debug = format!("{:?}", dm);
+    let dm_debug = format!("{dm:?}");
     assert!(dm_debug.contains("SendDm"));
 }
 
@@ -90,7 +90,7 @@ fn test_swarm_event_variants() {
         msg_id: Some("evt-1".to_string()),
     };
 
-    let debug = format!("{:?}", bcast);
+    let debug = format!("{bcast:?}");
     assert!(debug.contains("BroadcastMessage"));
     assert!(debug.contains("EventNick"));
 
@@ -103,7 +103,7 @@ fn test_swarm_event_variants() {
         msg_id: None,
     };
 
-    let direct_debug = format!("{:?}", direct);
+    let direct_debug = format!("{direct:?}");
     assert!(direct_debug.contains("DirectMessage"));
 
     // Test Receipt
@@ -113,20 +113,20 @@ fn test_swarm_event_variants() {
         received_at: Some(1234567890.0),
     };
 
-    let receipt_debug = format!("{:?}", receipt);
+    let receipt_debug = format!("{receipt:?}");
     assert!(receipt_debug.contains("Receipt"));
     assert!(receipt_debug.contains("ack-msg-123"));
 
     // Test PeerConnected/Disconnected
     let connected = SwarmEvent::PeerConnected("ConnectedPeer".to_string());
-    assert!(format!("{:?}", connected).contains("PeerConnected"));
+    assert!(format!("{connected:?}").contains("PeerConnected"));
 
     let disconnected = SwarmEvent::PeerDisconnected("DisconnectedPeer".to_string());
-    assert!(format!("{:?}", disconnected).contains("PeerDisconnected"));
+    assert!(format!("{disconnected:?}").contains("PeerDisconnected"));
 
     // Test ListenAddrEstablished
     let listen = SwarmEvent::ListenAddrEstablished("/ip4/127.0.0.1/tcp/8080".to_string());
-    assert!(format!("{:?}", listen).contains("ListenAddrEstablished"));
+    assert!(format!("{listen:?}").contains("ListenAddrEstablished"));
 }
 
 #[test]
@@ -146,10 +146,10 @@ fn test_tab_content_variants() {
     assert_eq!(log.peer_id(), None);
 
     // Test Debug
-    assert!(format!("{:?}", chat).contains("Chat"));
-    assert!(format!("{:?}", direct).contains("Direct"));
-    assert!(format!("{:?}", peers).contains("Peers"));
-    assert!(format!("{:?}", log).contains("Log"));
+    assert!(format!("{chat:?}").contains("Chat"));
+    assert!(format!("{direct:?}").contains("Direct"));
+    assert!(format!("{peers:?}").contains("Peers"));
+    assert!(format!("{log:?}").contains("Log"));
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn test_direct_message_struct() {
     };
 
     // Test Debug format
-    let debug = format!("{:?}", dm);
+    let debug = format!("{dm:?}");
     assert!(debug.contains("test content"));
     assert!(debug.contains("DMNick"));
 
@@ -275,7 +275,7 @@ fn test_broadcast_message_struct() {
         msg_id: Some("bcast-msg-1".to_string()),
     };
 
-    let debug = format!("{:?}", bm);
+    let debug = format!("{bm:?}");
     assert!(debug.contains("broadcast content"));
     assert!(debug.contains("BcastNick"));
 

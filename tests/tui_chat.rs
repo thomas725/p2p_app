@@ -26,8 +26,7 @@ mod tests {
         let peer = state.handle_mouse_click(first_msg_row, 5);
         assert!(
             peer.is_some(),
-            "Should click first message at row {}",
-            first_msg_row
+            "Should click first message at row {first_msg_row}"
         );
     }
 
@@ -547,7 +546,7 @@ mod tests {
     #[test]
     fn test_dm_tab_debug_format() {
         let dm = p2p_app::tui_tabs::DmTab::new("test-peer".to_string());
-        let debug = format!("{:?}", dm);
+        let debug = format!("{dm:?}");
         assert!(debug.contains("test-peer"));
     }
 

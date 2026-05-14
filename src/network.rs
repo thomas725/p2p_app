@@ -6,7 +6,7 @@ use crate::get_average_peer_count;
 /// Smaller networks use aggressive flooding; larger networks use lazy gossip.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkSize {
-    /// 0-3 peers: Use flood_publish, aggressive heartbeat
+    /// 0-3 peers: Use `flood_publish`, aggressive heartbeat
     Small,
     /// 4-15 peers: Balanced mesh topology
     Medium,
@@ -31,7 +31,8 @@ impl NetworkSize {
     /// * `avg` - Average number of concurrent peers from historical data
     ///
     /// # Returns
-    /// NetworkSize classification for configuring gossipsub behavior
+    /// `NetworkSize` classification for configuring gossipsub behavior
+    #[must_use]
     pub fn from_peer_count(avg: f64) -> Self {
         match avg as i32 {
             0..=3 => Self::Small,
@@ -44,10 +45,10 @@ impl NetworkSize {
 /// Determine the current network size classification.
 ///
 /// Calculates the average peer count from historical data and returns
-/// a NetworkSize classification for configuring gossipsub behavior.
+/// a `NetworkSize` classification for configuring gossipsub behavior.
 ///
 /// # Returns
-/// The current NetworkSize (Small, Medium, or Large)
+/// The current `NetworkSize` (Small, Medium, or Large)
 pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     let avg = get_average_peer_count()?;
     Ok(NetworkSize::from_peer_count(avg))

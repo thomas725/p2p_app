@@ -278,7 +278,7 @@ fn test_get_network_size_thresholds() {
     let _db = setup_test_db();
     // Save exactly at Small threshold
     for i in 0..5 {
-        p2p_app::save_peer(&format!("p{}", i), &[]).unwrap();
+        p2p_app::save_peer(&format!("p{i}"), &[]).unwrap();
     }
     let size_small = p2p_app::get_network_size().unwrap();
     assert_eq!(size_small, p2p_app::network::NetworkSize::Small);

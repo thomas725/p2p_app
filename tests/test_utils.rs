@@ -6,7 +6,7 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tempfile::TempDir;
 
-/// Acquire this lock before touching `DATABASE_URL` or opening a SQLite DB
+/// Acquire this lock before touching `DATABASE_URL` or opening a `SQLite` DB
 /// in tests. Because `DATABASE_URL` is a process-wide env var, parallel tests
 /// will corrupt each other without serialisation.
 pub fn test_db_lock() -> &'static Mutex<()> {
@@ -26,7 +26,8 @@ pub struct TestDb {
 
 impl TestDb {
     #[allow(dead_code)]
-    /// Path to the SQLite file for this test.
+    /// Path to the `SQLite` file for this test.
+    #[must_use]
     pub fn path(&self) -> String {
         self._dir
             .path()
@@ -46,8 +47,11 @@ impl Drop for TestDb {
 }
 
 /// Create and initialise an isolated test database.
+#[must_use]
 pub fn setup_test_db() -> TestDb {
-    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };

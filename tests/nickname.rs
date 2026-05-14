@@ -24,7 +24,9 @@ impl Drop for TestDb {
 }
 
 fn setup_test_db() -> TestDb {
-    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
@@ -50,8 +52,7 @@ fn test_generate_self_nickname_contains_hyphen() {
     let nick = p2p_app::nickname::generate_self_nickname();
     assert!(
         nick.contains('-'),
-        "expected two-word nickname separated by '-', got: {}",
-        nick
+        "expected two-word nickname separated by '-', got: {nick}"
     );
 }
 
@@ -60,7 +61,7 @@ fn test_generate_self_nickname_contains_hyphen() {
 fn test_generate_self_nickname_two_parts() {
     let nick = p2p_app::nickname::generate_self_nickname();
     let parts: Vec<&str> = nick.split('-').collect();
-    assert_eq!(parts.len(), 2, "expected exactly 2 parts, got: {:?}", parts);
+    assert_eq!(parts.len(), 2, "expected exactly 2 parts, got: {parts:?}");
 }
 
 #[serial]
@@ -263,7 +264,7 @@ fn test_get_peer_display_name_uses_local_nickname() {
     let _db = setup_test_db();
     p2p_app::nickname::set_peer_local_nickname("peer-disp", "LocalNick").unwrap();
     let name = p2p_app::nickname::get_peer_display_name("peer-disp").unwrap();
-    assert!(name.starts_with("LocalNick"), "got: {}", name);
+    assert!(name.starts_with("LocalNick"), "got: {name}");
 }
 
 #[serial]
@@ -274,7 +275,7 @@ fn test_get_peer_display_name_prefers_local_over_received() {
     p2p_app::nickname::set_peer_local_nickname("peer-pref", "LocalWins").unwrap();
     p2p_app::nickname::set_peer_received_nickname("peer-pref", "ReceivedLoses").unwrap();
     let name = p2p_app::nickname::get_peer_display_name("peer-pref").unwrap();
-    assert!(name.starts_with("LocalWins"), "got: {}", name);
+    assert!(name.starts_with("LocalWins"), "got: {name}");
 }
 
 #[serial]
@@ -284,7 +285,7 @@ fn test_get_peer_display_name_uses_received_when_no_local() {
     p2p_app::save_peer("peer-recv-disp", &[]).unwrap();
     p2p_app::nickname::set_peer_received_nickname("peer-recv-disp", "ReceivedNick").unwrap();
     let name = p2p_app::nickname::get_peer_display_name("peer-recv-disp").unwrap();
-    assert!(name.starts_with("ReceivedNick"), "got: {}", name);
+    assert!(name.starts_with("ReceivedNick"), "got: {name}");
 }
 
 #[serial]
@@ -294,7 +295,7 @@ fn test_get_peer_display_name_includes_short_id_suffix() {
     p2p_app::nickname::set_peer_local_nickname("ABCDEFGHIJ", "Nick").unwrap();
     let name = p2p_app::nickname::get_peer_display_name("ABCDEFGHIJ").unwrap();
     // Format is "Nick (XYZ)" where XYZ is first 3 chars of last-8
-    assert!(name.contains('(') && name.contains(')'), "got: {}", name);
+    assert!(name.contains('(') && name.contains(')'), "got: {name}");
 }
 
 // ── Additional edge cases ──────────────────────────────────────────────────────

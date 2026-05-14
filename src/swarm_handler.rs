@@ -52,8 +52,7 @@ async fn handle_swarm_event(
                 }
             } else {
                 p2plog_debug(format!(
-                    "Failed to parse broadcast message from peer {}",
-                    peer_id_str
+                    "Failed to parse broadcast message from peer {peer_id_str}"
                 ));
             }
         }
@@ -162,7 +161,8 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
     }
 }
 
-/// Build a BroadcastMessage from component parts
+/// Build a `BroadcastMessage` from component parts
+#[must_use]
 pub fn build_broadcast_message(
     content: String,
     nickname: Option<String>,
@@ -197,7 +197,7 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                         ));
                     }
                     Err(e) => {
-                        p2plog_error(format!("Failed to publish: {:?}", e));
+                        p2plog_error(format!("Failed to publish: {e:?}"));
                     }
                 }
             }
@@ -230,9 +230,9 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
 }
 
 /// Spawns the swarm handler task that processes libp2p events
-/// and translates them to app-level SwarmEvent messages.
+/// and translates them to app-level `SwarmEvent` messages.
 ///
-/// The returned sender can be used to send SwarmCommand (Publish, SendDm).
+/// The returned sender can be used to send `SwarmCommand` (Publish, `SendDm`).
 pub fn spawn_swarm_handler(
     mut swarm: Swarm<AppBehaviour>,
     topic: String,
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_build_broadcast_message_empty_content() {
-        let msg = build_broadcast_message("".to_string(), None, None);
+        let msg = build_broadcast_message(String::new(), None, None);
         assert!(msg.content.is_empty());
         assert!(msg.nickname.is_none());
         assert!(msg.msg_id.is_none());

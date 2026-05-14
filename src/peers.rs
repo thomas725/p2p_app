@@ -25,7 +25,7 @@ pub struct KnownPeer {
 
 /// Save or update a peer in the database.
 ///
-/// If peer already exists (by peer_id), updates addresses and last_seen timestamp.
+/// If peer already exists (by `peer_id`), updates addresses and `last_seen` timestamp.
 /// Otherwise inserts a new peer record with current timestamp.
 ///
 /// # Arguments
@@ -75,7 +75,7 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
 /// Load all known peers, combining both the `peers` table and any peer IDs present in `messages`.
 ///
 /// This fixes older databases where messages may exist but the `peers` table is empty.
-/// Ordering is by most-recently-seen first (max of peer.last_seen and latest message timestamp).
+/// Ordering is by most-recently-seen first (max of `peer.last_seen` and latest message timestamp).
 pub fn load_known_peers() -> color_eyre::Result<Vec<KnownPeer>> {
     use diesel::sql_query;
 
@@ -162,7 +162,7 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     if sessions.is_empty() {
         return Ok(0.0);
     }
-    let sum: i64 = sessions.iter().map(|&c| c as i64).sum();
+    let sum: i64 = sessions.iter().map(|&c| i64::from(c)).sum();
     Ok(sum as f64 / sessions.len() as f64)
 }
 

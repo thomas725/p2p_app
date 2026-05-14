@@ -3,7 +3,9 @@
 #[serial]
 #[test]
 fn test_get_database_url_env_set() {
-    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/test.db") };
     let url = p2p_app::db::get_database_url();
     unsafe { std::env::remove_var("DATABASE_URL") };
@@ -38,7 +40,9 @@ impl Drop for TestDb {
 }
 
 fn setup_test_db() -> TestDb {
-    let guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().unwrap()) };
@@ -83,11 +87,7 @@ fn test_get_local_peer_id() {
     let s = peer_id.to_string();
     assert!(!s.is_empty());
     // libp2p peer IDs start with "12D3KooW" for Ed25519
-    assert!(
-        s.starts_with("12D3KooW"),
-        "unexpected peer ID format: {}",
-        s
-    );
+    assert!(s.starts_with("12D3KooW"), "unexpected peer ID format: {s}");
 }
 
 #[serial]
@@ -103,7 +103,9 @@ fn test_sqlite_connect_runs_migrations() {
 #[serial]
 #[test]
 fn test_get_database_url_from_env() {
-    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe { std::env::set_var("DATABASE_URL", "/tmp/explicit.db") };
     let url = p2p_app::db::get_database_url();
     unsafe { std::env::remove_var("DATABASE_URL") };
@@ -181,7 +183,9 @@ fn test_release_db_lock_idempotent() {
 #[serial]
 #[test]
 fn test_reset_db_url_cache_then_get_url_without_env() {
-    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe { std::env::remove_var("DATABASE_URL") };
     p2p_app::db::reset_db_url_cache();
     let url = p2p_app::db::get_database_url();
@@ -191,7 +195,9 @@ fn test_reset_db_url_cache_then_get_url_without_env() {
 
 #[test]
 fn test_sqlite_connect_fails_with_bad_path() {
-    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     unsafe { std::env::set_var("DATABASE_URL", "/nonexistent/dir/test.db") };
     p2p_app::db::reset_db_url_cache();
     let result = p2p_app::db::sqlite_connect();

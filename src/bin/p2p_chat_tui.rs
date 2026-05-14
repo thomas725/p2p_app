@@ -7,17 +7,17 @@ use std::time::Duration;
 
 #[cfg(feature = "tui")]
 mod tui {
-    //! Four-task TUI architecture for p2p_app
+    //! Four-task TUI architecture for `p2p_app`
     //!
     //! ## Overview
     //!
     //! This module implements a concurrent, event-driven terminal UI using async Rust.
     //! Four independent tasks communicate via MPSC channels, each responsible for a specific concern:
     //!
-    //! 1. **SwarmHandler** - Listens to libp2p network events and translates them to app-level SwarmEvent
-    //! 2. **InputHandler** - Polls terminal for keyboard/mouse input and sends InputEvent
-    //! 3. **CommandProcessor** - Receives InputEvent and SwarmEvent, mutates AppState, sends SwarmCommand
-    //! 4. **RenderLoop** - Reads AppState and renders the TUI at ~60 FPS
+    //! 1. **`SwarmHandler`** - Listens to libp2p network events and translates them to app-level `SwarmEvent`
+    //! 2. **`InputHandler`** - Polls terminal for keyboard/mouse input and sends `InputEvent`
+    //! 3. **`CommandProcessor`** - Receives `InputEvent` and `SwarmEvent`, mutates `AppState`, sends `SwarmCommand`
+    //! 4. **`RenderLoop`** - Reads `AppState` and renders the TUI at ~60 FPS
     //!
     //! ## Architecture
     //!
@@ -52,13 +52,13 @@ mod tui {
     //! ## State Management
     //!
     //! All TUI state is centralized in `AppState` behind an `Arc<Mutex<>>` for safe concurrent access.
-    //! Only CommandProcessor mutates state; other tasks read-only or signal mutations through channels.
+    //! Only `CommandProcessor` mutates state; other tasks read-only or signal mutations through channels.
     //!
     //! Channel Capacity: 100 events max in flight per channel (prevents unbounded buffering).
     //!
     //! ## Key Design Decisions
     //!
-    //! - **`Arc<Mutex>` over RwLock**: Simplicity. Most operations read and modify multiple fields atomically.
+    //! - **`Arc<Mutex>` over `RwLock`**: Simplicity. Most operations read and modify multiple fields atomically.
     //! - **Polling input instead of event subscriptions**: Works on all platforms with crossterm.
     //! - **60 FPS render loop**: UI responsiveness. Could optimize to event-driven in future.
     //! - **Immutable channel types**: Each task has dedicated input/output channels, no shared mutable channels.
@@ -91,13 +91,12 @@ async fn main() -> color_eyre::Result<()> {
 
     let network_size = match p2p_app::get_network_size() {
         Ok(size) => {
-            p2plog_info(format!("Network size detected: {:?}", size));
+            p2plog_info(format!("Network size detected: {size:?}"));
             size
         }
         Err(e) => {
             p2plog_info(format!(
-                "Could not determine network size, defaulting to Small: {}",
-                e
+                "Could not determine network size, defaulting to Small: {e}"
             ));
             p2p_app::NetworkSize::Small
         }
@@ -116,7 +115,7 @@ async fn main() -> color_eyre::Result<()> {
         let swarm = base
             .with_quic()
             .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
             .build();
 
         #[cfg(not(feature = "quic"))]

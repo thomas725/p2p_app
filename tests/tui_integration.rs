@@ -34,8 +34,7 @@ fn test_nickname_display_consistency() {
         p2p_app::peer_display_name(unknown_peer, &HashMap::new(), &HashMap::new());
     assert_eq!(
         unknown_display, "wn999999",
-        "Unknown peer should display short ID (last 8 chars), got: {}",
-        unknown_display
+        "Unknown peer should display short ID (last 8 chars), got: {unknown_display}"
     );
 }
 
@@ -171,7 +170,7 @@ fn test_tui_no_duplicate_peers_on_reconnect() {
     // Verify no duplicates
     let mut seen_ids = std::collections::HashSet::new();
     for (id, _, _) in &peers_list {
-        assert!(seen_ids.insert(id.clone()), "Found duplicate peer: {}", id);
+        assert!(seen_ids.insert(id.clone()), "Found duplicate peer: {id}");
     }
 }
 
@@ -184,7 +183,7 @@ fn test_tui_message_sending_broadcast() {
     // User types "Hello everyone" and presses Enter
     let msg_text = "Hello everyone";
     let ts = "2024-01-01 10:00:00".to_string();
-    let msg = format!("{} [{}] {}", ts, own_nickname, msg_text);
+    let msg = format!("{ts} [{own_nickname}] {msg_text}");
 
     messages.push_back((msg.clone(), None)); // None = broadcast (no specific peer)
 
@@ -208,7 +207,7 @@ fn test_tui_message_sending_dm() {
     // User types "Hi there" and presses Enter
     let msg_text = "Hi there";
     let ts = "2024-01-01 10:00:00".to_string();
-    let msg = format!("{} [{}] {}", ts, own_nickname, msg_text);
+    let msg = format!("{ts} [{own_nickname}] {msg_text}");
 
     let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
     dm_msgs.push_back(msg.clone());
@@ -314,7 +313,7 @@ fn test_tui_message_history_bounded() {
 
     // Add more messages than the limit
     for i in 0..150 {
-        messages.push_back((format!("message {}", i), None));
+        messages.push_back((format!("message {i}"), None));
 
         // Maintain the limit
         if messages.len() > MAX_MESSAGES {
@@ -340,7 +339,7 @@ fn test_tui_dm_history_per_peer_bounded() {
     // Add more DM messages than the limit
     for i in 0..100 {
         let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
-        dm_msgs.push_back(format!("dm {}", i));
+        dm_msgs.push_back(format!("dm {i}"));
 
         // Maintain the limit per peer
         if dm_msgs.len() > MAX_DM_HISTORY {
@@ -379,11 +378,7 @@ fn test_tui_peer_display_limit() {
     // Try to add more peers than the limit
     for i in 0..MAX_PEERS + 100 {
         if peers.len() < MAX_PEERS {
-            peers.push_back((
-                format!("peer{}", i),
-                "time1".to_string(),
-                "time2".to_string(),
-            ));
+            peers.push_back((format!("peer{i}"), "time1".to_string(), "time2".to_string()));
         }
     }
 
@@ -436,8 +431,7 @@ fn test_tui_peer_deduplication_with_limit() {
     for (id, _, _) in &peers {
         assert!(
             unique_check.insert(id.clone()),
-            "Found duplicate peer: {}",
-            id
+            "Found duplicate peer: {id}"
         );
     }
 }

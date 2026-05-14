@@ -1,4 +1,4 @@
-//! Tests for swarm_handler.rs module
+//! Tests for `swarm_handler.rs` module
 
 use p2p_app::behavior::BroadcastMessage;
 
@@ -62,7 +62,7 @@ fn test_build_broadcast_message_all_none() {
 #[test]
 fn test_build_broadcast_message_empty_content() {
     use p2p_app::swarm_handler::build_broadcast_message;
-    let msg = build_broadcast_message("".to_string(), None, None);
+    let msg = build_broadcast_message(String::new(), None, None);
     assert_eq!(msg.content, "");
 }
 

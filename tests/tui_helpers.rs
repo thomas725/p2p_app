@@ -686,11 +686,7 @@ fn test_message_line_count_all_newlines() {
     use p2p_app::tui_helpers::message_line_count;
     // A string of only newlines should count as multiple lines
     let result = message_line_count("\n\n\n", 80);
-    assert!(
-        result >= 1,
-        "should count at least one line, got {}",
-        result
-    );
+    assert!(result >= 1, "should count at least one line, got {result}");
 }
 
 #[test]

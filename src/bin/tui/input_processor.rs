@@ -27,7 +27,7 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
     } else {
         "disabled"
     };
-    p2plog_debug(format!("Mouse capture {}", mode));
+    p2plog_debug(format!("Mouse capture {mode}"));
     let mut stdout = std::io::stdout();
     let _ = if state.mouse_capture {
         execute!(stdout, crossterm::event::EnableMouseCapture)
@@ -71,12 +71,12 @@ async fn handle_nickname_submission(
             &old_nickname,
             &new_nickname,
         );
-        p2plog_debug(format!("Updated per-peer nickname to: {}", new_nickname));
+        p2plog_debug(format!("Updated per-peer nickname to: {new_nickname}"));
     } else {
         let old_nickname = state.own_nickname.clone();
         state.own_nickname = new_nickname.clone();
         let _ = p2p_app::set_self_nickname(&new_nickname);
-        for (peer_id, _, _) in state.peers.iter() {
+        for (peer_id, _, _) in &state.peers {
             if state.self_nicknames_for_peers.contains_key(peer_id) {
                 continue;
             }
@@ -102,7 +102,7 @@ async fn handle_nickname_submission(
                 &new_nickname,
             );
         }
-        p2plog_debug(format!("Updated broadcast nickname to: {}", new_nickname));
+        p2plog_debug(format!("Updated broadcast nickname to: {new_nickname}"));
     }
     state.cancel_nickname_edit();
 }
@@ -117,7 +117,7 @@ fn handle_close_dm_tab(
     {
         state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
         state.peer_selection = 0;
-        p2plog_debug(format!("Closed DM tab with peer: {}", peer_id));
+        p2plog_debug(format!("Closed DM tab with peer: {peer_id}"));
     }
 }
 
@@ -141,7 +141,7 @@ async fn handle_enter_key(
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
             state.active_tab = tab_idx;
-            p2plog_debug(format!("Opened DM with peer: {}", peer_id));
+            p2plog_debug(format!("Opened DM with peer: {peer_id}"));
         }
     } else if tab_content.is_input_enabled() {
         let text: String = state.chat_input.lines().join("\n");

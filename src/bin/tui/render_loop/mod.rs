@@ -14,7 +14,7 @@ use std::io::Stdout;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-/// Convert AppState to TuiRenderState for library rendering
+/// Convert `AppState` to `TuiRenderState` for library rendering
 fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
     use std::collections::{BTreeMap, VecDeque};
 
@@ -124,8 +124,8 @@ fn render_popup(f: &mut Frame, text: String) {
     use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 
     let area = f.area();
-    let w = (area.width as f32 * 0.70) as u16;
-    let h = (area.height as f32 * 0.40) as u16;
+    let w = (f32::from(area.width) * 0.70) as u16;
+    let h = (f32::from(area.height) * 0.40) as u16;
     let popup = Rect {
         x: area.x + (area.width.saturating_sub(w)) / 2,
         y: area.y + (area.height.saturating_sub(h)) / 2,
