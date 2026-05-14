@@ -156,7 +156,7 @@ fn test_strip_ansi_codes_preserves_all_non_escape_chars() {
 // Note: Some tracing tests have known issues with global state - they may fail if run after
 // other tests due to global subscriber conflicts.
 
-#[ignore] // Known issue: global tracing subscriber state conflicts
+#[ignore = "Known issue: global tracing subscriber state conflicts"]
 #[test]
 fn test_tracing_info_captured_in_logs() {
     tokio::runtime::Builder::new_current_thread()
@@ -215,7 +215,7 @@ fn test_tracing_error_captured_in_logs() {
 }
 
 #[serial]
-#[ignore] // Known issue: global tracing subscriber state conflicts
+#[ignore = "Known issue: global tracing subscriber state conflicts"]
 #[test]
 fn test_tracing_event_with_fields_captured() {
     tokio::runtime::Builder::new_current_thread()

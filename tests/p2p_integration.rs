@@ -753,7 +753,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
 
 /// Test that messages sent between peers are delivered correctly via request-response protocol
 #[tokio::test]
-#[ignore] // Run with: cargo test test_direct_message_protocol -- --ignored --nocapture
+#[ignore = "Run with: cargo test test_direct_message_protocol -- --ignored --nocapture"]
 async fn test_direct_message_protocol() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
 
@@ -786,7 +786,7 @@ async fn test_direct_message_protocol() -> Result<(), Box<dyn std::error::Error>
 
 /// Test that peers remain in peer list after restart
 #[tokio::test]
-#[ignore] // Run with: cargo test test_peer_persistence -- --ignored --nocapture
+#[ignore = "Run with: cargo test test_peer_persistence -- --ignored --nocapture"]
 async fn test_peer_persistence() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
 
@@ -822,7 +822,7 @@ async fn test_peer_persistence() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Test that gossipsub messages are deduplicated correctly
 #[tokio::test]
-#[ignore] // Run with: cargo test test_message_deduplication -- --ignored --nocapture
+#[ignore = "Run with: cargo test test_message_deduplication -- --ignored --nocapture"]
 async fn test_message_deduplication() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
 
