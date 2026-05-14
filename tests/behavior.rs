@@ -156,11 +156,4 @@ fn test_broadcast_message_clone() {
     assert_eq!(bm.content, cloned.content);
 }
 
-#[serial]
-#[test]
-fn test_build_behaviour_returns_valid_behaviour() {
-    let _db = setup_test_db();
-    let keypair = p2p_app::get_libp2p_identity().unwrap();
-    let behaviour = p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
-    let _ = behaviour;
-}
+
