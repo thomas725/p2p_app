@@ -4,11 +4,11 @@
 
 | Metric                  | Value   |
 |:------------------------|--------:|
-| Total Rust Files        |      38 |
-| Total Lines of Code     |   8,388 |
-| Total Characters        | 291,500 |
-| Average Lines per File  |     220 |
-| Average Characters/File |   7,671 |
+| Total Rust Files        |      37 |
+| Total Lines of Code     |   8,321 |
+| Total Characters        | 290,346 |
+| Average Lines per File  |     224 |
+| Average Characters/File |   7,847 |
 
 ## All Source Files
 
@@ -16,21 +16,20 @@
 |:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|
 | /                       | build.rs             |   120 |  4133 |     5 |    -  | Build script                        |
 | src                     | behavior.rs          |   142 |  4936 |     4 |  100% | Network behavior definitions        |
-| src                     | db.rs                |   401 | 14225 |     5 |   50% | Database connection & identity mgmt |
+| src                     | db.rs                |   398 | 14186 |     5 |   50% | Database connection & identity mgmt |
 | src                     | dioxus_app.rs        |   675 | 29856 |    16 |    -  | Source file                         |
 | src                     | fmt.rs               |   111 |  3400 |     4 |  100% | Formatting & display utilities      |
-| src                     | lib.rs               |   383 | 12666 |     3 |   70% | Module declarations & re-exports    |
-| src                     | logging.rs           |   229 |  6673 |     4 |  100% | Logging utilities & setup           |
-| src                     | logging_config.rs    |    66 |  2515 |     2 |   50% | Tracing configuration               |
+| src                     | lib.rs               |   382 | 12635 |     3 |   70% | Module declarations & re-exports    |
+| src                     | logging.rs           |   259 |  7918 |     4 |  100% | Logging utilities & setup           |
 | src                     | messages.rs          |   230 |  8437 |     4 |  100% | Message persistence & retrieval     |
 | src                     | network.rs           |    54 |  1711 |     3 |   91% | Network size classification         |
-| src                     | nickname.rs          |   201 |  6997 |     3 |  100% | Nickname management                 |
+| src                     | nickname.rs          |   137 |  4970 |     3 |  100% | Nickname management                 |
 | src                     | peers.rs             |   179 |  6111 |     3 |  100% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |   310 | 10763 |     7 |   45% | Network event translation           |
 | src                     | tui_helpers.rs       |   255 |  7875 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   343 | 11355 |     5 |    -  | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |   538 | 16428 |     4 |   38% | TUI render state & tab content      |
-| src                     | tui_tabs.rs          |   333 |  9560 |     5 |   42% | Tab management & navigation         |
+| src                     | tui_tabs.rs          |   405 | 11807 |     5 |   53% | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
 | src                     | types.rs             |   246 |  7426 |     4 |  100% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |   159 |  5823 |     7 |    -  | CLI chat application                |
@@ -47,13 +46,13 @@
 | src/bin/tui             | state.rs             |   221 |  9120 |     7 |    -  | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    50 |  1710 |     3 |    -  | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   176 |  5926 |     5 |    -  | Render loop orchestration (60 FPS)  |
-| src/generated           | columns.rs           |    77 |  1687 |     1 |    -  | Auto-generated column definitions   |
+| src/generated           | columns.rs           |    42 |  1653 |     1 |    -  | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 |    -  | Module declarations                 |
 | src/generated           | models_insertable.rs |   102 |  3689 |     1 |    -  | Insertable data models              |
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 38 files, 8,388 lines, 291,500 characters
+**Total:** 37 files, 8,321 lines, 290,346 characters
 
 ## Test Files
 
