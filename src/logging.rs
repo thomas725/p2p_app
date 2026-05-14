@@ -137,6 +137,7 @@ pub fn get_tui_logs() -> Vec<String> {
 }
 
 /// Clear TUI log storage.
+#[cfg(any(test, feature = "test-utils"))]
 pub fn clear_tui_logs() {
     if let Some(logs) = TUI_LOGS.get()
         && let Ok(mut l) = logs.lock()
@@ -215,7 +216,7 @@ pub fn strip_ansi_codes(s: &str) -> String {
 
 /// Build a tracing `Targets` filter that denies noisy internal modules
 /// and keeps useful networking events at DEBUG level.
-#[cfg(feature = "tracing")]
+#[cfg(all(feature = "tracing", any(test, feature = "test-utils")))]
 #[must_use]
 pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
     use tracing_subscriber::filter::{LevelFilter, Targets};

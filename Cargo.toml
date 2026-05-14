@@ -20,7 +20,7 @@ strip = false
 panic = 'unwind'
 
 [features]
-default = [ "mdns", "tracing", "quic", "tui" ]
+default = [ "mdns", "tracing", "quic", "tui", "test-utils" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
@@ -29,6 +29,7 @@ tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subs
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
 dioxus = [ "dep:dioxus" ]
 dioxus-desktop = [ "dioxus", "dep:dioxus-desktop", "dioxus/desktop", "dep:futures-channel" ]
+test-utils = []
 
 [dependencies]
 libp2p-quic = { version = "=0.13.0", optional = true }
