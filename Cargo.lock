@@ -4966,7 +4966,6 @@ dependencies = [
  "libp2p-quic",
  "libp2p-request-response",
  "libsqlite3-sys",
- "once_cell",
  "petname",
  "ratatui",
  "ratatui-textarea",

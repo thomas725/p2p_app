@@ -169,23 +169,7 @@ pub fn push_log(message: impl Into<String>) {
 
 /// Log function implementation
 fn p2plog(level: &str, msg: String) {
-    let ts = chrono::Local::now().format("%H:%M:%S.%3f").to_string();
-    let formatted = format!("[{}] [{}] {}", ts, level, msg);
-
-    if let Some(logs) = TUI_LOGS.get()
-        && let Ok(mut l) = logs.lock()
-    {
-        l.push_back(formatted.clone());
-        if l.len() > MAX_TUI_LOGS {
-            l.pop_front();
-        }
-    }
-
-    if let Some(callback) = TUI_CALLBACK.get() {
-        callback(formatted);
-    } else {
-        eprintln!("{}", formatted);
-    }
+    push_log(format!("[{}] {}", level, msg));
 }
 
 /// Debug log alias
@@ -226,4 +210,50 @@ pub fn strip_ansi_codes(s: &str) -> String {
         }
     }
     result
+}
+
+/// Build a tracing `Targets` filter that denies noisy internal modules
+/// and keeps useful networking events at DEBUG level.
+#[cfg(feature = "tracing")]
+pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
+    use tracing_subscriber::filter::{LevelFilter, Targets};
+    Targets::new()
+        .with_target("multistream_select", LevelFilter::OFF)
+        .with_target("yamux::connection", LevelFilter::OFF)
+        .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
+        .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
+        .with_target("libp2p_gossipsub::behaviour", LevelFilter::OFF)
+        .with_target("libp2p_swarm", LevelFilter::DEBUG)
+        .with_target("libp2p_tcp", LevelFilter::DEBUG)
+        .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
+        .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
+        .with_default(LevelFilter::WARN)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_returns_targets() {
+        let filter = tracing_filter();
+        assert!(!format!("{:?}", filter).is_empty());
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_has_default_warn() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("WARN"));
+    }
+
+    #[test]
+    #[cfg(feature = "tracing")]
+    fn test_tracing_filter_enables_debug_targets() {
+        let filter = tracing_filter();
+        let filter_str = format!("{:?}", filter);
+        assert!(filter_str.contains("DEBUG") || filter_str.contains("debug"));
+    }
 }

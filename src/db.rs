@@ -146,8 +146,6 @@ fn ensure_columns(conn: &mut SqliteConnection) {
 
 /// Determine the database path (cached version to avoid repeated lock file checks).
 fn determine_db_path() -> color_eyre::Result<String> {
-    dotenv().ok();
-
     // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
     if let Ok(url) = env::var("DATABASE_URL") {
         return Ok(url);
@@ -345,7 +343,6 @@ pub fn release_db_lock() {
 /// Checks the database for an existing identity. If found, deserializes and returns it.
 /// If no valid identity exists, generates a new Ed25519 keypair, stores it, and returns it.
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
-    dotenv().ok();
     let conn = &mut sqlite_connect()?;
     if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
         for row in rows {

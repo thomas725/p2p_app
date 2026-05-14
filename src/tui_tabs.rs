@@ -330,4 +330,76 @@ mod tests {
         );
         assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
     }
+
+    #[test]
+    fn test_remove_dm_tab_nonexistent() {
+        let mut tabs = DynamicTabs::new();
+        assert_eq!(tabs.remove_dm_tab("nobody"), None);
+    }
+
+    #[test]
+    fn test_get_dm_tab_nonexistent() {
+        let tabs = DynamicTabs::new();
+        assert_eq!(tabs.get_dm_tab("nobody"), None);
+    }
+
+    #[test]
+    fn test_get_dm_tab_mut_nonexistent() {
+        let mut tabs = DynamicTabs::new();
+        assert_eq!(tabs.get_dm_tab_mut("nobody"), None);
+    }
+
+    #[test]
+    fn test_add_dm_tab_existing_peer() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        let idx = tabs.add_dm_tab("peer1".to_string());
+        assert_eq!(idx, 2);
+        assert_eq!(tabs.dm_tab_count(), 1);
+    }
+
+    #[test]
+    fn test_tab_index_to_content_multiple_dms() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        tabs.add_dm_tab("peer2".to_string());
+        assert_eq!(
+            tabs.tab_index_to_content(2),
+            TabContent::Direct("peer1".to_string())
+        );
+        assert_eq!(
+            tabs.tab_index_to_content(3),
+            TabContent::Direct("peer2".to_string())
+        );
+        assert_eq!(tabs.tab_index_to_content(4), TabContent::Log);
+    }
+
+    #[test]
+    fn test_tab_index_to_content_out_of_bounds_dm() {
+        let mut tabs = DynamicTabs::new();
+        tabs.add_dm_tab("peer1".to_string());
+        // Index 3 is Log (2 + 1 DM = 3), index 4+ should be Chat
+        assert_eq!(tabs.tab_index_to_content(5), TabContent::Chat);
+    }
+
+    #[test]
+    fn test_all_titles_with_dms() {
+        let mut tabs = DynamicTabs::new();
+        let titles = tabs.all_titles();
+        assert_eq!(titles, vec!["Chat", "Peers", "Log"]);
+        tabs.add_dm_tab("peer1".to_string());
+        let titles = tabs.all_titles();
+        assert_eq!(titles.len(), 4);
+        assert_eq!(titles[0], "Chat");
+        assert_eq!(titles[1], "Peers");
+        assert!(titles[2].contains("peer1"));
+        assert_eq!(titles[3], "Log");
+    }
+
+    #[test]
+    fn test_dynamic_tabs_default_is_empty() {
+        let tabs = DynamicTabs::default();
+        assert_eq!(tabs.dm_tab_count(), 0);
+        assert_eq!(tabs.total_tab_count(), 3);
+    }
 }

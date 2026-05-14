@@ -53,15 +53,20 @@ pub fn ensure_self_nickname() -> color_eyre::Result<String> {
     Ok(nickname)
 }
 
-/// Set a local (private) nickname for another peer.
-///
-/// This nickname is only stored locally and not shared with other peers.
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-/// * `nickname` - The local nickname to assign
+fn get_peer_field(
+    peer_id: &str,
+    field: impl FnOnce(crate::generated::models_queryable::Peer) -> Option<String>,
+) -> color_eyre::Result<Option<String>> {
+    let conn = &mut sqlite_connect()?;
+    let peer = crate::generated::schema::peers::table
+        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+        .select(crate::generated::models_queryable::Peer::as_select())
+        .first(conn)
+        .optional()?;
+    Ok(peer.and_then(field))
+}
+
 pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    // Ensure a peers row exists (older DBs may only have messages).
     let _ = crate::save_peer(peer_id, &[]);
     let conn = &mut sqlite_connect()?;
     diesel::update(
@@ -73,32 +78,11 @@ pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Res
     Ok(())
 }
 
-/// Retrieve the local nickname set for a peer.
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-///
-/// # Returns
-/// The local nickname if set, or None
 pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
-    let conn = &mut sqlite_connect()?;
-    let peer = crate::generated::schema::peers::table
-        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
-        .select(crate::generated::models_queryable::Peer::as_select())
-        .first(conn)
-        .optional()?;
-    Ok(peer.and_then(|p| p.peer_local_nickname))
+    get_peer_field(peer_id, |p| p.peer_local_nickname)
 }
 
-/// Set the nickname received from another peer (as they call themselves).
-///
-/// This is the nickname that the peer sent to us in a message.
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-/// * `nickname` - The nickname they shared with us
 pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    // Ensure a peers row exists (older DBs may only have messages).
     let _ = crate::save_peer(peer_id, &[]);
     let conn = &mut sqlite_connect()?;
     diesel::update(
@@ -110,15 +94,7 @@ pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::
     Ok(())
 }
 
-/// Set the nickname that we are known as to a specific peer.
-///
-/// This is the nickname we told this particular peer about ourselves.
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-/// * `nickname` - The nickname to send to them
 pub fn set_peer_self_nickname_for_peer(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    // Ensure a peers row exists (older DBs may only have messages).
     let _ = crate::save_peer(peer_id, &[]);
     let conn = &mut sqlite_connect()?;
     diesel::update(
@@ -130,21 +106,12 @@ pub fn set_peer_self_nickname_for_peer(peer_id: &str, nickname: &str) -> color_e
     Ok(())
 }
 
-/// Retrieve the nickname we are known as to a specific peer.
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-///
-/// # Returns
-/// The nickname we told this peer, or None if not set
 pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
-    let conn = &mut sqlite_connect()?;
-    let peer = crate::generated::schema::peers::table
-        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
-        .select(crate::generated::models_queryable::Peer::as_select())
-        .first(conn)
-        .optional()?;
-    Ok(peer.and_then(|p| p.self_nickname_for_peer))
+    get_peer_field(peer_id, |p| p.self_nickname_for_peer)
+}
+
+pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    get_peer_field(peer_id, |p| p.received_nickname)
 }
 
 /// Get a display name for a peer with fallback logic.
@@ -158,44 +125,13 @@ pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Opti
 /// # Returns
 /// A display string suitable for showing in the UI (e.g., "happy-squirrel (001)")
 pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
-    let short_id: String = peer_id
-        .chars()
-        .rev()
-        .take(8)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect();
+    let short_id = crate::fmt::short_peer_id(peer_id);
+    let suffix = &short_id[..3.min(short_id.len())];
     if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
-        return Ok(format!(
-            "{} ({})",
-            local_nick,
-            &short_id[..3.min(short_id.len())]
-        ));
+        return Ok(format!("{} ({})", local_nick, suffix));
     }
     if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
-        return Ok(format!(
-            "{} ({})",
-            received_nick,
-            &short_id[..3.min(short_id.len())]
-        ));
+        return Ok(format!("{} ({})", received_nick, suffix));
     }
     Ok(short_id)
-}
-
-/// Retrieve the nickname received from a peer (as they call themselves).
-///
-/// # Arguments
-/// * `peer_id` - ID of the peer
-///
-/// # Returns
-/// The nickname they shared with us, or None if not yet received
-pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
-    let conn = &mut sqlite_connect()?;
-    let peer = crate::generated::schema::peers::table
-        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
-        .select(crate::generated::models_queryable::Peer::as_select())
-        .first(conn)
-        .optional()?;
-    Ok(peer.and_then(|p| p.received_nickname))
 }

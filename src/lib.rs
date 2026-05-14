@@ -34,7 +34,6 @@ pub mod db;
 pub mod dioxus_app;
 pub mod fmt;
 pub mod logging;
-pub mod logging_config;
 pub mod messages;
 /// Network functionality for peer-to-peer communication
 pub mod network;
@@ -63,11 +62,11 @@ pub use fmt::{
     auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
+pub use logging::tracing_filter;
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
     set_tui_callback, strip_ansi_codes,
 };
-pub use logging_config::tracing_filter;
 pub use messages::{
     MessageMeta, get_unsent_direct_messages, get_unsent_messages, load_direct_messages,
     load_messages, load_receipts, mark_message_sent, save_message, save_message_with_meta,
