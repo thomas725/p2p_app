@@ -237,6 +237,7 @@ pub fn load_and_format_messages(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tui::test_helpers::test_app_state;
     use chrono::NaiveDateTime;
     use p2p_app::generated::models_queryable::Message;
 
@@ -409,5 +410,47 @@ mod tests {
         let (msgs, _, _) =
             format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
         assert_eq!(msgs[0].1, None);
+    }
+
+    // ── AppState ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cancel_nickname_edit_when_active() {
+        let mut state = test_app_state();
+        state.editing_nickname = true;
+        state.editing_nickname_peer = Some("peer-1".to_string());
+        let mut ta = TextArea::default();
+        ta.insert_str("something");
+        state.chat_input = ta;
+
+        state.cancel_nickname_edit();
+
+        assert!(!state.editing_nickname);
+        assert_eq!(state.editing_nickname_peer, None);
+        assert!(state.chat_input.lines().join("").is_empty());
+    }
+
+    #[test]
+    fn test_cancel_nickname_edit_when_inactive_is_noop() {
+        let mut state = test_app_state();
+        assert!(!state.editing_nickname);
+        state.cancel_nickname_edit();
+        assert!(!state.editing_nickname);
+        assert_eq!(state.editing_nickname_peer, None);
+    }
+
+    #[test]
+    fn test_app_state_new_defaults() {
+        let state = test_app_state();
+        assert_eq!(state.active_tab, 0);
+        assert_eq!(state.peer_selection, 0);
+        assert!(state.mouse_capture);
+        assert!(state.chat_auto_scroll);
+        assert!(state.log_auto_scroll);
+        assert_eq!(state.topic_str, "test-net");
+        assert_eq!(state.own_nickname, "TestUser");
+        assert!(!state.editing_nickname);
+        assert_eq!(state.popup, None);
+        assert_eq!(state.broadcast_selection, None);
     }
 }

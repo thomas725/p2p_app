@@ -744,6 +744,339 @@ mod tests {
     fn test_peer_row_click_out_of_bounds() {
         let mut state = app_state_with_peers(3);
         handle_peer_row_click(&mut state, 99);
-        // no panic, no crash
+    }
+
+    // ── format_broadcast_receipt_popup (private wrapper) ────────────────────
+
+    #[test]
+    fn test_broadcast_receipt_popup_returns_some_when_msg_exists() {
+        let mut state = empty_state();
+        state.broadcast_receipts.insert(
+            "msg-1".to_string(),
+            HashMap::from([("p1".to_string(), 2.0)]),
+        );
+        let result = super::format_broadcast_receipt_popup(&state, "msg-1", Some(1.0));
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("p1"));
+    }
+
+    #[test]
+    fn test_broadcast_receipt_popup_returns_none_when_msg_missing() {
+        let state = empty_state();
+        let result = super::format_broadcast_receipt_popup(&state, "nonexistent", None);
+        assert!(result.is_none());
+    }
+
+    // ── format_dm_receipt_popup (private wrapper) ────────────────────────────
+
+    #[test]
+    fn test_dm_receipt_popup_returns_some_when_msg_exists() {
+        let mut state = empty_state();
+        state
+            .dm_receipts
+            .insert("dm-1".to_string(), ("p1".to_string(), 2.5));
+        state.sent_at_by_msg_id.insert("dm-1".to_string(), 1.0);
+        let result = super::format_dm_receipt_popup(&state, "dm-1");
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("p1"));
+    }
+
+    #[test]
+    fn test_dm_receipt_popup_returns_none_when_msg_missing() {
+        let state = empty_state();
+        let result = super::format_dm_receipt_popup(&state, "nonexistent");
+        assert!(result.is_none());
+    }
+
+    // ── handle_message_click ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_message_click_on_sender_opens_dm_tab() {
+        let mut state = empty_state();
+        state.messages = VecDeque::from([("msg from peer".to_string(), Some("p1".to_string()))]);
+        state.message_ids = VecDeque::from([None]);
+        state.chat_message_lines = vec![1];
+        state.chat_message_offset = 0;
+
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        handle_message_click(&mut state, 3, 5);
+
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+        assert!(state.dm_messages.contains_key("p1"));
+    }
+
+    #[test]
+    fn test_message_click_on_own_message_starts_nickname_edit() {
+        let mut state = empty_state();
+        state.messages.push_back(("my msg".to_string(), None));
+        state.message_ids.push_back(Some("m1".to_string()));
+        state.chat_message_lines = vec![1];
+        state.chat_message_offset = 0;
+        state.own_nickname = "TestUser".to_string();
+
+        assert!(!state.editing_nickname);
+        handle_message_click(&mut state, 3, 5);
+
+        assert!(state.editing_nickname);
+        assert_eq!(state.editing_nickname_peer, None);
+        // chat_input should contain own_nickname
+        assert!(state.chat_input.lines().join("").contains("TestUser"));
+    }
+
+    #[test]
+    fn test_message_click_out_of_bounds_is_noop() {
+        let mut state = empty_state();
+        state.chat_message_lines = vec![];
+        handle_message_click(&mut state, 99, 0);
+        assert_eq!(state.active_tab, 0);
+        assert!(!state.editing_nickname);
+    }
+
+    #[test]
+    fn test_message_click_receipt_prefix_no_receipts_shows_fallback() {
+        let mut state = empty_state();
+        state.messages.push_back(("outgoing".to_string(), None));
+        state.message_ids.push_back(Some("no-receipts".to_string()));
+        state.chat_message_lines = vec![1];
+        state.chat_message_offset = 0;
+        // No receipts in state
+
+        handle_message_click(&mut state, 3, 0);
+
+        assert_eq!(
+            state.popup.as_deref(),
+            Some("No peers have confirmed receipt yet.")
+        );
+    }
+
+    // ── handle_dm_broadcast_message_click ────────────────────────────────────
+
+    #[test]
+    fn test_dm_broadcast_click_no_line_counts_is_noop() {
+        let mut state = empty_state();
+        state.active_tab = 1;
+        handle_dm_broadcast_message_click(&mut state, 3, "peer-1");
+        assert_eq!(state.active_tab, 1); // unchanged
+    }
+
+    #[test]
+    fn test_dm_broadcast_click_out_of_range_is_noop() {
+        let mut state = empty_state();
+        state
+            .dm_broadcast_message_lines
+            .insert("peer-1".to_string(), vec![1]);
+        handle_dm_broadcast_message_click(&mut state, 99, "peer-1");
+        // no panic
+    }
+
+    #[test]
+    fn test_dm_broadcast_click_no_matching_messages_for_peer() {
+        let mut state = empty_state();
+        state.messages = VecDeque::from([("msg".to_string(), Some("other-peer".to_string()))]);
+        state
+            .dm_broadcast_message_lines
+            .insert("peer-1".to_string(), vec![1]);
+        state.dm_broadcast_offset.insert("peer-1".to_string(), 0);
+        state.visible_message_count = 6;
+        handle_dm_broadcast_message_click(&mut state, 3, "peer-1");
+        // no broadcast messages from peer-1, so no-op
+        assert_eq!(state.active_tab, 0);
+        assert_eq!(state.broadcast_selection, None);
+    }
+
+    // ── handle_dm_message_click ──────────────────────────────────────────────
+
+    #[test]
+    fn test_dm_message_click_no_line_counts_is_noop() {
+        let mut state = empty_state();
+        handle_dm_message_click(&mut state, 5, 0, "peer-1");
+        assert_eq!(state.popup, None);
+    }
+
+    #[test]
+    fn test_dm_message_click_no_messages_is_noop() {
+        let mut state = empty_state();
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 10);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+        // No dm_messages entry
+        handle_dm_message_click(&mut state, 11, 5, "peer-1");
+        assert_eq!(state.popup, None);
+    }
+
+    #[test]
+    fn test_dm_message_click_self_message_starts_nickname_edit() {
+        let mut state = empty_state();
+        state.dm_messages.insert(
+            "peer-1".to_string(),
+            VecDeque::from(["[me] hello".to_string()]),
+        );
+        state
+            .dm_message_ids
+            .insert("peer-1".to_string(), VecDeque::from([None]));
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 10);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+        state.own_nickname = "me".to_string();
+
+        handle_dm_message_click(&mut state, 11, 5, "peer-1");
+
+        assert!(state.editing_nickname);
+        assert_eq!(state.editing_nickname_peer, Some("peer-1".to_string()));
+    }
+
+    #[test]
+    fn test_dm_message_click_other_message_noop() {
+        let mut state = empty_state();
+        state.dm_messages.insert(
+            "peer-1".to_string(),
+            VecDeque::from(["[someone] hello".to_string()]),
+        );
+        state
+            .dm_message_ids
+            .insert("peer-1".to_string(), VecDeque::from([None]));
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 10);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+        state.own_nickname = "me".to_string();
+
+        handle_dm_message_click(&mut state, 11, 5, "peer-1");
+
+        assert!(!state.editing_nickname);
+    }
+
+    #[test]
+    fn test_dm_message_click_index_out_of_range_is_noop() {
+        let mut state = empty_state();
+        state.dm_messages.insert(
+            "peer-1".to_string(),
+            VecDeque::from(["[me] hi".to_string()]),
+        );
+        state
+            .dm_message_ids
+            .insert("peer-1".to_string(), VecDeque::from([None]));
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 1);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+        state.own_nickname = "me".to_string();
+
+        // Click at row that maps to visible_index=0 but with effective_offset
+        // that pushes dm_message_idx beyond msgs.len()
+        state.dm_offset.insert("peer-1".to_string(), 99);
+        handle_dm_message_click(&mut state, 2, 5, "peer-1");
+        assert!(!state.editing_nickname);
+    }
+
+    // ── handle_mouse_left_click ──────────────────────────────────────────────
+
+    #[test]
+    fn test_mouse_left_click_row_zero_routes_to_tab_click() {
+        let mut state = empty_state();
+        handle_mouse_left_click(&mut state, 0, 0, false, false, None);
+        // Tab click at column 0 on first tab is same-tab noop
+        assert_eq!(state.active_tab, 0);
+    }
+
+    #[test]
+    fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
+        let mut state = app_state_with_peers(3);
+        state.chat_area_height = 20;
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+
+        handle_mouse_left_click(&mut state, 3, 0, true, false, None);
+
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+    }
+
+    #[test]
+    fn test_mouse_left_click_dm_tab_routes_broadcast_section() {
+        let mut state = empty_state();
+        state.chat_area_height = 20;
+        state
+            .dm_broadcast_message_lines
+            .insert("peer-1".to_string(), vec![1]);
+        handle_mouse_left_click(&mut state, 3, 0, false, true, Some("peer-1"));
+        // mid_row = 2 + 10 = 12, so row 3 is in broadcast section
+    }
+
+    #[test]
+    fn test_mouse_left_click_dm_tab_routes_dm_section() {
+        let mut state = empty_state();
+        state.chat_area_height = 20;
+        state.dm_message_lines.insert("peer-1".to_string(), vec![1]);
+        state.dm_area_y.insert("peer-1".to_string(), 10);
+        state.dm_offset.insert("peer-1".to_string(), 0);
+        handle_mouse_left_click(&mut state, 15, 5, false, true, Some("peer-1"));
+        // mid_row = 2 + 10 = 12, so row 15 is in DM section
+    }
+
+    #[test]
+    fn test_mouse_left_click_chat_tab_routes_to_message_click() {
+        let mut state = empty_state();
+        state.messages.push_back(("hello".to_string(), None));
+        state.message_ids.push_back(Some("m1".to_string()));
+        state.chat_message_lines = vec![1];
+        state.chat_message_offset = 0;
+        state.chat_area_height = 20;
+
+        handle_mouse_left_click(&mut state, 3, 0, false, false, None);
+        // Should try to handle as message click - column 0 on own msg is receipt marker
+        assert!(state.popup.is_some()); // No receipts -> fallback message
+    }
+
+    #[test]
+    fn test_mouse_left_click_outside_content_area_is_noop() {
+        let mut state = empty_state();
+        state.chat_area_height = 20;
+        handle_mouse_left_click(&mut state, 1, 0, false, false, None);
+        // row 1 <= 2, outside content area
+        assert_eq!(state.popup, None);
+    }
+
+    #[test]
+    fn test_mouse_left_click_below_max_row_is_noop() {
+        let mut state = empty_state();
+        state.chat_area_height = 20;
+        handle_mouse_left_click(&mut state, 99, 0, false, false, None);
+        // row 99 >= max_row (22), outside content area
+        assert_eq!(state.popup, None);
+    }
+
+    #[test]
+    fn test_mouse_left_click_dm_tab_no_peer_id_does_nothing() {
+        let mut state = empty_state();
+        state.chat_area_height = 20;
+        handle_mouse_left_click(&mut state, 5, 0, false, true, None);
+        // peer_id is None, DM tab routing can't proceed
+    }
+
+    // ── start_peer_specific_nickname_edit ────────────────────────────────────
+
+    #[test]
+    fn test_start_nickname_edit_sets_editing_state() {
+        let mut state = empty_state();
+        state.own_nickname = "TestUser".to_string();
+        super::start_peer_specific_nickname_edit(&mut state, "peer-1");
+        assert!(state.editing_nickname);
+        assert_eq!(state.editing_nickname_peer, Some("peer-1".to_string()));
+    }
+
+    #[test]
+    fn test_start_nickname_edit_uses_self_nickname_when_available() {
+        let mut state = empty_state();
+        state.own_nickname = "Global".to_string();
+        state
+            .self_nicknames_for_peers
+            .insert("peer-1".to_string(), "PerPeer".to_string());
+        super::start_peer_specific_nickname_edit(&mut state, "peer-1");
+        assert!(state.chat_input.lines().join("").contains("PerPeer"));
+    }
+
+    #[test]
+    fn test_start_nickname_edit_falls_back_to_own_nickname() {
+        let mut state = empty_state();
+        state.own_nickname = "Global".to_string();
+        super::start_peer_specific_nickname_edit(&mut state, "peer-1");
+        assert!(state.chat_input.lines().join("").contains("Global"));
     }
 }

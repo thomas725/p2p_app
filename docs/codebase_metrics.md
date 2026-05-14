@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      38 |
-| Total Lines of Code     |  10,229 |
-| Total Characters        | 352,812 |
-| Average Lines per File  |     269 |
-| Average Characters/File |   9,284 |
+| Total Lines of Code     |  10,605 |
+| Total Characters        | 366,767 |
+| Average Lines per File  |     279 |
+| Average Characters/File |   9,651 |
 
 ## All Source Files
 
@@ -35,7 +35,7 @@
 | src/bin                 | p2p_chat.rs          |   158 |  5800 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   256 |  9952 |     8 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5285 |     4 |   1.4% | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |   749 | 26722 |     7 |   40% | Click handlers & index mapping      |
+| src/bin/tui             | click_handlers.rs    |  1082 | 39189 |     7 |   58% | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |   643 | 22997 |     6 |   50% | Event routing & state updates       |
 | src/bin/tui             | constants.rs         |    16 |   526 |     0 |    -  | TUI constants & config              |
 | src/bin/tui             | event_source.rs      |    86 |  2681 |     5 |   57% | Terminal event polling (60 FPS)     |
@@ -43,7 +43,7 @@
 | src/bin/tui             | main_loop.rs         |   510 | 17505 |     4 |   44% | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   253 |  8399 |     5 |   45% | Message sending logic               |
 | src/bin/tui             | scroll_handlers.rs   |   682 | 23692 |     5 |   60% | Scroll & hover-aware navigation     |
-| src/bin/tui             | state.rs             |   413 | 14523 |     6 |   43% | Shared application state            |
+| src/bin/tui             | state.rs             |   456 | 16011 |     6 |   48% | Shared application state            |
 | src/bin/tui             | test_helpers.rs      |    60 |  1764 |     3 |    -  | Source file                         |
 | src/bin/tui/render_loop | layout.rs            |    50 |  1708 |     3 |    -  | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   345 | 11561 |     5 |   49% | Render loop orchestration (60 FPS)  |
@@ -53,7 +53,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4379 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 38 files, 10,229 lines, 352,812 characters
+**Total:** 38 files, 10,605 lines, 366,767 characters
 
 ## Test Files
 
