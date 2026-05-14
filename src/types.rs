@@ -133,6 +133,35 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_swarm_event_peer_discovered() {
+        let addr: Multiaddr = "/ip4/192.168.1.1/tcp/9000".parse().unwrap();
+        let event = SwarmEvent::PeerDiscovered {
+            peer_id: "peer1".to_string(),
+            addresses: vec![addr.clone()],
+        };
+        match event {
+            SwarmEvent::PeerDiscovered { peer_id, addresses } => {
+                assert_eq!(peer_id, "peer1");
+                assert_eq!(addresses, vec![addr]);
+            }
+            _ => panic!("expected PeerDiscovered"),
+        }
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_swarm_event_peer_expired() {
+        let event = SwarmEvent::PeerExpired {
+            peer_id: "peer1".to_string(),
+        };
+        match event {
+            SwarmEvent::PeerExpired { peer_id } => assert_eq!(peer_id, "peer1"),
+            _ => panic!("expected PeerExpired"),
+        }
+    }
+
     #[test]
     fn test_swarm_event_clone() {
         let event = SwarmEvent::PeerConnected("peer1".to_string());

@@ -316,3 +316,76 @@ pub async fn process_input_event(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
+    use p2p_app::tui_tabs::TabContent;
+
+    // ── update_dm_transcript_labels ──────────────────────────────────────────
+
+    #[test]
+    fn test_update_dm_transcript_labels_changes_nick() {
+        let mut dm_messages: std::collections::HashMap<String, std::collections::VecDeque<String>> =
+            std::collections::HashMap::new();
+        dm_messages.insert(
+            "peer1".to_string(),
+            std::collections::VecDeque::from(vec![
+                "[OldNick] hello".to_string(),
+                "[OldNick] how are you".to_string(),
+                "[Other] hi".to_string(),
+            ]),
+        );
+        update_dm_transcript_labels(&mut dm_messages, "peer1", "OldNick", "NewNick");
+        let msgs = dm_messages.get("peer1").unwrap();
+        assert_eq!(msgs[0], "[NewNick] hello");
+        assert_eq!(msgs[1], "[NewNick] how are you");
+        assert_eq!(msgs[2], "[Other] hi");
+    }
+
+    #[test]
+    fn test_update_dm_transcript_labels_no_match_does_nothing() {
+        let mut dm_messages: std::collections::HashMap<String, std::collections::VecDeque<String>> =
+            std::collections::HashMap::new();
+        dm_messages.insert(
+            "peer1".to_string(),
+            std::collections::VecDeque::from(vec!["[Other] hello".to_string()]),
+        );
+        update_dm_transcript_labels(&mut dm_messages, "peer1", "OldNick", "NewNick");
+        assert_eq!(dm_messages.get("peer1").unwrap()[0], "[Other] hello");
+    }
+
+    #[test]
+    fn test_update_dm_transcript_labels_unknown_peer() {
+        let mut dm_messages = std::collections::HashMap::new();
+        update_dm_transcript_labels(&mut dm_messages, "unknown", "Old", "New");
+        // no panic, no crash
+    }
+
+    // ── handle_close_dm_tab ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_close_dm_tab_removes_tab() {
+        let mut state = app_state_with_dm_messages("peer-close", 3);
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        handle_close_dm_tab(&mut state, TabContent::Direct("peer-close".to_string()));
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
+    }
+
+    #[test]
+    fn test_close_dm_tab_switches_to_previous_tab() {
+        let mut state = app_state_with_dm_messages("peer-close", 3);
+        state.active_tab = state.dynamic_tabs.total_tab_count() - 1;
+        handle_close_dm_tab(&mut state, TabContent::Direct("peer-close".to_string()));
+        // Should fall back to previous tab
+        assert!(state.active_tab < state.dynamic_tabs.total_tab_count());
+    }
+
+    #[test]
+    fn test_close_dm_tab_noop_on_chat_tab() {
+        let mut state = test_app_state();
+        handle_close_dm_tab(&mut state, TabContent::Chat);
+        assert_eq!(state.active_tab, 0);
+    }
+}

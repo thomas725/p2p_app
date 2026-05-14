@@ -1,13 +1,80 @@
 use super::constants::CHANNEL_CAPACITY;
+use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
 use p2p_app::logging::get_tui_logs;
 use p2p_app::p2plog_debug;
+use p2p_app::peers::KnownPeer;
 use p2p_app::release_db_lock;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
+
+/// Pure: extract nickname maps from DB peers
+pub fn extract_nickname_maps(
+    peers: &[Peer],
+) -> (
+    HashMap<String, String>,
+    HashMap<String, String>,
+    HashMap<String, String>,
+) {
+    let mut local = HashMap::new();
+    let mut received = HashMap::new();
+    let mut self_for_peer = HashMap::new();
+    for p in peers {
+        if let Some(n) = p.peer_local_nickname.clone() {
+            local.insert(p.peer_id.clone(), n);
+        }
+        if let Some(n) = p.received_nickname.clone() {
+            received.insert(p.peer_id.clone(), n);
+        }
+        if let Some(n) = p.self_nickname_for_peer.clone() {
+            self_for_peer.insert(p.peer_id.clone(), n);
+        }
+    }
+    (local, received, self_for_peer)
+}
+
+/// Pure: deduplicate peers and format timestamps
+pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<(String, String, String)> {
+    let mut result = VecDeque::new();
+    let mut seen_ids = HashSet::new();
+    for peer in peers {
+        if !seen_ids.insert(peer.peer_id.clone()) {
+            continue;
+        }
+        let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+        let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+        result.push_back((peer.peer_id.clone(), first_seen, last_seen));
+    }
+    result
+}
+
+/// Pure: organize flat receipt list into broadcast and DM maps
+pub fn organize_receipts(
+    receipts: &[MessageReceipt],
+) -> (
+    HashMap<String, HashMap<String, f64>>,
+    HashMap<String, (String, f64)>,
+) {
+    let mut broadcast: HashMap<String, HashMap<String, f64>> = HashMap::new();
+    let mut dm: HashMap<String, (String, f64)> = HashMap::new();
+    for r in receipts {
+        let msg_id = r.msg_id.clone();
+        let peer_id = r.peer_id.clone();
+        let confirmed_at = r.confirmed_at;
+        if r.kind == 0 {
+            broadcast
+                .entry(msg_id)
+                .or_default()
+                .insert(peer_id, confirmed_at);
+        } else {
+            dm.insert(msg_id, (peer_id, confirmed_at));
+        }
+    }
+    (broadcast, dm)
+}
 
 /// Run the new 4-task TUI architecture
 ///
@@ -63,27 +130,9 @@ pub async fn run_new_tui(
     // Load nickname maps from database (used for rendering historical messages and peer display).
     let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
         if let Ok(db_peers) = p2p_app::load_peers() {
-            let mut local = std::collections::HashMap::new();
-            let mut received = std::collections::HashMap::new();
-            let mut self_for_peer = std::collections::HashMap::new();
-            for p in db_peers {
-                if let Some(n) = p.peer_local_nickname {
-                    local.insert(p.peer_id.clone(), n);
-                }
-                if let Some(n) = p.received_nickname {
-                    received.insert(p.peer_id.clone(), n);
-                }
-                if let Some(n) = p.self_nickname_for_peer {
-                    self_for_peer.insert(p.peer_id.clone(), n);
-                }
-            }
-            (local, received, self_for_peer)
+            extract_nickname_maps(&db_peers)
         } else {
-            (
-                std::collections::HashMap::new(),
-                std::collections::HashMap::new(),
-                std::collections::HashMap::new(),
-            )
+            (HashMap::new(), HashMap::new(), HashMap::new())
         };
 
     // Load initial messages from database
@@ -102,20 +151,7 @@ pub async fn run_new_tui(
 
     // Load initial peers from database (including peer IDs that only exist in messages)
     let mut initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
-        let mut peers = VecDeque::new();
-        let mut seen_ids = std::collections::HashSet::new();
-
-        // Deduplicate (should be unnecessary, but keeps us resilient to weird legacy data)
-        for peer in &db_peers {
-            // Skip duplicate peer IDs (keep first occurrence with most recent last_seen)
-            if !seen_ids.insert(peer.peer_id.clone()) {
-                continue;
-            }
-
-            let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-            let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-            peers.push_back((peer.peer_id.clone(), first_seen, last_seen));
-        }
+        let peers = deduplicate_peers(&db_peers);
         p2plog_debug(format!(
             "Loaded {} unique peers from {} total database entries",
             peers.len(),
@@ -133,34 +169,18 @@ pub async fn run_new_tui(
     initial_peers = peers_vec.into();
 
     // Load receipts from database
-    let mut loaded_broadcast_receipts: std::collections::HashMap<
-        String,
-        std::collections::HashMap<String, f64>,
-    > = std::collections::HashMap::new();
-    let mut loaded_dm_receipts: std::collections::HashMap<String, (String, f64)> =
-        std::collections::HashMap::new();
-    if let Ok(receipts) = p2p_app::load_receipts() {
-        for r in receipts {
-            let msg_id = r.msg_id.clone();
-            let peer_id = r.peer_id.clone();
-            let confirmed_at = r.confirmed_at;
-            if r.kind == 0 {
-                // broadcast
-                loaded_broadcast_receipts
-                    .entry(msg_id)
-                    .or_default()
-                    .insert(peer_id, confirmed_at);
-            } else {
-                // dm
-                loaded_dm_receipts.insert(msg_id, (peer_id, confirmed_at));
-            }
-        }
-        p2plog_debug(format!(
-            "Loaded {} broadcast receipts and {} DM receipts from database",
-            loaded_broadcast_receipts.len(),
-            loaded_dm_receipts.len()
-        ));
-    }
+    let (loaded_broadcast_receipts, loaded_dm_receipts) =
+        if let Ok(receipts) = p2p_app::load_receipts() {
+            let (br, dr) = organize_receipts(&receipts);
+            p2plog_debug(format!(
+                "Loaded {} broadcast receipts and {} DM receipts from database",
+                br.len(),
+                dr.len()
+            ));
+            (br, dr)
+        } else {
+            (HashMap::new(), HashMap::new())
+        };
 
     let local_peer_id =
         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
@@ -263,4 +283,228 @@ pub async fn run_new_tui(
     release_db_lock();
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDateTime;
+    use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
+    use p2p_app::peers::KnownPeer;
+
+    fn dt(s: &str) -> NaiveDateTime {
+        NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").unwrap()
+    }
+
+    // ── extract_nickname_maps ──────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_nickname_maps_empty() {
+        let (l, r, s) = extract_nickname_maps(&[]);
+        assert!(l.is_empty());
+        assert!(r.is_empty());
+        assert!(s.is_empty());
+    }
+
+    #[test]
+    fn test_extract_nickname_maps_all_fields() {
+        let peers = [Peer {
+            id: 1,
+            created_at: dt("2024-01-01 12:00:00"),
+            peer_id: "peer-1".to_string(),
+            addresses: "".to_string(),
+            first_seen: dt("2024-01-01 12:00:00"),
+            last_seen: dt("2024-01-01 12:00:00"),
+            peer_local_nickname: Some("Alice".to_string()),
+            self_nickname_for_peer: Some("SelfA".to_string()),
+            received_nickname: Some("Bob".to_string()),
+        }];
+        let (l, r, s) = extract_nickname_maps(&peers);
+        assert_eq!(l.get("peer-1"), Some(&"Alice".to_string()));
+        assert_eq!(r.get("peer-1"), Some(&"Bob".to_string()));
+        assert_eq!(s.get("peer-1"), Some(&"SelfA".to_string()));
+    }
+
+    #[test]
+    fn test_extract_nickname_maps_partial_fields() {
+        let peers = [
+            Peer {
+                id: 1,
+                created_at: dt("2024-01-01 12:00:00"),
+                peer_id: "p1".to_string(),
+                addresses: "".to_string(),
+                first_seen: dt("2024-01-01 12:00:00"),
+                last_seen: dt("2024-01-01 12:00:00"),
+                peer_local_nickname: Some("Local".to_string()),
+                self_nickname_for_peer: None,
+                received_nickname: None,
+            },
+            Peer {
+                id: 2,
+                created_at: dt("2024-01-01 12:00:00"),
+                peer_id: "p2".to_string(),
+                addresses: "".to_string(),
+                first_seen: dt("2024-01-01 12:00:00"),
+                last_seen: dt("2024-01-01 12:00:00"),
+                peer_local_nickname: None,
+                self_nickname_for_peer: Some("SelfB".to_string()),
+                received_nickname: Some("RecB".to_string()),
+            },
+        ];
+        let (l, r, s) = extract_nickname_maps(&peers);
+        assert_eq!(l.len(), 1);
+        assert_eq!(r.len(), 1);
+        assert_eq!(s.len(), 1);
+        assert_eq!(l.get("p1"), Some(&"Local".to_string()));
+        assert_eq!(r.get("p2"), Some(&"RecB".to_string()));
+        assert_eq!(s.get("p2"), Some(&"SelfB".to_string()));
+    }
+
+    // ── deduplicate_peers ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_deduplicate_peers_empty() {
+        let result = deduplicate_peers(&[]);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_deduplicate_peers_no_duplicates() {
+        let peers = [
+            KnownPeer {
+                peer_id: "p1".to_string(),
+                first_seen: dt("2024-01-01 12:00:00"),
+                last_seen: dt("2024-01-02 12:00:00"),
+            },
+            KnownPeer {
+                peer_id: "p2".to_string(),
+                first_seen: dt("2024-01-03 12:00:00"),
+                last_seen: dt("2024-01-04 12:00:00"),
+            },
+        ];
+        let result = deduplicate_peers(&peers);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].0, "p1");
+        assert_eq!(result[0].1, "2024-01-01 12:00:00");
+        assert_eq!(result[0].2, "2024-01-02 12:00:00");
+    }
+
+    #[test]
+    fn test_deduplicate_peers_skips_duplicates() {
+        let peers = [
+            KnownPeer {
+                peer_id: "p1".to_string(),
+                first_seen: dt("2024-01-01 12:00:00"),
+                last_seen: dt("2024-01-02 12:00:00"),
+            },
+            KnownPeer {
+                peer_id: "p1".to_string(),
+                first_seen: dt("2024-01-01 12:00:00"),
+                last_seen: dt("2024-01-03 12:00:00"),
+            },
+            KnownPeer {
+                peer_id: "p2".to_string(),
+                first_seen: dt("2024-01-04 12:00:00"),
+                last_seen: dt("2024-01-05 12:00:00"),
+            },
+        ];
+        let result = deduplicate_peers(&peers);
+        assert_eq!(result.len(), 2);
+        // First occurrence (most recent last_seen in DB order) is kept
+        assert_eq!(result[0].0, "p1");
+        assert_eq!(result[0].2, "2024-01-02 12:00:00");
+        assert_eq!(result[1].0, "p2");
+    }
+
+    // ── organize_receipts ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_organize_receipts_empty() {
+        let (b, d) = organize_receipts(&[]);
+        assert!(b.is_empty());
+        assert!(d.is_empty());
+    }
+
+    #[test]
+    fn test_organize_receipts_broadcast_kind_0() {
+        let receipts = [MessageReceipt {
+            id: 1,
+            msg_id: "msg-1".to_string(),
+            peer_id: "peer-a".to_string(),
+            kind: 0,
+            confirmed_at: 100.0,
+            created_at: dt("2024-01-01 12:00:00"),
+        }];
+        let (b, d) = organize_receipts(&receipts);
+        assert_eq!(b.len(), 1);
+        assert_eq!(b.get("msg-1").unwrap().get("peer-a"), Some(&100.0));
+        assert!(d.is_empty());
+    }
+
+    #[test]
+    fn test_organize_receipts_dm_kind_1() {
+        let receipts = [MessageReceipt {
+            id: 1,
+            msg_id: "dm-1".to_string(),
+            peer_id: "peer-b".to_string(),
+            kind: 1,
+            confirmed_at: 200.0,
+            created_at: dt("2024-01-01 12:00:00"),
+        }];
+        let (b, d) = organize_receipts(&receipts);
+        assert!(b.is_empty());
+        assert_eq!(d.len(), 1);
+        assert_eq!(d.get("dm-1"), Some(&("peer-b".to_string(), 200.0)));
+    }
+
+    #[test]
+    fn test_organize_receipts_mixed() {
+        let receipts = [
+            MessageReceipt {
+                id: 1,
+                msg_id: "b-1".to_string(),
+                peer_id: "pa".to_string(),
+                kind: 0,
+                confirmed_at: 10.0,
+                created_at: dt("2024-01-01 12:00:00"),
+            },
+            MessageReceipt {
+                id: 2,
+                msg_id: "d-1".to_string(),
+                peer_id: "pb".to_string(),
+                kind: 1,
+                confirmed_at: 20.0,
+                created_at: dt("2024-01-01 12:00:00"),
+            },
+        ];
+        let (b, d) = organize_receipts(&receipts);
+        assert_eq!(b.len(), 1);
+        assert_eq!(d.len(), 1);
+    }
+
+    #[test]
+    fn test_organize_receipts_multiple_peers_same_msg() {
+        let receipts = [
+            MessageReceipt {
+                id: 1,
+                msg_id: "b-1".to_string(),
+                peer_id: "pa".to_string(),
+                kind: 0,
+                confirmed_at: 10.0,
+                created_at: dt("2024-01-01 12:00:00"),
+            },
+            MessageReceipt {
+                id: 2,
+                msg_id: "b-1".to_string(),
+                peer_id: "pb".to_string(),
+                kind: 0,
+                confirmed_at: 20.0,
+                created_at: dt("2024-01-01 12:00:00"),
+            },
+        ];
+        let (b, d) = organize_receipts(&receipts);
+        assert_eq!(b.len(), 1);
+        assert_eq!(b.get("b-1").unwrap().len(), 2);
+        assert!(d.is_empty());
+    }
 }

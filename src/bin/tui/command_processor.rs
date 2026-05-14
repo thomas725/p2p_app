@@ -1,7 +1,8 @@
+use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY};
 use super::event_source::InputEvent;
 use super::input_processor;
 use super::main_loop::RenderEvent;
-use super::state::SharedState;
+use super::state::{AppState, SharedState};
 use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
@@ -13,16 +14,12 @@ enum Event {
     SwarmEvent(SwarmEvent),
 }
 
-fn sort_peers_by_last_seen(state: &mut super::state::AppState) {
+fn sort_peers_by_last_seen(state: &mut AppState) {
     state.peer_selection =
         p2p_app::tui_helpers::sort_peers_by_last_seen(&mut state.peers, state.peer_selection);
 }
 
-fn upsert_peer_last_seen(
-    state: &mut super::state::AppState,
-    peer_id: &str,
-    seen_at: chrono::NaiveDateTime,
-) {
+fn upsert_peer_last_seen(state: &mut AppState, peer_id: &str, seen_at: chrono::NaiveDateTime) {
     let seen_str = p2p_app::format_peer_datetime(seen_at);
     state.peer_selection = p2p_app::tui_helpers::upsert_peer_last_seen(
         &mut state.peers,
@@ -30,6 +27,138 @@ fn upsert_peer_last_seen(
         peer_id,
         &seen_str,
     );
+}
+
+// ── Pure state mutation helpers (extracted for testability) ─────────────────
+
+/// Pure state mutation for incoming broadcast messages. Returns the formatted message string.
+pub fn apply_broadcast_to_state(
+    state: &mut AppState,
+    content: &str,
+    peer_id: &str,
+    latency: Option<&str>,
+    msg_id: Option<String>,
+) -> String {
+    let ts = p2p_app::format_system_time(SystemTime::now());
+    let sender_display =
+        p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
+    let msg = format!(
+        "{} {} [{}] {}",
+        ts,
+        latency.unwrap_or_default(),
+        sender_display,
+        content
+    );
+    state
+        .messages
+        .push_back((msg.clone(), Some(peer_id.to_string())));
+    state.message_ids.push_back(msg_id);
+    if state.messages.len() > MAX_MESSAGE_HISTORY {
+        state.messages.pop_front();
+        let _ = state.message_ids.pop_front();
+    }
+    msg
+}
+
+/// Pure state mutation for incoming direct messages. Returns the formatted message string.
+pub fn apply_dm_to_state(
+    state: &mut AppState,
+    content: &str,
+    peer_id: &str,
+    latency: Option<&str>,
+    msg_id: Option<String>,
+) -> String {
+    let ts = p2p_app::format_system_time(SystemTime::now());
+    let sender_display =
+        p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
+    let msg = format!(
+        "{} {} [{}] {}",
+        ts,
+        latency.unwrap_or_default(),
+        sender_display,
+        content
+    );
+    state
+        .dm_message_ids
+        .entry(peer_id.to_string())
+        .or_default()
+        .push_back(msg_id);
+    let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
+    dm_msgs.push_back(msg.clone());
+    if dm_msgs.len() > MAX_DM_HISTORY {
+        dm_msgs.pop_front();
+        if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
+            let _ = ids.pop_front();
+        }
+    }
+    state.dynamic_tabs.add_dm_tab(peer_id.to_string());
+    msg
+}
+
+/// Pure: check if a receipt is for a DM message
+pub fn is_dm_receipt(state: &AppState, ack_for: &str) -> bool {
+    state.dm_message_ids.values().any(|ids| {
+        ids.iter()
+            .any(|id| id.as_ref().is_some_and(|v| v == ack_for))
+    })
+}
+
+/// Pure state mutation for receipts
+pub fn apply_receipt_to_state(
+    state: &mut AppState,
+    ack_for: &str,
+    peer_id: &str,
+    at: f64,
+    is_dm: bool,
+) {
+    if is_dm {
+        state
+            .dm_receipts
+            .insert(ack_for.to_string(), (peer_id.to_string(), at));
+    }
+    state
+        .broadcast_receipts
+        .entry(ack_for.to_string())
+        .or_default()
+        .insert(peer_id.to_string(), at);
+}
+
+/// State mutation: increment connected peer count. Returns new count.
+pub fn apply_peer_connected_count(state: &mut AppState) -> usize {
+    state.concurrent_peers += 1;
+    state.concurrent_peers
+}
+
+/// State mutation: add peer to peer list and re-sort
+pub fn add_peer_to_state_list(
+    state: &mut AppState,
+    peer_id: &str,
+    first_seen: &str,
+    last_seen: &str,
+) {
+    state.peers.push_back((
+        peer_id.to_string(),
+        first_seen.to_string(),
+        last_seen.to_string(),
+    ));
+    sort_peers_by_last_seen(state);
+}
+
+/// State mutation: decrement connected peer count. Returns new count.
+pub fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
+    state.concurrent_peers = state.concurrent_peers.saturating_sub(1);
+    state.concurrent_peers
+}
+
+#[cfg(feature = "mdns")]
+pub fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
+    if !state.peers.iter().any(|(id, _, _)| id == peer_id) {
+        let now = p2p_app::now_timestamp();
+        state
+            .peers
+            .push_back((peer_id.to_string(), now.clone(), now));
+        sort_peers_by_last_seen(state);
+    }
 }
 
 /// Processes network (swarm) events and updates application state
@@ -51,26 +180,12 @@ async fn process_swarm_event(
                 s.received_nicknames.insert(peer_id.clone(), n.clone());
                 let _ = p2p_app::set_peer_received_nickname(&peer_id, n);
             }
-            // Treat empty-content messages with a nickname as nickname updates only.
             if content.trim().is_empty() && nickname.is_some() {
                 return;
             }
-            let ts = p2p_app::format_system_time(SystemTime::now());
             let sender_display =
                 p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-            let msg = format!(
-                "{} {} [{}] {}",
-                ts,
-                latency.unwrap_or_default(),
-                sender_display,
-                content
-            );
-            s.messages.push_back((msg, Some(peer_id.clone())));
-            s.message_ids.push_back(msg_id);
-            if s.messages.len() > super::constants::MAX_MESSAGE_HISTORY {
-                s.messages.pop_front();
-                let _ = s.message_ids.pop_front();
-            }
+            apply_broadcast_to_state(&mut s, &content, &peer_id, latency.as_deref(), msg_id);
             p2plog_debug(format!("Broadcast from {sender_display}: {content}"));
             if let Err(e) =
                 p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, false, None)
@@ -91,34 +206,13 @@ async fn process_swarm_event(
                 s.received_nicknames.insert(peer_id.clone(), n.clone());
                 let _ = p2p_app::set_peer_received_nickname(&peer_id, n);
             }
-            // Treat empty-content messages with a nickname as nickname updates only.
             if content.trim().is_empty() && nickname.is_some() {
                 upsert_peer_last_seen(&mut s, &peer_id, chrono::Utc::now().naive_utc());
                 return;
             }
-            let ts = p2p_app::format_system_time(SystemTime::now());
             let sender_display =
                 p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-            let msg = format!(
-                "{} {} [{}] {}",
-                ts,
-                latency.unwrap_or_default(),
-                sender_display,
-                content
-            );
-            s.dm_message_ids
-                .entry(peer_id.clone())
-                .or_default()
-                .push_back(msg_id);
-            let dm_msgs = s.dm_messages.entry(peer_id.clone()).or_default();
-            dm_msgs.push_back(msg);
-            if dm_msgs.len() > super::constants::MAX_DM_HISTORY {
-                dm_msgs.pop_front();
-                if let Some(ids) = s.dm_message_ids.get_mut(&peer_id) {
-                    let _ = ids.pop_front();
-                }
-            }
-            s.dynamic_tabs.add_dm_tab(peer_id.clone());
+            apply_dm_to_state(&mut s, &content, &peer_id, latency.as_deref(), msg_id);
             p2plog_debug(format!("DM from {sender_display}: {content}"));
             if let Err(e) =
                 p2p_app::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id))
@@ -133,59 +227,37 @@ async fn process_swarm_event(
             received_at,
         } => {
             let mut s = state.lock().await;
-            let _ = received_at; // receipt payload is optional; we use local arrival time for timing stability.
+            let _ = received_at;
             let at = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs_f64();
 
-            // DM receipt: only if we have an outgoing DM with this msg_id.
-            let mut is_dm = false;
-            for ids in s.dm_message_ids.values() {
-                if ids
-                    .iter()
-                    .any(|id| id.as_ref().is_some_and(|v| v == &ack_for))
-                {
-                    is_dm = true;
-                    break;
-                }
-            }
-            if is_dm {
-                s.dm_receipts.insert(ack_for.clone(), (peer_id.clone(), at));
-                let _ = p2p_app::save_receipt(&ack_for, &peer_id, 1, at);
-            }
-            // Broadcast receipt
-            s.broadcast_receipts
-                .entry(ack_for.clone())
-                .or_default()
-                .insert(peer_id.clone(), at);
-            let _ = p2p_app::save_receipt(&ack_for, &peer_id, 0, at);
+            let is_dm = is_dm_receipt(&s, &ack_for);
+            apply_receipt_to_state(&mut s, &ack_for, &peer_id, at, is_dm);
+            let kind = if is_dm { 1 } else { 0 };
+            let _ = p2p_app::save_receipt(&ack_for, &peer_id, kind, at);
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let (own_nickname, _concurrent_peers) = {
                 let mut s = state.lock().await;
-                s.concurrent_peers += 1;
-                p2plog_debug(format!(
-                    "Peer connected: {} (total: {})",
-                    peer_id, s.concurrent_peers
-                ));
+                let count = apply_peer_connected_count(&mut s);
+                p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, count));
                 if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
                     && let Ok(peer) = p2p_app::save_peer(&peer_id, std::slice::from_ref(&peer_id))
                 {
                     let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
                     let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                    s.peers.push_back((peer_id.clone(), first_seen, last_seen));
-                    sort_peers_by_last_seen(&mut s);
+                    add_peer_to_state_list(&mut s, &peer_id, &first_seen, &last_seen);
                 }
-                (s.own_nickname.clone(), s.concurrent_peers)
+                (s.own_nickname.clone(), count)
             };
 
-            // Exchange nicknames on connection - send our nickname to the new peer
             let msg_id = p2p_app::gen_msg_id();
             let _ = swarm_cmd_tx
                 .send(SwarmCommand::SendDm {
                     peer_id: peer_id.clone(),
-                    content: String::new(), // Empty content - just exchange nicknames
+                    content: String::new(),
                     nickname: Some(own_nickname),
                     msg_id: Some(msg_id),
                     ack_for: None,
@@ -194,11 +266,8 @@ async fn process_swarm_event(
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
-            s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
-            p2plog_debug(format!(
-                "Peer disconnected: {} (total: {})",
-                peer_id, s.concurrent_peers
-            ));
+            let count = apply_peer_disconnected_count(&mut s);
+            p2plog_debug(format!("Peer disconnected: {} (total: {})", peer_id, count));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
             p2plog_debug(format!("Listening on: {addr}"));
@@ -206,11 +275,7 @@ async fn process_swarm_event(
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
             let mut s = state.lock().await;
-            if !s.peers.iter().any(|(id, _, _)| id == &peer_id) {
-                let now = p2p_app::now_timestamp();
-                s.peers.push_back((peer_id, now.clone(), now));
-                sort_peers_by_last_seen(&mut s);
-            }
+            apply_peer_discovered_state(&mut s, &peer_id);
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {
@@ -253,4 +318,326 @@ pub fn spawn_command_processor(
     });
 
     (handle, cmd_tx_for_return)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::test_helpers::test_app_state;
+    use std::collections::VecDeque;
+
+    // ── sort_peers_by_last_seen ──────────────────────────────────────────────
+
+    #[test]
+    fn test_sort_peers_empty() {
+        let mut state = test_app_state();
+        sort_peers_by_last_seen(&mut state);
+        assert!(state.peers.is_empty());
+    }
+
+    #[test]
+    fn test_sort_peers_sorts_by_last_seen_desc() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "old".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        state.peers.push_back((
+            "new".to_string(),
+            "2024-06-01 12:00:00".into(),
+            "2024-06-01 12:00:00".into(),
+        ));
+        state.peers.push_back((
+            "mid".to_string(),
+            "2024-03-01 12:00:00".into(),
+            "2024-03-01 12:00:00".into(),
+        ));
+        sort_peers_by_last_seen(&mut state);
+        let ids: Vec<&str> = state.peers.iter().map(|(id, _, _)| id.as_str()).collect();
+        assert_eq!(ids, vec!["new", "mid", "old"]);
+    }
+
+    #[test]
+    fn test_sort_peers_same_last_seen() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "a".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        state.peers.push_back((
+            "b".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        sort_peers_by_last_seen(&mut state);
+        // Stable sort preserves original order for equal last_seen
+        let ids: Vec<&str> = state.peers.iter().map(|(id, _, _)| id.as_str()).collect();
+        assert_eq!(ids, vec!["a", "b"]);
+    }
+
+    // ── upsert_peer_last_seen ────────────────────────────────────────────────
+
+    #[test]
+    fn test_upsert_peer_adds_new_peer() {
+        let mut state = test_app_state();
+        let seen =
+            chrono::NaiveDateTime::parse_from_str("2024-06-15 14:30:00", "%Y-%m-%d %H:%M:%S")
+                .unwrap();
+        upsert_peer_last_seen(&mut state, "peer-new", seen);
+        assert_eq!(state.peers.len(), 1);
+        assert_eq!(state.peers[0].0, "peer-new");
+        assert_eq!(state.peers[0].2, "2024-06-15 14:30:00");
+    }
+
+    #[test]
+    fn test_upsert_peer_updates_existing() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "peer-exist".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        let later =
+            chrono::NaiveDateTime::parse_from_str("2024-12-01 18:00:00", "%Y-%m-%d %H:%M:%S")
+                .unwrap();
+        upsert_peer_last_seen(&mut state, "peer-exist", later);
+        assert_eq!(state.peers.len(), 1);
+        assert_eq!(state.peers[0].2, "2024-12-01 18:00:00");
+    }
+
+    #[test]
+    fn test_upsert_peer_moves_to_front_when_latest() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "old".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        state.peers.push_back((
+            "new".to_string(),
+            "2024-06-01 12:00:00".into(),
+            "2024-06-01 12:00:00".into(),
+        ));
+        let later =
+            chrono::NaiveDateTime::parse_from_str("2024-12-01 18:00:00", "%Y-%m-%d %H:%M:%S")
+                .unwrap();
+        upsert_peer_last_seen(&mut state, "old", later);
+        // "old" should now be first (latest last_seen)
+        assert_eq!(state.peers[0].0, "old");
+        assert_eq!(state.peers[0].2, "2024-12-01 18:00:00");
+    }
+
+    #[test]
+    fn test_upsert_peer_updates_peer_selection() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "a".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        state.peers.push_back((
+            "b".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        assert_eq!(state.peer_selection, 0);
+        let seen =
+            chrono::NaiveDateTime::parse_from_str("2024-06-01 12:00:00", "%Y-%m-%d %H:%M:%S")
+                .unwrap();
+        upsert_peer_last_seen(&mut state, "a", seen);
+        // "a" moves to front but peer_selection should still point to it
+        assert_eq!(state.peer_selection, 0);
+    }
+
+    // ── apply_broadcast_to_state ─────────────────────────────────────────────
+
+    #[test]
+    fn test_apply_broadcast_to_state_adds_message() {
+        let mut state = test_app_state();
+        state
+            .local_nicknames
+            .insert("p1".to_string(), "Alice".to_string());
+        let msg = apply_broadcast_to_state(&mut state, "hello", "p1", None, Some("m1".to_string()));
+        assert_eq!(state.messages.len(), 1);
+        assert!(msg.contains("Alice"));
+        assert!(msg.contains("hello"));
+        assert_eq!(state.message_ids[0], Some("m1".to_string()));
+        assert_eq!(state.messages[0].1, Some("p1".to_string()));
+    }
+
+    #[test]
+    fn test_apply_broadcast_to_state_trims_history() {
+        let mut state = test_app_state();
+        // Override MAX_MESSAGE_HISTORY by filling messages up to 2 below the limit
+        for _ in 0..MAX_MESSAGE_HISTORY.saturating_sub(2) {
+            state.messages.push_back(("old".to_string(), None));
+            state.message_ids.push_back(None);
+        }
+        // Add 3 more to trigger trimming
+        apply_broadcast_to_state(&mut state, "a", "p1", None, None);
+        apply_broadcast_to_state(&mut state, "b", "p1", None, None);
+        apply_broadcast_to_state(&mut state, "c", "p1", None, None);
+        assert!(state.messages.len() <= MAX_MESSAGE_HISTORY);
+        assert!(state.messages.len() >= MAX_MESSAGE_HISTORY.saturating_sub(1));
+    }
+
+    #[test]
+    fn test_apply_broadcast_to_state_with_latency() {
+        let mut state = test_app_state();
+        let msg = apply_broadcast_to_state(&mut state, "ping", "p1", Some("10ms"), None);
+        assert!(msg.contains("10ms"));
+    }
+
+    // ── apply_dm_to_state ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_apply_dm_to_state_adds_message_and_tab() {
+        let mut state = test_app_state();
+        state
+            .received_nicknames
+            .insert("p2".to_string(), "Bob".to_string());
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        let msg = apply_dm_to_state(&mut state, "hey", "p2", None, Some("dm1".to_string()));
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+        assert!(state.dm_messages.contains_key("p2"));
+        assert_eq!(state.dm_messages["p2"].len(), 1);
+        assert!(msg.contains("Bob"));
+        assert!(msg.contains("hey"));
+        assert_eq!(state.dm_message_ids["p2"][0], Some("dm1".to_string()));
+    }
+
+    #[test]
+    fn test_apply_dm_to_state_trims_history() {
+        let mut state = test_app_state();
+        for i in 0..MAX_DM_HISTORY {
+            apply_dm_to_state(&mut state, &format!("msg-{i}"), "peer-dm", None, None);
+        }
+        assert_eq!(state.dm_messages["peer-dm"].len(), MAX_DM_HISTORY);
+        apply_dm_to_state(&mut state, "overflow", "peer-dm", None, None);
+        assert_eq!(state.dm_messages["peer-dm"].len(), MAX_DM_HISTORY);
+        // First message should have been "msg-0" but it was popped; now it's "msg-1"
+        assert!(state.dm_messages["peer-dm"][0].contains("msg-1"));
+        // Last message should be "overflow"
+        assert!(state.dm_messages["peer-dm"][MAX_DM_HISTORY - 1].contains("overflow"));
+    }
+
+    #[test]
+    fn test_apply_dm_to_state_multiple_peers() {
+        let mut state = test_app_state();
+        apply_dm_to_state(&mut state, "hi", "pa", None, None);
+        apply_dm_to_state(&mut state, "ho", "pb", None, None);
+        assert_eq!(state.dm_messages.len(), 2);
+        assert_eq!(state.dm_messages["pa"].len(), 1);
+        assert_eq!(state.dm_messages["pb"].len(), 1);
+    }
+
+    // ── is_dm_receipt ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_dm_receipt_true_when_msg_id_in_dm() {
+        let mut state = test_app_state();
+        state.dm_message_ids.insert(
+            "p1".to_string(),
+            VecDeque::from([Some("dm-1".to_string()), Some("dm-2".to_string())]),
+        );
+        assert!(is_dm_receipt(&state, "dm-1"));
+        assert!(is_dm_receipt(&state, "dm-2"));
+    }
+
+    #[test]
+    fn test_is_dm_receipt_false_when_not_found() {
+        let state = test_app_state();
+        assert!(!is_dm_receipt(&state, "nonexistent"));
+    }
+
+    #[test]
+    fn test_is_dm_receipt_false_for_broadcast_msg_id() {
+        let mut state = test_app_state();
+        state.message_ids.push_back(Some("bcast-1".to_string()));
+        assert!(!is_dm_receipt(&state, "bcast-1"));
+    }
+
+    // ── apply_receipt_to_state ───────────────────────────────────────────────
+
+    #[test]
+    fn test_apply_receipt_to_state_dm() {
+        let mut state = test_app_state();
+        apply_receipt_to_state(&mut state, "dm-1", "peer-a", 100.0, true);
+        assert_eq!(
+            state.dm_receipts.get("dm-1"),
+            Some(&("peer-a".to_string(), 100.0))
+        );
+        // Also stored as broadcast receipt
+        assert_eq!(
+            state.broadcast_receipts.get("dm-1").unwrap().get("peer-a"),
+            Some(&100.0)
+        );
+    }
+
+    #[test]
+    fn test_apply_receipt_to_state_broadcast() {
+        let mut state = test_app_state();
+        apply_receipt_to_state(&mut state, "b-1", "peer-b", 200.0, false);
+        assert!(state.dm_receipts.is_empty());
+        assert_eq!(
+            state.broadcast_receipts.get("b-1").unwrap().get("peer-b"),
+            Some(&200.0)
+        );
+    }
+
+    #[test]
+    fn test_apply_receipt_to_state_multiple_peers() {
+        let mut state = test_app_state();
+        apply_receipt_to_state(&mut state, "b-1", "pa", 10.0, false);
+        apply_receipt_to_state(&mut state, "b-1", "pb", 20.0, false);
+        assert_eq!(state.broadcast_receipts.get("b-1").unwrap().len(), 2);
+    }
+
+    // ── apply_peer_connected_count ───────────────────────────────────────────
+
+    #[test]
+    fn test_apply_peer_connected_count_increments() {
+        let mut state = test_app_state();
+        assert_eq!(apply_peer_connected_count(&mut state), 1);
+        assert_eq!(apply_peer_connected_count(&mut state), 2);
+        assert_eq!(state.concurrent_peers, 2);
+    }
+
+    // ── apply_peer_disconnected_count ────────────────────────────────────────
+
+    #[test]
+    fn test_apply_peer_disconnected_count_decrements() {
+        let mut state = test_app_state();
+        state.concurrent_peers = 3;
+        assert_eq!(apply_peer_disconnected_count(&mut state), 2);
+        assert_eq!(state.concurrent_peers, 2);
+    }
+
+    #[test]
+    fn test_apply_peer_disconnected_count_saturates_at_zero() {
+        let mut state = test_app_state();
+        assert_eq!(apply_peer_disconnected_count(&mut state), 0);
+    }
+
+    // ── add_peer_to_state_list ───────────────────────────────────────────────
+
+    #[test]
+    fn test_add_peer_to_state_list_appends_and_sorts() {
+        let mut state = test_app_state();
+        state.peers.push_back((
+            "old".to_string(),
+            "2024-01-01 12:00:00".into(),
+            "2024-01-01 12:00:00".into(),
+        ));
+        add_peer_to_state_list(
+            &mut state,
+            "new",
+            "2024-06-01 12:00:00",
+            "2024-06-01 12:00:00",
+        );
+        assert_eq!(state.peers.len(), 2);
+        assert_eq!(state.peers[0].0, "new"); // newest first
+    }
 }

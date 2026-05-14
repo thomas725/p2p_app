@@ -451,8 +451,11 @@ pub fn handle_mouse_left_click(
 
 #[cfg(test)]
 mod tests {
-    use super::{handle_dm_broadcast_message_click, handle_dm_message_click, handle_message_click};
+    use super::*;
     use crate::tui::state::AppState;
+    use crate::tui::test_helpers::{
+        app_state_with_dm_messages, app_state_with_peers, test_app_state,
+    };
     use std::collections::{HashMap, VecDeque};
 
     fn empty_state() -> AppState {
@@ -670,5 +673,77 @@ mod tests {
         let result = super::format_dm_receipt_popup_impl("peer1", 2.0, None);
         assert!(result.contains("peer1"));
         assert!(result.contains("confirmed"));
+    }
+
+    // ── handle_tab_click ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_tab_click_switches_tab() {
+        let mut state = test_app_state();
+        let titles = state.dynamic_tabs.all_titles();
+        // titles[0] = "Chat", titles[1] = "Peers", titles[2] = "Log"
+        // tab_width = len + 3, so "Chat" is at cols 0..7, "Peers" at 7..15, etc.
+        let peers_tab_col = titles[0].len() + 3; // column just past the first tab
+        let handled = handle_tab_click(&mut state, peers_tab_col as u16, &titles);
+        assert!(handled);
+        assert_eq!(state.active_tab, 1);
+    }
+
+    #[test]
+    fn test_tab_click_same_tab_noop() {
+        let mut state = test_app_state();
+        let titles = state.dynamic_tabs.all_titles();
+        let handled = handle_tab_click(&mut state, 0, &titles);
+        assert!(!handled);
+        assert_eq!(state.active_tab, 0);
+    }
+
+    #[test]
+    fn test_tab_click_out_of_bounds() {
+        let mut state = test_app_state();
+        let titles = state.dynamic_tabs.all_titles();
+        let handled = handle_tab_click(&mut state, 999, &titles);
+        assert!(!handled);
+    }
+
+    #[test]
+    fn test_tab_click_close_button_on_dm_tab() {
+        // Use a short peer ID so short_id() doesn't truncate
+        let mut state = app_state_with_dm_messages("p1", 3);
+        let titles = state.dynamic_tabs.all_titles();
+        // DM tab title format: "p1 (X)" — total width = "p1 (X)".len() + 3 = 9
+        let dm_idx = titles.iter().position(|t| t.contains("(X)")).unwrap();
+        let mut col_pos: usize = titles.iter().take(dm_idx).map(|t| t.len() + 3).sum();
+        let tab_end = col_pos + titles[dm_idx].len() + 3;
+        let close_col = tab_end.saturating_sub(4);
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        let handled = handle_tab_click(&mut state, close_col as u16, &titles);
+        assert!(handled);
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
+    }
+
+    // ── handle_peer_row_click ─────────────────────────────────────────────
+
+    #[test]
+    fn test_peer_row_click_opens_dm_tab() {
+        let mut state = app_state_with_peers(3);
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        handle_peer_row_click(&mut state, 3); // row 3 = first peer (header is at rows 0-2)
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+    }
+
+    #[test]
+    fn test_peer_row_click_selects_correct_peer() {
+        let mut state = app_state_with_peers(3);
+        let peer_id = state.peers[1].0.clone(); // second peer
+        handle_peer_row_click(&mut state, 4); // row 4 = second peer (header offset)
+        assert!(state.dm_messages.contains_key(&peer_id));
+    }
+
+    #[test]
+    fn test_peer_row_click_out_of_bounds() {
+        let mut state = app_state_with_peers(3);
+        handle_peer_row_click(&mut state, 99);
+        // no panic, no crash
     }
 }

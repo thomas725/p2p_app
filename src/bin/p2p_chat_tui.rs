@@ -76,6 +76,8 @@ mod tui {
     pub mod render_loop;
     pub mod scroll_handlers;
     pub mod state;
+    #[cfg(test)]
+    pub mod test_helpers;
 }
 
 #[tokio::main]
