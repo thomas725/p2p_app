@@ -65,3 +65,38 @@ fn test_build_broadcast_message_empty_content() {
     let msg = build_broadcast_message("".to_string(), None, None);
     assert_eq!(msg.content, "");
 }
+
+#[test]
+fn test_build_broadcast_message_only_nickname() {
+    use p2p_app::swarm_handler::build_broadcast_message;
+    let msg = build_broadcast_message("msg".to_string(), Some("Alice".to_string()), None);
+    assert_eq!(msg.content, "msg");
+    assert_eq!(msg.nickname, Some("Alice".to_string()));
+    assert!(msg.msg_id.is_none());
+    assert!(msg.sent_at.is_some());
+}
+
+#[test]
+fn test_build_broadcast_message_only_msg_id() {
+    use p2p_app::swarm_handler::build_broadcast_message;
+    let msg = build_broadcast_message("msg".to_string(), None, Some("id-1".to_string()));
+    assert!(msg.nickname.is_none());
+    assert_eq!(msg.msg_id, Some("id-1".to_string()));
+}
+
+#[test]
+fn test_build_broadcast_message_long_content() {
+    use p2p_app::swarm_handler::build_broadcast_message;
+    let long = "a".repeat(1000);
+    let msg = build_broadcast_message(long.clone(), None, None);
+    assert_eq!(msg.content.len(), 1000);
+    assert_eq!(msg.content, long);
+}
+
+#[test]
+fn test_build_broadcast_message_special_chars() {
+    use p2p_app::swarm_handler::build_broadcast_message;
+    let msg = build_broadcast_message("Hello! @#$%^&*() 你好 🚀".to_string(), None, None);
+    assert_eq!(msg.content, "Hello! @#$%^&*() 你好 🚀");
+    assert!(msg.sent_at.is_some());
+}

@@ -564,3 +564,77 @@ fn test_get_tab_content_different_tabs() {
     // Different tabs should return different content types or values
     let _ = (content_0, content_1);
 }
+
+// ── TuiRenderState field access tests ────────────────────────────────────────
+
+#[test]
+fn test_state_connected_default() {
+    let state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert!(state.connected);
+    assert_eq!(state.peer_count, 0);
+}
+
+#[test]
+fn test_state_popup() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert!(state.popup.is_none());
+    state.popup = Some("test".to_string());
+    assert_eq!(state.popup.as_deref(), Some("test"));
+}
+
+#[test]
+fn test_state_input_text() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert!(state.input_text.is_empty());
+    state.input_text = "hello".to_string();
+    assert_eq!(state.input_text, "hello");
+}
+
+#[test]
+fn test_state_editing_nickname() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert!(!state.editing_nickname);
+    state.editing_nickname = true;
+    state.nickname_peer_id = "peer-1".to_string();
+    assert!(state.editing_nickname);
+    assert_eq!(state.nickname_peer_id, "peer-1");
+}
+
+#[test]
+fn test_state_scroll_defaults() {
+    let state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert_eq!(state.chat_scroll_offset, 0);
+    assert!(state.chat_auto_scroll);
+}
+
+#[test]
+fn test_state_peer_selection() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert_eq!(state.peer_selection, 0);
+    state.peer_selection = 3;
+    assert_eq!(state.peer_selection, 3);
+}
+
+#[test]
+fn test_state_broadcast_selection() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert!(state.broadcast_selection.is_none());
+    state.broadcast_selection = Some(1);
+    assert_eq!(state.broadcast_selection, Some(1));
+}
+
+#[test]
+fn test_state_with_sample_data_extra() {
+    let state = p2p_app::tui_render_state::TuiRenderState::with_sample_data();
+    assert_eq!(state.tab_titles.len(), 4);
+    assert!(state.connected);
+}
+
+#[test]
+fn test_state_default_equals_new() {
+    let a = p2p_app::tui_render_state::TuiRenderState::default();
+    let b = p2p_app::tui_render_state::TuiRenderState::new();
+    assert_eq!(a.tab_titles, b.tab_titles);
+    assert_eq!(a.active_tab, b.active_tab);
+    assert_eq!(a.connected, b.connected);
+}

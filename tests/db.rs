@@ -169,3 +169,32 @@ fn test_get_local_peer_id_matches_keypair() {
     let computed_id = libp2p::PeerId::from_public_key(&keypair.public());
     assert_eq!(computed_id, stored_id);
 }
+
+#[serial]
+#[test]
+fn test_release_db_lock_idempotent() {
+    let _db = setup_test_db();
+    p2p_app::db::release_db_lock();
+    p2p_app::db::release_db_lock();
+}
+
+#[serial]
+#[test]
+fn test_reset_db_url_cache_then_get_url_without_env() {
+    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::remove_var("DATABASE_URL") };
+    p2p_app::db::reset_db_url_cache();
+    let url = p2p_app::db::get_database_url();
+    assert!(!url.is_empty());
+    p2p_app::db::release_db_lock();
+}
+
+#[test]
+fn test_sqlite_connect_fails_with_bad_path() {
+    let _guard = test_db_lock().lock().unwrap_or_else(|e| e.into_inner());
+    unsafe { std::env::set_var("DATABASE_URL", "/nonexistent/dir/test.db") };
+    p2p_app::db::reset_db_url_cache();
+    let result = p2p_app::db::sqlite_connect();
+    assert!(result.is_err());
+    unsafe { std::env::remove_var("DATABASE_URL") };
+}
