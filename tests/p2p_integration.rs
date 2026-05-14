@@ -751,93 +751,110 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     Ok(())
 }
 
-/// Test that messages sent between peers are delivered correctly via request-response protocol
+/// Test that connected peers can exchange a gossipsub broadcast.
 #[tokio::test]
-#[ignore = "Run with: cargo test test_direct_message_protocol -- --ignored --nocapture"]
-async fn test_direct_message_protocol() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_two_peers_exchange_broadcast() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
 
-    let node1 = create_node().await?;
-    let node2 = create_node().await?;
+    connect_nodes(&mut node_a, &mut node_b).await?;
 
-    eprintln!(
-        "Node1 peer_id: {}, listen: {:?}",
-        node1.peer_id, node1.listen_addr
-    );
-    eprintln!(
-        "Node2 peer_id: {}, listen: {:?}",
-        node2.peer_id, node2.listen_addr
-    );
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic.clone(), b"Connectivity check")?;
 
-    // Both nodes listen on their ports
-    let _node1_addr = node1.listen_addr.clone().unwrap();
-    let _node2_addr = node2.listen_addr.clone().unwrap();
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break String::from_utf8_lossy(&message.data).to_string();
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Message not received")?;
 
-    // Give nodes time to discover each other via mDNS
-    tokio::time::sleep(Duration::from_secs(3)).await;
-
-    // Verify basic connectivity (both nodes can communicate)
-    // In a real test, we'd send actual DirectMessages via request-response protocol
-    // For now, just verify the nodes are discoverable
-    eprintln!("Test verified: request-response protocol infrastructure is in place");
-
+    assert_eq!(received, "Connectivity check");
     Ok(())
 }
 
-/// Test that peers remain in peer list after restart
+/// Test that two peers can discover each other via mDNS and connect.
 #[tokio::test]
-#[ignore = "Run with: cargo test test_peer_persistence -- --ignored --nocapture"]
-async fn test_peer_persistence() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_mdns_peer_discovery() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
 
-    let db_path_1 = "test_peer_persistence_1.db";
-    let db_path_2 = "test_peer_persistence_2.db";
+    connect_nodes(&mut node_a, &mut node_b).await?;
 
-    unsafe {
-        std::env::set_var("DATABASE_URL", db_path_1);
-    }
-
-    let node1 = create_node().await?;
-    let node2 = create_node().await?;
-
-    eprintln!(
-        "Node1 peer_id: {}, Node2 peer_id: {}",
-        node1.peer_id, node2.peer_id
-    );
-
-    // Give mDNS time to discover
-    tokio::time::sleep(Duration::from_secs(2)).await;
-
-    // Verify both nodes exist (in real test, would verify database persistence)
     assert_ne!(
-        node1.peer_id, node2.peer_id,
+        node_a.peer_id, node_b.peer_id,
         "Peers should have distinct IDs"
     );
-
-    let _ = std::fs::remove_file(db_path_1);
-    let _ = std::fs::remove_file(db_path_2);
-
+    eprintln!(
+        "mDNS discovery verified: {} <-> {}",
+        node_a.peer_id, node_b.peer_id
+    );
     Ok(())
 }
 
-/// Test that gossipsub messages are deduplicated correctly
+/// Test that gossipsub's message ID-based deduplication works end-to-end.
+///
+/// Publishing the same bytes twice is safe: the first succeeds, the second is
+/// rejected at publish time as a duplicate. The receiving peer sees exactly
+/// one copy.
 #[tokio::test]
-#[ignore = "Run with: cargo test test_message_deduplication -- --ignored --nocapture"]
-async fn test_message_deduplication() -> Result<(), Box<dyn std::error::Error>> {
+async fn test_gossipsub_deduplication() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
+    let mut node_a = create_node().await?;
+    let mut node_b = create_node().await?;
 
-    let node1 = create_node().await?;
-    let node2 = create_node().await?;
+    connect_nodes(&mut node_a, &mut node_b).await?;
 
-    eprintln!(
-        "Testing message deduplication between {} and {}",
-        node1.peer_id, node2.peer_id
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+    let payload = b"Dedup test payload";
+
+    // First publish succeeds, second is rejected as duplicate at publish time
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic.clone(), payload)?;
+
+    let duplicate_err = node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic.clone(), payload)
+        .unwrap_err();
+    assert!(
+        duplicate_err.to_string().contains("Duplicate"),
+        "Expected Duplicate error, got: {duplicate_err}"
     );
 
-    // The test infrastructure validates that gossipsub uses DefaultHasher for message IDs
-    // which prevents duplicate message processing
-    eprintln!("Test verified: gossipsub deduplication is configured");
+    // Verify B receives exactly one copy
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break String::from_utf8_lossy(&message.data).to_string();
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Message not delivered after duplicate rejection")?;
 
+    assert_eq!(received, "Dedup test payload");
     Ok(())
 }
 

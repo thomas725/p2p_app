@@ -153,28 +153,8 @@ fn test_strip_ansi_codes_preserves_all_non_escape_chars() {
 
 // ── TuiTracingLayer coverage via tracing macros ────────────────────────────
 // These tests fire real tracing events to exercise on_event() and FormatVisitor.
-// Note: Some tracing tests have known issues with global state - they may fail if run after
-// other tests due to global subscriber conflicts.
-
-#[ignore = "Known issue: global tracing subscriber state conflicts"]
-#[test]
-fn test_tracing_info_captured_in_logs() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            p2p_app::logging::init_logging();
-            p2p_app::logging::clear_tui_logs();
-            tracing::info!("tracing-info-test-marker");
-        });
-    let logs = p2p_app::logging::get_tui_logs();
-    // TuiTracingLayer writes tracing events to TUI_LOGS
-    assert!(
-        logs.iter().any(|l| l.contains("tracing-info-test-marker")),
-        "tracing INFO not found in logs: {logs:?}"
-    );
-}
+// Note: tracing::info! events from test modules are filtered out by the default
+// "warn,p2p_app=info" filter. The warn/error level tests below verify the pipeline works.
 
 #[serial]
 #[test]
@@ -215,7 +195,6 @@ fn test_tracing_error_captured_in_logs() {
 }
 
 #[serial]
-#[ignore = "Known issue: global tracing subscriber state conflicts"]
 #[test]
 fn test_tracing_event_with_fields_captured() {
     tokio::runtime::Builder::new_current_thread()
@@ -225,7 +204,7 @@ fn test_tracing_event_with_fields_captured() {
         .block_on(async {
             p2p_app::logging::init_logging();
             p2p_app::logging::clear_tui_logs();
-            tracing::info!(user = "alice", count = 42u64, "field-test-marker");
+            tracing::warn!(user = "alice", count = 42u64, "field-test-marker");
         });
     let logs = p2p_app::logging::get_tui_logs();
     let combined = logs.join(" ");
