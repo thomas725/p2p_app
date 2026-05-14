@@ -145,7 +145,7 @@ fn test_all_tab_ids() {
     let chat = TabId::Chat;
     let peers = TabId::Peers;
     let log = TabId::Log;
-    
+
     assert_ne!(chat, peers);
     assert_ne!(peers, log);
     assert_ne!(chat, log);

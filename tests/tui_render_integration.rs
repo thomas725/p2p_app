@@ -477,7 +477,10 @@ fn test_default_vs_new() {
 #[test]
 fn test_with_sample_data_contains_content() {
     let state = p2p_app::tui_render_state::TuiRenderState::with_sample_data();
-    assert!(!state.messages.is_empty(), "sample data should have messages");
+    assert!(
+        !state.messages.is_empty(),
+        "sample data should have messages"
+    );
     assert!(!state.peers.is_empty(), "sample data should have peers");
     assert!(state.messages.iter().any(|(msg, _)| msg.contains("Hello")));
 }
@@ -507,9 +510,18 @@ fn test_row_to_visible_index_single_line_each() {
     use p2p_app::tui_render_state::row_to_visible_index;
     let line_counts = vec![1, 1, 1];
     let first_content = 10;
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 10), Some(0));
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 11), Some(1));
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 12), Some(2));
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 10),
+        Some(0)
+    );
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 11),
+        Some(1)
+    );
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 12),
+        Some(2)
+    );
 }
 
 #[test]
@@ -518,13 +530,28 @@ fn test_row_to_visible_index_multiline_items() {
     let line_counts = vec![3, 2, 1]; // Items with 3, 2, 1 lines respectively
     let first_content = 0;
     // Rows 0-2 are item 0
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 0), Some(0));
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 2), Some(0));
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 0),
+        Some(0)
+    );
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 2),
+        Some(0)
+    );
     // Rows 3-4 are item 1
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 3), Some(1));
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 4), Some(1));
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 3),
+        Some(1)
+    );
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 4),
+        Some(1)
+    );
     // Row 5 is item 2
-    assert_eq!(row_to_visible_index(&line_counts, first_content, 5), Some(2));
+    assert_eq!(
+        row_to_visible_index(&line_counts, first_content, 5),
+        Some(2)
+    );
 }
 
 #[test]

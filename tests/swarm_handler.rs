@@ -53,11 +53,7 @@ fn test_serialize_broadcast_message_none() {
 #[test]
 fn test_build_broadcast_message_all_none() {
     use p2p_app::swarm_handler::build_broadcast_message;
-    let msg = build_broadcast_message(
-        "content only".to_string(),
-        None,
-        None,
-    );
+    let msg = build_broadcast_message("content only".to_string(), None, None);
     assert_eq!(msg.content, "content only");
     assert!(msg.nickname.is_none());
     assert!(msg.msg_id.is_none());
@@ -84,16 +80,16 @@ fn test_build_direct_message_all_some() {
 
 #[test]
 fn test_serialize_broadcast_message_full() {
-    use p2p_app::swarm_handler::serialize_broadcast_message;
     use p2p_app::behavior::BroadcastMessage;
-    
+    use p2p_app::swarm_handler::serialize_broadcast_message;
+
     let msg = BroadcastMessage {
         content: "test content".to_string(),
         sent_at: Some(1.234),
         nickname: Some("sender".to_string()),
         msg_id: Some("bc-456".to_string()),
     };
-    
+
     let json = serialize_broadcast_message(&msg);
     assert!(json.is_some());
     let json_str = json.unwrap();
@@ -102,25 +98,25 @@ fn test_serialize_broadcast_message_full() {
 
 #[test]
 fn test_serialize_broadcast_message_minimal() {
-    use p2p_app::swarm_handler::serialize_broadcast_message;
     use p2p_app::behavior::BroadcastMessage;
-    
+    use p2p_app::swarm_handler::serialize_broadcast_message;
+
     let msg = BroadcastMessage {
         content: "msg".to_string(),
         sent_at: None,
         nickname: None,
         msg_id: None,
     };
-    
+
     let json = serialize_broadcast_message(&msg);
     assert!(json.is_some());
 }
 
 #[test]
 fn test_serialize_direct_message_full() {
-    use p2p_app::swarm_handler::serialize_direct_message;
     use p2p_app::behavior::DirectMessage;
-    
+    use p2p_app::swarm_handler::serialize_direct_message;
+
     let msg = DirectMessage {
         content: "direct msg".to_string(),
         timestamp: 12345,
@@ -130,7 +126,7 @@ fn test_serialize_direct_message_full() {
         ack_for: Some("prev-msg".to_string()),
         received_at: Some(2.5),
     };
-    
+
     let json = serialize_direct_message(&msg);
     assert!(json.is_some());
     let json_str = json.unwrap();
@@ -140,9 +136,9 @@ fn test_serialize_direct_message_full() {
 
 #[test]
 fn test_serialize_direct_message_minimal() {
-    use p2p_app::swarm_handler::serialize_direct_message;
     use p2p_app::behavior::DirectMessage;
-    
+    use p2p_app::swarm_handler::serialize_direct_message;
+
     let msg = DirectMessage {
         content: "msg".to_string(),
         timestamp: 0,
@@ -152,7 +148,7 @@ fn test_serialize_direct_message_minimal() {
         ack_for: None,
         received_at: None,
     };
-    
+
     let json = serialize_direct_message(&msg);
     assert!(json.is_some());
 }
