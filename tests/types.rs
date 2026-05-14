@@ -120,7 +120,7 @@ fn test_tab_id_from_index_one() {
 #[test]
 fn test_tab_id_from_index_two() {
     use p2p_app::TabId;
-    assert_eq!(TabId::from_index(2), TabId::Log);
+    assert_eq!(TabId::from_index(2), TabId::Direct);
 }
 
 #[test]

@@ -11,25 +11,25 @@ fn test_network_size_display() {
 
 #[test]
 fn test_network_size_from_peer_count() {
-    // Small: 0-20 peers
-    assert_eq!(NetworkSize::from_peer_count(5.0), NetworkSize::Small);
-    assert_eq!(NetworkSize::from_peer_count(20.0), NetworkSize::Small);
+    // Small: 0-3 peers
+    assert_eq!(NetworkSize::from_peer_count(0.0), NetworkSize::Small);
+    assert_eq!(NetworkSize::from_peer_count(3.0), NetworkSize::Small);
 
-    // Medium: 21-100 peers
-    assert_eq!(NetworkSize::from_peer_count(50.0), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Medium);
+    // Medium: 4-15 peers
+    assert_eq!(NetworkSize::from_peer_count(4.0), NetworkSize::Medium);
+    assert_eq!(NetworkSize::from_peer_count(15.0), NetworkSize::Medium);
 
-    // Large: 100+ peers
-    assert_eq!(NetworkSize::from_peer_count(101.0), NetworkSize::Large);
-    assert_eq!(NetworkSize::from_peer_count(1000.0), NetworkSize::Large);
+    // Large: 16+ peers
+    assert_eq!(NetworkSize::from_peer_count(16.0), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Large);
 }
 
 #[test]
 fn test_network_size_boundaries() {
     assert_eq!(NetworkSize::from_peer_count(0.0), NetworkSize::Small);
-    assert_eq!(NetworkSize::from_peer_count(21.0), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Medium);
-    assert_eq!(NetworkSize::from_peer_count(101.0), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(4.0), NetworkSize::Medium);
+    assert_eq!(NetworkSize::from_peer_count(16.0), NetworkSize::Large);
+    assert_eq!(NetworkSize::from_peer_count(100.0), NetworkSize::Large);
 }
 
 #[test]

@@ -435,15 +435,15 @@ fn test_add_message_empty_string() {
     let mut state = p2p_app::tui_render_state::TuiRenderState::new();
     state.add_message("");
     assert_eq!(state.messages.len(), 1);
-    assert_eq!(state.messages[0].0, "");
+    assert_eq!(state.messages[0], "");
 }
 
 #[test]
 fn test_add_peer_multiple() {
     let mut state = p2p_app::tui_render_state::TuiRenderState::new();
-    state.add_peer("peer1", "2024-01-01", "2024-01-01", Some("Alice"));
-    state.add_peer("peer2", "2024-01-01", "2024-01-01", Some("Bob"));
-    state.add_peer("peer3", "2024-01-01", "2024-01-01", None);
+    state.add_peer("peer1", "Alice", "2024-01-01");
+    state.add_peer("peer2", "Bob", "2024-01-01");
+    state.add_peer("peer3", "", "2024-01-01");
     assert_eq!(state.peers.len(), 3);
 }
 
@@ -482,7 +482,7 @@ fn test_with_sample_data_contains_content() {
         "sample data should have messages"
     );
     assert!(!state.peers.is_empty(), "sample data should have peers");
-    assert!(state.messages.iter().any(|(msg, _)| msg.contains("Hello")));
+    assert!(state.messages.iter().any(|msg| msg.contains("Hello")));
 }
 
 #[test]

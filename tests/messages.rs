@@ -461,10 +461,9 @@ fn test_load_messages_preserves_order() {
 #[test]
 fn test_save_direct_message_same_peer_different_topics() {
     let _db = setup_test_db();
-    p2p_app::save_message("msg1", Some("peer"), "topic1", false, None).unwrap();
-    p2p_app::save_message("msg2", Some("peer"), "topic2", false, None).unwrap();
+    p2p_app::save_message("msg1", None, "topic1", true, Some("peer")).unwrap();
+    p2p_app::save_message("msg2", None, "topic2", true, Some("peer")).unwrap();
     let msgs1 = p2p_app::load_direct_messages("peer", 100).unwrap();
-    // Should get both, as they're for the same peer
     assert_eq!(msgs1.len(), 2);
 }
 

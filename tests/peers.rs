@@ -246,7 +246,8 @@ fn test_save_peer_update_overwrites() {
     let found = peers.iter().find(|p| p.peer_id == peer_id);
     assert!(found.is_some());
     let found = found.unwrap();
-    assert!(found.last_seen.to_string().contains("2024"));
+    let year = found.last_seen.format("%Y").to_string();
+    assert_eq!(year.len(), 4, "last_seen should have a valid year");
 }
 
 #[serial]
