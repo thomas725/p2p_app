@@ -18,10 +18,16 @@ fn update_dm_transcript_labels(
     }
 }
 
+/// Pure: flip the mouse capture flag. Returns the new state.
+fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
+    state.mouse_capture = !state.mouse_capture;
+    state.mouse_capture
+}
+
 /// Toggles mouse capture mode (F12)
 fn toggle_mouse_capture(state: &mut super::state::AppState) {
     use ratatui::crossterm::execute;
-    state.mouse_capture = !state.mouse_capture;
+    flip_mouse_capture_state(state);
     let mode = if state.mouse_capture {
         "enabled"
     } else {
@@ -387,5 +393,29 @@ mod tests {
         let mut state = test_app_state();
         handle_close_dm_tab(&mut state, TabContent::Chat);
         assert_eq!(state.active_tab, 0);
+    }
+
+    // ── flip_mouse_capture_state ──────────────────────────────────────────
+
+    #[test]
+    fn test_flip_mouse_capture_toggles_on() {
+        let mut state = test_app_state();
+        state.mouse_capture = false;
+        assert!(flip_mouse_capture_state(&mut state));
+        assert!(state.mouse_capture);
+    }
+
+    #[test]
+    fn test_flip_mouse_capture_toggles_off() {
+        let mut state = test_app_state();
+        state.mouse_capture = true;
+        assert!(!flip_mouse_capture_state(&mut state));
+        assert!(!state.mouse_capture);
+    }
+
+    #[test]
+    fn test_flip_mouse_capture_returns_new_state() {
+        let mut state = test_app_state();
+        assert_eq!(flip_mouse_capture_state(&mut state), state.mouse_capture);
     }
 }

@@ -152,30 +152,42 @@ pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[S
     false
 }
 
+/// Pure: formats DB messages into display-ready strings for a DM chat.
+///
+/// Separated from the DB call so it can be unit-tested without a database.
+pub fn format_dm_messages_from_db(
+    db_messages: &[p2p_app::generated::models_queryable::Message],
+    self_nick_for_peer: &str,
+    local_nicknames: &HashMap<String, String>,
+    received_nicknames: &HashMap<String, String>,
+) -> VecDeque<String> {
+    let mut messages = VecDeque::new();
+    for msg in db_messages.iter().rev() {
+        let ts = p2p_app::format_peer_datetime(msg.created_at);
+        let sender_display = msg.peer_id.as_ref().map_or_else(
+            || self_nick_for_peer.to_string(),
+            |p| p2p_app::peer_display_name(p, local_nicknames, received_nicknames),
+        );
+        messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
+    }
+    messages
+}
+
 /// Loads DM messages from database for a peer
 pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
     if !state.dm_messages.contains_key(peer_id) {
         if let Ok(db_messages) = p2p_app::load_direct_messages(peer_id, MAX_DM_HISTORY) {
-            let mut messages = VecDeque::new();
             let self_nick_for_peer = state
                 .self_nicknames_for_peers
                 .get(peer_id)
                 .cloned()
                 .unwrap_or_else(|| state.own_nickname.clone());
-            for msg in db_messages.iter().rev() {
-                let ts = p2p_app::format_peer_datetime(msg.created_at);
-                let sender_display = msg.peer_id.as_ref().map_or_else(
-                    || self_nick_for_peer.clone(),
-                    |p| {
-                        p2p_app::peer_display_name(
-                            p,
-                            &state.local_nicknames,
-                            &state.received_nicknames,
-                        )
-                    },
-                );
-                messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
-            }
+            let messages = format_dm_messages_from_db(
+                &db_messages,
+                &self_nick_for_peer,
+                &state.local_nicknames,
+                &state.received_nicknames,
+            );
             state.dm_messages.insert(peer_id.to_string(), messages);
             state.dm_message_ids.insert(
                 peer_id.to_string(),
@@ -1078,5 +1090,86 @@ mod tests {
         state.own_nickname = "Global".to_string();
         super::start_peer_specific_nickname_edit(&mut state, "peer-1");
         assert!(state.chat_input.lines().join("").contains("Global"));
+    }
+
+    // ── format_dm_messages_from_db ─────────────────────────────────────────
+
+    fn dm_msg(
+        content: &str,
+        peer_id: Option<&str>,
+        sender_nickname: Option<&str>,
+        created_at: &str,
+    ) -> p2p_app::generated::models_queryable::Message {
+        let dt = chrono::NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S").unwrap();
+        p2p_app::generated::models_queryable::Message {
+            id: 0,
+            created_at: dt,
+            content: content.to_string(),
+            peer_id: peer_id.map(String::from),
+            topic: "test".to_string(),
+            sent: 0,
+            is_direct: 1,
+            target_peer: Some("me".to_string()),
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: sender_nickname.map(String::from),
+        }
+    }
+
+    #[test]
+    fn test_format_dm_messages_from_db_empty() {
+        let result = super::format_dm_messages_from_db(&[], "Me", &HashMap::new(), &HashMap::new());
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_format_dm_messages_from_db_outgoing() {
+        let messages = [dm_msg("hello", None, None, "2024-01-01 12:00:00")];
+        let result =
+            super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
+        assert_eq!(result.len(), 1);
+        assert!(result[0].contains("[Me]"));
+        assert!(result[0].contains("hello"));
+    }
+
+    #[test]
+    fn test_format_dm_messages_from_db_incoming_uses_display_name() {
+        let messages = [dm_msg("hi", Some("peer-abc"), None, "2024-01-01 12:00:00")];
+        let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
+        let result = super::format_dm_messages_from_db(&messages, "Me", &local, &HashMap::new());
+        assert!(result[0].contains("[Alice]"));
+        assert!(result[0].contains("hi"));
+    }
+
+    #[test]
+    fn test_format_dm_messages_from_db_reverses_newest_first() {
+        let messages = vec![
+            dm_msg("second", Some("p1"), None, "2024-01-01 12:00:01"),
+            dm_msg("first", Some("p1"), None, "2024-01-01 12:00:00"),
+        ];
+        let result =
+            super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
+        assert_eq!(result.len(), 2);
+        assert!(
+            result[0].contains("first"),
+            "first msg should be first after rev"
+        );
+        assert!(
+            result[1].contains("second"),
+            "second msg should be last after rev"
+        );
+    }
+
+    #[test]
+    fn test_format_dm_messages_from_db_self_nick_override() {
+        let messages = [dm_msg("my msg", None, None, "2024-01-01 12:00:00")];
+        let result = super::format_dm_messages_from_db(
+            &messages,
+            "CustomNick",
+            &HashMap::new(),
+            &HashMap::new(),
+        );
+        assert!(result[0].contains("[CustomNick]"));
+        assert!(result[0].contains("my msg"));
     }
 }

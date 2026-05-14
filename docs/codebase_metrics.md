@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      38 |
-| Total Lines of Code     |  10,605 |
-| Total Characters        | 366,767 |
-| Average Lines per File  |     279 |
-| Average Characters/File |   9,651 |
+| Total Lines of Code     |  10,728 |
+| Total Characters        | 371,087 |
+| Average Lines per File  |     282 |
+| Average Characters/File |   9,765 |
 
 ## All Source Files
 
@@ -35,11 +35,11 @@
 | src/bin                 | p2p_chat.rs          |   158 |  5800 |     7 |    -  | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   256 |  9952 |     8 |    -  | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   139 |  5285 |     4 |   1.4% | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |  1082 | 39189 |     7 |   58% | Click handlers & index mapping      |
+| src/bin/tui             | click_handlers.rs    |  1175 | 42561 |     7 |   61% | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |   643 | 22997 |     6 |   50% | Event routing & state updates       |
 | src/bin/tui             | constants.rs         |    16 |   526 |     0 |    -  | TUI constants & config              |
 | src/bin/tui             | event_source.rs      |    86 |  2681 |     5 |   57% | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |   391 | 13870 |     5 |   18% | Input event routing & processing    |
+| src/bin/tui             | input_processor.rs   |   421 | 14818 |     5 |   23% | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   510 | 17505 |     4 |   44% | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   253 |  8399 |     5 |   45% | Message sending logic               |
 | src/bin/tui             | scroll_handlers.rs   |   682 | 23692 |     5 |   60% | Scroll & hover-aware navigation     |
@@ -53,7 +53,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4379 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 38 files, 10,605 lines, 366,767 characters
+**Total:** 38 files, 10,728 lines, 371,087 characters
 
 ## Test Files
 
