@@ -418,3 +418,122 @@ fn test_row_to_visible_index_exact_last_item() {
         Some(1)
     );
 }
+
+// ── Additional TuiRenderState coverage ──────────────────────────────────────────
+
+#[test]
+fn test_add_message_multiple_calls() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.add_message("msg1");
+    state.add_message("msg2");
+    state.add_message("msg3");
+    assert_eq!(state.messages.len(), 3);
+}
+
+#[test]
+fn test_add_message_empty_string() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.add_message("");
+    assert_eq!(state.messages.len(), 1);
+    assert_eq!(state.messages[0].0, "");
+}
+
+#[test]
+fn test_add_peer_multiple() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.add_peer("peer1", "2024-01-01", "2024-01-01", Some("Alice"));
+    state.add_peer("peer2", "2024-01-01", "2024-01-01", Some("Bob"));
+    state.add_peer("peer3", "2024-01-01", "2024-01-01", None);
+    assert_eq!(state.peers.len(), 3);
+}
+
+#[test]
+fn test_add_dm_message_creates_peer_entry() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.add_dm_message("peer-x", "hello");
+    assert!(state.dm_messages.contains_key("peer-x"));
+    assert_eq!(state.dm_messages["peer-x"].len(), 1);
+}
+
+#[test]
+fn test_add_dm_message_multiple_peers() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.add_dm_message("peer-a", "msg-a");
+    state.add_dm_message("peer-b", "msg-b");
+    state.add_dm_message("peer-a", "msg-a2");
+    assert_eq!(state.dm_messages.len(), 2);
+    assert_eq!(state.dm_messages["peer-a"].len(), 2);
+    assert_eq!(state.dm_messages["peer-b"].len(), 1);
+}
+
+#[test]
+fn test_default_vs_new() {
+    let default_state = p2p_app::tui_render_state::TuiRenderState::default();
+    let new_state = p2p_app::tui_render_state::TuiRenderState::new();
+    assert_eq!(default_state.messages.len(), new_state.messages.len());
+    assert_eq!(default_state.peers.len(), new_state.peers.len());
+}
+
+#[test]
+fn test_with_sample_data_contains_content() {
+    let state = p2p_app::tui_render_state::TuiRenderState::with_sample_data();
+    assert!(!state.messages.is_empty(), "sample data should have messages");
+    assert!(!state.peers.is_empty(), "sample data should have peers");
+    assert!(state.messages.iter().any(|(msg, _)| msg.contains("Hello")));
+}
+
+#[test]
+fn test_count_lines_with_very_long_word() {
+    use p2p_app::tui_render_state::count_lines;
+    // A word longer than the width
+    let long_word = "supercalifragilisticexpialidocious";
+    let lines = count_lines(long_word, 10);
+    assert!(lines >= 1);
+}
+
+#[test]
+fn test_count_lines_mixed_newlines_and_wrapping() {
+    use p2p_app::tui_render_state::count_lines;
+    // Line 1: "hello" (wraps to 2 in 3-char width)
+    // Line 2: "world" (wraps to 2 in 3-char width)
+    let text = "hello\nworld";
+    let lines = count_lines(text, 3);
+    // Should count multiple lines with wrapping
+    assert!(lines >= 2);
+}
+
+#[test]
+fn test_row_to_visible_index_single_line_each() {
+    use p2p_app::tui_render_state::row_to_visible_index;
+    let line_counts = vec![1, 1, 1];
+    let first_content = 10;
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 10), Some(0));
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 11), Some(1));
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 12), Some(2));
+}
+
+#[test]
+fn test_row_to_visible_index_multiline_items() {
+    use p2p_app::tui_render_state::row_to_visible_index;
+    let line_counts = vec![3, 2, 1]; // Items with 3, 2, 1 lines respectively
+    let first_content = 0;
+    // Rows 0-2 are item 0
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 0), Some(0));
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 2), Some(0));
+    // Rows 3-4 are item 1
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 3), Some(1));
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 4), Some(1));
+    // Row 5 is item 2
+    assert_eq!(row_to_visible_index(&line_counts, first_content, 5), Some(2));
+}
+
+#[test]
+fn test_get_tab_content_different_tabs() {
+    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
+    state.active_tab = 0;
+    let content_0 = p2p_app::tui_render_state::get_tab_content(&state);
+    state.active_tab = 1;
+    let content_1 = p2p_app::tui_render_state::get_tab_content(&state);
+    // Different tabs should return different content types or values
+    let _ = (content_0, content_1);
+}

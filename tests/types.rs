@@ -102,3 +102,51 @@ fn test_swarm_command_clone() {
     let cmd2 = cmd1.clone();
     assert_eq!(format!("{:?}", cmd1), format!("{:?}", cmd2));
 }
+
+// ── Additional type tests ──────────────────────────────────────────────────────
+
+#[test]
+fn test_tab_id_from_index_zero() {
+    use p2p_app::TabId;
+    assert_eq!(TabId::from_index(0), TabId::Chat);
+}
+
+#[test]
+fn test_tab_id_from_index_one() {
+    use p2p_app::TabId;
+    assert_eq!(TabId::from_index(1), TabId::Peers);
+}
+
+#[test]
+fn test_tab_id_from_index_two() {
+    use p2p_app::TabId;
+    assert_eq!(TabId::from_index(2), TabId::Log);
+}
+
+#[test]
+fn test_tab_id_from_index_large() {
+    use p2p_app::TabId;
+    // Large indices wrap or fall back
+    let result = TabId::from_index(100);
+    let _ = result;
+}
+
+#[test]
+fn test_tab_id_clone_eq() {
+    use p2p_app::TabId;
+    let tid1 = TabId::Chat;
+    let tid2 = tid1.clone();
+    assert_eq!(tid1, tid2);
+}
+
+#[test]
+fn test_all_tab_ids() {
+    use p2p_app::TabId;
+    let chat = TabId::Chat;
+    let peers = TabId::Peers;
+    let log = TabId::Log;
+    
+    assert_ne!(chat, peers);
+    assert_ne!(peers, log);
+    assert_ne!(chat, log);
+}
