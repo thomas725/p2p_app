@@ -535,4 +535,57 @@ mod tests {
         let debug_str = format!("{:?}", content);
         assert!(debug_str.contains("Chat"));
     }
+
+    #[test]
+    fn test_row_to_visible_index_before_first_content() {
+        assert_eq!(row_to_visible_index(&[1, 1], 2, 1), None);
+    }
+
+    #[test]
+    fn test_row_to_visible_index_at_first_content_row() {
+        assert_eq!(row_to_visible_index(&[1, 1], 2, 2), Some(0));
+    }
+
+    #[test]
+    fn test_row_to_visible_index_within_first_message() {
+        let line_counts = vec![3, 1, 2];
+        assert_eq!(row_to_visible_index(&line_counts, 0, 0), Some(0));
+        assert_eq!(row_to_visible_index(&line_counts, 0, 1), Some(0));
+        assert_eq!(row_to_visible_index(&line_counts, 0, 2), Some(0));
+    }
+
+    #[test]
+    fn test_row_to_visible_index_within_second_message() {
+        let line_counts = vec![3, 1, 2];
+        assert_eq!(row_to_visible_index(&line_counts, 0, 3), Some(1));
+    }
+
+    #[test]
+    fn test_row_to_visible_index_within_third_message() {
+        let line_counts = vec![3, 1, 2];
+        assert_eq!(row_to_visible_index(&line_counts, 0, 4), Some(2));
+        assert_eq!(row_to_visible_index(&line_counts, 0, 5), Some(2));
+    }
+
+    #[test]
+    fn test_row_to_visible_index_beyond_all_messages() {
+        let line_counts = vec![3, 1, 2];
+        let total_lines: usize = line_counts.iter().sum();
+        assert_eq!(row_to_visible_index(&line_counts, 0, total_lines), None);
+    }
+
+    #[test]
+    fn test_row_to_visible_index_empty() {
+        assert_eq!(row_to_visible_index(&[], 0, 0), None);
+    }
+
+    #[test]
+    fn test_row_to_visible_index_first_content_row_nonzero() {
+        let line_counts = vec![5, 3];
+        assert_eq!(row_to_visible_index(&line_counts, 3, 3), Some(0));
+        assert_eq!(row_to_visible_index(&line_counts, 3, 7), Some(0));
+        assert_eq!(row_to_visible_index(&line_counts, 3, 8), Some(1));
+        assert_eq!(row_to_visible_index(&line_counts, 3, 10), Some(1));
+        assert_eq!(row_to_visible_index(&line_counts, 3, 11), None);
+    }
 }

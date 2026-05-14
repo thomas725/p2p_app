@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   8,321 |
-| Total Characters        | 290,346 |
-| Average Lines per File  |     224 |
-| Average Characters/File |   7,847 |
+| Total Lines of Code     |   8,374 |
+| Total Characters        | 292,259 |
+| Average Lines per File  |     226 |
+| Average Characters/File |   7,898 |
 
 ## All Source Files
 
@@ -28,7 +28,7 @@
 | src                     | swarm_handler.rs     |   310 | 10763 |     7 |   45% | Network event translation           |
 | src                     | tui_helpers.rs       |   255 |  7875 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   343 | 11355 |     5 |    -  | TUI rendering & state management    |
-| src                     | tui_render_state.rs  |   538 | 16428 |     4 |   38% | TUI render state & tab content      |
+| src                     | tui_render_state.rs  |   591 | 18341 |     4 |   43% | TUI render state & tab content      |
 | src                     | tui_tabs.rs          |   405 | 11807 |     5 |   53% | Tab management & navigation         |
 | src                     | tui_test_state.rs    |   219 |  6579 |     6 |    -  | TUI test state & mouse handling     |
 | src                     | types.rs             |   246 |  7426 |     4 |  100% | Event & command type defs           |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 37 files, 8,321 lines, 290,346 characters
+**Total:** 37 files, 8,374 lines, 292,259 characters
 
 ## Test Files
 
