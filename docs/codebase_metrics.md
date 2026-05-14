@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   8,374 |
-| Total Characters        | 292,259 |
+| Total Lines of Code     |   8,369 |
+| Total Characters        | 291,900 |
 | Average Lines per File  |     226 |
-| Average Characters/File |   7,898 |
+| Average Characters/File |   7,889 |
 
 ## All Source Files
 
@@ -24,8 +24,8 @@
 | src                     | messages.rs          |   230 |  8437 |     4 |  100% | Message persistence & retrieval     |
 | src                     | network.rs           |    54 |  1711 |     3 |   91% | Network size classification         |
 | src                     | nickname.rs          |   137 |  4970 |     3 |  100% | Nickname management                 |
-| src                     | peers.rs             |   179 |  6111 |     3 |  100% | Peer management & tracking          |
-| src                     | swarm_handler.rs     |   310 | 10763 |     7 |   45% | Network event translation           |
+| src                     | peers.rs             |   178 |  6082 |     3 |  100% | Peer management & tracking          |
+| src                     | swarm_handler.rs     |   306 | 10433 |     7 |   45% | Network event translation           |
 | src                     | tui_helpers.rs       |   255 |  7875 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   343 | 11355 |     5 |    -  | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |   591 | 18341 |     4 |   43% | TUI render state & tab content      |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |   120 |  4318 |     1 |    -  | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |    -  | Database schema (Diesel)            |
 
-**Total:** 37 files, 8,374 lines, 292,259 characters
+**Total:** 37 files, 8,369 lines, 291,900 characters
 
 ## Test Files
 

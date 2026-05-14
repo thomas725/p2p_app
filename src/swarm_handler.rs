@@ -44,15 +44,7 @@ async fn handle_swarm_event(
                 // Best-effort receipt confirmation for broadcasts:
                 // send a receipt-only DM back to the propagation source.
                 if let Some(ack_for) = bcast.msg_id.clone() {
-                    let receipt = crate::DirectMessage {
-                        content: String::new(),
-                        timestamp: chrono::Utc::now().timestamp(),
-                        sent_at: Some(current_timestamp()),
-                        nickname: None,
-                        msg_id: None,
-                        ack_for: Some(ack_for),
-                        received_at: Some(current_timestamp()),
-                    };
+                    let receipt = make_ack_dm(String::new(), Some(ack_for));
                     swarm
                         .behaviour_mut()
                         .request_response
@@ -138,15 +130,7 @@ async fn handle_request_response(
                     .await;
             }
 
-            let response = crate::DirectMessage {
-                content: "ok".to_string(),
-                timestamp: chrono::Utc::now().timestamp(),
-                sent_at: Some(current_timestamp()),
-                nickname: None,
-                msg_id: None,
-                ack_for: request.msg_id,
-                received_at: Some(current_timestamp()),
-            };
+            let response = make_ack_dm("ok".to_string(), request.msg_id);
             let _ = swarm
                 .behaviour_mut()
                 .request_response
@@ -163,6 +147,18 @@ async fn handle_request_response(
                     .await;
             }
         }
+    }
+}
+
+fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage {
+    crate::DirectMessage {
+        content,
+        timestamp: chrono::Utc::now().timestamp(),
+        sent_at: Some(current_timestamp()),
+        nickname: None,
+        msg_id: None,
+        ack_for,
+        received_at: Some(current_timestamp()),
     }
 }
 
