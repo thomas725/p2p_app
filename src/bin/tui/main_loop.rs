@@ -12,6 +12,10 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
 /// Pure: extract nickname maps from DB peers
+// Type aliases for organized receipt data
+type BroadcastReceipts = HashMap<String, HashMap<String, f64>>;
+type DmReceipts = HashMap<String, (String, f64)>;
+
 pub fn extract_nickname_maps(
     peers: &[Peer],
 ) -> (
@@ -54,10 +58,7 @@ pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<(String, String, Strin
 /// Pure: organize flat receipt list into broadcast and DM maps
 pub fn organize_receipts(
     receipts: &[MessageReceipt],
-) -> (
-    HashMap<String, HashMap<String, f64>>,
-    HashMap<String, (String, f64)>,
-) {
+) -> (BroadcastReceipts, DmReceipts) {
     let mut broadcast: HashMap<String, HashMap<String, f64>> = HashMap::new();
     let mut dm: HashMap<String, (String, f64)> = HashMap::new();
     for r in receipts {

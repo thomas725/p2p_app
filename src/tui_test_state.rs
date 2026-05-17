@@ -1,5 +1,4 @@
 //! TUI test state and mouse event handling
-#![cfg(any(test, feature = "test-utils"))]
 
 use std::collections::{BTreeMap, VecDeque};
 

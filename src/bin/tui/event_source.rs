@@ -25,10 +25,9 @@ pub fn spawn_input_handler(input_tx: mpsc::Sender<InputEvent>) -> tokio::task::J
         loop {
             if poll(Duration::from_millis(FRAME_TIME_MS)).ok() == Some(true)
                 && let Ok(event) = read()
+                && let Some(input) = crossterm_event_to_input_event(event)
             {
-                if let Some(input) = crossterm_event_to_input_event(event) {
-                    let _ = input_tx.send(input).await;
-                }
+                let _ = input_tx.send(input).await;
             }
             tokio::task::yield_now().await;
         }
