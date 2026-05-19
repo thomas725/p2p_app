@@ -57,7 +57,7 @@ pub use behavior::{
 };
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
-    sqlite_connect,
+    reset_db_url_cache, sqlite_connect,
 };
 pub use fmt::{
     auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
