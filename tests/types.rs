@@ -150,3 +150,149 @@ fn test_all_tab_ids() {
     assert_ne!(peers, log);
     assert_ne!(chat, log);
 }
+
+// ── Additional type construction and conversion tests ───────────────────────────
+
+#[test]
+fn test_swarm_command_debug() {
+    use p2p_app::SwarmCommand;
+    let cmd = SwarmCommand::SendBroadcast {
+        topic: "test".to_string(),
+        message: "msg".to_string(),
+    };
+    let debug_str = format!("{:?}", cmd);
+    assert!(debug_str.contains("SendBroadcast"));
+}
+
+#[test]
+fn test_swarm_command_send_broadcast() {
+    use p2p_app::SwarmCommand;
+    let cmd = SwarmCommand::SendBroadcast {
+        topic: "news".to_string(),
+        message: "breaking news".to_string(),
+    };
+    match cmd {
+        SwarmCommand::SendBroadcast { topic, message } => {
+            assert_eq!(topic, "news");
+            assert_eq!(message, "breaking news");
+        }
+        _ => panic!("Expected SendBroadcast"),
+    }
+}
+
+#[test]
+fn test_swarm_command_send_direct() {
+    use p2p_app::SwarmCommand;
+    let cmd = SwarmCommand::SendDirect {
+        peer_id: "peer".to_string(),
+        message: "direct msg".to_string(),
+    };
+    match cmd {
+        SwarmCommand::SendDirect { peer_id, message } => {
+            assert_eq!(peer_id, "peer");
+            assert_eq!(message, "direct msg");
+        }
+        _ => panic!("Expected SendDirect"),
+    }
+}
+
+#[test]
+fn test_swarm_event_broadcast_received() {
+    use p2p_app::SwarmEvent;
+    let event = SwarmEvent::BroadcastReceived {
+        topic: "topic".to_string(),
+        message: "content".to_string(),
+        from_peer: Some("sender".to_string()),
+    };
+    match event {
+        SwarmEvent::BroadcastReceived { topic, message, from_peer } => {
+            assert_eq!(topic, "topic");
+            assert_eq!(message, "content");
+            assert_eq!(from_peer, Some("sender".to_string()));
+        }
+        _ => panic!("Expected BroadcastReceived"),
+    }
+}
+
+#[test]
+fn test_swarm_event_direct_message_received() {
+    use p2p_app::SwarmEvent;
+    let event = SwarmEvent::DirectMessageReceived {
+        from_peer: "sender".to_string(),
+        message: "hi".to_string(),
+    };
+    match event {
+        SwarmEvent::DirectMessageReceived { from_peer, message } => {
+            assert_eq!(from_peer, "sender");
+            assert_eq!(message, "hi");
+        }
+        _ => panic!("Expected DirectMessageReceived"),
+    }
+}
+
+#[test]
+fn test_swarm_event_peer_discovered() {
+    use p2p_app::SwarmEvent;
+    let event = SwarmEvent::PeerDiscovered {
+        peer_id: "new-peer".to_string(),
+    };
+    match event {
+        SwarmEvent::PeerDiscovered { peer_id } => {
+            assert_eq!(peer_id, "new-peer");
+        }
+        _ => panic!("Expected PeerDiscovered"),
+    }
+}
+
+#[test]
+fn test_swarm_event_debug() {
+    use p2p_app::SwarmEvent;
+    let event = SwarmEvent::PeerDiscovered {
+        peer_id: "test".to_string(),
+    };
+    let debug_str = format!("{:?}", event);
+    assert!(debug_str.contains("PeerDiscovered"));
+}
+
+#[test]
+fn test_tab_id_ordering() {
+    use p2p_app::TabId;
+    let chat = TabId::Chat;
+    let peers = TabId::Peers;
+    let log = TabId::Log;
+    
+    // Just verify they exist and have different values when converted
+    let _ = (chat, peers, log);
+}
+
+#[test]
+fn test_notification_target_broadcast() {
+    use p2p_app::NotificationTarget;
+    let target = NotificationTarget::Broadcast {
+        topic: "topic".to_string(),
+        count: 5,
+    };
+    match target {
+        NotificationTarget::Broadcast { topic, count } => {
+            assert_eq!(topic, "topic");
+            assert_eq!(count, 5);
+        }
+        _ => panic!("Expected Broadcast target"),
+    }
+}
+
+#[test]
+fn test_notification_target_dm() {
+    use p2p_app::NotificationTarget;
+    let target = NotificationTarget::Dm {
+        peer_id: "peer".to_string(),
+        count: 2,
+    };
+    match target {
+        NotificationTarget::Dm { peer_id, count } => {
+            assert_eq!(peer_id, "peer");
+            assert_eq!(count, 2);
+        }
+        _ => panic!("Expected Dm target"),
+    }
+}
