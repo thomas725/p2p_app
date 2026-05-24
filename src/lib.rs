@@ -43,6 +43,7 @@ pub mod peers;
 /// Swarm handler for managing P2P network events
 pub mod swarm_handler;
 pub mod tui_tabs;
+#[cfg(any(test, feature = "test-utils"))]
 pub mod tui_test_state;
 /// Core type definitions used throughout the application
 pub mod types;
@@ -56,9 +57,10 @@ pub use behavior::{
 };
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
-    #[cfg(any(test, feature = "test-utils"))]
-    reset_db_url_cache, sqlite_connect,
+    sqlite_connect,
 };
+#[cfg(any(test, feature = "test-utils"))]
+pub use db::reset_db_url_cache;
 pub use fmt::{
     auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
