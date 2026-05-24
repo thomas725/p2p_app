@@ -56,6 +56,7 @@ pub use behavior::{
 };
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
+    #[cfg(any(test, feature = "test-utils"))]
     reset_db_url_cache, sqlite_connect,
 };
 pub use fmt::{
