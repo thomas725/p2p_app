@@ -224,5 +224,5 @@ pub fn load_receipts() -> color_eyre::Result<Vec<crate::generated::models_querya
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_messages.rs"]
+#[path = "../tests/unit/unit_messages.rs"]
 mod tests;

@@ -178,5 +178,5 @@ pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_peers.rs"]
+#[path = "../tests/unit/unit_peers.rs"]
 mod tests;

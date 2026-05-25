@@ -409,5 +409,5 @@ pub fn get_local_peer_id() -> color_eyre::Result<libp2p::PeerId> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_db.rs"]
+#[path = "../tests/unit/unit_db.rs"]
 mod tests;

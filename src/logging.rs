@@ -234,5 +234,5 @@ pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_logging.rs"]
+#[path = "../tests/unit/unit_logging.rs"]
 mod tests;
