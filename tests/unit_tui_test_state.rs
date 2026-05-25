@@ -60,10 +60,7 @@ fn notification_click_targets() {
 
 #[test]
 fn mouse_click_peer_detection() {
-    let msgs = VecDeque::from([
-        "[You] hello".to_string(),
-        "[Bob] hi".to_string(),
-    ]);
+    let msgs = VecDeque::from(["[You] hello".to_string(), "[Bob] hi".to_string()]);
     let state = TuiTestState::with_messages(msgs);
 
     assert_eq!(state.handle_mouse_click(0, 0), None);
@@ -85,9 +82,18 @@ fn formatting_helpers_and_tab_content() {
     assert!(state.status_text().contains("Ready"));
 
     state.active_tab = 0;
-    assert!(matches!(state.tab_content(), crate::tui_tabs::TabContent::Chat));
+    assert!(matches!(
+        state.tab_content(),
+        crate::tui_tabs::TabContent::Chat
+    ));
     state.active_tab = 1;
-    assert!(matches!(state.tab_content(), crate::tui_tabs::TabContent::Peers));
+    assert!(matches!(
+        state.tab_content(),
+        crate::tui_tabs::TabContent::Peers
+    ));
     state.active_tab = 2;
-    assert!(matches!(state.tab_content(), crate::tui_tabs::TabContent::Log));
+    assert!(matches!(
+        state.tab_content(),
+        crate::tui_tabs::TabContent::Log
+    ));
 }

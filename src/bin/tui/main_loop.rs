@@ -56,9 +56,7 @@ pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<(String, String, Strin
 }
 
 /// Pure: organize flat receipt list into broadcast and DM maps
-pub fn organize_receipts(
-    receipts: &[MessageReceipt],
-) -> (BroadcastReceipts, DmReceipts) {
+pub fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmReceipts) {
     let mut broadcast: HashMap<String, HashMap<String, f64>> = HashMap::new();
     let mut dm: HashMap<String, (String, f64)> = HashMap::new();
     for r in receipts {

@@ -55,12 +55,12 @@ pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
     build_behaviour,
 };
+#[cfg(any(test, feature = "test-utils"))]
+pub use db::reset_db_url_cache;
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
     sqlite_connect,
 };
-#[cfg(any(test, feature = "test-utils"))]
-pub use db::reset_db_url_cache;
 pub use fmt::{
     auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,

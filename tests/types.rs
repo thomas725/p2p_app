@@ -205,7 +205,11 @@ fn test_swarm_event_broadcast_received() {
         from_peer: Some("sender".to_string()),
     };
     match event {
-        SwarmEvent::BroadcastReceived { topic, message, from_peer } => {
+        SwarmEvent::BroadcastReceived {
+            topic,
+            message,
+            from_peer,
+        } => {
             assert_eq!(topic, "topic");
             assert_eq!(message, "content");
             assert_eq!(from_peer, Some("sender".to_string()));
@@ -260,7 +264,7 @@ fn test_tab_id_ordering() {
     let chat = TabId::Chat;
     let peers = TabId::Peers;
     let log = TabId::Log;
-    
+
     // Just verify they exist and have different values when converted
     let _ = (chat, peers, log);
 }
