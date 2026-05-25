@@ -77,6 +77,7 @@ mod tui {
     pub mod scroll_handlers;
     pub mod state;
     #[cfg(test)]
+    #[path = "../../../tests/unit_bin_tui_test_helpers.rs"]
     pub mod test_helpers;
 }
 

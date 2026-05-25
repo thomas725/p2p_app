@@ -266,3 +266,7 @@ pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
     let sum = current as isize + delta;
     ((sum % max_tabs as isize) + max_tabs as isize) as usize % max_tabs
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_tui_helpers.rs"]
+mod tests;

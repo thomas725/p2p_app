@@ -53,3 +53,7 @@ pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     let avg = get_average_peer_count()?;
     Ok(NetworkSize::from_peer_count(avg))
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_network.rs"]
+mod tests;

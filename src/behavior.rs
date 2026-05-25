@@ -140,3 +140,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         mdns,
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_behavior.rs"]
+mod tests;

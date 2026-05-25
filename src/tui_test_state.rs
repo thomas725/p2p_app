@@ -235,3 +235,7 @@ pub enum NotificationTarget {
     /// Clicked on a DM notification for the given peer ID
     Dm(String),
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_tui_test_state.rs"]
+mod tests;

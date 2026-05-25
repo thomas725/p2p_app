@@ -167,21 +167,30 @@ fn is_db_locked(lock_path: &std::path::Path) -> bool {
         Ok(content) => {
             if let Ok(other_pid) = content.trim().parse::<u32>() {
                 if other_pid == 0 {
-                    return false; // Empty/zero PID = unlocked
+                    let _ = fs::remove_file(lock_path);
+                    return false; // Empty/zero PID = unlocked/stale
                 }
                 #[cfg(target_os = "linux")]
                 {
-                    std::path::Path::new(&format!("/proc/{other_pid}")).exists()
+                    let alive = std::path::Path::new(&format!("/proc/{other_pid}")).exists();
+                    if !alive {
+                        let _ = fs::remove_file(lock_path);
+                    }
+                    alive
                 }
                 #[cfg(not(target_os = "linux"))]
                 {
                     true // Assume locked on non-Linux
                 }
             } else {
-                true // Non-numeric content = locked
+                let _ = fs::remove_file(lock_path);
+                false // Non-numeric content = stale/invalid lock
             }
         }
-        Err(_) => true, // Can't read = locked
+        Err(_) => {
+            let _ = fs::remove_file(lock_path);
+            false // Unreadable lock is treated as stale and removed
+        }
     }
 }
 
@@ -228,6 +237,13 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
         })
         .collect();
     db_files.sort();
+
+    // Cleanup pass: remove stale/invalid lock files across all known DB files.
+    // This prevents long-term lock-file accumulation from prior crashed test runs.
+    for db_file in &db_files {
+        let lock_path = cwd.join(format!("{db_file}.lock"));
+        let _ = is_db_locked(&lock_path);
+    }
 
     // Check each db file in order, return first available
     for db_file in &db_files {
@@ -391,3 +407,7 @@ pub fn get_local_peer_id() -> color_eyre::Result<libp2p::PeerId> {
     let keypair = get_libp2p_identity()?;
     Ok(keypair.public().to_peer_id())
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_db.rs"]
+mod tests;

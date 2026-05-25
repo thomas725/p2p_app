@@ -180,7 +180,7 @@ def get_test_coverage_str(coverage: Optional[float]) -> str:
     elif coverage >= 10:
         return f" {coverage:>3.0f}%"
     else:
-        return f" {coverage:>4.1f}%"
+        return f"{coverage:>4.1f}%"
 
 def get_test_file_purpose(filepath: str) -> str:
     """Get a brief description of what each test file tests."""
@@ -208,6 +208,33 @@ def get_test_file_purpose(filepath: str) -> str:
         'test_utils.rs': 'Test utilities',
         'queryable_tests.rs': 'Diesel queryable model tests',
         'insertable_tests.rs': 'Diesel insertable model tests',
+        'swarm_handler.rs': 'swarm_handler module tests',
+        'tui_tabs_dedicated.rs': 'Dedicated TUI tabs tests',
+        'tui_test_state_dedicated.rs': 'Dedicated TUI test-state tests',
+        'unit_behavior.rs': 'Unit tests for behavior module',
+        'unit_bin_tui_click_handlers.rs': 'Unit tests for TUI click handlers',
+        'unit_bin_tui_command_processor.rs': 'Unit tests for TUI command processor',
+        'unit_bin_tui_event_source.rs': 'Unit tests for TUI event source',
+        'unit_bin_tui_input_processor.rs': 'Unit tests for TUI input processor',
+        'unit_bin_tui_main_loop.rs': 'Unit tests for TUI main loop',
+        'unit_bin_tui_message_handlers.rs': 'Unit tests for TUI message handlers',
+        'unit_bin_tui_render_loop_mod.rs': 'Unit tests for TUI render loop',
+        'unit_bin_tui_scroll_handlers.rs': 'Unit tests for TUI scroll handlers',
+        'unit_bin_tui_state.rs': 'Unit tests for TUI state',
+        'unit_bin_tui_test_helpers.rs': 'Unit tests for TUI test helpers',
+        'unit_db.rs': 'Unit tests for database module',
+        'unit_lib.rs': 'Unit tests for library re-exports/api',
+        'unit_logging.rs': 'Unit tests for logging module',
+        'unit_messages.rs': 'Unit tests for messages module',
+        'unit_network.rs': 'Unit tests for network module',
+        'unit_nickname.rs': 'Unit tests for nickname module',
+        'unit_peers.rs': 'Unit tests for peers module',
+        'unit_swarm_handler.rs': 'Unit tests for swarm_handler module',
+        'unit_tui_helpers.rs': 'Unit tests for TUI helpers',
+        'unit_tui_render_state.rs': 'Unit tests for TUI render state',
+        'unit_tui_tabs.rs': 'Unit tests for TUI tabs',
+        'unit_tui_test_state.rs': 'Unit tests for TUI test state',
+        'unit_types.rs': 'Unit tests for types module',
     }
     return purposes.get(Path(filepath).name, 'Test file')
 
@@ -248,16 +275,38 @@ def collect_test_files() -> List[Tuple[str, str, int, int, int, str]]:
 
 def generate_test_files_table(test_files: List[Tuple]) -> str:
     """Generate markdown table for test files."""
+    folder_col_width = max(len("Folder"), 6)
+    file_col_width = max(
+        len("File"),
+        max((len(filename) for _, filename, _, _, _, _ in test_files), default=0),
+    )
+    lines_col_width = max(len("Lines"), 5)
+    chars_col_width = max(len("Chars"), 5)
+    depth_col_width = max(len("Depth"), 5)
+    desc_col_width = max(len("Description"), 37)
+
     output = []
-    output.append('| Folder | File                      | Lines | Chars | Depth | Description                   |')
-    output.append('|:-------|:--------------------------|------:|------:|------:|------------------------------:|')
+    output.append(
+        f"| {'Folder':<{folder_col_width}} | {'File':<{file_col_width}} | {'Lines':>{lines_col_width}} | {'Chars':>{chars_col_width}} | {'Depth':>{depth_col_width}} | {'Description':<{desc_col_width}} |"
+    )
+    folder_sep_width = folder_col_width + 2
+    file_sep_width = file_col_width + 2
+    lines_sep_width = lines_col_width + 2
+    chars_sep_width = chars_col_width + 2
+    depth_sep_width = depth_col_width + 2
+    desc_sep_width = desc_col_width + 2
+    output.append(
+        f"|:{'-' * (folder_sep_width - 1)}|:{'-' * (file_sep_width - 1)}|{'-' * (lines_sep_width - 1)}:|{'-' * (chars_sep_width - 1)}:|{'-' * (depth_sep_width - 1)}:|{'-' * (desc_sep_width - 1)}:|"
+    )
     
     for folder, filename, lines, chars, nesting, purpose in test_files:
-        if len(purpose) > 29:
-            purpose = purpose[:26] + '...'
+        if len(purpose) > desc_col_width:
+            purpose = purpose[:desc_col_width - 1] + '…'
         
         folder_display = folder if folder else 'tests'
-        output.append(f'| {folder_display:<6} | {filename:<25} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<29} |')
+        output.append(
+            f"| {folder_display:<{folder_col_width}} | {filename:<{file_col_width}} | {lines:>{lines_col_width}} | {chars:>{chars_col_width}} | {nesting:>{depth_col_width}} | {purpose:<{desc_col_width}} |"
+        )
     
     return '\n'.join(output)
 
@@ -320,7 +369,7 @@ def generate_markdown_table(files_data: List[Tuple]) -> str:
 
     for folder, filename, _, lines, chars, nesting, purpose, coverage in files_data:
         if len(purpose) > 35:
-            purpose = purpose[:32] + '...'
+            purpose = purpose[:34] + '…'
         
         coverage_str = get_test_coverage_str(coverage)
 

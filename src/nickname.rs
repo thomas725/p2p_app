@@ -136,3 +136,7 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     }
     Ok(short_id)
 }
+
+#[cfg(test)]
+#[path = "../tests/unit_nickname.rs"]
+mod tests;
