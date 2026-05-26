@@ -139,5 +139,5 @@ pub async fn send_message(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_message_handlers.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_message_handlers.rs"]
 mod tests;

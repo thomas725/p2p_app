@@ -279,5 +279,5 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, _peer_id: Opt
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_scroll_handlers.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_scroll_handlers.rs"]
 mod tests;

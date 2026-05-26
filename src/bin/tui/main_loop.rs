@@ -285,5 +285,5 @@ pub async fn run_new_tui(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_main_loop.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_main_loop.rs"]
 mod tests;

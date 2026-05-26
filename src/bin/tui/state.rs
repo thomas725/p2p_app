@@ -235,5 +235,5 @@ pub fn load_and_format_messages(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_state.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_state.rs"]
 mod tests;

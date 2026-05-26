@@ -321,5 +321,5 @@ pub fn spawn_command_processor(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_command_processor.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_command_processor.rs"]
 mod tests;

@@ -462,5 +462,5 @@ pub fn handle_mouse_left_click(
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_click_handlers.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_click_handlers.rs"]
 mod tests;

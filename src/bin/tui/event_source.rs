@@ -35,5 +35,5 @@ pub fn spawn_input_handler(input_tx: mpsc::Sender<InputEvent>) -> tokio::task::J
 }
 
 #[cfg(test)]
-#[path = "../../../tests/unit_bin_tui_event_source.rs"]
+#[path = "../../../tests/unit/unit_bin_tui_event_source.rs"]
 mod tests;
