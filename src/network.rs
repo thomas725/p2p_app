@@ -55,5 +55,5 @@ pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_network.rs"]
+#[path = "../tests/unit/unit_network.rs"]
 mod tests;

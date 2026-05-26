@@ -201,5 +201,5 @@ impl TabContent {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_tui_tabs.rs"]
+#[path = "../tests/unit/unit_tui_tabs.rs"]
 mod tests;

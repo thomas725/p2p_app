@@ -268,5 +268,5 @@ pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_tui_helpers.rs"]
+#[path = "../tests/unit/unit_tui_helpers.rs"]
 mod tests;

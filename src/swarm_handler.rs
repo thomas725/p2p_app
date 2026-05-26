@@ -268,5 +268,5 @@ pub fn spawn_swarm_handler(
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_swarm_handler.rs"]
+#[path = "../tests/unit/unit_swarm_handler.rs"]
 mod tests;

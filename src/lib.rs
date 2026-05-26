@@ -67,6 +67,8 @@ pub use fmt::{
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use logging::tracing_filter;
+#[cfg(any(test, feature = "test-utils"))]
+pub use logging::clear_tui_logs;
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
     set_tui_callback, strip_ansi_codes,
@@ -118,5 +120,5 @@ use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[cfg(test)]
-#[path = "../tests/unit_lib.rs"]
+#[path = "../tests/unit/unit_lib.rs"]
 mod tests;

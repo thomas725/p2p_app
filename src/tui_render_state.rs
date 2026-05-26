@@ -344,5 +344,5 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_tui_render_state.rs"]
+#[path = "../tests/unit/unit_tui_render_state.rs"]
 mod tests;

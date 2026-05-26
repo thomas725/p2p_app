@@ -1,7 +1,7 @@
 use libp2p::Multiaddr;
 
 #[cfg(test)]
-#[path = "../tests/unit_types.rs"]
+#[path = "../tests/unit/unit_types.rs"]
 mod tests;
 /// High-level application events from the swarm
 #[derive(Debug, Clone)]

@@ -138,5 +138,5 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
 }
 
 #[cfg(test)]
-#[path = "../tests/unit_nickname.rs"]
+#[path = "../tests/unit/unit_nickname.rs"]
 mod tests;
