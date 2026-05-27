@@ -54,7 +54,6 @@ pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
     build_behaviour,
 };
-#[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url_cache;
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
@@ -64,9 +63,7 @@ pub use fmt::{
     auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
-#[cfg(any(test, feature = "test-utils"))]
 pub use logging::tracing_filter;
-#[cfg(any(test, feature = "test-utils"))]
 pub use logging::clear_tui_logs;
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
@@ -93,7 +90,6 @@ pub use swarm_handler::spawn_swarm_handler;
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(feature = "tui")]
 pub mod tui_helpers;
-#[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
 #[cfg(feature = "tui")]
 pub mod tui_render;
