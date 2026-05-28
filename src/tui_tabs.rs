@@ -61,7 +61,7 @@ impl DmTab {
     }
 
     /// Create DM tab with initial messages
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(test)]
     #[must_use]
     pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
         Self { peer_id, messages }
