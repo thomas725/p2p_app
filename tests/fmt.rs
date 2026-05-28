@@ -202,15 +202,15 @@ fn test_gen_msg_id_multiple_unique() {
 
 #[test]
 fn test_now_timestamp_positive() {
-    use p2p_app::now_timestamp;
-    let ts = now_timestamp();
+    use p2p_app::current_timestamp;
+    let ts = current_timestamp();
     assert!(ts > 0.0);
 }
 
 #[test]
 fn test_now_timestamp_reasonable() {
-    use p2p_app::now_timestamp;
-    let ts = now_timestamp();
+    use p2p_app::current_timestamp;
+    let ts = current_timestamp();
     // Should be less than year 3000 in seconds
     assert!(ts < 32_000_000_000.0);
 }
