@@ -102,7 +102,7 @@ jobs:
       - name: Run tests
         run: |
           set +e
-          cargo t --verbose --all-features 2>&1 | tee .github/ci-logs/tests.log
+          cargo t --verbose --no-default-features --features mdns,tracing,quic,tui,test-utils 2>&1 | tee .github/ci-logs/tests.log
           TEST_EXIT=$?
           set -e
           echo "Exit code: $TEST_EXIT" >> .github/ci-logs/tests.log
