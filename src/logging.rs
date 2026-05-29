@@ -137,7 +137,8 @@ pub fn get_tui_logs() -> Vec<String> {
 }
 
 /// Clear TUI log storage.
-#[cfg(test)]
+/// Clear TUI logs for testing purposes.
+#[cfg(feature = "test-utils")]
 pub fn clear_tui_logs() {
     if let Some(logs) = TUI_LOGS.get()
         && let Ok(mut l) = logs.lock()
