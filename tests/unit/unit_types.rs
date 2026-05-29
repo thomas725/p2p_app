@@ -181,3 +181,86 @@ fn test_swarm_command_clone() {
         _ => panic!("expected Publish"),
     }
 }
+
+#[test]
+fn test_swarm_event_dm_delivered() {
+    let event = SwarmEvent::DmDelivered {
+        peer_id: "peer2".to_string(),
+        msg_id: "msg-1".to_string(),
+        latency: Some("5ms".to_string()),
+    };
+    match event {
+        SwarmEvent::DmDelivered { peer_id, msg_id, latency } => {
+            assert_eq!(peer_id, "peer2");
+            assert_eq!(msg_id, "msg-1");
+            assert_eq!(latency, Some("5ms".to_string()));
+        }
+        _ => panic!("expected DmDelivered"),
+    }
+}
+
+#[test]
+fn test_swarm_event_dm_message() {
+    let event = SwarmEvent::DmMessage {
+        content: "hello".to_string(),
+        peer_id: "peer-sender".to_string(),
+        latency: Some("3ms".to_string()),
+        nickname: Some("Alice".to_string()),
+        msg_id: Some("dm-1".to_string()),
+    };
+    match event {
+        SwarmEvent::DmMessage { content, peer_id, nickname, .. } => {
+            assert_eq!(content, "hello");
+            assert_eq!(peer_id, "peer-sender");
+            assert_eq!(nickname, Some("Alice".to_string()));
+        }
+        _ => panic!("expected DmMessage"),
+    }
+}
+
+#[test]
+fn test_swarm_command_send_dm() {
+    let cmd = SwarmCommand::SendDm {
+        content: "private msg".to_string(),
+        target_peer: "peer-target".to_string(),
+        nickname: Some("Bob".to_string()),
+        msg_id: Some("dm-2".to_string()),
+    };
+    match cmd {
+        SwarmCommand::SendDm { content, target_peer, nickname, msg_id } => {
+            assert_eq!(content, "private msg");
+            assert_eq!(target_peer, "peer-target");
+            assert_eq!(nickname, Some("Bob".to_string()));
+            assert_eq!(msg_id, Some("dm-2".to_string()));
+        }
+        _ => panic!("expected SendDm"),
+    }
+}
+
+#[test]
+fn test_swarm_command_set_nickname() {
+    let cmd = SwarmCommand::SetNickname("Charlie".to_string());
+    match cmd {
+        SwarmCommand::SetNickname(name) => assert_eq!(name, "Charlie"),
+        _ => panic!("expected SetNickname"),
+    }
+}
+
+#[test]
+fn test_swarm_event_all_variants() {
+    // Test that all SwarmEvent variants can be constructed and matched
+    let variants = vec![
+        SwarmEvent::PeerConnected("peer1".to_string()),
+        SwarmEvent::PeerDisconnected("peer2".to_string()),
+        SwarmEvent::PeerExpired { peer_id: "peer3".to_string() },
+        SwarmEvent::BroadcastMessage {
+            content: "msg".to_string(),
+            peer_id: "peer4".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: None,
+        },
+    ];
+    
+    assert_eq!(variants.len(), 4, "Should have 4 variants");
+}

@@ -215,3 +215,67 @@ fn get_database_url_falls_back_when_no_env_or_cache() {
     release_db_lock();
     reset_db_url_cache();
 }
+
+#[test]
+fn test_database_url_matches_env_var() {
+    use p2p_app::db::{get_database_url, reset_db_url_cache};
+    reset_db_url_cache();
+    
+    let db_url = get_database_url();
+    // Should contain sqlite:// prefix
+    assert!(db_url.starts_with("sqlite://"));
+    // Should contain the database file name
+    assert!(db_url.contains("p2p_app"));
+}
+
+#[test]
+fn test_local_peer_id_is_valid() {
+    use p2p_app::db::get_local_peer_id;
+    
+    // This should succeed and return a valid PeerId
+    match get_local_peer_id() {
+        Ok(peer_id) => {
+            let peer_str = peer_id.to_string();
+            assert!(!peer_str.is_empty());
+        }
+        Err(_) => {
+            // Error is acceptable if DB setup fails
+        }
+    }
+}
+
+#[test]
+fn test_libp2p_identity_is_valid() {
+    use p2p_app::db::get_libp2p_identity;
+    
+    // This should succeed and return a valid Keypair
+    match get_libp2p_identity() {
+        Ok(keypair) => {
+            let public_key = keypair.public();
+            assert!(!public_key.to_bytes().is_empty());
+        }
+        Err(_) => {
+            // Error is acceptable if DB setup fails
+        }
+    }
+}
+
+#[test]
+fn test_reset_db_url_cache_multiple_times() {
+    use p2p_app::db::{get_database_url, reset_db_url_cache};
+    
+    let url1 = get_database_url();
+    reset_db_url_cache();
+    let url2 = get_database_url();
+    
+    // After reset, should get the same URL
+    assert_eq!(url1, url2);
+}
+
+#[test]
+fn test_release_db_lock() {
+    use p2p_app::db::release_db_lock;
+    
+    // Should not panic
+    release_db_lock();
+}

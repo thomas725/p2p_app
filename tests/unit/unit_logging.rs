@@ -141,3 +141,43 @@ fn test_tracing_layer_keeps_max_capacity() {
     let logs = get_tui_logs();
     assert_eq!(logs.len(), MAX_TUI_LOGS);
 }
+
+#[test]
+fn test_tracing_filter_not_empty() {
+    use p2p_app::logging::tracing_filter;
+    
+    let filter = tracing_filter();
+    assert!(!filter.is_empty(), "Tracing filter should not be empty");
+}
+
+#[test]
+fn test_clear_tui_logs_idempotent() {
+    use p2p_app::logging::clear_tui_logs;
+    
+    // Calling clear multiple times should be safe
+    clear_tui_logs();
+    clear_tui_logs();
+    clear_tui_logs();
+    
+    // Should not panic
+}
+
+#[test]
+fn test_p2plog_debug_multiple_calls() {
+    use p2p_app::p2plog_debug;
+    
+    // Multiple calls should not panic
+    p2plog_debug!("test message 1");
+    p2plog_debug!("test message 2");
+    p2plog_debug!("test message with value: {}", 42);
+}
+
+#[test]
+fn test_p2plog_error_multiple_calls() {
+    use p2p_app::p2plog_error;
+    
+    // Multiple calls should not panic
+    p2plog_error!("error 1");
+    p2plog_error!("error 2");
+    p2plog_error!("error with value: {}", "test");
+}
