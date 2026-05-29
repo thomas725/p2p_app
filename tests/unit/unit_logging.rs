@@ -144,7 +144,7 @@ fn test_tracing_layer_keeps_max_capacity() {
 
 #[test]
 fn test_tracing_filter_not_empty() {
-    use p2p_app::logging::tracing_filter;
+    use crate::logging::tracing_filter;
     
     let filter = tracing_filter();
     assert!(!filter.is_empty(), "Tracing filter should not be empty");
@@ -152,7 +152,7 @@ fn test_tracing_filter_not_empty() {
 
 #[test]
 fn test_clear_tui_logs_idempotent() {
-    use p2p_app::logging::clear_tui_logs;
+    use crate::logging::clear_tui_logs;
     
     // Calling clear multiple times should be safe
     clear_tui_logs();
@@ -164,7 +164,7 @@ fn test_clear_tui_logs_idempotent() {
 
 #[test]
 fn test_p2plog_debug_multiple_calls() {
-    use p2p_app::p2plog_debug;
+    use crate::p2plog_debug;
     
     // Multiple calls should not panic
     p2plog_debug!("test message 1");
@@ -174,7 +174,7 @@ fn test_p2plog_debug_multiple_calls() {
 
 #[test]
 fn test_p2plog_error_multiple_calls() {
-    use p2p_app::p2plog_error;
+    use crate::p2plog_error;
     
     // Multiple calls should not panic
     p2plog_error!("error 1");

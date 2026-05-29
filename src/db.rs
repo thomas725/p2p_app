@@ -32,9 +32,8 @@ fn db_url_cache() -> &'static Mutex<Option<String>> {
     DB_URL.get_or_init(|| Mutex::new(None))
 }
 
-/// Reset the cached database URL. Useful for tests that need to switch databases.
-/// Reset the cached database URL for testing purposes.
-#[cfg(feature = "test-utils")]
+/// Test utility: Clears the cached database URL for test isolation.
+#[cfg(test)]
 pub fn reset_db_url_cache() {
     if let Ok(mut cached) = db_url_cache().lock() {
         *cached = None;
