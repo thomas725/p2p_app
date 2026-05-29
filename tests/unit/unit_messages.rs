@@ -156,7 +156,7 @@ fn load_direct_messages_filters_correctly() {
 
     let dms_with_x = load_direct_messages("peer-x", 100).expect("load dms");
     assert_eq!(dms_with_x.len(), 1, "Should load only DMs with peer-x");
-    assert_eq!(dms_with_x[0].payload, "dm1");
+    assert_eq!(dms_with_x[0].content, "dm1");
 }
 
 #[test]
