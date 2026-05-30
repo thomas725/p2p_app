@@ -43,7 +43,6 @@ pub mod peers;
 /// Swarm handler for managing P2P network events
 pub mod swarm_handler;
 pub mod tui_tabs;
-#[cfg(test)]
 pub mod tui_test_state;
 /// Core type definitions used throughout the application
 pub mod types;

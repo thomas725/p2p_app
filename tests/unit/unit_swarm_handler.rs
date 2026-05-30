@@ -36,28 +36,38 @@ fn test_build_broadcast_message_with_all_fields() {
 #[test]
 fn test_swarm_command_variants_all() {
     // Test all SwarmCommand variants are constructible
-    let _publish = SwarmCommand::Publish {
+    let publish = SwarmCommand::Publish {
         content: "msg".to_string(),
         nickname: None,
         msg_id: None,
     };
     
-    let _send_dm = SwarmCommand::SendDm {
+    // Verify Publish variant
+    match publish {
+        SwarmCommand::Publish { content, .. } => {
+            assert_eq!(content, "msg");
+        }
+        _ => panic!("expected Publish"),
+    }
+    
+    let send_dm = SwarmCommand::SendDm {
         peer_id: "peer".to_string(),
-        content: "msg".to_string(),
-        nickname: None,
-        msg_id: None,
-        ack_for: None,
+        content: "dm msg".to_string(),
+        nickname: Some("Alice".to_string()),
+        msg_id: Some("msg-1".to_string()),
+        ack_for: Some("prev-msg".to_string()),
     };
     
-    let _request_ack = SwarmCommand::RequestAck {
-        peer_id: "peer".to_string(),
-        msg_id: "msg-1".to_string(),
-    };
-    
-    let _send_ack = SwarmCommand::SendAck {
-        peer_id: "peer".to_string(),
-        msg_id: "msg-1".to_string(),
-    };
+    // Verify SendDm variant with all fields
+    match send_dm {
+        SwarmCommand::SendDm { peer_id, content, nickname, msg_id, ack_for } => {
+            assert_eq!(peer_id, "peer");
+            assert_eq!(content, "dm msg");
+            assert_eq!(nickname, Some("Alice".to_string()));
+            assert_eq!(msg_id, Some("msg-1".to_string()));
+            assert_eq!(ack_for, Some("prev-msg".to_string()));
+        }
+        _ => panic!("expected SendDm"),
+    }
 }
 
