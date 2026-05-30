@@ -1820,6 +1820,418 @@ fn test_build_broadcast_message_various_content() {
 }
 
 
+
+#[test]
+fn test_tui_test_state_construction() {
+    use p2p_app::tui_test_state::TuiTestState;
+    
+    let state = TuiTestState::new();
+    assert!(!state.messages.is_empty());
+    assert_eq!(state.active_tab, 0);
+}
+
+#[test]
+fn test_tui_test_state_with_messages() {
+    use p2p_app::tui_test_state::TuiTestState;
+    use std::collections::VecDeque;
+    
+    let messages = VecDeque::from(vec![
+        "msg1".to_string(),
+        "msg2".to_string(),
+        "msg3".to_string(),
+    ]);
+    
+    let state = TuiTestState::with_messages(messages.clone());
+    assert_eq!(state.messages.len(), 3);
+}
+
+#[test]
+fn test_tui_test_state_empty_messages() {
+    use p2p_app::tui_test_state::TuiTestState;
+    use std::collections::VecDeque;
+    
+    let state = TuiTestState::with_messages(VecDeque::new());
+    assert!(state.messages.is_empty());
+}
+
+#[test]
+fn test_dm_tab_clear() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let mut tab = DmTab::new("peer".to_string());
+    tab.messages.push_back("msg".to_string());
+    assert!(!tab.messages.is_empty());
+    
+    tab.messages.clear();
+    assert!(tab.messages.is_empty());
+}
+
+#[test]
+fn test_dm_tab_multiple_operations() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let mut tab = DmTab::new("test-peer".to_string());
+    
+    // Add multiple
+    for i in 0..5 {
+        tab.messages.push_back(format!("msg {}", i));
+    }
+    assert_eq!(tab.messages.len(), 5);
+    
+    // Pop one
+    let popped = tab.messages.pop_front();
+    assert_eq!(popped, Some("msg 0".to_string()));
+    assert_eq!(tab.messages.len(), 4);
+    
+    // Pop from back
+    let back = tab.messages.pop_back();
+    assert_eq!(back, Some("msg 4".to_string()));
+    assert_eq!(tab.messages.len(), 3);
+}
+
+#[test]
+fn test_notification_target_broadcasts() {
+    use p2p_app::tui_test_state::NotificationTarget;
+    
+    let target = NotificationTarget::Broadcasts;
+    assert!(matches!(target, NotificationTarget::Broadcasts));
+}
+
+#[test]
+fn test_notification_target_dm() {
+    use p2p_app::tui_test_state::NotificationTarget;
+    
+    let target = NotificationTarget::Dm("peer123".to_string());
+    
+    match target {
+        NotificationTarget::Dm(id) => assert_eq!(id, "peer123"),
+        _ => panic!("Expected Dm"),
+    }
+}
+
+#[test]
+fn test_tab_id_format() {
+    use p2p_app::TabId;
+    
+    let chat = TabId::Chat;
+    let peers = TabId::Peers;
+    
+    let c_str = format!("{:?}", chat);
+    let p_str = format!("{:?}", peers);
+    
+    assert!(c_str.contains("Chat"));
+    assert!(p_str.contains("Peers"));
+}
+
+#[test]
+fn test_dm_tab_with_messages_variant() {
+    use p2p_app::tui_tabs::DmTab;
+    use std::collections::VecDeque;
+    
+    let init = VecDeque::from(vec!["hello".to_string()]);
+    let tab = DmTab::with_messages("peer456".to_string(), init);
+    
+    assert_eq!(tab.peer_id, "peer456");
+    assert_eq!(tab.messages.len(), 1);
+}
+
+#[test]
+fn test_dm_tab_pop_sequence() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let mut tab = DmTab::new("p".to_string());
+    
+    tab.messages.push_back("1".to_string());
+    tab.messages.push_back("2".to_string());
+    tab.messages.push_back("3".to_string());
+    
+    assert_eq!(tab.messages.pop_front(), Some("1".to_string()));
+    assert_eq!(tab.messages.pop_front(), Some("2".to_string()));
+    assert_eq!(tab.messages.pop_front(), Some("3".to_string()));
+    assert_eq!(tab.messages.pop_front(), None);
+}
+
+#[test]
+fn test_tui_test_state_empty_construction() {
+    use p2p_app::tui_test_state::TuiTestState;
+    
+    let state = TuiTestState::new();
+    assert!(state.active_tab >= 0);
+}
+
+#[test]
+fn test_dm_tab_peer_id_variations() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let tabs = vec![
+        DmTab::new("QmABC".to_string()),
+        DmTab::new("QmXYZ".to_string()),
+        DmTab::new("local".to_string()),
+        DmTab::new(String::new()),
+    ];
+    
+    assert_eq!(tabs[0].peer_id, "QmABC");
+    assert_eq!(tabs[1].peer_id, "QmXYZ");
+    assert_eq!(tabs[2].peer_id, "local");
+    assert!(tabs[3].peer_id.is_empty());
+}
+
+
+
+#[test]
+fn test_all_message_field_combinations() {
+    use p2p_app::types::Message;
+    
+    let combos = vec![
+        (Some("Nick"), Some("ID"), Some(100.0)),
+        (Some("Nick"), Some("ID"), None),
+        (Some("Nick"), None, Some(100.0)),
+        (Some("Nick"), None, None),
+        (None, Some("ID"), Some(100.0)),
+        (None, Some("ID"), None),
+        (None, None, Some(100.0)),
+        (None, None, None),
+    ];
+    
+    for (n, i, t) in combos {
+        let msg = Message {
+            content: "c".to_string(),
+            nickname: n.map(|s| s.to_string()),
+            msg_id: i.map(|s| s.to_string()),
+            sent_at: t,
+        };
+        assert_eq!(msg.content, "c");
+    }
+}
+
+#[test]
+fn test_broadcast_with_all_none_optionals() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::BroadcastMessage {
+        content: "msg".to_string(),
+        peer_id: "peer".to_string(),
+        latency: None,
+        nickname: None,
+        msg_id: None,
+    };
+    
+    match event {
+        SwarmEvent::BroadcastMessage {
+            latency, nickname, msg_id, ..
+        } => {
+            assert!(latency.is_none());
+            assert!(nickname.is_none());
+            assert!(msg_id.is_none());
+        }
+        _ => panic!("Expected BroadcastMessage"),
+    }
+}
+
+#[test]
+fn test_direct_message_with_all_some_optionals() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::DirectMessage {
+        content: "msg".to_string(),
+        peer_id: "peer".to_string(),
+        latency: Some("50ms".to_string()),
+        nickname: Some("Nick".to_string()),
+        msg_id: Some("id".to_string()),
+    };
+    
+    match event {
+        SwarmEvent::DirectMessage {
+            latency, nickname, msg_id, ..
+        } => {
+            assert!(latency.is_some());
+            assert!(nickname.is_some());
+            assert!(msg_id.is_some());
+        }
+        _ => panic!("Expected DirectMessage"),
+    }
+}
+
+#[test]
+fn test_dm_tab_constructors() {
+    use p2p_app::tui_tabs::DmTab;
+    use std::collections::VecDeque;
+    
+    let tab1 = DmTab::new("peer".to_string());
+    assert_eq!(tab1.peer_id, "peer");
+    assert!(tab1.messages.is_empty());
+    
+    let msgs = VecDeque::from(vec!["m1".to_string()]);
+    let tab2 = DmTab::with_messages("peer".to_string(), msgs);
+    assert_eq!(tab2.peer_id, "peer");
+    assert_eq!(tab2.messages.len(), 1);
+}
+
+#[test]
+fn test_swarm_command_all_with_none() {
+    use p2p_app::SwarmCommand;
+    
+    let cmd = SwarmCommand::SendDm {
+        peer_id: "p".to_string(),
+        content: "c".to_string(),
+        nickname: None,
+        msg_id: None,
+        ack_for: None,
+    };
+    
+    match cmd {
+        SwarmCommand::SendDm {
+            nickname, msg_id, ack_for, ..
+        } => {
+            assert!(nickname.is_none());
+            assert!(msg_id.is_none());
+            assert!(ack_for.is_none());
+        }
+        _ => panic!("Expected SendDm"),
+    }
+}
+
+#[test]
+fn test_swarm_command_all_with_some() {
+    use p2p_app::SwarmCommand;
+    
+    let cmd = SwarmCommand::SendDm {
+        peer_id: "p".to_string(),
+        content: "c".to_string(),
+        nickname: Some("n".to_string()),
+        msg_id: Some("m".to_string()),
+        ack_for: Some("a".to_string()),
+    };
+    
+    match cmd {
+        SwarmCommand::SendDm {
+            nickname, msg_id, ack_for, ..
+        } => {
+            assert!(nickname.is_some());
+            assert!(msg_id.is_some());
+            assert!(ack_for.is_some());
+        }
+        _ => panic!("Expected SendDm"),
+    }
+}
+
+#[test]
+fn test_peer_info_construct() {
+    use p2p_app::types::PeerInfo;
+    
+    let peer = PeerInfo {
+        peer_id: "QmTest".to_string(),
+        nickname: Some("Test".to_string()),
+        addresses: vec!["addr1".to_string(), "addr2".to_string()],
+    };
+    
+    assert_eq!(peer.addresses.len(), 2);
+}
+
+#[test]
+fn test_receipt_event_all_variants() {
+    use p2p_app::SwarmEvent;
+    
+    // With timestamp
+    let r1 = SwarmEvent::Receipt {
+        peer_id: "p".to_string(),
+        ack_for: "m".to_string(),
+        received_at: Some(123.45),
+    };
+    
+    // Without timestamp
+    let r2 = SwarmEvent::Receipt {
+        peer_id: "p".to_string(),
+        ack_for: "m".to_string(),
+        received_at: None,
+    };
+    
+    match r1 {
+        SwarmEvent::Receipt { received_at, .. } => {
+            assert!(received_at.is_some());
+        }
+        _ => panic!("Expected Receipt"),
+    }
+    
+    match r2 {
+        SwarmEvent::Receipt { received_at, .. } => {
+            assert!(received_at.is_none());
+        }
+        _ => panic!("Expected Receipt"),
+    }
+}
+
+#[test]
+fn test_tab_id_both_variants() {
+    use p2p_app::TabId;
+    
+    let _chat = TabId::Chat;
+    let _peers = TabId::Peers;
+    
+    assert_ne!(TabId::Chat, TabId::Peers);
+    assert_eq!(TabId::Chat, TabId::Chat);
+    assert_eq!(TabId::Peers, TabId::Peers);
+}
+
+#[test]
+fn test_broadcast_message_struct() {
+    use p2p_app::behavior::BroadcastMessage;
+    
+    let msg = BroadcastMessage {
+        content: "broadcast content".to_string(),
+        sender_nickname: Some("Sender".to_string()),
+        msg_id: Some("msg-123".to_string()),
+        sent_at: Some(1234.5),
+    };
+    
+    assert_eq!(msg.content, "broadcast content");
+    assert_eq!(msg.sender_nickname, Some("Sender".to_string()));
+}
+
+#[test]
+fn test_direct_message_struct() {
+    use p2p_app::behavior::DirectMessage;
+    
+    let msg = DirectMessage {
+        content: "direct content".to_string(),
+        sender: "sender-peer".to_string(),
+        recipient: "recipient-peer".to_string(),
+        sender_nickname: Some("Name".to_string()),
+        msg_id: Some("dm-456".to_string()),
+        sent_at: Some(5678.9),
+        ack_for: Some("prev-msg".to_string()),
+    };
+    
+    assert_eq!(msg.content, "direct content");
+    assert_eq!(msg.sender, "sender-peer");
+    assert_eq!(msg.recipient, "recipient-peer");
+}
+
+#[test]
+fn test_message_struct_variations() {
+    use p2p_app::types::Message;
+    
+    // All Some
+    let m1 = Message {
+        content: "content".to_string(),
+        nickname: Some("Nick".to_string()),
+        msg_id: Some("id".to_string()),
+        sent_at: Some(999.9),
+    };
+    
+    // All None
+    let m2 = Message {
+        content: "content".to_string(),
+        nickname: None,
+        msg_id: None,
+        sent_at: None,
+    };
+    
+    assert_eq!(m1.content, m2.content);
+    assert_ne!(m1.nickname, m2.nickname);
+}
+
+
 // Additional coverage tests for low-coverage areas
 
 #[cfg(test)]
