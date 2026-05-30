@@ -61,7 +61,6 @@ impl DmTab {
     }
 
     /// Test utility: Create a DmTab with initial test messages.
-    #[cfg(test)]
     #[must_use]
     pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
         Self { peer_id, messages }

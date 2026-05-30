@@ -93,7 +93,6 @@ pub use swarm_handler::spawn_swarm_handler;
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(feature = "tui")]
 pub mod tui_helpers;
-#[cfg(test)]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
 #[cfg(feature = "tui")]
 pub mod tui_render;
