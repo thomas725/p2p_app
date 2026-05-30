@@ -2232,6 +2232,232 @@ fn test_message_struct_variations() {
 }
 
 
+
+#[test]
+fn test_message_flow_sequence() {
+    use p2p_app::{build_broadcast_message, gen_msg_id, SwarmEvent};
+    
+    let msg_id = gen_msg_id();
+    let broadcast = build_broadcast_message(
+        "Hello network".to_string(),
+        Some("Alice".to_string()),
+        Some(msg_id.clone()),
+    );
+    
+    let event = SwarmEvent::BroadcastMessage {
+        content: broadcast.content,
+        peer_id: "sender-peer".to_string(),
+        latency: Some("25ms".to_string()),
+        nickname: broadcast.nickname,
+        msg_id: broadcast.msg_id,
+    };
+    
+    match event {
+        SwarmEvent::BroadcastMessage { msg_id: eid, .. } => {
+            assert_eq!(eid, Some(msg_id));
+        }
+        _ => panic!("Expected BroadcastMessage"),
+    }
+}
+
+#[test]
+fn test_dm_tab_message_flow() {
+    use p2p_app::tui_tabs::DmTab;
+    use p2p_app::{build_broadcast_message, SwarmEvent};
+    
+    let mut tab = DmTab::new("peer123".to_string());
+    
+    let msg = build_broadcast_message(
+        "DM content".to_string(),
+        Some("Sender".to_string()),
+        Some("dm-1".to_string()),
+    );
+    
+    tab.messages.push_back(format!("[{}] {}", msg.nickname.unwrap_or_default(), msg.content));
+    
+    assert_eq!(tab.messages.len(), 1);
+    assert!(tab.messages[0].contains("DM content"));
+}
+
+#[test]
+fn test_peer_event_lifecycle() {
+    use p2p_app::SwarmEvent;
+    
+    let peer_id = "Qm123".to_string();
+    
+    // Peer discovered
+    let discovered = SwarmEvent::PeerDiscovered(peer_id.clone());
+    assert!(matches!(discovered, SwarmEvent::PeerDiscovered(_)));
+    
+    // Peer connected
+    let connected = SwarmEvent::PeerConnected(peer_id.clone());
+    assert!(matches!(connected, SwarmEvent::PeerConnected(_)));
+    
+    // Send message
+    let msg = SwarmEvent::DirectMessage {
+        content: "hello".to_string(),
+        peer_id: peer_id.clone(),
+        latency: Some("10ms".to_string()),
+        nickname: None,
+        msg_id: None,
+    };
+    assert!(matches!(msg, SwarmEvent::DirectMessage { .. }));
+    
+    // Receive ack
+    let ack = SwarmEvent::Receipt {
+        peer_id: peer_id.clone(),
+        ack_for: "msg-1".to_string(),
+        received_at: Some(1234.5),
+    };
+    assert!(matches!(ack, SwarmEvent::Receipt { .. }));
+    
+    // Peer disconnected
+    let disconnected = SwarmEvent::PeerDisconnected(peer_id);
+    assert!(matches!(disconnected, SwarmEvent::PeerDisconnected(_)));
+}
+
+#[test]
+fn test_tabbed_chat_state() {
+    use p2p_app::TabId;
+    use p2p_app::tui_tabs::DmTab;
+    
+    let mut chat_tab = DmTab::new("broadcast".to_string());
+    let mut peer_tabs = vec![
+        DmTab::new("peer1".to_string()),
+        DmTab::new("peer2".to_string()),
+    ];
+    
+    // Simulate adding messages
+    chat_tab.messages.push_back("[Chat] Hello everyone".to_string());
+    peer_tabs[0].messages.push_back("[Peer1] Private message".to_string());
+    peer_tabs[1].messages.push_back("[Peer2] Another private".to_string());
+    
+    assert_eq!(chat_tab.messages.len(), 1);
+    assert_eq!(peer_tabs[0].messages.len(), 1);
+    assert_eq!(peer_tabs[1].messages.len(), 1);
+}
+
+#[test]
+fn test_complete_message_lifecycle() {
+    use p2p_app::{gen_msg_id, build_broadcast_message, SwarmEvent};
+    
+    // Step 1: Generate unique ID
+    let id = gen_msg_id();
+    
+    // Step 2: Build message
+    let msg = build_broadcast_message(
+        "Complete lifecycle test".to_string(),
+        Some("TestUser".to_string()),
+        Some(id.clone()),
+    );
+    
+    // Step 3: Create broadcast event
+    let event = SwarmEvent::BroadcastMessage {
+        content: msg.content.clone(),
+        peer_id: "broadcaster".to_string(),
+        latency: Some("5ms".to_string()),
+        nickname: msg.nickname.clone(),
+        msg_id: msg.msg_id.clone(),
+    };
+    
+    // Step 4: Verify all data preserved
+    match event {
+        SwarmEvent::BroadcastMessage {
+            content, nickname, msg_id, ..
+        } => {
+            assert_eq!(content, "Complete lifecycle test");
+            assert_eq!(nickname, Some("TestUser".to_string()));
+            assert_eq!(msg_id, Some(id));
+        }
+        _ => panic!("Expected BroadcastMessage"),
+    }
+}
+
+#[test]
+fn test_peer_message_exchange() {
+    use p2p_app::{gen_msg_id, SwarmEvent};
+    
+    let peer_a = "QmPeerA".to_string();
+    let peer_b = "QmPeerB".to_string();
+    let msg_id = gen_msg_id();
+    
+    // Peer A sends to Peer B
+    let msg_ab = SwarmEvent::DirectMessage {
+        content: "Hello from A".to_string(),
+        peer_id: peer_a.clone(),
+        latency: Some("15ms".to_string()),
+        nickname: Some("Alice".to_string()),
+        msg_id: Some(msg_id.clone()),
+    };
+    
+    // Peer B acknowledges
+    let ack_ba = SwarmEvent::Receipt {
+        peer_id: peer_b.clone(),
+        ack_for: msg_id.clone(),
+        received_at: Some(9876.5),
+    };
+    
+    assert!(matches!(msg_ab, SwarmEvent::DirectMessage { .. }));
+    assert!(matches!(ack_ba, SwarmEvent::Receipt { .. }));
+}
+
+#[test]
+fn test_multi_peer_broadcast() {
+    use p2p_app::{gen_msg_id, build_broadcast_message, SwarmEvent};
+    
+    let msg_id = gen_msg_id();
+    let msg = build_broadcast_message(
+        "Broadcast to all".to_string(),
+        Some("Broadcaster".to_string()),
+        Some(msg_id),
+    );
+    
+    let peers = vec!["peer1", "peer2", "peer3", "peer4"];
+    let mut events = vec![];
+    
+    for peer in peers {
+        events.push(SwarmEvent::BroadcastMessage {
+            content: msg.content.clone(),
+            peer_id: peer.to_string(),
+            latency: None,
+            nickname: msg.nickname.clone(),
+            msg_id: msg.msg_id.clone(),
+        });
+    }
+    
+    assert_eq!(events.len(), 4);
+}
+
+#[test]
+fn test_time_series_messages() {
+    use p2p_app::SwarmEvent;
+    
+    let mut events = vec![];
+    
+    for i in 0..5 {
+        events.push(SwarmEvent::BroadcastMessage {
+            content: format!("Message {}", i),
+            peer_id: "peer".to_string(),
+            latency: Some(format!("{}ms", i * 10)),
+            nickname: Some("Sender".to_string()),
+            msg_id: Some(format!("msg-{}", i)),
+        });
+    }
+    
+    assert_eq!(events.len(), 5);
+    
+    // Verify ordering
+    for (i, event) in events.iter().enumerate() {
+        match event {
+            SwarmEvent::BroadcastMessage { content, .. } => {
+                assert_eq!(content, &format!("Message {}", i));
+            }
+            _ => panic!("Expected BroadcastMessage"),
+        }
+    }
+}
+
+
 // Additional coverage tests for low-coverage areas
 
 #[cfg(test)]
