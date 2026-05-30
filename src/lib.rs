@@ -54,7 +54,6 @@ pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
     build_behaviour,
 };
-#[cfg(test)]
 pub use db::reset_db_url_cache;
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,

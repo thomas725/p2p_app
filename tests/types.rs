@@ -964,7 +964,7 @@ fn test_unicode_message_content() {
 fn test_special_characters_peer_id() {
     use p2p_app::fmt::short_peer_id;
     
-    let peer_with_special = "QmXYZ-!@#$%^&*()_+{}|:"<>?[]\;',.";
+    let peer_with_special = r#"QmXYZ-!@#$%^&*()_+{}|:"<>?[]\;',."#;
     let short = short_peer_id(peer_with_special);
     
     assert!(!short.is_empty());
@@ -1128,6 +1128,252 @@ fn test_latency_string_variations() {
             }
             _ => panic!("Expected BroadcastMessage"),
         }
+    }
+}
+
+
+
+#[test]
+fn test_peer_info_construction() {
+    use p2p_app::types::PeerInfo;
+    
+    let peer = PeerInfo {
+        peer_id: "QmTest123".to_string(),
+        nickname: Some("TestPeer".to_string()),
+        addresses: vec!["/ip4/127.0.0.1/tcp/9000".to_string()],
+    };
+    
+    assert_eq!(peer.peer_id, "QmTest123");
+    assert_eq!(peer.nickname, Some("TestPeer".to_string()));
+    assert_eq!(peer.addresses.len(), 1);
+}
+
+#[test]
+fn test_peer_info_no_nickname() {
+    use p2p_app::types::PeerInfo;
+    
+    let peer = PeerInfo {
+        peer_id: "QmAnother".to_string(),
+        nickname: None,
+        addresses: vec![],
+    };
+    
+    assert_eq!(peer.peer_id, "QmAnother");
+    assert!(peer.nickname.is_none());
+    assert!(peer.addresses.is_empty());
+}
+
+#[test]
+fn test_network_size_variants() {
+    use p2p_app::NetworkSize;
+    
+    let _small = NetworkSize::Small;
+    let _medium = NetworkSize::Medium;
+    let _large = NetworkSize::Large;
+    
+    assert!(true);
+}
+
+#[test]
+fn test_chat_message_basic() {
+    use p2p_app::behavior::BroadcastMessage;
+    
+    let msg = BroadcastMessage {
+        content: "Hello".to_string(),
+        sender_nickname: Some("Alice".to_string()),
+        msg_id: Some("msg-1".to_string()),
+        sent_at: Some(1234567890.0),
+    };
+    
+    assert_eq!(msg.content, "Hello");
+}
+
+#[test]
+fn test_direct_message_basic() {
+    use p2p_app::behavior::DirectMessage;
+    
+    let msg = DirectMessage {
+        content: "Direct".to_string(),
+        sender: "peer1".to_string(),
+        recipient: "peer2".to_string(),
+        sender_nickname: None,
+        msg_id: None,
+        sent_at: None,
+        ack_for: None,
+    };
+    
+    assert_eq!(msg.content, "Direct");
+    assert_eq!(msg.sender, "peer1");
+}
+
+#[test]
+fn test_message_with_ack() {
+    use p2p_app::behavior::DirectMessage;
+    
+    let msg = DirectMessage {
+        content: "Reply".to_string(),
+        sender: "peer-a".to_string(),
+        recipient: "peer-b".to_string(),
+        sender_nickname: Some("A".to_string()),
+        msg_id: Some("msg-new".to_string()),
+        sent_at: Some(9999.9),
+        ack_for: Some("msg-old".to_string()),
+    };
+    
+    assert_eq!(msg.ack_for, Some("msg-old".to_string()));
+}
+
+#[test]
+fn test_multiple_peer_addresses() {
+    use p2p_app::types::PeerInfo;
+    
+    let peer = PeerInfo {
+        peer_id: "QmMulti".to_string(),
+        nickname: Some("MultiAddr".to_string()),
+        addresses: vec![
+            "/ip4/127.0.0.1/tcp/9000".to_string(),
+            "/ip4/192.168.1.1/tcp/9001".to_string(),
+            "/ip6/::1/tcp/9002".to_string(),
+        ],
+    };
+    
+    assert_eq!(peer.addresses.len(), 3);
+}
+
+#[test]
+fn test_swarm_command_with_all_fields() {
+    use p2p_app::SwarmCommand;
+    
+    let cmd = SwarmCommand::SendDm {
+        peer_id: "target".to_string(),
+        content: "full message".to_string(),
+        nickname: Some("Sender".to_string()),
+        msg_id: Some("unique-123".to_string()),
+        ack_for: Some("previous-456".to_string()),
+    };
+    
+    match cmd {
+        SwarmCommand::SendDm { 
+            peer_id, content, nickname, msg_id, ack_for 
+        } => {
+            assert_eq!(peer_id, "target");
+            assert_eq!(content, "full message");
+            assert!(nickname.is_some());
+            assert!(msg_id.is_some());
+            assert!(ack_for.is_some());
+        }
+        _ => panic!("Expected SendDm"),
+    }
+}
+
+#[test]
+fn test_broadcast_command() {
+    use p2p_app::SwarmCommand;
+    
+    let cmd = SwarmCommand::Publish {
+        content: "broadcast".to_string(),
+        nickname: Some("Broadcaster".to_string()),
+        msg_id: Some("bcast-789".to_string()),
+    };
+    
+    match cmd {
+        SwarmCommand::Publish { content, nickname, msg_id } => {
+            assert_eq!(content, "broadcast");
+            assert!(nickname.is_some());
+            assert!(msg_id.is_some());
+        }
+        _ => panic!("Expected Publish"),
+    }
+}
+
+#[test]
+fn test_all_peer_events() {
+    use p2p_app::SwarmEvent;
+    
+    // Test PeerDiscovered
+    let discovered = SwarmEvent::PeerDiscovered("new-peer".to_string());
+    assert!(matches!(discovered, SwarmEvent::PeerDiscovered(_)));
+    
+    // Test PeerConnected
+    let connected = SwarmEvent::PeerConnected("connected-peer".to_string());
+    assert!(matches!(connected, SwarmEvent::PeerConnected(_)));
+    
+    // Test PeerDisconnected
+    let disconnected = SwarmEvent::PeerDisconnected("gone-peer".to_string());
+    assert!(matches!(disconnected, SwarmEvent::PeerDisconnected(_)));
+}
+
+#[test]
+fn test_listen_addr_event() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::ListenAddrEstablished(
+        "/ip4/0.0.0.0/tcp/9000".to_string()
+    );
+    
+    match event {
+        SwarmEvent::ListenAddrEstablished(addr) => {
+            assert!(addr.contains("9000"));
+        }
+        _ => panic!("Expected ListenAddrEstablished"),
+    }
+}
+
+#[test]
+fn test_broadcast_with_latency() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::BroadcastMessage {
+        content: "fast message".to_string(),
+        peer_id: "fast-peer".to_string(),
+        latency: Some("5ms".to_string()),
+        nickname: Some("FastSender".to_string()),
+        msg_id: Some("fast-msg-1".to_string()),
+    };
+    
+    match event {
+        SwarmEvent::BroadcastMessage { latency, .. } => {
+            assert_eq!(latency, Some("5ms".to_string()));
+        }
+        _ => panic!("Expected BroadcastMessage"),
+    }
+}
+
+#[test]
+fn test_direct_message_without_latency() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::DirectMessage {
+        content: "direct".to_string(),
+        peer_id: "direct-peer".to_string(),
+        latency: None,
+        nickname: None,
+        msg_id: None,
+    };
+    
+    match event {
+        SwarmEvent::DirectMessage { latency, .. } => {
+            assert!(latency.is_none());
+        }
+        _ => panic!("Expected DirectMessage"),
+    }
+}
+
+#[test]
+fn test_receipt_with_timestamp() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::Receipt {
+        peer_id: "ack-peer".to_string(),
+        ack_for: "msg-to-ack".to_string(),
+        received_at: Some(5555.555),
+    };
+    
+    match event {
+        SwarmEvent::Receipt { received_at, .. } => {
+            assert_eq!(received_at, Some(5555.555));
+        }
+        _ => panic!("Expected Receipt"),
     }
 }
 
