@@ -1378,6 +1378,448 @@ fn test_receipt_with_timestamp() {
 }
 
 
+
+#[test]
+fn test_tab_id_debug_format() {
+    use p2p_app::TabId;
+    
+    let chat = TabId::Chat;
+    let peers = TabId::Peers;
+    
+    let chat_debug = format!("{:?}", chat);
+    let peers_debug = format!("{:?}", peers);
+    
+    assert!(chat_debug.contains("Chat"));
+    assert!(peers_debug.contains("Peers"));
+}
+
+#[test]
+fn test_swarm_command_debug_all_variants() {
+    use p2p_app::SwarmCommand;
+    
+    let pub_cmd = SwarmCommand::Publish {
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+    };
+    let pub_debug = format!("{:?}", pub_cmd);
+    assert!(pub_debug.contains("Publish"));
+    
+    let dm_cmd = SwarmCommand::SendDm {
+        peer_id: "p".to_string(),
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+        ack_for: None,
+    };
+    let dm_debug = format!("{:?}", dm_cmd);
+    assert!(dm_debug.contains("SendDm"));
+}
+
+#[test]
+fn test_swarm_event_debug_all_variants() {
+    use p2p_app::SwarmEvent;
+    
+    let variants = vec![
+        SwarmEvent::BroadcastMessage {
+            content: "bc".to_string(),
+            peer_id: "p".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: None,
+        },
+        SwarmEvent::DirectMessage {
+            content: "dm".to_string(),
+            peer_id: "p".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: None,
+        },
+        SwarmEvent::Receipt {
+            peer_id: "p".to_string(),
+            ack_for: "m".to_string(),
+            received_at: None,
+        },
+        SwarmEvent::PeerConnected("p".to_string()),
+        SwarmEvent::PeerDisconnected("p".to_string()),
+        SwarmEvent::PeerDiscovered("p".to_string()),
+        SwarmEvent::ListenAddrEstablished("/addr".to_string()),
+    ];
+    
+    for event in variants {
+        let debug_str = format!("{:?}", event);
+        assert!(!debug_str.is_empty());
+    }
+}
+
+#[test]
+fn test_message_option_field_none() {
+    use p2p_app::types::Message;
+    
+    let msg = Message {
+        content: "content".to_string(),
+        nickname: None,
+        msg_id: None,
+        sent_at: None,
+    };
+    
+    assert!(msg.nickname.is_none());
+    assert!(msg.msg_id.is_none());
+    assert!(msg.sent_at.is_none());
+}
+
+#[test]
+fn test_dm_tab_empty_peer_id() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let tab = DmTab::new(String::new());
+    assert!(tab.peer_id.is_empty());
+}
+
+#[test]
+fn test_timestamp_zero() {
+    use p2p_app::fmt::format_latency;
+    use std::time::SystemTime;
+    
+    let result = format_latency(Some(0.0), SystemTime::now());
+    assert!(!result.is_empty());
+}
+
+#[test]
+fn test_message_id_empty_string() {
+    use p2p_app::types::Message;
+    
+    let msg = Message {
+        content: "".to_string(),
+        nickname: None,
+        msg_id: Some(String::new()),
+        sent_at: None,
+    };
+    
+    assert_eq!(msg.msg_id, Some(String::new()));
+}
+
+#[test]
+fn test_broadcast_message_type() {
+    use p2p_app::behavior::BroadcastMessage;
+    
+    let msg = BroadcastMessage {
+        content: "test".to_string(),
+        sender_nickname: None,
+        msg_id: None,
+        sent_at: None,
+    };
+    
+    assert_eq!(msg.content, "test");
+    assert!(msg.sender_nickname.is_none());
+}
+
+#[test]
+fn test_direct_message_type() {
+    use p2p_app::behavior::DirectMessage;
+    
+    let msg = DirectMessage {
+        content: "test".to_string(),
+        sender: "s".to_string(),
+        recipient: "r".to_string(),
+        sender_nickname: None,
+        msg_id: None,
+        sent_at: None,
+        ack_for: None,
+    };
+    
+    assert_eq!(msg.sender, "s");
+    assert_eq!(msg.recipient, "r");
+}
+
+#[test]
+fn test_peer_info_addresses_vec() {
+    use p2p_app::types::PeerInfo;
+    
+    let addrs = vec![
+        "addr1".to_string(),
+        "addr2".to_string(),
+        "addr3".to_string(),
+    ];
+    
+    let peer = PeerInfo {
+        peer_id: "p".to_string(),
+        nickname: None,
+        addresses: addrs.clone(),
+    };
+    
+    assert_eq!(peer.addresses, addrs);
+}
+
+#[test]
+fn test_swarm_event_field_combinations() {
+    use p2p_app::SwarmEvent;
+    
+    // Test with Some values
+    let event = SwarmEvent::BroadcastMessage {
+        content: "c".to_string(),
+        peer_id: "p".to_string(),
+        latency: Some("10ms".to_string()),
+        nickname: Some("n".to_string()),
+        msg_id: Some("m".to_string()),
+    };
+    
+    match event {
+        SwarmEvent::BroadcastMessage { 
+            latency, nickname, msg_id, .. 
+        } => {
+            assert!(latency.is_some());
+            assert!(nickname.is_some());
+            assert!(msg_id.is_some());
+        }
+        _ => panic!("Expected BroadcastMessage"),
+    }
+}
+
+#[test]
+fn test_swarm_command_minimal_fields() {
+    use p2p_app::SwarmCommand;
+    
+    let publish = SwarmCommand::Publish {
+        content: "x".to_string(),
+        nickname: None,
+        msg_id: None,
+    };
+    
+    let dm = SwarmCommand::SendDm {
+        peer_id: "x".to_string(),
+        content: "x".to_string(),
+        nickname: None,
+        msg_id: None,
+        ack_for: None,
+    };
+    
+    match publish {
+        SwarmCommand::Publish { nickname, msg_id, .. } => {
+            assert!(nickname.is_none());
+            assert!(msg_id.is_none());
+        }
+        _ => panic!("Expected Publish"),
+    }
+    
+    match dm {
+        SwarmCommand::SendDm { nickname, msg_id, ack_for, .. } => {
+            assert!(nickname.is_none());
+            assert!(msg_id.is_none());
+            assert!(ack_for.is_none());
+        }
+        _ => panic!("Expected SendDm"),
+    }
+}
+
+
+
+#[test]
+fn test_short_peer_id_exact_length() {
+    use p2p_app::fmt::short_peer_id;
+    
+    let long_id = "abcdefghijklmnopqrstuvwxyz";
+    let short = short_peer_id(long_id);
+    assert_eq!(short.len(), 8);
+    assert_eq!(short, "stuvwxyz");
+}
+
+#[test]
+fn test_short_peer_id_shorter_input() {
+    use p2p_app::fmt::short_peer_id;
+    
+    let short_id = "abc";
+    let result = short_peer_id(short_id);
+    assert_eq!(result, "abc");
+}
+
+#[test]
+fn test_short_peer_id_exact_8() {
+    use p2p_app::fmt::short_peer_id;
+    
+    let id = "12345678";
+    let result = short_peer_id(id);
+    assert_eq!(result, "12345678");
+}
+
+#[test]
+fn test_short_peer_id_9_chars() {
+    use p2p_app::fmt::short_peer_id;
+    
+    let id = "123456789";
+    let result = short_peer_id(id);
+    assert_eq!(result, "23456789");
+}
+
+#[test]
+fn test_auto_scroll_offset_empty() {
+    use p2p_app::fmt::auto_scroll_offset;
+    
+    let messages: Vec<String> = vec![];
+    let offset = auto_scroll_offset(&messages, 10);
+    assert_eq!(offset, 0);
+}
+
+#[test]
+fn test_auto_scroll_offset_one_message() {
+    use p2p_app::fmt::auto_scroll_offset;
+    
+    let messages = vec!["single message".to_string()];
+    let offset = auto_scroll_offset(&messages, 80);
+    assert!(offset >= 0);
+}
+
+#[test]
+fn test_auto_scroll_offset_many_messages() {
+    use p2p_app::fmt::auto_scroll_offset;
+    
+    let messages: Vec<String> = (0..100)
+        .map(|i| format!("Message number {}", i))
+        .collect();
+    
+    let offset = auto_scroll_offset(&messages, 80);
+    assert!(offset >= 0);
+}
+
+#[test]
+fn test_peer_display_name_various() {
+    use p2p_app::fmt::peer_display_name;
+    
+    let names = vec!["Alice", "Bob", "Charlie", "👤"];
+    for name in names {
+        let result = peer_display_name(name);
+        assert!(!result.is_empty());
+    }
+}
+
+#[test]
+fn test_format_latency_sub_millisecond() {
+    use p2p_app::fmt::format_latency;
+    use std::time::SystemTime;
+    
+    let very_small = 0.0001; // 0.1 microseconds
+    let result = format_latency(Some(very_small), SystemTime::now());
+    assert_eq!(result, "<1ms");
+}
+
+#[test]
+fn test_format_latency_milliseconds() {
+    use p2p_app::fmt::format_latency;
+    use std::time::SystemTime;
+    
+    let ms = 0.5; // 500ms
+    let result = format_latency(Some(ms), SystemTime::now());
+    assert!(result.contains("ms"));
+}
+
+#[test]
+fn test_format_latency_seconds() {
+    use p2p_app::fmt::format_latency;
+    use std::time::SystemTime;
+    
+    let secs = 5.0;
+    let result = format_latency(Some(secs), SystemTime::now());
+    assert!(result.contains("s"));
+}
+
+#[test]
+fn test_format_latency_none_is_question() {
+    use p2p_app::fmt::format_latency;
+    use std::time::SystemTime;
+    
+    let result = format_latency(None, SystemTime::now());
+    assert_eq!(result, "?");
+}
+
+#[test]
+fn test_current_timestamp_is_positive() {
+    use p2p_app::current_timestamp;
+    
+    let ts = current_timestamp();
+    assert!(ts > 0.0);
+    assert!(ts.is_finite());
+}
+
+#[test]
+fn test_current_timestamp_reasonable_value() {
+    use p2p_app::current_timestamp;
+    
+    let ts = current_timestamp();
+    // Should be after year 2020 (1577836800 seconds)
+    assert!(ts > 1577836800.0);
+    // Should be before year 2030 (1893456000 seconds)
+    assert!(ts < 1893456000.0);
+}
+
+#[test]
+fn test_now_timestamp_contains_date() {
+    use p2p_app::now_timestamp;
+    
+    let ts = now_timestamp();
+    // Should contain date separators
+    assert!(ts.contains('-') || ts.contains('/'));
+}
+
+#[test]
+fn test_gen_msg_id_not_empty() {
+    use p2p_app::gen_msg_id;
+    
+    let id = gen_msg_id();
+    assert!(!id.is_empty());
+}
+
+#[test]
+fn test_gen_msg_id_multiple_unique() {
+    use p2p_app::gen_msg_id;
+    use std::collections::HashSet;
+    
+    let ids: Vec<_> = (0..50).map(|_| gen_msg_id()).collect();
+    let unique: HashSet<_> = ids.into_iter().collect();
+    assert_eq!(unique.len(), 50);
+}
+
+#[test]
+fn test_format_system_time_not_empty() {
+    use p2p_app::fmt::format_system_time;
+    use std::time::SystemTime;
+    
+    let time = SystemTime::now();
+    let formatted = format_system_time(time);
+    assert!(!formatted.is_empty());
+}
+
+#[test]
+fn test_build_broadcast_message_has_timestamp() {
+    use p2p_app::build_broadcast_message;
+    
+    let msg = build_broadcast_message(
+        "test".to_string(),
+        None,
+        None,
+    );
+    
+    assert!(msg.sent_at.is_some());
+}
+
+#[test]
+fn test_build_broadcast_message_various_content() {
+    use p2p_app::build_broadcast_message;
+    
+    let messages = vec![
+        ("short".to_string(), Some("A".to_string()), Some("1".to_string())),
+        ("very long message content here".to_string(), Some("B".to_string()), Some("2".to_string())),
+        (String::new(), None, None),
+    ];
+    
+    for (content, nick, id) in messages {
+        let msg = build_broadcast_message(content.clone(), nick.clone(), id.clone());
+        assert_eq!(msg.content, content);
+        assert_eq!(msg.nickname, nick);
+        assert_eq!(msg.msg_id, id);
+    }
+}
+
+
 // Additional coverage tests for low-coverage areas
 
 #[cfg(test)]
