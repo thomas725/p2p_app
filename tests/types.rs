@@ -394,6 +394,393 @@ fn test_multiple_swarm_commands() {
 }
 
 
+
+#[test]
+fn test_format_functions_comprehensive() {
+    use p2p_app::fmt::{format_latency, short_peer_id, auto_scroll_offset};
+    use std::time::SystemTime;
+    
+    // Test format_latency with various inputs
+    let now = SystemTime::now();
+    
+    let latency_none = format_latency(None, now);
+    assert_eq!(latency_none, "?");
+    
+    let latency_zero = format_latency(Some(now.elapsed().unwrap_or_default().as_secs_f64()), now);
+    assert!(!latency_zero.is_empty());
+    
+    // Test short_peer_id
+    let full_id = "QmYxQ3XjPvGrGtWjRiYdNq2L9R8pZ1e9Xd8Qk2B3C4D5E6F";
+    let short = short_peer_id(full_id);
+    assert_eq!(short, "k2B3C4D5");
+    
+    let short_input = "abc";
+    let short_result = short_peer_id(short_input);
+    assert_eq!(short_result, "abc");
+    
+    // Test auto_scroll_offset
+    let empty_messages = Vec::<String>::new();
+    let offset_empty = auto_scroll_offset(&empty_messages, 10);
+    assert_eq!(offset_empty, 0);
+    
+    let messages = vec!["msg1".to_string(), "msg2".to_string()];
+    let offset = auto_scroll_offset(&messages, 80);
+    assert!(offset >= 0);
+}
+
+#[test]
+fn test_peer_display_name() {
+    use p2p_app::fmt::peer_display_name;
+    
+    let with_nickname = "Alice";
+    let display = peer_display_name(with_nickname);
+    assert_eq!(display, "Alice");
+    
+    let empty = "";
+    let empty_display = peer_display_name(empty);
+    assert!(!empty_display.is_empty());
+}
+
+#[test]
+fn test_message_construction_variations() {
+    use p2p_app::types::Message;
+    
+    // Full message
+    let full = Message {
+        content: "full".to_string(),
+        nickname: Some("Alice".to_string()),
+        msg_id: Some("1".to_string()),
+        sent_at: Some(1234567890.0),
+    };
+    assert_eq!(full.content, "full");
+    
+    // Minimal message
+    let minimal = Message {
+        content: "min".to_string(),
+        nickname: None,
+        msg_id: None,
+        sent_at: None,
+    };
+    assert_eq!(minimal.content, "min");
+}
+
+#[test]
+fn test_swarm_event_peer_lifecycle() {
+    use p2p_app::SwarmEvent;
+    
+    // Peer appears
+    let connected = SwarmEvent::PeerConnected("peer1".to_string());
+    match connected {
+        SwarmEvent::PeerConnected(id) => assert_eq!(id, "peer1"),
+        _ => panic!("Expected PeerConnected"),
+    }
+    
+    // Peer disappears
+    let disconnected = SwarmEvent::PeerDisconnected("peer1".to_string());
+    match disconnected {
+        SwarmEvent::PeerDisconnected(id) => assert_eq!(id, "peer1"),
+        _ => panic!("Expected PeerDisconnected"),
+    }
+}
+
+#[test]
+fn test_listen_address_established() {
+    use p2p_app::SwarmEvent;
+    
+    let addr = SwarmEvent::ListenAddrEstablished("/ip4/127.0.0.1/tcp/9000".to_string());
+    match addr {
+        SwarmEvent::ListenAddrEstablished(a) => {
+            assert!(a.contains("127.0.0.1"));
+            assert!(a.contains("9000"));
+        }
+        _ => panic!("Expected ListenAddrEstablished"),
+    }
+}
+
+#[test]
+fn test_dm_tab_operations() {
+    use p2p_app::tui_tabs::DmTab;
+    use std::collections::VecDeque;
+    
+    let mut tab = DmTab::new("peer123".to_string());
+    
+    // Initially empty
+    assert!(tab.messages.is_empty());
+    
+    // Add messages
+    tab.messages.push_back("msg1".to_string());
+    tab.messages.push_back("msg2".to_string());
+    assert_eq!(tab.messages.len(), 2);
+    
+    // Pop messages
+    let msg = tab.messages.pop_front();
+    assert_eq!(msg, Some("msg1".to_string()));
+    assert_eq!(tab.messages.len(), 1);
+    
+    // Clear messages
+    tab.messages.clear();
+    assert!(tab.messages.is_empty());
+}
+
+#[test]
+fn test_dm_tab_with_messages_constructor() {
+    use p2p_app::tui_tabs::DmTab;
+    use std::collections::VecDeque;
+    
+    let messages = VecDeque::from(vec![
+        "Hello".to_string(),
+        "World".to_string(),
+    ]);
+    
+    let tab = DmTab::with_messages("peer456".to_string(), messages.clone());
+    
+    assert_eq!(tab.peer_id, "peer456");
+    assert_eq!(tab.messages.len(), 2);
+    assert_eq!(tab.messages[0], "Hello");
+    assert_eq!(tab.messages[1], "World");
+}
+
+
+
+#[test]
+fn test_build_broadcast_message_comprehensive() {
+    use p2p_app::build_broadcast_message;
+    
+    // With all fields
+    let msg_full = build_broadcast_message(
+        "Hello world".to_string(),
+        Some("Alice".to_string()),
+        Some("msg-123".to_string()),
+    );
+    
+    assert_eq!(msg_full.content, "Hello world");
+    assert_eq!(msg_full.nickname, Some("Alice".to_string()));
+    assert_eq!(msg_full.msg_id, Some("msg-123".to_string()));
+    assert!(msg_full.sent_at.is_some());
+    
+    // With no nickname or ID
+    let msg_min = build_broadcast_message(
+        "Hi".to_string(),
+        None,
+        None,
+    );
+    
+    assert_eq!(msg_min.content, "Hi");
+    assert_eq!(msg_min.nickname, None);
+    assert_eq!(msg_min.msg_id, None);
+    
+    // With empty content
+    let msg_empty = build_broadcast_message(
+        String::new(),
+        Some("Bob".to_string()),
+        None,
+    );
+    
+    assert!(msg_empty.content.is_empty());
+    assert_eq!(msg_empty.nickname, Some("Bob".to_string()));
+}
+
+#[test]
+fn test_gen_msg_id_format() {
+    use p2p_app::gen_msg_id;
+    
+    let id1 = gen_msg_id();
+    let id2 = gen_msg_id();
+    
+    // Should be non-empty
+    assert!(!id1.is_empty());
+    assert!(!id2.is_empty());
+    
+    // Should be unique
+    assert_ne!(id1, id2);
+    
+    // Test multiple generations
+    let ids: Vec<_> = (0..10).map(|_| gen_msg_id()).collect();
+    
+    // All should be unique
+    let unique_count = ids.iter().collect::<std::collections::HashSet<_>>().len();
+    assert_eq!(unique_count, 10);
+}
+
+#[test]
+fn test_format_system_time_comprehensive() {
+    use p2p_app::fmt::format_system_time;
+    use std::time::{SystemTime, UNIX_EPOCH, Duration};
+    
+    // Current time
+    let now = SystemTime::now();
+    let formatted_now = format_system_time(now);
+    assert!(!formatted_now.is_empty());
+    
+    // A specific time
+    let specific_time = UNIX_EPOCH + Duration::from_secs(1234567890);
+    let formatted_specific = format_system_time(specific_time);
+    assert!(!formatted_specific.is_empty());
+    
+    // Very recent time
+    let recent = SystemTime::now();
+    let formatted_recent = format_system_time(recent);
+    assert!(!formatted_recent.is_empty());
+}
+
+#[test]
+fn test_current_timestamp_bounds() {
+    use p2p_app::current_timestamp;
+    
+    let ts = current_timestamp();
+    
+    // Should be positive
+    assert!(ts > 0.0);
+    
+    // Should be reasonable (not too far in future or past)
+    // Timestamp should be roughly current unix time (around 1.7 billion seconds for 2024)
+    assert!(ts > 1_500_000_000.0); // After year 2017
+    assert!(ts < 2_000_000_000.0); // Before year 2033
+}
+
+#[test]
+fn test_now_timestamp_format() {
+    use p2p_app::now_timestamp;
+    
+    let ts = now_timestamp();
+    
+    // Should be non-empty
+    assert!(!ts.is_empty());
+    
+    // Should contain date separators
+    assert!(ts.contains('-') || ts.contains('/'));
+}
+
+
+
+#[test]
+fn test_nickname_handling() {
+    use p2p_app::fmt::peer_display_name;
+    
+    // Test various display names
+    let names = vec![
+        "Alice",
+        "Bob",
+        "Charlie",
+        "Diana",
+    ];
+    
+    for name in names {
+        let display = peer_display_name(name);
+        assert!(!display.is_empty());
+    }
+}
+
+#[test]
+fn test_swarm_command_formatting() {
+    use p2p_app::SwarmCommand;
+    
+    let publish = SwarmCommand::Publish {
+        content: "test message".to_string(),
+        nickname: Some("TestUser".to_string()),
+        msg_id: Some("id-123".to_string()),
+    };
+    
+    let formatted = format!("{:?}", publish);
+    assert!(formatted.contains("Publish"));
+    assert!(formatted.contains("test message"));
+}
+
+#[test]
+fn test_swarm_event_formatting() {
+    use p2p_app::SwarmEvent;
+    
+    let event = SwarmEvent::BroadcastMessage {
+        content: "broadcast".to_string(),
+        peer_id: "peer-abc".to_string(),
+        latency: Some("50ms".to_string()),
+        nickname: Some("Sender".to_string()),
+        msg_id: Some("msg-xyz".to_string()),
+    };
+    
+    let formatted = format!("{:?}", event);
+    assert!(formatted.contains("BroadcastMessage"));
+    assert!(formatted.contains("broadcast"));
+}
+
+#[test]
+fn test_tab_id_all_variants() {
+    use p2p_app::TabId;
+    
+    let chat = TabId::Chat;
+    let peers = TabId::Peers;
+    
+    // Test equality
+    assert_eq!(TabId::Chat, TabId::Chat);
+    assert_eq!(TabId::Peers, TabId::Peers);
+    assert_ne!(chat, peers);
+    
+    // Test formatting
+    let chat_fmt = format!("{:?}", chat);
+    let peers_fmt = format!("{:?}", peers);
+    
+    assert!(chat_fmt.contains("Chat"));
+    assert!(peers_fmt.contains("Peers"));
+}
+
+#[test]
+fn test_dm_tab_peer_matching() {
+    use p2p_app::tui_tabs::DmTab;
+    
+    let peer_id1 = "QmXYZ123".to_string();
+    let peer_id2 = "QmABC456".to_string();
+    
+    let tab1 = DmTab::new(peer_id1.clone());
+    let tab2 = DmTab::new(peer_id2.clone());
+    
+    assert_eq!(tab1.peer_id, peer_id1);
+    assert_eq!(tab2.peer_id, peer_id2);
+    assert_ne!(tab1.peer_id, tab2.peer_id);
+}
+
+#[test]
+fn test_message_timestamp_presence() {
+    use p2p_app::types::Message;
+    
+    let with_time = Message {
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+        sent_at: Some(1234567890.5),
+    };
+    
+    let without_time = Message {
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+        sent_at: None,
+    };
+    
+    assert!(with_time.sent_at.is_some());
+    assert!(without_time.sent_at.is_none());
+}
+
+#[test]
+fn test_receipt_acknowledgment() {
+    use p2p_app::SwarmEvent;
+    
+    let receipt = SwarmEvent::Receipt {
+        peer_id: "peer-ack".to_string(),
+        ack_for: "original-msg".to_string(),
+        received_at: Some(9876543210.5),
+    };
+    
+    match receipt {
+        SwarmEvent::Receipt { peer_id, ack_for, received_at } => {
+            assert_eq!(peer_id, "peer-ack");
+            assert_eq!(ack_for, "original-msg");
+            assert!(received_at.is_some());
+        }
+        _ => panic!("Expected Receipt"),
+    }
+}
+
+
 // Additional coverage tests for low-coverage areas
 
 #[cfg(test)]
