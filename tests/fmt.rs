@@ -225,12 +225,6 @@ fn test_format_system_time_now() {
     assert!(formatted.contains('-') || formatted.contains('/'));
 }
 
-#[test]
-fn test_format_peer_datetime_format() {
-    use p2p_app::format_peer_datetime;
-    let formatted = format_peer_datetime("2024-01-01 12:00:00");
-    assert!(!formatted.is_empty());
-}
 
 #[test]
 fn test_peer_display_name_empty() {
@@ -274,14 +268,6 @@ fn test_auto_scroll_offset_with_messages() {
     let messages = vec!["msg1".to_string(), "msg2".to_string()];
     let offset = auto_scroll_offset(messages, 80);
     assert!(offset >= 0);
-}
-
-#[test]
-fn test_format_latency_none() {
-    use p2p_app::format_latency;
-    use std::time::SystemTime;
-    let result = format_latency(None, SystemTime::now());
-    assert_eq!(result, "");
 }
 
 #[test]

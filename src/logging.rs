@@ -90,6 +90,7 @@ impl Visit for FormatVisitor<'_> {
 /// Must be called once at application startup before any logging occurs.
 /// When the `tracing` feature is enabled, this sets up the tracing subscriber.
 #[cfg(feature = "tracing")]
+/// Init Logging.
 pub fn init_logging() {
     use tracing_subscriber::prelude::*;
 
@@ -110,6 +111,7 @@ pub fn init_logging() {
 }
 
 #[cfg(not(feature = "tracing"))]
+/// Init Logging.
 pub fn init_logging() {
     let _ = TUI_LOGS.get_or_init(|| Mutex::new(VecDeque::new()));
 }

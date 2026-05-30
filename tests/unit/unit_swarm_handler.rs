@@ -32,3 +32,32 @@ fn test_build_broadcast_message_with_all_fields() {
     assert_eq!(msg.nickname, Some("Tester".to_string()));
     assert_eq!(msg.msg_id, Some("msg-123".to_string()));
 }
+
+#[test]
+fn test_swarm_command_variants_all() {
+    // Test all SwarmCommand variants are constructible
+    let _publish = SwarmCommand::Publish {
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+    };
+    
+    let _send_dm = SwarmCommand::SendDm {
+        peer_id: "peer".to_string(),
+        content: "msg".to_string(),
+        nickname: None,
+        msg_id: None,
+        ack_for: None,
+    };
+    
+    let _request_ack = SwarmCommand::RequestAck {
+        peer_id: "peer".to_string(),
+        msg_id: "msg-1".to_string(),
+    };
+    
+    let _send_ack = SwarmCommand::SendAck {
+        peer_id: "peer".to_string(),
+        msg_id: "msg-1".to_string(),
+    };
+}
+
