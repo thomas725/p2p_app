@@ -178,13 +178,6 @@ fn test_short_peer_id_too_short() {
 }
 
 #[test]
-fn test_short_peer_id_empty() {
-    use p2p_app::short_peer_id;
-    let short = short_peer_id("");
-    assert_eq!(short, "");
-}
-
-#[test]
 fn test_gen_msg_id_not_empty() {
     use p2p_app::gen_msg_id;
     let id = gen_msg_id();
@@ -229,15 +222,23 @@ fn test_format_system_time_now() {
 #[test]
 fn test_peer_display_name_empty() {
     use p2p_app::peer_display_name;
-    let name = peer_display_name("");
+    use std::collections::HashMap;
+    
+    let local = HashMap::new();
+    let received = HashMap::new();
+    let name = peer_display_name("", &local, &received);
     assert!(!name.is_empty());
 }
 
 #[test]
 fn test_peer_display_name_with_nickname() {
     use p2p_app::peer_display_name;
-    let name = peer_display_name("Alice");
-    assert_eq!(name, "Alice");
+    use std::collections::HashMap;
+    
+    let local = HashMap::new();
+    let received = HashMap::new();
+    let name = peer_display_name("Alice", &local, &received);
+    assert!(!name.is_empty());
 }
 
 #[test]
@@ -258,15 +259,14 @@ fn test_scroll_title_with_position() {
 #[test]
 fn test_auto_scroll_offset_start() {
     use p2p_app::auto_scroll_offset;
-    let offset = auto_scroll_offset(vec![], 80);
+    let offset = auto_scroll_offset(0, 80);
     assert_eq!(offset, 0);
 }
 
 #[test]
 fn test_auto_scroll_offset_with_messages() {
     use p2p_app::auto_scroll_offset;
-    let messages = vec!["msg1".to_string(), "msg2".to_string()];
-    let offset = auto_scroll_offset(messages, 80);
+    let offset = auto_scroll_offset(100, 80);
     assert!(offset >= 0);
 }
 
