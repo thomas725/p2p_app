@@ -218,3 +218,19 @@ fn test_organize_receipts_multiple_peers_same_msg() {
     assert_eq!(b.get("b-1").unwrap().len(), 2);
     assert!(d.is_empty());
 }
+
+#[test]
+fn test_recent_tui_logs_returns_last_100_in_order() {
+    let logs: Vec<String> = (0..120).map(|i| format!("log-{i}")).collect();
+    let recent = recent_tui_logs(&logs, 100);
+    assert_eq!(recent.len(), 100);
+    assert_eq!(recent.first().map(String::as_str), Some("log-20"));
+    assert_eq!(recent.last().map(String::as_str), Some("log-119"));
+}
+
+#[test]
+fn test_recent_tui_logs_handles_short_lists() {
+    let logs: Vec<String> = vec!["a".into(), "b".into()];
+    let recent = recent_tui_logs(&logs, 100);
+    assert_eq!(recent, logs);
+}

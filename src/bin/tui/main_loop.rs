@@ -93,6 +93,18 @@ pub fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmR
 #[derive(Debug, Clone, Copy)]
 pub struct RenderEvent;
 
+/// Returns the last `limit` logs in original order.
+pub fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
+    logs.iter()
+        .rev()
+        .take(limit)
+        .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect()
+}
+
 pub async fn run_new_tui(
     swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
     topic_str: String,
@@ -280,14 +292,7 @@ pub async fn run_new_tui(
     let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
 
     // Print cached logs to stdout after restoring the terminal.
-    for log in get_tui_logs()
-        .into_iter()
-        .rev()
-        .take(100)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-    {
+    for log in recent_tui_logs(&get_tui_logs(), 100) {
         println!("{log}");
     }
 

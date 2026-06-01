@@ -8,6 +8,7 @@ fn test_tui_render_state_default() {
     assert_eq!(state.tab_titles.len(), 3);
     assert!(state.messages.is_empty());
     assert!(state.peers.is_empty());
+    assert!(state.log_messages.is_empty());
 }
 
 #[test]
@@ -16,6 +17,8 @@ fn test_tui_render_state_new() {
     assert!(state.connected);
     assert!(!state.mouse_capture);
     assert!(state.popup.is_none());
+    assert!(state.log_auto_scroll);
+    assert_eq!(state.log_scroll_offset, 0);
 }
 
 #[test]
