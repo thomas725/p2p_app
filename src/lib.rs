@@ -44,6 +44,7 @@ pub mod peers;
 pub mod swarm_handler;
 pub mod tui_tabs;
 #[cfg(any(test, feature = "test-utils"))]
+#[path = "../tests/tui_test_state.rs"]
 pub mod tui_test_state;
 /// Core type definitions used throughout the application
 pub mod types;

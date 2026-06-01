@@ -32,13 +32,12 @@ fn db_url_cache() -> &'static Mutex<Option<String>> {
     DB_URL.get_or_init(|| Mutex::new(None))
 }
 
-/// Test utility: Clears the cached database URL for test isolation.
 #[cfg(any(test, feature = "test-utils"))]
-pub fn reset_db_url_cache() {
-    if let Ok(mut cached) = db_url_cache().lock() {
-        *cached = None;
-    }
-}
+#[path = "../tests/db_test_utils.rs"]
+mod test_utils;
+
+#[cfg(any(test, feature = "test-utils"))]
+pub use test_utils::reset_db_url_cache;
 
 /// Establish a connection to the `SQLite` database and run pending migrations.
 ///

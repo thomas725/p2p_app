@@ -164,16 +164,6 @@ pub fn get_tui_logs() -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// Test utility: Clears the TUI log storage for test isolation.
-#[cfg(any(test, feature = "test-utils"))]
-pub fn clear_tui_logs() {
-    if let Some(logs) = TUI_LOGS.get()
-        && let Ok(mut l) = logs.lock()
-    {
-        l.clear();
-    }
-}
-
 /// Push a log message to TUI storage and callback.
 pub fn push_log(message: impl Into<String>) {
     let msg = message.into();
@@ -242,24 +232,13 @@ pub fn strip_ansi_codes(s: &str) -> String {
     result
 }
 
-/// Build a tracing `Targets` filter that denies noisy internal modules
-/// and keeps useful networking events at DEBUG level.
+
 #[cfg(any(test, feature = "test-utils"))]
-#[must_use]
-pub fn tracing_filter() -> tracing_subscriber::filter::Targets {
-    use tracing_subscriber::filter::{LevelFilter, Targets};
-    Targets::new()
-        .with_target("multistream_select", LevelFilter::OFF)
-        .with_target("yamux::connection", LevelFilter::OFF)
-        .with_target("libp2p_core::transport::choice", LevelFilter::OFF)
-        .with_target("libp2p_mdns::behaviour::iface", LevelFilter::OFF)
-        .with_target("libp2p_gossipsub::behaviour", LevelFilter::OFF)
-        .with_target("libp2p_swarm", LevelFilter::DEBUG)
-        .with_target("libp2p_tcp", LevelFilter::DEBUG)
-        .with_target("libp2p_quic::transport", LevelFilter::DEBUG)
-        .with_target("libp2p_mdns::behaviour", LevelFilter::DEBUG)
-        .with_default(LevelFilter::WARN)
-}
+#[path = "../tests/logging_test_utils.rs"]
+mod test_utils;
+
+#[cfg(any(test, feature = "test-utils"))]
+pub use test_utils::{clear_tui_logs, tracing_filter};
 
 #[cfg(test)]
 #[path = "../tests/unit/unit_logging.rs"]
