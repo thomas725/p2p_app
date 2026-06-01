@@ -85,6 +85,7 @@ mod tui {
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
+    p2p_app::logging::set_tui_callback(|_| p2p_app::logging::request_tui_redraw());
 
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;

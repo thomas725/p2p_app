@@ -71,7 +71,7 @@ pub use logging::tracing_filter;
 pub use logging::clear_tui_logs;
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
-    set_tui_callback, strip_ansi_codes,
+    request_tui_redraw, set_tui_callback, set_tui_redraw_hook, strip_ansi_codes,
 };
 pub use messages::{
     MessageMeta, get_unsent_direct_messages, get_unsent_messages, load_direct_messages,

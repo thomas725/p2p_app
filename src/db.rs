@@ -104,9 +104,9 @@ pub fn init_database() -> color_eyre::Result<SqliteConnection> {
     }
     #[cfg(not(feature = "tracing"))]
     {
-        eprintln!("[Startup] Database: {}", db_path);
+        crate::logging::p2plog_info(format!("[Startup] Database: {}", db_path));
         if let Ok(id) = get_local_peer_id() {
-            eprintln!("[Startup] Local peer ID: {}", id);
+            crate::logging::p2plog_info(format!("[Startup] Local peer ID: {}", id));
         }
     }
 
@@ -344,7 +344,7 @@ pub fn release_db_lock() {
     if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
         let lock_path = format!("{db_path}.lock");
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
-            eprintln!("[DB] released lock on exit: {lock_path}");
+            crate::logging::p2plog_debug(format!("[DB] released lock on exit: {lock_path}"));
         }
     }
 }

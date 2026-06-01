@@ -17,6 +17,9 @@ const MAX_TUI_LOGS: usize = 1000;
 /// Global TUI callback for forwarding logs to UI
 static TUI_CALLBACK: OnceLock<Arc<dyn Fn(String) + Send + Sync>> = OnceLock::new();
 
+/// Optional hook that requests a TUI redraw when new logs arrive.
+static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>> = OnceLock::new();
+
 /// In-memory log storage for TUI access
 static TUI_LOGS: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
 
@@ -122,6 +125,29 @@ where
     F: Fn(String) + Send + Sync + 'static,
 {
     let _ = TUI_CALLBACK.set(Arc::new(callback));
+}
+
+/// Set or replace the redraw hook used by the TUI log callback.
+pub fn set_tui_redraw_hook<F>(hook: F)
+where
+    F: Fn() + Send + Sync + 'static,
+{
+    let hook_cell = TUI_REDRAW_HOOK.get_or_init(|| Mutex::new(None));
+    if let Ok(mut guard) = hook_cell.lock() {
+        *guard = Some(Arc::new(hook));
+    }
+}
+
+/// Request a TUI redraw if a redraw hook has been installed.
+pub fn request_tui_redraw() {
+    let Some(hook_cell) = TUI_REDRAW_HOOK.get() else {
+        return;
+    };
+    if let Ok(guard) = hook_cell.lock()
+        && let Some(hook) = guard.as_ref()
+    {
+        hook();
+    }
 }
 
 /// Get all stored TUI log messages.
