@@ -123,7 +123,10 @@ fn save_message_reports_context_on_insert_failure() {
 fn get_unsent_messages_empty_topic() {
     let _db = setup_test_db();
     let unsent = get_unsent_messages("empty-topic").expect("get unsent");
-    assert!(unsent.is_empty(), "Should have no unsent messages for new topic");
+    assert!(
+        unsent.is_empty(),
+        "Should have no unsent messages for new topic"
+    );
 }
 
 #[test]
@@ -131,7 +134,10 @@ fn get_unsent_messages_empty_topic() {
 fn get_unsent_direct_messages_empty() {
     let _db = setup_test_db();
     let unsent = get_unsent_direct_messages("peer-nobody").expect("get unsent dm");
-    assert!(unsent.is_empty(), "Should have no unsent DMs for unknown peer");
+    assert!(
+        unsent.is_empty(),
+        "Should have no unsent DMs for unknown peer"
+    );
 }
 
 #[test]
@@ -140,19 +146,22 @@ fn mark_message_sent_nonexistent() {
     let _db = setup_test_db();
     // Marking a non-existent message as sent should succeed (no-op)
     let result = mark_message_sent(99999);
-    assert!(result.is_ok(), "Should handle non-existent message gracefully");
+    assert!(
+        result.is_ok(),
+        "Should handle non-existent message gracefully"
+    );
 }
 
 #[test]
 #[serial(db)]
 fn load_direct_messages_filters_correctly() {
     let _db = setup_test_db();
-    let _dm1 = save_message("dm1", Some("peer-x"), "topic-1", true, Some("peer-x"))
-        .expect("save dm1");
-    let _dm2 = save_message("dm2", Some("peer-y"), "topic-1", true, Some("peer-y"))
-        .expect("save dm2");
-    let _broadcast = save_message("bcast", Some("peer-x"), "topic-1", false, None)
-        .expect("save broadcast");
+    let _dm1 =
+        save_message("dm1", Some("peer-x"), "topic-1", true, Some("peer-x")).expect("save dm1");
+    let _dm2 =
+        save_message("dm2", Some("peer-y"), "topic-1", true, Some("peer-y")).expect("save dm2");
+    let _broadcast =
+        save_message("bcast", Some("peer-x"), "topic-1", false, None).expect("save broadcast");
 
     let dms_with_x = load_direct_messages("peer-x", 100).expect("load dms");
     assert_eq!(dms_with_x.len(), 1, "Should load only DMs with peer-x");

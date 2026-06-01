@@ -41,7 +41,7 @@ fn test_swarm_command_variants_all() {
         nickname: None,
         msg_id: None,
     };
-    
+
     // Verify Publish variant
     match publish {
         SwarmCommand::Publish { content, .. } => {
@@ -49,7 +49,7 @@ fn test_swarm_command_variants_all() {
         }
         _ => panic!("expected Publish"),
     }
-    
+
     let send_dm = SwarmCommand::SendDm {
         peer_id: "peer".to_string(),
         content: "dm msg".to_string(),
@@ -57,10 +57,16 @@ fn test_swarm_command_variants_all() {
         msg_id: Some("msg-1".to_string()),
         ack_for: Some("prev-msg".to_string()),
     };
-    
+
     // Verify SendDm variant with all fields
     match send_dm {
-        SwarmCommand::SendDm { peer_id, content, nickname, msg_id, ack_for } => {
+        SwarmCommand::SendDm {
+            peer_id,
+            content,
+            nickname,
+            msg_id,
+            ack_for,
+        } => {
             assert_eq!(peer_id, "peer");
             assert_eq!(content, "dm msg");
             assert_eq!(nickname, Some("Alice".to_string()));
@@ -70,4 +76,3 @@ fn test_swarm_command_variants_all() {
         _ => panic!("expected SendDm"),
     }
 }
-
