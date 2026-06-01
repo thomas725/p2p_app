@@ -37,7 +37,7 @@ fn test_get_tui_logs_returns_vec() {
 #[test]
 fn test_push_log_appears_in_get_tui_logs() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     let unique = format!(
         "unique-marker-{}",
         std::time::SystemTime::now()
@@ -58,7 +58,7 @@ fn test_push_log_appears_in_get_tui_logs() {
 fn test_clear_tui_logs_empties_store() {
     p2p_app::logging::init_logging();
     p2p_app::logging::push_log("to-be-cleared");
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
         logs.is_empty(),
@@ -72,7 +72,7 @@ fn test_clear_tui_logs_empties_store() {
 #[test]
 fn test_p2plog_debug_contains_level() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     p2p_app::logging::p2plog_debug("debug-msg");
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
@@ -86,7 +86,7 @@ fn test_p2plog_debug_contains_level() {
 #[test]
 fn test_p2plog_info_contains_level() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     p2p_app::logging::p2plog_info("info-msg");
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
@@ -100,7 +100,7 @@ fn test_p2plog_info_contains_level() {
 #[test]
 fn test_p2plog_warn_contains_level() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     p2p_app::logging::p2plog_warn("warn-msg");
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
@@ -114,7 +114,7 @@ fn test_p2plog_warn_contains_level() {
 #[test]
 fn test_p2plog_error_contains_level() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     p2p_app::logging::p2plog_error("error-msg");
     let logs = p2p_app::logging::get_tui_logs();
     assert!(
@@ -165,7 +165,7 @@ fn test_tracing_warn_captured_in_logs() {
         .unwrap()
         .block_on(async {
             p2p_app::logging::init_logging();
-            p2p_app::logging::clear_tui_logs();
+            p2p_app::clear_tui_logs();
             tracing::warn!("tracing-warn-test-marker");
         });
     let logs = p2p_app::logging::get_tui_logs();
@@ -184,7 +184,7 @@ fn test_tracing_error_captured_in_logs() {
         .unwrap()
         .block_on(async {
             p2p_app::logging::init_logging();
-            p2p_app::logging::clear_tui_logs();
+            p2p_app::clear_tui_logs();
             tracing::error!("tracing-error-test-marker");
         });
     let logs = p2p_app::logging::get_tui_logs();
@@ -203,7 +203,7 @@ fn test_tracing_event_with_fields_captured() {
         .unwrap()
         .block_on(async {
             p2p_app::logging::init_logging();
-            p2p_app::logging::clear_tui_logs();
+            p2p_app::clear_tui_logs();
             tracing::warn!(user = "alice", count = 42u64, "field-test-marker");
         });
     let logs = p2p_app::logging::get_tui_logs();
@@ -218,7 +218,7 @@ fn test_tracing_event_with_fields_captured() {
 #[test]
 fn test_set_tui_callback_receives_push_log() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     // The callback is a OnceLock — we can only set it once per process,
     // so just verify push_log still flows through after init.
     p2p_app::logging::push_log("callback-flow-check");
@@ -270,7 +270,7 @@ fn test_strip_ansi_codes_nested() {
 #[test]
 fn test_p2plog_levels_all() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
 
     p2p_app::logging::p2plog_debug("debug message");
     p2p_app::logging::p2plog_info("info message");
@@ -286,7 +286,7 @@ fn test_p2plog_levels_all() {
 #[test]
 fn test_push_log_multiple() {
     p2p_app::logging::init_logging();
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
 
     p2p_app::logging::push_log("log1");
     p2p_app::logging::push_log("log2");
@@ -305,7 +305,7 @@ fn test_clear_tui_logs_clears_all() {
     let before = p2p_app::logging::get_tui_logs();
     assert!(!before.is_empty());
 
-    p2p_app::logging::clear_tui_logs();
+    p2p_app::clear_tui_logs();
     let after = p2p_app::logging::get_tui_logs();
     assert!(after.is_empty());
 }
