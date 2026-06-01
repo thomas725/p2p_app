@@ -90,10 +90,11 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         let escaped_table = entry.0.replace('"', "\\\"");
         let escaped_col = entry.1.replace('"', "\\\"");
         let escaped_type = entry.2.replace('"', "\\\"");
-        let suffix = if i + 1 == entries.len() { "\n" } else { ",\n" };
+        let comma = i + 1 != entries.len();
         let _ = writeln!(
             output,
-            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){suffix}"
+            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){}",
+            if comma { "," } else { "" }
         );
     }
     output.push_str("];\n");
