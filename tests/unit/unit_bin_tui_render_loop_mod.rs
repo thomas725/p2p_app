@@ -1,5 +1,6 @@
 use super::*;
 use crate::tui::state::AppState;
+use serial_test::serial;
 use std::collections::{HashMap, VecDeque};
 
 fn app_state() -> AppState {
@@ -162,4 +163,26 @@ fn test_app_state_to_render_state_broadcast_receipts() {
     let rs = app_state_to_render_state(&state);
     assert!(rs.broadcast_receipts.contains_key("msg-1"));
     assert_eq!(rs.dm_receipts.get("dm-1"), Some(&("p2".to_string(), 200.0)));
+}
+
+#[test]
+#[serial]
+fn test_app_state_to_render_state_log_messages() {
+    p2p_app::clear_tui_logs();
+    p2p_app::init_logging();
+    p2p_app::push_log("log line one");
+    p2p_app::push_log("log line two");
+
+    let state = app_state();
+    let rs = app_state_to_render_state(&state);
+    assert!(
+        rs.log_messages
+            .iter()
+            .any(|line| line.contains("log line one"))
+    );
+    assert!(
+        rs.log_messages
+            .iter()
+            .any(|line| line.contains("log line two"))
+    );
 }

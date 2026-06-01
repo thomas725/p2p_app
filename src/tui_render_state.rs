@@ -28,6 +28,8 @@ pub struct TuiRenderState {
     pub dm_receipts: HashMap<String, (String, f64)>,
     /// Current input text in message box
     pub input_text: String,
+    /// Logs shown in the debug tab
+    pub log_messages: VecDeque<String>,
     /// Whether we're editing a peer's nickname
     pub editing_nickname: bool,
     /// Peer ID being edited (if `editing_nickname` is true)
@@ -44,6 +46,10 @@ pub struct TuiRenderState {
     pub chat_scroll_offset: usize,
     /// Whether chat tab is auto-scrolling to bottom
     pub chat_auto_scroll: bool,
+    /// Scroll offset for the log tab
+    pub log_scroll_offset: usize,
+    /// Whether log tab is auto-scrolling to bottom
+    pub log_auto_scroll: bool,
     /// Scroll state per DM peer: (offset, `auto_scroll`)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Scroll state for DM+broadcast view per peer
@@ -75,6 +81,7 @@ impl TuiRenderState {
             dm_message_ids: BTreeMap::new(),
             dm_receipts: HashMap::new(),
             input_text: String::new(),
+            log_messages: VecDeque::new(),
             editing_nickname: false,
             nickname_peer_id: String::new(),
             connected: true,
@@ -83,6 +90,8 @@ impl TuiRenderState {
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
@@ -124,6 +133,7 @@ impl TuiRenderState {
             dm_message_ids,
             dm_receipts: HashMap::new(),
             input_text: String::new(),
+            log_messages: VecDeque::new(),
             editing_nickname: false,
             nickname_peer_id: String::new(),
             connected: true,
@@ -132,6 +142,8 @@ impl TuiRenderState {
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
+            log_scroll_offset: 0,
+            log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,

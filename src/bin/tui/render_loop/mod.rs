@@ -2,6 +2,7 @@ mod layout;
 
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
+use p2p_app::get_tui_logs;
 use p2p_app::tui_render;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
@@ -57,6 +58,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         dm_message_ids,
         dm_receipts: state.dm_receipts.clone(),
         input_text: state.chat_input.lines().join("\n"),
+        log_messages: get_tui_logs().into_iter().collect(),
         editing_nickname: state.editing_nickname,
         nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
         connected: true,
@@ -65,6 +67,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         popup: state.popup.clone(),
         chat_scroll_offset: state.chat_scroll_offset,
         chat_auto_scroll: state.chat_auto_scroll,
+        log_scroll_offset: state.log_scroll_offset,
+        log_auto_scroll: state.log_auto_scroll,
         dm_scroll_state,
         dm_broadcast_scroll_state,
         broadcast_selection: state.broadcast_selection,

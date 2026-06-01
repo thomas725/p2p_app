@@ -280,7 +280,14 @@ pub async fn run_new_tui(
     let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
 
     // Print cached logs to stdout after restoring the terminal.
-    for log in get_tui_logs() {
+    for log in get_tui_logs()
+        .into_iter()
+        .rev()
+        .take(100)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+    {
         println!("{log}");
     }
 
