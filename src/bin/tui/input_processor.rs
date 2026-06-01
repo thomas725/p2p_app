@@ -286,6 +286,7 @@ async fn process_mouse_event(
     }
 
     let mut s = state.lock().await;
+    let mut should_render = false;
 
     s.last_mouse_row = mouse_event.row;
 
@@ -305,30 +306,31 @@ async fn process_mouse_event(
 
     match mouse_event.kind {
         crossterm::event::MouseEventKind::ScrollUp if is_scrollable_tab => {
-            handle_mouse_scroll(&mut s, "up", peer_id);
+            should_render = handle_mouse_scroll(&mut s, "up", peer_id);
         }
         crossterm::event::MouseEventKind::ScrollDown if is_scrollable_tab => {
-            handle_mouse_scroll(&mut s, "down", peer_id);
+            should_render = handle_mouse_scroll(&mut s, "down", peer_id);
         }
         crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left) => {
             if dismiss_popup(&mut s) {
-                drop(s);
-                let _ = render_tx.send(RenderEvent).await;
-                return;
+                should_render = true;
+            } else {
+                should_render = handle_mouse_left_click(
+                    &mut s,
+                    mouse_event.row,
+                    mouse_event.column,
+                    is_peers_tab,
+                    is_dm_tab,
+                    peer_id,
+                );
             }
-            handle_mouse_left_click(
-                &mut s,
-                mouse_event.row,
-                mouse_event.column,
-                is_peers_tab,
-                is_dm_tab,
-                peer_id,
-            );
         }
         _ => {}
     }
     drop(s);
-    let _ = render_tx.send(RenderEvent).await;
+    if should_render {
+        let _ = render_tx.send(RenderEvent).await;
+    }
 }
 
 /// Main input event processor - routes keyboard and mouse events

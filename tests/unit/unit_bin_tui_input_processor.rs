@@ -1,6 +1,6 @@
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
-use crossterm::event::{MouseEvent, MouseEventKind};
+use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
@@ -119,6 +119,56 @@ async fn test_mouse_move_is_ignored() {
     assert!(!exited);
     assert!(render_rx.try_recv().is_err());
     assert_eq!(state.lock().await.last_mouse_row, 0);
+}
+
+#[tokio::test]
+async fn test_mouse_click_noop_does_not_redraw() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let mouse_event = MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 12,
+        row: 40,
+        modifiers: crossterm::event::KeyModifiers::NONE,
+    };
+
+    let exited = process_input_event(
+        InputEvent::Mouse(mouse_event),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    assert!(render_rx.try_recv().is_err());
+}
+
+#[tokio::test]
+async fn test_mouse_scroll_noop_does_not_redraw() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let mouse_event = MouseEvent {
+        kind: MouseEventKind::ScrollUp,
+        column: 12,
+        row: 7,
+        modifiers: crossterm::event::KeyModifiers::NONE,
+    };
+
+    let exited = process_input_event(
+        InputEvent::Mouse(mouse_event),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    assert!(render_rx.try_recv().is_err());
 }
 
 // ── dismiss_popup ─────────────────────────────────────────────────────
