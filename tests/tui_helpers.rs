@@ -89,13 +89,12 @@ fn test_truncate_message() {
 
 #[test]
 fn test_message_line_count() {
-    use p2p_app::tui_helpers::message_line_count;
+    use p2p_app::count_lines;
 
-    assert_eq!(message_line_count("short", 80), 1);
-    assert_eq!(message_line_count("line1\nline2", 80), 2);
-    // Test wrapping: 50 chars at width 20 = 3 lines
+    assert_eq!(count_lines("short", 80), 1);
+    assert_eq!(count_lines("line1\nline2", 80), 2);
     let long = "a".repeat(50);
-    assert_eq!(message_line_count(&long, 20), 3);
+    assert_eq!(count_lines(&long, 20), 3);
 }
 
 // Skip: conflicts with fmt::short_peer_id
@@ -482,36 +481,33 @@ fn test_truncate_message_long_gets_ellipsis() {
 
 #[test]
 fn test_message_line_count_zero_width_returns_one() {
-    use p2p_app::tui_helpers::message_line_count;
-    assert_eq!(message_line_count("hello", 0), 1);
+    use p2p_app::count_lines;
+    assert_eq!(count_lines("hello", 0), 1);
 }
 
 #[test]
 fn test_message_line_count_empty_string() {
-    use p2p_app::tui_helpers::message_line_count;
-    // Empty string has no lines(), returns max(0,1) = 1
-    assert_eq!(message_line_count("", 80), 1);
+    use p2p_app::count_lines;
+    assert_eq!(count_lines("", 80), 1);
 }
 
 #[test]
 fn test_message_line_count_single_short_line() {
-    use p2p_app::tui_helpers::message_line_count;
-    assert_eq!(message_line_count("hello", 80), 1);
+    use p2p_app::count_lines;
+    assert_eq!(count_lines("hello", 80), 1);
 }
 
 #[test]
 fn test_message_line_count_wraps_long_line() {
-    use p2p_app::tui_helpers::message_line_count;
-    // 100 chars in a 40-wide terminal → ceil(100/40) = 3 lines
+    use p2p_app::count_lines;
     let msg = "a".repeat(100);
-    assert_eq!(message_line_count(&msg, 40), 3);
+    assert_eq!(count_lines(&msg, 40), 3);
 }
 
 #[test]
 fn test_message_line_count_multiline_with_empty_line() {
-    use p2p_app::tui_helpers::message_line_count;
-    // "hello\n\nworld" → 3 lines (hello=1, empty=1, world=1)
-    assert_eq!(message_line_count("hello\n\nworld", 80), 3);
+    use p2p_app::count_lines;
+    assert_eq!(count_lines("hello\n\nworld", 80), 3);
 }
 
 // ── format_peer_list_item ─────────────────────────────────────────────────────
@@ -683,9 +679,8 @@ fn test_truncate_message_unicode() {
 
 #[test]
 fn test_message_line_count_all_newlines() {
-    use p2p_app::tui_helpers::message_line_count;
-    // A string of only newlines should count as multiple lines
-    let result = message_line_count("\n\n\n", 80);
+    use p2p_app::count_lines;
+    let result = count_lines("\n\n\n", 80);
     assert!(result >= 1, "should count at least one line, got {result}");
 }
 

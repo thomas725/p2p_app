@@ -4,6 +4,12 @@ use p2p_app::{SwarmCommand, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
+fn trim_history<T>(queue: &mut std::collections::VecDeque<T>, limit: usize) {
+    while queue.len() > limit {
+        queue.pop_front();
+    }
+}
+
 /// Pure: format and push an outgoing broadcast message to state, trimming history
 pub fn push_outgoing_broadcast_to_state(
     state: &mut AppState,
@@ -17,10 +23,8 @@ pub fn push_outgoing_broadcast_to_state(
     state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
     state.messages.push_back((msg, None));
     state.message_ids.push_back(Some(msg_id));
-    if state.messages.len() > MAX_MESSAGE_HISTORY {
-        state.messages.pop_front();
-        let _ = state.message_ids.pop_front();
-    }
+    trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
+    trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
 }
 
 /// Pure: format and push an outgoing DM to state, trimming history
@@ -42,11 +46,9 @@ pub fn push_outgoing_dm_to_state(
         .entry(peer_id.to_string())
         .or_default()
         .push_back(Some(msg_id));
-    if dm_msgs.len() > MAX_DM_HISTORY {
-        dm_msgs.pop_front();
-        if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
-            let _ = ids.pop_front();
-        }
+    trim_history(dm_msgs, MAX_DM_HISTORY);
+    if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
+        trim_history(ids, MAX_DM_HISTORY);
     }
 }
 

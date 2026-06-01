@@ -155,128 +155,91 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
     }
 }
 
-/// Handle mouse wheel for broadcast section of DM tab
-fn mouse_scroll_broadcast_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) -> bool {
-    let broadcast_messages: Vec<(String, Option<String>)> = state
-        .messages
-        .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
-        .cloned()
-        .collect();
-
-    if broadcast_messages.is_empty() {
-        return false;
+fn apply_mouse_scroll(
+    scroll_offset: &mut usize,
+    auto_scroll: bool,
+    scroll_dir: &str,
+    max_offset: usize,
+) -> Option<usize> {
+    if auto_scroll {
+        return None;
     }
-
-    if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        // If auto-scroll is enabled, do nothing (user is viewing latest messages)
-        if *auto_scroll {
-            return false;
-        }
-        let before = *scroll_offset;
-        let max_offset = broadcast_messages.len().saturating_sub(1);
-        match scroll_dir {
-            "up" => {
-                if *scroll_offset >= WHEEL_SCROLL_LINES {
-                    *scroll_offset -= WHEEL_SCROLL_LINES;
-                } else {
-                    *scroll_offset = 0;
-                }
-            }
-            "down" => {
-                *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-            }
-            _ => {}
-        }
-        return *scroll_offset != before;
+    let before = *scroll_offset;
+    match scroll_dir {
+        "up" => *scroll_offset = scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
+        "down" => *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset),
+        _ => {}
     }
-    false
-}
-
-/// Handle mouse wheel for DM section of DM tab
-fn mouse_scroll_dm_section(state: &mut AppState, scroll_dir: &str, peer_id: &str) -> bool {
-    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id)
-    {
-        // If auto-scroll is enabled, do nothing (user is viewing latest messages)
-        if *auto_scroll {
-            return false;
-        }
-        let before = *scroll_offset;
-        let max_offset = msgs.len().saturating_sub(1);
-        match scroll_dir {
-            "up" => {
-                if *scroll_offset >= WHEEL_SCROLL_LINES {
-                    *scroll_offset -= WHEEL_SCROLL_LINES;
-                } else {
-                    *scroll_offset = 0;
-                }
-            }
-            "down" => {
-                *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-            }
-            _ => {}
-        }
-        return *scroll_offset != before;
-    }
-    false
+    Some(before)
 }
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    if state.chat_auto_scroll {
-        return false;
-    }
-    let before = state.chat_scroll_offset;
     let max_offset = state
         .messages
         .len()
         .saturating_sub(state.visible_message_count);
-    state.chat_scroll_offset = p2p_app::tui_helpers::handle_mouse_wheel_scroll(
+    apply_mouse_scroll(
+        &mut state.chat_scroll_offset,
+        state.chat_auto_scroll,
         scroll_dir,
-        state.chat_scroll_offset,
         max_offset,
-    );
-    state.chat_scroll_offset != before
+    )
+    .map_or(false, |before| state.chat_scroll_offset != before)
 }
 
 /// Handle mouse wheel for Log tab
 fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    // If auto-scroll is enabled, do nothing (user is viewing latest logs)
-    if state.log_auto_scroll {
-        return false;
-    }
-    let before = state.log_scroll_offset;
     let max_offset = get_tui_logs().len().saturating_sub(state.visible_log_count);
-    match scroll_dir {
-        "up" => {
-            if state.log_scroll_offset >= WHEEL_SCROLL_LINES {
-                state.log_scroll_offset -= WHEEL_SCROLL_LINES;
-            } else {
-                state.log_scroll_offset = 0;
-            }
-        }
-        "down" => {
-            state.log_scroll_offset =
-                (state.log_scroll_offset + WHEEL_SCROLL_LINES).min(max_offset);
-        }
-        _ => {}
-    }
-    state.log_scroll_offset != before
+    apply_mouse_scroll(
+        &mut state.log_scroll_offset,
+        state.log_auto_scroll,
+        scroll_dir,
+        max_offset,
+    )
+    .map_or(false, |before| state.log_scroll_offset != before)
+}
+
+/// Handle mouse wheel for a DM section (broadcast or DM side)
+fn mouse_scroll_dm_section(
+    scroll_offset: &mut usize,
+    auto_scroll: bool,
+    len: usize,
+    scroll_dir: &str,
+) -> bool {
+    let max_offset = len.saturating_sub(1);
+    apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
+        .map_or(false, |before| *scroll_offset != before)
 }
 
 /// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs
-pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, _peer_id: Option<&str>) -> bool {
+pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Option<&str>) -> bool {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
 
     match &tab_content {
-        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+        p2p_app::tui_tabs::TabContent::Direct(pid) => {
             let mid_row = 2 + (state.chat_area_height / 2);
             let mouse_row = state.last_mouse_row as usize;
+            let pid = peer_id.unwrap_or(pid);
             if mouse_row < mid_row {
-                mouse_scroll_broadcast_section(state, scroll_dir, peer_id)
+                let msgs: Vec<_> = state
+                    .messages
+                    .iter()
+                    .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == pid))
+                    .collect();
+                if let Some((scroll_offset, auto_scroll)) =
+                    state.dm_broadcast_scroll_state.get_mut(pid)
+                {
+                    mouse_scroll_dm_section(scroll_offset, *auto_scroll, msgs.len(), scroll_dir)
+                } else {
+                    false
+                }
+            } else if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(pid)
+                && let Some(msgs) = state.dm_messages.get(pid)
+            {
+                mouse_scroll_dm_section(scroll_offset, *auto_scroll, msgs.len(), scroll_dir)
             } else {
-                mouse_scroll_dm_section(state, scroll_dir, peer_id)
+                false
             }
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),

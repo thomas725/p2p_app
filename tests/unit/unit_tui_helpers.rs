@@ -67,8 +67,8 @@ fn peer_item_and_lines_helpers() {
     let no_nick = format_peer_list_item("1234567890", None, "now");
     assert!(with_nick.contains("alice"));
     assert!(no_nick.starts_with("12345678"));
-    assert_eq!(message_line_count("x", 0), 1);
-    assert_eq!(message_line_count("abcdefghij", 5), 2);
+    assert_eq!(crate::count_lines("x", 0), 1);
+    assert_eq!(crate::count_lines("abcdefghij", 5), 2);
 }
 
 #[test]

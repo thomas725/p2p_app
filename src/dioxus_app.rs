@@ -249,7 +249,7 @@ fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEvent) {
             let mut s = state.write();
             s.concurrent_peers += 1;
             if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
-                && let Ok(peer) = crate::save_peer(&peer_id, std::slice::from_ref(&peer_id))
+                && let Ok(peer) = crate::save_peer(&peer_id, &[])
             {
                 let fs = crate::format_peer_datetime(peer.first_seen);
                 let ls = crate::format_peer_datetime(peer.last_seen);

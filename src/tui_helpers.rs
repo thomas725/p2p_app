@@ -83,15 +83,6 @@ pub fn truncate_message(msg: &str, max_len: usize) -> String {
     }
 }
 
-/// Calculate how many lines a message will occupy given terminal width
-#[must_use]
-pub fn message_line_count(message: &str, terminal_width: usize) -> usize {
-    if terminal_width == 0 {
-        return 1;
-    }
-    crate::count_lines(message, terminal_width)
-}
-
 /// Parse latency string to milliseconds
 #[must_use]
 pub fn parse_latency(latency: &str) -> Option<f64> {

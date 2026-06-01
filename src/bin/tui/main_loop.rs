@@ -95,14 +95,8 @@ pub struct RenderEvent;
 
 /// Returns the last `limit` logs in original order.
 pub fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
-    logs.iter()
-        .rev()
-        .take(limit)
-        .cloned()
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect()
+    let start = logs.len().saturating_sub(limit);
+    logs[start..].to_vec()
 }
 
 pub async fn run_new_tui(
