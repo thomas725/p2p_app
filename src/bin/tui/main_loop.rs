@@ -1,9 +1,9 @@
 use super::constants::CHANNEL_CAPACITY;
 use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
-use p2p_app::logging::get_tui_logs;
 use p2p_app::p2plog_debug;
 use p2p_app::peers::KnownPeer;
 use p2p_app::release_db_lock;
+use p2p_app::set_tui_callback;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -202,6 +202,10 @@ pub async fn run_new_tui(
     // Setup channels
     let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
     let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let render_tx_for_logs = render_tx.clone();
+    set_tui_callback(move |_| {
+        let _ = render_tx_for_logs.try_send(RenderEvent);
+    });
     let _ = render_tx.send(RenderEvent).await;
 
     // Spawn tasks
@@ -273,11 +277,6 @@ pub async fn run_new_tui(
     let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
     let _ = disable_raw_mode();
     let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
-
-    // Print cached logs to stdout
-    for log in get_tui_logs() {
-        println!("{log}");
-    }
 
     // Release database lock file
     release_db_lock();
