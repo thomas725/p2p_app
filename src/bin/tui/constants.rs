@@ -9,7 +9,7 @@ pub const MAX_MESSAGE_HISTORY: usize = 1000;
 /// Maximum direct messages to keep per peer conversation
 pub const MAX_DM_HISTORY: usize = 1000;
 
-/// Frame time in milliseconds for 60 FPS rendering
+/// Input poll interval in milliseconds
 pub const FRAME_TIME_MS: u64 = 16;
 
 /// Number of lines to scroll for mouse wheel

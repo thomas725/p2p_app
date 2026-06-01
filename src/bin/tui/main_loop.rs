@@ -81,7 +81,7 @@ pub fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmR
 /// - **`SwarmHandler`**: Translates libp2p events to `SwarmEvent`
 /// - **`EventSource`**: Polls terminal for keyboard/mouse input
 /// - **`CommandProcessor`**: Receives events, mutates shared `AppState`
-/// - **`RenderLoop`**: Renders `AppState` to terminal at ~60 FPS
+/// - **`RenderLoop`**: Renders `AppState` to terminal when requested
 ///
 /// All tasks communicate via bounded MPSC channels (capacity: 100 events).
 /// State is shared behind `Arc<Mutex<AppState>>` for safe concurrent access.
@@ -202,6 +202,7 @@ pub async fn run_new_tui(
     // Setup channels
     let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
     let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let _ = render_tx.send(RenderEvent).await;
 
     // Spawn tasks
     // SwarmHandler returns handle, event receiver, and command sender

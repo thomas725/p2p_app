@@ -44,7 +44,7 @@ pub struct AppState {
     pub chat_input: TextArea<'static>,
     pub peer_selection: usize, // For navigating peer list
     pub mouse_capture: bool,
-    pub last_mouse_row: u16, // For hover-based scroll targeting in split layouts
+    pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts
 
     // Scroll State (Chat tab)
     pub chat_scroll_offset: usize,

@@ -17,7 +17,7 @@ mod tui {
     //! 1. **`SwarmHandler`** - Listens to libp2p network events and translates them to app-level `SwarmEvent`
     //! 2. **`InputHandler`** - Polls terminal for keyboard/mouse input and sends `InputEvent`
     //! 3. **`CommandProcessor`** - Receives `InputEvent` and `SwarmEvent`, mutates `AppState`, sends `SwarmCommand`
-    //! 4. **`RenderLoop`** - Reads `AppState` and renders the TUI at ~60 FPS
+    //! 4. **`RenderLoop`** - Reads `AppState` and renders the TUI on demand
     //!
     //! ## Architecture
     //!
@@ -60,7 +60,7 @@ mod tui {
     //!
     //! - **`Arc<Mutex>` over `RwLock`**: Simplicity. Most operations read and modify multiple fields atomically.
     //! - **Polling input instead of event subscriptions**: Works on all platforms with crossterm.
-    //! - **60 FPS render loop**: UI responsiveness. Could optimize to event-driven in future.
+    //! - **Event-driven redraws**: UI updates only when input or network state changes.
     //! - **Immutable channel types**: Each task has dedicated input/output channels, no shared mutable channels.
 
     pub use p2p_app::tui_tabs::DynamicTabs;

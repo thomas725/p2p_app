@@ -1,6 +1,5 @@
 mod layout;
 
-use super::constants::FRAME_TIME_MS;
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
 use p2p_app::tui_render;
@@ -11,7 +10,6 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
 };
 use std::io::Stdout;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// Convert `AppState` to `TuiRenderState` for library rendering
@@ -146,30 +144,17 @@ fn render_popup(f: &mut Frame, text: String) {
     f.render_widget(p, popup);
 }
 
-/// Spawns the render loop task that continuously renders the TUI
+/// Spawns the render loop task that renders only when requested
 pub fn spawn_render_loop(
     state: SharedState,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,
     mut render_rx: mpsc::Receiver<RenderEvent>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_millis(FRAME_TIME_MS));
-
-        loop {
-            tokio::select! {
-                biased;
-                Some(_) = render_rx.recv() => {}
-                _ = interval.tick() => {}
-                else => break,
-            }
-
+        while render_rx.recv().await.is_some() {
+            let mut s = state.lock().await;
             let _ = terminal.draw(|f| {
-                if let Ok(mut s) = state.try_lock() {
-                    render_frame(f, &mut s);
-                } else {
-                    let para = ratatui::widgets::Paragraph::new("Failed to acquire state lock");
-                    f.render_widget(para, f.area());
-                }
+                render_frame(f, &mut s);
             });
         }
     })

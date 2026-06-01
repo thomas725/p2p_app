@@ -278,6 +278,13 @@ async fn process_mouse_event(
     state: &SharedState,
     render_tx: &mpsc::Sender<RenderEvent>,
 ) {
+    if matches!(
+        mouse_event.kind,
+        crossterm::event::MouseEventKind::Moved | crossterm::event::MouseEventKind::Drag(_)
+    ) {
+        return;
+    }
+
     let mut s = state.lock().await;
 
     s.last_mouse_row = mouse_event.row;
