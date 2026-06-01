@@ -68,7 +68,7 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
             if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
                 let lock_path = format!("{db_path}.lock");
                 let _ = std::fs::remove_file(&lock_path);
-                eprintln!("[DB] released lock on panic: {lock_path}");
+                crate::logging::p2plog_debug(format!("[DB] released lock on panic: {lock_path}"));
             }
         }));
     });
