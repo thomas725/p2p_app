@@ -33,7 +33,7 @@ fn db_url_cache() -> &'static Mutex<Option<String>> {
 }
 
 /// Test utility: Clears the cached database URL for test isolation.
-#[cfg(test)]
+#[cfg(any(test, feature = "test-utils"))]
 pub fn reset_db_url_cache() {
     if let Ok(mut cached) = db_url_cache().lock() {
         *cached = None;
