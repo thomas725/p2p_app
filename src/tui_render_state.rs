@@ -14,6 +14,8 @@ pub struct TuiRenderState {
     pub active_tab: usize,
     /// Broadcast messages in chat tab
     pub messages: VecDeque<String>,
+    /// Peer ID of each message sender (None = sent by local user)
+    pub message_peer_ids: VecDeque<Option<String>>,
     /// Message IDs for sent messages (None if from other peers)
     pub message_ids: VecDeque<Option<String>>,
     /// Receipt status for broadcast messages: `peer_id` -> (`msg_id` -> timestamp)
@@ -74,6 +76,7 @@ impl TuiRenderState {
             tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into()],
             active_tab: 0,
             messages: VecDeque::new(),
+            message_peer_ids: VecDeque::new(),
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
@@ -126,6 +129,7 @@ impl TuiRenderState {
             ],
             active_tab: 0,
             messages,
+            message_peer_ids: VecDeque::new(),
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers,
@@ -151,9 +155,10 @@ impl TuiRenderState {
         }
     }
 
-    /// Add a message to chat
+    /// Add a message to chat (peer_id of None means local user)
     pub fn add_message(&mut self, msg: impl Into<String>) {
         self.messages.push_back(msg.into());
+        self.message_peer_ids.push_back(None);
     }
 
     /// Add a peer

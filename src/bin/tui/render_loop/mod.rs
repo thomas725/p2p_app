@@ -47,6 +47,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         tab_titles,
         active_tab: state.active_tab,
         messages: state.messages.iter().map(|(m, _)| m.clone()).collect(),
+        message_peer_ids: state.messages.iter().map(|(_, p)| p.clone()).collect(),
         message_ids: state.message_ids.clone(),
         broadcast_receipts: state.broadcast_receipts.clone(),
         peers: state

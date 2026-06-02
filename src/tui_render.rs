@@ -128,7 +128,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .iter()
         .enumerate()
         .map(|(idx, (id, name, status))| {
-            let line = format!("{} ({}) - {}", name, short_id(id), status);
+            let line = format!("{} ({}) - {}", name, short_peer_id(id), status);
             if idx == state.peer_selection {
                 ListItem::new(line).style(Style::default().bg(Color::DarkGray))
             } else {
@@ -164,17 +164,14 @@ pub fn render_dm_content(
     let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
     let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
 
-    let short_id = if peer_id.len() <= 8 {
-        peer_id.to_string()
-    } else {
-        peer_id[peer_id.len() - 8..].to_string()
-    };
+    let short_id = short_peer_id(peer_id);
 
     let broadcast_messages: VecDeque<String> = state
         .messages
         .iter()
-        .filter(|msg| msg.starts_with(&format!("[{peer_id}]")))
-        .cloned()
+        .zip(state.message_peer_ids.iter())
+        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
+        .map(|(msg, _)| msg.clone())
         .collect();
 
     if broadcast_messages.is_empty() {
@@ -300,7 +297,7 @@ pub fn render_input_section(
     tab_content: &TabContent,
 ) {
     let title = if state.editing_nickname {
-        format!("Edit Nickname ({})", short_id(&state.nickname_peer_id))
+        format!("Edit Nickname ({})", short_peer_id(&state.nickname_peer_id))
     } else {
         "Input".to_string()
     };
@@ -358,9 +355,4 @@ pub fn render_popup(f: &mut ratatui::Frame, text: String) {
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: false });
     f.render_widget(p, popup);
-}
-
-/// Get short peer ID (last 8 chars) - uses shared implementation
-fn short_id(id: &str) -> String {
-    short_peer_id(id)
 }
