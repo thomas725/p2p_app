@@ -33,7 +33,7 @@ fn db_url_cache() -> &'static Mutex<Option<String>> {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-#[path = "../tests/db_test_utils.rs"]
+#[path = "../tests/shared/db_test_utils.rs"]
 mod test_utils;
 
 #[cfg(any(test, feature = "test-utils"))]

@@ -44,7 +44,7 @@ pub mod peers;
 pub mod swarm_handler;
 pub mod tui_tabs;
 #[cfg(any(test, feature = "test-utils"))]
-#[path = "../tests/tui_test_state.rs"]
+#[path = "../tests/shared/tui_test_state.rs"]
 pub mod tui_test_state;
 /// Core type definitions used throughout the application
 pub mod types;
@@ -90,7 +90,7 @@ pub use peers::{
     get_average_peer_count, get_recent_peer_count, load_known_peers, load_listen_ports, load_peers,
     save_listen_ports, save_peer, save_peer_session,
 };
-pub use swarm_handler::spawn_swarm_handler;
+pub use swarm_handler::{build_broadcast_message, spawn_swarm_handler};
 #[cfg(feature = "tui")]
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(feature = "tui")]

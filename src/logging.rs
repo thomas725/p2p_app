@@ -233,7 +233,7 @@ pub fn strip_ansi_codes(s: &str) -> String {
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-#[path = "../tests/logging_test_utils.rs"]
+#[path = "../tests/shared/logging_test_utils.rs"]
 mod test_utils;
 
 #[cfg(any(test, feature = "test-utils"))]

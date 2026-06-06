@@ -237,5 +237,5 @@ pub enum NotificationTarget {
 }
 
 #[cfg(test)]
-#[path = "unit/unit_tui_test_state.rs"]
+#[path = "../unit/unit_tui_test_state.rs"]
 mod tests;
