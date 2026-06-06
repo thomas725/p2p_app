@@ -98,8 +98,7 @@ impl TuiTestState {
                 .max(1);
             let msg_lines = manual_breaks + wrapped_lines;
 
-            if clicked_row_in_list >= current_row && clicked_row_in_list < current_row + msg_lines
-            {
+            if clicked_row_in_list >= current_row && clicked_row_in_list < current_row + msg_lines {
                 return self.chat_message_peers.get(msg_idx).cloned();
             }
 

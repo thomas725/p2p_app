@@ -1,7 +1,7 @@
 use super::*;
 use serial_test::serial;
-use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, Mutex, OnceLock};
 use tracing::Level;
 

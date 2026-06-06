@@ -218,12 +218,11 @@ fn test_format_system_time_now() {
     assert!(formatted.contains('-') || formatted.contains('/'));
 }
 
-
 #[test]
 fn test_peer_display_name_empty() {
     use p2p_app::peer_display_name;
     use std::collections::HashMap;
-    
+
     let local = HashMap::new();
     let received = HashMap::new();
     let name = peer_display_name("", &local, &received);
@@ -234,7 +233,7 @@ fn test_peer_display_name_empty() {
 fn test_peer_display_name_with_nickname() {
     use p2p_app::peer_display_name;
     use std::collections::HashMap;
-    
+
     let local = HashMap::new();
     let received = HashMap::new();
     let name = peer_display_name("Alice", &local, &received);

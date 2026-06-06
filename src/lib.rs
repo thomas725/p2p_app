@@ -67,9 +67,9 @@ pub use fmt::{
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]
-pub use logging::tracing_filter;
-#[cfg(any(test, feature = "test-utils"))]
 pub use logging::clear_tui_logs;
+#[cfg(any(test, feature = "test-utils"))]
+pub use logging::tracing_filter;
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
     request_tui_redraw, set_tui_callback, set_tui_redraw_hook, strip_ansi_codes,
