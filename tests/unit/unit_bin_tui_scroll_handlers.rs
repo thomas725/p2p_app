@@ -359,48 +359,31 @@ fn test_scroll_dm_section_noop_when_no_state() {
 // ── Mouse scroll DM helpers ──────────────────────────────────────────────
 
 #[test]
-fn test_mouse_scroll_broadcast_section_up() {
-    let mut state = state_with_broadcasts_from_peer("peer-b", 10);
-    state
-        .dm_broadcast_scroll_state
-        .insert("peer-b".to_string(), (5, false));
-    mouse_scroll_broadcast_section(&mut state, "up", "peer-b");
-    let (offset, _) = state.dm_broadcast_scroll_state.get("peer-b").unwrap();
-    assert_eq!(*offset, 2);
-}
-
-#[test]
-fn test_mouse_scroll_broadcast_section_auto_scroll_blocks() {
-    let mut state = state_with_broadcasts_from_peer("peer-b", 10);
-    state
-        .dm_broadcast_scroll_state
-        .insert("peer-b".to_string(), (0, true));
-    mouse_scroll_broadcast_section(&mut state, "up", "peer-b");
-    let (offset, _) = state.dm_broadcast_scroll_state.get("peer-b").unwrap();
-    assert_eq!(*offset, 0);
+fn test_mouse_scroll_dm_section_scrolls_up() {
+    let mut offset = 5usize;
+    mouse_scroll_dm_section(&mut offset, false, 100, "up");
+    assert_eq!(offset, 2);
 }
 
 #[test]
 fn test_mouse_scroll_dm_section_auto_scroll_blocks() {
-    let mut state = app_state_with_dm_messages("peer-dm", 10);
-    state
-        .dm_scroll_state
-        .insert("peer-dm".to_string(), (0, true));
-    mouse_scroll_dm_section(&mut state, "up", "peer-dm");
-    let (offset, _) = state.dm_scroll_state.get("peer-dm").unwrap();
-    assert_eq!(*offset, 0);
+    let mut offset = 5usize;
+    mouse_scroll_dm_section(&mut offset, true, 100, "up");
+    assert_eq!(offset, 5);
 }
 
 #[test]
-fn test_mouse_scroll_broadcast_section_noop_when_empty() {
-    let mut state = test_app_state();
-    mouse_scroll_broadcast_section(&mut state, "up", "peer-empty");
+fn test_mouse_scroll_dm_section_clamps_at_zero() {
+    let mut offset = 1usize;
+    mouse_scroll_dm_section(&mut offset, false, 100, "up");
+    assert_eq!(offset, 0);
 }
 
 #[test]
-fn test_mouse_scroll_dm_section_noop_when_no_state() {
-    let mut state = test_app_state();
-    mouse_scroll_dm_section(&mut state, "up", "peer-none");
+fn test_mouse_scroll_dm_section_empty_list() {
+    let mut offset = 0usize;
+    mouse_scroll_dm_section(&mut offset, false, 0, "up");
+    assert_eq!(offset, 0);
 }
 
 // ── handle_scroll_key dispatch ──────────────────────────────────────────
