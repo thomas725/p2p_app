@@ -1,0 +1,1789 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-06-07 19:05:40 UTC
+Commit: 559d24a6e2e8f985bdc52299ef8e6c5ffa5d0e22
+Branch: refs/heads/main
+Run ID: 27101816186
+
+============================================================
+Detailed Logs
+============================================================
+
+--- audit.log ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1121 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (832 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+
+[0m[0m[1m[33mCrate:    [0m diesel
+[0m[0m[1m[33mVersion:  [0m 2.3.9
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Possible use after free when deserializing a SQLite database via `SqliteConnection::deserialize_readonly_database`
+[0m[0m[1m[33mDate:     [0m 2026-06-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0172
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0172
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 15 allowed warnings found
+Exit code: 0
+
+--- build.log ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 45.05s
+Exit code: 0
+
+--- clippy.log ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[91merror[E0425][0m[1m: cannot find function `reset_db_url_cache` in module `p2p_app::db`[0m
+  [1m[94m--> [0mtests/test_utils.rs:44:22
+   [1m[94m|[0m
+[1m[94m44[0m [1m[94m|[0m         p2p_app::db::reset_db_url_cache();
+   [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+  [1m[94m::: [0msrc/db.rs:31:1
+   [1m[94m|[0m
+[1m[94m31[0m [1m[94m|[0m fn db_url_cache() -> &'static Mutex<Option<String>> {
+   [1m[94m|[0m [1m[94m---------------------------------------------------[0m [1m[94msimilarly named function `db_url_cache` defined here[0m
+   [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+  [1m[94m--> [0msrc/db.rs:40:21
+   [1m[94m|[0m
+[1m[94m39[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+   [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m40[0m [1m[94m|[0m pub use test_utils::reset_db_url_cache;
+   [1m[94m|[0m                     [1m[92m^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+   [1m[94m|[0m
+[1m[94m44[0m [91m- [0m        p2p_app::db::[91mreset_db_url_cache[0m();
+[1m[94m44[0m [92m+ [0m        p2p_app::db::[92mdb_url_cache[0m();
+   [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: this assertion is always `true`[0m
+   [1m[94m--> [0msrc/../tests/unit/unit_db.rs:255:13
+    [1m[94m|[0m
+[1m[94m255[0m [1m[94m|[0m             assert!(true);
+    [1m[94m|[0m             [1m[33m^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mhelp[0m: remove the assertion
+    [1m[94m= [0m[1mhelp[0m: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#assertions_on_constants
+    [1m[94m= [0m[1mnote[0m: `#[warn(clippy::assertions_on_constants)]` on by default
+
+[1m[33mwarning[0m[1m: this assertion is always `true`[0m
+   [1m[94m--> [0msrc/../tests/unit/unit_logging.rs:171:5
+    [1m[94m|[0m
+[1m[94m171[0m [1m[94m|[0m     assert!(true);
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mhelp[0m: remove the assertion
+    [1m[94m= [0m[1mhelp[0m: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#assertions_on_constants
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:40:14
+    [1m[94m|[0m
+[1m[94m 40[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m 40[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m 40[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:61:14
+    [1m[94m|[0m
+[1m[94m 61[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m 61[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m 61[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:75:14
+    [1m[94m|[0m
+[1m[94m 75[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m 75[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m 75[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:89:14
+    [1m[94m|[0m
+[1m[94m 89[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m 89[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m 89[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:103:14
+    [1m[94m|[0m
+[1m[94m103[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m103[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m103[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:117:14
+    [1m[94m|[0m
+[1m[94m117[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m117[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m117[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:168:22
+    [1m[94m|[0m
+[1m[94m168[0m [1m[94m|[0m             p2p_app::clear_tui_logs();
+    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m168[0m [91m- [0m            p2p_app::[91mclear_tui_logs[0m();
+[1m[94m168[0m [92m+ [0m            p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:187:22
+    [1m[94m|[0m
+[1m[94m187[0m [1m[94m|[0m             p2p_app::clear_tui_logs();
+    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m187[0m [91m- [0m            p2p_app::[91mclear_tui_logs[0m();
+[1m[94m187[0m [92m+ [0m            p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:206:22
+    [1m[94m|[0m
+[1m[94m206[0m [1m[94m|[0m             p2p_app::clear_tui_logs();
+    [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m206[0m [91m- [0m            p2p_app::[91mclear_tui_logs[0m();
+[1m[94m206[0m [92m+ [0m            p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:221:14
+    [1m[94m|[0m
+[1m[94m221[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m221[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m221[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:273:14
+    [1m[94m|[0m
+[1m[94m273[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m273[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m273[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:289:14
+    [1m[94m|[0m
+[1m[94m289[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m289[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m289[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1m[91merror[E0425][0m[1m: cannot find function `clear_tui_logs` in crate `p2p_app`[0m
+   [1m[94m--> [0mtests/logging.rs:308:14
+    [1m[94m|[0m
+[1m[94m308[0m [1m[94m|[0m     p2p_app::clear_tui_logs();
+    [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/logging.rs:155:1
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m pub fn get_tui_logs() -> Vec<String> {
+    [1m[94m|[0m [1m[94m------------------------------------[0m [1m[94msimilarly named function `get_tui_logs` defined here[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: found an item that was configured out
+   [1m[94m--> [0msrc/lib.rs:70:18
+    [1m[94m|[0m
+[1m[94m 69[0m [1m[94m|[0m #[cfg(any(test, feature = "test-utils"))]
+    [1m[94m|[0m          [1m[94m------------------------------[0m [1m[94mthe item is gated here[0m
+[1m[94m 70[0m [1m[94m|[0m pub use logging::clear_tui_logs;
+    [1m[94m|[0m                  [1m[92m^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: a function with a similar name exists
+    [1m[94m|[0m
+[1m[94m308[0m [91m- [0m    p2p_app::[91mclear_tui_logs[0m();
+[1m[94m308[0m [92m+ [0m    p2p_app::[92mget_tui_logs[0m();
+    [1m[94m|[0m
+
+[1mFor more information about this error, try `rustc --explain E0425`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (test "peers") due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[0m: could not compile `p2p_app` (test "logging") due to 13 previous errors
+[1m[33mwarning[0m: `p2p_app` (lib test) generated 2 warnings
+Exit code: 0
+
+--- coverage-install.log ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m cargo-tarpaulin v0.35.4
+[1m[92m     Ignored[0m package `cargo-tarpaulin v0.35.4` is already installed, use --force to override
+
+--- coverage.log ---
+[2m2026-06-07T19:05:31.324125Z[0m [32m INFO[0m [2mcargo_tarpaulin::config[0m[2m:[0m Creating config
+[2m2026-06-07T19:05:32.619781Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Running Tarpaulin
+[2m2026-06-07T19:05:32.619795Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Building project
+   Compiling p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+error: Broken pipe (os error 32)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `p2p_app` (test "db") due to 3 previous errors
+error: could not compile `p2p_app` (test "behavior") due to 1 previous error
+[2m2026-06-07T19:05:40.152919Z[0m [31mERROR[0m [2mcargo_tarpaulin[0m[2m:[0m Failed to compile tests!
+error[E0425]: cannot find function `reset_db_url_cache` in module `p2p_app::db`
+  --> tests/test_utils.rs:44:22
+   |
+44 |         p2p_app::db::reset_db_url_cache();
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+  ::: src/db.rs:31:1
+   |
+31 | fn db_url_cache() -> &'static Mutex<Option<String>> {
+   | --------------------------------------------------- similarly named function `db_url_cache` defined here
+   |
+note: found an item that was configured out
+  --> src/db.rs:40:21
+   |
+39 | #[cfg(any(test, feature = "test-utils"))]
+   |          ------------------------------ the item is gated here
+40 | pub use test_utils::reset_db_url_cache;
+   |                     ^^^^^^^^^^^^^^^^^^
+help: a function with a similar name exists
+   |
+44 -         p2p_app::db::reset_db_url_cache();
+44 +         p2p_app::db::db_url_cache();
+   |
+
+
+Error: "Failed to compile tests!\nerror[E0425]: cannot find function `reset_db_url_cache` in module `p2p_app::db`\n  --> tests/test_utils.rs:44:22\n   |\n44 |         p2p_app::db::reset_db_url_cache();\n   |                      ^^^^^^^^^^^^^^^^^^\n   |\n  ::: src/db.rs:31:1\n   |\n31 | fn db_url_cache() -> &'static Mutex<Option<String>> {\n   | --------------------------------------------------- similarly named function `db_url_cache` defined here\n   |\nnote: found an item that was configured out\n  --> src/db.rs:40:21\n   |\n39 | #[cfg(any(test, feature = \"test-utils\"))]\n   |          ------------------------------ the item is gated here\n40 | pub use test_utils::reset_db_url_cache;\n   |                     ^^^^^^^^^^^^^^^^^^\nhelp: a function with a similar name exists\n   |\n44 -         p2p_app::db::reset_db_url_cache();\n44 +         p2p_app::db::db_url_cache();\n   |\n\n"
+Exit code: 0
+
+--- docs.log ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:70:1
+   [1m[94m|[0m
+[1m[94m70[0m [1m[94m|[0m pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:82:1
+   [1m[94m|[0m
+[1m[94m82[0m [1m[94m|[0m pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:86:1
+   [1m[94m|[0m
+[1m[94m86[0m [1m[94m|[0m pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:98:1
+   [1m[94m|[0m
+[1m[94m98[0m [1m[94m|[0m pub fn set_peer_self_nickname_for_peer(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/nickname.rs:110:1
+    [1m[94m|[0m
+[1m[94m110[0m [1m[94m|[0m pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/nickname.rs:114:1
+    [1m[94m|[0m
+[1m[94m114[0m [1m[94m|[0m pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:294:1
+    [1m[94m|[0m
+[1m[94m294[0m [1m[94m|[0m [1m[33m/[0m pub fn broadcast_receipt_prefix(
+[1m[94m295[0m [1m[94m|[0m [1m[33m|[0m     msg_id: Option<&str>,
+[1m[94m296[0m [1m[94m|[0m [1m[33m|[0m     broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
+[1m[94m297[0m [1m[94m|[0m [1m[33m|[0m ) -> &'static str {
+    [1m[94m|[0m [1m[33m|_________________^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:310:1
+    [1m[94m|[0m
+[1m[94m310[0m [1m[94m|[0m [1m[33m/[0m pub fn dm_receipt_prefix(
+[1m[94m311[0m [1m[94m|[0m [1m[33m|[0m     msg_id: Option<&str>,
+[1m[94m312[0m [1m[94m|[0m [1m[33m|[0m     dm_receipts: &HashMap<String, (String, f64)>,
+[1m[94m313[0m [1m[94m|[0m [1m[33m|[0m ) -> &'static str {
+    [1m[94m|[0m [1m[33m|_________________^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:321:1
+    [1m[94m|[0m
+[1m[94m321[0m [1m[94m|[0m [1m[33m/[0m pub fn row_to_visible_index(
+[1m[94m322[0m [1m[94m|[0m [1m[33m|[0m     line_counts: &[usize],
+[1m[94m323[0m [1m[94m|[0m [1m[33m|[0m     first_content_row: usize,
+[1m[94m324[0m [1m[94m|[0m [1m[33m|[0m     click_row: usize,
+[1m[94m325[0m [1m[94m|[0m [1m[33m|[0m ) -> Option<usize> {
+    [1m[94m|[0m [1m[33m|__________________^[0m
+
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 9 warnings
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 3.56s
+[1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 2 other files
+Exit code: 0
+
+--- fmt.log ---
+Exit code: 0
+
+--- tests.log ---
+[1m[92m       Fresh[0m unicode-ident v1.0.24
+[1m[92m       Fresh[0m proc-macro2 v1.0.106
+[1m[92m       Fresh[0m cfg-if v1.0.4
+[1m[92m       Fresh[0m quote v1.0.45
+[1m[92m       Fresh[0m libc v0.2.186
+[1m[92m       Fresh[0m memchr v2.8.0
+[1m[92m       Fresh[0m pin-project-lite v0.2.17
+[1m[92m       Fresh[0m syn v2.0.117
+[1m[92m       Fresh[0m log v0.4.29
+[1m[92m       Fresh[0m critical-section v1.2.0
+[1m[92m       Fresh[0m synstructure v0.13.2
+[1m[92m       Fresh[0m thiserror-impl v2.0.18
+[1m[92m       Fresh[0m portable-atomic v1.13.1
+[1m[92m       Fresh[0m smallvec v1.15.1
+[1m[92m       Fresh[0m version_check v0.9.5
+[1m[92m       Fresh[0m once_cell v1.21.4
+[1m[92m       Fresh[0m thiserror v2.0.18
+[1m[92m       Fresh[0m futures-io v0.3.32
+[1m[92m       Fresh[0m futures-core v0.3.32
+[1m[92m       Fresh[0m slab v0.4.12
+[1m[92m       Fresh[0m futures-sink v0.3.32
+[1m[92m       Fresh[0m zerofrom-derive v0.1.7
+[1m[92m       Fresh[0m futures-channel v0.3.32
+[1m[92m       Fresh[0m futures-macro v0.3.32
+[1m[92m       Fresh[0m displaydoc v0.2.5
+[1m[92m       Fresh[0m futures-task v0.3.32
+[1m[92m       Fresh[0m zerocopy v0.8.48
+[1m[92m       Fresh[0m zerofrom v0.1.7
+[1m[92m       Fresh[0m yoke-derive v0.8.2
+[1m[92m       Fresh[0m futures-util v0.3.32
+[1m[92m       Fresh[0m getrandom v0.2.17
+[1m[92m       Fresh[0m stable_deref_trait v1.2.1
+[1m[92m       Fresh[0m subtle v2.6.1
+[1m[92m       Fresh[0m yoke v0.8.2
+[1m[92m       Fresh[0m zeroize_derive v1.4.3
+[1m[92m       Fresh[0m zerovec-derive v0.11.3
+[1m[92m       Fresh[0m zerovec v0.11.6
+[1m[92m       Fresh[0m zeroize v1.8.2
+[1m[92m       Fresh[0m tracing-core v0.1.36
+[1m[92m       Fresh[0m typenum v1.20.0
+[1m[92m       Fresh[0m heck v0.5.0
+[1m[92m       Fresh[0m generic-array v0.14.7
+[1m[92m       Fresh[0m serde_core v1.0.228
+[1m[92m       Fresh[0m ppv-lite86 v0.2.21
+[1m[92m       Fresh[0m tracing-attributes v0.1.31
+[1m[92m       Fresh[0m semver v1.0.28
+[1m[92m       Fresh[0m static_assertions v1.1.0
+[1m[92m       Fresh[0m tracing v0.1.44
+[1m[92m       Fresh[0m rustc_version v0.4.1
+[1m[92m       Fresh[0m bytes v1.11.1
+[1m[92m       Fresh[0m crypto-common v0.1.7
+[1m[92m       Fresh[0m block-buffer v0.10.4
+[1m[92m       Fresh[0m tinystr v0.8.3
+[1m[92m       Fresh[0m futures-executor v0.3.32
+[1m[92m       Fresh[0m scopeguard v1.2.0
+[1m[92m       Fresh[0m writeable v0.6.3
+[1m[92m       Fresh[0m litemap v0.8.2
+[1m[92m       Fresh[0m lock_api v0.4.14
+[1m[92m       Fresh[0m digest v0.10.7
+[1m[92m       Fresh[0m icu_locale_core v2.2.0
+[1m[92m       Fresh[0m parking_lot_core v0.9.12
+[1m[92m       Fresh[0m potential_utf v0.1.5
+[1m[92m       Fresh[0m zerotrie v0.2.4
+[1m[92m       Fresh[0m fnv v1.0.7
+[1m[92m       Fresh[0m utf8_iter v1.0.4
+[1m[92m       Fresh[0m icu_collections v2.2.0
+[1m[92m       Fresh[0m parking_lot v0.12.5
+[1m[92m       Fresh[0m icu_provider v2.2.0
+[1m[92m       Fresh[0m futures v0.3.32
+[1m[92m       Fresh[0m rand_core v0.6.4
+[1m[92m       Fresh[0m mio v1.2.0
+[1m[92m       Fresh[0m serde_derive v1.0.228
+[1m[92m       Fresh[0m serde v1.0.228
+[1m[92m       Fresh[0m icu_normalizer_data v2.2.0
+[1m[92m       Fresh[0m icu_properties_data v2.2.0
+[1m[92m       Fresh[0m strsim v0.11.1
+[1m[92m       Fresh[0m itoa v1.0.18
+[1m[92m       Fresh[0m cpufeatures v0.2.17
+[1m[92m       Fresh[0m icu_properties v2.2.0
+[1m[92m       Fresh[0m icu_normalizer v2.2.0
+[1m[92m       Fresh[0m curve25519-dalek-derive v0.1.1
+[1m[92m       Fresh[0m pin-project-internal v1.1.11
+[1m[92m       Fresh[0m bitflags v2.11.1
+[1m[92m       Fresh[0m pin-project v1.1.11
+[1m[92m       Fresh[0m idna_adapter v1.2.2
+[1m[92m       Fresh[0m curve25519-dalek v4.1.3
+[1m[92m       Fresh[0m rand_chacha v0.3.1
+[1m[92m       Fresh[0m shlex v1.3.0
+[1m[92m       Fresh[0m signature v2.2.0
+[1m[92m       Fresh[0m find-msvc-tools v0.1.9
+[1m[92m       Fresh[0m byteorder v1.5.0
+[1m[92m       Fresh[0m data-encoding v2.11.0
+[1m[92m       Fresh[0m unsigned-varint v0.8.0
+[1m[92m       Fresh[0m percent-encoding v2.3.2
+[1m[92m       Fresh[0m cc v1.2.61
+[1m[92m       Fresh[0m quick-protobuf v0.8.1
+[1m[92m       Fresh[0m data-encoding-macro-internal v0.1.18
+[1m[92m       Fresh[0m form_urlencoded v1.2.2
+[1m[92m       Fresh[0m rand v0.8.6
+[1m[92m       Fresh[0m ed25519 v2.2.3
+[1m[92m       Fresh[0m idna v1.1.0
+[1m[92m       Fresh[0m sha2 v0.10.9
+[1m[92m       Fresh[0m hmac v0.12.1
+[1m[92m       Fresh[0m match-lookup v0.1.2
+[1m[92m       Fresh[0m socket2 v0.6.3
+[1m[92m       Fresh[0m ident_case v1.0.1
+[1m[92m       Fresh[0m const-str v0.4.3
+[1m[92m       Fresh[0m hkdf v0.12.4
+[1m[92m       Fresh[0m ed25519-dalek v2.2.0
+[1m[92m       Fresh[0m base256emoji v1.0.2
+[1m[92m       Fresh[0m url v2.5.8
+[1m[92m       Fresh[0m data-encoding-macro v0.1.20
+[1m[92m       Fresh[0m multihash v0.19.5
+[1m[92m       Fresh[0m tokio-macros v2.7.0
+[1m[92m       Fresh[0m base-x v0.2.11
+[1m[92m       Fresh[0m autocfg v1.5.0
+[1m[92m       Fresh[0m num-conv v0.2.1
+[1m[92m       Fresh[0m powerfmt v0.2.0
+[1m[92m       Fresh[0m time-core v0.1.8
+[1m[92m       Fresh[0m bs58 v0.5.1
+[1m[92m       Fresh[0m cfg_aliases v0.2.1
+[1m[92m       Fresh[0m time-macros v0.2.27
+[1m[92m       Fresh[0m deranged v0.5.8
+[1m[92m       Fresh[0m libp2p-identity v0.2.13
+[1m[92m       Fresh[0m tokio v1.52.3
+[1m[92m       Fresh[0m multibase v0.9.2
+[1m[92m       Fresh[0m num_threads v0.1.7
+[1m[92m       Fresh[0m arrayref v0.3.9
+[1m[92m       Fresh[0m futures-timer v3.0.3
+[1m[92m       Fresh[0m unsigned-varint v0.7.2
+[1m[92m       Fresh[0m web-time v1.1.0
+[1m[92m       Fresh[0m multiaddr v0.18.2
+[1m[92m       Fresh[0m multistream-select v0.13.0
+[1m[92m       Fresh[0m time v0.3.47
+[1m[92m       Fresh[0m rw-stream-sink v0.4.0
+[1m[92m       Fresh[0m untrusted v0.9.0
+[1m[92m       Fresh[0m libp2p-core v0.43.2
+[1m[92m       Fresh[0m num-traits v0.2.19
+[1m[92m       Fresh[0m ring v0.17.14
+[1m[92m       Fresh[0m getrandom v0.3.4
+[1m[92m       Fresh[0m unicode-segmentation v1.13.2
+[1m[92m       Fresh[0m rand_core v0.9.5
+[1m[92m       Fresh[0m rand_chacha v0.9.0
+[1m[92m       Fresh[0m paste v1.0.15
+[1m[92m       Fresh[0m rustls-pki-types v1.14.1
+[1m[92m       Fresh[0m thiserror-impl v1.0.69
+[1m[92m       Fresh[0m aho-corasick v1.1.4
+[1m[92m       Fresh[0m foldhash v0.2.0
+[1m[92m       Fresh[0m equivalent v1.0.2
+[1m[92m       Fresh[0m lazy_static v1.5.0
+[1m[92m       Fresh[0m allocator-api2 v0.2.21
+[1m[92m       Fresh[0m foldhash v0.1.5
+[1m[92m       Fresh[0m regex-syntax v0.8.10
+[1m[92m       Fresh[0m minimal-lexical v0.2.1
+[1m[92m       Fresh[0m hashbrown v0.16.1
+[1m[92m       Fresh[0m hashbrown v0.15.5
+[1m[92m       Fresh[0m regex-automata v0.4.14
+[1m[92m       Fresh[0m nom v7.1.3
+[1m[92m       Fresh[0m thiserror v1.0.69
+[1m[92m       Fresh[0m rustversion v1.0.22
+[1m[92m       Fresh[0m rand v0.9.4
+[1m[92m       Fresh[0m netlink-packet-core v0.8.1
+[1m[92m       Fresh[0m darling_core v0.23.0
+[1m[92m       Fresh[0m darling_macro v0.23.0
+[1m[92m       Fresh[0m castaway v0.2.4
+[1m[92m       Fresh[0m rusticata-macros v4.1.0
+[1m[92m       Fresh[0m hashlink v0.10.0
+[1m[92m       Fresh[0m rustls-webpki v0.103.13
+[1m[92m       Fresh[0m netlink-sys v0.8.8
+[1m[92m       Fresh[0m itertools v0.14.0
+[1m[92m       Fresh[0m strum_macros v0.27.2
+[1m[92m       Fresh[0m libp2p-swarm-derive v0.35.1
+[1m[92m       Fresh[0m asn1-rs-derive v0.6.0
+[1m[92m       Fresh[0m asn1-rs-impl v0.2.0
+[1m[92m       Fresh[0m errno v0.3.14
+[1m[92m       Fresh[0m ryu v1.0.23
+[1m[92m       Fresh[0m unicode-width v0.2.2
+[1m[92m       Fresh[0m indoc v2.0.7
+[1m[92m       Fresh[0m tinyvec_macros v0.1.1
+[1m[92m       Fresh[0m unicode-truncate v2.0.1
+[1m[92m       Fresh[0m tinyvec v1.11.0
+[1m[92m       Fresh[0m compact_str v0.9.0
+[1m[92m       Fresh[0m signal-hook-registry v1.4.8
+[1m[92m       Fresh[0m asn1-rs v0.7.1
+[1m[92m       Fresh[0m libp2p-swarm v0.47.1
+[1m[92m       Fresh[0m netlink-proto v0.12.0
+[1m[92m       Fresh[0m rustls v0.23.40
+[1m[92m       Fresh[0m strum v0.27.2
+[1m[92m       Fresh[0m crossbeam-utils v0.8.21
+[1m[92m       Fresh[0m nix v0.30.1
+[1m[92m       Fresh[0m darling v0.23.0
+[1m[92m       Fresh[0m netlink-packet-route v0.28.0
+[1m[92m       Fresh[0m kasuari v0.4.12
+[1m[92m       Fresh[0m lru v0.16.4
+[1m[92m       Fresh[0m convert_case v0.10.0
+[1m[92m       Fresh[0m num-integer v0.1.46
+[1m[92m       Fresh[0m darling_core v0.21.3
+[1m[92m       Fresh[0m ipnet v2.12.0
+[1m[92m       Fresh[0m base64 v0.22.1
+[1m[92m       Fresh[0m linux-raw-sys v0.12.1
+[1m[92m       Fresh[0m num-bigint v0.4.6
+[1m[92m       Fresh[0m rustix v1.1.4
+[1m[92m       Fresh[0m darling_macro v0.21.3
+[1m[92m       Fresh[0m ratatui-core v0.1.0
+[1m[92m       Fresh[0m derive_more-impl v2.1.1
+[1m[92m       Fresh[0m instability v0.3.12
+[1m[92m       Fresh[0m rtnetlink v0.20.0
+[1m[92m       Fresh[0m concurrent-queue v2.5.0
+[1m[92m       Fresh[0m signal-hook v0.3.18
+[1m[92m       Fresh[0m winnow v1.0.2
+[1m[92m       Fresh[0m litrs v1.0.0
+[1m[92m       Fresh[0m vcpkg v0.2.15
+[1m[92m       Fresh[0m parking v2.2.1
+[1m[92m       Fresh[0m pkg-config v0.3.33
+[1m[92m       Fresh[0m utf8parse v0.2.2
+[1m[92m       Fresh[0m rand_core v0.10.1
+[1m[92m       Fresh[0m event-listener v5.4.1
+[1m[92m       Fresh[0m anstyle-parse v1.0.0
+[1m[92m       Fresh[0m toml_parser v1.1.2+spec-1.1.0
+[1m[92m       Fresh[0m document-features v0.2.12
+[1m[92m       Fresh[0m signal-hook-mio v0.2.5
+[1m[92m       Fresh[0m if-watch v3.2.2
+[1m[92m       Fresh[0m darling v0.21.3
+[1m[92m       Fresh[0m derive_more v2.1.1
+[1m[92m       Fresh[0m der-parser v10.0.0
+[1m[92m       Fresh[0m oid-registry v0.8.1
+[1m[92m       Fresh[0m ahash v0.8.12
+[1m[92m       Fresh[0m pem v3.0.6
+[1m[92m       Fresh[0m matchers v0.2.0
+[1m[92m       Fresh[0m sharded-slab v0.1.7
+[1m[92m       Fresh[0m yasna v0.5.2
+[1m[92m       Fresh[0m line-clipping v0.3.7
+[1m[92m       Fresh[0m asynchronous-codec v0.7.0
+[1m[92m       Fresh[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m       Fresh[0m serde_spanned v1.1.1
+[1m[92m       Fresh[0m tracing-log v0.2.0
+[1m[92m       Fresh[0m async-trait v0.1.89
+[1m[92m       Fresh[0m socket2 v0.5.10
+[1m[92m       Fresh[0m thread_local v1.1.9
+[1m[92m       Fresh[0m rustc-hash v2.1.2
+[1m[92m       Fresh[0m lru-slab v0.1.2
+[1m[92m       Fresh[0m anstyle v1.0.14
+[1m[92m       Fresh[0m either v1.15.0
+[1m[92m       Fresh[0m colorchoice v1.0.5
+[1m[92m       Fresh[0m nu-ansi-term v0.50.3
+[1m[92m       Fresh[0m is_terminal_polyfill v1.70.2
+[1m[92m       Fresh[0m winnow v0.7.15
+[1m[92m       Fresh[0m anstyle-query v1.1.5
+[1m[92m       Fresh[0m nohash-hasher v0.2.0
+[1m[92m       Fresh[0m anstream v1.0.0
+[1m[92m       Fresh[0m toml v0.9.12+spec-1.1.0
+[1m[92m       Fresh[0m tracing-subscriber v0.3.23
+[1m[92m       Fresh[0m quinn-proto v0.11.14
+[1m[92m       Fresh[0m dsl_auto_type v0.2.0
+[1m[92m       Fresh[0m rcgen v0.13.2
+[1m[92m       Fresh[0m ratatui-widgets v0.3.0
+[1m[92m       Fresh[0m hashbrown v0.14.5
+[1m[92m       Fresh[0m x509-parser v0.17.0
+[1m[92m       Fresh[0m crossterm v0.29.0
+[1m[92m       Fresh[0m getrandom v0.4.2
+[1m[92m       Fresh[0m quinn-udp v0.5.14
+[1m[92m       Fresh[0m zmij v1.0.21
+[1m[92m       Fresh[0m event-listener-strategy v0.5.4
+[1m[92m       Fresh[0m futures-rustls v0.26.0
+[1m[92m       Fresh[0m enum-as-inner v0.6.1
+[1m[92m       Fresh[0m diesel_table_macro_syntax v0.3.0
+[1m[92m       Fresh[0m adler2 v2.0.1
+[1m[92m       Fresh[0m iana-time-zone v0.1.65
+[1m[92m       Fresh[0m gimli v0.32.3
+[1m[92m       Fresh[0m clap_lex v1.1.0
+[1m[92m       Fresh[0m cpufeatures v0.3.0
+[1m[92m       Fresh[0m clap_builder v4.6.0
+[1m[92m       Fresh[0m chacha20 v0.10.0
+[1m[92m       Fresh[0m addr2line v0.25.1
+[1m[92m       Fresh[0m chrono v0.4.44
+[1m[92m       Fresh[0m miniz_oxide v0.8.9
+[1m[92m       Fresh[0m diesel_derives v2.3.9
+[1m[92m       Fresh[0m async-channel v2.5.0
+[1m[92m       Fresh[0m libsqlite3-sys v0.36.0
+[1m[92m       Fresh[0m hickory-proto v0.25.2
+[1m[92m       Fresh[0m libp2p-tls v0.6.2
+[1m[92m       Fresh[0m ratatui-crossterm v0.1.0
+[1m[92m       Fresh[0m serde_json v1.0.149
+[1m[92m       Fresh[0m quinn v0.11.9
+[1m[92m       Fresh[0m hashlink v0.9.1
+[1m[92m       Fresh[0m snow v0.9.6
+[1m[92m       Fresh[0m migrations_internals v2.3.0
+[1m[92m       Fresh[0m owo-colors v4.3.0
+[1m[92m       Fresh[0m tracing-error v0.2.1
+[1m[92m       Fresh[0m object v0.37.3
+[1m[92m       Fresh[0m yamux v0.12.1
+[1m[92m       Fresh[0m yamux v0.13.10
+[1m[92m       Fresh[0m quick-protobuf-codec v0.3.1
+[1m[92m       Fresh[0m regex v1.12.3
+[1m[92m       Fresh[0m futures-bounded v0.2.4
+[1m[92m       Fresh[0m x25519-dalek v2.0.1
+[1m[92m       Fresh[0m clap_derive v4.6.1
+[1m[92m       Fresh[0m downcast-rs v2.0.2
+[1m[92m       Fresh[0m hex_fmt v0.3.0
+[1m[92m       Fresh[0m rustc-demangle v0.1.27
+[1m[92m       Fresh[0m indenter v0.3.4
+[1m[92m       Fresh[0m backtrace v0.3.76
+[1m[92m       Fresh[0m eyre v0.6.12
+[1m[92m       Fresh[0m diesel v2.3.9
+[1m[92m       Fresh[0m libp2p-gossipsub v0.49.4
+[1m[92m       Fresh[0m libp2p-noise v0.46.1
+[1m[92m       Fresh[0m libp2p-request-response v0.29.0
+[1m[92m       Fresh[0m clap v4.6.1
+[1m[92m       Fresh[0m libp2p-yamux v0.47.0
+[1m[92m       Fresh[0m migrations_macros v2.3.0
+[1m[92m       Fresh[0m color-spantrace v0.3.0
+[1m[92m       Fresh[0m libp2p-quic v0.13.0
+[1m[92m       Fresh[0m libp2p-mdns v0.48.0
+[1m[92m       Fresh[0m rand v0.10.1
+[1m[92m       Fresh[0m ratatui-macros v0.7.0
+[1m[92m       Fresh[0m libp2p-tcp v0.44.1
+[1m[92m       Fresh[0m libp2p-connection-limits v0.6.0
+[1m[92m       Fresh[0m libp2p-allow-block-list v0.6.0
+[1m[92m       Fresh[0m petname-macros v3.0.0
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m       Fresh[0m ratatui v0.30.0
+[1m[92m       Fresh[0m libp2p v0.56.0
+[1m[92m       Fresh[0m petname v3.0.0
+[1m[92m       Fresh[0m diesel_migrations v2.3.2
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name build_script_build --edition=2024 build.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=d949e588fccc1cdd -C extra-filename=-ef4a047604ef65fa --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/build/p2p_app-ef4a047604ef65fa -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps`
+[1m[92m       Fresh[0m color-eyre v0.6.5
+[1m[92m       Fresh[0m ratatui-textarea v0.9.1
+[1m[92m       Fresh[0m dotenvy v0.15.7
+[1m[92m       Fresh[0m sdd v3.0.10
+[1m[92m       Fresh[0m serial_test_derive v3.4.0
+[1m[92m       Fresh[0m fastrand v2.4.1
+[1m[92m       Fresh[0m scc v2.4.0
+[1m[92m       Fresh[0m tempfile v3.27.0
+[1m[92m       Fresh[0m serial_test v3.4.0
+[1m[92m     Running[0m `/home/runner/work/p2p_app/p2p_app/target/debug/build/p2p_app-ef4a047604ef65fa/build-script-build`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name p2p_app --edition=2024 src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=370abe69e942c88f -C extra-filename=-754d41eff6c10094 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rmeta --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rmeta --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rmeta --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rmeta --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rmeta --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rmeta --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rmeta --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rmeta --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rmeta --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rmeta --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rmeta --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rmeta --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rmeta --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rmeta --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rmeta --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rmeta --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rmeta --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rmeta --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rmeta -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name p2p_app --edition=2024 src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=97464076e3e9a6bf -C extra-filename=-7caa3f83670f84ef --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name p2p_integration --edition=2024 tests/p2p_integration.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=3f1c99726c3a1e05 -C extra-filename=-177421528a2ab488 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tui_render_integration --edition=2024 tests/tui_render_integration.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=a5065704cc9752ff -C extra-filename=-89095b04d643d715 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tui_helpers --edition=2024 tests/tui_helpers.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=7b0ee5c8e1c51974 -C extra-filename=-2700e3574e7ae03f --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name p2p_chat --edition=2024 src/bin/p2p_chat.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=506de779a1b4075e -C extra-filename=-bfe9afe182c76d4c --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name network --edition=2024 tests/network.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=3ec60ba6e564e378 -C extra-filename=-fbf9133db1b8cb7f --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tui_integration --edition=2024 tests/tui_integration.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=8f0c1cf9c12be486 -C extra-filename=-bf565fb5a2f80489 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tui_binary_integration --edition=2024 tests/tui_binary_integration.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=50ec6778786e6b65 -C extra-filename=-a08047fa997e1663 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name additional_coverage --edition=2024 tests/additional_coverage.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=0d82d9268fd647a0 -C extra-filename=-afe6ab07afab0750 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name test_utils --edition=2024 tests/test_utils.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=35ab8bd3aec615fe -C extra-filename=-3e2a4d54865fc971 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name tui_chat --edition=2024 tests/tui_chat.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=891140bafd365cda -C extra-filename=-3b349027b283e24f --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name swarm_handler --edition=2024 tests/swarm_handler.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=5c308e0e6552a262 -C extra-filename=-827765655b7bfbbe --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name types --edition=2024 tests/types.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=02bdd102bc493da7 -C extra-filename=-6a0b2cdda4da476d --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[91merror[E0428][0m[1m: the name `test_swarm_event_receipt` is defined multiple times[0m
+   [1m[94m--> [0mtests/types.rs:345:1
+    [1m[94m|[0m
+[1m[94m 31[0m [1m[94m|[0m fn test_swarm_event_receipt() {
+    [1m[94m|[0m [1m[94m-----------------------------[0m [1m[94mprevious definition of the value `test_swarm_event_receipt` here[0m
+[1m[94m...[0m
+[1m[94m345[0m [1m[94m|[0m fn test_swarm_event_receipt() {
+    [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91m`test_swarm_event_receipt` redefined here[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `test_swarm_event_receipt` must be defined only once in the value namespace of this module
+
+[1m[91merror[E0428][0m[1m: the name `test_notification_target_dm` is defined multiple times[0m
+    [1m[94m--> [0mtests/types.rs:1891:1
+     [1m[94m|[0m
+[1m[94m 299[0m [1m[94m|[0m fn test_notification_target_dm() {
+     [1m[94m|[0m [1m[94m--------------------------------[0m [1m[94mprevious definition of the value `test_notification_target_dm` here[0m
+[1m[94m...[0m
+[1m[94m1891[0m [1m[94m|[0m fn test_notification_target_dm() {
+     [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91m`test_notification_target_dm` redefined here[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `test_notification_target_dm` must be defined only once in the value namespace of this module
+
+[1m[91merror[E0428][0m[1m: the name `test_dm_tab_with_messages_variant` is defined multiple times[0m
+    [1m[94m--> [0mtests/types.rs:2630:1
+     [1m[94m|[0m
+[1m[94m1917[0m [1m[94m|[0m fn test_dm_tab_with_messages_variant() {
+     [1m[94m|[0m [1m[94m--------------------------------------[0m [1m[94mprevious definition of the value `test_dm_tab_with_messages_variant` here[0m
+[1m[94m...[0m
+[1m[94m2630[0m [1m[94m|[0m fn test_dm_tab_with_messages_variant() {
+     [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91m`test_dm_tab_with_messages_variant` redefined here[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: `test_dm_tab_with_messages_variant` must be defined only once in the value namespace of this module
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+   [1m[94m--> [0mtests/types.rs:454:9
+    [1m[94m|[0m
+[1m[94m454[0m [1m[94m|[0m     use p2p_app::types::Message;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+   [1m[94m--> [0mtests/types.rs:731:9
+    [1m[94m|[0m
+[1m[94m731[0m [1m[94m|[0m     use p2p_app::types::Message;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+   [1m[94m--> [0mtests/types.rs:799:9
+    [1m[94m|[0m
+[1m[94m799[0m [1m[94m|[0m     use p2p_app::types::Message;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+   [1m[94m--> [0mtests/types.rs:911:9
+    [1m[94m|[0m
+[1m[94m911[0m [1m[94m|[0m     use p2p_app::types::Message;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+   [1m[94m--> [0mtests/types.rs:928:9
+    [1m[94m|[0m
+[1m[94m928[0m [1m[94m|[0m     use p2p_app::types::Message;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:1003:9
+     [1m[94m|[0m
+[1m[94m1003[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::PeerInfo`[0m
+    [1m[94m--> [0mtests/types.rs:1116:9
+     [1m[94m|[0m
+[1m[94m1116[0m [1m[94m|[0m     use p2p_app::types::PeerInfo;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `PeerInfo` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::PeerInfo`[0m
+    [1m[94m--> [0mtests/types.rs:1131:9
+     [1m[94m|[0m
+[1m[94m1131[0m [1m[94m|[0m     use p2p_app::types::PeerInfo;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `PeerInfo` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::PeerInfo`[0m
+    [1m[94m--> [0mtests/types.rs:1206:9
+     [1m[94m|[0m
+[1m[94m1206[0m [1m[94m|[0m     use p2p_app::types::PeerInfo;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `PeerInfo` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:1439:9
+     [1m[94m|[0m
+[1m[94m1439[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:1472:9
+     [1m[94m|[0m
+[1m[94m1472[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::PeerInfo`[0m
+    [1m[94m--> [0mtests/types.rs:1519:9
+     [1m[94m|[0m
+[1m[94m1519[0m [1m[94m|[0m     use p2p_app::types::PeerInfo;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `PeerInfo` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:1971:9
+     [1m[94m|[0m
+[1m[94m1971[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::PeerInfo`[0m
+    [1m[94m--> [0mtests/types.rs:2120:9
+     [1m[94m|[0m
+[1m[94m2120[0m [1m[94m|[0m     use p2p_app::types::PeerInfo;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `PeerInfo` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:2212:9
+     [1m[94m|[0m
+[1m[94m2212[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `crate::tui_test_state`[0m
+    [1m[94m--> [0mtests/types.rs:2539:20
+     [1m[94m|[0m
+[1m[94m2539[0m [1m[94m|[0m         use crate::tui_test_state::NotificationTarget;
+     [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^[0m [1m[91mcould not find `tui_test_state` in the crate root[0m
+
+[1m[91merror[E0432][0m[1m: unresolved import `p2p_app::types::Message`[0m
+    [1m[94m--> [0mtests/types.rs:2665:9
+     [1m[94m|[0m
+[1m[94m2665[0m [1m[94m|[0m     use p2p_app::types::Message;
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mno `Message` in `types`[0m
+
+[1m[91merror[E0422][0m[1m: cannot find struct, variant or union type `Message` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2480:26
+     [1m[94m|[0m
+[1m[94m2480[0m [1m[94m|[0m         let _broadcast = Message {
+     [1m[94m|[0m                          [1m[91m^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[91merror[E0422][0m[1m: cannot find struct, variant or union type `Message` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2494:19
+     [1m[94m|[0m
+[1m[94m2494[0m [1m[94m|[0m         let msg = Message {
+     [1m[94m|[0m                   [1m[91m^^^^^^^[0m [1m[91mnot found in this scope[0m
+
+[1m[33mwarning[0m[1m: unused import: `std::collections::VecDeque`[0m
+   [1m[94m--> [0mtests/types.rs:511:9
+    [1m[94m|[0m
+[1m[94m511[0m [1m[94m|[0m     use std::collections::VecDeque;
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused import: `std::collections::VecDeque`[0m
+   [1m[94m--> [0mtests/types.rs:862:9
+    [1m[94m|[0m
+[1m[94m862[0m [1m[94m|[0m     use std::collections::VecDeque;
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `SwarmEvent`[0m
+    [1m[94m--> [0mtests/types.rs:2264:19
+     [1m[94m|[0m
+[1m[94m2264[0m [1m[94m|[0m     use p2p_app::{SwarmEvent, build_broadcast_message};
+     [1m[94m|[0m                   [1m[33m^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `p2p_app::TabId`[0m
+    [1m[94m--> [0mtests/types.rs:2323:9
+     [1m[94m|[0m
+[1m[94m2323[0m [1m[94m|[0m     use p2p_app::TabId;
+     [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unused import: `super::*`[0m
+    [1m[94m--> [0mtests/types.rs:2475:9
+     [1m[94m|[0m
+[1m[94m2475[0m [1m[94m|[0m     use super::*;
+     [1m[94m|[0m         [1m[33m^^^^^^^^[0m
+
+[1m[91merror[E0063][0m[1m: missing field `addresses` in initializer of `SwarmEvent`[0m
+   [1m[94m--> [0mtests/types.rs:260:17
+    [1m[94m|[0m
+[1m[94m260[0m [1m[94m|[0m     let event = SwarmEvent::PeerDiscovered {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing `addresses`[0m
+
+[1m[91merror[E0027][0m[1m: pattern does not mention field `addresses`[0m
+   [1m[94m--> [0mtests/types.rs:264:9
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m|[0m         SwarmEvent::PeerDiscovered { peer_id } => {
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mmissing field `addresses`[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: include the missing field in the pattern
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m| [0m        SwarmEvent::PeerDiscovered { peer_id[92m, addresses[0m } => {
+    [1m[94m|[0m                                             [92m+++++++++++[0m
+[1m[96mhelp[0m: if you don't care about this missing field, you can explicitly ignore it
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m| [0m        SwarmEvent::PeerDiscovered { peer_id[92m, addresses: _[0m } => {
+    [1m[94m|[0m                                             [92m++++++++++++++[0m
+[1m[96mhelp[0m: or always ignore missing fields here
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m| [0m        SwarmEvent::PeerDiscovered { peer_id[92m, ..[0m } => {
+    [1m[94m|[0m                                             [92m++++[0m
+
+[1m[91merror[E0599][0m[1m: no variant named `Broadcast` found for enum `NotificationTarget`[0m
+   [1m[94m--> [0mtests/types.rs:285:38
+    [1m[94m|[0m
+[1m[94m285[0m [1m[94m|[0m     let target = NotificationTarget::Broadcast {
+    [1m[94m|[0m                                      [1m[91m^^^^^^^^^[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: there is a variant with a similar name
+    [1m[94m|[0m
+[1m[94m285[0m [1m[94m| [0m    let target = NotificationTarget::Broadcast[92ms[0m {
+    [1m[94m|[0m                                               [92m+[0m
+
+[1m[91merror[E0599][0m[1m: no variant named `Broadcast` found for enum `NotificationTarget`[0m
+   [1m[94m--> [0mtests/types.rs:290:29
+    [1m[94m|[0m
+[1m[94m290[0m [1m[94m|[0m         NotificationTarget::Broadcast { topic, count } => {
+    [1m[94m|[0m                             [1m[91m^^^^^^^^^[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: there is a variant with a similar name
+    [1m[94m|[0m
+[1m[94m290[0m [1m[94m| [0m        NotificationTarget::Broadcast[92ms[0m { topic, count } => {
+    [1m[94m|[0m                                      [92m+[0m
+
+[1m[91merror[E0559][0m[1m: variant `NotificationTarget::Dm` has no field named `peer_id`[0m
+   [1m[94m--> [0mtests/types.rs:302:9
+    [1m[94m|[0m
+[1m[94m302[0m [1m[94m|[0m         peer_id: "peer".to_string(),
+    [1m[94m|[0m         [1m[91m^^^^^^^[0m [1m[91mfield does not exist[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/../tests/shared/tui_test_state.rs:236:5
+    [1m[94m|[0m
+[1m[94m236[0m [1m[94m|[0m     Dm(String),
+    [1m[94m|[0m     [1m[94m--[0m [1m[94m`NotificationTarget::Dm` defined here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: `NotificationTarget::Dm` is a tuple variant, use the appropriate syntax
+    [1m[94m|[0m
+[1m[94m301[0m [91m- [0m    let target = NotificationTarget::Dm[91m {[0m
+[1m[94m302[0m [91m-         peer_id: "peer".to_string(),[0m
+[1m[94m303[0m [91m-         count: 2,[0m
+[1m[94m304[0m [91m-     }[0m;
+[1m[94m301[0m [92m+ [0m    let target = NotificationTarget::Dm[92m(/* String */)[0m;
+    [1m[94m|[0m
+
+[1m[91merror[E0559][0m[1m: variant `NotificationTarget::Dm` has no field named `count`[0m
+   [1m[94m--> [0mtests/types.rs:303:9
+    [1m[94m|[0m
+[1m[94m303[0m [1m[94m|[0m         count: 2,
+    [1m[94m|[0m         [1m[91m^^^^^[0m [1m[91mfield does not exist[0m
+    [1m[94m|[0m
+   [1m[94m::: [0msrc/../tests/shared/tui_test_state.rs:236:5
+    [1m[94m|[0m
+[1m[94m236[0m [1m[94m|[0m     Dm(String),
+    [1m[94m|[0m     [1m[94m--[0m [1m[94m`NotificationTarget::Dm` defined here[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: `NotificationTarget::Dm` is a tuple variant, use the appropriate syntax
+    [1m[94m|[0m
+[1m[94m301[0m [91m- [0m    let target = NotificationTarget::Dm[91m {[0m
+[1m[94m302[0m [91m-         peer_id: "peer".to_string(),[0m
+[1m[94m303[0m [91m-         count: 2,[0m
+[1m[94m304[0m [91m-     }[0m;
+[1m[94m301[0m [92m+ [0m    let target = NotificationTarget::Dm[92m(/* String */)[0m;
+    [1m[94m|[0m
+
+[1m[91merror[E0769][0m[1m: tuple variant `NotificationTarget::Dm` written as struct variant[0m
+   [1m[94m--> [0mtests/types.rs:306:9
+    [1m[94m|[0m
+[1m[94m306[0m [1m[94m|[0m         NotificationTarget::Dm { peer_id, count } => {
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: use the tuple variant pattern syntax instead
+    [1m[94m|[0m
+[1m[94m306[0m [91m- [0m        NotificationTarget::Dm[91m { peer_id, count }[0m => {
+[1m[94m306[0m [92m+ [0m        NotificationTarget::Dm[92m(_)[0m => {
+    [1m[94m|[0m
+
+[1m[91merror[E0308][0m[1m: mismatched types[0m
+   [1m[94m--> [0mtests/types.rs:431:43
+    [1m[94m|[0m
+[1m[94m431[0m [1m[94m|[0m     let offset_empty = auto_scroll_offset(&empty_messages, 10);
+    [1m[94m|[0m                        [1m[94m------------------[0m [1m[91m^^^^^^^^^^^^^^^[0m [1m[91mexpected `usize`, found `&Vec<String>`[0m
+    [1m[94m|[0m                        [1m[94m|[0m
+    [1m[94m|[0m                        [1m[94marguments to this function are incorrect[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m:   expected type `[1m[35musize[0m`
+            found reference `[1m[35m&[0m[1m[35mVec<String>[0m`
+[1m[92mnote[0m: function defined here
+   [1m[94m--> [0msrc/fmt.rs:79:8
+    [1m[94m|[0m
+[1m[94m 79[0m [1m[94m|[0m pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+    [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[91merror[E0308][0m[1m: mismatched types[0m
+   [1m[94m--> [0mtests/types.rs:435:37
+    [1m[94m|[0m
+[1m[94m435[0m [1m[94m|[0m     let offset = auto_scroll_offset(&messages, 80);
+    [1m[94m|[0m                  [1m[94m------------------[0m [1m[91m^^^^^^^^^[0m [1m[91mexpected `usize`, found `&Vec<String>`[0m
+    [1m[94m|[0m                  [1m[94m|[0m
+    [1m[94m|[0m                  [1m[94marguments to this function are incorrect[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m:   expected type `[1m[35musize[0m`
+            found reference `[1m[35m&[0m[1m[35mVec<String>[0m`
+[1m[92mnote[0m: function defined here
+   [1m[94m--> [0msrc/fmt.rs:79:8
+    [1m[94m|[0m
+[1m[94m 79[0m [1m[94m|[0m pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+    [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 3 arguments but 1 argument was supplied[0m
+   [1m[94m--> [0mtests/types.rs:444:19
+    [1m[94m|[0m
+[1m[94m444[0m [1m[94m|[0m     let display = peer_display_name(with_nickname);
+    [1m[94m|[0m                   [1m[91m^^^^^^^^^^^^^^^^^[0m[1m[94m---------------[0m [1m[94mtwo arguments of type `&HashMap<String, String>` and `&HashMap<String, String>` are missing[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: function defined here
+   [1m[94m--> [0msrc/fmt.rs:63:8
+    [1m[94m|[0m
+[1m[94m 63[0m [1m[94m|[0m pub fn peer_display_name(
+    [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: provide the arguments
+    [1m[94m|[0m
+[1m[94m444[0m [1m[94m| [0m    let display = peer_display_name(with_nickname[92m, /* &HashMap<String, String> */, /* &HashMap<String, String> */[0m);
+    [1m[94m|[0m                                                  [92m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 3 arguments but 1 argument was supplied[0m
+   [1m[94m--> [0mtests/types.rs:448:25
+    [1m[94m|[0m
+[1m[94m448[0m [1m[94m|[0m     let empty_display = peer_display_name(empty);
+    [1m[94m|[0m                         [1m[91m^^^^^^^^^^^^^^^^^[0m[1m[94m-------[0m [1m[94mtwo arguments of type `&HashMap<String, String>` and `&HashMap<String, String>` are missing[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: function defined here
+   [1m[94m--> [0msrc/fmt.rs:63:8
+    [1m[94m|[0m
+[1m[94m 63[0m [1m[94m|[0m pub fn peer_display_name(
+    [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: provide the arguments
+    [1m[94m|[0m
+[1m[94m448[0m [1m[94m| [0m    let empty_display = peer_display_name(empty[92m, /* &HashMap<String, String> */, /* &HashMap<String, String> */[0m);
+    [1m[94m|[0m                                                [92m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 3 arguments but 1 argument was supplied[0m
+   [1m[94m--> [0mtests/types.rs:657:23
+    [1m[94m|[0m
+[1m[94m657[0m [1m[94m|[0m         let display = peer_display_name(name);
+    [1m[94m|[0m                       [1m[91m^^^^^^^^^^^^^^^^^[0m[1m[94m------[0m [1m[94mtwo arguments of type `&HashMap<String, String>` and `&HashMap<String, String>` are missing[0m
+    [1m[94m|[0m
+[1m[92mnote[0m: function defined here
+   [1m[94m--> [0msrc/fmt.rs:63:8
+    [1m[94m|[0m
+[1m[94m 63[0m [1m[94m|[0m pub fn peer_display_name(
+    [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: provide the arguments
+    [1m[94m|[0m
+[1m[94m657[0m [1m[94m| [0m        let display = peer_display_name(name[92m, /* &HashMap<String, String> */, /* &HashMap<String, String> */[0m);
+    [1m[94m|[0m                                             [92m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[0m
+
+[1m[91merror[E0609][0m[1m: no field `content` on type `SwarmCommand`[0m
+   [1m[94m--> [0mtests/types.rs:978:19
+    [1m[94m|[0m
+[1m[94m978[0m [1m[94m|[0m     assert!(empty.content.is_empty());
+    [1m[94m|[0m                   [1m[91m^^^^^^^[0m [1m[91munknown field[0m
+
+[1m[91merror[E0609][0m[1m: no field `content` on type `SwarmCommand`[0m
+   [1m[94m--> [0mtests/types.rs:986:21
+    [1m[94m|[0m
+[1m[94m986[0m [1m[94m|[0m     assert_eq!(long.content.len(), 5000);
+    [1m[94m|[0m                     [1m[91m^^^^^^^[0m [1m[91munknown field[0m
+
+[1m[91merror[E0609][0m[1m: no field `nickname` on type `SwarmCommand`[0m
+   [1m[94m--> [0mtests/types.rs:996:21
+    [1m[94m|[0m
+[1m[94m996[0m [1m[94m|[0m     assert!(minimal.nickname.is_none());
+    [1m[94m|[0m                     [1m[91m^^^^^^^^[0m [1m[91munknown field[0m
+
+[1m[91merror[E0609][0m[1m: no field `msg_id` on type `SwarmCommand`[0m
+   [1m[94m--> [0mtests/types.rs:997:21
+    [1m[94m|[0m
+[1m[94m997[0m [1m[94m|[0m     assert!(minimal.msg_id.is_none());
+    [1m[94m|[0m                     [1m[91m^^^^^^[0m [1m[91munknown field[0m
+
+[1m[91merror[E0609][0m[1m: no field `ack_for` on type `SwarmCommand`[0m
+   [1m[94m--> [0mtests/types.rs:998:21
+    [1m[94m|[0m
+[1m[94m998[0m [1m[94m|[0m     assert!(minimal.ack_for.is_none());
+    [1m[94m|[0m                     [1m[91m^^^^^^^[0m [1m[91munknown field[0m
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::BroadcastMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:1161:9
+     [1m[94m|[0m
+[1m[94m1161[0m [1m[94m|[0m         sender_nickname: Some("Alice".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::BroadcastMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `nickname`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender`[0m
+    [1m[94m--> [0mtests/types.rs:1175:9
+     [1m[94m|[0m
+[1m[94m1175[0m [1m[94m|[0m         sender: "peer1".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `recipient`[0m
+    [1m[94m--> [0mtests/types.rs:1176:9
+     [1m[94m|[0m
+[1m[94m1176[0m [1m[94m|[0m         recipient: "peer2".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:1177:9
+     [1m[94m|[0m
+[1m[94m1177[0m [1m[94m|[0m         sender_nickname: None,
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0609][0m[1m: no field `sender` on type `p2p_app::DirectMessage`[0m
+    [1m[94m--> [0mtests/types.rs:1184:20
+     [1m[94m|[0m
+[1m[94m1184[0m [1m[94m|[0m     assert_eq!(msg.sender, "peer1");
+     [1m[94m|[0m                    [1m[91m^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `timestamp`, `sent_at`, `nickname`, `msg_id` ... and 2 others
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender`[0m
+    [1m[94m--> [0mtests/types.rs:1193:9
+     [1m[94m|[0m
+[1m[94m1193[0m [1m[94m|[0m         sender: "peer-a".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `recipient`[0m
+    [1m[94m--> [0mtests/types.rs:1194:9
+     [1m[94m|[0m
+[1m[94m1194[0m [1m[94m|[0m         recipient: "peer-b".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:1195:9
+     [1m[94m|[0m
+[1m[94m1195[0m [1m[94m|[0m         sender_nickname: Some("A".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0533][0m[1m: expected value, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:1280:22
+     [1m[94m|[0m
+[1m[94m1280[0m [1m[94m|[0m     let discovered = SwarmEvent::PeerDiscovered("new-peer".to_string());
+     [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a value[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: you might have meant to create a new value of the struct
+     [1m[94m|[0m
+[1m[94m1280[0m [91m- [0m    let discovered = SwarmEvent::PeerDiscovered[91m("new-peer".to_string())[0m;
+[1m[94m1280[0m [92m+ [0m    let discovered = SwarmEvent::PeerDiscovered[92m { peer_id: /* value */, addresses: /* value */ }[0m;
+     [1m[94m|[0m
+
+[1m[91merror[E0164][0m[1m: expected tuple struct or tuple variant, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:1281:34
+     [1m[94m|[0m
+[1m[94m1281[0m [1m[94m|[0m     assert!(matches!(discovered, SwarmEvent::PeerDiscovered(_)));
+     [1m[94m|[0m                                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a tuple struct or tuple variant[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: the struct variant's fields are being ignored
+     [1m[94m|[0m
+[1m[94m1281[0m [91m- [0m    assert!(matches!(discovered, SwarmEvent::PeerDiscovered[91m(_)[0m));
+[1m[94m1281[0m [92m+ [0m    assert!(matches!(discovered, SwarmEvent::PeerDiscovered[92m { peer_id: _, addresses: _ }[0m));
+     [1m[94m|[0m
+
+[1m[91merror[E0533][0m[1m: expected value, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:1427:9
+     [1m[94m|[0m
+[1m[94m1427[0m [1m[94m|[0m         SwarmEvent::PeerDiscovered("p".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a value[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: you might have meant to create a new value of the struct
+     [1m[94m|[0m
+[1m[94m1427[0m [91m- [0m        SwarmEvent::PeerDiscovered[91m("p".to_string())[0m,
+[1m[94m1427[0m [92m+ [0m        SwarmEvent::PeerDiscovered[92m { peer_id: /* value */, addresses: /* value */ }[0m,
+     [1m[94m|[0m
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::BroadcastMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:1490:9
+     [1m[94m|[0m
+[1m[94m1490[0m [1m[94m|[0m         sender_nickname: None,
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::BroadcastMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `nickname`
+
+[1m[91merror[E0609][0m[1m: no field `sender_nickname` on type `p2p_app::BroadcastMessage`[0m
+    [1m[94m--> [0mtests/types.rs:1496:17
+     [1m[94m|[0m
+[1m[94m1496[0m [1m[94m|[0m     assert!(msg.sender_nickname.is_none());
+     [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `sent_at`, `nickname`, `msg_id`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender`[0m
+    [1m[94m--> [0mtests/types.rs:1505:9
+     [1m[94m|[0m
+[1m[94m1505[0m [1m[94m|[0m         sender: "s".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `recipient`[0m
+    [1m[94m--> [0mtests/types.rs:1506:9
+     [1m[94m|[0m
+[1m[94m1506[0m [1m[94m|[0m         recipient: "r".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:1507:9
+     [1m[94m|[0m
+[1m[94m1507[0m [1m[94m|[0m         sender_nickname: None,
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0609][0m[1m: no field `sender` on type `p2p_app::DirectMessage`[0m
+    [1m[94m--> [0mtests/types.rs:1513:20
+     [1m[94m|[0m
+[1m[94m1513[0m [1m[94m|[0m     assert_eq!(msg.sender, "s");
+     [1m[94m|[0m                    [1m[91m^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `timestamp`, `sent_at`, `nickname`, `msg_id` ... and 2 others
+
+[1m[91merror[E0609][0m[1m: no field `recipient` on type `p2p_app::DirectMessage`[0m
+    [1m[94m--> [0mtests/types.rs:1514:20
+     [1m[94m|[0m
+[1m[94m1514[0m [1m[94m|[0m     assert_eq!(msg.recipient, "r");
+     [1m[94m|[0m                    [1m[91m^^^^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `timestamp`, `sent_at`, `nickname`, `msg_id` ... and 2 others
+
+[1m[91merror[E0308][0m[1m: mismatched types[0m
+    [1m[94m--> [0mtests/types.rs:1649:37
+     [1m[94m|[0m
+[1m[94m1649[0m [1m[94m|[0m     let offset = auto_scroll_offset(&messages, 10);
+     [1m[94m|[0m                  [1m[94m------------------[0m [1m[91m^^^^^^^^^[0m [1m[91mexpected `usize`, found `&Vec<String>`[0m
+     [1m[94m|[0m                  [1m[94m|[0m
+     [1m[94m|[0m                  [1m[94marguments to this function are incorrect[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m:   expected type `[1m[35musize[0m`
+             found reference `[1m[35m&[0m[1m[35mVec<String>[0m`
+[1m[92mnote[0m: function defined here
+    [1m[94m--> [0msrc/fmt.rs:79:8
+     [1m[94m|[0m
+[1m[94m  79[0m [1m[94m|[0m pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+     [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[91merror[E0308][0m[1m: mismatched types[0m
+    [1m[94m--> [0mtests/types.rs:1658:37
+     [1m[94m|[0m
+[1m[94m1658[0m [1m[94m|[0m     let offset = auto_scroll_offset(&messages, 80);
+     [1m[94m|[0m                  [1m[94m------------------[0m [1m[91m^^^^^^^^^[0m [1m[91mexpected `usize`, found `&Vec<String>`[0m
+     [1m[94m|[0m                  [1m[94m|[0m
+     [1m[94m|[0m                  [1m[94marguments to this function are incorrect[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m:   expected type `[1m[35musize[0m`
+             found reference `[1m[35m&[0m[1m[35mVec<String>[0m`
+[1m[92mnote[0m: function defined here
+    [1m[94m--> [0msrc/fmt.rs:79:8
+     [1m[94m|[0m
+[1m[94m  79[0m [1m[94m|[0m pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+     [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[91merror[E0308][0m[1m: mismatched types[0m
+    [1m[94m--> [0mtests/types.rs:1668:37
+     [1m[94m|[0m
+[1m[94m1668[0m [1m[94m|[0m     let offset = auto_scroll_offset(&messages, 80);
+     [1m[94m|[0m                  [1m[94m------------------[0m [1m[91m^^^^^^^^^[0m [1m[91mexpected `usize`, found `&Vec<String>`[0m
+     [1m[94m|[0m                  [1m[94m|[0m
+     [1m[94m|[0m                  [1m[94marguments to this function are incorrect[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m:   expected type `[1m[35musize[0m`
+             found reference `[1m[35m&[0m[1m[35mVec<String>[0m`
+[1m[92mnote[0m: function defined here
+    [1m[94m--> [0msrc/fmt.rs:79:8
+     [1m[94m|[0m
+[1m[94m  79[0m [1m[94m|[0m pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+     [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[91merror[E0061][0m[1m: this function takes 3 arguments but 1 argument was supplied[0m
+    [1m[94m--> [0mtests/types.rs:1678:22
+     [1m[94m|[0m
+[1m[94m1678[0m [1m[94m|[0m         let result = peer_display_name(name);
+     [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^[0m[1m[94m------[0m [1m[94mtwo arguments of type `&HashMap<String, String>` and `&HashMap<String, String>` are missing[0m
+     [1m[94m|[0m
+[1m[92mnote[0m: function defined here
+    [1m[94m--> [0msrc/fmt.rs:63:8
+     [1m[94m|[0m
+[1m[94m  63[0m [1m[94m|[0m pub fn peer_display_name(
+     [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m: provide the arguments
+     [1m[94m|[0m
+[1m[94m1678[0m [1m[94m| [0m        let result = peer_display_name(name[92m, /* &HashMap<String, String> */, /* &HashMap<String, String> */[0m);
+     [1m[94m|[0m                                            [92m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[0m
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::BroadcastMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:2182:9
+     [1m[94m|[0m
+[1m[94m2182[0m [1m[94m|[0m         sender_nickname: Some("Sender".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::BroadcastMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `nickname`
+
+[1m[91merror[E0609][0m[1m: no field `sender_nickname` on type `p2p_app::BroadcastMessage`[0m
+    [1m[94m--> [0mtests/types.rs:2188:20
+     [1m[94m|[0m
+[1m[94m2188[0m [1m[94m|[0m     assert_eq!(msg.sender_nickname, Some("Sender".to_string()));
+     [1m[94m|[0m                    [1m[91m^^^^^^^^^^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `sent_at`, `nickname`, `msg_id`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender`[0m
+    [1m[94m--> [0mtests/types.rs:2197:9
+     [1m[94m|[0m
+[1m[94m2197[0m [1m[94m|[0m         sender: "sender-peer".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `recipient`[0m
+    [1m[94m--> [0mtests/types.rs:2198:9
+     [1m[94m|[0m
+[1m[94m2198[0m [1m[94m|[0m         recipient: "recipient-peer".to_string(),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0560][0m[1m: struct `p2p_app::DirectMessage` has no field named `sender_nickname`[0m
+    [1m[94m--> [0mtests/types.rs:2199:9
+     [1m[94m|[0m
+[1m[94m2199[0m [1m[94m|[0m         sender_nickname: Some("Name".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^[0m [1m[91m`p2p_app::DirectMessage` does not have this field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `timestamp`, `nickname`, `received_at`
+
+[1m[91merror[E0609][0m[1m: no field `sender` on type `p2p_app::DirectMessage`[0m
+    [1m[94m--> [0mtests/types.rs:2206:20
+     [1m[94m|[0m
+[1m[94m2206[0m [1m[94m|[0m     assert_eq!(msg.sender, "sender-peer");
+     [1m[94m|[0m                    [1m[91m^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `timestamp`, `sent_at`, `nickname`, `msg_id` ... and 2 others
+
+[1m[91merror[E0609][0m[1m: no field `recipient` on type `p2p_app::DirectMessage`[0m
+    [1m[94m--> [0mtests/types.rs:2207:20
+     [1m[94m|[0m
+[1m[94m2207[0m [1m[94m|[0m     assert_eq!(msg.recipient, "recipient-peer");
+     [1m[94m|[0m                    [1m[91m^^^^^^^^^[0m [1m[91munknown field[0m
+     [1m[94m|[0m
+     [1m[94m= [0m[1mnote[0m: available fields are: `content`, `timestamp`, `sent_at`, `nickname`, `msg_id` ... and 2 others
+
+[1m[91merror[E0533][0m[1m: expected value, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:2291:22
+     [1m[94m|[0m
+[1m[94m2291[0m [1m[94m|[0m     let discovered = SwarmEvent::PeerDiscovered(peer_id.clone());
+     [1m[94m|[0m                      [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a value[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: you might have meant to create a new value of the struct
+     [1m[94m|[0m
+[1m[94m2291[0m [91m- [0m    let discovered = SwarmEvent::PeerDiscovered[91m(peer_id.clone())[0m;
+[1m[94m2291[0m [92m+ [0m    let discovered = SwarmEvent::PeerDiscovered[92m { peer_id: /* value */, addresses: /* value */ }[0m;
+     [1m[94m|[0m
+
+[1m[91merror[E0164][0m[1m: expected tuple struct or tuple variant, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:2292:34
+     [1m[94m|[0m
+[1m[94m2292[0m [1m[94m|[0m     assert!(matches!(discovered, SwarmEvent::PeerDiscovered(_)));
+     [1m[94m|[0m                                  [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a tuple struct or tuple variant[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: the struct variant's fields are being ignored
+     [1m[94m|[0m
+[1m[94m2292[0m [91m- [0m    assert!(matches!(discovered, SwarmEvent::PeerDiscovered[91m(_)[0m));
+[1m[94m2292[0m [92m+ [0m    assert!(matches!(discovered, SwarmEvent::PeerDiscovered[92m { peer_id: _, addresses: _ }[0m));
+     [1m[94m|[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `DmTab` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2491:23
+     [1m[94m|[0m
+[1m[94m2491[0m [1m[94m|[0m         let mut tab = DmTab::new("peer1".to_string());
+     [1m[94m|[0m                       [1m[91m^^^^^[0m [1m[91muse of undeclared type `DmTab`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `SwarmEvent` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2509:23
+     [1m[94m|[0m
+[1m[94m2509[0m [1m[94m|[0m         let _event1 = SwarmEvent::PeerConnected("peer123".to_string());
+     [1m[94m|[0m                       [1m[91m^^^^^^^^^^[0m [1m[91muse of undeclared type `SwarmEvent`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `SwarmEvent` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2512:23
+     [1m[94m|[0m
+[1m[94m2512[0m [1m[94m|[0m         let _event2 = SwarmEvent::PeerDisconnected("peer456".to_string());
+     [1m[94m|[0m                       [1m[91m^^^^^^^^^^[0m [1m[91muse of undeclared type `SwarmEvent`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `SwarmEvent` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2515:23
+     [1m[94m|[0m
+[1m[94m2515[0m [1m[94m|[0m         let _event3 = SwarmEvent::ListenAddrEstablished("/ip4/127.0.0.1/tcp/9000".to_string());
+     [1m[94m|[0m                       [1m[91m^^^^^^^^^^[0m [1m[91muse of undeclared type `SwarmEvent`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `TabId` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2529:21
+     [1m[94m|[0m
+[1m[94m2529[0m [1m[94m|[0m         let chat1 = TabId::Chat;
+     [1m[94m|[0m                     [1m[91m^^^^^[0m [1m[91muse of undeclared type `TabId`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `TabId` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2530:21
+     [1m[94m|[0m
+[1m[94m2530[0m [1m[94m|[0m         let chat2 = TabId::Chat;
+     [1m[94m|[0m                     [1m[91m^^^^^[0m [1m[91muse of undeclared type `TabId`[0m
+
+[1m[91merror[E0433][0m[1m: cannot find type `TabId` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2531:21
+     [1m[94m|[0m
+[1m[94m2531[0m [1m[94m|[0m         let peers = TabId::Peers;
+     [1m[94m|[0m                     [1m[91m^^^^^[0m [1m[91muse of undeclared type `TabId`[0m
+
+[1m[91merror[E0533][0m[1m: expected value, found struct variant `SwarmEvent::PeerDiscovered`[0m
+    [1m[94m--> [0mtests/types.rs:2613:9
+     [1m[94m|[0m
+[1m[94m2613[0m [1m[94m|[0m         SwarmEvent::PeerDiscovered("p".to_string()),
+     [1m[94m|[0m         [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot a value[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: you might have meant to create a new value of the struct
+     [1m[94m|[0m
+[1m[94m2613[0m [91m- [0m        SwarmEvent::PeerDiscovered[91m("p".to_string())[0m,
+[1m[94m2613[0m [92m+ [0m        SwarmEvent::PeerDiscovered[92m { peer_id: /* value */, addresses: /* value */ }[0m,
+     [1m[94m|[0m
+
+[1m[33mwarning[0m[1m: unused variable: `pub_full`[0m
+   [1m[94m--> [0mtests/types.rs:319:9
+    [1m[94m|[0m
+[1m[94m319[0m [1m[94m|[0m     let pub_full = SwarmCommand::Publish {
+    [1m[94m|[0m         [1m[33m^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_pub_full`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[33mwarning[0m[1m: unused variable: `pub_min`[0m
+   [1m[94m--> [0mtests/types.rs:326:9
+    [1m[94m|[0m
+[1m[94m326[0m [1m[94m|[0m     let pub_min = SwarmCommand::Publish {
+    [1m[94m|[0m         [1m[33m^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_pub_min`[0m
+
+[1m[33mwarning[0m[1m: unused variable: `dm_with_ack`[0m
+   [1m[94m--> [0mtests/types.rs:333:9
+    [1m[94m|[0m
+[1m[94m333[0m [1m[94m|[0m     let dm_with_ack = SwarmCommand::SendDm {
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^^[0m [1m[33mhelp: if this is intentional, prefix it with an underscore: `_dm_with_ack`[0m
+
+[1m[33mwarning[0m[1m: value assigned to `current_tab` is never read[0m
+   [1m[94m--> [0mtests/types.rs:889:27
+    [1m[94m|[0m
+[1m[94m889[0m [1m[94m|[0m     let mut current_tab = TabId::Chat;
+    [1m[94m|[0m                           [1m[33m^^^^^^^^^^^[0m [1m[33mthis value is reassigned later and never used[0m
+[1m[94m...[0m
+[1m[94m892[0m [1m[94m|[0m     current_tab = TabId::Peers;
+    [1m[94m|[0m     [1m[94m--------------------------[0m [1m[94m`current_tab` is overwritten here before the previous value is read[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+[1m[92m     Running[0m `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name p2p_chat --edition=2024 src/bin/p2p_chat.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=cf065a805e1770b7 -C extra-filename=-d56837f8a0d5f814 --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out`
+[1m[91merror[E0433][0m[1m: cannot find type `SwarmEvent` in this scope[0m
+    [1m[94m--> [0mtests/types.rs:2518:23
+     [1m[94m|[0m
+[1m[94m2518[0m [1m[94m|[0m         let _event4 = SwarmEvent::Receipt {
+     [1m[94m|[0m                       [1m[91m^^^^^^^^^^[0m [1m[91muse of undeclared type `SwarmEvent`[0m
+
+[1mSome errors have detailed explanations: E0027, E0061, E0063, E0164, E0308, E0422, E0428, E0432, E0433...[0m
+[1mFor more information about an error, try `rustc --explain E0027`.[0m
+[1m[33mwarning[0m: `p2p_app` (test "types") generated 9 warnings
+[1m[91merror[0m: could not compile `p2p_app` (test "types") due to 79 previous errors; 9 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `/home/runner/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc --crate-name types --edition=2024 tests/types.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --cfg 'feature="mdns"' --cfg 'feature="quic"' --cfg 'feature="test-utils"' --cfg 'feature="tracing"' --cfg 'feature="tui"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("basic", "default", "dioxus", "dioxus-desktop", "mdns", "quic", "sqlite_bundled", "test-utils", "tracing", "tui"))' -C metadata=02bdd102bc493da7 -C extra-filename=-6a0b2cdda4da476d --out-dir /home/runner/work/p2p_app/p2p_app/target/debug/deps -L dependency=/home/runner/work/p2p_app/p2p_app/target/debug/deps --extern chrono=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libchrono-e63bfef8a971974d.rlib --extern color_eyre=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcolor_eyre-89028220e34cce97.rlib --extern crossterm=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libcrossterm-95319d94ecb4a009.rlib --extern diesel=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel-a39fcc3dae503a73.rlib --extern diesel_migrations=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdiesel_migrations-2771a243df596520.rlib --extern dotenvy=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libdotenvy-4bc15013ee358307.rlib --extern futures=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libfutures-b33b6219f9c413f2.rlib --extern libp2p=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p-0d3c0426b2288f49.rlib --extern libp2p_identity=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_identity-afd06fe98c2ecbd2.rlib --extern libp2p_quic=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_quic-8974a2c2dd48c9ad.rlib --extern libp2p_request_response=/home/runner/work/p2p_app/p2p_app/target/debug/deps/liblibp2p_request_response-5f24dcda977f8d58.rlib --extern p2p_app=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libp2p_app-754d41eff6c10094.rlib --extern petname=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libpetname-0d0e72bdb2663e20.rlib --extern ratatui=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui-59ac04500bab8da2.rlib --extern ratatui_textarea=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libratatui_textarea-32d5241b0dad07ac.rlib --extern serde=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde-4d5ed04185639cd9.rlib --extern serde_json=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserde_json-9752ccab55f2dd91.rlib --extern serial_test=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libserial_test-b377215da572981a.rlib --extern tempfile=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtempfile-3bac328920dcd388.rlib --extern tokio=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtokio-1501505f58a52e7c.rlib --extern tracing=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing-3679f8d740cba926.rlib --extern tracing_subscriber=/home/runner/work/p2p_app/p2p_app/target/debug/deps/libtracing_subscriber-fff0b20b52ecdd6a.rlib -L native=/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-3914df805cf4e073/out` (exit status: 1)
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+Exit code: 0
+
