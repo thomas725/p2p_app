@@ -50,7 +50,6 @@ pub fn save_message(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 /// Save a message with optional metadata.
 ///
 /// Inserts a new message with the given content and optional metadata including

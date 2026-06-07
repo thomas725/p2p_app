@@ -49,12 +49,6 @@ pub fn is_nickname_update(content: &str, nickname: Option<&str>) -> bool {
     content.trim().is_empty() && nickname.is_some()
 }
 
-/// Maximum scroll offset calculation
-#[must_use]
-pub fn calc_max_scroll(total_items: usize, visible_count: usize) -> usize {
-    crate::fmt::auto_scroll_offset(total_items, visible_count)
-}
-
 /// Calculate first visible message index accounting for scroll
 #[must_use]
 pub fn calculate_visible_range(
@@ -101,24 +95,6 @@ pub fn parse_latency(latency: &str) -> Option<f64> {
 #[must_use]
 pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool {
     scroll_offset >= total.saturating_sub(visible)
-}
-
-/// Format peer list item
-#[must_use]
-pub fn format_peer_list_item(
-    peer_id: &str,
-    local_nickname: Option<&str>,
-    last_seen: &str,
-) -> String {
-    match local_nickname {
-        Some(nick) => format!(
-            "{} ({}) - {}",
-            nick,
-            &peer_id[..8.min(peer_id.len())],
-            last_seen
-        ),
-        None => format!("{} - {}", &peer_id[..8.min(peer_id.len())], last_seen),
-    }
 }
 
 // ============================================
@@ -214,20 +190,6 @@ pub fn handle_scroll_key_for_section(
         _ => {}
     }
     (new_offset, new_auto)
-}
-
-/// Handle mouse wheel scroll
-#[must_use]
-pub fn handle_mouse_wheel_scroll(
-    direction: &str,
-    scroll_offset: usize,
-    max_offset: usize,
-) -> usize {
-    match direction {
-        "up" => scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
-        "down" => (scroll_offset + WHEEL_SCROLL_LINES).min(max_offset),
-        _ => scroll_offset,
-    }
 }
 
 /// Rename sender labels in a DM transcript when a nickname changes.

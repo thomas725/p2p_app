@@ -16,11 +16,11 @@ pub enum NetworkSize {
 
 impl std::fmt::Display for NetworkSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Small => write!(f, "Small"),
-            Self::Medium => write!(f, "Medium"),
-            Self::Large => write!(f, "Large"),
-        }
+        f.write_str(match self {
+            Self::Small => "Small",
+            Self::Medium => "Medium",
+            Self::Large => "Large",
+        })
     }
 }
 

@@ -18,6 +18,7 @@ const MAX_TUI_LOGS: usize = 1000;
 static TUI_CALLBACK: OnceLock<Arc<dyn Fn(String) + Send + Sync>> = OnceLock::new();
 
 /// Optional hook that requests a TUI redraw when new logs arrive.
+#[allow(clippy::type_complexity)]
 static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>> = OnceLock::new();
 
 /// In-memory log storage for TUI access

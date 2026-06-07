@@ -45,7 +45,6 @@ fn nickname_and_validation_helpers() {
 
 #[test]
 fn range_and_truncate_helpers() {
-    assert_eq!(calc_max_scroll(10, 3), 7);
     assert_eq!(calculate_visible_range(10, 4, 3), (4, 7));
     assert_eq!(truncate_message("hello", 10), "hello");
     assert_eq!(truncate_message("abcdefghij", 6), "abc...");
@@ -63,10 +62,6 @@ fn latency_and_bottom_helpers() {
 
 #[test]
 fn peer_item_and_lines_helpers() {
-    let with_nick = format_peer_list_item("1234567890", Some("alice"), "now");
-    let no_nick = format_peer_list_item("1234567890", None, "now");
-    assert!(with_nick.contains("alice"));
-    assert!(no_nick.starts_with("12345678"));
     assert_eq!(crate::count_lines("x", 0), 1);
     assert_eq!(crate::count_lines("abcdefghij", 5), 2);
 }
@@ -118,9 +113,6 @@ fn scroll_helpers() {
         handle_scroll_key_for_section("Unknown", 3, false, 9),
         (3, false)
     );
-    assert_eq!(handle_mouse_wheel_scroll("up", 2, 10), 0);
-    assert_eq!(handle_mouse_wheel_scroll("down", 2, 10), 5);
-    assert_eq!(handle_mouse_wheel_scroll("noop", 2, 10), 2);
 }
 
 #[test]

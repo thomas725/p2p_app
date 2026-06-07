@@ -184,20 +184,13 @@ pub fn format_messages_from_db(
     let mut sent_at_by_msg_id = HashMap::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
-        let sender = if msg.peer_id.is_none() {
-            msg.sender_nickname
-                .as_ref()
-                .map_or_else(|| format!("[{own_nickname}]"), |n| format!("[{n}]"))
+        let sender = if let Some(ref nick) = msg.sender_nickname {
+            format!("[{nick}]")
+        } else if let Some(ref pid) = msg.peer_id {
+            let display = p2p_app::peer_display_name(pid, local_nicknames, received_nicknames);
+            format!("[{display}]")
         } else {
-            msg.sender_nickname.as_ref().map_or_else(
-                || {
-                    let p = msg.peer_id.as_ref().unwrap();
-                    let display =
-                        p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
-                    format!("[{display}]")
-                },
-                |n| format!("[{n}]"),
-            )
+            format!("[{own_nickname}]")
         };
         messages.push_back((
             format!("{} {} {}", ts, sender, msg.content),

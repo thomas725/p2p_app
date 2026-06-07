@@ -28,12 +28,11 @@ async fn handle_swarm_event(
             let peer_id_str = peer_id.to_string();
 
             if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
-                let content = bcast.content.clone();
                 let latency = Some(crate::format_latency(bcast.sent_at, SystemTime::now()));
 
                 let _ = event_tx
                     .send(SwarmEvent::BroadcastMessage {
-                        content,
+                        content: bcast.content,
                         peer_id: peer_id_str,
                         latency,
                         nickname: bcast.nickname.clone(),
@@ -177,6 +176,7 @@ pub fn build_broadcast_message(
 }
 
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
+    use libp2p::PeerId;
     match cmd {
         SwarmCommand::Publish {
             content,
@@ -209,7 +209,6 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             msg_id,
             ack_for,
         } => {
-            use libp2p::PeerId;
             if let Ok(peer) = peer_id.parse::<PeerId>() {
                 let msg = crate::DirectMessage {
                     content,

@@ -94,19 +94,9 @@ pub fn init_database() -> color_eyre::Result<SqliteConnection> {
     let conn = sqlite_connect()?;
 
     // Log startup info once
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!("Database: {}", db_path);
-        if let Ok(id) = get_local_peer_id() {
-            tracing::info!("Local peer ID: {}", id);
-        }
-    }
-    #[cfg(not(feature = "tracing"))]
-    {
-        crate::logging::p2plog_info(format!("[Startup] Database: {}", db_path));
-        if let Ok(id) = get_local_peer_id() {
-            crate::logging::p2plog_info(format!("[Startup] Local peer ID: {}", id));
-        }
+    crate::logging::p2plog_info(format!("[Startup] Database: {}", db_path));
+    if let Ok(id) = get_local_peer_id() {
+        crate::logging::p2plog_info(format!("[Startup] Local peer ID: {}", id));
     }
 
     Ok(conn)
@@ -307,7 +297,6 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 /// Get the database URL from environment or default value.
 ///
 /// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
-/// Get the database URL from environment or default value.
 /// Caches result in `DB_URL` so subsequent calls (like from `sqlite_connect`) use same db.
 #[must_use]
 pub fn get_database_url() -> String {

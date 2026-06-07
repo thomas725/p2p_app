@@ -51,14 +51,6 @@ fn test_is_nickname_update() {
 }
 
 #[test]
-fn test_calculate_auto_scroll() {
-    use p2p_app::tui_helpers::calc_max_scroll;
-
-    assert_eq!(calc_max_scroll(100, 20), 80);
-    assert_eq!(calc_max_scroll(10, 20), 0);
-}
-
-#[test]
 fn test_calculate_visible_range() {
     use p2p_app::tui_helpers::calculate_visible_range;
 
@@ -118,17 +110,6 @@ fn test_is_at_bottom() {
     assert!(!is_at_bottom(50, 100, 20));
 }
 
-#[test]
-fn test_format_peer_list_item() {
-    use p2p_app::tui_helpers::format_peer_list_item;
-
-    let item = format_peer_list_item("12D3KooWSkP1pEPy2", Some("Alice"), "10:00");
-    assert!(item.contains("Alice"));
-
-    let item2 = format_peer_list_item("12D3KooWSkP1pEPy2", None, "10:00");
-    assert!(item2.contains("12D3KooW"));
-}
-
 // Scroll handler tests
 #[test]
 fn test_disable_auto_scroll_to_max() {
@@ -178,14 +159,6 @@ fn test_scroll_down_lines() {
 }
 
 #[test]
-fn test_calc_max_scroll() {
-    use p2p_app::tui_helpers::calc_max_scroll;
-
-    assert_eq!(calc_max_scroll(100, 20), 80);
-    assert_eq!(calc_max_scroll(10, 20), 0); // saturating
-}
-
-#[test]
 fn test_handle_scroll_key_for_section() {
     use p2p_app::tui_helpers::handle_scroll_key_for_section;
 
@@ -220,24 +193,6 @@ fn test_handle_scroll_key_for_section() {
     let (offset, auto) = handle_scroll_key_for_section("Unknown", 50, false, 80);
     assert_eq!(offset, 50);
     assert!(!auto);
-}
-
-#[test]
-fn test_handle_mouse_wheel_scroll() {
-    use p2p_app::tui_helpers::handle_mouse_wheel_scroll;
-
-    let offset = handle_mouse_wheel_scroll("up", 10, 50);
-    assert_eq!(offset, 7); // 10 - 3
-
-    let offset = handle_mouse_wheel_scroll("down", 10, 50);
-    assert_eq!(offset, 13); // 10 + 3
-
-    let offset = handle_mouse_wheel_scroll("unknown", 10, 50);
-    assert_eq!(offset, 10); // no change
-
-    // Edge: can't go below 0
-    let offset = handle_mouse_wheel_scroll("up", 0, 50);
-    assert_eq!(offset, 0);
 }
 
 #[test]
@@ -392,14 +347,6 @@ fn test_handle_scroll_page_down_clamps_at_max() {
 }
 
 #[test]
-fn test_mouse_wheel_scroll_ignored_when_auto_scroll() {
-    use p2p_app::tui_helpers::handle_mouse_wheel_scroll;
-    // Existing function doesn't take auto_scroll — test the no-change path via direction ""
-    let offset = handle_mouse_wheel_scroll("", 30, 100);
-    assert_eq!(offset, 30); // unknown direction is a no-op
-}
-
-#[test]
 fn test_next_tab_index_wraps_forward() {
     use p2p_app::tui_helpers::next_tab_index;
     assert_eq!(next_tab_index(3, 1, 4), 0); // 3+1=4 wraps to 0
@@ -510,27 +457,6 @@ fn test_message_line_count_multiline_with_empty_line() {
     assert_eq!(count_lines("hello\n\nworld", 80), 3);
 }
 
-// ── format_peer_list_item ─────────────────────────────────────────────────────
-
-#[test]
-fn test_format_peer_list_item_with_nickname() {
-    use p2p_app::tui_helpers::format_peer_list_item;
-    // function uses first 8 chars of peer_id
-    let result = format_peer_list_item("12D3KooWABCDEFGH", Some("Alice"), "2024-01-01");
-    assert!(result.contains("Alice"));
-    assert!(result.contains("12D3KooW")); // first 8 chars
-    assert!(result.contains("2024-01-01"));
-}
-
-#[test]
-fn test_format_peer_list_item_no_nickname() {
-    use p2p_app::tui_helpers::format_peer_list_item;
-    let result = format_peer_list_item("12D3KooWABCDEFGH", None, "2024-01-01");
-    assert!(result.contains("12D3KooW")); // first 8 chars
-    assert!(result.contains("2024-01-01"));
-    assert!(!result.contains("Alice"));
-}
-
 // ── is_at_bottom ─────────────────────────────────────────────────────────────
 
 #[test]
@@ -549,20 +475,6 @@ fn test_is_at_bottom_when_not_at_end() {
 fn test_is_at_bottom_empty_list() {
     use p2p_app::tui_helpers::is_at_bottom;
     assert!(is_at_bottom(0, 0, 10)); // 0 >= 0.saturating_sub(10)=0
-}
-
-// ── scroll calc helpers ───────────────────────────────────────────────────────
-
-#[test]
-fn test_calc_max_scroll_fewer_items_than_visible() {
-    use p2p_app::tui_helpers::calc_max_scroll;
-    assert_eq!(calc_max_scroll(5, 10), 0);
-}
-
-#[test]
-fn test_calc_max_scroll_more_items_than_visible() {
-    use p2p_app::tui_helpers::calc_max_scroll;
-    assert_eq!(calc_max_scroll(100, 20), 80);
 }
 
 #[test]
@@ -682,14 +594,6 @@ fn test_message_line_count_all_newlines() {
     use p2p_app::count_lines;
     let result = count_lines("\n\n\n", 80);
     assert!(result >= 1, "should count at least one line, got {result}");
-}
-
-#[test]
-fn test_format_peer_list_item_long_id() {
-    use p2p_app::tui_helpers::format_peer_list_item;
-    let long_id = "12D3KooWVeryLongPeerIdHere";
-    let result = format_peer_list_item(long_id, None, "now");
-    assert!(result.contains("12D3KooW")); // First 8 chars
 }
 
 #[test]
