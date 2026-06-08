@@ -76,7 +76,7 @@ async fn main() -> color_eyre::Result<()> {
     let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
     swarm.listen_on(listen_addr)?;
 
-    let topic = gossipsub::IdentTopic::new("test-net");
+    let topic = gossipsub::IdentTopic::new(p2p_app::CHAT_TOPIC);
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
     let stdin = BufReader::new(tokio::io::stdin());

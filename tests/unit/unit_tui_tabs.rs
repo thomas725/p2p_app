@@ -1,23 +1,6 @@
 use super::*;
 
 #[test]
-fn test_tab_id_index() {
-    assert_eq!(TabId::Chat.index(), 0);
-    assert_eq!(TabId::Peers.index(), 1);
-    assert_eq!(TabId::Direct.index(), 2);
-    assert_eq!(TabId::Log.index(), 3);
-}
-
-#[test]
-fn test_tab_id_from_index() {
-    assert_eq!(TabId::from_index(0), TabId::Chat);
-    assert_eq!(TabId::from_index(1), TabId::Peers);
-    assert_eq!(TabId::from_index(2), TabId::Direct);
-    assert_eq!(TabId::from_index(3), TabId::Log);
-    assert_eq!(TabId::from_index(99), TabId::Chat);
-}
-
-#[test]
 fn test_dm_tab_new() {
     let dm = DmTab::new("12D3KooWABCDEFGH".to_string());
     assert_eq!(dm.peer_id, "12D3KooWABCDEFGH");

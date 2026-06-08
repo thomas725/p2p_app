@@ -353,37 +353,11 @@ fn network_size_equality() {
 #[cfg(feature = "tui")]
 mod tui_tests {
     use p2p_app::{
-        DmTab, DynamicTabs, TabContent, TabId, TuiRenderState, broadcast_receipt_prefix,
+        DmTab, DynamicTabs, TabContent, TuiRenderState, broadcast_receipt_prefix,
         calc_visible_strings, count_lines, dm_receipt_prefix, get_tab_content,
         row_to_visible_index,
     };
     use std::collections::{HashMap, VecDeque};
-
-    // -----------------------------------------------------------------------
-    // TabId
-    // -----------------------------------------------------------------------
-
-    #[test]
-    fn tab_id_default_is_chat() {
-        assert_eq!(TabId::default(), TabId::Chat);
-    }
-
-    #[test]
-    fn tab_id_index_mappings() {
-        assert_eq!(TabId::Chat.index(), 0);
-        assert_eq!(TabId::Peers.index(), 1);
-        assert_eq!(TabId::Direct.index(), 2);
-        assert_eq!(TabId::Log.index(), 3);
-    }
-
-    #[test]
-    fn tab_id_from_index() {
-        assert_eq!(TabId::from_index(0), TabId::Chat);
-        assert_eq!(TabId::from_index(1), TabId::Peers);
-        assert_eq!(TabId::from_index(2), TabId::Direct);
-        assert_eq!(TabId::from_index(3), TabId::Log);
-        assert_eq!(TabId::from_index(99), TabId::Chat);
-    }
 
     // -----------------------------------------------------------------------
     // DmTab

@@ -132,7 +132,7 @@ pub use tui_render_state::{
     get_tab_content, row_to_visible_index,
 };
 #[cfg(feature = "tui")]
-pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
+pub use tui_tabs::{DmTab, DynamicTabs, TabContent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
 pub use types::{DisplayMessage, MessageEvent, PeerRecord, SwarmCommand, SwarmEvent};

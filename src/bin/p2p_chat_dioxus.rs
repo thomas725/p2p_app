@@ -81,10 +81,10 @@ mod dioxus {
             let _ = swarm
                 .behaviour_mut()
                 .gossipsub
-                .subscribe(&gossipsub::IdentTopic::new("test-net"));
+                .subscribe(&gossipsub::IdentTopic::new(p2p_app::CHAT_TOPIC));
 
             let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
-                p2p_app::spawn_swarm_handler(swarm, "test-net".to_string());
+                p2p_app::spawn_swarm_handler(swarm, p2p_app::CHAT_TOPIC.to_string());
 
             p2p_app::dioxus_app::SWARM_CMD_TX
                 .set(std::sync::Mutex::new(swarm_cmd_tx))
@@ -115,7 +115,7 @@ mod dioxus {
                 };
 
             let (initial_messages, initial_message_ids, loaded_sent_at) = format_messages(
-                "test-net",
+                p2p_app::CHAT_TOPIC,
                 1000,
                 &local_nicknames,
                 &received_nicknames,
@@ -166,7 +166,7 @@ mod dioxus {
             let init_data = p2p_app::dioxus_app::InitData {
                 own_nickname,
                 local_peer_id,
-                topic_str: "test-net".to_string(),
+                topic_str: p2p_app::CHAT_TOPIC.to_string(),
                 local_nicknames,
                 received_nicknames,
                 self_nicknames_for_peers,

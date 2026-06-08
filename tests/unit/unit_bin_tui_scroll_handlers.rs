@@ -320,7 +320,7 @@ fn test_scroll_broadcast_section_down() {
     state
         .dm_broadcast_scroll_state
         .insert("peer-b".to_string(), (0, false));
-    state.dm_visible_counts.insert("peer-b".to_string(), (5, 5));
+    // dm_visible_counts removed — visible count is now 1
     scroll_broadcast_section(KeyCode::Down, &mut state, "peer-b");
     let (offset, auto) = state.dm_broadcast_scroll_state.get("peer-b").unwrap();
     assert_eq!(*offset, 1);
@@ -330,9 +330,6 @@ fn test_scroll_broadcast_section_down() {
 #[test]
 fn test_scroll_dm_section_down() {
     let mut state = app_state_with_dm_messages("peer-dm", 10);
-    state
-        .dm_visible_counts
-        .insert("peer-dm".to_string(), (5, 5));
     state
         .dm_scroll_state
         .insert("peer-dm".to_string(), (0, false));

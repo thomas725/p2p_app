@@ -66,9 +66,7 @@ pub struct AppState {
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
-    pub chat_message_offset: usize, // Actual starting index for visible messages (set by render loop)
-    pub chat_area_height: usize,    // Height of message area in rows (set by render loop)
-    pub chat_message_lines: Vec<usize>, // Line count for each visible message (set by render loop)
+    pub chat_area_height: usize, // Height of message area in rows (set by render loop)
 
     // Scroll State (Log tab)
     pub log_scroll_offset: usize,
@@ -79,18 +77,6 @@ pub struct AppState {
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
     // Per-DM broadcast scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_broadcast_scroll_state: HashMap<String, (usize, bool)>,
-    // Visible message counts: peer_id -> (broadcast_count, dm_count)
-    pub dm_visible_counts: HashMap<String, (usize, usize)>,
-    // Line counts for broadcast messages in DM tab: peer_id -> Vec of line counts
-    pub dm_broadcast_message_lines: HashMap<String, Vec<usize>>,
-    // Line counts for DM messages in DM tab: peer_id -> Vec of line counts
-    pub dm_message_lines: HashMap<String, Vec<usize>>,
-    // Broadcast scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
-    pub dm_broadcast_offset: HashMap<String, usize>,
-    // DM scroll offset for DM tab: peer_id -> offset (for recalculating visible range)
-    pub dm_offset: HashMap<String, usize>,
-    // DM pane Y position for click mapping: peer_id -> dm_area.y
-    pub dm_area_y: HashMap<String, u16>,
     // Selected broadcast message in broadcast chat tab
     pub broadcast_selection: Option<usize>,
 
@@ -151,20 +137,12 @@ impl AppState {
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             visible_message_count: 1,
-            chat_message_offset: 0,
             chat_area_height: 0,
-            chat_message_lines: Vec::new(),
             log_scroll_offset: 0,
             log_auto_scroll: true,
             visible_log_count: 1,
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
-            dm_visible_counts: HashMap::new(),
-            dm_broadcast_message_lines: HashMap::new(),
-            dm_message_lines: HashMap::new(),
-            dm_broadcast_offset: HashMap::new(),
-            dm_offset: HashMap::new(),
-            dm_area_y: HashMap::new(),
             broadcast_selection: None,
             own_nickname,
             local_peer_id,

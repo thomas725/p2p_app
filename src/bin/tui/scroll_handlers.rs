@@ -67,7 +67,7 @@ fn scroll_broadcast_section(
     }
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        let visible_count = state.dm_visible_counts.get(peer_id).map_or(1, |(b, _)| *b);
+        let visible_count = 1; // dm_visible_counts was never populated
         let max_offset = broadcast_messages.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
@@ -78,7 +78,7 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
     if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
         && let Some(msgs) = state.dm_messages.get(peer_id)
     {
-        let visible_count = state.dm_visible_counts.get(peer_id).map_or(1, |(_, d)| *d);
+        let visible_count = 1; // dm_visible_counts was never populated
         let max_offset = msgs.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }

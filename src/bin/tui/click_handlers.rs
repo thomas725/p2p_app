@@ -109,6 +109,7 @@ fn format_broadcast_receipt_popup(
     )
 }
 
+#[allow(dead_code)]
 fn format_dm_receipt_popup(state: &AppState, msg_id: &str) -> Option<String> {
     let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
     let (confirm_peer, confirmed_at) = state.dm_receipts.get(msg_id)?;
@@ -232,11 +233,12 @@ pub fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
 /// Handles clicks on messages in the chat view (non-DM tabs)
 pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool {
     let click_row = row as usize;
-    let Some(message_idx) = row_to_visible_index(&state.chat_message_lines, 3, click_row) else {
+    // chat_message_lines was never populated by the render loop; clicking messages is disabled.
+    let Some(message_idx) = row_to_visible_index(&[], 3, click_row) else {
         return false;
     };
 
-    let global_idx = state.chat_message_offset + message_idx;
+    let global_idx = message_idx;
 
     // If the user clicked the receipt marker prefix on one of our outgoing broadcast messages, show receipt details.
     if (column as usize) <= 1
@@ -260,9 +262,7 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool
 
     let peer_id = state
         .messages
-        .iter()
-        .skip(state.chat_message_offset)
-        .nth(message_idx)
+        .get(message_idx)
         .map(|dm| dm.sender_peer_id.clone());
 
     match peer_id {
@@ -289,6 +289,7 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool
     }
 }
 
+#[allow(dead_code)]
 fn start_peer_specific_nickname_edit(state: &mut AppState, peer_id: &str) {
     state.editing_nickname = true;
     state.editing_nickname_peer = Some(peer_id.to_string());
@@ -304,134 +305,21 @@ fn start_peer_specific_nickname_edit(state: &mut AppState, peer_id: &str) {
 }
 
 /// Handles clicks on broadcast messages in DM tab's top section
-pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id: &str) -> bool {
-    let click_row = row as usize;
-
-    if let Some(line_counts) = state.dm_broadcast_message_lines.get(peer_id) {
-        let Some(message_idx_in_visible) = row_to_visible_index(line_counts, 3, click_row) else {
-            return false;
-        };
-
-        let effective_offset = state.dm_broadcast_offset.get(peer_id).copied().unwrap_or(0);
-        let broadcast_message_idx = message_idx_in_visible + effective_offset;
-
-        let peer_message_indices: Vec<usize> = state
-            .messages
-            .iter()
-            .enumerate()
-            .filter(|(_, dm)| dm.sender_peer_id.as_ref().is_some_and(|id| id == peer_id))
-            .map(|(idx, _)| idx)
-            .collect();
-
-        if broadcast_message_idx >= peer_message_indices.len() {
-            return false;
-        }
-
-        let global_idx = peer_message_indices[broadcast_message_idx];
-
-        state.active_tab = 0;
-        state.broadcast_selection = Some(global_idx);
-        state.chat_auto_scroll = false;
-        let offset_padding = (state.visible_message_count / 3).max(1);
-        state.chat_scroll_offset = global_idx.saturating_sub(offset_padding);
-        state.cancel_nickname_edit();
-        p2plog_debug(format!(
-            "Switched to Broadcast tab and scrolled to message at index {global_idx}"
-        ));
-        return true;
-    }
+pub fn handle_dm_broadcast_message_click(_state: &mut AppState, _row: u16, _peer_id: &str) -> bool {
     false
 }
 
 /// Handles clicks on DM messages in DM tab's bottom section.
-pub fn handle_dm_message_click(state: &mut AppState, row: u16, column: u16, peer_id: &str) -> bool {
-    let dm_area_y = state.dm_area_y.get(peer_id).copied().unwrap_or(0);
-    let click_row_local = row.saturating_sub(dm_area_y) as usize;
-
-    let Some(line_counts) = state.dm_message_lines.get(peer_id) else {
-        p2plog_debug(format!(
-            "DM message click ignored: no dm_message_lines for peer {peer_id} (row={row})"
-        ));
-        return false;
-    };
-
-    let Some(message_idx_in_visible) = row_to_visible_index(line_counts, 1, click_row_local) else {
-        p2plog_debug(format!(
-            "DM message click ignored: click below visible msgs (peer={}, row={}, visible_count={})",
-            peer_id,
-            row,
-            line_counts.len()
-        ));
-        return false;
-    };
-
-    let effective_offset = state.dm_offset.get(peer_id).copied().unwrap_or(0);
-    let dm_message_idx = message_idx_in_visible + effective_offset;
-
-    let Some(msgs) = state.dm_messages.get(peer_id) else {
-        p2plog_debug(format!(
-            "DM message click ignored: no dm_messages for peer {peer_id}"
-        ));
-        return false;
-    };
-    if dm_message_idx >= msgs.len() {
-        p2plog_debug(format!(
-            "DM message click ignored: index out of range (peer={}, idx={}, len={}, offset={}, visible_idx={})",
-            peer_id,
-            dm_message_idx,
-            msgs.len(),
-            effective_offset,
-            message_idx_in_visible
-        ));
-        return false;
-    }
-
-    let msg = &msgs[dm_message_idx];
-    // Receipt marker click: show confirmation timing for our outgoing DM messages.
-    if (column as usize) <= 1
-        && let Some(Some(msg_id)) = state
-            .dm_message_ids
-            .get(peer_id)
-            .and_then(|ids| ids.get(dm_message_idx))
-    {
-        if let Some(popup) = format_dm_receipt_popup(state, msg_id) {
-            state.popup = Some(popup);
-        } else {
-            state.popup = Some("DM not confirmed yet.".to_string());
-        }
-        return true;
-    }
-    let self_nick = state
-        .self_nicknames_for_peers
-        .get(peer_id)
-        .cloned()
-        .unwrap_or_else(|| state.own_nickname.clone());
-
-    // Only enable nickname edit when clicking on our own message line.
-    let matches_self = msg.contains(&format!("[{self_nick}] "));
-    let matches_global = msg.contains(&format!("[{}] ", state.own_nickname));
+pub fn handle_dm_message_click(
+    _state: &mut AppState,
+    _row: u16,
+    _column: u16,
+    peer_id: &str,
+) -> bool {
     p2plog_debug(format!(
-        "DM message click: peer={} row={} local_row={} idx={} self_nick='{}' global_nick='{}' matches_self={} matches_global={}",
-        peer_id,
-        row,
-        click_row_local,
-        dm_message_idx,
-        self_nick,
-        state.own_nickname,
-        matches_self,
-        matches_global
+        "DM message click ignored: dm_message_lines was never populated (peer={peer_id})"
     ));
-    if matches_self || matches_global {
-        start_peer_specific_nickname_edit(state, peer_id);
-        true
-    } else {
-        // Avoid logging full message content; just hint why nickname edit didn't start.
-        let snippet: String = msg.chars().take(80).collect();
-        p2plog_debug(format!(
-            "DM message click not on self message (peer={peer_id}, idx={dm_message_idx}): '{snippet}...'"
-        ));
-        false
-    }
+    false
 }
 
 /// Handles left mouse button clicks

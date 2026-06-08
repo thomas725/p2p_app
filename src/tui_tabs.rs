@@ -2,45 +2,6 @@
 
 use std::collections::VecDeque;
 
-/// Tab identifier enumeration
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum TabId {
-    /// Broadcast chat tab (default)
-    #[default]
-    Chat,
-    /// Peer list tab
-    Peers,
-    /// Direct message tab
-    Direct,
-    /// Debug/log tab
-    Log,
-}
-
-impl TabId {
-    /// Convert to numeric index
-    #[must_use]
-    pub fn index(&self) -> usize {
-        match self {
-            TabId::Chat => 0,
-            TabId::Peers => 1,
-            TabId::Direct => 2,
-            TabId::Log => 3,
-        }
-    }
-
-    /// Convert from numeric index
-    #[must_use]
-    pub fn from_index(idx: usize) -> Self {
-        match idx {
-            0 => TabId::Chat,
-            1 => TabId::Peers,
-            2 => TabId::Direct,
-            3 => TabId::Log,
-            _ => TabId::Chat,
-        }
-    }
-}
-
 /// Direct message tab with peer ID and message history
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DmTab {

@@ -88,7 +88,7 @@ async fn main() -> color_eyre::Result<()> {
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;
 
-    let topic = gossipsub::IdentTopic::new("test-net");
+    let topic = gossipsub::IdentTopic::new(p2p_app::CHAT_TOPIC);
 
     let network_size = match p2p_app::get_network_size() {
         Ok(size) => {
@@ -111,5 +111,5 @@ async fn main() -> color_eyre::Result<()> {
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
     // Use new 4-task architecture instead of monolithic tokio::select!
-    tui::main_loop::run_new_tui(swarm, "test-net".to_string()).await
+    tui::main_loop::run_new_tui(swarm, p2p_app::CHAT_TOPIC.to_string()).await
 }
