@@ -136,20 +136,6 @@ fn test_format_broadcast_receipt_popup_impl_with_data() {
     assert!(s.contains("1000ms"));
 }
 
-#[test]
-fn test_format_dm_receipt_popup_impl_with_time() {
-    let result = super::format_dm_receipt_popup_impl("peer1", 2.0, Some(1.0));
-    assert!(result.contains("peer1"));
-    assert!(result.contains("1000ms"));
-}
-
-#[test]
-fn test_format_dm_receipt_popup_impl_confirmed() {
-    let result = super::format_dm_receipt_popup_impl("peer1", 2.0, None);
-    assert!(result.contains("peer1"));
-    assert!(result.contains("confirmed"));
-}
-
 // ── handle_tab_click ──────────────────────────────────────────────────
 
 #[test]

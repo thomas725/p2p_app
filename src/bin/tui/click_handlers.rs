@@ -74,27 +74,6 @@ pub fn format_broadcast_receipt_popup_impl(
     Some(format!("Broadcast receipts:\n{}", parts.join("\n")))
 }
 
-#[allow(dead_code)]
-pub fn format_dm_receipt_popup_impl(
-    confirm_peer: &str,
-    confirmed_at: f64,
-    sent_at: Option<f64>,
-) -> String {
-    let ms = sent_at.map(|s| (confirmed_at - s) * 1000.0);
-    if let Some(ms) = ms {
-        format!(
-            "DM receipt:\npeer={}\ntime={:.0}ms",
-            p2p_app::short_peer_id(confirm_peer),
-            ms.max(0.0)
-        )
-    } else {
-        format!(
-            "DM receipt:\npeer={}\nconfirmed",
-            p2p_app::short_peer_id(confirm_peer)
-        )
-    }
-}
-
 fn format_broadcast_receipt_popup(
     state: &AppState,
     msg_id: &str,
