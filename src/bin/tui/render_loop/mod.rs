@@ -4,6 +4,7 @@ use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
 use p2p_app::get_tui_logs;
 use p2p_app::tui_render;
+use p2p_app::tui_render::render_popup;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Frame, Terminal,
@@ -116,37 +117,9 @@ pub fn render_frame(f: &mut Frame, state: &mut AppState) {
     layout::render_shortcuts(f, chunks[4]);
     layout::render_status_bar(f, chunks[5], state);
 
-    if let Some(text) = state.popup.clone() {
-        render_popup(f, text);
+    if let Some(ref text) = state.popup {
+        render_popup(f, text.clone());
     }
-}
-
-fn render_popup(f: &mut Frame, text: String) {
-    use ratatui::layout::{Alignment, Rect};
-    use ratatui::style::{Color, Style};
-    use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
-
-    let area = f.area();
-    let w = (f32::from(area.width) * 0.70) as u16;
-    let h = (f32::from(area.height) * 0.40) as u16;
-    let popup = Rect {
-        x: area.x + (area.width.saturating_sub(w)) / 2,
-        y: area.y + (area.height.saturating_sub(h)) / 2,
-        width: w.max(20).min(area.width),
-        height: h.max(6).min(area.height),
-    };
-
-    f.render_widget(Clear, popup);
-    let p = Paragraph::new(text)
-        .block(
-            Block::default()
-                .title("Details (press any key / click to close)")
-                .borders(Borders::ALL)
-                .style(Style::default().bg(Color::Black)),
-        )
-        .alignment(Alignment::Left)
-        .wrap(Wrap { trim: false });
-    f.render_widget(p, popup);
 }
 
 /// Spawns the render loop task that renders only when requested

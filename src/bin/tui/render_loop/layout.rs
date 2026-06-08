@@ -45,6 +45,12 @@ pub fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect) {
 /// Render the status bar with connection and mouse mode info
 pub fn render_status_bar(f: &mut Frame, status_area: Rect, state: &AppState) {
     let mouse_mode = if state.mouse_capture { "ON" } else { "OFF" };
-    let status = Paragraph::new(format!("Connected [Mouse: {mouse_mode}]"));
+    let connected = state.concurrent_peers > 0 || state.local_peer_id != "unknown";
+    let conn = if connected {
+        "Connected"
+    } else {
+        "Disconnected"
+    };
+    let status = Paragraph::new(format!("{conn} [Mouse: {mouse_mode}]"));
     f.render_widget(status, status_area);
 }
