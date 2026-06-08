@@ -6,17 +6,17 @@ mod dioxus {
     use std::collections::{HashMap, VecDeque};
     use std::time::Duration;
 
+    type Messages = VecDeque<(String, Option<String>)>;
+    type MessageIds = VecDeque<Option<String>>;
+    type SentAtByMsgId = HashMap<String, f64>;
+
     fn format_messages(
         topic_str: &str,
         max_messages: usize,
         local_nicknames: &HashMap<String, String>,
         received_nicknames: &HashMap<String, String>,
         own_nickname: &str,
-    ) -> (
-        VecDeque<(String, Option<String>)>,
-        VecDeque<Option<String>>,
-        HashMap<String, f64>,
-    ) {
+    ) -> (Messages, MessageIds, SentAtByMsgId) {
         let mut messages = VecDeque::new();
         let mut message_ids = VecDeque::new();
         let mut sent_at_by_msg_id = HashMap::new();

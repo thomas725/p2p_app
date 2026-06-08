@@ -48,7 +48,10 @@ jobs:
             libgtk-3-dev \
             libgdk-pixbuf2.0-dev \
             libcairo2-dev \
-            libpango1.0-dev
+            libpango1.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
       
       # ============================================================
       # Create logs directory
@@ -74,7 +77,7 @@ jobs:
       - name: Run clippy lints
         run: |
           set +e
-          cargo clippy --all-targets 2>&1 | tee .github/ci-logs/clippy.log
+          cargo clippy --all-targets --all-features 2>&1 | tee .github/ci-logs/clippy.log
           CLIPPY_EXIT=$?
           set -e
           echo "Exit code: $CLIPPY_EXIT" >> .github/ci-logs/clippy.log
@@ -88,7 +91,7 @@ jobs:
       - name: Build project
         run: |
           set +e
-          cargo build --release 2>&1 | tee .github/ci-logs/build.log
+          cargo build --release --all-features 2>&1 | tee .github/ci-logs/build.log
           BUILD_EXIT=$?
           set -e
           echo "Exit code: $BUILD_EXIT" >> .github/ci-logs/build.log
@@ -102,7 +105,7 @@ jobs:
       - name: Run tests
         run: |
           set +e
-          cargo t --verbose --no-default-features --features mdns,tracing,quic,tui,test-utils 2>&1 | tee .github/ci-logs/tests.log
+          cargo t --verbose --all-features 2>&1 | tee .github/ci-logs/tests.log
           TEST_EXIT=$?
           set -e
           echo "Exit code: $TEST_EXIT" >> .github/ci-logs/tests.log
@@ -127,7 +130,7 @@ jobs:
       - name: Build documentation
         run: |
           set +e
-          cargo doc --no-deps 2>&1 | tee .github/ci-logs/docs.log
+          cargo doc --no-deps --all-features 2>&1 | tee .github/ci-logs/docs.log
           DOCS_EXIT=$?
           set -e
           echo "Exit code: $DOCS_EXIT" >> .github/ci-logs/docs.log
@@ -144,7 +147,7 @@ jobs:
         run: |
           set +e
           cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
-          cargo tarpaulin --out Xml --output-dir coverage --skip-clean 2>&1 | tee -a .github/ci-logs/coverage.log
+          cargo tarpaulin --out Xml --output-dir coverage --skip-clean --all-features 2>&1 | tee -a .github/ci-logs/coverage.log
           COVERAGE_EXIT=$?
           set -e
           echo "Exit code: $COVERAGE_EXIT" >> .github/ci-logs/coverage.log
