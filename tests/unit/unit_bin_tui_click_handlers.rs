@@ -242,27 +242,6 @@ fn test_broadcast_receipt_popup_returns_none_when_msg_missing() {
     assert!(result.is_none());
 }
 
-// ── format_dm_receipt_popup (private wrapper) ────────────────────────────
-
-#[test]
-fn test_dm_receipt_popup_returns_some_when_msg_exists() {
-    let mut state = empty_state();
-    state
-        .dm_receipts
-        .insert("dm-1".to_string(), ("p1".to_string(), 2.5));
-    state.sent_at_by_msg_id.insert("dm-1".to_string(), 1.0);
-    let result = super::format_dm_receipt_popup(&state, "dm-1");
-    assert!(result.is_some());
-    assert!(result.unwrap().contains("p1"));
-}
-
-#[test]
-fn test_dm_receipt_popup_returns_none_when_msg_missing() {
-    let state = empty_state();
-    let result = super::format_dm_receipt_popup(&state, "nonexistent");
-    assert!(result.is_none());
-}
-
 // ── handle_mouse_left_click ──────────────────────────────────────────────
 
 #[test]
@@ -308,36 +287,6 @@ fn test_mouse_left_click_dm_tab_no_peer_id_does_nothing() {
     state.chat_area_height = 20;
     handle_mouse_left_click(&mut state, 5, 0, false, true, None);
     // peer_id is None, DM tab routing can't proceed
-}
-
-// ── start_peer_specific_nickname_edit ────────────────────────────────────
-
-#[test]
-fn test_start_nickname_edit_sets_editing_state() {
-    let mut state = empty_state();
-    state.own_nickname = "TestUser".to_string();
-    super::start_peer_specific_nickname_edit(&mut state, "peer-1");
-    assert!(state.editing_nickname);
-    assert_eq!(state.editing_nickname_peer, Some("peer-1".to_string()));
-}
-
-#[test]
-fn test_start_nickname_edit_uses_self_nickname_when_available() {
-    let mut state = empty_state();
-    state.own_nickname = "Global".to_string();
-    state
-        .self_nicknames_for_peers
-        .insert("peer-1".to_string(), "PerPeer".to_string());
-    super::start_peer_specific_nickname_edit(&mut state, "peer-1");
-    assert!(state.chat_input.lines().join("").contains("PerPeer"));
-}
-
-#[test]
-fn test_start_nickname_edit_falls_back_to_own_nickname() {
-    let mut state = empty_state();
-    state.own_nickname = "Global".to_string();
-    super::start_peer_specific_nickname_edit(&mut state, "peer-1");
-    assert!(state.chat_input.lines().join("").contains("Global"));
 }
 
 // ── format_dm_messages_from_db ─────────────────────────────────────────

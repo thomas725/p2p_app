@@ -233,10 +233,7 @@ async fn process_swarm_event(
             peer_id, ack_for, ..
         } => {
             let mut s = state.lock().await;
-            let at = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs_f64();
+            let at = p2p_app::current_timestamp();
 
             let is_dm = is_dm_receipt(&s, &ack_for);
             apply_receipt_to_state(&mut s, &ack_for, &peer_id, at, is_dm);

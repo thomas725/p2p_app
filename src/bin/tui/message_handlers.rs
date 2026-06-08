@@ -71,10 +71,7 @@ pub async fn send_message(
         .unwrap_or_else(|| own_nickname.clone());
     let msg_id = p2p_app::gen_msg_id();
     let msg_id_for_db = msg_id.clone();
-    let sent_at = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs_f64();
+    let sent_at = p2p_app::current_timestamp();
 
     if is_direct {
         if let Some(ref peer_id) = dm_target_peer_id {

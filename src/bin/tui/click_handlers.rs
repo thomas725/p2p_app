@@ -74,6 +74,7 @@ pub fn format_broadcast_receipt_popup_impl(
     Some(format!("Broadcast receipts:\n{}", parts.join("\n")))
 }
 
+#[allow(dead_code)]
 pub fn format_dm_receipt_popup_impl(
     confirm_peer: &str,
     confirmed_at: f64,
@@ -107,17 +108,6 @@ fn format_broadcast_receipt_popup(
         &state.received_nicknames,
         sent_at,
     )
-}
-
-#[allow(dead_code)]
-fn format_dm_receipt_popup(state: &AppState, msg_id: &str) -> Option<String> {
-    let sent_at = state.sent_at_by_msg_id.get(msg_id).copied();
-    let (confirm_peer, confirmed_at) = state.dm_receipts.get(msg_id)?;
-    Some(format_dm_receipt_popup_impl(
-        confirm_peer,
-        *confirmed_at,
-        sent_at,
-    ))
 }
 
 /// Handles tab bar clicks and close button
@@ -287,21 +277,6 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool
         }
         None => false,
     }
-}
-
-#[allow(dead_code)]
-fn start_peer_specific_nickname_edit(state: &mut AppState, peer_id: &str) {
-    state.editing_nickname = true;
-    state.editing_nickname_peer = Some(peer_id.to_string());
-    let initial = state
-        .self_nicknames_for_peers
-        .get(peer_id)
-        .cloned()
-        .unwrap_or_else(|| state.own_nickname.clone());
-    let mut textarea = TextArea::default();
-    textarea.insert_str(&initial);
-    state.chat_input = textarea;
-    p2plog_debug(format!("Started editing nickname for peer {peer_id}"));
 }
 
 /// Handles clicks on broadcast messages in DM tab's top section
