@@ -77,12 +77,18 @@ def prepend_module_header(src: str, module_doc: str) -> str:
 
 def insert_struct_docs(src: str) -> str:
     """Add /// doc comment before each #[derive(...)] / #[diesel(...)] / pub struct block (idempotent)."""
+    def has_preceding_doc(text: str, match_start: int) -> bool:
+        """Check if a /// doc comment already precedes the match position."""
+        before = text[:match_start].rstrip()
+        if not before:
+            return False
+        # The line immediately before the match should end with a doc comment
+        last_line = before.split('\n')[-1].strip()
+        return last_line.startswith("///")
+
     def replacer(m: re.Match) -> str:
         name = m.group(2)
-        # Don't prepend if a doc comment already immediately precedes this block
-        start = m.start()
-        preceding = src[:start].rstrip()
-        if preceding.endswith("///") or re.search(r'///[^\n]*\n\s*$', preceding):
+        if has_preceding_doc(src, m.start()):
             return m.group(0)
         doc = STRUCT_DOCS.get(name, f"Generated model struct for `{name}`")
         return f"/// {doc}\n{m.group(1)}"
@@ -102,7 +108,7 @@ def insert_field_docs(src: str) -> str:
         m = re.match(r'^( +)pub (\w+)(: [^\n]+)', line)
         if m:
             prev = lines[i - 1].strip() if i > 0 else ""
-            if not prev.startswith("///"):
+            if not prev.startswith("///") and not prev.startswith("#["):
                 indent = m.group(1)
                 field  = m.group(2)
                 rest   = m.group(3)
