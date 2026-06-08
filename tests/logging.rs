@@ -98,20 +98,6 @@ fn test_p2plog_info_contains_level() {
 
 #[serial]
 #[test]
-fn test_p2plog_warn_contains_level() {
-    p2p_app::logging::init_logging();
-    p2p_app::clear_tui_logs();
-    p2p_app::logging::p2plog_warn("warn-msg");
-    let logs = p2p_app::logging::get_tui_logs();
-    assert!(
-        logs.iter()
-            .any(|l| l.contains("WARN") && l.contains("warn-msg")),
-        "got: {logs:?}"
-    );
-}
-
-#[serial]
-#[test]
 fn test_p2plog_error_contains_level() {
     p2p_app::logging::init_logging();
     p2p_app::clear_tui_logs();
@@ -274,8 +260,7 @@ fn test_p2plog_levels_all() {
 
     p2p_app::logging::p2plog_debug("debug message");
     p2p_app::logging::p2plog_info("info message");
-    p2p_app::logging::p2plog_warn("warn message");
-    p2p_app::logging::p2plog_error("error message");
+    p2p_app::logging::p2plog_error("error message (formerly warn)");
 
     let logs = p2p_app::logging::get_tui_logs();
     // At least some logs should be captured (depending on filter)

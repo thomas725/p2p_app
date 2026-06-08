@@ -104,12 +104,10 @@ fn test_log_level_helpers_emit_messages() {
     clear_tui_logs();
     p2plog_debug("d");
     p2plog_info("i");
-    p2plog_warn("w");
     p2plog_error("e");
     let joined = get_tui_logs().join("\n");
     assert!(joined.contains("[DEBUG] d"));
     assert!(joined.contains("[INFO] i"));
-    assert!(joined.contains("[WARN] w"));
     assert!(joined.contains("[ERROR] e"));
 }
 

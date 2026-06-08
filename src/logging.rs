@@ -200,11 +200,6 @@ pub fn p2plog_info(msg: impl Into<String>) {
     p2plog("INFO", msg.into());
 }
 
-/// Warn log alias
-pub fn p2plog_warn(msg: impl Into<String>) {
-    p2plog("WARN", msg.into());
-}
-
 /// Error log alias
 pub fn p2plog_error(msg: impl Into<String>) {
     p2plog("ERROR", msg.into());

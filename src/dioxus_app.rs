@@ -329,6 +329,28 @@ fn render_log_tab(logs: VecDeque<String>) -> Element {
     }
 }
 
+fn save_nickname_and_close(mut state: Signal<AppState>) {
+    let peer = state
+        .read()
+        .editing_nickname_peer
+        .clone()
+        .unwrap_or_default();
+    let nick = state
+        .read()
+        .local_nicknames
+        .get(&peer)
+        .cloned()
+        .unwrap_or_default();
+    let _ = crate::set_peer_local_nickname(&peer, &nick);
+    state.write().editing_nickname = false;
+    state.write().editing_nickname_peer = None;
+}
+
+fn cancel_nickname_edit(mut state: Signal<AppState>) {
+    state.write().editing_nickname = false;
+    state.write().editing_nickname_peer = None;
+}
+
 fn render_edit_modal(
     mut state: Signal<AppState>,
     editing: bool,
@@ -339,7 +361,7 @@ fn render_edit_modal(
         return None;
     }
     Some(rsx! {
-        div { class: "modal-overlay", onclick: move |_| { state.write().editing_nickname = false; state.write().editing_nickname_peer = None; },
+        div { class: "modal-overlay", onclick: move |_| cancel_nickname_edit(state),
             div { class: "modal", onclick: move |e| e.stop_propagation(),
                 h3 { "Edit Nickname for {edit_short}" }
                 input {
@@ -351,26 +373,13 @@ fn render_edit_modal(
                         },
                     onkeydown: move |e| {
                         if e.key() == Key::Enter {
-                            let peer = state.read().editing_nickname_peer.clone().unwrap_or_default();
-                            let nick = state.read().local_nicknames.get(&peer).cloned().unwrap_or_default();
-                            let _ = crate::set_peer_local_nickname(&peer, &nick);
-                            state.write().editing_nickname = false;
-                            state.write().editing_nickname_peer = None;
+                            save_nickname_and_close(state);
                         }
                     },
                 }
                 div { class: "modal-buttons",
-                    button {
-                        onclick: move |_| {
-                            let peer = state.read().editing_nickname_peer.clone().unwrap_or_default();
-                            let nick = state.read().local_nicknames.get(&peer).cloned().unwrap_or_default();
-                            let _ = crate::set_peer_local_nickname(&peer, &nick);
-                            state.write().editing_nickname = false;
-                            state.write().editing_nickname_peer = None;
-                        },
-                        "Save"
-                    }
-                    button { onclick: move |_| { state.write().editing_nickname = false; state.write().editing_nickname_peer = None; }, "Cancel" }
+                    button { onclick: move |_| save_nickname_and_close(state), "Save" }
+                    button { onclick: move |_| cancel_nickname_edit(state), "Cancel" }
                 }
             }
         }
