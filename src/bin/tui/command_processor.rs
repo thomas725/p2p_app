@@ -1,4 +1,4 @@
-use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY};
+use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use super::event_source::InputEvent;
 use super::input_processor::process_input_event;
 use super::main_loop::RenderEvent;
@@ -25,14 +25,6 @@ fn upsert_peer_last_seen(state: &mut AppState, peer_id: &str, seen_at: chrono::N
         peer_id,
         &seen_str,
     );
-}
-
-// ── Pure state mutation helpers (extracted for testability) ─────────────────
-
-fn trim_history<T>(queue: &mut std::collections::VecDeque<T>, limit: usize) {
-    while queue.len() > limit {
-        queue.pop_front();
-    }
 }
 
 /// Pure state mutation for incoming broadcast messages. Returns the formatted message string.

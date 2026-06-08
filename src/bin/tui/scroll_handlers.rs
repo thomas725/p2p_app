@@ -185,7 +185,7 @@ fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
         scroll_dir,
         max_offset,
     )
-    .map_or(false, |before| state.chat_scroll_offset != before)
+    .is_some_and(|before| state.chat_scroll_offset != before)
 }
 
 /// Handle mouse wheel for Log tab
@@ -197,7 +197,7 @@ fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) -> bool {
         scroll_dir,
         max_offset,
     )
-    .map_or(false, |before| state.log_scroll_offset != before)
+    .is_some_and(|before| state.log_scroll_offset != before)
 }
 
 /// Handle mouse wheel for a DM section (broadcast or DM side)
@@ -209,7 +209,7 @@ fn mouse_scroll_dm_section(
 ) -> bool {
     let max_offset = len.saturating_sub(1);
     apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
-        .map_or(false, |before| *scroll_offset != before)
+        .is_some_and(|before| *scroll_offset != before)
 }
 
 /// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs

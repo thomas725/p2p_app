@@ -1,32 +1,51 @@
-//! # `p2p_app` - Decentralized Peer-to-Peer Chat Application
+//! # p2p_app
 //!
-//! A fully decentralized peer-to-peer chat application built on top of libp2p.
-//! This crate provides the core functionality for running a P2P chat node that can
-//! communicate with other peers over a distributed network without requiring
-//! central servers.
+//! Decentralized peer-to-peer chat on libp2p with TUI, CLI, and Dioxus desktop frontends.
 //!
-//! ## Features
+//! ## Architecture
 //!
-//! - **Decentralized Messaging**: Send and receive messages directly peer-to-peer
-//! - **Network Discovery**: Automatic peer discovery using mDNS
-//! - **Message Persistence**: Store messages and metadata in `SQLite` database
-//! - **TUI Interface**: Terminal user interface for interacting with the chat network
-//! - **Direct Messaging**: Send private messages to specific peers
-//! - **Nickname Management**: Set and manage nicknames for yourself and peers
-//! - **Message Receipts**: Track message delivery and read status
+//! ```text
+//! ┌──────────────────────────────────────────────────────┐
+//! │  frontends (bin/)                                    │
+//! │  p2p_chat (CLI)  p2p_chat_tui (TUI)  p2p_chat_dioxus │
+//! └────────────────────────┬─────────────────────────────┘
+//!                          │ uses
+//! ┌────────────────────────▼─────────────────────────────┐
+//! │  p2p_app library                                     │
+//! │  ┌──────────┬──────────┬──────────┬───────────────┐  │
+//! │  │ behavior │  swarm   │ messages │  db / peers   │  │
+//! │  │ network  │  handler │ nickname │  types / fmt  │  │
+//! │  └──────────┴──────────┴──────────┴───────────────┘  │
+//! │  ┌──────────────────────────────────────────┐        │
+//! │  │  tui_render / tui_render_state / tui_tabs │        │
+//! │  │  tui_helpers                             │        │
+//! │  └──────────────────────────────────────────┘        │
+//! └──────────────────────────────────────────────────────┘
+//! ```
 //!
-//! ## Core Modules
+//! ## Feature flags
 //!
-//! - [`behavior`] - P2P swarm behavior and message handling
-//! - [`network`] - Network size and connectivity information
-//! - [`nickname`] - Nickname management for peers
-//! - [`messages`] - Message storage and retrieval
-//! - [`db`] - Database initialization and management
-//! - [`peers`] - Peer information and session tracking
-//! - [`swarm_handler`] - Swarm event handling
-//! - [`types`] - Core type definitions
-//! - [`logging`] - Logging functionality
-//! - [`fmt`] - Formatting utilities
+//! | Feature | Description |
+//! |---------|-------------|
+//! | `tui` | ratatui TUI (default) |
+//! | `mdns` | mDNS peer discovery (default) |
+//! | `tracing` | structured logging (default) |
+//! | `quic` | QUIC transport (default) |
+//! | `dioxus-desktop` | Dioxus desktop GUI |
+//! | `test-utils` | test helpers (not in default) |
+//!
+//! ## Core modules
+//!
+//! - [`behavior`] - libp2p `NetworkBehaviour`, message protocols
+//! - [`swarm_handler`] - event loop, translates libp2p events to `SwarmEvent`
+//! - [`types`] - application-level event/command enums
+//! - [`network`] - adaptive network size classification
+//! - [`messages`] - message persistence and retrieval
+//! - [`db`] - SQLite connection, identity, migrations
+//! - [`peers`] - peer and session tracking
+//! - [`nickname`] - nickname management
+//! - [`fmt`] - formatting utilities
+//! - [`logging`] - tracing-based logging with TUI callback
 
 pub mod behavior;
 pub mod db;
@@ -35,22 +54,25 @@ pub mod dioxus_app;
 pub mod fmt;
 pub mod logging;
 pub mod messages;
-/// Network functionality for peer-to-peer communication
 pub mod network;
-/// Nickname management for chat users and peers
 pub mod nickname;
 pub mod peers;
-/// Swarm handler for managing P2P network events
 pub mod swarm_handler;
 pub mod tui_tabs;
+pub mod types;
+
+pub mod generated;
+
 #[cfg(any(test, feature = "test-utils"))]
 #[path = "../tests/shared/tui_test_state.rs"]
 pub mod tui_test_state;
-/// Core type definitions used throughout the application
-pub mod types;
 
-/// Auto-generated database models and schema types
-pub mod generated;
+#[cfg(feature = "tui")]
+pub mod tui_helpers;
+#[cfg(feature = "tui")]
+pub mod tui_render;
+#[cfg(feature = "tui")]
+pub mod tui_render_state;
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
@@ -67,9 +89,7 @@ pub use fmt::{
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]
-pub use logging::clear_tui_logs;
-#[cfg(any(test, feature = "test-utils"))]
-pub use logging::tracing_filter;
+pub use logging::{clear_tui_logs, tracing_filter};
 pub use logging::{
     get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, p2plog_warn, push_log,
     request_tui_redraw, set_tui_callback, set_tui_redraw_hook, strip_ansi_codes,
@@ -92,15 +112,12 @@ pub use peers::{
 };
 pub use swarm_handler::{build_broadcast_message, spawn_swarm_handler};
 #[cfg(feature = "tui")]
-pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
-#[cfg(feature = "tui")]
-pub mod tui_helpers;
-#[cfg(any(test, feature = "test-utils"))]
-pub use tui_test_state::{NotificationTarget, TuiTestState};
-#[cfg(feature = "tui")]
-pub mod tui_render;
-#[cfg(feature = "tui")]
-pub mod tui_render_state;
+pub use tui_helpers::{
+    PAGE_SIZE, WHEEL_SCROLL_LINES, calculate_visible_range, disable_auto_scroll_to_max,
+    handle_scroll_key_for_section, is_at_bottom, is_nickname_update, key_code_to_scroll_action,
+    next_tab_index, parse_latency, relabel_dm_transcript, scroll_down_lines, scroll_up_lines,
+    sort_peers_by_last_seen, truncate_message, upsert_peer_last_seen, validate_nickname,
+};
 #[cfg(feature = "tui")]
 pub use tui_render::{
     render_chat_content, render_frame, render_peer_info, render_tab_content, render_tabs,
@@ -110,14 +127,15 @@ pub use tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, count_lines, dm_receipt_prefix,
     get_tab_content, row_to_visible_index,
 };
+#[cfg(feature = "tui")]
+pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
+#[cfg(any(test, feature = "test-utils"))]
+pub use tui_test_state::{NotificationTarget, TuiTestState};
 pub use types::{SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 
-/// Database migrations for `p2p_app` schema initialization and updates.
-///
-/// This constant contains all SQL migrations embedded at compile time.
-/// It's used to initialize and upgrade the database schema when the application starts.
+/// Embedded SQLite migrations.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[cfg(test)]

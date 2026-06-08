@@ -251,7 +251,7 @@ fn test_tab_click_close_button_on_dm_tab() {
     let titles = state.dynamic_tabs.all_titles();
     // DM tab title format: "p1 (X)" — total width = "p1 (X)".len() + 3 = 9
     let dm_idx = titles.iter().position(|t| t.contains("(X)")).unwrap();
-    let mut col_pos: usize = titles.iter().take(dm_idx).map(|t| t.len() + 3).sum();
+    let col_pos: usize = titles.iter().take(dm_idx).map(|t| t.len() + 3).sum();
     let tab_end = col_pos + titles[dm_idx].len() + 3;
     let close_col = tab_end.saturating_sub(4);
     let dm_count_before = state.dynamic_tabs.dm_tab_count();

@@ -14,3 +14,10 @@ pub const FRAME_TIME_MS: u64 = 16;
 
 /// Number of lines to scroll for mouse wheel
 pub const WHEEL_SCROLL_LINES: usize = 3;
+
+/// Trim a VecDeque to a maximum length, removing oldest (front) items.
+pub fn trim_history<T>(queue: &mut std::collections::VecDeque<T>, limit: usize) {
+    while queue.len() > limit {
+        queue.pop_front();
+    }
+}

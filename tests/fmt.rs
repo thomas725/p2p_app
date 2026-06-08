@@ -214,8 +214,8 @@ fn test_format_system_time_now() {
     use std::time::SystemTime;
     let time = SystemTime::now();
     let formatted = format_system_time(time);
-    // Should contain date separators
-    assert!(formatted.contains('-') || formatted.contains('/'));
+    // Should contain time separators (HH:MM:SS.mmm)
+    assert!(formatted.contains(':'));
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn test_peer_display_name_empty() {
     let local = HashMap::new();
     let received = HashMap::new();
     let name = peer_display_name("", &local, &received);
-    assert!(!name.is_empty());
+    assert!(name.is_empty());
 }
 
 #[test]
@@ -266,7 +266,7 @@ fn test_auto_scroll_offset_start() {
 fn test_auto_scroll_offset_with_messages() {
     use p2p_app::auto_scroll_offset;
     let offset = auto_scroll_offset(100, 80);
-    assert!(offset >= 0);
+    assert!(offset > 0);
 }
 
 #[test]

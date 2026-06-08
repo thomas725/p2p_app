@@ -1,14 +1,8 @@
-use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY};
+use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use super::state::AppState;
 use p2p_app::{SwarmCommand, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
-
-fn trim_history<T>(queue: &mut std::collections::VecDeque<T>, limit: usize) {
-    while queue.len() > limit {
-        queue.pop_front();
-    }
-}
 
 /// Pure: format and push an outgoing broadcast message to state, trimming history
 pub fn push_outgoing_broadcast_to_state(
