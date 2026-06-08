@@ -4959,7 +4959,6 @@ dependencies = [
  "dioxus",
  "dioxus-desktop",
  "dotenvy",
- "futures",
  "futures-channel",
  "libp2p",
  "libp2p-identity",

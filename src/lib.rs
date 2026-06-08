@@ -53,6 +53,8 @@ pub mod db;
 pub mod dioxus_app;
 #[cfg(feature = "dioxus")]
 pub mod dioxus_styles;
+#[cfg(feature = "dioxus")]
+pub mod dioxus_swarm;
 pub mod fmt;
 pub mod logging;
 pub mod messages;
