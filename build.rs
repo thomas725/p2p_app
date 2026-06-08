@@ -86,15 +86,13 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
         "pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[\n",
     );
     let mut output = String::from(header);
-    for (i, entry) in entries.iter().enumerate() {
+    for entry in &entries {
         let escaped_table = entry.0.replace('"', "\\\"");
         let escaped_col = entry.1.replace('"', "\\\"");
         let escaped_type = entry.2.replace('"', "\\\"");
-        let comma = i + 1 != entries.len();
         let _ = writeln!(
             output,
-            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"){}",
-            if comma { "," } else { "" }
+            "    (\"{escaped_table}\", \"{escaped_col}\", \"{escaped_type}\"),"
         );
     }
     output.push_str("];\n");
@@ -115,7 +113,6 @@ fn map_sql_type(diesel_type: &str) -> &'static str {
         "Binary" => "BLOB",
         "Text" => "TEXT",
         "Double" => "DOUBLE",
-        #[allow(clippy::match_same_arms)]
         _ => "TEXT",
     }
 }
