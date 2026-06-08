@@ -1,10 +1,9 @@
 //! Headless CLI binary — minimal footprint, reads from stdin, writes to stderr.
 
-use libp2p::{futures::StreamExt, gossipsub, noise, tcp, yamux};
+use libp2p::{futures::StreamExt, gossipsub};
 use p2p_app::current_timestamp;
 use p2p_app::logging::p2plog_info;
-use p2p_app::{BroadcastMessage, build_behaviour, get_libp2p_identity, get_network_size};
-use std::time::Duration;
+use p2p_app::{BroadcastMessage, build_swarm, get_network_size};
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 
 enum Event {
@@ -72,30 +71,7 @@ async fn main() -> color_eyre::Result<()> {
         }
     };
 
-    let mut swarm = {
-        let base = libp2p::SwarmBuilder::with_existing_identity(get_libp2p_identity()?)
-            .with_tokio()
-            .with_tcp(
-                tcp::Config::default().nodelay(true),
-                noise::Config::new,
-                yamux::Config::default,
-            )?;
-
-        #[cfg(feature = "quic")]
-        let swarm = base
-            .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
-            .build();
-
-        #[cfg(not(feature = "quic"))]
-        let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        swarm
-    };
+    let mut swarm = build_swarm(network_size)?;
 
     let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
     swarm.listen_on(listen_addr)?;

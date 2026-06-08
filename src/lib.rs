@@ -76,7 +76,7 @@ pub mod tui_render_state;
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
-    build_behaviour,
+    build_behaviour, build_swarm,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url_cache;
@@ -131,7 +131,7 @@ pub use tui_render_state::{
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
-pub use types::{SwarmCommand, SwarmEvent};
+pub use types::{MessageEvent, SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 

@@ -1,9 +1,8 @@
 //! TUI binary — ratatui-based terminal interface and headless fallback entry point.
 
-use libp2p::{gossipsub, noise, tcp, yamux};
-use p2p_app::build_behaviour;
+use libp2p::gossipsub;
+use p2p_app::build_swarm;
 use p2p_app::logging::{init_logging, p2plog_info};
-use std::time::Duration;
 
 #[cfg(feature = "tui")]
 mod tui {
@@ -105,30 +104,7 @@ async fn main() -> color_eyre::Result<()> {
         }
     };
 
-    let mut swarm = {
-        let base = libp2p::SwarmBuilder::with_existing_identity(p2p_app::get_libp2p_identity()?)
-            .with_tokio()
-            .with_tcp(
-                tcp::Config::default().nodelay(true),
-                noise::Config::new,
-                yamux::Config::default,
-            )?;
-
-        #[cfg(feature = "quic")]
-        let swarm = base
-            .with_quic()
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
-            .build();
-
-        #[cfg(not(feature = "quic"))]
-        let swarm = base
-            .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-            .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-            .build();
-
-        swarm
-    };
+    let mut swarm = build_swarm(network_size)?;
 
     let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
     swarm.listen_on(listen_addr)?;

@@ -77,23 +77,23 @@ fn test_swarm_command_debug() {
 fn test_swarm_event_debug() {
     use p2p_app::types::SwarmEvent;
 
-    let bcast = SwarmEvent::BroadcastMessage {
+    let bcast = SwarmEvent::BroadcastMessage(p2p_app::MessageEvent {
         content: "msg".to_string(),
         peer_id: "peer1".to_string(),
         latency: Some("100ms".to_string()),
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
-    };
+    });
     let bcast_debug = format!("{bcast:?}");
     assert!(bcast_debug.contains("msg"));
 
-    let direct = SwarmEvent::DirectMessage {
+    let direct = SwarmEvent::DirectMessage(p2p_app::MessageEvent {
         content: "direct".to_string(),
         peer_id: "peer2".to_string(),
         latency: None,
         nickname: None,
         msg_id: None,
-    };
+    });
     let direct_debug = format!("{direct:?}");
     assert!(direct_debug.contains("direct"));
 

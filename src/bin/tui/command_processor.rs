@@ -200,27 +200,31 @@ async fn process_swarm_event(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) {
     match swarm_event {
-        SwarmEvent::BroadcastMessage {
-            content,
-            peer_id,
-            latency,
-            nickname,
-            msg_id,
-        } => {
+        SwarmEvent::BroadcastMessage(msg) => {
             let mut s = state.lock().await;
-            handle_incoming_message(&mut s, &content, &peer_id, latency, nickname, msg_id, false)
-                .await;
+            handle_incoming_message(
+                &mut s,
+                &msg.content,
+                &msg.peer_id,
+                msg.latency,
+                msg.nickname,
+                msg.msg_id,
+                false,
+            )
+            .await;
         }
-        SwarmEvent::DirectMessage {
-            content,
-            peer_id,
-            latency,
-            nickname,
-            msg_id,
-        } => {
+        SwarmEvent::DirectMessage(msg) => {
             let mut s = state.lock().await;
-            handle_incoming_message(&mut s, &content, &peer_id, latency, nickname, msg_id, true)
-                .await;
+            handle_incoming_message(
+                &mut s,
+                &msg.content,
+                &msg.peer_id,
+                msg.latency,
+                msg.nickname,
+                msg.msg_id,
+                true,
+            )
+            .await;
         }
         SwarmEvent::Receipt {
             peer_id, ack_for, ..

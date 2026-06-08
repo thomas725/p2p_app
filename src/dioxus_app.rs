@@ -141,79 +141,72 @@ fn send_dm(state: &mut Signal<AppState>, peer_id: &str) {
 
 fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEvent) {
     match event {
-        SwarmEvent::BroadcastMessage {
-            content,
-            peer_id,
-            latency,
-            nickname,
-            msg_id,
-        } => {
+        SwarmEvent::BroadcastMessage(e) => {
             let mut s = state.write();
-            if let Some(n) = nickname.as_ref() {
-                s.received_nicknames.insert(peer_id.clone(), n.clone());
-                let _ = crate::set_peer_received_nickname(&peer_id, n);
+            if let Some(n) = e.nickname.as_ref() {
+                s.received_nicknames.insert(e.peer_id.clone(), n.clone());
+                let _ = crate::set_peer_received_nickname(&e.peer_id, n);
             }
-            if content.trim().is_empty() && nickname.is_some() {
+            if e.content.trim().is_empty() && e.nickname.is_some() {
                 return;
             }
             let ts = crate::format_system_time(SystemTime::now());
             let sender =
-                crate::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
+                crate::peer_display_name(&e.peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!(
                 "{} {} [{}] {}",
                 ts,
-                latency.unwrap_or_default(),
+                e.latency.unwrap_or_default(),
                 sender,
-                content
+                e.content
             );
-            s.messages.push_back((msg, Some(peer_id.clone())));
-            s.message_ids.push_back(msg_id);
+            s.messages.push_back((msg, Some(e.peer_id.clone())));
+            s.message_ids.push_back(e.msg_id);
             if s.messages.len() > MAX_MESSAGE_HISTORY {
                 s.messages.pop_front();
                 s.message_ids.pop_front();
             }
-            let _ = crate::save_message(&content, Some(&peer_id), &s.topic_str, false, None);
+            let _ = crate::save_message(&e.content, Some(&e.peer_id), &s.topic_str, false, None);
         }
-        SwarmEvent::DirectMessage {
-            content,
-            peer_id,
-            latency,
-            nickname,
-            msg_id,
-        } => {
+        SwarmEvent::DirectMessage(e) => {
             let mut s = state.write();
-            if let Some(n) = nickname.as_ref() {
-                s.received_nicknames.insert(peer_id.clone(), n.clone());
-                let _ = crate::set_peer_received_nickname(&peer_id, n);
+            if let Some(n) = e.nickname.as_ref() {
+                s.received_nicknames.insert(e.peer_id.clone(), n.clone());
+                let _ = crate::set_peer_received_nickname(&e.peer_id, n);
             }
-            if content.trim().is_empty() && nickname.is_some() {
+            if e.content.trim().is_empty() && e.nickname.is_some() {
                 return;
             }
             let ts = crate::format_system_time(SystemTime::now());
             let sender =
-                crate::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
+                crate::peer_display_name(&e.peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!(
                 "{} {} [{}] {}",
                 ts,
-                latency.unwrap_or_default(),
+                e.latency.unwrap_or_default(),
                 sender,
-                content
+                e.content
             );
             s.dm_message_ids
-                .entry(peer_id.clone())
+                .entry(e.peer_id.clone())
                 .or_default()
-                .push_back(msg_id);
-            let msgs = s.dm_messages.entry(peer_id.clone()).or_default();
+                .push_back(e.msg_id);
+            let msgs = s.dm_messages.entry(e.peer_id.clone()).or_default();
             msgs.push_back(msg);
             if msgs.len() > MAX_DM_HISTORY {
                 msgs.pop_front();
-                s.dm_message_ids.get_mut(&peer_id).unwrap().pop_front();
+                s.dm_message_ids.get_mut(&e.peer_id).unwrap().pop_front();
             }
-            if !s.dm_tabs.contains(&peer_id) {
-                s.dm_tabs.push(peer_id.clone());
+            if !s.dm_tabs.contains(&e.peer_id) {
+                s.dm_tabs.push(e.peer_id.clone());
             }
-            let _ =
-                crate::save_message(&content, Some(&peer_id), &s.topic_str, true, Some(&peer_id));
+            let _ = crate::save_message(
+                &e.content,
+                Some(&e.peer_id),
+                &s.topic_str,
+                true,
+                Some(&e.peer_id),
+            );
         }
         SwarmEvent::Receipt {
             peer_id,

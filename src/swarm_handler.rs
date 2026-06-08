@@ -31,13 +31,13 @@ async fn handle_swarm_event(
                 let latency = Some(crate::format_latency(bcast.sent_at, SystemTime::now()));
 
                 let _ = event_tx
-                    .send(SwarmEvent::BroadcastMessage {
+                    .send(SwarmEvent::BroadcastMessage(crate::MessageEvent {
                         content: bcast.content,
                         peer_id: peer_id_str,
                         latency,
                         nickname: bcast.nickname.clone(),
                         msg_id: bcast.msg_id.clone(),
-                    })
+                    }))
                     .await;
 
                 // Best-effort receipt confirmation for broadcasts:
@@ -114,17 +114,16 @@ async fn handle_request_response(
                         .await;
                 }
             } else {
-                let content = request.content.clone();
-                let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
                 let msg_id = request.msg_id.clone();
+                let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
                 let _ = event_tx
-                    .send(SwarmEvent::DirectMessage {
-                        content,
+                    .send(SwarmEvent::DirectMessage(crate::MessageEvent {
+                        content: request.content,
                         peer_id: peer_id_str,
                         latency,
                         nickname: request.nickname,
                         msg_id,
-                    })
+                    }))
                     .await;
             }
 

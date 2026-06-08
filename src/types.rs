@@ -3,35 +3,29 @@ use libp2p::Multiaddr;
 #[cfg(test)]
 #[path = "../tests/unit/unit_types.rs"]
 mod tests;
+
+/// Data common to both broadcast and direct messages from the swarm
+#[derive(Debug, Clone)]
+pub struct MessageEvent {
+    /// The message text
+    pub content: String,
+    /// Sender's peer ID
+    pub peer_id: String,
+    /// Round-trip latency string, if known
+    pub latency: Option<String>,
+    /// Sender's nickname, if provided
+    pub nickname: Option<String>,
+    /// Unique message ID, if present
+    pub msg_id: Option<String>,
+}
+
 /// High-level application events from the swarm
 #[derive(Debug, Clone)]
 pub enum SwarmEvent {
     /// Broadcast message received from peer
-    BroadcastMessage {
-        /// The message text
-        content: String,
-        /// Sender's peer ID
-        peer_id: String,
-        /// Round-trip latency string, if known
-        latency: Option<String>,
-        /// Sender's nickname, if provided
-        nickname: Option<String>,
-        /// Unique message ID, if present
-        msg_id: Option<String>,
-    },
+    BroadcastMessage(MessageEvent),
     /// Direct message received from peer
-    DirectMessage {
-        /// The message text
-        content: String,
-        /// Sender's peer ID
-        peer_id: String,
-        /// Round-trip latency string, if known
-        latency: Option<String>,
-        /// Sender's nickname, if provided
-        nickname: Option<String>,
-        /// Unique message ID, if present
-        msg_id: Option<String>,
-    },
+    DirectMessage(MessageEvent),
     /// Receipt confirmation received from a peer (for either broadcast or direct messages).
     Receipt {
         /// Peer ID of the sender who acknowledged the message

@@ -141,6 +141,41 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
     }
 }
 
+/// Build a fully configured libp2p swarm for chat.
+///
+/// Sets up TCP (with nodelay), optional QUIC transport, the app behaviour
+/// with adaptive network size, and a 60-second idle connection timeout.
+pub fn build_swarm(
+    network_size: NetworkSize,
+) -> color_eyre::Result<libp2p::swarm::Swarm<AppBehaviour>> {
+    use std::time::Duration;
+
+    let key = crate::get_libp2p_identity()?;
+
+    let base = libp2p::SwarmBuilder::with_existing_identity(key)
+        .with_tokio()
+        .with_tcp(
+            libp2p::tcp::Config::default().nodelay(true),
+            libp2p::noise::Config::new,
+            libp2p::yamux::Config::default,
+        )?;
+
+    #[cfg(feature = "quic")]
+    let swarm = base
+        .with_quic()
+        .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .build();
+
+    #[cfg(not(feature = "quic"))]
+    let swarm = base
+        .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .build();
+
+    Ok(swarm)
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_behavior.rs"]
 mod tests;

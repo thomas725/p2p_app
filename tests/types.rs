@@ -13,25 +13,25 @@ use p2p_app::{
 
 #[test]
 fn swarm_event_broadcast_message() {
-    let ev = SwarmEvent::BroadcastMessage {
+    let ev = SwarmEvent::BroadcastMessage(p2p_app::MessageEvent {
         content: "hello".into(),
         peer_id: "12D3KooWABC".into(),
         latency: Some("42ms".into()),
         nickname: Some("alice".into()),
         msg_id: Some("id1".into()),
-    };
+    });
     assert!(format!("{ev:?}").contains("BroadcastMessage"));
 }
 
 #[test]
 fn swarm_event_direct_message() {
-    let ev = SwarmEvent::DirectMessage {
+    let ev = SwarmEvent::DirectMessage(p2p_app::MessageEvent {
         content: "dm".into(),
         peer_id: "12D3KooWABC".into(),
         latency: None,
         nickname: None,
         msg_id: None,
-    };
+    });
     assert!(format!("{ev:?}").contains("DirectMessage"));
 }
 

@@ -2,9 +2,8 @@
 mod dioxus {
     use dioxus_desktop::tao;
     use dioxus_desktop::{Config, WindowBuilder};
-    use libp2p::{gossipsub, noise, tcp, yamux};
+    use libp2p::gossipsub;
     use std::collections::{HashMap, VecDeque};
-    use std::time::Duration;
 
     type Messages = VecDeque<(String, Option<String>)>;
     type MessageIds = VecDeque<Option<String>>;
@@ -76,34 +75,7 @@ mod dioxus {
                 }
             };
 
-            let mut swarm = {
-                let identity = p2p_app::get_libp2p_identity().expect("Failed to get identity");
-                let base = libp2p::SwarmBuilder::with_existing_identity(identity)
-                    .with_tokio()
-                    .with_tcp(
-                        tcp::Config::default().nodelay(true),
-                        noise::Config::new,
-                        yamux::Config::default,
-                    )
-                    .expect("Failed to build TCP transport");
-
-                #[cfg(feature = "quic")]
-                let swarm = base
-                    .with_quic()
-                    .with_behaviour(|key| Ok(p2p_app::build_behaviour(key, network_size)))
-                    .unwrap()
-                    .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-                    .build();
-
-                #[cfg(not(feature = "quic"))]
-                let swarm = base
-                    .with_behaviour(|key| Ok(p2p_app::build_behaviour(key, network_size)))
-                    .unwrap()
-                    .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
-                    .build();
-
-                swarm
-            };
+            let mut swarm = p2p_app::build_swarm(network_size).expect("Failed to build swarm");
 
             let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
             let _ = swarm

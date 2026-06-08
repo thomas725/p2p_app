@@ -82,26 +82,26 @@ fn test_swarm_event_variants() {
     use p2p_app::types::SwarmEvent;
 
     // Test BroadcastMessage
-    let bcast = SwarmEvent::BroadcastMessage {
+    let bcast = SwarmEvent::BroadcastMessage(p2p_app::MessageEvent {
         content: "broadcast test".to_string(),
         peer_id: "PeerEventTest".to_string(),
         latency: Some("50ms".to_string()),
         nickname: Some("EventNick".to_string()),
         msg_id: Some("evt-1".to_string()),
-    };
+    });
 
     let debug = format!("{bcast:?}");
     assert!(debug.contains("BroadcastMessage"));
     assert!(debug.contains("EventNick"));
 
     // Test DirectMessage
-    let direct = SwarmEvent::DirectMessage {
+    let direct = SwarmEvent::DirectMessage(p2p_app::MessageEvent {
         content: "direct test".to_string(),
         peer_id: "PeerDirect".to_string(),
         latency: None,
         nickname: None,
         msg_id: None,
-    };
+    });
 
     let direct_debug = format!("{direct:?}");
     assert!(direct_debug.contains("DirectMessage"));

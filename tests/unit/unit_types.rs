@@ -2,17 +2,17 @@ use super::*;
 
 #[test]
 fn test_swarm_event_broadcast_message() {
-    let event = SwarmEvent::BroadcastMessage {
+    let event = SwarmEvent::BroadcastMessage(MessageEvent {
         content: "hello".to_string(),
         peer_id: "peer1".to_string(),
         latency: Some("10ms".to_string()),
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
-    };
+    });
     match event {
-        SwarmEvent::BroadcastMessage {
+        SwarmEvent::BroadcastMessage(MessageEvent {
             content, peer_id, ..
-        } => {
+        }) => {
             assert_eq!(content, "hello");
             assert_eq!(peer_id, "peer1");
         }
@@ -22,17 +22,17 @@ fn test_swarm_event_broadcast_message() {
 
 #[test]
 fn test_swarm_event_direct_message() {
-    let event = SwarmEvent::DirectMessage {
+    let event = SwarmEvent::DirectMessage(MessageEvent {
         content: "hi".to_string(),
         peer_id: "peer2".to_string(),
         latency: None,
         nickname: None,
         msg_id: None,
-    };
+    });
     match event {
-        SwarmEvent::DirectMessage {
+        SwarmEvent::DirectMessage(MessageEvent {
             content, peer_id, ..
-        } => {
+        }) => {
             assert_eq!(content, "hi");
             assert_eq!(peer_id, "peer2");
         }

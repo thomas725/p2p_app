@@ -1,8 +1,7 @@
-use super::constants::WHEEL_SCROLL_LINES;
 use super::state::AppState;
-use p2p_app::get_tui_logs;
-use p2p_app::p2plog_debug;
-use p2p_app::tui_helpers::key_code_to_scroll_action;
+use p2p_app::{
+    WHEEL_SCROLL_LINES, get_tui_logs, p2plog_debug, tui_helpers::key_code_to_scroll_action,
+};
 
 /// Handles tab navigation (Tab and `BackTab` keys)
 pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
