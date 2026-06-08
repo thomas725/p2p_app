@@ -51,7 +51,8 @@ jobs:
             libpango1.0-dev \
             libwebkit2gtk-4.1-dev \
             libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev
+            libjavascriptcoregtk-4.1-dev \
+            libxdo-dev
       
       # ============================================================
       # Create logs directory
