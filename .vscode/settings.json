@@ -1,4 +1,10 @@
 {
+  "markdownlint.config": {
+    "ol-prefix": false, // MD029/ol-prefix: Ordered list item prefix [Expected: 1; Actual: 3; Style: 1/2/3]
+    "no-multiple-blanks": false, // MD012/no-multiple-blanks: Multiple consecutive blank lines [Expected: 1; Actual: 2]
+    "no-bare-urls": false, // MD034/no-bare-urls: Bare URL used
+    "no-inline-html": false, // MD033/no-inline-html: Inline HTML [Element: T]
+  },
   "rust-analyzer.cargo.features": "all",
     "cSpell.words": [
         "abbychau",
