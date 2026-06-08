@@ -1,4 +1,4 @@
-use super::constants::FRAME_TIME_MS;
+use super::state::FRAME_TIME_MS;
 use crossterm::event::{Event, KeyEvent, MouseEvent, poll, read};
 use std::time::Duration;
 use tokio::sync::mpsc;

@@ -1,8 +1,8 @@
-use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use super::event_source::InputEvent;
 use super::input_processor::process_input_event;
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
+use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;

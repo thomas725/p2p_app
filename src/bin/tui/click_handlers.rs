@@ -1,5 +1,5 @@
-use super::constants::MAX_DM_HISTORY;
 use super::state::AppState;
+use super::state::MAX_DM_HISTORY;
 use p2p_app::PeerRecord;
 use p2p_app::p2plog_debug;
 use p2p_app::row_to_visible_index;

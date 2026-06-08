@@ -1,5 +1,5 @@
-use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use super::state::AppState;
+use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, SwarmCommand, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;

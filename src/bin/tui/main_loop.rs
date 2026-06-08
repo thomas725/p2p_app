@@ -1,4 +1,4 @@
-use super::constants::CHANNEL_CAPACITY;
+use super::state::CHANNEL_CAPACITY;
 use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
 use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
@@ -149,7 +149,7 @@ pub async fn run_new_tui(
     let (initial_messages, initial_message_ids, loaded_sent_at) =
         super::state::load_and_format_messages(
             &topic_str,
-            super::constants::MAX_MESSAGE_HISTORY,
+            super::state::MAX_MESSAGE_HISTORY,
             &local_nicknames,
             &received_nicknames,
             &own_nickname,

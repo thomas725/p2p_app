@@ -67,7 +67,6 @@ mod tui {
 
     pub mod click_handlers;
     mod command_processor;
-    pub mod constants;
     pub mod event_source;
     pub mod input_processor;
     pub mod main_loop;
