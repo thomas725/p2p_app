@@ -3,6 +3,7 @@
 //! This module provides a render state that can be used by both the binary
 //! and integration tests. The binary uses `AppState`, tests use this abstraction.
 
+use crate::PeerRecord;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 /// Minimum state needed to render a TUI frame
@@ -20,8 +21,8 @@ pub struct TuiRenderState {
     pub message_ids: VecDeque<Option<String>>,
     /// Receipt status for broadcast messages: `peer_id` -> (`msg_id` -> timestamp)
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-    /// Known peers: (`peer_id`, `first_seen`, `last_seen`)
-    pub peers: Vec<(String, String, String)>,
+    /// Known peers
+    pub peers: Vec<PeerRecord>,
     /// Direct messages per peer
     pub dm_messages: BTreeMap<String, VecDeque<String>>,
     /// Message IDs for DMs per peer
@@ -111,8 +112,16 @@ impl TuiRenderState {
         messages.push_back("[You] I'm good!".into());
 
         let peers = vec![
-            ("12D3KooWH123456".into(), "Alice".into(), "Online".into()),
-            ("12D3KooWH789012".into(), "Bob".into(), "Online".into()),
+            PeerRecord {
+                peer_id: "12D3KooWH123456".into(),
+                first_seen: "Alice".into(),
+                last_seen: "Online".into(),
+            },
+            PeerRecord {
+                peer_id: "12D3KooWH789012".into(),
+                first_seen: "Bob".into(),
+                last_seen: "Online".into(),
+            },
         ];
 
         let mut dm_messages = BTreeMap::new();
@@ -164,11 +173,15 @@ impl TuiRenderState {
     /// Add a peer
     pub fn add_peer(
         &mut self,
-        id: impl Into<String>,
-        name: impl Into<String>,
-        status: impl Into<String>,
+        peer_id: impl Into<String>,
+        first_seen: impl Into<String>,
+        last_seen: impl Into<String>,
     ) {
-        self.peers.push((id.into(), name.into(), status.into()));
+        self.peers.push(PeerRecord {
+            peer_id: peer_id.into(),
+            first_seen: first_seen.into(),
+            last_seen: last_seen.into(),
+        });
     }
 
     /// Add a DM message for a peer

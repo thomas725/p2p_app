@@ -1,6 +1,7 @@
 use super::state::AppState;
 use p2p_app::{
-    WHEEL_SCROLL_LINES, get_tui_logs, p2plog_debug, tui_helpers::key_code_to_scroll_action,
+    DisplayMessage, WHEEL_SCROLL_LINES, get_tui_logs, p2plog_debug,
+    tui_helpers::key_code_to_scroll_action,
 };
 
 /// Handles tab navigation (Tab and `BackTab` keys)
@@ -54,10 +55,10 @@ fn scroll_broadcast_section(
     state: &mut AppState,
     peer_id: &str,
 ) {
-    let broadcast_messages: Vec<(String, Option<String>)> = state
+    let broadcast_messages: Vec<DisplayMessage> = state
         .messages
         .iter()
-        .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == peer_id))
+        .filter(|dm| dm.sender_peer_id.as_ref().is_some_and(|id| id == peer_id))
         .cloned()
         .collect();
 
@@ -224,7 +225,7 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
                 let msgs: Vec<_> = state
                     .messages
                     .iter()
-                    .filter(|(_, sender_id)| sender_id.as_ref().is_some_and(|id| id == pid))
+                    .filter(|dm| dm.sender_peer_id.as_ref().is_some_and(|id| id == pid))
                     .collect();
                 if let Some((scroll_offset, auto_scroll)) =
                     state.dm_broadcast_scroll_state.get_mut(pid)

@@ -8,9 +8,9 @@ fn test_push_outgoing_broadcast_adds_message() {
     let mut state = test_app_state();
     push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", "m1".into(), 1.0);
     assert_eq!(state.messages.len(), 1);
-    assert!(state.messages[0].0.contains("[Me]"));
-    assert!(state.messages[0].0.contains("hello"));
-    assert_eq!(state.messages[0].1, None);
+    assert!(state.messages[0].text.contains("[Me]"));
+    assert!(state.messages[0].text.contains("hello"));
+    assert_eq!(state.messages[0].sender_peer_id, None);
     assert_eq!(state.message_ids[0], Some("m1".to_string()));
     assert_eq!(state.sent_at_by_msg_id.get("m1"), Some(&1.0));
 }
@@ -31,14 +31,18 @@ fn test_push_outgoing_broadcast_trims_history() {
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
     push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "newest", "m-last".into(), 99.0);
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
-    assert!(state.messages[MAX_MESSAGE_HISTORY - 1].0.contains("newest"));
+    assert!(
+        state.messages[MAX_MESSAGE_HISTORY - 1]
+            .text
+            .contains("newest")
+    );
 }
 
 #[test]
 fn test_push_outgoing_broadcast_peer_id_is_none() {
     let mut state = test_app_state();
     push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "test", "m1".into(), 1.0);
-    assert_eq!(state.messages[0].1, None);
+    assert_eq!(state.messages[0].sender_peer_id, None);
 }
 
 // ── push_outgoing_dm_to_state ────────────────────────────────────────────

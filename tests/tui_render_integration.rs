@@ -204,8 +204,8 @@ fn test_add_peer() {
     let mut state = TuiRenderState::new();
     state.add_peer("peer-1", "Alice", "Online");
     assert_eq!(state.peers.len(), 1);
-    assert_eq!(state.peers[0].0, "peer-1");
-    assert_eq!(state.peers[0].1, "Alice");
+    assert_eq!(state.peers[0].peer_id, "peer-1");
+    assert_eq!(state.peers[0].first_seen, "Alice");
 }
 
 #[test]

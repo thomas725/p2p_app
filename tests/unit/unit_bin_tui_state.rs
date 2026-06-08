@@ -48,8 +48,8 @@ fn test_format_outgoing_without_sender_nickname() {
     let (msgs, ids, sent_at) =
         format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 1);
-    assert!(msgs[0].0.contains("[Me]"));
-    assert!(msgs[0].0.contains("hello"));
+    assert!(msgs[0].text.contains("[Me]"));
+    assert!(msgs[0].text.contains("hello"));
     assert_eq!(ids[0], Some("m1".to_string()));
     assert_eq!(sent_at.get("m1"), Some(&1.0));
 }
@@ -65,8 +65,8 @@ fn test_format_outgoing_with_sender_nickname() {
         "2024-01-01 12:00:00",
     )];
     let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
-    assert!(msgs[0].0.contains("[OldNick]"));
-    assert!(msgs[0].0.contains("hello"));
+    assert!(msgs[0].text.contains("[OldNick]"));
+    assert!(msgs[0].text.contains("hello"));
 }
 
 #[test]
@@ -81,8 +81,8 @@ fn test_format_incoming_without_sender_nickname_falls_back_to_display_name() {
     )];
     let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
     let (msgs, _, _) = format_messages_from_db(&messages, &local, &HashMap::new(), "Me");
-    assert!(msgs[0].0.contains("[Alice]"));
-    assert!(msgs[0].0.contains("hi there"));
+    assert!(msgs[0].text.contains("[Alice]"));
+    assert!(msgs[0].text.contains("hi there"));
 }
 
 #[test]
@@ -96,8 +96,8 @@ fn test_format_incoming_with_sender_nickname() {
         "2024-01-01 12:00:00",
     )];
     let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
-    assert!(msgs[0].0.contains("[Bob]"));
-    assert!(msgs[0].0.contains("hey"));
+    assert!(msgs[0].text.contains("[Bob]"));
+    assert!(msgs[0].text.contains("hey"));
 }
 
 #[test]
@@ -116,11 +116,11 @@ fn test_format_messages_reverses_newest_first_to_oldest_first() {
     let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 2);
     assert!(
-        msgs[0].0.contains("first"),
+        msgs[0].text.contains("first"),
         "first msg should be oldest after rev"
     );
     assert!(
-        msgs[1].0.contains("second"),
+        msgs[1].text.contains("second"),
         "second msg should be newest after rev"
     );
 }
@@ -151,7 +151,7 @@ fn test_format_messages_peer_id_maps_correctly() {
         "2024-01-01 12:00:00",
     )];
     let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
-    assert_eq!(msgs[0].1, Some("p1".to_string()));
+    assert_eq!(msgs[0].sender_peer_id, Some("p1".to_string()));
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn test_format_messages_outgoing_peer_id_is_none() {
         "2024-01-01 12:00:00",
     )];
     let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
-    assert_eq!(msgs[0].1, None);
+    assert_eq!(msgs[0].sender_peer_id, None);
 }
 
 // ── AppState ────────────────────────────────────────────────────────────

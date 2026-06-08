@@ -127,8 +127,13 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .peers
         .iter()
         .enumerate()
-        .map(|(idx, (id, name, status))| {
-            let line = format!("{} ({}) - {}", name, short_peer_id(id), status);
+        .map(|(idx, p)| {
+            let line = format!(
+                "{} ({}) - {}",
+                p.first_seen,
+                short_peer_id(&p.peer_id),
+                p.last_seen
+            );
             if idx == state.peer_selection {
                 ListItem::new(line).style(Style::default().bg(Color::DarkGray))
             } else {

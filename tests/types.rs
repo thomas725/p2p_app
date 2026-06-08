@@ -558,10 +558,9 @@ mod tui_tests {
         let mut state = TuiRenderState::new();
         state.add_peer("id1", "Alice", "Online");
         assert_eq!(state.peers.len(), 1);
-        assert_eq!(
-            state.peers[0],
-            ("id1".into(), "Alice".into(), "Online".into())
-        );
+        assert_eq!(state.peers[0].peer_id, "id1");
+        assert_eq!(state.peers[0].first_seen, "Alice");
+        assert_eq!(state.peers[0].last_seen, "Online");
     }
 
     #[test]

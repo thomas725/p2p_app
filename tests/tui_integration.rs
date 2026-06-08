@@ -135,21 +135,21 @@ fn test_tui_no_duplicate_peers_on_reconnect() {
     let _logs: Arc<Mutex<VecDeque<String>>> = Arc::new(Mutex::new(VecDeque::new()));
 
     // Simulate app state with initial peers from database
-    let mut peers_list: VecDeque<(String, String, String)> = VecDeque::new();
-    peers_list.push_back((
-        "peer1".to_string(),
-        "10:00".to_string(),
-        "10:05".to_string(),
-    ));
-    peers_list.push_back((
-        "peer2".to_string(),
-        "10:01".to_string(),
-        "10:06".to_string(),
-    ));
+    let mut peers_list: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
+    peers_list.push_back(p2p_app::PeerRecord {
+        peer_id: "peer1".to_string(),
+        first_seen: "10:00".to_string(),
+        last_seen: "10:05".to_string(),
+    });
+    peers_list.push_back(p2p_app::PeerRecord {
+        peer_id: "peer2".to_string(),
+        first_seen: "10:01".to_string(),
+        last_seen: "10:06".to_string(),
+    });
 
     // Simulate PeerConnected event for peer that's already in the list
     let peer_id = "peer1".to_string();
-    let should_add = !peers_list.iter().any(|(id, _, _)| id == &peer_id);
+    let should_add = !peers_list.iter().any(|p| p.peer_id == peer_id);
     assert!(!should_add, "Peer should not be added - already in list");
 
     // Verify list still has exactly 2 peers
@@ -157,11 +157,15 @@ fn test_tui_no_duplicate_peers_on_reconnect() {
 
     // Simulate PeerConnected for a new peer
     let new_peer = "peer3".to_string();
-    let should_add = !peers_list.iter().any(|(id, _, _)| id == &new_peer);
+    let should_add = !peers_list.iter().any(|p| p.peer_id == new_peer);
     assert!(should_add, "New peer should be added");
 
     if should_add {
-        peers_list.push_front((new_peer, "10:07".to_string(), "10:07".to_string()));
+        peers_list.push_front(p2p_app::PeerRecord {
+            peer_id: new_peer,
+            first_seen: "10:07".to_string(),
+            last_seen: "10:07".to_string(),
+        });
     }
 
     // Verify list now has 3 peers
@@ -169,15 +173,19 @@ fn test_tui_no_duplicate_peers_on_reconnect() {
 
     // Verify no duplicates
     let mut seen_ids = std::collections::HashSet::new();
-    for (id, _, _) in &peers_list {
-        assert!(seen_ids.insert(id.clone()), "Found duplicate peer: {id}");
+    for p in &peers_list {
+        assert!(
+            seen_ids.insert(p.peer_id.clone()),
+            "Found duplicate peer: {}",
+            p.peer_id
+        );
     }
 }
 
 #[test]
 fn test_tui_message_sending_broadcast() {
     // Simulate sending a broadcast message
-    let mut messages: VecDeque<(String, Option<String>)> = VecDeque::new();
+    let mut messages: VecDeque<p2p_app::DisplayMessage> = VecDeque::new();
     let own_nickname = "Alice".to_string();
 
     // User types "Hello everyone" and presses Enter
@@ -185,13 +193,17 @@ fn test_tui_message_sending_broadcast() {
     let ts = "2024-01-01 10:00:00".to_string();
     let msg = format!("{ts} [{own_nickname}] {msg_text}");
 
-    messages.push_back((msg.clone(), None)); // None = broadcast (no specific peer)
+    messages.push_back(p2p_app::DisplayMessage {
+        text: msg.clone(),
+        sender_peer_id: None,
+    }); // None = broadcast (no specific peer)
 
     // Verify message was added
     assert_eq!(messages.len(), 1);
 
     // Verify message content
-    let (stored_msg, peer_id) = messages[0].clone();
+    let stored_msg = messages[0].text.clone();
+    let peer_id = messages[0].sender_peer_id.clone();
     assert!(stored_msg.contains(msg_text));
     assert!(stored_msg.contains(&own_nickname));
     assert_eq!(peer_id, None);
@@ -309,11 +321,14 @@ fn test_tui_input_enabled_only_on_chat_tabs() {
 fn test_tui_message_history_bounded() {
     const MAX_MESSAGES: usize = 100;
 
-    let mut messages: VecDeque<(String, Option<String>)> = VecDeque::new();
+    let mut messages: VecDeque<p2p_app::DisplayMessage> = VecDeque::new();
 
     // Add more messages than the limit
     for i in 0..150 {
-        messages.push_back((format!("message {i}"), None));
+        messages.push_back(p2p_app::DisplayMessage {
+            text: format!("message {i}"),
+            sender_peer_id: None,
+        });
 
         // Maintain the limit
         if messages.len() > MAX_MESSAGES {
@@ -325,7 +340,7 @@ fn test_tui_message_history_bounded() {
     assert_eq!(messages.len(), MAX_MESSAGES);
 
     // Verify oldest messages were removed
-    let (first_msg, _) = &messages[0];
+    let first_msg = &messages[0].text;
     assert!(first_msg.contains("message 50")); // First message should be around 50
 }
 
@@ -373,12 +388,16 @@ fn test_tui_whitespace_message_not_sent() {
 fn test_tui_peer_display_limit() {
     const MAX_PEERS: usize = 10000;
 
-    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
 
     // Try to add more peers than the limit
     for i in 0..MAX_PEERS + 100 {
         if peers.len() < MAX_PEERS {
-            peers.push_back((format!("peer{i}"), "time1".to_string(), "time2".to_string()));
+            peers.push_back(p2p_app::PeerRecord {
+                peer_id: format!("peer{i}"),
+                first_seen: "time1".to_string(),
+                last_seen: "time2".to_string(),
+            });
         }
     }
 
@@ -389,7 +408,7 @@ fn test_tui_peer_display_limit() {
 #[test]
 fn test_tui_peer_deduplication_with_limit() {
     // Simulate loading peers from database with many duplicates
-    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
     let mut seen_ids = std::collections::HashSet::new();
 
     // Simulate database entries: peer1 appears 5 times, peer2 appears 3 times, etc.
@@ -415,11 +434,11 @@ fn test_tui_peer_deduplication_with_limit() {
             break;
         }
 
-        peers.push_back((
-            id.to_string(),
-            first_seen.to_string(),
-            last_seen.to_string(),
-        ));
+        peers.push_back(p2p_app::PeerRecord {
+            peer_id: id.to_string(),
+            first_seen: first_seen.to_string(),
+            last_seen: last_seen.to_string(),
+        });
     }
 
     // Should have 4 unique peers (peer1, peer2, peer3, peer4)
@@ -428,7 +447,7 @@ fn test_tui_peer_deduplication_with_limit() {
 
     // Verify all are unique
     let mut unique_check = std::collections::HashSet::new();
-    for (id, _, _) in &peers {
+    for id in &peers {
         assert!(
             unique_check.insert(id.clone()),
             "Found duplicate peer: {id}"

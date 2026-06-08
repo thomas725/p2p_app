@@ -3,7 +3,7 @@ use super::event_source::InputEvent;
 use super::input_processor::process_input_event;
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
-use p2p_app::{SwarmCommand, SwarmEvent, p2plog_debug};
+use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
@@ -45,9 +45,10 @@ pub fn apply_broadcast_to_state(
         sender_display,
         content
     );
-    state
-        .messages
-        .push_back((msg.clone(), Some(peer_id.to_string())));
+    state.messages.push_back(DisplayMessage {
+        text: msg.clone(),
+        sender_peer_id: Some(peer_id.to_string()),
+    });
     state.message_ids.push_back(msg_id);
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
@@ -128,11 +129,11 @@ pub fn add_peer_to_state_list(
     first_seen: &str,
     last_seen: &str,
 ) {
-    state.peers.push_back((
-        peer_id.to_string(),
-        first_seen.to_string(),
-        last_seen.to_string(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: peer_id.to_string(),
+        first_seen: first_seen.to_string(),
+        last_seen: last_seen.to_string(),
+    });
     sort_peers_by_last_seen(state);
 }
 
@@ -144,11 +145,13 @@ pub fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
 
 #[cfg(feature = "mdns")]
 pub fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
-    if !state.peers.iter().any(|(id, _, _)| id == peer_id) {
+    if !state.peers.iter().any(|p| p.peer_id == peer_id) {
         let now = p2p_app::now_timestamp();
-        state
-            .peers
-            .push_back((peer_id.to_string(), now.clone(), now));
+        state.peers.push_back(PeerRecord {
+            peer_id: peer_id.to_string(),
+            first_seen: now.clone(),
+            last_seen: now,
+        });
         sort_peers_by_last_seen(state);
     }
 }
@@ -245,7 +248,7 @@ async fn process_swarm_event(
                 let mut s = state.lock().await;
                 let count = apply_peer_connected_count(&mut s);
                 p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, count));
-                if !s.peers.iter().any(|(id, _, _)| id == &peer_id)
+                if !s.peers.iter().any(|p| p.peer_id == peer_id)
                     && let Ok(peer) = p2p_app::save_peer(&peer_id, &[])
                 {
                     let first_seen = p2p_app::format_peer_datetime(peer.first_seen);

@@ -51,6 +51,8 @@ pub mod behavior;
 pub mod db;
 #[cfg(feature = "dioxus")]
 pub mod dioxus_app;
+#[cfg(feature = "dioxus")]
+pub mod dioxus_styles;
 pub mod fmt;
 pub mod logging;
 pub mod messages;
@@ -131,7 +133,7 @@ pub use tui_render_state::{
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent, TabId};
 #[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
-pub use types::{MessageEvent, SwarmCommand, SwarmEvent};
+pub use types::{DisplayMessage, MessageEvent, PeerRecord, SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 

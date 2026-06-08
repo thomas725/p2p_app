@@ -95,9 +95,9 @@ fn test_deduplicate_peers_no_duplicates() {
     ];
     let result = deduplicate_peers(&peers);
     assert_eq!(result.len(), 2);
-    assert_eq!(result[0].0, "p1");
-    assert_eq!(result[0].1, "2024-01-01 12:00:00");
-    assert_eq!(result[0].2, "2024-01-02 12:00:00");
+    assert_eq!(result[0].peer_id, "p1");
+    assert_eq!(result[0].first_seen, "2024-01-01 12:00:00");
+    assert_eq!(result[0].last_seen, "2024-01-02 12:00:00");
 }
 
 #[test]
@@ -122,9 +122,9 @@ fn test_deduplicate_peers_skips_duplicates() {
     let result = deduplicate_peers(&peers);
     assert_eq!(result.len(), 2);
     // First occurrence (most recent last_seen in DB order) is kept
-    assert_eq!(result[0].0, "p1");
-    assert_eq!(result[0].2, "2024-01-02 12:00:00");
-    assert_eq!(result[1].0, "p2");
+    assert_eq!(result[0].peer_id, "p1");
+    assert_eq!(result[0].last_seen, "2024-01-02 12:00:00");
+    assert_eq!(result[1].peer_id, "p2");
 }
 
 // ── organize_receipts ──────────────────────────────────────────────────

@@ -42,7 +42,7 @@ pub fn extract_nickname_maps(
 }
 
 /// Pure: deduplicate peers and format timestamps
-pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<(String, String, String)> {
+pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<p2p_app::PeerRecord> {
     let mut result = VecDeque::new();
     let mut seen_ids = HashSet::new();
     for peer in peers {
@@ -51,7 +51,11 @@ pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<(String, String, Strin
         }
         let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
         let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-        result.push_back((peer.peer_id.clone(), first_seen, last_seen));
+        result.push_back(p2p_app::PeerRecord {
+            peer_id: peer.peer_id.clone(),
+            first_seen,
+            last_seen,
+        });
     }
     result
 }
@@ -171,7 +175,7 @@ pub async fn run_new_tui(
 
     // Sort by last_seen (latest first) - format is "YYYY-MM-DD HH:MM:SS" so lexicographic works
     let mut peers_vec: Vec<_> = initial_peers.drain(..).collect();
-    peers_vec.sort_by(|a, b| b.2.cmp(&a.2)); // reverse order for latest first
+    peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen)); // reverse order for latest first
     initial_peers = peers_vec.into();
 
     // Load receipts from database

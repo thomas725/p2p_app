@@ -1,5 +1,6 @@
 use super::*;
 use crate::tui::state::AppState;
+use p2p_app::{DisplayMessage, PeerRecord};
 use serial_test::serial;
 use std::collections::{HashMap, VecDeque};
 
@@ -42,10 +43,14 @@ fn test_app_state_to_render_state_defaults() {
 #[test]
 fn test_app_state_to_render_state_messages() {
     let mut state = app_state();
-    state
-        .messages
-        .push_back(("hello".to_string(), Some("p1".to_string())));
-    state.messages.push_back(("world".to_string(), None));
+    state.messages.push_back(DisplayMessage {
+        text: "hello".to_string(),
+        sender_peer_id: Some("p1".to_string()),
+    });
+    state.messages.push_back(DisplayMessage {
+        text: "world".to_string(),
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some("m1".to_string()));
     state.message_ids.push_back(Some("m2".to_string()));
 
@@ -59,22 +64,22 @@ fn test_app_state_to_render_state_messages() {
 #[test]
 fn test_app_state_to_render_state_peers() {
     let mut state = app_state();
-    state.peers.push_back((
-        "p1".into(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-02 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "p2".into(),
-        "2024-01-03 12:00:00".into(),
-        "2024-01-04 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "p1".into(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-02 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "p2".into(),
+        first_seen: "2024-01-03 12:00:00".into(),
+        last_seen: "2024-01-04 12:00:00".into(),
+    });
     state.peer_selection = 1;
     state.concurrent_peers = 5;
 
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.peers.len(), 2);
-    assert_eq!(rs.peers[0].0, "p1");
+    assert_eq!(rs.peers[0].peer_id, "p1");
     assert_eq!(rs.peer_selection, 1);
     assert_eq!(rs.peer_count, 5);
 }

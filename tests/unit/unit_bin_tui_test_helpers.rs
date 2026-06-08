@@ -1,4 +1,5 @@
 use crate::tui::state::AppState;
+use p2p_app::{DisplayMessage, PeerRecord};
 use std::collections::{HashMap, VecDeque};
 
 pub fn test_app_state() -> AppState {
@@ -21,9 +22,10 @@ pub fn test_app_state() -> AppState {
 pub fn app_state_with_chat_messages(count: usize) -> AppState {
     let mut state = test_app_state();
     for i in 0..count {
-        state
-            .messages
-            .push_back((format!("Message {i}"), Some(format!("peer{i}"))));
+        state.messages.push_back(DisplayMessage {
+            text: format!("Message {i}"),
+            sender_peer_id: Some(format!("peer{i}")),
+        });
         state.message_ids.push_back(Some(format!("msg-{i}")));
     }
     state.visible_message_count = 5;
@@ -34,11 +36,11 @@ pub fn app_state_with_peers(count: usize) -> AppState {
     let mut state = test_app_state();
     for i in 0..count {
         let id = format!("peer{i}");
-        state.peers.push_back((
-            id,
-            "2024-01-01 12:00:00".into(),
-            "2024-01-01 12:00:00".into(),
-        ));
+        state.peers.push_back(PeerRecord {
+            peer_id: id,
+            first_seen: "2024-01-01 12:00:00".into(),
+            last_seen: "2024-01-01 12:00:00".into(),
+        });
     }
     state
 }

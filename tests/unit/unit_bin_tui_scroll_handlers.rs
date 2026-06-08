@@ -305,9 +305,10 @@ fn test_mouse_scroll_chat_down_clamps() {
 fn state_with_broadcasts_from_peer(peer_id: &str, count: usize) -> AppState {
     let mut state = test_app_state();
     for i in 0..count {
-        state
-            .messages
-            .push_back((format!("msg {i}"), Some(peer_id.to_string())));
+        state.messages.push_back(DisplayMessage {
+            text: format!("msg {i}"),
+            sender_peer_id: Some(peer_id.to_string()),
+        });
         state.message_ids.push_back(Some(format!("id-{i}")));
     }
     state

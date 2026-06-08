@@ -4,6 +4,29 @@ use libp2p::Multiaddr;
 #[path = "../tests/unit/unit_types.rs"]
 mod tests;
 
+/// A formatted display message for the UI layer.
+///
+/// Carries the rendered text and the sender's peer ID (`None` = sent by local user).
+#[derive(Debug, Clone)]
+pub struct DisplayMessage {
+    pub text: String,
+    pub sender_peer_id: Option<String>,
+}
+
+/// Peer record with identification and timestamps.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PeerRecord {
+    pub peer_id: String,
+    pub first_seen: String,
+    pub last_seen: String,
+}
+
+impl std::fmt::Display for PeerRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} ({})", self.peer_id, self.last_seen)
+    }
+}
+
 /// Data common to both broadcast and direct messages from the swarm
 #[derive(Debug, Clone)]
 pub struct MessageEvent {

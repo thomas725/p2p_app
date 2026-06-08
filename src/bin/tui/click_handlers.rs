@@ -1,20 +1,21 @@
 use super::constants::MAX_DM_HISTORY;
 use super::state::AppState;
+use p2p_app::PeerRecord;
 use p2p_app::p2plog_debug;
 use p2p_app::row_to_visible_index;
 use ratatui_textarea::TextArea;
 use std::collections::{HashMap, VecDeque};
 
 fn count_nicknames<'a>(
-    peers: impl Iterator<Item = &'a (String, String, String)>,
+    peers: impl Iterator<Item = &'a PeerRecord>,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
 ) -> HashMap<String, usize> {
     let mut counts = HashMap::new();
-    for (peer_id, _, _) in peers {
+    for p in peers {
         if let Some(nick) = local_nicknames
-            .get(peer_id)
-            .or_else(|| received_nicknames.get(peer_id))
+            .get(&p.peer_id)
+            .or_else(|| received_nicknames.get(&p.peer_id))
         {
             *counts.entry(nick.clone()).or_insert(0) += 1;
         }
@@ -39,7 +40,7 @@ fn format_peer_display(
 
 pub fn format_broadcast_receipt_popup_impl(
     receipts: &HashMap<String, f64>,
-    peers: &VecDeque<(String, String, String)>,
+    peers: &VecDeque<PeerRecord>,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
     sent_at: Option<f64>,
@@ -215,9 +216,9 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
 pub fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     let peer_row = (row as usize).saturating_sub(3);
     if peer_row < state.peers.len()
-        && let Some((peer_id, _, _)) = state.peers.get(peer_row)
+        && let Some(p) = state.peers.get(peer_row)
     {
-        let peer_id_clone = peer_id.clone();
+        let peer_id_clone = p.peer_id.clone();
         load_dm_messages(state, &peer_id_clone);
         let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
         state.active_tab = tab_idx;
@@ -242,7 +243,7 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool
         && state
             .messages
             .get(global_idx)
-            .is_some_and(|(_, pid)| pid.is_none())
+            .is_some_and(|dm| dm.sender_peer_id.is_none())
         && let Some(Some(msg_id)) = state.message_ids.get(global_idx)
     {
         if let Some(popup) = format_broadcast_receipt_popup(
@@ -262,7 +263,7 @@ pub fn handle_message_click(state: &mut AppState, row: u16, column: u16) -> bool
         .iter()
         .skip(state.chat_message_offset)
         .nth(message_idx)
-        .map(|(_, pid)| pid.clone());
+        .map(|dm| dm.sender_peer_id.clone());
 
     match peer_id {
         Some(Some(sender_id)) => {
@@ -318,7 +319,7 @@ pub fn handle_dm_broadcast_message_click(state: &mut AppState, row: u16, peer_id
             .messages
             .iter()
             .enumerate()
-            .filter(|(_, (_, sender_id))| sender_id.as_ref().is_some_and(|id| id == peer_id))
+            .filter(|(_, dm)| dm.sender_peer_id.as_ref().is_some_and(|id| id == peer_id))
             .map(|(idx, _)| idx)
             .collect();
 

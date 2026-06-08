@@ -5,7 +5,7 @@ mod dioxus {
     use libp2p::gossipsub;
     use std::collections::{HashMap, VecDeque};
 
-    type Messages = VecDeque<(String, Option<String>)>;
+    type Messages = VecDeque<p2p_app::DisplayMessage>;
     type MessageIds = VecDeque<Option<String>>;
     type SentAtByMsgId = HashMap<String, f64>;
 
@@ -38,10 +38,10 @@ mod dioxus {
                             format!("[{}]", display)
                         })
                 };
-                messages.push_back((
-                    format!("{} {} {}", ts, sender, msg.content),
-                    msg.peer_id.clone(),
-                ));
+                messages.push_back(p2p_app::DisplayMessage {
+                    text: format!("{} {} {}", ts, sender, msg.content),
+                    sender_peer_id: msg.peer_id.clone(),
+                });
                 message_ids.push_back(msg.msg_id.clone());
                 if let Some(ref msg_id) = msg.msg_id
                     && let Some(sent_at) = msg.sent_at
@@ -129,11 +129,11 @@ mod dioxus {
                     if !seen.insert(p.peer_id.clone()) {
                         continue;
                     }
-                    peers.push_back((
-                        p.peer_id.clone(),
-                        p2p_app::format_peer_datetime(p.first_seen),
-                        p2p_app::format_peer_datetime(p.last_seen),
-                    ));
+                    peers.push_back(p2p_app::PeerRecord {
+                        peer_id: p.peer_id.clone(),
+                        first_seen: p2p_app::format_peer_datetime(p.first_seen),
+                        last_seen: p2p_app::format_peer_datetime(p.last_seen),
+                    });
                 }
                 peers
             } else {
@@ -141,7 +141,7 @@ mod dioxus {
             };
 
             let mut pv: Vec<_> = initial_peers.drain(..).collect();
-            pv.sort_by(|a, b| b.2.cmp(&a.2));
+            pv.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
             initial_peers = pv.into();
 
             let mut broadcast_receipts: HashMap<String, HashMap<String, f64>> = HashMap::new();

@@ -17,7 +17,7 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
 pub struct AppState {
     // Messages & Chat
-    pub messages: VecDeque<(String, Option<String>)>,
+    pub messages: VecDeque<p2p_app::DisplayMessage>,
     // Message IDs aligned with `messages` (used for receipts / click actions).
     pub message_ids: VecDeque<Option<String>>,
     // Broadcast receipts: msg_id -> (peer_id -> received_at epoch seconds).
@@ -31,7 +31,7 @@ pub struct AppState {
     pub dm_receipts: HashMap<String, (String, f64)>,
 
     // Peer Management
-    pub peers: VecDeque<(String, String, String)>, // (id, first_seen, last_seen)
+    pub peers: VecDeque<p2p_app::PeerRecord>,
     pub concurrent_peers: usize,
     pub local_nicknames: HashMap<String, String>,
     pub received_nicknames: HashMap<String, String>,
@@ -109,10 +109,10 @@ impl AppState {
         local_nicknames: HashMap<String, String>,
         received_nicknames: HashMap<String, String>,
         self_nicknames_for_peers: HashMap<String, String>,
-        initial_messages: VecDeque<(String, Option<String>)>,
+        initial_messages: VecDeque<p2p_app::DisplayMessage>,
         initial_message_ids: VecDeque<Option<String>>,
         initial_sent_at: HashMap<String, f64>,
-        initial_peers: VecDeque<(String, String, String)>,
+        initial_peers: VecDeque<p2p_app::PeerRecord>,
         initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
         initial_dm_receipts: HashMap<String, (String, f64)>,
     ) -> Self {
@@ -164,7 +164,7 @@ impl AppState {
 }
 
 type FormattedMessages = (
-    VecDeque<(String, Option<String>)>,
+    VecDeque<p2p_app::DisplayMessage>,
     VecDeque<Option<String>>,
     HashMap<String, f64>,
 );
@@ -192,10 +192,10 @@ pub fn format_messages_from_db(
         } else {
             format!("[{own_nickname}]")
         };
-        messages.push_back((
-            format!("{} {} {}", ts, sender, msg.content),
-            msg.peer_id.clone(),
-        ));
+        messages.push_back(p2p_app::DisplayMessage {
+            text: format!("{} {} {}", ts, sender, msg.content),
+            sender_peer_id: msg.peer_id.clone(),
+        });
         message_ids.push_back(msg.msg_id.clone());
         if let Some(msg_id) = &msg.msg_id
             && let Some(sent_at) = msg.sent_at

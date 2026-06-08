@@ -1,5 +1,6 @@
 use super::*;
 use crate::tui::test_helpers::test_app_state;
+use p2p_app::PeerRecord;
 use std::collections::VecDeque;
 
 // ── sort_peers_by_last_seen ──────────────────────────────────────────────
@@ -14,42 +15,42 @@ fn test_sort_peers_empty() {
 #[test]
 fn test_sort_peers_sorts_by_last_seen_desc() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "old".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "new".to_string(),
-        "2024-06-01 12:00:00".into(),
-        "2024-06-01 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "mid".to_string(),
-        "2024-03-01 12:00:00".into(),
-        "2024-03-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "old".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "new".to_string(),
+        first_seen: "2024-06-01 12:00:00".into(),
+        last_seen: "2024-06-01 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "mid".to_string(),
+        first_seen: "2024-03-01 12:00:00".into(),
+        last_seen: "2024-03-01 12:00:00".into(),
+    });
     sort_peers_by_last_seen(&mut state);
-    let ids: Vec<&str> = state.peers.iter().map(|(id, _, _)| id.as_str()).collect();
+    let ids: Vec<&str> = state.peers.iter().map(|p| p.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["new", "mid", "old"]);
 }
 
 #[test]
 fn test_sort_peers_same_last_seen() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "a".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "b".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "a".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "b".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
     sort_peers_by_last_seen(&mut state);
     // Stable sort preserves original order for equal last_seen
-    let ids: Vec<&str> = state.peers.iter().map(|(id, _, _)| id.as_str()).collect();
+    let ids: Vec<&str> = state.peers.iter().map(|p| p.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["a", "b"]);
 }
 
@@ -62,59 +63,59 @@ fn test_upsert_peer_adds_new_peer() {
         chrono::NaiveDateTime::parse_from_str("2024-06-15 14:30:00", "%Y-%m-%d %H:%M:%S").unwrap();
     upsert_peer_last_seen(&mut state, "peer-new", seen);
     assert_eq!(state.peers.len(), 1);
-    assert_eq!(state.peers[0].0, "peer-new");
-    assert_eq!(state.peers[0].2, "2024-06-15 14:30:00");
+    assert_eq!(state.peers[0].peer_id, "peer-new");
+    assert_eq!(state.peers[0].last_seen, "2024-06-15 14:30:00");
 }
 
 #[test]
 fn test_upsert_peer_updates_existing() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "peer-exist".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "peer-exist".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
     let later =
         chrono::NaiveDateTime::parse_from_str("2024-12-01 18:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
     upsert_peer_last_seen(&mut state, "peer-exist", later);
     assert_eq!(state.peers.len(), 1);
-    assert_eq!(state.peers[0].2, "2024-12-01 18:00:00");
+    assert_eq!(state.peers[0].last_seen, "2024-12-01 18:00:00");
 }
 
 #[test]
 fn test_upsert_peer_moves_to_front_when_latest() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "old".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "new".to_string(),
-        "2024-06-01 12:00:00".into(),
-        "2024-06-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "old".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "new".to_string(),
+        first_seen: "2024-06-01 12:00:00".into(),
+        last_seen: "2024-06-01 12:00:00".into(),
+    });
     let later =
         chrono::NaiveDateTime::parse_from_str("2024-12-01 18:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
     upsert_peer_last_seen(&mut state, "old", later);
     // "old" should now be first (latest last_seen)
-    assert_eq!(state.peers[0].0, "old");
-    assert_eq!(state.peers[0].2, "2024-12-01 18:00:00");
+    assert_eq!(state.peers[0].peer_id, "old");
+    assert_eq!(state.peers[0].last_seen, "2024-12-01 18:00:00");
 }
 
 #[test]
 fn test_upsert_peer_updates_peer_selection() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "a".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
-    state.peers.push_back((
-        "b".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "a".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "b".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
     assert_eq!(state.peer_selection, 0);
     let seen =
         chrono::NaiveDateTime::parse_from_str("2024-06-01 12:00:00", "%Y-%m-%d %H:%M:%S").unwrap();
@@ -136,7 +137,7 @@ fn test_apply_broadcast_to_state_adds_message() {
     assert!(msg.contains("Alice"));
     assert!(msg.contains("hello"));
     assert_eq!(state.message_ids[0], Some("m1".to_string()));
-    assert_eq!(state.messages[0].1, Some("p1".to_string()));
+    assert_eq!(state.messages[0].sender_peer_id, Some("p1".to_string()));
 }
 
 #[test]
@@ -144,7 +145,10 @@ fn test_apply_broadcast_to_state_trims_history() {
     let mut state = test_app_state();
     // Override MAX_MESSAGE_HISTORY by filling messages up to 2 below the limit
     for _ in 0..MAX_MESSAGE_HISTORY.saturating_sub(2) {
-        state.messages.push_back(("old".to_string(), None));
+        state.messages.push_back(DisplayMessage {
+            text: "old".to_string(),
+            sender_peer_id: None,
+        });
         state.message_ids.push_back(None);
     }
     // Add 3 more to trigger trimming
@@ -298,11 +302,11 @@ fn test_apply_peer_disconnected_count_saturates_at_zero() {
 #[test]
 fn test_add_peer_to_state_list_appends_and_sorts() {
     let mut state = test_app_state();
-    state.peers.push_back((
-        "old".to_string(),
-        "2024-01-01 12:00:00".into(),
-        "2024-01-01 12:00:00".into(),
-    ));
+    state.peers.push_back(PeerRecord {
+        peer_id: "old".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
     add_peer_to_state_list(
         &mut state,
         "new",
@@ -310,5 +314,5 @@ fn test_add_peer_to_state_list_appends_and_sorts() {
         "2024-06-01 12:00:00",
     );
     assert_eq!(state.peers.len(), 2);
-    assert_eq!(state.peers[0].0, "new"); // newest first
+    assert_eq!(state.peers[0].peer_id, "new"); // newest first
 }

@@ -1,6 +1,7 @@
 use super::*;
 use crate::tui::state::AppState;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
+use p2p_app::DisplayMessage;
 use std::collections::{HashMap, VecDeque};
 
 fn empty_state() -> AppState {
@@ -23,7 +24,10 @@ fn empty_state() -> AppState {
 #[test]
 fn message_click_on_broadcast_receipt_prefix_opens_popup() {
     let mut state = empty_state();
-    state.messages.push_back(("hello".to_string(), None));
+    state.messages.push_back(DisplayMessage {
+        text: "hello".to_string(),
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some("msg-1".to_string()));
     state.chat_message_lines = vec![1];
     state.chat_message_offset = 0;
@@ -45,8 +49,14 @@ fn message_click_on_broadcast_receipt_prefix_opens_popup() {
 fn dm_broadcast_click_selects_original_broadcast_message() {
     let mut state = empty_state();
     state.messages = VecDeque::from([
-        ("from peer".to_string(), Some("peer-1".to_string())),
-        ("other".to_string(), Some("peer-2".to_string())),
+        DisplayMessage {
+            text: "from peer".to_string(),
+            sender_peer_id: Some("peer-1".to_string()),
+        },
+        DisplayMessage {
+            text: "other".to_string(),
+            sender_peer_id: Some("peer-2".to_string()),
+        },
     ]);
     state.visible_message_count = 6;
     state.chat_auto_scroll = true;
@@ -94,16 +104,16 @@ fn dm_message_click_on_receipt_prefix_opens_popup() {
 #[test]
 fn test_count_nicknames() {
     let peers: VecDeque<_> = VecDeque::from(vec![
-        (
-            "peer1".to_string(),
-            "seen1".to_string(),
-            "last1".to_string(),
-        ),
-        (
-            "peer2".to_string(),
-            "seen2".to_string(),
-            "last2".to_string(),
-        ),
+        PeerRecord {
+            peer_id: "peer1".to_string(),
+            first_seen: "seen1".to_string(),
+            last_seen: "last1".to_string(),
+        },
+        PeerRecord {
+            peer_id: "peer2".to_string(),
+            first_seen: "seen2".to_string(),
+            last_seen: "last2".to_string(),
+        },
     ]);
     let local = HashMap::from([("peer1".to_string(), "Alice".to_string())]);
     let received = HashMap::from([("peer2".to_string(), "Bob".to_string())]);
@@ -116,16 +126,16 @@ fn test_count_nicknames() {
 #[test]
 fn test_count_nicknames_duplicates() {
     let peers: VecDeque<_> = VecDeque::from(vec![
-        (
-            "peer1".to_string(),
-            "seen1".to_string(),
-            "last1".to_string(),
-        ),
-        (
-            "peer2".to_string(),
-            "seen2".to_string(),
-            "last2".to_string(),
-        ),
+        PeerRecord {
+            peer_id: "peer1".to_string(),
+            first_seen: "seen1".to_string(),
+            last_seen: "last1".to_string(),
+        },
+        PeerRecord {
+            peer_id: "peer2".to_string(),
+            first_seen: "seen2".to_string(),
+            last_seen: "last2".to_string(),
+        },
     ]);
     let local = HashMap::from([
         ("peer1".to_string(), "Alice".to_string()),
@@ -170,7 +180,7 @@ fn test_format_peer_display_no_nickname() {
 #[test]
 fn test_format_broadcast_receipt_popup_impl_empty() {
     let receipts = HashMap::new();
-    let peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
     let local = HashMap::new();
     let received = HashMap::new();
     let result =
@@ -185,8 +195,16 @@ fn test_format_broadcast_receipt_popup_impl_empty() {
 fn test_format_broadcast_receipt_popup_impl_with_data() {
     let receipts = HashMap::from([("peer1".to_string(), 2.0), ("peer2".to_string(), 3.0)]);
     let peers: VecDeque<_> = VecDeque::from(vec![
-        ("peer1".to_string(), "s1".to_string(), "l1".to_string()),
-        ("peer2".to_string(), "s2".to_string(), "l2".to_string()),
+        PeerRecord {
+            peer_id: "peer1".to_string(),
+            first_seen: "s1".to_string(),
+            last_seen: "l1".to_string(),
+        },
+        PeerRecord {
+            peer_id: "peer2".to_string(),
+            first_seen: "s2".to_string(),
+            last_seen: "l2".to_string(),
+        },
     ]);
     let local = HashMap::new();
     let received = HashMap::new();
@@ -273,7 +291,7 @@ fn test_peer_row_click_opens_dm_tab() {
 #[test]
 fn test_peer_row_click_selects_correct_peer() {
     let mut state = app_state_with_peers(3);
-    let peer_id = state.peers[1].0.clone(); // second peer
+    let peer_id = state.peers[1].peer_id.clone(); // second peer
     handle_peer_row_click(&mut state, 4); // row 4 = second peer (header offset)
     assert!(state.dm_messages.contains_key(&peer_id));
 }
@@ -331,7 +349,10 @@ fn test_dm_receipt_popup_returns_none_when_msg_missing() {
 #[test]
 fn test_message_click_on_sender_opens_dm_tab() {
     let mut state = empty_state();
-    state.messages = VecDeque::from([("msg from peer".to_string(), Some("p1".to_string()))]);
+    state.messages = VecDeque::from([DisplayMessage {
+        text: "msg from peer".to_string(),
+        sender_peer_id: Some("p1".to_string()),
+    }]);
     state.message_ids = VecDeque::from([None]);
     state.chat_message_lines = vec![1];
     state.chat_message_offset = 0;
@@ -346,7 +367,10 @@ fn test_message_click_on_sender_opens_dm_tab() {
 #[test]
 fn test_message_click_on_own_message_starts_nickname_edit() {
     let mut state = empty_state();
-    state.messages.push_back(("my msg".to_string(), None));
+    state.messages.push_back(DisplayMessage {
+        text: "my msg".to_string(),
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some("m1".to_string()));
     state.chat_message_lines = vec![1];
     state.chat_message_offset = 0;
@@ -373,7 +397,10 @@ fn test_message_click_out_of_bounds_is_noop() {
 #[test]
 fn test_message_click_receipt_prefix_no_receipts_shows_fallback() {
     let mut state = empty_state();
-    state.messages.push_back(("outgoing".to_string(), None));
+    state.messages.push_back(DisplayMessage {
+        text: "outgoing".to_string(),
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some("no-receipts".to_string()));
     state.chat_message_lines = vec![1];
     state.chat_message_offset = 0;
@@ -410,7 +437,10 @@ fn test_dm_broadcast_click_out_of_range_is_noop() {
 #[test]
 fn test_dm_broadcast_click_no_matching_messages_for_peer() {
     let mut state = empty_state();
-    state.messages = VecDeque::from([("msg".to_string(), Some("other-peer".to_string()))]);
+    state.messages = VecDeque::from([DisplayMessage {
+        text: "msg".to_string(),
+        sender_peer_id: Some("other-peer".to_string()),
+    }]);
     state
         .dm_broadcast_message_lines
         .insert("peer-1".to_string(), vec![1]);
@@ -551,7 +581,10 @@ fn test_mouse_left_click_dm_tab_routes_dm_section() {
 #[test]
 fn test_mouse_left_click_chat_tab_routes_to_message_click() {
     let mut state = empty_state();
-    state.messages.push_back(("hello".to_string(), None));
+    state.messages.push_back(DisplayMessage {
+        text: "hello".to_string(),
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some("m1".to_string()));
     state.chat_message_lines = vec![1];
     state.chat_message_offset = 0;

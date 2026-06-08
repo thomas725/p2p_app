@@ -5,27 +5,27 @@ use std::collections::VecDeque;
 #[test]
 fn peer_sort_and_upsert_keep_selection() {
     let mut peers = VecDeque::from([
-        (
-            "a".to_string(),
-            "t1".to_string(),
-            "2024-01-01T00:00:01".to_string(),
-        ),
-        (
-            "b".to_string(),
-            "t1".to_string(),
-            "2024-01-01T00:00:02".to_string(),
-        ),
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "t1".to_string(),
+            last_seen: "2024-01-01T00:00:01".to_string(),
+        },
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "t1".to_string(),
+            last_seen: "2024-01-01T00:00:02".to_string(),
+        },
     ]);
     let idx = sort_peers_by_last_seen(&mut peers, 0);
     assert_eq!(idx, 1);
     let idx2 = upsert_peer_last_seen(&mut peers, idx, "a", "2024-01-01T00:00:03");
-    assert_eq!(peers[0].0, "a");
+    assert_eq!(peers[0].peer_id, "a");
     assert_eq!(idx2, 0);
 }
 
 #[test]
 fn peer_sort_none_selected_and_upsert_insert_branch() {
-    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut peers: VecDeque<PeerRecord> = VecDeque::new();
     let idx = sort_peers_by_last_seen(&mut peers, 5);
     assert_eq!(idx, 0);
 

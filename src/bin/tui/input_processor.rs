@@ -106,7 +106,8 @@ async fn handle_nickname_submission(
     } else {
         state.own_nickname = new_nickname.clone();
         let _ = p2p_app::set_self_nickname(&new_nickname);
-        for (peer_id, _, _) in &state.peers {
+        for p in &state.peers {
+            let peer_id = &p.peer_id;
             if state.self_nicknames_for_peers.contains_key(peer_id) {
                 continue;
             }
@@ -166,7 +167,7 @@ async fn handle_enter_key(
         if let Some(peer_id) = state
             .peers
             .get(state.peer_selection)
-            .map(|(id, _, _)| id.clone())
+            .map(|p| p.peer_id.clone())
         {
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());

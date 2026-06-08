@@ -1,6 +1,6 @@
 use super::constants::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use super::state::AppState;
-use p2p_app::{SwarmCommand, p2plog_debug};
+use p2p_app::{DisplayMessage, SwarmCommand, p2plog_debug};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
 
@@ -15,7 +15,10 @@ pub fn push_outgoing_broadcast_to_state(
 ) {
     let msg = format!("{} [{}] {}", ts, own_nickname, content);
     state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
-    state.messages.push_back((msg, None));
+    state.messages.push_back(DisplayMessage {
+        text: msg,
+        sender_peer_id: None,
+    });
     state.message_ids.push_back(Some(msg_id));
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);

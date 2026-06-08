@@ -2,32 +2,33 @@
 
 #[test]
 fn test_sort_peers_by_last_seen() {
+    use p2p_app::PeerRecord;
     use p2p_app::tui_helpers::sort_peers_by_last_seen;
     use std::collections::VecDeque;
 
-    let mut peers = VecDeque::from(vec![
-        (
-            "peer1".to_string(),
-            "10:00".to_string(),
-            "10:00".to_string(),
-        ),
-        (
-            "peer2".to_string(),
-            "09:00".to_string(),
-            "09:00".to_string(),
-        ),
-        (
-            "peer3".to_string(),
-            "11:00".to_string(),
-            "11:00".to_string(),
-        ),
+    let mut peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "peer1".to_string(),
+            first_seen: "10:00".to_string(),
+            last_seen: "10:00".to_string(),
+        },
+        PeerRecord {
+            peer_id: "peer2".to_string(),
+            first_seen: "09:00".to_string(),
+            last_seen: "09:00".to_string(),
+        },
+        PeerRecord {
+            peer_id: "peer3".to_string(),
+            first_seen: "11:00".to_string(),
+            last_seen: "11:00".to_string(),
+        },
     ]);
 
     let _new_sel = sort_peers_by_last_seen(&mut peers, 0);
 
-    assert_eq!(peers[0].0, "peer3");
-    assert_eq!(peers[1].0, "peer1");
-    assert_eq!(peers[2].0, "peer2");
+    assert_eq!(peers[0].peer_id, "peer3");
+    assert_eq!(peers[1].peer_id, "peer1");
+    assert_eq!(peers[2].peer_id, "peer2");
 }
 
 #[test]
@@ -247,31 +248,32 @@ fn test_relabel_dm_transcript_no_match() {
 
 #[test]
 fn test_sort_peers_preserves_selection() {
+    use p2p_app::PeerRecord;
     use p2p_app::tui_helpers::sort_peers_by_last_seen;
     use std::collections::VecDeque;
     let mut peers = VecDeque::from([
-        (
-            "a".into(),
-            "2024-01-01 00:00:00".into(),
-            "2024-01-01 00:00:00".into(),
-        ),
-        (
-            "b".into(),
-            "2024-01-03 00:00:00".into(),
-            "2024-01-03 00:00:00".into(),
-        ),
-        (
-            "c".into(),
-            "2024-01-02 00:00:00".into(),
-            "2024-01-02 00:00:00".into(),
-        ),
+        PeerRecord {
+            peer_id: "a".into(),
+            first_seen: "2024-01-01 00:00:00".into(),
+            last_seen: "2024-01-01 00:00:00".into(),
+        },
+        PeerRecord {
+            peer_id: "b".into(),
+            first_seen: "2024-01-03 00:00:00".into(),
+            last_seen: "2024-01-03 00:00:00".into(),
+        },
+        PeerRecord {
+            peer_id: "c".into(),
+            first_seen: "2024-01-02 00:00:00".into(),
+            last_seen: "2024-01-02 00:00:00".into(),
+        },
     ]);
     // Select peer "a" (index 0 before sort)
     let new_sel = sort_peers_by_last_seen(&mut peers, 0);
     // After sort by desc: b, c, a — peer "a" should now be at index 2
-    assert_eq!(peers[0].0, "b");
-    assert_eq!(peers[1].0, "c");
-    assert_eq!(peers[2].0, "a");
+    assert_eq!(peers[0].peer_id, "b");
+    assert_eq!(peers[1].peer_id, "c");
+    assert_eq!(peers[2].peer_id, "a");
     assert_eq!(
         new_sel, 2,
         "selection should track peer 'a' to its new index"
@@ -282,7 +284,7 @@ fn test_sort_peers_preserves_selection() {
 fn test_sort_peers_empty() {
     use p2p_app::tui_helpers::sort_peers_by_last_seen;
     use std::collections::VecDeque;
-    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
     let sel = sort_peers_by_last_seen(&mut peers, 0);
     assert_eq!(sel, 0);
 }
@@ -291,25 +293,26 @@ fn test_sort_peers_empty() {
 fn test_upsert_adds_new_peer() {
     use p2p_app::tui_helpers::upsert_peer_last_seen;
     use std::collections::VecDeque;
-    let mut peers: VecDeque<(String, String, String)> = VecDeque::new();
+    let mut peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
     upsert_peer_last_seen(&mut peers, 0, "new-peer", "2024-05-01 12:00:00");
     assert_eq!(peers.len(), 1);
-    assert_eq!(peers[0].0, "new-peer");
-    assert_eq!(peers[0].2, "2024-05-01 12:00:00");
+    assert_eq!(peers[0].peer_id, "new-peer");
+    assert_eq!(peers[0].last_seen, "2024-05-01 12:00:00");
 }
 
 #[test]
 fn test_upsert_updates_existing_peer() {
+    use p2p_app::PeerRecord;
     use p2p_app::tui_helpers::upsert_peer_last_seen;
     use std::collections::VecDeque;
-    let mut peers = VecDeque::from([(
-        "p1".into(),
-        "2024-01-01 00:00:00".into(),
-        "2024-01-01 00:00:00".into(),
-    )]);
+    let mut peers = VecDeque::from([PeerRecord {
+        peer_id: "p1".into(),
+        first_seen: "2024-01-01 00:00:00".into(),
+        last_seen: "2024-01-01 00:00:00".into(),
+    }]);
     upsert_peer_last_seen(&mut peers, 0, "p1", "2024-06-01 00:00:00");
     assert_eq!(peers.len(), 1);
-    assert_eq!(peers[0].2, "2024-06-01 00:00:00");
+    assert_eq!(peers[0].last_seen, "2024-06-01 00:00:00");
 }
 
 #[test]
@@ -622,19 +625,20 @@ fn test_format_latency_milliseconds_boundary() {
 
 #[test]
 fn test_sort_peers_with_same_timestamp() {
+    use p2p_app::PeerRecord;
     use p2p_app::tui_helpers::sort_peers_by_last_seen;
     use std::collections::VecDeque;
     let mut peers = VecDeque::from([
-        (
-            "p1".into(),
-            "2024-01-01 12:00:00".into(),
-            "2024-01-01 12:00:00".into(),
-        ),
-        (
-            "p2".into(),
-            "2024-01-01 12:00:00".into(),
-            "2024-01-01 12:00:00".into(),
-        ),
+        PeerRecord {
+            peer_id: "p1".into(),
+            first_seen: "2024-01-01 12:00:00".into(),
+            last_seen: "2024-01-01 12:00:00".into(),
+        },
+        PeerRecord {
+            peer_id: "p2".into(),
+            first_seen: "2024-01-01 12:00:00".into(),
+            last_seen: "2024-01-01 12:00:00".into(),
+        },
     ]);
     let sel = sort_peers_by_last_seen(&mut peers, 0);
     // Both have same timestamp, order may not change but selection should be preserved

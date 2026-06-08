@@ -1,23 +1,24 @@
 //! Pure helper functions for TUI modules that can be unit tested.
 //! These functions avoid async state, channels, and external I/O.
 
+use crate::PeerRecord;
 use std::collections::VecDeque;
 
 /// Sort peers by last seen time (descending)
 pub fn sort_peers_by_last_seen(
-    peers: &mut VecDeque<(String, String, String)>,
+    peers: &mut VecDeque<PeerRecord>,
     current_selection: usize,
 ) -> usize {
-    let selected_peer_id = peers.get(current_selection).map(|(id, _, _)| id.clone());
+    let selected_peer_id = peers.get(current_selection).map(|p| p.peer_id.clone());
 
     let mut peers_vec: Vec<_> = peers.drain(..).collect();
-    peers_vec.sort_by(|a, b| b.2.cmp(&a.2));
+    peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
     *peers = peers_vec.into();
 
     match selected_peer_id {
         Some(sel_id) => peers
             .iter()
-            .position(|(id, _, _)| id == &sel_id)
+            .position(|p| p.peer_id == sel_id)
             .unwrap_or(0)
             .min(peers.len().saturating_sub(1)),
         None => current_selection.min(peers.len().saturating_sub(1)),
@@ -26,19 +27,19 @@ pub fn sort_peers_by_last_seen(
 
 /// Insert or update peer last seen time
 pub fn upsert_peer_last_seen(
-    peers: &mut VecDeque<(String, String, String)>,
+    peers: &mut VecDeque<PeerRecord>,
     current_selection: usize,
     peer_id: &str,
     seen_at: &str,
 ) -> usize {
-    if let Some((_, _, last_seen)) = peers.iter_mut().find(|(id, _, _)| id == peer_id) {
-        *last_seen = seen_at.to_string();
+    if let Some(p) = peers.iter_mut().find(|p| p.peer_id == peer_id) {
+        p.last_seen = seen_at.to_string();
     } else {
-        peers.push_back((
-            peer_id.to_string(),
-            seen_at.to_string(),
-            seen_at.to_string(),
-        ));
+        peers.push_back(PeerRecord {
+            peer_id: peer_id.to_string(),
+            first_seen: seen_at.to_string(),
+            last_seen: seen_at.to_string(),
+        });
     }
     sort_peers_by_last_seen(peers, current_selection)
 }
