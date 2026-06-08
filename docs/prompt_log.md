@@ -500,3 +500,31 @@ Finally commit and push your work so we can check its github action result.
 have a look at the latest .github/ci-results/results_*.txt file, github actions seem to fail. find definition and analyze and fix the problem.
 
 can we make the github action steps like clippy use all features so all code is checked and verified not just default + tests?
+
+---------------------------------
+
+Find and fix bugs. Remove dead code and unused dependencies. Simplify code where possible. Refactor where it makes sense. We want our project to be:
+
+- easy to understand
+- concise and simple
+- idomatic rust
+- DRY
+- robust
+- performant
+- save
+- well structured into meaningful files and functions, no deep nesting.
+- well tested but out of src tree in tests folder
+
+Make use of rust's rich type system to make invalid state unrepresentable. Minimize boilerplate. Use abstractions only as instrumental goal, not for it's own sake.
+
+Use docs/codebase_metrics.md to identify tiny files that we might be able to eliminate and huge files or files with the deepest nestings that we could structure better. Add unit tests for components with low code coverage. Refactor currently untestable components to make them testable.
+
+Improve the docs where possible to make it up to date, easy to understand and concise.
+
+Auto format and apply suggestions with cargo clippy.
+
+When done regenerate docs/codebase_metrics.md using scripts/generate_metrics.py.
+
+Finally commit all changes with meaningful commit messages.
+
+Think like an owl — slow, observant and analytical. Examine this problem from multiple perspectives and identify the hidden factors most people overlook.
