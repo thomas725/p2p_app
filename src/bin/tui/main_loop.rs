@@ -17,7 +17,7 @@ use tokio::sync::mpsc;
 type BroadcastReceipts = HashMap<String, HashMap<String, f64>>;
 type DmReceipts = HashMap<String, (String, f64)>;
 
-pub fn extract_nickname_maps(
+fn extract_nickname_maps(
     peers: &[Peer],
 ) -> (
     HashMap<String, String>,
@@ -42,7 +42,7 @@ pub fn extract_nickname_maps(
 }
 
 /// Pure: deduplicate peers and format timestamps
-pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<p2p_app::PeerRecord> {
+fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<p2p_app::PeerRecord> {
     let mut result = VecDeque::new();
     let mut seen_ids = HashSet::new();
     for peer in peers {
@@ -61,7 +61,7 @@ pub fn deduplicate_peers(peers: &[KnownPeer]) -> VecDeque<p2p_app::PeerRecord> {
 }
 
 /// Pure: organize flat receipt list into broadcast and DM maps
-pub fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmReceipts) {
+fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmReceipts) {
     let mut broadcast: HashMap<String, HashMap<String, f64>> = HashMap::new();
     let mut dm: HashMap<String, (String, f64)> = HashMap::new();
     for r in receipts {
@@ -98,7 +98,7 @@ pub fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmR
 pub struct RenderEvent;
 
 /// Returns the last `limit` logs in original order.
-pub fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
+fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
     let start = logs.len().saturating_sub(limit);
     logs[start..].to_vec()
 }

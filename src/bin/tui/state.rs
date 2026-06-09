@@ -167,7 +167,7 @@ type FormattedMessages = (
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
 #[allow(clippy::type_complexity)]
-pub fn format_messages_from_db(
+fn format_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,

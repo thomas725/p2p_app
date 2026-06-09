@@ -87,7 +87,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
 }
 
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
-pub fn render_frame(f: &mut Frame, state: &mut AppState) {
+fn render_frame(f: &mut Frame, state: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

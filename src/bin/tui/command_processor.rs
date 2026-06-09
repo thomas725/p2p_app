@@ -27,7 +27,7 @@ fn upsert_peer_last_seen(state: &mut AppState, peer_id: &str, seen_at: chrono::N
 }
 
 /// Pure state mutation for incoming broadcast messages. Returns the formatted message string.
-pub fn apply_broadcast_to_state(
+fn apply_broadcast_to_state(
     state: &mut AppState,
     content: &str,
     peer_id: &str,
@@ -55,7 +55,7 @@ pub fn apply_broadcast_to_state(
 }
 
 /// Pure state mutation for incoming direct messages. Returns the formatted message string.
-pub fn apply_dm_to_state(
+fn apply_dm_to_state(
     state: &mut AppState,
     content: &str,
     peer_id: &str,
@@ -88,7 +88,7 @@ pub fn apply_dm_to_state(
 }
 
 /// Pure: check if a receipt is for a DM message
-pub fn is_dm_receipt(state: &AppState, ack_for: &str) -> bool {
+fn is_dm_receipt(state: &AppState, ack_for: &str) -> bool {
     state.dm_message_ids.values().any(|ids| {
         ids.iter()
             .any(|id| id.as_ref().is_some_and(|v| v == ack_for))
@@ -96,7 +96,7 @@ pub fn is_dm_receipt(state: &AppState, ack_for: &str) -> bool {
 }
 
 /// Pure state mutation for receipts
-pub fn apply_receipt_to_state(
+fn apply_receipt_to_state(
     state: &mut AppState,
     ack_for: &str,
     peer_id: &str,
@@ -116,18 +116,13 @@ pub fn apply_receipt_to_state(
 }
 
 /// State mutation: increment connected peer count. Returns new count.
-pub fn apply_peer_connected_count(state: &mut AppState) -> usize {
+fn apply_peer_connected_count(state: &mut AppState) -> usize {
     state.concurrent_peers += 1;
     state.concurrent_peers
 }
 
 /// State mutation: add peer to peer list and re-sort
-pub fn add_peer_to_state_list(
-    state: &mut AppState,
-    peer_id: &str,
-    first_seen: &str,
-    last_seen: &str,
-) {
+fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str, last_seen: &str) {
     state.peers.push_back(PeerRecord {
         peer_id: peer_id.to_string(),
         first_seen: first_seen.to_string(),
@@ -137,13 +132,13 @@ pub fn add_peer_to_state_list(
 }
 
 /// State mutation: decrement connected peer count. Returns new count.
-pub fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
+fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
     state.concurrent_peers = state.concurrent_peers.saturating_sub(1);
     state.concurrent_peers
 }
 
 #[cfg(feature = "mdns")]
-pub fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
+fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     if !state.peers.iter().any(|p| p.peer_id == peer_id) {
         let now = p2p_app::now_timestamp();
         state.peers.push_back(PeerRecord {

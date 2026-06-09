@@ -11,7 +11,7 @@ pub enum InputEvent {
 }
 
 /// Pure: convert crossterm `Event` to `InputEvent`
-pub fn crossterm_event_to_input_event(event: Event) -> Option<InputEvent> {
+fn crossterm_event_to_input_event(event: Event) -> Option<InputEvent> {
     match event {
         Event::Key(key) => Some(InputEvent::Key(key)),
         Event::Mouse(mouse) => Some(InputEvent::Mouse(mouse)),

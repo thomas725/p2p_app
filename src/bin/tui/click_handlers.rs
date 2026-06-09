@@ -4,7 +4,7 @@ use p2p_app::p2plog_debug;
 use std::collections::{HashMap, VecDeque};
 
 /// Handles tab bar clicks and close button
-pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
+fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
     let mut col_pos = 0;
     for (idx, title) in tab_titles.iter().enumerate() {
         let tab_width = title.len() + 3;
@@ -40,7 +40,7 @@ pub fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[S
 /// Pure: formats DB messages into display-ready strings for a DM chat.
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
-pub fn format_dm_messages_from_db(
+fn format_dm_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
     self_nick_for_peer: &str,
     local_nicknames: &HashMap<String, String>,
@@ -97,7 +97,7 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
 }
 
 /// Handles peer row clicks in the Peers tab
-pub fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
+fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     let peer_row = (row as usize).saturating_sub(3);
     if peer_row < state.peers.len()
         && let Some(p) = state.peers.get(peer_row)

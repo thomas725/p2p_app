@@ -4,7 +4,7 @@ use p2p_app::{DisplayMessage, SwarmCommand, p2plog_debug};
 use tokio::sync::mpsc;
 
 /// Pure: format and push an outgoing broadcast message to state, trimming history
-pub fn push_outgoing_broadcast_to_state(
+fn push_outgoing_broadcast_to_state(
     state: &mut AppState,
     ts: &str,
     own_nickname: &str,
@@ -24,7 +24,7 @@ pub fn push_outgoing_broadcast_to_state(
 }
 
 /// Pure: format and push an outgoing DM to state, trimming history
-pub fn push_outgoing_dm_to_state(
+fn push_outgoing_dm_to_state(
     state: &mut AppState,
     peer_id: &str,
     ts: &str,
