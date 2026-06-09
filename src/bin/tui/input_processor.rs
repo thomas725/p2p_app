@@ -299,10 +299,10 @@ async fn process_mouse_event(
             | p2p_app::tui_tabs::TabContent::Direct(_)
             | p2p_app::tui_tabs::TabContent::Log
     );
-    let (is_dm_tab, peer_id) = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
-        (true, Some(pid.as_str()))
+    let peer_id = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
+        Some(pid.as_str())
     } else {
-        (false, None)
+        None
     };
 
     match mouse_event.kind {
@@ -321,8 +321,6 @@ async fn process_mouse_event(
                     mouse_event.row,
                     mouse_event.column,
                     is_peers_tab,
-                    is_dm_tab,
-                    peer_id,
                 );
             }
         }

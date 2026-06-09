@@ -119,8 +119,6 @@ pub fn handle_mouse_left_click(
     mouse_row: u16,
     mouse_column: u16,
     is_peers_tab: bool,
-    _is_dm_tab: bool,
-    _peer_id: Option<&str>,
 ) -> bool {
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();

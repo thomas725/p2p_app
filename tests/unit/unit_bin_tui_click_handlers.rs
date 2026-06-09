@@ -78,7 +78,7 @@ fn test_peer_row_click_out_of_bounds() {
 #[test]
 fn test_mouse_left_click_row_zero_routes_to_tab_click() {
     let mut state = test_app_state();
-    handle_mouse_left_click(&mut state, 0, 0, false, false, None);
+    handle_mouse_left_click(&mut state, 0, 0, false);
     assert_eq!(state.active_tab, 0);
 }
 
@@ -88,7 +88,7 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
     state.chat_area_height = 20;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
 
-    handle_mouse_left_click(&mut state, 3, 0, true, false, None);
+    handle_mouse_left_click(&mut state, 3, 0, true);
 
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
 }
@@ -97,7 +97,7 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
 fn test_mouse_left_click_outside_content_area_is_noop() {
     let mut state = test_app_state();
     state.chat_area_height = 20;
-    handle_mouse_left_click(&mut state, 1, 0, false, false, None);
+    handle_mouse_left_click(&mut state, 1, 0, false);
     assert_eq!(state.popup, None);
 }
 
@@ -105,7 +105,7 @@ fn test_mouse_left_click_outside_content_area_is_noop() {
 fn test_mouse_left_click_below_max_row_is_noop() {
     let mut state = test_app_state();
     state.chat_area_height = 20;
-    handle_mouse_left_click(&mut state, 99, 0, false, false, None);
+    handle_mouse_left_click(&mut state, 99, 0, false);
     assert_eq!(state.popup, None);
 }
 
