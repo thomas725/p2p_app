@@ -2,6 +2,9 @@
 
 use std::collections::VecDeque;
 
+/// Number of fixed tabs before DM tabs (Chat, Peers)
+pub(crate) const FIXED_TAB_COUNT: usize = 2;
+
 /// Direct message tab with peer ID and message history
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DmTab {
@@ -52,17 +55,18 @@ impl DynamicTabs {
     /// Add or retrieve index of DM tab for peer
     pub fn add_dm_tab(&mut self, peer_id: String) -> usize {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
-            return pos + 2;
+            return pos + FIXED_TAB_COUNT;
         }
+        let idx = self.dm_tabs.len() + FIXED_TAB_COUNT;
         self.dm_tabs.push(DmTab::new(peer_id));
-        self.dm_tabs.len() + 1
+        idx
     }
 
     /// Remove DM tab for peer, return its previous index
     pub fn remove_dm_tab(&mut self, peer_id: &str) -> Option<usize> {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
             self.dm_tabs.remove(pos);
-            return Some(pos + 2);
+            return Some(pos + FIXED_TAB_COUNT);
         }
         None
     }
@@ -105,13 +109,13 @@ impl DynamicTabs {
     /// Convert tab index to content type
     #[must_use]
     pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
-        let log_index = 2 + self.dm_tabs.len();
+        let log_index = FIXED_TAB_COUNT + self.dm_tabs.len();
         match tab_idx {
             0 => TabContent::Chat,
             1 => TabContent::Peers,
             idx if idx == log_index => TabContent::Log,
-            idx if idx >= 2 && idx < log_index => {
-                let dm_idx = idx - 2;
+            idx if idx >= FIXED_TAB_COUNT && idx < log_index => {
+                let dm_idx = idx - FIXED_TAB_COUNT;
                 if let Some(tab) = self.dm_tabs.get(dm_idx) {
                     TabContent::Direct(tab.peer_id.clone())
                 } else {

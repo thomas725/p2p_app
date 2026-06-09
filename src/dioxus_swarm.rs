@@ -81,10 +81,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             received_at: _,
         } => {
             let mut s = state.write();
-            let at = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs_f64();
+            let at = crate::current_timestamp();
             let mut is_dm = false;
             for ids in s.dm_message_ids.values() {
                 if ids
@@ -133,17 +130,11 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             let mut s = state.write();
             s.connected = false;
             s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
-            s.logs.push_back(format!("Peer disconnected: {}", peer_id));
-            if s.logs.len() > 500 {
-                s.logs.pop_front();
-            }
+            s.push_log(format!("Peer disconnected: {}", peer_id));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
             let mut s = state.write();
-            s.logs.push_back(format!("Listening on: {}", addr));
-            if s.logs.len() > 500 {
-                s.logs.pop_front();
-            }
+            s.push_log(format!("Listening on: {}", addr));
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
@@ -160,10 +151,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {
             let mut s = state.write();
-            s.logs.push_back(format!("Peer expired: {}", peer_id));
-            if s.logs.len() > 500 {
-                s.logs.pop_front();
-            }
+            s.push_log(format!("Peer expired: {}", peer_id));
         }
     }
 }

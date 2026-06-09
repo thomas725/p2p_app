@@ -53,6 +53,15 @@ pub(crate) struct AppState {
     pub(crate) logs: VecDeque<String>,
 }
 
+impl AppState {
+    fn push_log(&mut self, msg: String) {
+        self.logs.push_back(msg);
+        if self.logs.len() > 500 {
+            self.logs.pop_front();
+        }
+    }
+}
+
 pub(crate) fn send_swarm_cmd(cmd: SwarmCommand) {
     if let Some(tx) = SWARM_CMD_TX.get()
         && let Ok(tx) = tx.lock()
@@ -68,34 +77,21 @@ fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>
     let display = format!("{} [{}] {}", ts, nickname, input);
     let cmd = if let Some(peer_id) = is_dm {
         let pid = peer_id.to_string();
-        state
-            .write()
-            .dm_messages
+        let mut s = state.write();
+        s.dm_messages
             .entry(pid.clone())
             .or_default()
             .push_back(display);
-        state
-            .write()
-            .dm_message_ids
+        s.dm_message_ids
             .entry(pid.clone())
             .or_default()
             .push_back(Some(msg_id.clone()));
-        let msgs_len = state
-            .read()
-            .dm_messages
-            .get(&pid)
-            .map(|m| m.len())
-            .unwrap_or(0);
-        if msgs_len > MAX_DM_HISTORY {
-            state.write().dm_messages.get_mut(&pid).unwrap().pop_front();
-            state
-                .write()
-                .dm_message_ids
-                .get_mut(&pid)
-                .unwrap()
-                .pop_front();
+        if s.dm_messages.get(&pid).map_or(0, |m| m.len()) > MAX_DM_HISTORY {
+            s.dm_messages.get_mut(&pid).unwrap().pop_front();
+            s.dm_message_ids.get_mut(&pid).unwrap().pop_front();
         }
-        state.write().dm_input.insert(pid.clone(), String::new());
+        s.dm_input.insert(pid.clone(), String::new());
+        drop(s);
         SwarmCommand::SendDm {
             peer_id: pid,
             content: input,
@@ -104,16 +100,18 @@ fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>
             ack_for: None,
         }
     } else {
-        state.write().messages.push_back(DisplayMessage {
+        let mut s = state.write();
+        s.messages.push_back(DisplayMessage {
             text: display,
             sender_peer_id: None,
         });
-        state.write().message_ids.push_back(Some(msg_id.clone()));
-        if state.read().messages.len() > MAX_MESSAGE_HISTORY {
-            state.write().messages.pop_front();
-            state.write().message_ids.pop_front();
+        s.message_ids.push_back(Some(msg_id.clone()));
+        if s.messages.len() > MAX_MESSAGE_HISTORY {
+            s.messages.pop_front();
+            s.message_ids.pop_front();
         }
-        state.write().chat_input.clear();
+        s.chat_input.clear();
+        drop(s);
         SwarmCommand::Publish {
             content: input,
             nickname: Some(nickname),
@@ -283,7 +281,7 @@ fn render_dm_tab(mut state: Signal<AppState>, dm_peer: String) -> Element {
                         .and_then(|id| id.as_ref())
                         .and_then(|id| dm_rcpts.get(id))
                         .map(|(_, at)| {
-                            let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default().as_secs_f64();
+                            let now = crate::current_timestamp();
                             let lat = now - at;
                             if lat < 1.0 { format!(" read ~{:.0}ms ago", lat * 1000.0) }
                             else { format!(" read ~{:.1}s ago", lat) }
