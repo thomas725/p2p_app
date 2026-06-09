@@ -7,10 +7,6 @@ use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
 
-fn safe_remove_env(key: &str) {
-    unsafe { std::env::remove_var(key) }
-}
-
 #[serial]
 #[test]
 fn test_two_instances_get_different_databases_parallel() {
@@ -29,11 +25,12 @@ fn test_two_instances_get_different_databases_parallel() {
     thread::spawn(move || {
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
-        safe_remove_env("DATABASE_URL");
-        let url = p2p_app::db::get_database_url();
-        if let Ok(mut e) = errors_clone.lock() {
-            e.push(format!("A: {url}"));
-        }
+        temp_env::with_var("DATABASE_URL", None::<&str>, || {
+            let url = p2p_app::db::get_database_url();
+            if let Ok(mut e) = errors_clone.lock() {
+                e.push(format!("A: {url}"));
+            }
+        });
     });
 
     let cwd_clone = cwd.clone();
@@ -43,11 +40,12 @@ fn test_two_instances_get_different_databases_parallel() {
         thread::sleep(Duration::from_millis(50));
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
-        safe_remove_env("DATABASE_URL");
-        let url = p2p_app::db::get_database_url();
-        if let Ok(mut e) = errors_clone.lock() {
-            e.push(format!("B: {url}"));
-        }
+        temp_env::with_var("DATABASE_URL", None::<&str>, || {
+            let url = p2p_app::db::get_database_url();
+            if let Ok(mut e) = errors_clone.lock() {
+                e.push(format!("B: {url}"));
+            }
+        });
     });
 
     thread::sleep(Duration::from_millis(200));

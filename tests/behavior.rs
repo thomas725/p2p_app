@@ -1,5 +1,9 @@
 //! Tests for behavior.rs module via libp2p behavior
 
+mod test_utils;
+use serial_test::serial;
+use test_utils::with_test_db;
+
 #[test]
 fn test_behavior_constants() {
     assert_eq!(p2p_app::behavior::DM_PROTOCOL_NAME, "/p2p-chat/dm/1.0.0");
@@ -48,53 +52,52 @@ fn test_broadcast_message_serialization() {
     assert!(json.contains("broadcast test"));
 }
 
-mod test_utils;
-use serial_test::serial;
-use test_utils::setup_test_db;
-
 #[serial]
 #[test]
 fn test_build_behaviour_creates_app_behaviour() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            let _db = setup_test_db();
-            let keypair = p2p_app::get_libp2p_identity().unwrap();
-            let _behaviour =
-                p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
-        });
+    with_test_db(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let keypair = p2p_app::get_libp2p_identity().unwrap();
+                let _behaviour =
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
+            });
+    });
 }
 
 #[serial]
 #[test]
 fn test_build_behaviour_medium_network() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            let _db = setup_test_db();
-            let keypair = p2p_app::get_libp2p_identity().unwrap();
-            let _behaviour =
-                p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium);
-        });
+    with_test_db(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let keypair = p2p_app::get_libp2p_identity().unwrap();
+                let _behaviour =
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium);
+            });
+    });
 }
 
 #[serial]
 #[test]
 fn test_build_behaviour_large_network() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            let _db = setup_test_db();
-            let keypair = p2p_app::get_libp2p_identity().unwrap();
-            let _behaviour =
-                p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large);
-        });
+    with_test_db(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let keypair = p2p_app::get_libp2p_identity().unwrap();
+                let _behaviour =
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large);
+            });
+    });
 }
 
 #[test]
@@ -159,14 +162,15 @@ fn test_broadcast_message_clone() {
 #[serial]
 #[test]
 fn test_build_behaviour_returns_valid_behaviour() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            let _db = setup_test_db();
-            let keypair = p2p_app::get_libp2p_identity().unwrap();
-            let _behaviour =
-                p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
-        });
+    with_test_db(|| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let keypair = p2p_app::get_libp2p_identity().unwrap();
+                let _behaviour =
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
+            });
+    });
 }

@@ -93,15 +93,14 @@ fn find_or_create_unused_db_creates_new_when_existing_locked() {
 #[serial(db)]
 fn get_database_url_prefers_env_and_updates_cache() {
     reset_db_url_cache();
-    unsafe { std::env::set_var("DATABASE_URL", "/tmp/db_a.sqlite") };
-    let a = get_database_url();
-    assert_eq!(a, "/tmp/db_a.sqlite");
-
-    unsafe { std::env::set_var("DATABASE_URL", "/tmp/db_b.sqlite") };
-    let b = get_database_url();
-    assert_eq!(b, "/tmp/db_b.sqlite");
-
-    unsafe { std::env::remove_var("DATABASE_URL") };
+    temp_env::with_var("DATABASE_URL", Some("/tmp/db_a.sqlite"), || {
+        let a = get_database_url();
+        assert_eq!(a, "/tmp/db_a.sqlite");
+        temp_env::with_var("DATABASE_URL", Some("/tmp/db_b.sqlite"), || {
+            let b = get_database_url();
+            assert_eq!(b, "/tmp/db_b.sqlite");
+        });
+    });
     reset_db_url_cache();
 }
 
@@ -118,9 +117,9 @@ fn is_db_locked_unreadable_path_treated_as_stale() {
 #[serial(db)]
 fn get_database_url_uses_cached_value_when_env_missing() {
     reset_db_url_cache();
-    unsafe { std::env::set_var("DATABASE_URL", "/tmp/db_cached.sqlite") };
-    assert_eq!(get_database_url(), "/tmp/db_cached.sqlite");
-    unsafe { std::env::remove_var("DATABASE_URL") };
+    temp_env::with_var("DATABASE_URL", Some("/tmp/db_cached.sqlite"), || {
+        assert_eq!(get_database_url(), "/tmp/db_cached.sqlite");
+    });
     assert_eq!(get_database_url(), "/tmp/db_cached.sqlite");
     reset_db_url_cache();
 }
@@ -135,12 +134,11 @@ fn release_db_lock_removes_lock_file() {
     let lock_path = format!("{db_path_str}.lock");
     fs::write(&lock_path, "1234").expect("write lock");
 
-    unsafe { std::env::set_var("DATABASE_URL", &db_path_str) };
-    let _ = get_database_url();
-    release_db_lock();
-    assert!(!std::path::Path::new(&lock_path).exists());
-
-    unsafe { std::env::remove_var("DATABASE_URL") };
+    temp_env::with_var("DATABASE_URL", Some(&db_path_str), || {
+        let _ = get_database_url();
+        release_db_lock();
+        assert!(!std::path::Path::new(&lock_path).exists());
+    });
     reset_db_url_cache();
 }
 
@@ -157,44 +155,48 @@ fn get_libp2p_identity_recovers_from_invalid_stored_key() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().expect("tempdir");
     let db_path = dir.path().join("identity.db");
-    unsafe { std::env::set_var("DATABASE_URL", db_path.to_str().expect("db path")) };
-    reset_db_url_cache();
-    init_database().expect("init db");
+    temp_env::with_var(
+        "DATABASE_URL",
+        Some(db_path.to_str().expect("db path")),
+        || {
+            reset_db_url_cache();
+            init_database().expect("init db");
 
-    let conn = &mut sqlite_connect().expect("connect");
-    diesel::update(crate::generated::schema::identities::table)
-        .set(crate::generated::schema::identities::key.eq(vec![1_u8, 2, 3]))
-        .execute(conn)
-        .expect("update invalid key");
+            let conn = &mut sqlite_connect().expect("connect");
+            diesel::update(crate::generated::schema::identities::table)
+                .set(crate::generated::schema::identities::key.eq(vec![1_u8, 2, 3]))
+                .execute(conn)
+                .expect("update invalid key");
 
-    let keypair = get_libp2p_identity().expect("recover identity");
-    let stored_rows = crate::generated::schema::identities::table
-        .select(crate::generated::models_queryable::Identity::as_select())
-        .load::<crate::generated::models_queryable::Identity>(conn)
-        .expect("load identities");
-    let at_least_one_valid = stored_rows
-        .iter()
-        .any(|r| libp2p_identity::Keypair::from_protobuf_encoding(&r.key).is_ok());
-    assert!(at_least_one_valid);
-    let expected_peer_id = keypair.public().to_peer_id();
-    assert_eq!(
-        expected_peer_id,
-        get_local_peer_id().expect("local peer id")
+            let keypair = get_libp2p_identity().expect("recover identity");
+            let stored_rows = crate::generated::schema::identities::table
+                .select(crate::generated::models_queryable::Identity::as_select())
+                .load::<crate::generated::models_queryable::Identity>(conn)
+                .expect("load identities");
+            let at_least_one_valid = stored_rows
+                .iter()
+                .any(|r| libp2p_identity::Keypair::from_protobuf_encoding(&r.key).is_ok());
+            assert!(at_least_one_valid);
+            let expected_peer_id = keypair.public().to_peer_id();
+            assert_eq!(
+                expected_peer_id,
+                get_local_peer_id().expect("local peer id")
+            );
+
+            release_db_lock();
+            reset_db_url_cache();
+        },
     );
-
-    release_db_lock();
-    reset_db_url_cache();
-    unsafe { std::env::remove_var("DATABASE_URL") };
 }
 
 #[test]
 #[serial(db)]
 fn determine_db_path_uses_env_when_set() {
     reset_db_url_cache();
-    unsafe { std::env::set_var("DATABASE_URL", "/tmp/determine_env.sqlite") };
-    let path = determine_db_path().expect("determine path");
-    assert_eq!(path, "/tmp/determine_env.sqlite");
-    unsafe { std::env::remove_var("DATABASE_URL") };
+    temp_env::with_var("DATABASE_URL", Some("/tmp/determine_env.sqlite"), || {
+        let path = determine_db_path().expect("determine path");
+        assert_eq!(path, "/tmp/determine_env.sqlite");
+    });
     reset_db_url_cache();
 }
 
@@ -202,18 +204,19 @@ fn determine_db_path_uses_env_when_set() {
 #[serial(db)]
 fn get_database_url_falls_back_when_no_env_or_cache() {
     reset_db_url_cache();
-    unsafe { std::env::remove_var("DATABASE_URL") };
-    let dir = TempDir::new().expect("tempdir");
-    let old = std::env::current_dir().expect("cwd");
-    std::env::set_current_dir(dir.path()).expect("set cwd");
+    temp_env::with_var("DATABASE_URL", None::<&str>, || {
+        let dir = TempDir::new().expect("tempdir");
+        let old = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(dir.path()).expect("set cwd");
 
-    let url = get_database_url();
-    assert!(url.ends_with(".db"));
-    assert!(!url.is_empty());
+        let url = get_database_url();
+        assert!(url.ends_with(".db"));
+        assert!(!url.is_empty());
 
-    std::env::set_current_dir(old).expect("restore cwd");
-    release_db_lock();
-    reset_db_url_cache();
+        std::env::set_current_dir(old).expect("restore cwd");
+        release_db_lock();
+        reset_db_url_cache();
+    });
 }
 
 #[test]
@@ -222,13 +225,14 @@ fn test_database_url_matches_env_var() {
     use crate::db::{get_database_url, reset_db_url_cache};
     reset_db_url_cache();
 
-    let test_url = "/tmp/test_matches_env_var.sqlite";
-    unsafe { std::env::set_var("DATABASE_URL", test_url) };
-
-    let db_url = get_database_url();
-    assert_eq!(db_url, test_url);
-
-    unsafe { std::env::remove_var("DATABASE_URL") };
+    temp_env::with_var(
+        "DATABASE_URL",
+        Some("/tmp/test_matches_env_var.sqlite"),
+        || {
+            let db_url = get_database_url();
+            assert_eq!(db_url, "/tmp/test_matches_env_var.sqlite");
+        },
+    );
     reset_db_url_cache();
 }
 
@@ -237,15 +241,12 @@ fn test_database_url_matches_env_var() {
 fn test_local_peer_id_is_valid() {
     use crate::db::get_local_peer_id;
 
-    // This should succeed and return a valid PeerId
     match get_local_peer_id() {
         Ok(peer_id) => {
             let peer_str = peer_id.to_string();
             assert!(!peer_str.is_empty());
         }
-        Err(_) => {
-            // Error is acceptable if DB setup fails
-        }
+        Err(_) => {}
     }
 }
 
@@ -253,15 +254,11 @@ fn test_local_peer_id_is_valid() {
 #[serial(db)]
 fn test_libp2p_identity_is_valid() {
     use crate::db::get_libp2p_identity;
-    // This should succeed and return a valid Keypair
     match get_libp2p_identity() {
         Ok(keypair) => {
             let _public_key = keypair.public();
-            // Valid keypair acquired
         }
-        Err(_) => {
-            // Error is acceptable if DB setup fails
-        }
+        Err(_) => {}
     }
 }
 
@@ -271,17 +268,13 @@ fn test_reset_db_url_cache_multiple_times() {
     use crate::db::{get_database_url, reset_db_url_cache};
 
     reset_db_url_cache();
-    let test_url = "/tmp/test_reset_cache.sqlite";
-    unsafe { std::env::set_var("DATABASE_URL", test_url) };
+    temp_env::with_var("DATABASE_URL", Some("/tmp/test_reset_cache.sqlite"), || {
+        let url1 = get_database_url();
+        reset_db_url_cache();
+        let url2 = get_database_url();
 
-    let url1 = get_database_url();
-    reset_db_url_cache();
-    let url2 = get_database_url();
-
-    // With DATABASE_URL set, cache reset should still return env var value
-    assert_eq!(url1, url2);
-
-    unsafe { std::env::remove_var("DATABASE_URL") };
+        assert_eq!(url1, url2);
+    });
     reset_db_url_cache();
 }
 
@@ -290,6 +283,5 @@ fn test_reset_db_url_cache_multiple_times() {
 fn test_release_db_lock() {
     use crate::db::release_db_lock;
 
-    // Should not panic
     release_db_lock();
 }

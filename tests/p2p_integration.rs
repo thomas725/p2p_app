@@ -592,16 +592,14 @@ fn save_stale_peer_to_db(
     peer_id: &str,
     stale_address: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let original_db = std::env::var("DATABASE_URL").ok();
-    unsafe { std::env::set_var("DATABASE_URL", db_path) };
-    let result = p2p_app::save_peer(peer_id, &[stale_address.to_string()]);
-    if let Some(ref db) = original_db {
-        unsafe { std::env::set_var("DATABASE_URL", db) };
-    } else {
-        unsafe { std::env::remove_var("DATABASE_URL") };
-    }
-    result?;
-    Ok(())
+    temp_env::with_var(
+        "DATABASE_URL",
+        Some(db_path),
+        || -> Result<(), Box<dyn std::error::Error>> {
+            p2p_app::save_peer(peer_id, &[stale_address.to_string()])?;
+            Ok(())
+        },
+    )
 }
 
 #[tokio::test]
