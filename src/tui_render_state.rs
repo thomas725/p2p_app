@@ -202,14 +202,9 @@ pub fn calc_visible_strings(
     usable_height: usize,
 ) -> (usize, usize) {
     let msgs: Vec<String> = messages.iter().cloned().collect();
-    calc_visible_impl(
-        &msgs,
-        auto_scroll,
-        scroll_offset,
-        text_width,
-        usable_height,
-        |m| count_lines(m, text_width),
-    )
+    calc_visible_impl(&msgs, auto_scroll, scroll_offset, usable_height, |m| {
+        count_lines(m, text_width)
+    })
 }
 
 /// Count wrapped lines of text, accounting for ANSI codes and terminal width
@@ -240,7 +235,6 @@ fn calc_visible_impl<F>(
     messages: &[String],
     auto_scroll: bool,
     scroll_offset: usize,
-    _text_width: usize,
     usable_height: usize,
     get_lines: F,
 ) -> (usize, usize)

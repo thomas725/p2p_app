@@ -241,12 +241,9 @@ fn test_database_url_matches_env_var() {
 fn test_local_peer_id_is_valid() {
     use crate::db::get_local_peer_id;
 
-    match get_local_peer_id() {
-        Ok(peer_id) => {
-            let peer_str = peer_id.to_string();
-            assert!(!peer_str.is_empty());
-        }
-        Err(_) => {}
+    if let Ok(peer_id) = get_local_peer_id() {
+        let peer_str = peer_id.to_string();
+        assert!(!peer_str.is_empty());
     }
 }
 
@@ -254,11 +251,8 @@ fn test_local_peer_id_is_valid() {
 #[serial(db)]
 fn test_libp2p_identity_is_valid() {
     use crate::db::get_libp2p_identity;
-    match get_libp2p_identity() {
-        Ok(keypair) => {
-            let _public_key = keypair.public();
-        }
-        Err(_) => {}
+    if let Ok(keypair) = get_libp2p_identity() {
+        let _public_key = keypair.public();
     }
 }
 

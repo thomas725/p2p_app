@@ -46,9 +46,7 @@ impl DynamicTabs {
     /// Create new empty dynamic tabs
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            dm_tabs: Vec::new(),
-        }
+        Self::default()
     }
 
     /// Add or retrieve index of DM tab for peer

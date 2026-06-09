@@ -34,7 +34,7 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
     while i < lines.len() {
         let line = lines[i].trim();
 
-        if line.starts_with("diesel::table!") || line.starts_with("diesel::table! {") {
+        if line.starts_with("diesel::table!") {
             table_name.clear();
             i += 1;
             while i < lines.len() {

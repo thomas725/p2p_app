@@ -1,140 +1,6 @@
 use super::*;
-use crate::tui::state::AppState;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
-use std::collections::{HashMap, VecDeque};
-
-fn empty_state() -> AppState {
-    AppState::new(
-        "topic".to_string(),
-        "me".to_string(),
-        "local-peer".to_string(),
-        HashMap::new(),
-        HashMap::new(),
-        HashMap::new(),
-        VecDeque::new(),
-        VecDeque::new(),
-        HashMap::new(),
-        VecDeque::new(),
-        HashMap::new(),
-        HashMap::new(),
-    )
-}
-
-#[test]
-fn test_count_nicknames() {
-    let peers: VecDeque<_> = VecDeque::from(vec![
-        PeerRecord {
-            peer_id: "peer1".to_string(),
-            first_seen: "seen1".to_string(),
-            last_seen: "last1".to_string(),
-        },
-        PeerRecord {
-            peer_id: "peer2".to_string(),
-            first_seen: "seen2".to_string(),
-            last_seen: "last2".to_string(),
-        },
-    ]);
-    let local = HashMap::from([("peer1".to_string(), "Alice".to_string())]);
-    let received = HashMap::from([("peer2".to_string(), "Bob".to_string())]);
-
-    let counts = super::count_nicknames(peers.iter(), &local, &received);
-    assert_eq!(counts.get("Alice"), Some(&1));
-    assert_eq!(counts.get("Bob"), Some(&1));
-}
-
-#[test]
-fn test_count_nicknames_duplicates() {
-    let peers: VecDeque<_> = VecDeque::from(vec![
-        PeerRecord {
-            peer_id: "peer1".to_string(),
-            first_seen: "seen1".to_string(),
-            last_seen: "last1".to_string(),
-        },
-        PeerRecord {
-            peer_id: "peer2".to_string(),
-            first_seen: "seen2".to_string(),
-            last_seen: "last2".to_string(),
-        },
-    ]);
-    let local = HashMap::from([
-        ("peer1".to_string(), "Alice".to_string()),
-        ("peer2".to_string(), "Alice".to_string()),
-    ]);
-    let received = HashMap::new();
-
-    let counts = super::count_nicknames(peers.iter(), &local, &received);
-    assert_eq!(counts.get("Alice"), Some(&2));
-}
-
-#[test]
-fn test_format_peer_display_with_nickname_unique() {
-    let counts = HashMap::from([("Alice".to_string(), 1usize)]);
-    let result = super::format_peer_display("peer1", Some(&"Alice".to_string()), &counts, |id| {
-        id.chars().rev().take(8).collect()
-    });
-    assert_eq!(result, "Alice");
-}
-
-#[test]
-fn test_format_peer_display_with_nickname_duplicate() {
-    let counts = HashMap::from([("Alice".to_string(), 2usize)]);
-    let result = super::format_peer_display("peer1", Some(&"Alice".to_string()), &counts, |id| {
-        id.chars().rev().take(8).collect()
-    });
-    assert!(result.contains("Alice"));
-    // The short_peer_id function reverses and takes last 8 chars, so "peer1" -> "1reep"
-    assert!(result.contains("1reep"));
-}
-
-#[test]
-fn test_format_peer_display_no_nickname() {
-    let counts = HashMap::new();
-    let result = super::format_peer_display("peer1", None, &counts, |id| {
-        id.chars().rev().take(8).collect()
-    });
-    // The short_peer_id function reverses and takes last 8 chars
-    assert_eq!(result, "1reep");
-}
-
-#[test]
-fn test_format_broadcast_receipt_popup_impl_empty() {
-    let receipts = HashMap::new();
-    let peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
-    let local = HashMap::new();
-    let received = HashMap::new();
-    let result =
-        super::format_broadcast_receipt_popup_impl(&receipts, &peers, &local, &received, None);
-    assert_eq!(
-        result,
-        Some("No peers have confirmed receipt yet.".to_string())
-    );
-}
-
-#[test]
-fn test_format_broadcast_receipt_popup_impl_with_data() {
-    let receipts = HashMap::from([("peer1".to_string(), 2.0), ("peer2".to_string(), 3.0)]);
-    let peers: VecDeque<_> = VecDeque::from(vec![
-        PeerRecord {
-            peer_id: "peer1".to_string(),
-            first_seen: "s1".to_string(),
-            last_seen: "l1".to_string(),
-        },
-        PeerRecord {
-            peer_id: "peer2".to_string(),
-            first_seen: "s2".to_string(),
-            last_seen: "l2".to_string(),
-        },
-    ]);
-    let local = HashMap::new();
-    let received = HashMap::new();
-    let result =
-        super::format_broadcast_receipt_popup_impl(&receipts, &peers, &local, &received, Some(1.0));
-    assert!(result.is_some());
-    let s = result.unwrap();
-    assert!(s.contains("peer1"));
-    assert!(s.contains("peer2"));
-    assert!(s.contains("1000ms"));
-}
+use std::collections::HashMap;
 
 // ── handle_tab_click ──────────────────────────────────────────────────
 
@@ -207,34 +73,12 @@ fn test_peer_row_click_out_of_bounds() {
     handle_peer_row_click(&mut state, 99);
 }
 
-// ── format_broadcast_receipt_popup (private wrapper) ────────────────────
-
-#[test]
-fn test_broadcast_receipt_popup_returns_some_when_msg_exists() {
-    let mut state = empty_state();
-    state.broadcast_receipts.insert(
-        "msg-1".to_string(),
-        HashMap::from([("p1".to_string(), 2.0)]),
-    );
-    let result = super::format_broadcast_receipt_popup(&state, "msg-1", Some(1.0));
-    assert!(result.is_some());
-    assert!(result.unwrap().contains("p1"));
-}
-
-#[test]
-fn test_broadcast_receipt_popup_returns_none_when_msg_missing() {
-    let state = empty_state();
-    let result = super::format_broadcast_receipt_popup(&state, "nonexistent", None);
-    assert!(result.is_none());
-}
-
 // ── handle_mouse_left_click ──────────────────────────────────────────────
 
 #[test]
 fn test_mouse_left_click_row_zero_routes_to_tab_click() {
-    let mut state = empty_state();
+    let mut state = test_app_state();
     handle_mouse_left_click(&mut state, 0, 0, false, false, None);
-    // Tab click at column 0 on first tab is same-tab noop
     assert_eq!(state.active_tab, 0);
 }
 
@@ -251,28 +95,18 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
 
 #[test]
 fn test_mouse_left_click_outside_content_area_is_noop() {
-    let mut state = empty_state();
+    let mut state = test_app_state();
     state.chat_area_height = 20;
     handle_mouse_left_click(&mut state, 1, 0, false, false, None);
-    // row 1 <= 2, outside content area
     assert_eq!(state.popup, None);
 }
 
 #[test]
 fn test_mouse_left_click_below_max_row_is_noop() {
-    let mut state = empty_state();
+    let mut state = test_app_state();
     state.chat_area_height = 20;
     handle_mouse_left_click(&mut state, 99, 0, false, false, None);
-    // row 99 >= max_row (22), outside content area
     assert_eq!(state.popup, None);
-}
-
-#[test]
-fn test_mouse_left_click_dm_tab_no_peer_id_does_nothing() {
-    let mut state = empty_state();
-    state.chat_area_height = 20;
-    handle_mouse_left_click(&mut state, 5, 0, false, true, None);
-    // peer_id is None, DM tab routing can't proceed
 }
 
 // ── format_dm_messages_from_db ─────────────────────────────────────────

@@ -131,6 +131,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.write();
+            s.connected = false;
             s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
             s.logs.push_back(format!("Peer disconnected: {}", peer_id));
             if s.logs.len() > 500 {

@@ -7,7 +7,6 @@ mod dioxus {
 
     type Messages = VecDeque<p2p_app::DisplayMessage>;
     type MessageIds = VecDeque<Option<String>>;
-    type SentAtByMsgId = HashMap<String, f64>;
 
     fn format_messages(
         topic_str: &str,
@@ -15,10 +14,9 @@ mod dioxus {
         local_nicknames: &HashMap<String, String>,
         received_nicknames: &HashMap<String, String>,
         own_nickname: &str,
-    ) -> (Messages, MessageIds, SentAtByMsgId) {
+    ) -> (Messages, MessageIds) {
         let mut messages = VecDeque::new();
         let mut message_ids = VecDeque::new();
-        let mut sent_at_by_msg_id = HashMap::new();
         if let Ok(db_messages) = p2p_app::load_messages(topic_str, max_messages) {
             for msg in db_messages.iter().rev() {
                 let ts = p2p_app::format_peer_datetime(msg.created_at);
@@ -43,14 +41,9 @@ mod dioxus {
                     sender_peer_id: msg.peer_id.clone(),
                 });
                 message_ids.push_back(msg.msg_id.clone());
-                if let Some(ref msg_id) = msg.msg_id
-                    && let Some(sent_at) = msg.sent_at
-                {
-                    sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
-                }
             }
         }
-        (messages, message_ids, sent_at_by_msg_id)
+        (messages, message_ids)
     }
 
     pub fn main() {
@@ -93,28 +86,24 @@ mod dioxus {
             let own_nickname =
                 p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
 
-            let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
-                if let Ok(db_peers) = p2p_app::load_peers() {
-                    let mut local = HashMap::new();
-                    let mut received = HashMap::new();
-                    let mut self_for_peer = HashMap::new();
-                    for p in db_peers {
-                        if let Some(n) = p.peer_local_nickname {
-                            local.insert(p.peer_id.clone(), n);
-                        }
-                        if let Some(n) = p.received_nickname {
-                            received.insert(p.peer_id.clone(), n);
-                        }
-                        if let Some(n) = p.self_nickname_for_peer {
-                            self_for_peer.insert(p.peer_id.clone(), n);
-                        }
+            let (local_nicknames, received_nicknames) = if let Ok(db_peers) = p2p_app::load_peers()
+            {
+                let mut local = HashMap::new();
+                let mut received = HashMap::new();
+                for p in db_peers {
+                    if let Some(n) = p.peer_local_nickname {
+                        local.insert(p.peer_id.clone(), n);
                     }
-                    (local, received, self_for_peer)
-                } else {
-                    (HashMap::new(), HashMap::new(), HashMap::new())
-                };
+                    if let Some(n) = p.received_nickname {
+                        received.insert(p.peer_id.clone(), n);
+                    }
+                }
+                (local, received)
+            } else {
+                (HashMap::new(), HashMap::new())
+            };
 
-            let (initial_messages, initial_message_ids, loaded_sent_at) = format_messages(
+            let (initial_messages, initial_message_ids) = format_messages(
                 p2p_app::CHAT_TOPIC,
                 1000,
                 &local_nicknames,
@@ -169,10 +158,8 @@ mod dioxus {
                 topic_str: p2p_app::CHAT_TOPIC.to_string(),
                 local_nicknames,
                 received_nicknames,
-                self_nicknames_for_peers,
                 messages: initial_messages,
                 message_ids: initial_message_ids,
-                sent_at: loaded_sent_at,
                 peers: initial_peers,
                 broadcast_receipts,
                 dm_receipts,

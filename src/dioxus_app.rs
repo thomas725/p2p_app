@@ -16,10 +16,8 @@ pub struct InitData {
     pub topic_str: String,
     pub local_nicknames: HashMap<String, String>,
     pub received_nicknames: HashMap<String, String>,
-    pub self_nicknames_for_peers: HashMap<String, String>,
     pub messages: VecDeque<DisplayMessage>,
     pub message_ids: VecDeque<Option<String>>,
-    pub sent_at: HashMap<String, f64>,
     pub peers: VecDeque<PeerRecord>,
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
     pub dm_receipts: HashMap<String, (String, f64)>,
@@ -34,7 +32,6 @@ pub(crate) struct AppState {
     pub(crate) messages: VecDeque<DisplayMessage>,
     pub(crate) message_ids: VecDeque<Option<String>>,
     pub(crate) broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-    pub(crate) sent_at_by_msg_id: HashMap<String, f64>,
     pub(crate) dm_messages: HashMap<String, VecDeque<String>>,
     pub(crate) dm_message_ids: HashMap<String, VecDeque<Option<String>>>,
     pub(crate) dm_receipts: HashMap<String, (String, f64)>,
@@ -42,7 +39,6 @@ pub(crate) struct AppState {
     pub(crate) concurrent_peers: usize,
     pub(crate) local_nicknames: HashMap<String, String>,
     pub(crate) received_nicknames: HashMap<String, String>,
-    pub(crate) self_nicknames_for_peers: HashMap<String, String>,
     pub(crate) active_tab: usize,
     pub(crate) dm_tabs: Vec<String>,
     pub(crate) chat_input: String,
@@ -159,10 +155,8 @@ fn initialize_from_init_data(state: &mut Signal<AppState>) {
         s.topic_str = data.topic_str;
         s.local_nicknames = data.local_nicknames;
         s.received_nicknames = data.received_nicknames;
-        s.self_nicknames_for_peers = data.self_nicknames_for_peers;
         s.messages = data.messages;
         s.message_ids = data.message_ids;
-        s.sent_at_by_msg_id = data.sent_at;
         s.peers = data.peers;
         s.broadcast_receipts = data.broadcast_receipts;
         s.dm_receipts = data.dm_receipts;
@@ -277,7 +271,6 @@ fn render_dm_tab(mut state: Signal<AppState>, dm_peer: String) -> Element {
         .get(&dm_peer)
         .cloned()
         .unwrap_or_default();
-    drop(state.read());
     let short = crate::short_peer_id(&dm_peer);
     let dm_peer_keydown = dm_peer.clone();
     let dm_peer_btn = dm_peer.clone();
@@ -408,7 +401,6 @@ pub fn App() -> Element {
         messages: VecDeque::new(),
         message_ids: VecDeque::new(),
         broadcast_receipts: HashMap::new(),
-        sent_at_by_msg_id: HashMap::new(),
         dm_messages: HashMap::new(),
         dm_message_ids: HashMap::new(),
         dm_receipts: HashMap::new(),
@@ -416,7 +408,6 @@ pub fn App() -> Element {
         concurrent_peers: 0,
         local_nicknames: HashMap::new(),
         received_nicknames: HashMap::new(),
-        self_nicknames_for_peers: HashMap::new(),
         active_tab: 0,
         dm_tabs: Vec::new(),
         chat_input: String::new(),
