@@ -1,4 +1,4 @@
-//! Peer management and peer session tracking
+//! Peer management, session tracking, and port persistence
 
 use crate::{
     generated::models_insertable::{NewPeer, NewPeerSession},

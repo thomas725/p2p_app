@@ -1,3 +1,5 @@
+//! Swarm event handler that translates libp2p events to application events
+
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
     AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv, current_timestamp,

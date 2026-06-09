@@ -1,3 +1,5 @@
+//! Core type definitions for application events and commands
+
 use libp2p::Multiaddr;
 
 #[cfg(test)]

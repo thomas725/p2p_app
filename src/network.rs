@@ -1,3 +1,5 @@
+//! Adaptive network size classification for gossip protocol tuning
+
 use crate::get_average_peer_count;
 
 /// Adaptive network size classification based on average peer count.

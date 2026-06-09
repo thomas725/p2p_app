@@ -1,3 +1,5 @@
+//! Nickname management for peers and local identity
+
 use crate::sqlite_connect;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
@@ -47,44 +49,28 @@ fn get_peer_field(
     Ok(peer.and_then(field))
 }
 
-pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    let _ = crate::save_peer(peer_id, &[]);
-    let conn = &mut sqlite_connect()?;
-    diesel::update(
-        crate::generated::schema::peers::table
-            .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
-    )
-    .set(crate::generated::schema::peers::peer_local_nickname.eq(nickname))
-    .execute(conn)?;
-    Ok(())
+macro_rules! impl_set_peer_field {
+    ($func_name:ident, $column:ident) => {
+        pub fn $func_name(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+            let _ = crate::save_peer(peer_id, &[]);
+            let conn = &mut sqlite_connect()?;
+            diesel::update(
+                crate::generated::schema::peers::table
+                    .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
+            )
+            .set(crate::generated::schema::peers::$column.eq(nickname))
+            .execute(conn)?;
+            Ok(())
+        }
+    };
 }
+
+impl_set_peer_field!(set_peer_local_nickname, peer_local_nickname);
+impl_set_peer_field!(set_peer_received_nickname, received_nickname);
+impl_set_peer_field!(set_peer_self_nickname_for_peer, self_nickname_for_peer);
 
 pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
     get_peer_field(peer_id, |p| p.peer_local_nickname)
-}
-
-pub fn set_peer_received_nickname(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    let _ = crate::save_peer(peer_id, &[]);
-    let conn = &mut sqlite_connect()?;
-    diesel::update(
-        crate::generated::schema::peers::table
-            .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
-    )
-    .set(crate::generated::schema::peers::received_nickname.eq(nickname))
-    .execute(conn)?;
-    Ok(())
-}
-
-pub fn set_peer_self_nickname_for_peer(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
-    let _ = crate::save_peer(peer_id, &[]);
-    let conn = &mut sqlite_connect()?;
-    diesel::update(
-        crate::generated::schema::peers::table
-            .filter(crate::generated::schema::peers::peer_id.eq(peer_id)),
-    )
-    .set(crate::generated::schema::peers::self_nickname_for_peer.eq(nickname))
-    .execute(conn)?;
-    Ok(())
 }
 
 pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {

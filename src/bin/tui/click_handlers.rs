@@ -119,26 +119,16 @@ pub fn handle_mouse_left_click(
     mouse_row: u16,
     mouse_column: u16,
     is_peers_tab: bool,
-    is_dm_tab: bool,
+    _is_dm_tab: bool,
     _peer_id: Option<&str>,
 ) -> bool {
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         return handle_tab_click(state, mouse_column, &tab_titles);
-    } else {
+    } else if is_peers_tab {
         let max_row = (state.chat_area_height as u16) + 2;
         if mouse_row > 2 && mouse_row < max_row {
-            if is_peers_tab {
-                return handle_peer_row_click(state, mouse_row);
-            } else if is_dm_tab {
-                p2plog_debug(
-                    "DM message clicks disabled: dm_message_lines was never populated".to_string(),
-                );
-            } else {
-                p2plog_debug(
-                    "Message clicks disabled: chat_message_lines was never populated".to_string(),
-                );
-            }
+            return handle_peer_row_click(state, mouse_row);
         }
     }
     false

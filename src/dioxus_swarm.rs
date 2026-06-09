@@ -1,3 +1,5 @@
+//! Swarm event processing for the Dioxus UI
+
 use crate::dioxus_app::{AppState, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, send_swarm_cmd};
 use crate::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent};
 use dioxus::prelude::*;

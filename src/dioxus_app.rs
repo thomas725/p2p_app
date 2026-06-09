@@ -1,3 +1,5 @@
+//! Dioxus web/desktop UI application with real-time chat functionality
+
 use crate::dioxus_styles::STYLESHEET;
 use crate::dioxus_swarm::process_swarm_event;
 use crate::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent};
@@ -53,7 +55,7 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    fn push_log(&mut self, msg: String) {
+    pub(crate) fn push_log(&mut self, msg: String) {
         self.logs.push_back(msg);
         if self.logs.len() > 500 {
             self.logs.pop_front();
