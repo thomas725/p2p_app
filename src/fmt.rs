@@ -32,6 +32,12 @@ pub fn format_system_time(time: SystemTime) -> String {
         .to_string()
 }
 
+/// Get current time as formatted string "HH:MM:SS.mmm"
+#[must_use]
+pub fn format_now() -> String {
+    format_system_time(SystemTime::now())
+}
+
 /// Generate a best-effort unique message ID for receipt tracking.
 ///
 /// This is intentionally dependency-free (no uuid crate).

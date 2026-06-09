@@ -4,7 +4,6 @@ use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
-use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 enum Event {
@@ -35,7 +34,7 @@ pub fn apply_broadcast_to_state(
     latency: Option<&str>,
     msg_id: Option<String>,
 ) -> String {
-    let ts = p2p_app::format_system_time(SystemTime::now());
+    let ts = p2p_app::format_now();
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
     let msg = format!(
@@ -63,7 +62,7 @@ pub fn apply_dm_to_state(
     latency: Option<&str>,
     msg_id: Option<String>,
 ) -> String {
-    let ts = p2p_app::format_system_time(SystemTime::now());
+    let ts = p2p_app::format_now();
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
     let msg = format!(

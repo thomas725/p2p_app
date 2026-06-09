@@ -89,7 +89,7 @@ pub use db::{
     sqlite_connect,
 };
 pub use fmt::{
-    auto_scroll_offset, current_timestamp, format_latency, format_peer_datetime,
+    auto_scroll_offset, current_timestamp, format_latency, format_now, format_peer_datetime,
     format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]

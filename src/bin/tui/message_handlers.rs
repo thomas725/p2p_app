@@ -1,7 +1,6 @@
 use super::state::AppState;
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, SwarmCommand, p2plog_debug};
-use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 /// Pure: format and push an outgoing broadcast message to state, trimming history
@@ -64,7 +63,7 @@ pub async fn send_message(
         } else {
             None
         };
-    let ts = p2p_app::format_system_time(SystemTime::now());
+    let ts = p2p_app::format_now();
     let dm_self_nickname = dm_target_peer_id
         .as_deref()
         .and_then(|pid| state.self_nicknames_for_peers.get(pid).cloned())

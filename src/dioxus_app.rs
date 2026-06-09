@@ -5,7 +5,6 @@ use dioxus::prelude::*;
 use futures_channel::mpsc::UnboundedSender;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, OnceLock};
-use std::time::SystemTime;
 
 pub static SWARM_CMD_TX: OnceLock<Mutex<tokio::sync::mpsc::Sender<SwarmCommand>>> = OnceLock::new();
 pub static SWARM_EVENT_TX: OnceLock<UnboundedSender<SwarmEvent>> = OnceLock::new();
@@ -72,7 +71,7 @@ pub(crate) fn send_swarm_cmd(cmd: SwarmCommand) {
 
 fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>) {
     let msg_id = crate::gen_msg_id();
-    let ts = crate::format_system_time(SystemTime::now());
+    let ts = crate::format_now();
     let nickname = { state.read().own_nickname.clone() };
     let display = format!("{} [{}] {}", ts, nickname, input);
     let cmd = if let Some(peer_id) = is_dm {

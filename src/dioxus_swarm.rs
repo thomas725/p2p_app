@@ -1,7 +1,6 @@
 use crate::dioxus_app::{AppState, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, send_swarm_cmd};
 use crate::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent};
 use dioxus::prelude::*;
-use std::time::SystemTime;
 
 pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEvent) {
     match event {
@@ -14,7 +13,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             if e.content.trim().is_empty() && e.nickname.is_some() {
                 return;
             }
-            let ts = crate::format_system_time(SystemTime::now());
+            let ts = crate::format_now();
             let sender =
                 crate::peer_display_name(&e.peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!(
@@ -44,7 +43,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             if e.content.trim().is_empty() && e.nickname.is_some() {
                 return;
             }
-            let ts = crate::format_system_time(SystemTime::now());
+            let ts = crate::format_now();
             let sender =
                 crate::peer_display_name(&e.peer_id, &s.local_nicknames, &s.received_nicknames);
             let msg = format!(
