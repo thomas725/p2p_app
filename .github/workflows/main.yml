@@ -141,18 +141,24 @@ jobs:
         continue-on-error: true
       
       # ============================================================
-      # PHASE 5: Coverage (optional, non-blocking)
+      # PHASE 5: Code Coverage & Metrics
       # ============================================================
       
-      - name: Generate code coverage
+      - name: Install cargo-tarpaulin
+        run: |
+          cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
+        continue-on-error: true
+      
+      - name: Generate codebase metrics with coverage
         run: |
           set +e
-          cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
-          cargo tarpaulin --out Xml --output-dir coverage --skip-clean --all-features 2>&1 | tee -a .github/ci-logs/coverage.log
-          COVERAGE_EXIT=$?
+          python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md
+          METRICS_EXIT=$?
           set -e
-          echo "Exit code: $COVERAGE_EXIT" >> .github/ci-logs/coverage.log
-          exit $COVERAGE_EXIT
+          if [ -f tarpaulin-report.json ]; then
+            python3 scripts/extract_coverage_summary.py > .github/ci-logs/coverage-summary.log
+          fi
+          exit $METRICS_EXIT
         continue-on-error: true
       
       # ============================================================
@@ -207,14 +213,16 @@ jobs:
           git config --global user.email "ci-pipeline@anthropic.com"
           git config --global user.name "CI Pipeline"
           
-          # Only add results directory (ci-logs already deleted)
+          # Stage results, updated metrics, and tarpaulin report
           git add .github/ci-results/ 2>/dev/null || true
+          git add docs/codebase_metrics.md 2>/dev/null || true
+          git add tarpaulin-report.json 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
             RUN_ID="${{ github.run_id }}"
             
-            git commit -m "ci: unified pipeline results for run $RUN_ID at $TIMESTAMP"
+            git commit -m "ci: pipeline results, metrics, and coverage for run $RUN_ID at $TIMESTAMP"
             git push origin main 2>&1 || echo "Could not push results"
           else
             echo "No result changes to commit"
