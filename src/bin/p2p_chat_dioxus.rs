@@ -30,7 +30,7 @@ mod dioxus {
                         .as_ref()
                         .map(|n| format!("[{}]", n))
                         .unwrap_or_else(|| {
-                            let p = msg.peer_id.as_ref().unwrap();
+                            let p = msg.peer_id.as_deref().unwrap_or("unknown");
                             let display =
                                 p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
                             format!("[{}]", display)

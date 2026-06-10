@@ -88,8 +88,12 @@ fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>
             .or_default()
             .push_back(Some(msg_id.clone()));
         if s.dm_messages.get(&pid).map_or(0, |m| m.len()) > MAX_DM_HISTORY {
-            s.dm_messages.get_mut(&pid).unwrap().pop_front();
-            s.dm_message_ids.get_mut(&pid).unwrap().pop_front();
+            if let Some(msgs) = s.dm_messages.get_mut(&pid) {
+                msgs.pop_front();
+            }
+            if let Some(ids) = s.dm_message_ids.get_mut(&pid) {
+                ids.pop_front();
+            }
         }
         s.dm_input.insert(pid.clone(), String::new());
         drop(s);

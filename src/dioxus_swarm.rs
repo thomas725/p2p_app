@@ -63,7 +63,9 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             msgs.push_back(msg);
             if msgs.len() > MAX_DM_HISTORY {
                 msgs.pop_front();
-                s.dm_message_ids.get_mut(&e.peer_id).unwrap().pop_front();
+                if let Some(ids) = s.dm_message_ids.get_mut(&e.peer_id) {
+                    ids.pop_front();
+                }
             }
             if !s.dm_tabs.contains(&e.peer_id) {
                 s.dm_tabs.push(e.peer_id.clone());
