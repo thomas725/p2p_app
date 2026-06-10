@@ -107,6 +107,6 @@
 | unit   | unit_tui_render_state.rs          |   256 |  7337 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   193 |  5390 |     2 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
-| unit   | unit_types.rs                     |   183 |  4960 |     3 | Unit tests for types module           |
+| unit   | unit_types.rs                     |   194 |  5288 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 12,252 lines, 377,054 characters
+**Total:** 50 test files, 12,263 lines, 377,382 characters
