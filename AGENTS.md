@@ -105,3 +105,16 @@ Use the cargo aliases defined in `.cargo/config.toml` to auto-include the featur
 
 For other commands that need `test-utils` (e.g. `cargo check --tests`), pass
 `--features test-utils` explicitly.
+
+## 7. Code Coverage Metrics
+
+The script `scripts/generate_metrics.py` produces a markdown table of all source files with
+line counts, nesting depth, and test coverage. Run it in two modes:
+
+| Command | Behavior |
+|---------|----------|
+| `python3 scripts/generate_metrics.py > docs/codebase_metrics.md` | Fast: no coverage data (Cover column shows `-`) |
+| `python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md` | Slow (~3 min): runs `cargo tarpaulin --all-features -o Json` if no cached report, then includes real line coverage percentages |
+
+The `--with-coverage` mode uses `cargo-tarpaulin` for accurate line coverage (not a heuristic).
+It caches the report in `tarpaulin-report.json`; delete that file to force a fresh run.

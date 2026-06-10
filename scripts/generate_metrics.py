@@ -1,60 +1,50 @@
 #!/usr/bin/env python3
 """
 Generate codebase metrics table by analyzing all Rust source files.
-Counts lines, characters, determines maximum nesting depth, and estimates test coverage.
+Counts lines, characters, determines maximum nesting depth.
+With --with-coverage, uses cargo-tarpaulin JSON output for real coverage data.
 """
 
+import argparse
+import json
 import os
-import re
+import subprocess
+import sys
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
 
 def count_lines(filepath: str) -> int:
-    """Count the number of lines in a file."""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             return sum(1 for _ in f)
     except Exception:
         return 0
 
+
 def count_characters(filepath: str) -> int:
-    """Count the number of characters in a file."""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             return sum(len(line) for line in f)
     except Exception:
         return 0
 
+
 def calculate_max_nesting(filepath: str) -> int:
-    """
-    Calculate the maximum nesting depth in a file by counting indentation levels.
-
-    Measures the maximum leading whitespace indentation across all non-empty lines.
-    This directly reflects the visual nesting shown in the code editor.
-
-    Converts tabs to 4 spaces for consistent measurement.
-    Ignores blank lines and comment-only lines.
-    """
     max_nesting = 0
     SPACES_PER_TAB = 4
 
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
-                # Skip empty lines and line-comment-only lines
                 stripped = line.lstrip()
                 if not stripped or stripped.startswith('//'):
                     continue
 
-                # Count leading whitespace
                 leading_ws = len(line) - len(stripped)
-
-                # Convert tabs to spaces
                 tabs_in_leading = line[:leading_ws].count('\t')
                 spaces_in_leading = line[:leading_ws].count(' ')
                 total_spaces = (tabs_in_leading * SPACES_PER_TAB) + spaces_in_leading
-
-                # Calculate nesting depth (assuming 4-space indentation)
                 nesting_depth = total_spaces // 4
 
                 max_nesting = max(max_nesting, nesting_depth)
@@ -63,65 +53,63 @@ def calculate_max_nesting(filepath: str) -> int:
 
     return max_nesting
 
-def count_inline_test_lines(filepath: str) -> int:
-    """Count lines in #[cfg(test)] modules within a source file."""
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        
-        # Find all #[cfg(test)] blocks and count their content
-        test_lines = 0
-        in_test_module = False
-        brace_count = 0
-        
-        for line in content.split('\n'):
-            if '#[cfg(test)]' in line:
-                in_test_module = True
-                brace_count = 0
-                continue
-            
-            if in_test_module:
-                test_lines += 1
-                brace_count += line.count('{') - line.count('}')
-                if brace_count < 0:
-                    in_test_module = False
-                    brace_count = 0
-        
-        return test_lines
-    except Exception:
-        return 0
 
-def find_test_coverage(source_filepath: str, source_lines: int) -> Optional[float]:
+def load_tarpaulin_coverage(report_path: str) -> Dict[str, Tuple[int, int]]:
     """
-    Find test coverage for a source file by looking for:
-    1. Matching test file in tests/ directory
-    2. Inline tests in the source file itself
-    Returns coverage as a percentage, or None if no tests found.
+    Load coverage data from cargo-tarpaulin JSON report.
+    Returns dict mapping relative source path -> (covered_lines, coverable_lines).
     """
-    path = Path(source_filepath)
-    base_name = path.stem  # e.g., "fmt" from "fmt.rs"
-    test_lines = 0
-    
-    # Check for matching test file in tests/ directory
-    test_file_patterns = [
-        f"tests/{base_name}.rs",
-    ]
-    
-    for pattern in test_file_patterns:
-        test_path = Path(pattern)
-        if test_path.exists():
-            test_lines += count_lines(str(test_path))
-    
-    # Check for inline tests in source file
-    test_lines += count_inline_test_lines(source_filepath)
-    
-    if test_lines > 0 and source_lines > 0:
-        return (test_lines / source_lines) * 100
-    
-    return None
+    with open(report_path) as f:
+        data = json.load(f)
+
+    files = data['files']
+
+    # Compute the common path prefix from the report entries
+    prefix = list(files[0]['path'])
+    for entry in files[1:]:
+        i = 0
+        while i < len(prefix) and i < len(entry['path']) and prefix[i] == entry['path'][i]:
+            i += 1
+        prefix = prefix[:i]
+    prefix_len = len(prefix)
+
+    coverage = {}
+    for entry in files:
+        covered = entry['covered']
+        coverable = entry['coverable']
+        rel_path = '/'.join(entry['path'][prefix_len:])
+        coverage[rel_path] = (covered, coverable)
+
+    return coverage
+
+
+def run_tarpaulin() -> Dict[str, Tuple[int, int]]:
+    """Run cargo tarpaulin with --all-features and return coverage data."""
+    report_path = 'tarpaulin-report.json'
+
+    if Path(report_path).exists():
+        print("Using existing tarpaulin-report.json", file=sys.stderr)
+        return load_tarpaulin_coverage(report_path)
+
+    print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
+    sys.stderr.flush()
+
+    result = subprocess.run(
+        ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+
+    if result.returncode != 0:
+        print(f"tarpaulin failed (exit {result.returncode}):", file=sys.stderr)
+        print(result.stderr[-2000:], file=sys.stderr)
+        return {}
+
+    return load_tarpaulin_coverage(report_path)
+
 
 def get_file_purpose(filepath: str) -> str:
-    """Get a brief description of file purpose from first doc comment or context."""
     if 'render_loop/mod.rs' in filepath:
         return 'Render loop orchestration (60 FPS)'
     if 'render_loop/visibility.rs' in filepath:
@@ -171,10 +159,10 @@ def get_file_purpose(filepath: str) -> str:
     }
     return purposes.get(Path(filepath).name, 'Source file')
 
-def get_test_coverage_str(coverage: Optional[float]) -> str:
-    """Format test coverage as a string."""
+
+def get_coverage_str(coverage: Optional[float]) -> str:
     if coverage is None:
-        return "   - "
+        return "    -"
     elif coverage >= 100:
         return " 100%"
     elif coverage >= 10:
@@ -182,8 +170,8 @@ def get_test_coverage_str(coverage: Optional[float]) -> str:
     else:
         return f"{coverage:>4.1f}%"
 
+
 def get_test_file_purpose(filepath: str) -> str:
-    """Get a brief description of what each test file tests."""
     purposes = {
         'fmt.rs': 'fmt module tests',
         'logging.rs': 'logging module tests',
@@ -238,30 +226,84 @@ def get_test_file_purpose(filepath: str) -> str:
     }
     return purposes.get(Path(filepath).name, 'Test file')
 
+
+def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
+    path = Path(filepath)
+
+    if path.name == 'build.rs':
+        return ('/', 'build.rs')
+    elif 'src/bin/tui/render_loop' in filepath:
+        return ('src/bin/tui/render_loop', path.name)
+    elif 'src/bin/tui' in filepath:
+        return ('src/bin/tui', path.name)
+    elif 'src/bin' in filepath:
+        return ('src/bin', path.name)
+    elif 'src/generated' in filepath:
+        return ('src/generated', path.name)
+    elif 'src' in filepath:
+        return ('src', path.name)
+    else:
+        return (str(path.parent), path.name)
+
+
+def collect_files(
+    coverage_data: Dict[str, Tuple[int, int]],
+) -> List[Tuple[str, str, str, int, int, int, str, Optional[float]]]:
+    files_data = []
+
+    if Path('build.rs').exists():
+        filepath = 'build.rs'
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath)
+        cov = coverage_data.get(filepath)
+        pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
+        folder, filename = normalize_path_for_display(filepath)
+        purpose = get_file_purpose(filepath)
+        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, pct))
+
+    for rs_file in sorted(Path('src').glob('**/*.rs')):
+        filepath = str(rs_file)
+
+        if 'tests' in filepath or '#[cfg(test)]' in str(rs_file):
+            continue
+
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath)
+        cov = coverage_data.get(filepath)
+        pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
+        folder, filename = normalize_path_for_display(filepath)
+        purpose = get_file_purpose(filepath)
+
+        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, pct))
+
+    files_data.sort(key=lambda x: (x[0], x[1]))
+    return files_data
+
+
 def collect_test_files() -> List[Tuple[str, str, int, int, int, str]]:
-    """Collect all test files with their metrics."""
     test_files = []
-    
+
     for pattern in ['tests/*.rs', 'tests/**/*.rs']:
         for test_file in sorted(Path('.').glob(pattern)):
             filepath = str(test_file)
             if not filepath.endswith('.rs'):
                 continue
-            
+
             lines = count_lines(filepath)
             chars = count_characters(filepath)
             nesting = calculate_max_nesting(filepath)
-            
+
             folder = str(test_file.parent)
             if folder == '.':
                 folder = 'tests'
             elif folder.startswith('tests/'):
-                folder = folder[6:]  # Remove 'tests/' prefix
-            
+                folder = folder[6:]
+
             purpose = get_test_file_purpose(filepath)
             test_files.append((folder, test_file.name, lines, chars, nesting, purpose))
-    
-    # Remove duplicates (since glob matches twice)
+
     seen = set()
     unique_tests = []
     for item in test_files:
@@ -269,12 +311,12 @@ def collect_test_files() -> List[Tuple[str, str, int, int, int, str]]:
         if key not in seen:
             seen.add(key)
             unique_tests.append(item)
-    
+
     unique_tests.sort(key=lambda x: (x[0], x[1]))
     return unique_tests
 
+
 def generate_test_files_table(test_files: List[Tuple]) -> str:
-    """Generate markdown table for test files."""
     folder_col_width = max(len("Folder"), 6)
     file_col_width = max(
         len("File"),
@@ -298,71 +340,20 @@ def generate_test_files_table(test_files: List[Tuple]) -> str:
     output.append(
         f"|:{'-' * (folder_sep_width - 1)}|:{'-' * (file_sep_width - 1)}|{'-' * (lines_sep_width - 1)}:|{'-' * (chars_sep_width - 1)}:|{'-' * (depth_sep_width - 1)}:|{'-' * (desc_sep_width - 1)}:|"
     )
-    
+
     for folder, filename, lines, chars, nesting, purpose in test_files:
         if len(purpose) > desc_col_width:
             purpose = purpose[:desc_col_width - 1] + '…'
-        
+
         folder_display = folder if folder else 'tests'
         output.append(
             f"| {folder_display:<{folder_col_width}} | {filename:<{file_col_width}} | {lines:>{lines_col_width}} | {chars:>{chars_col_width}} | {nesting:>{depth_col_width}} | {purpose:<{desc_col_width}} |"
         )
-    
+
     return '\n'.join(output)
 
-def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
-    """Convert filepath to display folder and filename."""
-    path = Path(filepath)
-
-    if path.name == 'build.rs':
-        return ('/', 'build.rs')
-    elif 'src/bin/tui/render_loop' in filepath:
-        return ('src/bin/tui/render_loop', path.name)
-    elif 'src/bin/tui' in filepath:
-        return ('src/bin/tui', path.name)
-    elif 'src/bin' in filepath:
-        return ('src/bin', path.name)
-    elif 'src/generated' in filepath:
-        return ('src/generated', path.name)
-    elif 'src' in filepath:
-        return ('src', path.name)
-    else:
-        return (str(path.parent), path.name)
-
-def collect_files() -> List[Tuple[str, str, str, int, int, int, str, Optional[float]]]:
-    """Collect all Rust files with their metrics (excluding tests)."""
-    files_data = []
-
-    if Path('build.rs').exists():
-        filepath = 'build.rs'
-        lines = count_lines(filepath)
-        chars = count_characters(filepath)
-        nesting = calculate_max_nesting(filepath)
-        coverage = find_test_coverage(filepath, lines)
-        folder, filename = normalize_path_for_display(filepath)
-        purpose = get_file_purpose(filepath)
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, coverage))
-
-    for rs_file in sorted(Path('src').glob('**/*.rs')):
-        filepath = str(rs_file)
-
-        if 'tests' in filepath or '#[cfg(test)]' in str(rs_file):
-            continue
-
-        lines = count_lines(filepath)
-        chars = count_characters(filepath)
-        nesting = calculate_max_nesting(filepath)
-        coverage = find_test_coverage(filepath, lines)
-        folder, filename = normalize_path_for_display(filepath)
-        purpose = get_file_purpose(filepath)
-
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, coverage))
-
-    files_data.sort(key=lambda x: (x[0], x[1]))
-    return files_data
 
 def generate_markdown_table(files_data: List[Tuple]) -> str:
-    """Generate markdown table from file data."""
     output = []
     output.append('| Folder                  | File                 | Lines | Chars | Depth | Cover | Purpose                             |')
     output.append('|:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|')
@@ -370,16 +361,26 @@ def generate_markdown_table(files_data: List[Tuple]) -> str:
     for folder, filename, _, lines, chars, nesting, purpose, coverage in files_data:
         if len(purpose) > 35:
             purpose = purpose[:34] + '…'
-        
-        coverage_str = get_test_coverage_str(coverage)
 
-        output.append(f'| {folder:<23} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {coverage_str} | {purpose:<35} |')
+        output.append(f'| {folder:<23} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {get_coverage_str(coverage)} | {purpose:<35} |')
 
     return '\n'.join(output)
 
+
 def main():
-    """Main entry point."""
-    files_data = collect_files()
+    parser = argparse.ArgumentParser(description='Generate codebase metrics')
+    parser.add_argument(
+        '--with-coverage',
+        action='store_true',
+        help='Include real code coverage data from cargo-tarpaulin (slow: runs tarpaulin if no cached report)',
+    )
+    args = parser.parse_args()
+
+    coverage_data: Dict[str, Tuple[int, int]] = {}
+    if args.with_coverage:
+        coverage_data = run_tarpaulin()
+
+    files_data = collect_files(coverage_data)
 
     total_lines = sum(f[3] for f in files_data)
     total_chars = sum(f[4] for f in files_data)
@@ -387,7 +388,6 @@ def main():
     avg_lines = total_lines // total_files if total_files > 0 else 0
     avg_chars = total_chars // total_files if total_files > 0 else 0
 
-    # Column width based on FORMATTED values (with commas for thousands)
     W = max(
         len(str(total_files)),
         len(f"{total_lines:,}"),
@@ -422,7 +422,6 @@ def main():
     print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
     print()
 
-    # Test files section
     test_files = collect_test_files()
     test_total_lines = sum(f[2] for f in test_files)
     test_total_chars = sum(f[3] for f in test_files)
@@ -434,6 +433,7 @@ def main():
     print(test_table)
     print()
     print(f"**Total:** {test_total_files} test files, {test_total_lines:,} lines, {test_total_chars:,} characters")
+
 
 if __name__ == '__main__':
     main()
