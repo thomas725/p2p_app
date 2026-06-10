@@ -181,3 +181,14 @@ fn test_swarm_command_clone() {
         _ => panic!("expected Publish"),
     }
 }
+
+#[test]
+fn test_peer_record_display() {
+    let record = PeerRecord {
+        peer_id: "peer1".to_string(),
+        first_seen: "2024-01-01 12:00:00".to_string(),
+        last_seen: "2024-01-02 12:00:00".to_string(),
+    };
+    let formatted = format!("{}", record);
+    assert_eq!(formatted, "peer1 (2024-01-02 12:00:00)");
+}
