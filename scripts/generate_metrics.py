@@ -100,14 +100,16 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     try:
         result = subprocess.run(
             ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
-            timeout=600,
+            timeout=900,
         )
     except subprocess.TimeoutExpired:
-        print("tarpaulin timed out after 600 seconds", file=sys.stderr)
+        print("tarpaulin timed out after 900 seconds", file=sys.stderr)
+        Path(report_path).unlink(missing_ok=True)
         return {}
 
     if result.returncode != 0:
         print(f"tarpaulin failed (exit {result.returncode})", file=sys.stderr)
+        Path(report_path).unlink(missing_ok=True)
         return {}
 
     if not Path(report_path).exists():
