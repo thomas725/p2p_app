@@ -562,3 +562,60 @@ When done regenerate docs/codebase_metrics.md using scripts/generate_metrics.py.
 Finally commit all changes with meaningful commit messages.
 
 Think like an owl — slow, observant and analytical. Examine this problem from multiple perspectives and identify the hidden factors most people overlook.
+
+## 2026-06-10
+
+analyze and explain find_test_coverage function of scripts/generate_metrics.py - I'm unsure if this produces accurate infos. Is there a cargo rust test utility we can use to find the real coverage instead? We want to find testable and tested lines per src file and accumulate those infos for the whole codebase.
+
+okey so I ran `cargo tarpaulin --out Json --features=mdns,quic,tracing,tui,dioxus-desktop,test-utils` manually now but I did not get json output but instead lots of normal test output, it ended with this:
+
+```log
+...
+test peers::tests::average_peer_count_is_zero_when_no_sessions ... ok
+test peers::tests::save_and_load_peers ... ok
+test peers::tests::peer_session_aggregates_work ... ok
+test nickname::tests::peer_display_name_received_then_fallback ... ok
+
+test result: ok. 179 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.38s
+
+2026-06-10T13:16:18.652566Z  INFO cargo_tarpaulin::report: Coverage Results:
+|| Tested/Total Lines:
+|| src/behavior.rs: 16/25
+|| src/bin/p2p_chat.rs: 0/62
+|| src/bin/p2p_chat_dioxus.rs: 0/112
+|| src/bin/p2p_chat_tui.rs: 0/18
+|| src/bin/tui/click_handlers.rs: 73/77
+|| src/bin/tui/command_processor.rs: 59/158
+|| src/bin/tui/event_source.rs: 5/12
+|| src/bin/tui/input_processor.rs: 54/174
+|| src/bin/tui/main_loop.rs: 40/143
+|| src/bin/tui/message_handlers.rs: 20/73
+|| src/bin/tui/render_loop/layout.rs: 0/23
+|| src/bin/tui/render_loop/mod.rs: 30/62
+|| src/bin/tui/scroll_handlers.rs: 89/110
+|| src/bin/tui/state.rs: 35/40
+|| src/db.rs: 136/149
+|| src/dioxus_app.rs: 0/178
+|| src/dioxus_swarm.rs: 0/98
+|| src/fmt.rs: 37/39
+|| src/generated/schema.rs: 39/40
+|| src/lib.rs: 1/1
+|| src/logging.rs: 86/86
+|| src/messages.rs: 84/84
+|| src/network.rs: 13/13
+|| src/nickname.rs: 49/49
+|| src/peers.rs: 64/64
+|| src/swarm_handler.rs: 2/117
+|| src/tui_helpers.rs: 91/91
+|| src/tui_render.rs: 163/185
+|| src/tui_render_state.rs: 133/136
+|| src/tui_tabs.rs: 51/52
+|| src/types.rs: 0/3
+||
+55.38% coverage, 1370/2474 lines covered
+```
+
+How can we instead of manually listing all the features make it enable all features for generating those statistics? Also is the json parameter wrong? Search the docs or help output of cargo / tarpaulin?
+
+cargo tarpaulin --all-features -o Json
+
