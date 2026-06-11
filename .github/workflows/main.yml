@@ -100,21 +100,7 @@ jobs:
         continue-on-error: true
       
       # ============================================================
-      # PHASE 3: Testing
-      # ============================================================
-      
-      - name: Run tests
-        run: |
-          set +e
-          cargo t --verbose --all-features 2>&1 | tee .github/ci-logs/tests.log
-          TEST_EXIT=$?
-          set -e
-          echo "Exit code: $TEST_EXIT" >> .github/ci-logs/tests.log
-          exit $TEST_EXIT
-        continue-on-error: true
-      
-      # ============================================================
-      # PHASE 4: Security & Documentation
+      # PHASE 3: Security & Documentation
       # ============================================================
       
       - name: Security audit
@@ -141,7 +127,7 @@ jobs:
         continue-on-error: true
       
       # ============================================================
-      # PHASE 5: Code Coverage & Metrics
+      # PHASE 4: Code Coverage & Metrics
       # ============================================================
       
       - name: Install cargo-tarpaulin
@@ -210,14 +196,39 @@ jobs:
           echo "============================================================" >> "$RESULTS_FILE"
           echo "" >> "$RESULTS_FILE"
           
-          # Append all logs
-          for log in .github/ci-logs/*.log; do
-            if [ -f "$log" ]; then
-              echo "--- $(basename $log) ---" >> "$RESULTS_FILE"
-              cat "$log" >> "$RESULTS_FILE"
+          append_log() {
+            local name="$1"
+            local f=".github/ci-logs/${name}.log"
+            if [ -f "$f" ]; then
+              echo "--- $name ---" >> "$RESULTS_FILE"
+              cat "$f" >> "$RESULTS_FILE"
               echo "" >> "$RESULTS_FILE"
             fi
-          done
+          }
+          
+          phase_header() {
+            echo "" >> "$RESULTS_FILE"
+            echo "============================================================" >> "$RESULTS_FILE"
+            echo "$1" >> "$RESULTS_FILE"
+            echo "============================================================" >> "$RESULTS_FILE"
+            echo "" >> "$RESULTS_FILE"
+          }
+          
+          phase_header "Phase 1 - Code Quality"
+          append_log fmt
+          append_log clippy
+          
+          phase_header "Phase 2 - Build"
+          append_log build
+          
+          phase_header "Phase 3 - Security & Documentation"
+          append_log audit
+          append_log docs
+          
+          phase_header "Phase 4 - Code Coverage & Metrics"
+          append_log coverage-install
+          append_log tarpaulin-output
+          append_log coverage-summary
           
           echo "Results file created at: $RESULTS_FILE"
       
