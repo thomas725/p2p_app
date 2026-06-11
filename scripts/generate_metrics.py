@@ -97,20 +97,35 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
     sys.stderr.flush()
 
+    output_log = os.environ.get('TARPAULIN_OUTPUT_LOG')
+
+    proc = subprocess.Popen(
+        ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    out_lines = []
     try:
-        result = subprocess.run(
-            ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
-            timeout=900,
-        )
+        for line in proc.stdout or []:
+            print(line, end='')
+            out_lines.append(line)
+        proc.wait(timeout=900)
     except subprocess.TimeoutExpired:
         print("tarpaulin timed out after 900 seconds", file=sys.stderr)
+        proc.kill()
         Path(report_path).unlink(missing_ok=True)
         return {}
 
-    if result.returncode != 0:
-        print(f"tarpaulin failed (exit {result.returncode})", file=sys.stderr)
+    if proc.returncode != 0:
+        print(f"tarpaulin failed (exit {proc.returncode})", file=sys.stderr)
         Path(report_path).unlink(missing_ok=True)
         return {}
+
+    if output_log:
+        Path(output_log).parent.mkdir(parents=True, exist_ok=True)
+        with open(output_log, 'w') as f:
+            f.writelines(out_lines)
 
     if not Path(report_path).exists():
         print(f"tarpaulin did not produce {report_path}", file=sys.stderr)

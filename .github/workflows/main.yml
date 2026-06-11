@@ -152,6 +152,7 @@ jobs:
       - name: Generate codebase metrics with coverage
         run: |
           set +e
+          export TARPAULIN_OUTPUT_LOG=.github/ci-logs/tarpaulin-output.log
           python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.tmp
           METRICS_EXIT=$?
           set -e
