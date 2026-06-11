@@ -619,3 +619,7 @@ How can we instead of manually listing all the features make it enable all featu
 
 cargo tarpaulin --all-features -o Json
 
+
+## 2026-06-11
+
+integrate tarpaulin-output.log into the results_timestamp.txt aggregated log setup we have for all other github action steps log output. you might need to reorder the github action to make that work.
