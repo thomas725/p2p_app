@@ -153,9 +153,12 @@ jobs:
         run: |
           set +e
           cargo tarpaulin --all-features -o Json 2>&1 | tee .github/ci-logs/tarpaulin-output.log
-          TARPAULIN_EXIT=$?
+          TARPAULIN_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $TARPAULIN_EXIT" >> .github/ci-logs/tarpaulin-output.log
+          if [ "$TARPAULIN_EXIT" -ne 0 ]; then
+            rm -f tarpaulin-report.json
+          fi
           exit $TARPAULIN_EXIT
         continue-on-error: true
       
