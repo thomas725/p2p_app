@@ -108,7 +108,7 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     out_lines = []
     try:
         for line in proc.stdout or []:
-            print(line, end='')
+            print(line, end='', file=sys.stderr)
             out_lines.append(line)
         proc.wait(timeout=900)
     except subprocess.TimeoutExpired:
