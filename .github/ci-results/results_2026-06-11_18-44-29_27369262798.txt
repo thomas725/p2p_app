@@ -1,0 +1,1031 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-06-11 18:44:29 UTC
+Commit: 3a6862dd37edd2d3f281d95eb537a5a065a51a7d
+Branch: refs/heads/main
+Run ID: 27369262798
+
+============================================================
+Detailed Logs
+============================================================
+
+
+============================================================
+Phase 1 - Code Quality
+============================================================
+
+--- fmt ---
+Exit code: 0
+
+--- clippy ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 14.11s
+Exit code: 0
+
+
+============================================================
+Phase 2 - Build
+============================================================
+
+--- build ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 01s
+Exit code: 0
+
+
+============================================================
+Phase 3 - Security & Documentation
+============================================================
+
+--- audit ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1125 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (833 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+
+[0m[0m[1m[33mCrate:    [0m diesel
+[0m[0m[1m[33mVersion:  [0m 2.3.9
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Possible use after free when deserializing a SQLite database via `SqliteConnection::deserialize_readonly_database`
+[0m[0m[1m[33mDate:     [0m 2026-06-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0172
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0172
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 15 allowed warnings found
+Exit code: 0
+
+--- docs ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: missing documentation for a module[0m
+  [1m[94m--> [0msrc/lib.rs:55:1
+   [1m[94m|[0m
+[1m[94m55[0m [1m[94m|[0m pub mod dioxus_styles;
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m[1m: missing documentation for a static[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:11:1
+   [1m[94m|[0m
+[1m[94m11[0m [1m[94m|[0m pub static SWARM_CMD_TX: OnceLock<Mutex<tokio::sync::mpsc::Sender<SwarmCommand>>> = OnceLock::new();
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a static[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:12:1
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m pub static SWARM_EVENT_TX: OnceLock<UnboundedSender<SwarmEvent>> = OnceLock::new();
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:14:1
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m pub struct InitData {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:15:5
+   [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m     pub own_nickname: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:16:5
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m     pub local_peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:17:5
+   [1m[94m|[0m
+[1m[94m17[0m [1m[94m|[0m     pub topic_str: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:18:5
+   [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m     pub local_nicknames: HashMap<String, String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:19:5
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m     pub received_nicknames: HashMap<String, String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:20:5
+   [1m[94m|[0m
+[1m[94m20[0m [1m[94m|[0m     pub messages: VecDeque<DisplayMessage>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:21:5
+   [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m     pub message_ids: VecDeque<Option<String>>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:22:5
+   [1m[94m|[0m
+[1m[94m22[0m [1m[94m|[0m     pub peers: VecDeque<PeerRecord>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:23:5
+   [1m[94m|[0m
+[1m[94m23[0m [1m[94m|[0m     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:24:5
+   [1m[94m|[0m
+[1m[94m24[0m [1m[94m|[0m     pub dm_receipts: HashMap<String, (String, f64)>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a static[0m
+  [1m[94m--> [0msrc/dioxus_app.rs:27:1
+   [1m[94m|[0m
+[1m[94m27[0m [1m[94m|[0m pub static INIT_DATA: OnceLock<Mutex<Option<InitData>>> = OnceLock::new();
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/dioxus_app.rs:402:1
+    [1m[94m|[0m
+[1m[94m402[0m [1m[94m|[0m pub fn App() -> Element {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a constant[0m
+ [1m[94m--> [0msrc/dioxus_styles.rs:1:1
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m pub const STYLESHEET: &str = "
+  [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+ [1m[94m--> [0msrc/nickname.rs:9:1
+  [1m[94m|[0m
+[1m[94m9[0m [1m[94m|[0m pub fn generate_self_nickname() -> String {
+  [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:13:1
+   [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:22:1
+   [1m[94m|[0m
+[1m[94m22[0m [1m[94m|[0m pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:30:1
+   [1m[94m|[0m
+[1m[94m30[0m [1m[94m|[0m pub fn ensure_self_nickname() -> color_eyre::Result<String> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:54:9
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m         pub fn $func_name(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m68[0m [1m[94m|[0m impl_set_peer_field!(set_peer_local_nickname, peer_local_nickname);
+   [1m[94m|[0m [1m[94m------------------------------------------------------------------[0m [1m[94min this macro invocation[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `impl_set_peer_field` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:54:9
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m         pub fn $func_name(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m69[0m [1m[94m|[0m impl_set_peer_field!(set_peer_received_nickname, received_nickname);
+   [1m[94m|[0m [1m[94m-------------------------------------------------------------------[0m [1m[94min this macro invocation[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `impl_set_peer_field` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:54:9
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m         pub fn $func_name(peer_id: &str, nickname: &str) -> color_eyre::Result<()> {
+   [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m...[0m
+[1m[94m70[0m [1m[94m|[0m impl_set_peer_field!(set_peer_self_nickname_for_peer, self_nickname_for_peer);
+   [1m[94m|[0m [1m[94m-----------------------------------------------------------------------------[0m [1m[94min this macro invocation[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `impl_set_peer_field` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:72:1
+   [1m[94m|[0m
+[1m[94m72[0m [1m[94m|[0m pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:76:1
+   [1m[94m|[0m
+[1m[94m76[0m [1m[94m|[0m pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:80:1
+   [1m[94m|[0m
+[1m[94m80[0m [1m[94m|[0m pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/nickname.rs:84:1
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/types.rs:14:5
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m     pub text: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/types.rs:15:5
+   [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m     pub sender_peer_id: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/types.rs:21:5
+   [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/types.rs:22:5
+   [1m[94m|[0m
+[1m[94m22[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/types.rs:23:5
+   [1m[94m|[0m
+[1m[94m23[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:301:1
+    [1m[94m|[0m
+[1m[94m301[0m [1m[94m|[0m [1m[33m/[0m pub fn broadcast_receipt_prefix(
+[1m[94m302[0m [1m[94m|[0m [1m[33m|[0m     msg_id: Option<&str>,
+[1m[94m303[0m [1m[94m|[0m [1m[33m|[0m     broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
+[1m[94m304[0m [1m[94m|[0m [1m[33m|[0m ) -> &'static str {
+    [1m[94m|[0m [1m[33m|_________________^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:317:1
+    [1m[94m|[0m
+[1m[94m317[0m [1m[94m|[0m [1m[33m/[0m pub fn dm_receipt_prefix(
+[1m[94m318[0m [1m[94m|[0m [1m[33m|[0m     msg_id: Option<&str>,
+[1m[94m319[0m [1m[94m|[0m [1m[33m|[0m     dm_receipts: &HashMap<String, (String, f64)>,
+[1m[94m320[0m [1m[94m|[0m [1m[33m|[0m ) -> &'static str {
+    [1m[94m|[0m [1m[33m|_________________^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:328:1
+    [1m[94m|[0m
+[1m[94m328[0m [1m[94m|[0m [1m[33m/[0m pub fn row_to_visible_index(
+[1m[94m329[0m [1m[94m|[0m [1m[33m|[0m     line_counts: &[usize],
+[1m[94m330[0m [1m[94m|[0m [1m[33m|[0m     first_content_row: usize,
+[1m[94m331[0m [1m[94m|[0m [1m[33m|[0m     click_row: usize,
+[1m[94m332[0m [1m[94m|[0m [1m[33m|[0m ) -> Option<usize> {
+    [1m[94m|[0m [1m[33m|__________________^[0m
+
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 36 warnings
+[1m[33mwarning[0m[1m: missing documentation for the crate[0m
+   [1m[94m--> [0msrc/bin/p2p_chat_dioxus.rs:1:1
+    [1m[94m|[0m
+[1m[94m  1[0m [1m[94m|[0m [1m[33m/[0m #[cfg(feature = "dioxus-desktop")]
+[1m[94m  2[0m [1m[94m|[0m [1m[33m|[0m mod dioxus {
+[1m[94m  3[0m [1m[94m|[0m [1m[33m|[0m     use dioxus_desktop::tao;
+[1m[94m  4[0m [1m[94m|[0m [1m[33m|[0m     use dioxus_desktop::{Config, WindowBuilder};
+[1m[94m...[0m   [1m[33m|[0m
+[1m[94m214[0m [1m[94m|[0m [1m[33m|[0m     dioxus::main();
+[1m[94m215[0m [1m[94m|[0m [1m[33m|[0m }
+    [1m[94m|[0m [1m[33m|_^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m: `p2p_app` (bin "p2p_chat_dioxus" doc) generated 1 warning
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 12.38s
+[1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 3 other files
+Exit code: 0
+
+
+============================================================
+Phase 4 - Code Coverage & Metrics
+============================================================
+
+--- coverage-install ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m cargo-tarpaulin v0.35.4
+[1m[92m     Ignored[0m package `cargo-tarpaulin v0.35.4` is already installed, use --force to override
+
+--- tarpaulin-output ---
+[2m2026-06-11T18:41:10.729818Z[0m [32m INFO[0m [2mcargo_tarpaulin::config[0m[2m:[0m Creating config
+[2m2026-06-11T18:41:12.036381Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Running Tarpaulin
+[2m2026-06-11T18:41:12.036396Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Building project
+[2m2026-06-11T18:41:12.037923Z[0m [32m INFO[0m [2mcargo_tarpaulin::cargo[0m[2m:[0m Cleaning project
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling serde_core v1.0.228
+   Compiling libc v0.2.186
+   Compiling cfg-if v1.0.4
+   Compiling heck v0.5.0
+   Compiling pkg-config v0.3.33
+   Compiling syn v2.0.117
+   Compiling memchr v2.8.0
+   Compiling version_check v0.9.5
+   Compiling serde v1.0.228
+   Compiling equivalent v1.0.2
+   Compiling portable-atomic v1.13.1
+   Compiling pin-project-lite v0.2.17
+   Compiling critical-section v1.2.0
+   Compiling hashbrown v0.17.0
+   Compiling winnow v0.5.40
+   Compiling indexmap v2.14.0
+   Compiling once_cell v1.21.4
+   Compiling smallvec v1.15.1
+   Compiling target-lexicon v0.12.16
+   Compiling version-compare v0.2.1
+   Compiling futures-core v0.3.32
+   Compiling futures-io v0.3.32
+   Compiling slab v0.4.12
+   Compiling thiserror v2.0.18
+   Compiling cfg-expr v0.15.8
+   Compiling futures-sink v0.3.32
+   Compiling futures-channel v0.3.32
+   Compiling futures-task v0.3.32
+   Compiling log v0.4.29
+   Compiling bitflags v2.11.1
+   Compiling synstructure v0.13.2
+   Compiling tracing-core v0.1.36
+   Compiling autocfg v1.5.0
+   Compiling zerocopy v0.8.48
+   Compiling stable_deref_trait v1.2.1
+   Compiling parking_lot_core v0.9.12
+   Compiling scopeguard v1.2.0
+   Compiling lock_api v0.4.14
+   Compiling semver v1.0.28
+   Compiling parking_lot v0.12.5
+   Compiling shlex v1.3.0
+   Compiling rustc_version v0.4.1
+   Compiling find-msvc-tools v0.1.9
+   Compiling subtle v2.6.1
+   Compiling cc v1.2.61
+   Compiling generic-array v0.14.7
+   Compiling fnv v1.0.7
+   Compiling itoa v1.0.18
+   Compiling typenum v1.20.0
+   Compiling either v1.15.0
+   Compiling num-traits v0.2.19
+   Compiling getrandom v0.2.17
+   Compiling thiserror v1.0.69
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v2.0.18
+   Compiling futures-macro v0.3.32
+   Compiling tracing-attributes v0.1.31
+   Compiling futures-util v0.3.32
+   Compiling zerocopy-derive v0.8.48
+   Compiling tracing v0.1.44
+   Compiling displaydoc v0.2.5
+   Compiling futures-executor v0.3.32
+   Compiling zerofrom-derive v0.1.7
+   Compiling toml_datetime v0.6.3
+   Compiling serde_spanned v0.6.9
+   Compiling toml_edit v0.20.2
+   Compiling bytes v1.11.1
+   Compiling zerofrom v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling toml v0.8.2
+   Compiling yoke v0.8.2
+   Compiling zerovec v0.11.6
+   Compiling system-deps v6.2.2
+   Compiling ppv-lite86 v0.2.21
+   Compiling pin-project-internal v1.1.11
+   Compiling glib-sys v0.18.1
+   Compiling gobject-sys v0.18.0
+   Compiling gio-sys v0.18.1
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling pin-project v1.1.11
+   Compiling thiserror-impl v1.0.69
+   Compiling digest v0.10.7
+   Compiling tinystr v0.8.3
+   Compiling zeroize_derive v1.4.3
+   Compiling litemap v0.8.2
+   Compiling writeable v0.6.3
+   Compiling strsim v0.11.1
+   Compiling zeroize v1.8.2
+   Compiling icu_locale_core v2.2.0
+   Compiling potential_utf v0.1.5
+   Compiling zerotrie v0.2.4
+   Compiling icu_properties_data v2.2.0
+   Compiling utf8_iter v1.0.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling icu_normalizer_data v2.2.0
+   Compiling unicode-segmentation v1.13.2
+   Compiling icu_collections v2.2.0
+   Compiling icu_provider v2.2.0
+   Compiling cpufeatures v0.2.17
+   Compiling rustversion v1.0.22
+   Compiling static_assertions v1.1.0
+   Compiling percent-encoding v2.3.2
+   Compiling mio v1.2.0
+   Compiling proc-macro-error-attr v1.0.4
+   Compiling ident_case v1.0.1
+   Compiling syn v1.0.109
+   Compiling icu_properties v2.2.0
+   Compiling icu_normalizer v2.2.0
+   Compiling gdk-sys v0.18.2
+   Compiling proc-macro-error v1.0.4
+   Compiling data-encoding v2.11.0
+   Compiling byteorder v1.5.0
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling form_urlencoded v1.2.2
+   Compiling futures v0.3.32
+   Compiling rand_core v0.6.4
+   Compiling url v2.5.8
+   Compiling pango-sys v0.18.0
+   Compiling gdk-pixbuf-sys v0.18.0
+   Compiling cairo-sys-rs v0.18.2
+   Compiling atk-sys v0.18.2
+   Compiling proc-macro-crate v2.0.2
+   Compiling curve25519-dalek v4.1.3
+   Compiling socket2 v0.6.3
+   Compiling anyhow v1.0.102
+   Compiling heck v0.4.1
+   Compiling powerfmt v0.2.0
+   Compiling time-core v0.1.8
+   Compiling num-conv v0.2.1
+   Compiling glib-macros v0.18.5
+   Compiling deranged v0.5.8
+   Compiling time-macros v0.2.27
+   Compiling tokio-macros v2.7.0
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling num_threads v0.1.7
+   Compiling tokio v1.52.3
+   Compiling time v0.3.47
+   Compiling glib v0.18.5
+   Compiling rand_chacha v0.3.1
+   Compiling signature v2.2.0
+   Compiling unsigned-varint v0.8.0
+   Compiling vcpkg v0.2.15
+   Compiling getrandom v0.3.4
+   Compiling data-encoding-macro-internal v0.1.18
+   Compiling ed25519 v2.2.3
+   Compiling rand v0.8.6
+   Compiling quick-protobuf v0.8.1
+   Compiling sha2 v0.10.9
+   Compiling hmac v0.12.1
+   Compiling gtk-sys v0.18.2
+   Compiling match-lookup v0.1.2
+   Compiling rustc-hash v2.1.2
+   Compiling const-str v0.4.3
+   Compiling paste v1.0.15
+   Compiling base256emoji v1.0.2
+   Compiling hkdf v0.12.4
+   Compiling ed25519-dalek v2.2.0
+   Compiling data-encoding-macro v0.1.20
+   Compiling multihash v0.19.5
+   Compiling ring v0.17.14
+   Compiling gio v0.18.4
+   Compiling cfg_aliases v0.2.1
+   Compiling base-x v0.2.11
+   Compiling bs58 v0.5.1
+   Compiling libp2p-identity v0.2.13
+   Compiling multibase v0.9.2
+   Compiling rand_core v0.9.5
+   Compiling num-integer v0.1.46
+   Compiling slotmap v1.1.1
+   Compiling dioxus-core-types v0.7.9
+   Compiling konst_macro_rules v0.2.19
+   Compiling web-time v1.1.0
+   Compiling arrayref v0.3.9
+   Compiling unsigned-varint v0.7.2
+   Compiling futures-timer v3.0.3
+   Compiling simd-adler32 v0.3.9
+   Compiling unicode-xid v0.2.6
+   Compiling const_format_proc_macros v0.2.34
+   Compiling multistream-select v0.13.0
+   Compiling konst v0.2.20
+   Compiling multiaddr v0.18.2
+   Compiling num-bigint v0.4.6
+   Compiling rand_chacha v0.9.0
+   Compiling rw-stream-sink v0.4.0
+   Compiling darling_core v0.21.3
+   Compiling subsecond-types v0.7.9
+   Compiling memmap2 v0.9.10
+   Compiling libloading v0.8.9
+   Compiling libp2p-core v0.43.2
+   Compiling subsecond v0.7.9
+   Compiling rand v0.9.4
+   Compiling const_format v0.2.36
+   Compiling generational-box v0.7.9
+   Compiling itertools v0.14.0
+   Compiling memoffset v0.9.1
+   Compiling longest-increasing-subsequence v0.1.0
+   Compiling untrusted v0.9.0
+   Compiling adler2 v2.0.1
+   Compiling rustix v1.1.4
+   Compiling miniz_oxide v0.8.9
+   Compiling dioxus-core v0.7.9
+   Compiling darling_macro v0.21.3
+   Compiling darling v0.21.3
+   Compiling crossbeam-epoch v0.9.18
+   Compiling toml_edit v0.19.15
+   Compiling field-offset v0.3.6
+   Compiling aho-corasick v1.1.4
+   Compiling lazy_static v1.5.0
+   Compiling rayon-core v1.13.0
+   Compiling regex-syntax v0.8.10
+   Compiling linux-raw-sys v0.12.1
+   Compiling zmij v1.0.21
+   Compiling proc-macro-crate v1.3.1
+   Compiling pango v0.18.3
+   Compiling regex-automata v0.4.14
+   Compiling gdk-pixbuf v0.18.5
+   Compiling crossbeam-deque v0.8.6
+   Compiling cairo-rs v0.18.5
+   Compiling openssl-sys v0.9.114
+   Compiling equator-macro v0.4.2
+   Compiling warnings-macro v0.2.0
+   Compiling gtk v0.18.2
+   Compiling x11 v2.21.0
+   Compiling crc32fast v1.5.0
+   Compiling serde_json v1.0.149
+   Compiling winnow v0.7.15
+   Compiling lazy-js-bundle v0.7.9
+   Compiling equator v0.4.2
+   Compiling warnings v0.2.1
+   Compiling gdk v0.18.2
+   Compiling gtk3-macros v0.18.2
+   Compiling atk v0.18.2
+   Compiling convert_case v0.8.0
+   Compiling rustls-pki-types v1.14.1
+   Compiling async-trait v0.1.89
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling errno v0.3.14
+   Compiling allocator-api2 v0.2.21
+   Compiling foldhash v0.2.0
+   Compiling foldhash v0.1.5
+   Compiling signal-hook v0.3.18
+   Compiling minimal-lexical v0.2.1
+   Compiling hashbrown v0.15.5
+   Compiling nom v7.1.3
+   Compiling hashbrown v0.16.1
+   Compiling signal-hook-registry v1.4.8
+   Compiling aligned-vec v0.6.4
+   Compiling dioxus-signals v0.7.9
+   Compiling netlink-packet-core v0.8.1
+   Compiling nix v0.30.1
+   Compiling darling_core v0.23.0
+   Compiling keyboard-types v0.7.0
+   Compiling soup3-sys v0.5.0
+   Compiling javascriptcore-rs-sys v1.1.1
+   Compiling const-serialize-macro v0.7.2
+   Compiling base64 v0.22.1
+   Compiling bitflags v1.3.2
+   Compiling arrayvec v0.7.6
+   Compiling rustls v0.23.40
+   Compiling const-serialize v0.7.2
+   Compiling flate2 v1.1.9
+   Compiling v_frame v0.3.9
+   Compiling rusticata-macros v4.1.0
+   Compiling hashlink v0.10.0
+   Compiling rustls-webpki v0.103.13
+   Compiling rayon v1.12.0
+   Compiling num-rational v0.4.2
+   Compiling darling_macro v0.23.0
+   Compiling netlink-sys v0.8.8
+   Compiling castaway v0.2.4
+   Compiling webkit2gtk-sys v2.0.1
+   Compiling asn1-rs-impl v0.2.0
+   Compiling strum_macros v0.27.2
+   Compiling const-serialize-macro v0.8.0-alpha.0
+   Compiling asn1-rs-derive v0.6.0
+   Compiling libp2p-swarm-derive v0.35.1
+   Compiling as-slice v0.2.1
+   Compiling ryu v1.0.23
+   Compiling libxdo-sys v0.11.0
+   Compiling openssl v0.10.78
+   Compiling tinyvec_macros v0.1.1
+   Compiling indoc v2.0.7
+   Compiling foreign-types-shared v0.1.1
+   Compiling unicode-width v0.2.2
+   Compiling av-scenechange v0.14.1
+   Compiling built v0.8.0
+   Compiling instability v0.3.12
+   Compiling dioxus-cli-config v0.7.9
+   Compiling unicode-truncate v2.0.1
+   Compiling foreign-types v0.3.2
+   Compiling strum v0.27.2
+   Compiling rav1e v0.8.1
+   Compiling tinyvec v1.11.0
+   Compiling compact_str v0.9.0
+   Compiling aligned v0.4.3
+   Compiling libp2p-swarm v0.47.1
+   Compiling asn1-rs v0.7.1
+   Compiling darling v0.23.0
+   Compiling netlink-proto v0.12.0
+   Compiling dioxus-rsx v0.7.9
+   Compiling netlink-packet-route v0.28.0
+   Compiling lru v0.16.4
+   Compiling kasuari v0.4.12
+   Compiling matchers v0.2.0
+   Compiling sharded-slab v0.1.7
+   Compiling enumset_derive v0.14.0
+   Compiling fdeflate v0.3.7
+   Compiling crossbeam-channel v0.5.15
+   Compiling convert_case v0.10.0
+   Compiling http v1.4.0
+   Compiling arg_enum_proc_macro v0.3.4
+   Compiling openssl-macros v0.1.1
+   Compiling profiling-procmacros v1.0.17
+   Compiling tracing-log v0.2.0
+   Compiling ahash v0.8.12
+   Compiling no_std_io2 v0.9.3
+   Compiling nom v8.0.0
+   Compiling thread_local v1.1.9
+   Compiling ipnet v2.12.0
+   Compiling option-ext v0.2.0
+   Compiling pastey v0.1.1
+   Compiling oid-registry v0.8.1
+   Compiling y4m v0.8.0
+   Compiling dpi v0.1.2
+   Compiling native-tls v0.2.18
+   Compiling winnow v1.0.2
+   Compiling quick-error v2.0.1
+   Compiling nu-ansi-term v0.50.3
+   Compiling httparse v1.10.1
+   Compiling av1-grain v0.2.5
+   Compiling tracing-subscriber v0.3.23
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling dirs-sys v0.5.0
+   Compiling bitstream-io v4.10.0
+   Compiling profiling v1.0.17
+   Compiling rtnetlink v0.20.0
+   Compiling derive_more-impl v2.1.1
+   Compiling enumset v1.1.10
+   Compiling ratatui-core v0.1.0
+   Compiling dioxus-core-macro v0.7.9
+   Compiling maybe-rayon v0.1.1
+   Compiling dioxus-hooks v0.7.9
+   Compiling dioxus-html-internal-macro v0.7.9
+   Compiling quinn-udp v0.5.14
+   Compiling libsqlite3-sys v0.36.0
+   Compiling concurrent-queue v2.5.0
+   Compiling euclid v0.22.14
+   Compiling gdkx11-sys v0.18.2
+   Compiling half v2.7.1
+   Compiling serde_repr v0.1.20
+   Compiling num-derive v0.4.2
+   Compiling cookie v0.18.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling simd_helpers v0.1.0
+   Compiling x11-dl v2.21.0
+   Compiling libloading v0.7.4
+   Compiling noop_proc_macro v0.3.0
+   Compiling raw-window-handle v0.6.2
+   Compiling weezl v0.1.12
+   Compiling utf8parse v0.2.2
+   Compiling new_debug_unreachable v1.0.6
+   Compiling openssl-probe v0.2.1
+   Compiling rand_core v0.10.1
+   Compiling litrs v1.0.0
+   Compiling zune-core v0.5.1
+   Compiling uuid v1.23.1
+   Compiling imgref v1.12.1
+   Compiling parking v2.2.1
+   Compiling getrandom v0.4.2
+   Compiling loop9 v0.1.5
+   Compiling event-listener v5.4.1
+   Compiling cfb v0.7.3
+   Compiling zune-jpeg v0.5.15
+   Compiling document-features v0.2.12
+   Compiling anstyle-parse v1.0.0
+   Compiling libappindicator-sys v0.9.0
+   Compiling dioxus-html v0.7.9
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling libxdo v0.6.0
+   Compiling derive_more v2.1.1
+   Compiling if-watch v3.2.2
+   Compiling dirs v6.0.0
+   Compiling javascriptcore-rs v1.1.2
+   Compiling soup3 v0.5.0
+   Compiling der-parser v10.0.0
+   Compiling const-serialize v0.8.0-alpha.0
+   Compiling signal-hook-mio v0.2.5
+   Compiling avif-serialize v0.8.8
+   Compiling pem v3.0.6
+   Compiling dioxus-document v0.7.9
+   Compiling dioxus-interpreter-js v0.7.9
+   Compiling gethostname v1.1.0
+   Compiling zune-inflate v0.2.54
+   Compiling quinn v0.11.9
+   Compiling yasna v0.5.2
+   Compiling sha1 v0.10.6
+   Compiling asynchronous-codec v0.7.0
+   Compiling sledgehammer_bindgen_macro v0.6.5
+   Compiling dlopen2_derive v0.4.3
+   Compiling snow v0.9.6
+   Compiling line-clipping v0.3.7
+   Compiling socket2 v0.5.10
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling x11rb-protocol v0.13.2
+   Compiling bytemuck v1.25.0
+   Compiling lebe v0.5.3
+   Compiling rfd v0.17.2
+   Compiling bit_field v0.10.3
+   Compiling byteorder-lite v0.1.0
+   Compiling owo-colors v4.3.0
+   Compiling diesel_derives v2.3.9
+   Compiling anstyle v1.0.14
+   Compiling colorchoice v1.0.5
+   Compiling lru-slab v0.1.2
+   Compiling wry v0.53.5
+   Compiling object v0.37.3
+   Compiling rustc-hash v1.1.0
+   Compiling nohash-hasher v0.2.0
+   Compiling anstyle-query v1.1.5
+   Compiling color_quant v1.1.0
+   Compiling fax v0.2.7
+   Compiling dunce v1.0.5
+   Compiling utf-8 v0.7.6
+   Compiling pxfm v0.1.29
+   Compiling rgb v0.8.53
+   Compiling tiff v0.11.3
+   Compiling ravif v0.13.0
+   Compiling tungstenite v0.28.0
+   Compiling x11rb v0.13.2
+   Compiling moxcms v0.8.1
+   Compiling gif v0.14.2
+   Compiling anstream v1.0.0
+   Compiling sledgehammer_utils v0.3.1
+   Compiling quinn-proto v0.11.14
+   Compiling image-webp v0.2.4
+   Compiling dsl_auto_type v0.2.0
+   Compiling exr v1.74.0
+   Compiling sledgehammer_bindgen v0.6.0
+   Compiling qoi v0.4.1
+   Compiling ratatui-widgets v0.3.0
+   Compiling dlopen2 v0.8.2
+   Compiling rcgen v0.13.2
+   Compiling webkit2gtk v2.0.1
+   Compiling crossterm v0.29.0
+   Compiling manganis-core v0.7.9
+   Compiling x509-parser v0.17.0
+   Compiling hashbrown v0.14.5
+   Compiling muda v0.17.2
+   Compiling libappindicator v0.9.0
+   Compiling infer v0.19.0
+   Compiling event-listener-strategy v0.5.4
+   Compiling png v0.17.16
+   Compiling png v0.18.1
+   Compiling futures-rustls v0.26.0
+   Compiling dioxus-desktop v0.7.9
+   Compiling dioxus-devtools-types v0.7.9
+   Compiling gdkwayland-sys v0.18.2
+   Compiling enum-as-inner v0.6.1
+   Compiling macro-string v0.1.4
+   Compiling diesel_table_macro_syntax v0.3.0
+   Compiling clap_lex v1.1.0
+   Compiling xkeysym v0.2.1
+   Compiling raw-window-handle v0.5.2
+   Compiling color-spantrace v0.3.0
+   Compiling pollster v0.4.0
+   Compiling cpufeatures v0.3.0
+   Compiling eyre v0.6.12
+   Compiling gimli v0.32.3
+   Compiling iana-time-zone v0.1.65
+   Compiling chrono v0.4.44
+   Compiling global-hotkey v0.7.0
+   Compiling chacha20 v0.10.0
+   Compiling tao v0.34.8
+   Compiling addr2line v0.25.1
+   Compiling clap_builder v4.6.0
+   Compiling hickory-proto v0.25.2
+   Compiling manganis-macro v0.7.9
+   Compiling dioxus-devtools v0.7.9
+   Compiling libp2p-tls v0.6.2
+   Compiling image v0.25.10
+   Compiling tray-icon v0.21.3
+   Compiling async-channel v2.5.0
+   Compiling dioxus-asset-resolver v0.7.9
+   Compiling hashlink v0.9.1
+   Compiling ratatui-crossterm v0.1.0
+   Compiling yamux v0.12.1
+   Compiling yamux v0.13.10
+   Compiling quick-protobuf-codec v0.3.1
+   Compiling migrations_internals v2.3.0
+   Compiling tracing-error v0.2.1
+   Compiling dioxus-stores-macro v0.7.9
+   Compiling regex v1.12.3
+   Compiling dioxus-history v0.7.9
+   Compiling futures-bounded v0.2.4
+   Compiling x25519-dalek v2.0.1
+   Compiling webbrowser v1.2.1
+   Compiling clap_derive v4.6.1
+   Compiling hex_fmt v0.3.0
+   Compiling indenter v0.3.4
+   Compiling rustc-demangle v0.1.27
+   Compiling downcast-rs v2.0.2
+   Compiling diesel v2.3.9
+   Compiling backtrace v0.3.76
+   Compiling clap v4.6.1
+   Compiling libp2p-gossipsub v0.49.4
+   Compiling libp2p-noise v0.46.1
+   Compiling libp2p-request-response v0.29.0
+   Compiling dioxus-stores v0.7.9
+   Compiling migrations_macros v2.3.0
+   Compiling libp2p-yamux v0.47.0
+   Compiling libp2p-quic v0.13.0
+   Compiling manganis v0.7.9
+   Compiling libp2p-mdns v0.48.0
+   Compiling rand v0.10.1
+   Compiling ratatui-macros v0.7.0
+   Compiling libp2p-tcp v0.44.1
+   Compiling dioxus-logger v0.7.9
+   Compiling libp2p-allow-block-list v0.6.0
+   Compiling libp2p-connection-limits v0.6.0
+   Compiling petname-macros v3.0.0
+   Compiling dioxus-config-macro v0.7.9
+   Compiling dioxus-config-macros v0.7.9
+   Compiling p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+   Compiling dioxus v0.7.9
+   Compiling petname v3.0.0
+   Compiling libp2p v0.56.0
+   Compiling ratatui v0.30.0
+   Compiling color-eyre v0.6.5
+   Compiling ratatui-textarea v0.9.1
+   Compiling dotenvy v0.15.7
+   Compiling sdd v3.0.10
+   Compiling serial_test_derive v3.4.0
+   Compiling fastrand v2.4.1
+   Compiling scc v2.4.0
+   Compiling tempfile v3.27.0
+   Compiling temp-env v0.3.6
+   Compiling serial_test v3.4.0
+   Compiling diesel_migrations v2.3.2
+error: could not compile `p2p_app` (test "fmt") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `p2p_app` (test "p2p_integration") due to 1 previous error
+error: could not compile `p2p_app` (test "tui_state") due to 1 previous error
+[2m2026-06-11T18:44:28.915988Z[0m [31mERROR[0m [2mcargo_tarpaulin[0m[2m:[0m Failed to compile tests!
+error: linking with `cc` failed: exit status: 1
+  |
+  = note:  "cc" "-m64" "/home/runner/work/p2p_app/p2p_app/target/debug/deps/rustcPRXC7J/symbols.o" "<2 object files omitted>" "-Wl,--as-needed" "-Wl,-Bstatic" "/home/runner/work/p2p_app/p2p_app/target/debug/deps/{libp2p_app-fee3c68b510e67a9,libpetname-9954a3be39cb748b,librand-53cda512c181ef61,libgetrandom-8b75a12ad8bf8902,libchacha20-da5fbc84ba140697,libcpufeatures-ed11e07926761f2a,librand_core-318971099bdfc28c,libratatui-ad9598771469513b,libratatui_macros-23a193ceca61907b,libratatui_widgets-e1020ee6b56d8223,libline_clipping-a21022218bffb779,libratatui_crossterm-8835d7ba85d5e928,libcrossterm-cca04845aae99026,libderive_more-3156eb8b4ce2fcf6,libsignal_hook_mio-293c08bab3529086,libratatui_core-752a3e51caf4a7d1,libunicode_truncate-76d6139e7d72db40,liblru-9e9a9ec85f493b75,libkasuari-9b920c1a059909c6,libhashbrown-b5e011ac0d46730b,libequivalent-2a4a4605028b0b1a,liballocator_api2-fe4901b495e22d49,libfoldhash-0a2c6d228e052e77,libcompact_str-49ca809e3d7dc395,libryu-21f3cab7b5778d35,libcastaway-fee2c0a973b35a42,libunicode_width-dee8ac4ece7d9d99,libstrum-19a6628c0cd73f61,libdioxus-d3e2f32ab5af8477,libmanganis-7754683c4a43f9c6,libmanganis_core-f55252ceeb6ad959,libconst_serialize-60e5f2c85747ec44,libconst_serialize-f8de203a48d9388f,libdioxus_config_macros-ee471a904122a7e8,libdioxus_desktop-d05521602dfa2cdf,libdioxus_asset_resolver-fd0373ccee64accc,libinfer-b56aaf8b3cd60c67,libcfb-c2f2f5e3b649b1a2,libuuid-9f186ba496988b13,librfd-d739dd3d98e76d99,libpollster-16f1b416bc308c48,libwebbrowser-306e95cab008019a,libtray_icon-0af93d994b32c96a,libpng-14b54b6f7e2708bd,libbitflags-077ce0d22d8ca6a9,liblibappindicator-00aaeb00fedecfd4,liblibappindicator_sys-cfdace49f865ac1d,liblibloading-faceece3194c651d,libglobal_hotkey-19d61fd8fb8da781,libxkeysym-64300bdcd1f64cc8,libx11rb-63947ed9ce26699e,libgethostname-2d79f05a774cb81a,librustix-b639cd16e22091aa,liblinux_raw_sys-f36f9e839d4cf8e1,libx11rb_protocol-bcbfc81c1c099e83,libmuda-e7bf0153fc25f91d,liblibxdo-e2f1911452e611d9,liblibxdo_sys-218562ef6c5e7c00,libdioxus_interpreter_js-7c212b417f6b6bce,libsledgehammer_utils-90e45bce38851ba1,librustc_hash-fe5724761b55f539,libsledgehammer_bindgen-b584e3e642d7367a,libimage-1f8210174280ecde,libqoi-3dbf27bf03f00373,libmoxcms-dac898a40571dcee,libpxfm-3ddea5d38c3723d7,libimage_webp-e95d059a97aba6f6,libtiff-5bb1df4dc0644486,libfax-cc3d82231123ed8a,libpng-274742834f3dbc5e,libflate2-c742c5158e6dd326,libfdeflate-0d84490af649cdd2,libcrc32fast-cb868de982fc35b2,libexr-678b0c24d11ef0e4,libzune_inflate-47dd16b1a9853c0c,libbit_field-c947dbcbf8305176,liblebe-608e797dbcef399b,libhalf-bfa9701f7dd9fef6,libzune_jpeg-45d3f67e4eb15773,libzune_core-646f749a2bb34d51,libgif-ea9f09c07b3b9ff2,libcolor_quant-d8f5371251718765,libweezl-9747182c2f97203f,libbyteorder_lite-a0fbc1429491a7d8,libravif-5778f94fedec29ef,libloop9-92400a9281ab6450,libavif_serialize-81dc53e7b38427b6,libquick_error-f71d95e18f1d9bbe,librgb-652d4fc3a0f5fe50,librav1e-1438cd75eb976fe3,libprofiling-3696f6b5d81afdab,libav_scenechange-32774b8325560579,liby4m-dec36a57f6833414,libaligned-a886f607c2f6ce71,libas_slice-8e60a1aa33ae3997,libav1_grain-c76492a3caa5bd21,libnom-9b981c6caf9aa741,libnum_rational-41227e856798ee73,libmaybe_rayon-b746618259b07728,librayon-e795fbf35748aa57,librayon_core-7e8183be6133d0fd,libcrossbeam_deque-38a0d6bd9e87a566,libcrossbeam_epoch-ffa2a0643c5d2758,libv_frame-9453ccb575ba832b,libarrayvec-26c2693ad956ffcd,libaligned_vec-12894505598a7367,libequator-5842a04d296dfd40,libbitstream_io-ee18732a643b543b,libitertools-c6c1559e4848eb7a,libimgref-c11212cd9e8f93b8,libbytemuck-f235df2279f26552,libsignal_hook-f9ae87f2f83beb93,libsignal_hook_registry-2654fc9ee2e1dad4,liberrno-6e00db2b93c816ab,libwry-afaf6f6da7083de1,libdirs-19b03b2c3316cbc3,libdirs_sys-df767784b850b28a,liboption_ext-88b0126c31b6652e,libcookie-b7a9966e2c215e16,libwebkit2gtk-01bea4336665730e,libsoup-73832997818e95fb,libwebkit2gtk_sys-af46cb6b28e9a28e,libsoup3_sys-95fdf8f99a62faed,libjavascriptcore-8f7572bdfe52956a,libjavascriptcore_rs_sys-a0744b60e6c3d298,libtao-702dedf3d45b9fba,libgdk_x11_sys-4d29944b912c0042,libx11-079a8e0f670b2858,libgdk_wayland_sys-6f99a484d1241d6f,libdlopen2-2389971729b6f4e6,libcrossbeam_channel-484d7a54f1ca7b3e,libx11_dl-863079e253c2928f,libgtk-089685b7de1bc7c9,libfield_offset-aedb34b0586776c4,libmemoffset-9f64cae30b243e4b,libgdk-da0d06093d3a0b5b,libpango-b84fba4b606935de,libgdk_pixbuf-07037c8423ae7f32,libgio-6fa0c0ab533d695f,libcairo-ad05b9b5298252c8,libatk-ac544891e270fdf3,libglib-f7ebba5320eb7808,libgtk_sys-c0b20eb4d7a93dde,libatk_sys-834d7b2b29d5060a,libgdk_sys-cf38aa550c4b1d42,libpango_sys-6c36a922043bce3b,libgdk_pixbuf_sys-e3dcdcae6dbd507c,libgio_sys-6dac3061485b06e2,libcairo_sys-176c7e729af7c884,libgobject_sys-4c910fff0f435e4d,libglib_sys-3f54f5e138f4e38a,libdpi-5cc6438e1465b3b4,libraw_window_handle-075392b837e21d67,libraw_window_handle-34d7fc43bc17707e,libdioxus_devtools-cfdc0db731cdb82d,libtungstenite-bebe1326f0b29796,libnative_tls-2d41269b8ed3f579,libopenssl_probe-0bc19d2b3bbd11d7,libopenssl-e1ebb927ae4e17e6,libforeign_types-4429a0871f075752,libforeign_types_shared-1b53f0460d7df60e,libopenssl_sys-d5096f296d2e7a5f,libutf8-205e575a7f26d51d,libsha1-b43d5ac1298d9360,libhttparse-2cf64db8fb39d617,libhttp-4b461a7465a23006,libdioxus_devtools_types-3e0ece3bcf4407a3,libdioxus_logger-66a2642f656a57d9,libdioxus_cli_config-6b00da669fddc9b1,libdioxus_history-12ce4edb95501c60,libdioxus_document-9310dbd473795ca9,libdioxus_html-b40f43eeb8a5584d,libenumset-0bc6850c9dfce065,libeuclid-28aea91aaaece5c1,libkeyboard_types-508ba67d527da139,libunicode_segmentation-96edb41648344eb1,libdioxus_stores-5faa5b2e9965439c,libdioxus_hooks-ef2af8706281890e,libdioxus_signals-b937a5cbc9a91ce7,libwarnings-0f1a2aa876a7dc15,libdioxus_core-0472b9d9cc43c76d,libsubsecond-40de205f245804d7,liblibloading-bf808d3abf3642fa,libsubsecond_types-a6268f75b2684e83,liblongest_increasing_subsequence-2e24d85feb713d6f,libconst_format-eebb19055e58d7a5,libkonst-e2b33484cb9ca67f,libkonst_macro_rules-dc7f20b4f0c1e410,libanyhow-6eb11c691c561def,libslotmap-cfedaa97979f4d98,libdioxus_core_types-6659d7c33b763c39,libgenerational_box-681ed701cc50883c,libdotenvy-22b1e93f6efcfe10,libdiesel_migrations-613ad2b8681a0be2,libmigrations_internals-d29cc28c77f712fc,libtoml-4acc2374091836f7,libwinnow-da51cd8fd29f2fd6,libtoml_parser-0bf7d386a30578b8,libwinnow-0ffbdc04000117eb,libserde_spanned-e9edf64ec1b04455,libtoml_datetime-11145f9611fb7828,libdiesel-9a59eb16403479f5,libdowncast_rs-ffc6ba7f92db282d,libchrono-a7082b8b38fd8881,libiana_time_zone-624ac6c4110efc96,liblibsqlite3_sys-b532fe9e6c9d0f4b,libcolor_eyre-d31825e089efa5ec,libcolor_spantrace-7a97aa2e26c28375,libtracing_error-c1a3628d419e4b53,libtracing_subscriber-a61cc2093c47591c,libsharded_slab-df38c4a53e1f3963,libmatchers-76f012437ce1417f,libnu_ansi_term-9f86d6b81a784f4a,libthread_local-cdad6418e7394d4b,libtracing_log-01358295f3c374c3,libowo_colors-713180c6cb3f1ad4,libeyre-f239da78f65f9ae3,libindenter-6754d763b21e2128,libbacktrace-8d05af994240c2c9,libminiz_oxide-6c15bf4f96e8278e,libsimd_adler32-ef6d3294a65ddcef,libobject-0ee54aa56ad61357,libaddr2line-18fea2450d80ac22,libgimli-c108656d0f8a6bb7,librustc_demangle-6fff29ef515f2bfd,liblibp2p-90e9e407824250ec,liblibp2p_yamux-a0cdf07b1d78bd30,libyamux-9fc95ab331fb3933,libyamux-8330ef5a613e3978,libnohash_hasher-501311728b1d87ae,liblibp2p_tcp-72d133194a7afff5,liblibp2p_request_response-bba7392231d2f854,libserde_json-91a0dd27d0a9611e,libzmij-189afda7a497bde9,libfutures_bounded-e9e8ffeca64890a9,liblibp2p_quic-e44f2208d36dbeae,liblibp2p_tls-ffdb2285aa61e276,librcgen-6c3527cad7c29375,libpem-f461503fea995f4d,libyasna-dbe8b05fdb007bc4,libfutures_rustls-ee18d5c57043743a,libx509_parser-8de573c5565ce438,liblazy_static-afcf494a911d17fb,liboid_registry-f775b4b41a3e34d2,libder_parser-b0ce8785cff9f152,libnum_bigint-e98b5b3697cc32d6,libnum_integer-07ffb30258c59a3b,libasn1_rs-a4ebadb440ee9d16,librusticata_macros-f247ac81ef705df2,libnom-ab7168db6c487d75,libnum_traits-030118d320e92db9,libtime-a9352b9b0aa9254a,libnum_threads-ee590a4d6819bed9,libitoa-213271762266c20b,libtime_core-10400c61c3239b7d,libnum_conv-a19119bb82509e7e,libderanged-da47d80642a18f18,libpowerfmt-ef690559e079622c,libquinn-bb9cfe294bc244c5,libquinn_udp-1933f8e17cc51190,libquinn_proto-62452f45e55a9d9b,liblru_slab-8d836af9550e15b1,librustls-538aa57ca6804915,libwebpki-115418ef7198b5ad,librustls_pki_types-61f171359a6b66f1,librustc_hash-999863492932cf55,liblibp2p_noise-fc3d5a3d193909c6,libx25519_dalek-664a83fee2330c7b,libsnow-ac972db337fe9a97,libring-96c5f7ea7564d062,libuntrusted-6edea424d6cad1e5,liblibp2p_mdns-a16d239712a96178,libif_watch-3e88e96d8fc1dba8,librtnetlink-b2e0985f2e17a314,libnix-5338d7df1ac77852,libnetlink_proto-012caf1608f6b496,libnetlink_sys-5eabc193e960bb3b,libnetlink_packet_route-40813a7c777f37e6,libbitflags-fa4b4bab6082700b,libnetlink_packet_core-590fa404aee0f955,libsocket2-a5c1ff879dcae694,libhickory_proto-162c753621d12687,librand-5dc10e715a8094c2,librand_chacha-e29bde82d8f1940d,librand_core-43ce1c4cda15c8b6,libgetrandom-ffd5e7a22a62be6a,libipnet-0267fd214d5ad15f,libtinyvec-6486a6812cd58dc2,libtinyvec_macros-50b7f692c02909be,liblibp2p_gossipsub-84a9b62b2082b08a,libhex_fmt-e06a50a82251fff7,libregex-965ba6afb060263e,libregex_automata-2d29bdf1362dc164,libaho_corasick-04aa817857a95c2f,libregex_syntax-fafb274516872f4b,libasync_channel-9239a37c72d67320,libevent_listener_strategy-7ca05660efc51cff,libevent_listener-0526da956da01764,libparking-ba0ec8737ed014a6,libconcurrent_queue-df99c9dbf2ace290,libcrossbeam_utils-22c61e9ed73a1537,libquick_protobuf_codec-d6f80ebae7ed3c6d,libthiserror-59a342688e4419a0,libbase64-fe817925a73e08ab,libasynchronous_codec-3eb1a1e269e63575,libhashlink-6862450717421f22,libhashbrown-8bc4ddb0b3faaf12,libahash-18f06b321a14bc88,liblibp2p_connection_limits-958b9546a89c182f,liblibp2p_allow_block_list-a481331418e628fb,liblibp2p_swarm-947edd8f9ff9c61b,libtokio-1d76e1cb65532fa8,libsocket2-1392ad062acadd65,libmio-5d7bdecd0e85b232,libhashlink-89fcfa8676c7cd82,libhashbrown-07369d24c8abe9dd,libfoldhash-13c0bea5dcd3e28d,liblibp2p_core-ed16192ebffd3c0b,libmultistream_select-5449ea4c31222462,liblog-7dcebd24705ce3d7,libunsigned_varint-764731c7bca70dc1,libfutures_timer-e1b6af63c5b17576,librw_stream_sink-51bda1a7a0e2081b,libparking_lot-ebda72e103a02dba,libparking_lot_core-edb86e1b872e6d42,liblock_api-c384b77ce02994eb,libscopeguard-8644f2cfd50a03d9,libfnv-5649aa5debe4b9c3,libweb_time-6eb6a5b23023c62a,libpin_project-7a844ae687593699,libeither-768a721c24f7181d,libmultiaddr-357bfb4a1d9cae55,liburl-1f205dc3ba0ec54c,libidna-b6bd7bbcab744cda,libidna_adapter-04375dc4b48b90d5,libicu_properties-acdfc7f5b532a1f1,libicu_properties_data-9c81925f81eeaf6f,libicu_normalizer-08b9f0848c34a598,libsmallvec-d1dc8a9ffa51379b,libicu_normalizer_data-9f71be142fd3b39a,libicu_collections-d6ef171f4e965a77,libutf8_iter-494ed9edd0f1eea8,libpotential_utf-9a338cb8f420d908,libicu_provider-93b9d8d4fbd1140a,libicu_locale_core-40f83bc8b6db3767,libtinystr-349283784468f256,liblitemap-ee4db417fdb44e06,libwriteable-d152cae354b32fa3,libzerovec-2c8075980939cc7d,libzerotrie-b0ab8e43c075f977,libyoke-2177baeb3fdfb661,libstable_deref_trait-30a3d746d74faab3,libzerofrom-3def15c887725a98,libform_urlencoded-d6f0aa078eb7928b,libpercent_encoding-f3872696cf56032f,libmultibase-33d1e9ee1426cc2e,libbase_x-04236e4a2aaddbd5,libbase256emoji-c28081965899e7ea,libconst_str-9b3c748c65228a41,libdata_encoding_macro-65eb783e7cc71986,libstatic_assertions-355e124e04148788,liblibp2p_identity-05408f7aa69ba46c,libbs58-227da6bc9d461698,libhkdf-5f1bf4721fb1c39a,libhmac-840f2b244a43e9d6,libtracing-292fb326ce117119,libtracing_core-64ed763680f57dfb,libonce_cell-5b578e1fbcd8c0bf,libportable_atomic-aa13041ad6aca575,libthiserror-866b3514ee2d4633,libquick_protobuf-6c7797cec81a76dc,librand-fffdd7518d8a43ae,librand_chacha-75473e0c45461273,libppv_lite86-271fac3a6b092def,libzerocopy-99823e907f9b1878,librand_core-810cfc6f4a348a51,libgetrandom-9cb99acde1ae4207,liblibc-e6fb16f9a285b28b,libed25519_dalek-b22c214dbd82b1d7,libsha2-b7f609b14597fab1,libcurve25519_dalek-98112ce8145ae8ed,libcpufeatures-4aa8d0a958da2fdb,libzeroize-942c2e12b5c81f28,libcfg_if-0bbfe6ed3936f9fe,libdigest-ff88a72375c7290b,libsubtle-baa3c7f5694f0b2e,libblock_buffer-a4fe074318196838,libcrypto_common-658029810773556e,libgeneric_array-bd45dc01bb2644e9,libtypenum-d64d1effd2770339,libed25519-b10b0e284fdee568,libsignature-b5a60d205ea766ad,libdata_encoding-9a07f06c5e3a14c0,libbyteorder-f4c5d0398eb81263,libarrayref-b49d58f0a64a246c,libmultihash-ae560cf25d94f216,libunsigned_varint-c6800f4cacac29ce,libfutures-f2f4a30c79465131,libfutures_executor-3a80cce961bca5dd,libfutures_util-71b9ea88c9011927,libmemchr-5a3b48da333b7996,libfutures_io-296f37f99aad67cb,libslab-c73913fd319cd195,libfutures_channel-c93605cf999df017,libpin_project_lite-f49419fa62f322be,libfutures_sink-16737969c2997f1c,libfutures_task-50771f8fe8b700d9,libfutures_core-e453bdb83b7b6056,libbytes-01cbe44554f50211,libserde-8519eb010f2ba575,libserde_core-ad8d8ce6b1426931}.rlib" "<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*,libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "-Wl,-Bdynamic" "-ldl" "-lxdo" "-lwebkit2gtk-4.1" "-lgtk-3" "-lgdk-3" "-lz" "-lpangocairo-1.0" "-lpango-1.0" "-lharfbuzz" "-latk-1.0" "-lcairo-gobject" "-lcairo" "-lgdk_pixbuf-2.0" "-lsoup-3.0" "-lgmodule-2.0" "-lgio-2.0" "-ljavascriptcoregtk-4.1" "-lgobject-2.0" "-lglib-2.0" "-lsoup-3.0" "-lgmodule-2.0" "-lgio-2.0" "-lgobject-2.0" "-lglib-2.0" "-ljavascriptcoregtk-4.1" "-lgobject-2.0" "-lglib-2.0" "-lgdk-3" "-lz" "-lpangocairo-1.0" "-lpango-1.0" "-lharfbuzz" "-lgdk_pixbuf-2.0" "-lcairo-gobject" "-lcairo" "-lgobject-2.0" "-lglib-2.0" "-ldl" "-lgobject-2.0" "-lgtk-3" "-lgdk-3" "-lz" "-lpangocairo-1.0" "-lpango-1.0" "-lharfbuzz" "-latk-1.0" "-lcairo-gobject" "-lcairo" "-lgdk_pixbuf-2.0" "-lgio-2.0" "-lgobject-2.0" "-lglib-2.0" "-latk-1.0" "-lgobject-2.0" "-lglib-2.0" "-lgdk-3" "-lz" "-lpangocairo-1.0" "-lpango-1.0" "-lharfbuzz" "-lgdk_pixbuf-2.0" "-lcairo-gobject" "-lcairo" "-lgobject-2.0" "-lglib-2.0" "-lpango-1.0" "-lgobject-2.0" "-lglib-2.0" "-lharfbuzz" "-lgdk_pixbuf-2.0" "-lgobject-2.0" "-lglib-2.0" "-lgio-2.0" "-lgobject-2.0" "-lglib-2.0" "-lcairo-gobject" "-lcairo" "-lgobject-2.0" "-lglib-2.0" "-lgobject-2.0" "-lglib-2.0" "-lgobject-2.0" "-lglib-2.0" "-lssl" "-lcrypto" "-ldl" "-lgcc_s" "-lutil" "-lrt" "-lpthread" "-lm" "-ldl" "-lc" "-L" "/home/runner/work/p2p_app/p2p_app/target/debug/deps/rustcPRXC7J/raw-dylibs" "-B<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/bin/gcc-ld" "-fuse-ld=lld" "-Wl,--eh-frame-hdr" "-Wl,-z,noexecstack" "-L" "/home/runner/work/p2p_app/p2p_app/target/debug/build/libsqlite3-sys-1175db76ab1fe919/out" "-L" "/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-7810dd571f86d333/out" "-L" "<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib" "-o" "/home/runner/work/p2p_app/p2p_app/target/debug/deps/fmt-94df8f4b451164d9" "-pie" "-Wl,-z,relro,-z,now" "-nodefaultlibs"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: collect2: fatal error: ld terminated with signal 7 [Bus error], core dumped
+          compilation terminated.
+          
+
+
+Error: "Failed to compile tests!\nerror: linking with `cc` failed: exit status: 1\n  |\n  = note:  \"cc\" \"-m64\" \"/home/runner/work/p2p_app/p2p_app/target/debug/deps/rustcPRXC7J/symbols.o\" \"<2 object files omitted>\" \"-Wl,--as-needed\" \"-Wl,-Bstatic\" \"/home/runner/work/p2p_app/p2p_app/target/debug/deps/{libp2p_app-fee3c68b510e67a9,libpetname-9954a3be39cb748b,librand-53cda512c181ef61,libgetrandom-8b75a12ad8bf8902,libchacha20-da5fbc84ba140697,libcpufeatures-ed11e07926761f2a,librand_core-318971099bdfc28c,libratatui-ad9598771469513b,libratatui_macros-23a193ceca61907b,libratatui_widgets-e1020ee6b56d8223,libline_clipping-a21022218bffb779,libratatui_crossterm-8835d7ba85d5e928,libcrossterm-cca04845aae99026,libderive_more-3156eb8b4ce2fcf6,libsignal_hook_mio-293c08bab3529086,libratatui_core-752a3e51caf4a7d1,libunicode_truncate-76d6139e7d72db40,liblru-9e9a9ec85f493b75,libkasuari-9b920c1a059909c6,libhashbrown-b5e011ac0d46730b,libequivalent-2a4a4605028b0b1a,liballocator_api2-fe4901b495e22d49,libfoldhash-0a2c6d228e052e77,libcompact_str-49ca809e3d7dc395,libryu-21f3cab7b5778d35,libcastaway-fee2c0a973b35a42,libunicode_width-dee8ac4ece7d9d99,libstrum-19a6628c0cd73f61,libdioxus-d3e2f32ab5af8477,libmanganis-7754683c4a43f9c6,libmanganis_core-f55252ceeb6ad959,libconst_serialize-60e5f2c85747ec44,libconst_serialize-f8de203a48d9388f,libdioxus_config_macros-ee471a904122a7e8,libdioxus_desktop-d05521602dfa2cdf,libdioxus_asset_resolver-fd0373ccee64accc,libinfer-b56aaf8b3cd60c67,libcfb-c2f2f5e3b649b1a2,libuuid-9f186ba496988b13,librfd-d739dd3d98e76d99,libpollster-16f1b416bc308c48,libwebbrowser-306e95cab008019a,libtray_icon-0af93d994b32c96a,libpng-14b54b6f7e2708bd,libbitflags-077ce0d22d8ca6a9,liblibappindicator-00aaeb00fedecfd4,liblibappindicator_sys-cfdace49f865ac1d,liblibloading-faceece3194c651d,libglobal_hotkey-19d61fd8fb8da781,libxkeysym-64300bdcd1f64cc8,libx11rb-63947ed9ce26699e,libgethostname-2d79f05a774cb81a,librustix-b639cd16e22091aa,liblinux_raw_sys-f36f9e839d4cf8e1,libx11rb_protocol-bcbfc81c1c099e83,libmuda-e7bf0153fc25f91d,liblibxdo-e2f1911452e611d9,liblibxdo_sys-218562ef6c5e7c00,libdioxus_interpreter_js-7c212b417f6b6bce,libsledgehammer_utils-90e45bce38851ba1,librustc_hash-fe5724761b55f539,libsledgehammer_bindgen-b584e3e642d7367a,libimage-1f8210174280ecde,libqoi-3dbf27bf03f00373,libmoxcms-dac898a40571dcee,libpxfm-3ddea5d38c3723d7,libimage_webp-e95d059a97aba6f6,libtiff-5bb1df4dc0644486,libfax-cc3d82231123ed8a,libpng-274742834f3dbc5e,libflate2-c742c5158e6dd326,libfdeflate-0d84490af649cdd2,libcrc32fast-cb868de982fc35b2,libexr-678b0c24d11ef0e4,libzune_inflate-47dd16b1a9853c0c,libbit_field-c947dbcbf8305176,liblebe-608e797dbcef399b,libhalf-bfa9701f7dd9fef6,libzune_jpeg-45d3f67e4eb15773,libzune_core-646f749a2bb34d51,libgif-ea9f09c07b3b9ff2,libcolor_quant-d8f5371251718765,libweezl-9747182c2f97203f,libbyteorder_lite-a0fbc1429491a7d8,libravif-5778f94fedec29ef,libloop9-92400a9281ab6450,libavif_serialize-81dc53e7b38427b6,libquick_error-f71d95e18f1d9bbe,librgb-652d4fc3a0f5fe50,librav1e-1438cd75eb976fe3,libprofiling-3696f6b5d81afdab,libav_scenechange-32774b8325560579,liby4m-dec36a57f6833414,libaligned-a886f607c2f6ce71,libas_slice-8e60a1aa33ae3997,libav1_grain-c76492a3caa5bd21,libnom-9b981c6caf9aa741,libnum_rational-41227e856798ee73,libmaybe_rayon-b746618259b07728,librayon-e795fbf35748aa57,librayon_core-7e8183be6133d0fd,libcrossbeam_deque-38a0d6bd9e87a566,libcrossbeam_epoch-ffa2a0643c5d2758,libv_frame-9453ccb575ba832b,libarrayvec-26c2693ad956ffcd,libaligned_vec-12894505598a7367,libequator-5842a04d296dfd40,libbitstream_io-ee18732a643b543b,libitertools-c6c1559e4848eb7a,libimgref-c11212cd9e8f93b8,libbytemuck-f235df2279f26552,libsignal_hook-f9ae87f2f83beb93,libsignal_hook_registry-2654fc9ee2e1dad4,liberrno-6e00db2b93c816ab,libwry-afaf6f6da7083de1,libdirs-19b03b2c3316cbc3,libdirs_sys-df767784b850b28a,liboption_ext-88b0126c31b6652e,libcookie-b7a9966e2c215e16,libwebkit2gtk-01bea4336665730e,libsoup-73832997818e95fb,libwebkit2gtk_sys-af46cb6b28e9a28e,libsoup3_sys-95fdf8f99a62faed,libjavascriptcore-8f7572bdfe52956a,libjavascriptcore_rs_sys-a0744b60e6c3d298,libtao-702dedf3d45b9fba,libgdk_x11_sys-4d29944b912c0042,libx11-079a8e0f670b2858,libgdk_wayland_sys-6f99a484d1241d6f,libdlopen2-2389971729b6f4e6,libcrossbeam_channel-484d7a54f1ca7b3e,libx11_dl-863079e253c2928f,libgtk-089685b7de1bc7c9,libfield_offset-aedb34b0586776c4,libmemoffset-9f64cae30b243e4b,libgdk-da0d06093d3a0b5b,libpango-b84fba4b606935de,libgdk_pixbuf-07037c8423ae7f32,libgio-6fa0c0ab533d695f,libcairo-ad05b9b5298252c8,libatk-ac544891e270fdf3,libglib-f7ebba5320eb7808,libgtk_sys-c0b20eb4d7a93dde,libatk_sys-834d7b2b29d5060a,libgdk_sys-cf38aa550c4b1d42,libpango_sys-6c36a922043bce3b,libgdk_pixbuf_sys-e3dcdcae6dbd507c,libgio_sys-6dac3061485b06e2,libcairo_sys-176c7e729af7c884,libgobject_sys-4c910fff0f435e4d,libglib_sys-3f54f5e138f4e38a,libdpi-5cc6438e1465b3b4,libraw_window_handle-075392b837e21d67,libraw_window_handle-34d7fc43bc17707e,libdioxus_devtools-cfdc0db731cdb82d,libtungstenite-bebe1326f0b29796,libnative_tls-2d41269b8ed3f579,libopenssl_probe-0bc19d2b3bbd11d7,libopenssl-e1ebb927ae4e17e6,libforeign_types-4429a0871f075752,libforeign_types_shared-1b53f0460d7df60e,libopenssl_sys-d5096f296d2e7a5f,libutf8-205e575a7f26d51d,libsha1-b43d5ac1298d9360,libhttparse-2cf64db8fb39d617,libhttp-4b461a7465a23006,libdioxus_devtools_types-3e0ece3bcf4407a3,libdioxus_logger-66a2642f656a57d9,libdioxus_cli_config-6b00da669fddc9b1,libdioxus_history-12ce4edb95501c60,libdioxus_document-9310dbd473795ca9,libdioxus_html-b40f43eeb8a5584d,libenumset-0bc6850c9dfce065,libeuclid-28aea91aaaece5c1,libkeyboard_types-508ba67d527da139,libunicode_segmentation-96edb41648344eb1,libdioxus_stores-5faa5b2e9965439c,libdioxus_hooks-ef2af8706281890e,libdioxus_signals-b937a5cbc9a91ce7,libwarnings-0f1a2aa876a7dc15,libdioxus_core-0472b9d9cc43c76d,libsubsecond-40de205f245804d7,liblibloading-bf808d3abf3642fa,libsubsecond_types-a6268f75b2684e83,liblongest_increasing_subsequence-2e24d85feb713d6f,libconst_format-eebb19055e58d7a5,libkonst-e2b33484cb9ca67f,libkonst_macro_rules-dc7f20b4f0c1e410,libanyhow-6eb11c691c561def,libslotmap-cfedaa97979f4d98,libdioxus_core_types-6659d7c33b763c39,libgenerational_box-681ed701cc50883c,libdotenvy-22b1e93f6efcfe10,libdiesel_migrations-613ad2b8681a0be2,libmigrations_internals-d29cc28c77f712fc,libtoml-4acc2374091836f7,libwinnow-da51cd8fd29f2fd6,libtoml_parser-0bf7d386a30578b8,libwinnow-0ffbdc04000117eb,libserde_spanned-e9edf64ec1b04455,libtoml_datetime-11145f9611fb7828,libdiesel-9a59eb16403479f5,libdowncast_rs-ffc6ba7f92db282d,libchrono-a7082b8b38fd8881,libiana_time_zone-624ac6c4110efc96,liblibsqlite3_sys-b532fe9e6c9d0f4b,libcolor_eyre-d31825e089efa5ec,libcolor_spantrace-7a97aa2e26c28375,libtracing_error-c1a3628d419e4b53,libtracing_subscriber-a61cc2093c47591c,libsharded_slab-df38c4a53e1f3963,libmatchers-76f012437ce1417f,libnu_ansi_term-9f86d6b81a784f4a,libthread_local-cdad6418e7394d4b,libtracing_log-01358295f3c374c3,libowo_colors-713180c6cb3f1ad4,libeyre-f239da78f65f9ae3,libindenter-6754d763b21e2128,libbacktrace-8d05af994240c2c9,libminiz_oxide-6c15bf4f96e8278e,libsimd_adler32-ef6d3294a65ddcef,libobject-0ee54aa56ad61357,libaddr2line-18fea2450d80ac22,libgimli-c108656d0f8a6bb7,librustc_demangle-6fff29ef515f2bfd,liblibp2p-90e9e407824250ec,liblibp2p_yamux-a0cdf07b1d78bd30,libyamux-9fc95ab331fb3933,libyamux-8330ef5a613e3978,libnohash_hasher-501311728b1d87ae,liblibp2p_tcp-72d133194a7afff5,liblibp2p_request_response-bba7392231d2f854,libserde_json-91a0dd27d0a9611e,libzmij-189afda7a497bde9,libfutures_bounded-e9e8ffeca64890a9,liblibp2p_quic-e44f2208d36dbeae,liblibp2p_tls-ffdb2285aa61e276,librcgen-6c3527cad7c29375,libpem-f461503fea995f4d,libyasna-dbe8b05fdb007bc4,libfutures_rustls-ee18d5c57043743a,libx509_parser-8de573c5565ce438,liblazy_static-afcf494a911d17fb,liboid_registry-f775b4b41a3e34d2,libder_parser-b0ce8785cff9f152,libnum_bigint-e98b5b3697cc32d6,libnum_integer-07ffb30258c59a3b,libasn1_rs-a4ebadb440ee9d16,librusticata_macros-f247ac81ef705df2,libnom-ab7168db6c487d75,libnum_traits-030118d320e92db9,libtime-a9352b9b0aa9254a,libnum_threads-ee590a4d6819bed9,libitoa-213271762266c20b,libtime_core-10400c61c3239b7d,libnum_conv-a19119bb82509e7e,libderanged-da47d80642a18f18,libpowerfmt-ef690559e079622c,libquinn-bb9cfe294bc244c5,libquinn_udp-1933f8e17cc51190,libquinn_proto-62452f45e55a9d9b,liblru_slab-8d836af9550e15b1,librustls-538aa57ca6804915,libwebpki-115418ef7198b5ad,librustls_pki_types-61f171359a6b66f1,librustc_hash-999863492932cf55,liblibp2p_noise-fc3d5a3d193909c6,libx25519_dalek-664a83fee2330c7b,libsnow-ac972db337fe9a97,libring-96c5f7ea7564d062,libuntrusted-6edea424d6cad1e5,liblibp2p_mdns-a16d239712a96178,libif_watch-3e88e96d8fc1dba8,librtnetlink-b2e0985f2e17a314,libnix-5338d7df1ac77852,libnetlink_proto-012caf1608f6b496,libnetlink_sys-5eabc193e960bb3b,libnetlink_packet_route-40813a7c777f37e6,libbitflags-fa4b4bab6082700b,libnetlink_packet_core-590fa404aee0f955,libsocket2-a5c1ff879dcae694,libhickory_proto-162c753621d12687,librand-5dc10e715a8094c2,librand_chacha-e29bde82d8f1940d,librand_core-43ce1c4cda15c8b6,libgetrandom-ffd5e7a22a62be6a,libipnet-0267fd214d5ad15f,libtinyvec-6486a6812cd58dc2,libtinyvec_macros-50b7f692c02909be,liblibp2p_gossipsub-84a9b62b2082b08a,libhex_fmt-e06a50a82251fff7,libregex-965ba6afb060263e,libregex_automata-2d29bdf1362dc164,libaho_corasick-04aa817857a95c2f,libregex_syntax-fafb274516872f4b,libasync_channel-9239a37c72d67320,libevent_listener_strategy-7ca05660efc51cff,libevent_listener-0526da956da01764,libparking-ba0ec8737ed014a6,libconcurrent_queue-df99c9dbf2ace290,libcrossbeam_utils-22c61e9ed73a1537,libquick_protobuf_codec-d6f80ebae7ed3c6d,libthiserror-59a342688e4419a0,libbase64-fe817925a73e08ab,libasynchronous_codec-3eb1a1e269e63575,libhashlink-6862450717421f22,libhashbrown-8bc4ddb0b3faaf12,libahash-18f06b321a14bc88,liblibp2p_connection_limits-958b9546a89c182f,liblibp2p_allow_block_list-a481331418e628fb,liblibp2p_swarm-947edd8f9ff9c61b,libtokio-1d76e1cb65532fa8,libsocket2-1392ad062acadd65,libmio-5d7bdecd0e85b232,libhashlink-89fcfa8676c7cd82,libhashbrown-07369d24c8abe9dd,libfoldhash-13c0bea5dcd3e28d,liblibp2p_core-ed16192ebffd3c0b,libmultistream_select-5449ea4c31222462,liblog-7dcebd24705ce3d7,libunsigned_varint-764731c7bca70dc1,libfutures_timer-e1b6af63c5b17576,librw_stream_sink-51bda1a7a0e2081b,libparking_lot-ebda72e103a02dba,libparking_lot_core-edb86e1b872e6d42,liblock_api-c384b77ce02994eb,libscopeguard-8644f2cfd50a03d9,libfnv-5649aa5debe4b9c3,libweb_time-6eb6a5b23023c62a,libpin_project-7a844ae687593699,libeither-768a721c24f7181d,libmultiaddr-357bfb4a1d9cae55,liburl-1f205dc3ba0ec54c,libidna-b6bd7bbcab744cda,libidna_adapter-04375dc4b48b90d5,libicu_properties-acdfc7f5b532a1f1,libicu_properties_data-9c81925f81eeaf6f,libicu_normalizer-08b9f0848c34a598,libsmallvec-d1dc8a9ffa51379b,libicu_normalizer_data-9f71be142fd3b39a,libicu_collections-d6ef171f4e965a77,libutf8_iter-494ed9edd0f1eea8,libpotential_utf-9a338cb8f420d908,libicu_provider-93b9d8d4fbd1140a,libicu_locale_core-40f83bc8b6db3767,libtinystr-349283784468f256,liblitemap-ee4db417fdb44e06,libwriteable-d152cae354b32fa3,libzerovec-2c8075980939cc7d,libzerotrie-b0ab8e43c075f977,libyoke-2177baeb3fdfb661,libstable_deref_trait-30a3d746d74faab3,libzerofrom-3def15c887725a98,libform_urlencoded-d6f0aa078eb7928b,libpercent_encoding-f3872696cf56032f,libmultibase-33d1e9ee1426cc2e,libbase_x-04236e4a2aaddbd5,libbase256emoji-c28081965899e7ea,libconst_str-9b3c748c65228a41,libdata_encoding_macro-65eb783e7cc71986,libstatic_assertions-355e124e04148788,liblibp2p_identity-05408f7aa69ba46c,libbs58-227da6bc9d461698,libhkdf-5f1bf4721fb1c39a,libhmac-840f2b244a43e9d6,libtracing-292fb326ce117119,libtracing_core-64ed763680f57dfb,libonce_cell-5b578e1fbcd8c0bf,libportable_atomic-aa13041ad6aca575,libthiserror-866b3514ee2d4633,libquick_protobuf-6c7797cec81a76dc,librand-fffdd7518d8a43ae,librand_chacha-75473e0c45461273,libppv_lite86-271fac3a6b092def,libzerocopy-99823e907f9b1878,librand_core-810cfc6f4a348a51,libgetrandom-9cb99acde1ae4207,liblibc-e6fb16f9a285b28b,libed25519_dalek-b22c214dbd82b1d7,libsha2-b7f609b14597fab1,libcurve25519_dalek-98112ce8145ae8ed,libcpufeatures-4aa8d0a958da2fdb,libzeroize-942c2e12b5c81f28,libcfg_if-0bbfe6ed3936f9fe,libdigest-ff88a72375c7290b,libsubtle-baa3c7f5694f0b2e,libblock_buffer-a4fe074318196838,libcrypto_common-658029810773556e,libgeneric_array-bd45dc01bb2644e9,libtypenum-d64d1effd2770339,libed25519-b10b0e284fdee568,libsignature-b5a60d205ea766ad,libdata_encoding-9a07f06c5e3a14c0,libbyteorder-f4c5d0398eb81263,libarrayref-b49d58f0a64a246c,libmultihash-ae560cf25d94f216,libunsigned_varint-c6800f4cacac29ce,libfutures-f2f4a30c79465131,libfutures_executor-3a80cce961bca5dd,libfutures_util-71b9ea88c9011927,libmemchr-5a3b48da333b7996,libfutures_io-296f37f99aad67cb,libslab-c73913fd319cd195,libfutures_channel-c93605cf999df017,libpin_project_lite-f49419fa62f322be,libfutures_sink-16737969c2997f1c,libfutures_task-50771f8fe8b700d9,libfutures_core-e453bdb83b7b6056,libbytes-01cbe44554f50211,libserde-8519eb010f2ba575,libserde_core-ad8d8ce6b1426931}.rlib\" \"<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*,libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib\" \"-Wl,-Bdynamic\" \"-ldl\" \"-lxdo\" \"-lwebkit2gtk-4.1\" \"-lgtk-3\" \"-lgdk-3\" \"-lz\" \"-lpangocairo-1.0\" \"-lpango-1.0\" \"-lharfbuzz\" \"-latk-1.0\" \"-lcairo-gobject\" \"-lcairo\" \"-lgdk_pixbuf-2.0\" \"-lsoup-3.0\" \"-lgmodule-2.0\" \"-lgio-2.0\" \"-ljavascriptcoregtk-4.1\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lsoup-3.0\" \"-lgmodule-2.0\" \"-lgio-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-ljavascriptcoregtk-4.1\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lgdk-3\" \"-lz\" \"-lpangocairo-1.0\" \"-lpango-1.0\" \"-lharfbuzz\" \"-lgdk_pixbuf-2.0\" \"-lcairo-gobject\" \"-lcairo\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-ldl\" \"-lgobject-2.0\" \"-lgtk-3\" \"-lgdk-3\" \"-lz\" \"-lpangocairo-1.0\" \"-lpango-1.0\" \"-lharfbuzz\" \"-latk-1.0\" \"-lcairo-gobject\" \"-lcairo\" \"-lgdk_pixbuf-2.0\" \"-lgio-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-latk-1.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lgdk-3\" \"-lz\" \"-lpangocairo-1.0\" \"-lpango-1.0\" \"-lharfbuzz\" \"-lgdk_pixbuf-2.0\" \"-lcairo-gobject\" \"-lcairo\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lpango-1.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lharfbuzz\" \"-lgdk_pixbuf-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lgio-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lcairo-gobject\" \"-lcairo\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lgobject-2.0\" \"-lglib-2.0\" \"-lssl\" \"-lcrypto\" \"-ldl\" \"-lgcc_s\" \"-lutil\" \"-lrt\" \"-lpthread\" \"-lm\" \"-ldl\" \"-lc\" \"-L\" \"/home/runner/work/p2p_app/p2p_app/target/debug/deps/rustcPRXC7J/raw-dylibs\" \"-B<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/bin/gcc-ld\" \"-fuse-ld=lld\" \"-Wl,--eh-frame-hdr\" \"-Wl,-z,noexecstack\" \"-L\" \"/home/runner/work/p2p_app/p2p_app/target/debug/build/libsqlite3-sys-1175db76ab1fe919/out\" \"-L\" \"/home/runner/work/p2p_app/p2p_app/target/debug/build/ring-7810dd571f86d333/out\" \"-L\" \"<sysroot>/lib/rustlib/x86_64-unknown-linux-gnu/lib\" \"-o\" \"/home/runner/work/p2p_app/p2p_app/target/debug/deps/fmt-94df8f4b451164d9\" \"-pie\" \"-Wl,-z,relro,-z,now\" \"-nodefaultlibs\"\n  = note: some arguments are omitted. use `--verbose` to show all linker arguments\n  = note: collect2: fatal error: ld terminated with signal 7 [Bus error], core dumped\n          compilation terminated.\n          \n\n"
+Exit code: 1
+

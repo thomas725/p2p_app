@@ -15,42 +15,42 @@
 | Folder                  | File                 | Lines | Chars | Depth | Cover | Purpose                             |
 |:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|
 | /                       | build.rs             |   118 |  3949 |     5 |     - | Build script                        |
-| src                     | behavior.rs          |   181 |  6157 |     4 |   64% | Network behavior definitions        |
-| src                     | db.rs                |   401 | 14561 |     6 |   91% | Database connection & identity mgmt |
-| src                     | dioxus_app.rs        |   537 | 19052 |    11 |  0.0% | Source file                         |
+| src                     | behavior.rs          |   181 |  6157 |     4 |     - | Network behavior definitions        |
+| src                     | db.rs                |   401 | 14561 |     6 |     - | Database connection & identity mgmt |
+| src                     | dioxus_app.rs        |   537 | 19052 |    11 |     - | Source file                         |
 | src                     | dioxus_styles.rs     |    47 |  3753 |     0 |     - | Source file                         |
-| src                     | dioxus_swarm.rs      |   160 |  6079 |     5 |  0.0% | Source file                         |
-| src                     | fmt.rs               |   117 |  3547 |     4 |   95% | Formatting & display utilities      |
-| src                     | lib.rs               |   147 |  5586 |     1 |  100% | Module declarations & re-exports    |
-| src                     | logging.rs           |   238 |  7042 |     4 |  100% | Logging utilities & setup           |
-| src                     | messages.rs          |   227 |  8406 |     4 |  100% | Message persistence & retrieval     |
-| src                     | network.rs           |    61 |  1851 |     3 |  100% | Network size classification         |
-| src                     | nickname.rs          |    98 |  3445 |     5 |  100% | Nickname management                 |
-| src                     | peers.rs             |   182 |  6171 |     3 |  100% | Peer management & tracking          |
-| src                     | swarm_handler.rs     |   272 |  9362 |     7 |  1.7% | Network event translation           |
-| src                     | tui_helpers.rs       |   226 |  6896 |     3 |  100% | TUI helper functions & utilities    |
-| src                     | tui_render.rs        |   363 | 11816 |     5 |   88% | TUI rendering & state management    |
-| src                     | tui_render_state.rs  |   372 | 11457 |     4 |   98% | TUI render state & tab content      |
-| src                     | tui_tabs.rs          |   168 |  4793 |     5 |   98% | Tab management & navigation         |
-| src                     | types.rs             |   110 |  3279 |     2 |   67% | Event & command type defs           |
-| src/bin                 | p2p_chat.rs          |   134 |  4936 |     7 |  0.0% | CLI chat application                |
-| src/bin                 | p2p_chat_dioxus.rs   |   215 |  8206 |     8 |  0.0% | Web UI (Dioxus framework)           |
-| src/bin                 | p2p_chat_tui.rs      |   115 |  4511 |     4 |  0.0% | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |   137 |  5185 |     5 |   95% | Click handlers & index mapping      |
-| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |   37% | Event routing & state updates       |
-| src/bin/tui             | event_source.rs      |    40 |  1224 |     4 |   42% | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   31% | Input event routing & processing    |
-| src/bin/tui             | main_loop.rs         |   305 | 10740 |     4 |   28% | Task orchestration & async          |
-| src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |   27% | Message sending logic               |
-| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   81% | Scroll & hover-aware navigation     |
-| src/bin/tui             | state.rs             |   226 |  8341 |     3 |   88% | Shared application state            |
-| src/bin/tui/render_loop | layout.rs            |    56 |  1882 |     3 |  0.0% | UI layout component rendering       |
-| src/bin/tui/render_loop | mod.rs               |   151 |  5074 |     4 |   48% | Render loop orchestration (60 FPS)  |
+| src                     | dioxus_swarm.rs      |   160 |  6079 |     5 |     - | Source file                         |
+| src                     | fmt.rs               |   117 |  3547 |     4 |     - | Formatting & display utilities      |
+| src                     | lib.rs               |   147 |  5586 |     1 |     - | Module declarations & re-exports    |
+| src                     | logging.rs           |   238 |  7042 |     4 |     - | Logging utilities & setup           |
+| src                     | messages.rs          |   227 |  8406 |     4 |     - | Message persistence & retrieval     |
+| src                     | network.rs           |    61 |  1851 |     3 |     - | Network size classification         |
+| src                     | nickname.rs          |    98 |  3445 |     5 |     - | Nickname management                 |
+| src                     | peers.rs             |   182 |  6171 |     3 |     - | Peer management & tracking          |
+| src                     | swarm_handler.rs     |   272 |  9362 |     7 |     - | Network event translation           |
+| src                     | tui_helpers.rs       |   226 |  6896 |     3 |     - | TUI helper functions & utilities    |
+| src                     | tui_render.rs        |   363 | 11816 |     5 |     - | TUI rendering & state management    |
+| src                     | tui_render_state.rs  |   372 | 11457 |     4 |     - | TUI render state & tab content      |
+| src                     | tui_tabs.rs          |   168 |  4793 |     5 |     - | Tab management & navigation         |
+| src                     | types.rs             |   110 |  3279 |     2 |     - | Event & command type defs           |
+| src/bin                 | p2p_chat.rs          |   134 |  4936 |     7 |     - | CLI chat application                |
+| src/bin                 | p2p_chat_dioxus.rs   |   215 |  8206 |     8 |     - | Web UI (Dioxus framework)           |
+| src/bin                 | p2p_chat_tui.rs      |   115 |  4511 |     4 |     - | Main TUI application entry point    |
+| src/bin/tui             | click_handlers.rs    |   137 |  5185 |     5 |     - | Click handlers & index mapping      |
+| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |     - | Event routing & state updates       |
+| src/bin/tui             | event_source.rs      |    40 |  1224 |     4 |     - | Terminal event polling (60 FPS)     |
+| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |     - | Input event routing & processing    |
+| src/bin/tui             | main_loop.rs         |   305 | 10740 |     4 |     - | Task orchestration & async          |
+| src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |     - | Message sending logic               |
+| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |     - | Scroll & hover-aware navigation     |
+| src/bin/tui             | state.rs             |   226 |  8341 |     3 |     - | Shared application state            |
+| src/bin/tui/render_loop | layout.rs            |    56 |  1882 |     3 |     - | UI layout component rendering       |
+| src/bin/tui/render_loop | mod.rs               |   151 |  5074 |     4 |     - | Render loop orchestration (60 FPS)  |
 | src/generated           | columns.rs           |    42 |  1653 |     1 |     - | Auto-generated column definitions   |
 | src/generated           | mod.rs               |    11 |   488 |     0 |     - | Module declarations                 |
 | src/generated           | models_insertable.rs |    92 |  3256 |     1 |     - | Insertable data models              |
 | src/generated           | models_queryable.rs  |   110 |  3895 |     1 |     - | Queryable data models               |
-| src/generated           | schema.rs            |    71 |  1570 |     2 |   98% | Database schema (Diesel)            |
+| src/generated           | schema.rs            |    71 |  1570 |     2 |     - | Database schema (Diesel)            |
 
 **Total:** 37 files, 6,797 lines, 234,190 characters
 
