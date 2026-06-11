@@ -136,6 +136,8 @@ jobs:
         continue-on-error: true
       
       - name: Run code coverage analysis
+        env:
+          CARGO_BUILD_JOBS: 2
         run: |
           set +e
           cargo tarpaulin --all-features -o Json 2>&1 | tee .github/ci-logs/tarpaulin-output.log
@@ -248,7 +250,7 @@ jobs:
           # Stage results, updated metrics, and tarpaulin report
           git add .github/ci-results/ 2>/dev/null || true
           git add docs/codebase_metrics.md 2>/dev/null || true
-          git add tarpaulin-report.json 2>/dev/null || true
+          [ -f tarpaulin-report.json ] && git add tarpaulin-report.json 2>/dev/null || true
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
