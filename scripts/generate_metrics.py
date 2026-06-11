@@ -127,6 +127,12 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
         with open(output_log, 'w') as f:
             f.writelines(out_lines)
 
+    # Save a standalone copy to ci-results so it gets committed as its own file
+    results_log = '.github/ci-results/tarpaulin-output.log'
+    Path(results_log).parent.mkdir(parents=True, exist_ok=True)
+    with open(results_log, 'w') as f:
+        f.writelines(out_lines)
+
     if not Path(report_path).exists():
         print(f"tarpaulin did not produce {report_path}", file=sys.stderr)
         return {}
