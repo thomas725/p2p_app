@@ -97,16 +97,21 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
     sys.stderr.flush()
 
-    result = subprocess.run(
-        ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
-        capture_output=True,
-        text=True,
-        timeout=600,
-    )
+    try:
+        result = subprocess.run(
+            ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired:
+        print("tarpaulin timed out after 600 seconds", file=sys.stderr)
+        return {}
 
     if result.returncode != 0:
-        print(f"tarpaulin failed (exit {result.returncode}):", file=sys.stderr)
-        print(result.stderr[-2000:], file=sys.stderr)
+        print(f"tarpaulin failed (exit {result.returncode})", file=sys.stderr)
+        return {}
+
+    if not Path(report_path).exists():
+        print(f"tarpaulin did not produce {report_path}", file=sys.stderr)
         return {}
 
     return load_tarpaulin_coverage(report_path)

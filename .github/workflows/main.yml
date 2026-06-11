@@ -152,9 +152,15 @@ jobs:
       - name: Generate codebase metrics with coverage
         run: |
           set +e
-          python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.md
+          python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.tmp
           METRICS_EXIT=$?
           set -e
+          if [ "$METRICS_EXIT" -eq 0 ] && [ -s docs/codebase_metrics.tmp ]; then
+            mv docs/codebase_metrics.tmp docs/codebase_metrics.md
+          else
+            echo "Metrics generation failed (exit=$METRICS_EXIT); keeping existing metrics file"
+            rm -f docs/codebase_metrics.tmp
+          fi
           if [ -f tarpaulin-report.json ]; then
             python3 scripts/extract_coverage_summary.py > .github/ci-logs/coverage-summary.log
           fi
