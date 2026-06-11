@@ -623,3 +623,7 @@ cargo tarpaulin --all-features -o Json
 ## 2026-06-11
 
 integrate tarpaulin-output.log into the results_timestamp.txt aggregated log setup we have for all other github action steps log output. you might need to reorder the github action to make that work.
+
+ah you're right it's already there. It's a bit confusing to read. tarpaulin reruns all tests, so maybe we could remove the stand-alone test run from our github action to only run the tests once as part of tarpaulin execution? Also maybe you can improve the formatting of the overall result file somehow?
+
+do we have some kind of clean between the phase 2 build and phase 4 code coverage? because it seems tarpaulin is re-building everything itself?
