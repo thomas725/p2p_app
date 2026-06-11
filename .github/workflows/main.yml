@@ -149,11 +149,22 @@ jobs:
           cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log
         continue-on-error: true
       
-      - name: Generate codebase metrics with coverage
+      - name: Run code coverage analysis
         run: |
           set +e
-          export TARPAULIN_OUTPUT_LOG=.github/ci-logs/tarpaulin-output.log
-          python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.tmp
+          cargo tarpaulin --all-features -o Json 2>&1 | tee .github/ci-logs/tarpaulin-output.log
+          TARPAULIN_EXIT=$?
+          set -e
+          echo "Exit code: $TARPAULIN_EXIT" >> .github/ci-logs/tarpaulin-output.log
+          exit $TARPAULIN_EXIT
+        continue-on-error: true
+      
+      - name: Generate codebase metrics
+        run: |
+          set +e
+          COVERAGE_FLAG=""
+          [ -f tarpaulin-report.json ] && COVERAGE_FLAG="--with-coverage"
+          python3 scripts/generate_metrics.py $COVERAGE_FLAG > docs/codebase_metrics.tmp
           METRICS_EXIT=$?
           set -e
           if [ "$METRICS_EXIT" -eq 0 ] && [ -s docs/codebase_metrics.tmp ]; then

@@ -7,7 +7,6 @@ With --with-coverage, uses cargo-tarpaulin JSON output for real coverage data.
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -97,19 +96,15 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
     sys.stderr.flush()
 
-    output_log = os.environ.get('TARPAULIN_OUTPUT_LOG')
-
     proc = subprocess.Popen(
         ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
     )
-    out_lines = []
     try:
         for line in proc.stdout or []:
             print(line, end='', file=sys.stderr)
-            out_lines.append(line)
         proc.wait(timeout=900)
     except subprocess.TimeoutExpired:
         print("tarpaulin timed out after 900 seconds", file=sys.stderr)
@@ -121,17 +116,6 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
         print(f"tarpaulin failed (exit {proc.returncode})", file=sys.stderr)
         Path(report_path).unlink(missing_ok=True)
         return {}
-
-    if output_log:
-        Path(output_log).parent.mkdir(parents=True, exist_ok=True)
-        with open(output_log, 'w') as f:
-            f.writelines(out_lines)
-
-    # Save a standalone copy to ci-results so it gets committed as its own file
-    results_log = '.github/ci-results/tarpaulin-output.log'
-    Path(results_log).parent.mkdir(parents=True, exist_ok=True)
-    with open(results_log, 'w') as f:
-        f.writelines(out_lines)
 
     if not Path(report_path).exists():
         print(f"tarpaulin did not produce {report_path}", file=sys.stderr)
