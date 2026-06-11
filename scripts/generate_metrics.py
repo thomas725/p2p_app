@@ -83,9 +83,12 @@ def load_tarpaulin_coverage(report_path: str) -> Dict[str, Tuple[int, int]]:
     return coverage
 
 
-def run_tarpaulin() -> Dict[str, Tuple[int, int]]:
+def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
     """Run cargo tarpaulin with --all-features and return coverage data."""
     report_path = 'tarpaulin-report.json'
+
+    if force:
+        Path(report_path).unlink(missing_ok=True)
 
     if Path(report_path).exists():
         print("Using existing tarpaulin-report.json", file=sys.stderr)
@@ -374,11 +377,16 @@ def main():
         action='store_true',
         help='Include real code coverage data from cargo-tarpaulin (slow: runs tarpaulin if no cached report)',
     )
+    parser.add_argument(
+        '--force-coverage',
+        action='store_true',
+        help='Force re-running tarpaulin even if cached report exists (implies --with-coverage)',
+    )
     args = parser.parse_args()
 
     coverage_data: Dict[str, Tuple[int, int]] = {}
-    if args.with_coverage:
-        coverage_data = run_tarpaulin()
+    if args.with_coverage or args.force_coverage:
+        coverage_data = run_tarpaulin(force=args.force_coverage)
 
     files_data = collect_files(coverage_data)
 

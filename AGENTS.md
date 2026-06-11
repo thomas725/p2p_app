@@ -114,7 +114,8 @@ line counts, nesting depth, and test coverage. Run it in two modes:
 | Command | Behavior |
 |---------|----------|
 | `python3 scripts/generate_metrics.py > docs/codebase_metrics.md` | Fast: no coverage data (Cover column shows `-`) |
-| `python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md` | Slow (~3 min): runs `cargo tarpaulin --all-features -o Json` if no cached report, then includes real line coverage percentages |
+| `python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md` | Slow (~3 min): uses cached `tarpaulin-report.json` if available, otherwise runs `cargo tarpaulin --all-features -o Json`. Includes real line coverage percentages. |
+| `python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.md` | Forces a fresh tarpaulin run (deletes cache first). Implies `--with-coverage`. |
 
 The `--with-coverage` mode uses `cargo-tarpaulin` for accurate line coverage (not a heuristic).
-It caches the report in `tarpaulin-report.json`; delete that file to force a fresh run.
+It caches the report in `tarpaulin-report.json`; pass `--force-coverage` or delete that file to force a fresh run.
