@@ -177,6 +177,9 @@ def get_file_purpose(filepath: str) -> str:
         'tui_render.rs': 'TUI rendering & state management',
         'tui_render_state.rs': 'TUI render state & tab content',
         'presentation.rs': 'TUI presentation & formatting helpers',
+        'dioxus_app.rs': 'Web UI app shell & components (Dioxus)',
+        'dioxus_swarm.rs': 'Web UI swarm event handling (Dioxus)',
+        'dioxus_styles.rs': 'Web UI CSS styles (Dioxus)',
     }
     return purposes.get(Path(filepath).name, 'Source file')
 

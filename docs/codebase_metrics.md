@@ -16,10 +16,10 @@
 |:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|
 | /                       | build.rs             |   118 |  3949 |     5 |     - | Build script                        |
 | src                     | behavior.rs          |   181 |  6157 |     4 |   64% | Network behavior definitions        |
-| src                     | db.rs                |   401 | 14561 |     6 |   91% | Database connection & identity mgmt |
-| src                     | dioxus_app.rs        |   537 | 19052 |    11 |  0.0% | Source file                         |
-| src                     | dioxus_styles.rs     |    47 |  3753 |     0 |     - | Source file                         |
-| src                     | dioxus_swarm.rs      |   160 |  6079 |     5 |  0.0% | Source file                         |
+| src                     | db.rs                |   401 | 14561 |     6 |   93% | Database connection & identity mgmt |
+| src                     | dioxus_app.rs        |   537 | 19052 |    11 |  0.0% | Web UI app shell & components (Dio… |
+| src                     | dioxus_styles.rs     |    47 |  3753 |     0 |     - | Web UI CSS styles (Dioxus)          |
+| src                     | dioxus_swarm.rs      |   160 |  6079 |     5 |  0.0% | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |   117 |  3547 |     4 |   95% | Formatting & display utilities      |
 | src                     | lib.rs               |   147 |  5586 |     1 |  100% | Module declarations & re-exports    |
 | src                     | logging.rs           |   238 |  7042 |     4 |  100% | Logging utilities & setup           |
@@ -88,11 +88,11 @@
 | unit   | unit_bin_tui_click_handlers.rs    |   205 |  7118 |     2 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs |   751 | 23456 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1347 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs   |   504 | 15001 |     3 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs   |   548 | 16172 |     3 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs         |   236 |  7238 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs  |   248 |  7445 |     3 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_mod.rs   |   193 |  5783 |     3 | Unit tests for TUI render loop        |
-| unit   | unit_bin_tui_scroll_handlers.rs   |   457 | 14257 |     3 | Unit tests for TUI scroll handlers    |
+| unit   | unit_bin_tui_scroll_handlers.rs   |   497 | 15673 |     3 | Unit tests for TUI scroll handlers    |
 | unit   | unit_bin_tui_state.rs             |   223 |  6335 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs      |    62 |  1896 |     3 | Unit tests for TUI test helpers       |
 | unit   | unit_db.rs                        |   281 |  8768 |     4 | Unit tests for database module        |
@@ -109,4 +109,4 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 13,243 lines, 405,715 characters
+**Total:** 50 test files, 13,327 lines, 408,302 characters

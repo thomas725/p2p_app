@@ -56,6 +56,14 @@ async fn test_nav_cancels_nickname_edit() {
     assert!(!state.editing_nickname);
 }
 
+#[tokio::test]
+async fn test_nav_other_key_is_noop() {
+    let mut state = test_app_state();
+    let active_tab_before = state.active_tab;
+    handle_navigation_key(KeyCode::Enter, &mut state).await;
+    assert_eq!(state.active_tab, active_tab_before);
+}
+
 // ── scroll_peers_tab ──────────────────────────────────────────────────────
 
 #[test]
@@ -401,6 +409,38 @@ async fn test_handle_scroll_key_peers_tab() {
     state.active_tab = 1;
     handle_scroll_key(KeyCode::Down, &mut state).await;
     assert_eq!(state.peer_selection, 1);
+}
+
+#[tokio::test]
+async fn test_handle_scroll_key_dm_tab_broadcast_section() {
+    let mut state = state_with_broadcasts_from_peer("peer-sk-bc", 10);
+    state
+        .dm_broadcast_scroll_state
+        .insert("peer-sk-bc".to_string(), (0, false));
+    state.active_tab = state.dynamic_tabs.add_dm_tab("peer-sk-bc".to_string());
+    state.chat_area_height = 20;
+    state.last_mouse_row = 5; // above mid_row -> broadcast section
+
+    handle_scroll_key(KeyCode::Down, &mut state).await;
+
+    let (offset, _) = state.dm_broadcast_scroll_state.get("peer-sk-bc").unwrap();
+    assert_eq!(*offset, 1);
+}
+
+#[tokio::test]
+async fn test_handle_scroll_key_dm_tab_dm_section() {
+    let mut state = app_state_with_dm_messages("peer-sk-dm", 10);
+    state
+        .dm_scroll_state
+        .insert("peer-sk-dm".to_string(), (0, false));
+    state.active_tab = state.dynamic_tabs.add_dm_tab("peer-sk-dm".to_string());
+    state.chat_area_height = 20;
+    state.last_mouse_row = 15; // below mid_row -> DM section
+
+    handle_scroll_key(KeyCode::Down, &mut state).await;
+
+    let (offset, _) = state.dm_scroll_state.get("peer-sk-dm").unwrap();
+    assert_eq!(*offset, 1);
 }
 
 // (log tab dispatch tested in test_log_scroll_all above)

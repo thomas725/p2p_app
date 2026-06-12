@@ -124,6 +124,32 @@ async fn test_mouse_move_is_ignored() {
 }
 
 #[tokio::test]
+async fn test_mouse_drag_is_ignored() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let mouse_event = MouseEvent {
+        kind: MouseEventKind::Drag(MouseButton::Left),
+        column: 12,
+        row: 7,
+        modifiers: crossterm::event::KeyModifiers::NONE,
+    };
+
+    let exited = process_input_event(
+        InputEvent::Mouse(mouse_event),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    assert!(render_rx.try_recv().is_err());
+    assert_eq!(state.lock().await.last_mouse_row, 0);
+}
+
+#[tokio::test]
 async fn test_mouse_click_noop_does_not_redraw() {
     let state = Arc::new(Mutex::new(test_app_state()));
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
@@ -313,6 +339,24 @@ async fn test_enter_key_in_peers_tab_opens_dm() {
 
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
     assert!(state.active_tab >= dm_count_before);
+}
+
+#[tokio::test]
+async fn test_enter_key_in_peers_tab_empty_list_is_noop() {
+    let mut state = test_app_state();
+    state.active_tab = 1; // Peers tab
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    handle_enter_key(
+        &mut state,
+        &swarm_cmd_tx,
+        false,
+        p2p_app::tui_tabs::TabContent::Peers,
+    )
+    .await;
+
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
 }
 
 #[tokio::test]
