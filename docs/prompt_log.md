@@ -634,3 +634,8 @@ check code coverage and add tests for untested code
 ## 2026-06-12
 
 don't we already have integration test infrastructure setup? Does cargo tarpaulin only run unit tests or does it also factor in integration tests?
+
+looking at latest github action created codebase metrics shows we improved code coverage, but there's still of untested code. Please strategically add more tests to increase it further and update the metrics generating python script to enrich this line:
+> **Total:** 37 files, 6,797 lines, 234,190 characters
+
+with the number of testable and tested lines as tarpaulin reports them.
