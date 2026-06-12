@@ -628,6 +628,7 @@ async fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
 
     let s = state.lock().await;
     assert_eq!(s.concurrent_peers, 1);
+    assert!(s.peers.iter().any(|p| p.peer_id == "new-peer"));
     drop(s);
 
     // Should have sent a SendDm with nickname
@@ -639,22 +640,6 @@ async fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
         SwarmCommand::SendDm { peer_id, .. } => assert_eq!(peer_id, "new-peer"),
         _ => panic!("expected SendDm"),
     }
-}
-
-#[tokio::test]
-async fn test_process_swarm_event_peer_connected_adds_to_peer_list() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
-
-    process_swarm_event(
-        SwarmEvent::PeerConnected("new-peer-2".to_string()),
-        &state,
-        &swarm_cmd_tx,
-    )
-    .await;
-
-    let s = state.lock().await;
-    assert!(s.peers.iter().any(|p| p.peer_id == "new-peer-2"));
 }
 
 // ── process_swarm_event: ListenAddrEstablished ─────────────────────────
