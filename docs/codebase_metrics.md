@@ -27,7 +27,7 @@
 | src                     | network.rs           |    61 |  1851 |     3 |  100% | Network size classification         |
 | src                     | nickname.rs          |    98 |  3445 |     5 |  100% | Nickname management                 |
 | src                     | peers.rs             |   182 |  6171 |     3 |  100% | Peer management & tracking          |
-| src                     | swarm_handler.rs     |   272 |  9362 |     7 |  1.7% | Network event translation           |
+| src                     | swarm_handler.rs     |   272 |  9362 |     7 |  5.1% | Network event translation           |
 | src                     | tui_helpers.rs       |   226 |  6896 |     3 |  100% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |   363 | 11816 |     5 |   88% | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |   372 | 11457 |     4 |   98% | TUI render state & tab content      |
@@ -37,11 +37,11 @@
 | src/bin                 | p2p_chat_dioxus.rs   |   215 |  8206 |     8 |  0.0% | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   115 |  4511 |     4 |  0.0% | Main TUI application entry point    |
 | src/bin/tui             | click_handlers.rs    |   137 |  5185 |     5 |   95% | Click handlers & index mapping      |
-| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |   37% | Event routing & state updates       |
+| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |   78% | Event routing & state updates       |
 | src/bin/tui             | event_source.rs      |    40 |  1224 |     4 |   42% | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   31% | Input event routing & processing    |
+| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   54% | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   305 | 10740 |     4 |   28% | Task orchestration & async          |
-| src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |   27% | Message sending logic               |
+| src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |  100% | Message sending logic               |
 | src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   81% | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |   226 |  8341 |     3 |   88% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    56 |  1882 |     3 |  0.0% | UI layout component rendering       |
@@ -86,11 +86,11 @@
 | tests  | types.rs                          |   695 | 21445 |     3 | types module tests                    |
 | unit   | unit_behavior.rs                  |    58 |  1823 |     2 | Unit tests for behavior module        |
 | unit   | unit_bin_tui_click_handlers.rs    |   191 |  6551 |     2 | Unit tests for TUI click handlers     |
-| unit   | unit_bin_tui_command_processor.rs |   318 | 11160 |     3 | Unit tests for TUI command processor  |
+| unit   | unit_bin_tui_command_processor.rs |   639 | 20209 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1347 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs   |   245 |  7489 |     3 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs   |   353 | 10395 |     3 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs         |   236 |  7238 |     3 | Unit tests for TUI main loop          |
-| unit   | unit_bin_tui_message_handlers.rs  |   107 |  3485 |     3 | Unit tests for TUI message handlers   |
+| unit   | unit_bin_tui_message_handlers.rs  |   248 |  7445 |     3 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_mod.rs   |   193 |  5783 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs   |   416 | 12787 |     3 | Unit tests for TUI scroll handlers    |
 | unit   | unit_bin_tui_state.rs             |   211 |  5927 |     3 | Unit tests for TUI state              |
@@ -102,11 +102,11 @@
 | unit   | unit_network.rs                   |    46 |  1371 |     3 | Unit tests for network module         |
 | unit   | unit_nickname.rs                  |   100 |  3032 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                     |    80 |  2260 |     3 | Unit tests for peers module           |
-| unit   | unit_swarm_handler.rs             |    78 |  2258 |     3 | Unit tests for swarm_handler module   |
+| unit   | unit_swarm_handler.rs             |    98 |  2844 |     3 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   126 |  3954 |     3 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs          |   256 |  7337 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   193 |  5390 |     2 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
-| unit   | unit_types.rs                     |   194 |  5288 |     3 | Unit tests for types module           |
+| unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 12,263 lines, 377,382 characters
+**Total:** 50 test files, 12,913 lines, 395,417 characters
