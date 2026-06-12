@@ -16,7 +16,7 @@
 |:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|
 | /                       | build.rs             |   118 |  3949 |     5 |     - | Build script                        |
 | src                     | behavior.rs          |   181 |  6157 |     4 |   64% | Network behavior definitions        |
-| src                     | db.rs                |   401 | 14561 |     6 |   93% | Database connection & identity mgmt |
+| src                     | db.rs                |   401 | 14561 |     6 |   91% | Database connection & identity mgmt |
 | src                     | dioxus_app.rs        |   537 | 19052 |    11 |  0.0% | Source file                         |
 | src                     | dioxus_styles.rs     |    47 |  3753 |     0 |     - | Source file                         |
 | src                     | dioxus_swarm.rs      |   160 |  6079 |     5 |  0.0% | Source file                         |
@@ -36,14 +36,14 @@
 | src/bin                 | p2p_chat.rs          |   134 |  4936 |     7 |  0.0% | CLI chat application                |
 | src/bin                 | p2p_chat_dioxus.rs   |   215 |  8206 |     8 |  0.0% | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |   115 |  4511 |     4 |  0.0% | Main TUI application entry point    |
-| src/bin/tui             | click_handlers.rs    |   137 |  5185 |     5 |   95% | Click handlers & index mapping      |
-| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |   78% | Event routing & state updates       |
+| src/bin/tui             | click_handlers.rs    |   137 |  5185 |     5 |  100% | Click handlers & index mapping      |
+| src/bin/tui             | command_processor.rs |   321 | 10698 |     6 |  100% | Event routing & state updates       |
 | src/bin/tui             | event_source.rs      |    40 |  1224 |     4 |   42% | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   54% | Input event routing & processing    |
+| src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   82% | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   305 | 10740 |     4 |   28% | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |  100% | Message sending logic               |
-| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   81% | Scroll & hover-aware navigation     |
-| src/bin/tui             | state.rs             |   226 |  8341 |     3 |   88% | Shared application state            |
+| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   92% | Scroll & hover-aware navigation     |
+| src/bin/tui             | state.rs             |   226 |  8341 |     3 |   95% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    56 |  1882 |     3 |  0.0% | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   151 |  5074 |     4 |   48% | Render loop orchestration (60 FPS)  |
 | src/generated           | columns.rs           |    42 |  1653 |     1 |     - | Auto-generated column definitions   |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |   110 |  3895 |     1 |     - | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |   98% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,797 lines, 234,190 characters (1535/2474 testable lines covered, 62%)
+**Total:** 37 files, 6,797 lines, 234,190 characters (1636/2474 testable lines covered, 66%)
 
 ## Test Files
 
