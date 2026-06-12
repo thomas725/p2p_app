@@ -414,3 +414,44 @@ fn test_handle_mouse_scroll_chat_tab() {
     handle_mouse_scroll(&mut state, "down", None);
     assert_eq!(state.chat_scroll_offset, 3);
 }
+
+// ── handle_mouse_scroll: Direct tab ─────────────────────────────────────
+
+#[test]
+fn test_handle_mouse_scroll_dm_tab_broadcast_section() {
+    // Scrolling in the broadcast (top) half of a DM tab
+    let mut state = state_with_broadcasts_from_peer("peer-dm-scroll", 10);
+    state
+        .dm_broadcast_scroll_state
+        .insert("peer-dm-scroll".to_string(), (0, false));
+    state.active_tab = state.dynamic_tabs.add_dm_tab("peer-dm-scroll".to_string());
+    state.chat_area_height = 20; // mid_row = 12
+    state.last_mouse_row = 5; // above mid_row -> broadcast section
+
+    handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll"));
+
+    let (offset, _) = state
+        .dm_broadcast_scroll_state
+        .get("peer-dm-scroll")
+        .unwrap();
+    assert_eq!(*offset, 3);
+}
+
+#[test]
+fn test_handle_mouse_scroll_dm_tab_dm_section() {
+    // Scrolling in the DM (bottom) half of a DM tab
+    let mut state = app_state_with_dm_messages("peer-dm-scroll-2", 10);
+    state
+        .dm_scroll_state
+        .insert("peer-dm-scroll-2".to_string(), (0, false));
+    state.active_tab = state
+        .dynamic_tabs
+        .add_dm_tab("peer-dm-scroll-2".to_string());
+    state.chat_area_height = 20; // mid_row = 12
+    state.last_mouse_row = 15; // below mid_row -> DM section
+
+    handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll-2"));
+
+    let (offset, _) = state.dm_scroll_state.get("peer-dm-scroll-2").unwrap();
+    assert_eq!(*offset, 3);
+}

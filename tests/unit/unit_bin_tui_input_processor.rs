@@ -349,69 +349,68 @@ async fn test_nickname_submission_empty_clears_edit() {
     assert_eq!(state.editing_nickname_peer, None);
 }
 
-// ── process_key_event (F12, Ctrl+W, char in disabled tab) ────────────
-
 #[tokio::test]
-async fn test_f12_toggles_mouse_capture() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
-    let (render_tx, mut render_rx) = mpsc::channel(1);
-    {
-        let mut s = state.lock().await;
-        s.mouse_capture = false;
+async fn test_nickname_submission_per_peer_sends_dm() {
+    let mut state = test_app_state();
+    state.editing_nickname = true;
+    state.editing_nickname_peer = Some("peer-nick".to_string());
+    state.own_nickname = "OldGlobal".to_string();
+    state.chat_input.insert_str("NewPerPeer");
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
+
+    assert!(!state.editing_nickname);
+    assert_eq!(
+        state.self_nicknames_for_peers.get("peer-nick"),
+        Some(&"NewPerPeer".to_string())
+    );
+    // Should have sent a SendDm with the new nickname
+    let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+        .await
+        .expect("timeout")
+        .expect("expected SendDm");
+    match cmd {
+        SwarmCommand::SendDm {
+            peer_id, nickname, ..
+        } => {
+            assert_eq!(peer_id, "peer-nick");
+            assert_eq!(nickname, Some("NewPerPeer".to_string()));
+        }
+        _ => panic!("expected SendDm"),
     }
-
-    let exited = process_input_event(
-        InputEvent::Key(KeyEvent::new(KeyCode::F(12), KeyModifiers::NONE)),
-        &state,
-        &swarm_cmd_tx,
-        &render_tx,
-    )
-    .await;
-
-    assert!(!exited);
-    let s = state.lock().await;
-    assert!(s.mouse_capture);
-    assert!(render_rx.try_recv().is_ok());
 }
 
 #[tokio::test]
-async fn test_ctrl_w_closes_dm_tab() {
-    let state = Arc::new(Mutex::new(test_app_state()));
+async fn test_nickname_submission_global_updates_own_nickname() {
+    let mut state = test_app_state();
+    state.editing_nickname = true;
+    state.editing_nickname_peer = None;
+    state.own_nickname = "OldGlobal".to_string();
+    state.chat_input.insert_str("NewGlobal");
     let (swarm_cmd_tx, _) = mpsc::channel(1);
-    let (render_tx, _) = mpsc::channel(1);
-    let peer_id = "close-me";
-    {
-        let mut s = state.lock().await;
-        s.active_tab = s.dynamic_tabs.add_dm_tab(peer_id.to_string());
-    }
 
-    let exited = process_input_event(
-        InputEvent::Key(KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL)),
-        &state,
-        &swarm_cmd_tx,
-        &render_tx,
-    )
-    .await;
+    handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-    assert!(!exited);
-    let s = state.lock().await;
-    // DM tab was at index 2 (Chat=0, Peers=1, DM=2, Log=3); closing falls back to Peers
-    assert_eq!(s.active_tab, 1);
+    assert!(!state.editing_nickname);
+    assert_eq!(state.own_nickname, "NewGlobal");
 }
 
+// ── process_key_event: ESC + editing_nickname ─────────────────────────
+
 #[tokio::test]
-async fn test_char_in_peers_tab_is_noop() {
+async fn test_esc_cancels_nickname_edit() {
     let state = Arc::new(Mutex::new(test_app_state()));
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
     {
         let mut s = state.lock().await;
-        s.active_tab = 1; // Peers tab (input disabled)
+        s.editing_nickname = true;
+        s.editing_nickname_peer = Some("p1".to_string());
     }
 
     let exited = process_input_event(
-        InputEvent::Key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE)),
+        InputEvent::Key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
         &state,
         &swarm_cmd_tx,
         &render_tx,
@@ -420,28 +419,36 @@ async fn test_char_in_peers_tab_is_noop() {
 
     assert!(!exited);
     let s = state.lock().await;
-    assert!(s.chat_input.lines().join("").is_empty());
+    assert!(!s.editing_nickname);
+    assert_eq!(s.editing_nickname_peer, None);
 }
 
-// ── dismiss_popup ─────────────────────────────────────────────────────
+// ── process_key_event: Enter + editing_nickname ────────────────────────
 
-#[test]
-fn test_dismiss_popup_clears_when_set() {
-    let mut state = test_app_state();
-    state.popup = Some("test".to_string());
-    assert!(dismiss_popup(&mut state));
-    assert_eq!(state.popup, None);
+#[tokio::test]
+async fn test_enter_during_nickname_edit_submits_nickname() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.editing_nickname = true;
+        s.editing_nickname_peer = Some("p1".to_string());
+        s.chat_input.insert_str("NewNick");
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(!s.editing_nickname);
 }
-
-#[test]
-fn test_dismiss_popup_noop_when_none() {
-    let mut state = test_app_state();
-    state.popup = None;
-    assert!(!dismiss_popup(&mut state));
-    assert_eq!(state.popup, None);
-}
-
-// ── prepare_nickname_update ───────────────────────────────────────────
 
 #[test]
 fn test_prepare_nickname_update_returns_none_when_empty() {

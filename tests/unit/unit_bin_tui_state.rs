@@ -209,3 +209,15 @@ fn test_app_state_new_defaults() {
     assert_eq!(state.popup, None);
     assert_eq!(state.broadcast_selection, None);
 }
+
+// ── load_and_format_messages ───────────────────────────────────────────
+
+#[test]
+fn test_load_and_format_messages_db_failure_returns_empty() {
+    // When DB load fails, returns empty fallback
+    let (msgs, ids, sent_at) =
+        load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
+    assert!(msgs.is_empty());
+    assert!(ids.is_empty());
+    assert!(sent_at.is_empty());
+}

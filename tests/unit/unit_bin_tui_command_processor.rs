@@ -612,6 +612,70 @@ async fn test_command_processor_stops_on_input_exit() {
         .unwrap();
 }
 
+// ── process_swarm_event: PeerConnected ─────────────────────────────────
+
+#[tokio::test]
+async fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    process_swarm_event(
+        SwarmEvent::PeerConnected("new-peer".to_string()),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert_eq!(s.concurrent_peers, 1);
+    drop(s);
+
+    // Should have sent a SendDm with nickname
+    let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+        .await
+        .expect("timeout")
+        .expect("expected SendDm");
+    match cmd {
+        SwarmCommand::SendDm { peer_id, .. } => assert_eq!(peer_id, "new-peer"),
+        _ => panic!("expected SendDm"),
+    }
+}
+
+#[tokio::test]
+async fn test_process_swarm_event_peer_connected_adds_to_peer_list() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    process_swarm_event(
+        SwarmEvent::PeerConnected("new-peer-2".to_string()),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.peers.iter().any(|p| p.peer_id == "new-peer-2"));
+}
+
+// ── process_swarm_event: ListenAddrEstablished ─────────────────────────
+
+#[tokio::test]
+async fn test_process_swarm_event_listen_addr_established() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    // Should not panic or change state
+    process_swarm_event(
+        SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/9000".to_string()),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert_eq!(s.concurrent_peers, 0);
+}
+
 #[tokio::test]
 async fn test_command_processor_breaks_on_channel_close() {
     let state = Arc::new(Mutex::new(test_app_state()));
@@ -636,4 +700,67 @@ async fn test_command_processor_breaks_on_channel_close() {
         .await
         .expect("handle should complete within timeout")
         .unwrap();
+}
+
+// ── apply_peer_discovered_state (mDNS) ─────────────────────────────────
+
+#[cfg(feature = "mdns")]
+#[test]
+fn test_apply_peer_discovered_state_adds_peer() {
+    let mut state = test_app_state();
+    apply_peer_discovered_state(&mut state, "mdns-peer-1");
+    assert_eq!(state.peers.len(), 1);
+    assert_eq!(state.peers[0].peer_id, "mdns-peer-1");
+}
+
+#[cfg(feature = "mdns")]
+#[test]
+fn test_apply_peer_discovered_state_skips_duplicate() {
+    let mut state = test_app_state();
+    state.peers.push_back(PeerRecord {
+        peer_id: "existing-peer".to_string(),
+        first_seen: "2024-01-01 12:00:00".into(),
+        last_seen: "2024-01-01 12:00:00".into(),
+    });
+    apply_peer_discovered_state(&mut state, "existing-peer");
+    assert_eq!(state.peers.len(), 1);
+}
+
+// ── process_swarm_event: PeerDiscovered (mDNS) ─────────────────────────
+
+#[cfg(feature = "mdns")]
+#[tokio::test]
+async fn test_process_swarm_event_peer_discovered_adds_peer() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    process_swarm_event(
+        SwarmEvent::PeerDiscovered {
+            peer_id: "mdns-discovered".to_string(),
+            addresses: vec![],
+        },
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.peers.iter().any(|p| p.peer_id == "mdns-discovered"));
+}
+
+#[cfg(feature = "mdns")]
+#[tokio::test]
+async fn test_process_swarm_event_peer_expired() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    // Should not panic
+    process_swarm_event(
+        SwarmEvent::PeerExpired {
+            peer_id: "mdns-expired".to_string(),
+        },
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
 }

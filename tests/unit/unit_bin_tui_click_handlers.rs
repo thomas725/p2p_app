@@ -189,3 +189,17 @@ fn test_format_dm_messages_from_db_self_nick_override() {
     assert!(result[0].contains("[CustomNick]"));
     assert!(result[0].contains("my msg"));
 }
+
+// ── load_dm_messages ───────────────────────────────────────────────────
+
+#[test]
+fn test_load_dm_messages_existing_no_scroll_state_initializes_scroll() {
+    let mut state = app_state_with_dm_messages("peer-s", 5);
+    // Remove scroll state to trigger the else-if branch
+    state.dm_scroll_state.remove("peer-s");
+    // dm_messages still has the peer -> enters else-if, initializes scroll state
+    load_dm_messages(&mut state, "peer-s");
+    let (offset, auto) = state.dm_scroll_state.get("peer-s").unwrap();
+    assert_eq!(*offset, 5);
+    assert!(*auto);
+}
