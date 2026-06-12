@@ -1,4 +1,6 @@
 use super::*;
+#[allow(unused_imports)]
+use crate::tui::test_helpers::app_state_with_peers;
 use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
@@ -277,6 +279,148 @@ async fn test_enter_without_text_does_not_send() {
     assert!(!exited);
     // No SwarmCommand should be sent for empty message
     assert!(render_rx.try_recv().is_ok());
+}
+
+// ── toggle_mouse_capture ──────────────────────────────────────────────
+
+#[test]
+fn test_toggle_mouse_capture_toggles_state() {
+    let mut state = test_app_state();
+    state.mouse_capture = false;
+    toggle_mouse_capture(&mut state);
+    assert!(state.mouse_capture);
+    toggle_mouse_capture(&mut state);
+    assert!(!state.mouse_capture);
+}
+
+// ── handle_enter_key ──────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_enter_key_in_peers_tab_opens_dm() {
+    use crate::tui::test_helpers::app_state_with_peers;
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1; // Peers tab
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    handle_enter_key(
+        &mut state,
+        &swarm_cmd_tx,
+        false,
+        p2p_app::tui_tabs::TabContent::Peers,
+    )
+    .await;
+
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+    assert!(state.active_tab >= dm_count_before);
+}
+
+#[tokio::test]
+async fn test_shift_enter_inserts_newline() {
+    let mut state = test_app_state();
+    state.chat_input.insert_str("hello");
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    handle_enter_key(
+        &mut state,
+        &swarm_cmd_tx,
+        true,
+        p2p_app::tui_tabs::TabContent::Chat,
+    )
+    .await;
+
+    let text = state.chat_input.lines().join("\n");
+    assert_eq!(text, "hello\n");
+}
+
+// ── handle_nickname_submission ────────────────────────────────────────
+
+#[tokio::test]
+async fn test_nickname_submission_empty_clears_edit() {
+    let mut state = test_app_state();
+    state.editing_nickname = true;
+    state.editing_nickname_peer = Some("p1".to_string());
+    // chat_input is empty -> prepare_nickname_update returns None
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
+
+    assert!(!state.editing_nickname);
+    assert_eq!(state.editing_nickname_peer, None);
+}
+
+// ── process_key_event (F12, Ctrl+W, char in disabled tab) ────────────
+
+#[tokio::test]
+async fn test_f12_toggles_mouse_capture() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.mouse_capture = false;
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::F(12), KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.mouse_capture);
+    assert!(render_rx.try_recv().is_ok());
+}
+
+#[tokio::test]
+async fn test_ctrl_w_closes_dm_tab() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+    let peer_id = "close-me";
+    {
+        let mut s = state.lock().await;
+        s.active_tab = s.dynamic_tabs.add_dm_tab(peer_id.to_string());
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    // DM tab was at index 2 (Chat=0, Peers=1, DM=2, Log=3); closing falls back to Peers
+    assert_eq!(s.active_tab, 1);
+}
+
+#[tokio::test]
+async fn test_char_in_peers_tab_is_noop() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 1; // Peers tab (input disabled)
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.chat_input.lines().join("").is_empty());
 }
 
 // ── dismiss_popup ─────────────────────────────────────────────────────

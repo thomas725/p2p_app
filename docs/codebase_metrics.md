@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |   110 |  3895 |     1 |     - | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |   98% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,797 lines, 234,190 characters
+**Total:** 37 files, 6,797 lines, 234,190 characters (1535/2474 testable lines covered, 62%)
 
 ## Test Files
 
@@ -88,7 +88,7 @@
 | unit   | unit_bin_tui_click_handlers.rs    |   191 |  6551 |     2 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs |   639 | 20209 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1347 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs   |   353 | 10395 |     3 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs   |   497 | 14497 |     3 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs         |   236 |  7238 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs  |   248 |  7445 |     3 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_mod.rs   |   193 |  5783 |     3 | Unit tests for TUI render loop        |
@@ -109,4 +109,4 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 12,913 lines, 395,417 characters
+**Total:** 50 test files, 13,057 lines, 399,519 characters

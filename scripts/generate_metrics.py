@@ -53,15 +53,17 @@ def calculate_max_nesting(filepath: str) -> int:
     return max_nesting
 
 
-def load_tarpaulin_coverage(report_path: str) -> Dict[str, Tuple[int, int]]:
+def load_tarpaulin_coverage(report_path: str) -> Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]:
     """
     Load coverage data from cargo-tarpaulin JSON report.
-    Returns dict mapping relative source path -> (covered_lines, coverable_lines).
+    Returns (dict mapping relative source path -> (covered_lines, coverable_lines),
+             (covered_total, coverable_total)).
     """
     with open(report_path) as f:
         data = json.load(f)
 
     files = data['files']
+    totals = (data['covered'], data['coverable'])
 
     # Compute the common path prefix from the report entries
     prefix = list(files[0]['path'])
@@ -79,10 +81,14 @@ def load_tarpaulin_coverage(report_path: str) -> Dict[str, Tuple[int, int]]:
         rel_path = '/'.join(entry['path'][prefix_len:])
         coverage[rel_path] = (covered, coverable)
 
-    return coverage
+    return coverage, totals
 
 
-def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
+CoverageData = Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]
+# Type alias: (per_file_coverage, (covered_total, coverable_total))
+
+
+def run_tarpaulin(force: bool = False) -> CoverageData:
     """Run cargo tarpaulin with --all-features and return coverage data."""
     report_path = 'tarpaulin-report.json'
 
@@ -110,16 +116,16 @@ def run_tarpaulin(force: bool = False) -> Dict[str, Tuple[int, int]]:
         print("tarpaulin timed out after 900 seconds", file=sys.stderr)
         proc.kill()
         Path(report_path).unlink(missing_ok=True)
-        return {}
+        return {}, (0, 0)
 
     if proc.returncode != 0:
         print(f"tarpaulin failed (exit {proc.returncode})", file=sys.stderr)
         Path(report_path).unlink(missing_ok=True)
-        return {}
+        return {}, (0, 0)
 
     if not Path(report_path).exists():
         print(f"tarpaulin did not produce {report_path}", file=sys.stderr)
-        return {}
+        return {}, (0, 0)
 
     return load_tarpaulin_coverage(report_path)
 
@@ -262,7 +268,7 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
 
 
 def collect_files(
-    coverage_data: Dict[str, Tuple[int, int]],
+    coverage_per_file: Dict[str, Tuple[int, int]],
 ) -> List[Tuple[str, str, str, int, int, int, str, Optional[float]]]:
     files_data = []
 
@@ -271,7 +277,7 @@ def collect_files(
         lines = count_lines(filepath)
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
-        cov = coverage_data.get(filepath)
+        cov = coverage_per_file.get(filepath)
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
@@ -286,7 +292,7 @@ def collect_files(
         lines = count_lines(filepath)
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
-        cov = coverage_data.get(filepath)
+        cov = coverage_per_file.get(filepath)
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
@@ -396,11 +402,12 @@ def main():
     )
     args = parser.parse_args()
 
-    coverage_data: Dict[str, Tuple[int, int]] = {}
+    coverage_per_file: Dict[str, Tuple[int, int]] = {}
+    coverage_totals: Tuple[int, int] = (0, 0)
     if args.with_coverage or args.force_coverage:
-        coverage_data = run_tarpaulin(force=args.force_coverage)
+        coverage_per_file, coverage_totals = run_tarpaulin(force=args.force_coverage)
 
-    files_data = collect_files(coverage_data)
+    files_data = collect_files(coverage_per_file)
 
     total_lines = sum(f[3] for f in files_data)
     total_chars = sum(f[4] for f in files_data)
@@ -439,7 +446,12 @@ def main():
     table = generate_markdown_table(files_data)
     print(table)
     print()
-    print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
+    covered_total, coverable_total = coverage_totals
+    if coverable_total > 0:
+        cov_pct = covered_total / coverable_total * 100
+        print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters ({covered_total}/{coverable_total} testable lines covered, {cov_pct:.0f}%)")
+    else:
+        print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
     print()
 
     test_files = collect_test_files()
