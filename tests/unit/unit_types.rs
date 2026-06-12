@@ -192,3 +192,63 @@ fn test_peer_record_display() {
     let formatted = format!("{}", record);
     assert_eq!(formatted, "peer1 (2024-01-02 12:00:00)");
 }
+
+#[test]
+fn test_display_message_self_sent() {
+    let msg = DisplayMessage {
+        text: "hello".to_string(),
+        sender_peer_id: None,
+    };
+    assert_eq!(msg.text, "hello");
+    assert!(msg.sender_peer_id.is_none());
+}
+
+#[test]
+fn test_display_message_from_peer() {
+    let msg = DisplayMessage {
+        text: "hello".to_string(),
+        sender_peer_id: Some("peer1".to_string()),
+    };
+    assert_eq!(msg.sender_peer_id, Some("peer1".to_string()));
+}
+
+#[test]
+fn test_receipt_no_timestamp() {
+    let event = SwarmEvent::Receipt {
+        peer_id: "peer1".to_string(),
+        ack_for: "msg-1".to_string(),
+        received_at: None,
+    };
+    match event {
+        SwarmEvent::Receipt {
+            peer_id,
+            ack_for,
+            received_at,
+        } => {
+            assert_eq!(peer_id, "peer1");
+            assert_eq!(ack_for, "msg-1");
+            assert!(received_at.is_none());
+        }
+        _ => panic!("expected Receipt"),
+    }
+}
+
+#[test]
+fn test_message_event_empty_content() {
+    let event = SwarmEvent::BroadcastMessage(MessageEvent {
+        content: String::new(),
+        peer_id: "peer1".to_string(),
+        latency: None,
+        nickname: None,
+        msg_id: None,
+    });
+    match event {
+        SwarmEvent::BroadcastMessage(me) => {
+            assert!(me.content.is_empty());
+            assert!(me.latency.is_none());
+            assert!(me.nickname.is_none());
+            assert!(me.msg_id.is_none());
+        }
+        _ => panic!("expected BroadcastMessage"),
+    }
+}

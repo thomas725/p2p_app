@@ -119,3 +119,13 @@ line counts, nesting depth, and test coverage. Run it in two modes:
 
 The `--with-coverage` mode uses `cargo-tarpaulin` for accurate line coverage (not a heuristic).
 It caches the report in `tarpaulin-report.json`; pass `--force-coverage` or delete that file to force a fresh run.
+
+## 8. Cleaning Stale DB Lock Files
+
+When tests fail due to stale DB lock files (`.db.lock`), clean only the lock files:
+
+```bash
+rm -f *.db.lock
+```
+
+**DO NOT** delete the database files themselves (`*.db`). The databases may contain important test state, and deleting them is destructive and irreversible. Only remove `.db.lock` files to clear stale locks from interrupted test runs.

@@ -1,7 +1,9 @@
 use super::*;
 use crate::tui::test_helpers::test_app_state;
-use p2p_app::PeerRecord;
+use p2p_app::{MessageEvent, PeerRecord, SwarmEvent};
 use std::collections::VecDeque;
+use std::sync::Arc;
+use tokio::sync::{Mutex, mpsc};
 
 // ── sort_peers_by_last_seen ──────────────────────────────────────────────
 
@@ -315,4 +317,221 @@ fn test_add_peer_to_state_list_appends_and_sorts() {
     );
     assert_eq!(state.peers.len(), 2);
     assert_eq!(state.peers[0].peer_id, "new"); // newest first
+}
+
+// ── handle_incoming_message ───────────────────────────────────────────
+
+#[tokio::test]
+async fn test_handle_incoming_broadcast_adds_message() {
+    let mut state = test_app_state();
+    handle_incoming_message(
+        &mut state,
+        "hello all",
+        "peer-1",
+        None,
+        None,
+        Some("m1".to_string()),
+        false,
+    )
+    .await;
+    assert_eq!(state.messages.len(), 1);
+    assert!(state.messages[0].text.contains("hello all"));
+    assert_eq!(state.message_ids[0], Some("m1".to_string()));
+}
+
+#[tokio::test]
+async fn test_handle_incoming_dm_adds_message_and_tab() {
+    let mut state = test_app_state();
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    handle_incoming_message(
+        &mut state,
+        "secret dm",
+        "peer-dm",
+        None,
+        None,
+        Some("dm1".to_string()),
+        true,
+    )
+    .await;
+    assert!(state.dm_messages.contains_key("peer-dm"));
+    assert!(state.dm_messages["peer-dm"][0].contains("secret dm"));
+    assert_eq!(state.dm_message_ids["peer-dm"][0], Some("dm1".to_string()));
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+}
+
+#[tokio::test]
+async fn test_handle_incoming_empty_content_with_nickname_returns_early() {
+    let mut state = test_app_state();
+    handle_incoming_message(
+        &mut state,
+        "",
+        "peer-2",
+        None,
+        Some("Nickname".to_string()),
+        None,
+        false,
+    )
+    .await;
+    // Should NOT add a message (empty content + nickname is just a nick update)
+    assert!(state.messages.is_empty());
+    // But should update received_nicknames
+    assert_eq!(
+        state.received_nicknames.get("peer-2"),
+        Some(&"Nickname".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_handle_incoming_sets_received_nickname() {
+    let mut state = test_app_state();
+    handle_incoming_message(
+        &mut state,
+        "hello",
+        "peer-3",
+        None,
+        Some("Alice".to_string()),
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(
+        state.received_nicknames.get("peer-3"),
+        Some(&"Alice".to_string())
+    );
+    // Message should still be added
+    assert_eq!(state.messages.len(), 1);
+}
+
+#[tokio::test]
+async fn test_handle_incoming_broadcast_with_latency() {
+    let mut state = test_app_state();
+    handle_incoming_message(
+        &mut state,
+        "ping",
+        "peer-4",
+        Some("42ms".to_string()),
+        None,
+        None,
+        false,
+    )
+    .await;
+    assert_eq!(state.messages.len(), 1);
+    assert!(state.messages[0].text.contains("42ms"));
+}
+
+#[tokio::test]
+async fn test_handle_incoming_dm_with_nickname_and_latency() {
+    let mut state = test_app_state();
+    state
+        .local_nicknames
+        .insert("peer-5".to_string(), "Bob".to_string());
+    handle_incoming_message(
+        &mut state,
+        "hey",
+        "peer-5",
+        Some("5ms".to_string()),
+        Some("Bob".to_string()),
+        Some("dm-5".to_string()),
+        true,
+    )
+    .await;
+    assert!(state.dm_messages.contains_key("peer-5"));
+    assert!(state.dm_messages["peer-5"][0].contains("hey"));
+    assert!(state.dm_messages["peer-5"][0].contains("5ms"));
+    assert_eq!(state.dm_message_ids["peer-5"][0], Some("dm-5".to_string()));
+}
+
+// ── process_swarm_event ───────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_process_swarm_event_broadcast_adds_message() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    process_swarm_event(
+        SwarmEvent::BroadcastMessage(MessageEvent {
+            content: "hello".to_string(),
+            peer_id: "p1".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: Some("m1".to_string()),
+        }),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert_eq!(s.messages.len(), 1);
+    assert!(s.messages[0].text.contains("hello"));
+    assert_eq!(s.message_ids[0], Some("m1".to_string()));
+}
+
+#[tokio::test]
+async fn test_process_swarm_event_dm_adds_message() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    process_swarm_event(
+        SwarmEvent::DirectMessage(MessageEvent {
+            content: "secret".to_string(),
+            peer_id: "p2".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: Some("dm1".to_string()),
+        }),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.dm_messages.contains_key("p2"));
+    assert_eq!(s.dm_message_ids["p2"][0], Some("dm1".to_string()));
+}
+
+#[tokio::test]
+async fn test_process_swarm_event_peer_disconnected_decrements() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.concurrent_peers = 3;
+    }
+
+    process_swarm_event(
+        SwarmEvent::PeerDisconnected("peer-x".to_string()),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert_eq!(s.concurrent_peers, 2);
+}
+
+#[tokio::test]
+async fn test_process_swarm_event_receipt_stored_in_state() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.dm_message_ids
+            .insert("p1".to_string(), VecDeque::from([Some("dm-1".to_string())]));
+    }
+
+    process_swarm_event(
+        SwarmEvent::Receipt {
+            peer_id: "p1".to_string(),
+            ack_for: "dm-1".to_string(),
+            received_at: Some(100.0),
+        },
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.dm_receipts.contains_key("dm-1"));
+    assert!(s.broadcast_receipts.contains_key("dm-1"));
 }

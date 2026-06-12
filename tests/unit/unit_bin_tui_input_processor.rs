@@ -1,6 +1,6 @@
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
-use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
@@ -169,6 +169,114 @@ async fn test_mouse_scroll_noop_does_not_redraw() {
 
     assert!(!exited);
     assert!(render_rx.try_recv().is_err());
+}
+
+// ── process_key_event ─────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_esc_returns_to_chat_tab() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 2;
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 0);
+    assert!(render_rx.try_recv().is_ok());
+}
+
+#[tokio::test]
+async fn test_ctrl_q_returns_exit_signal() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(exited);
+}
+
+#[tokio::test]
+async fn test_esc_dismisses_popup() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    {
+        let mut s = state.lock().await;
+        s.popup = Some("notice".to_string());
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(s.popup, None);
+    assert!(render_rx.try_recv().is_ok());
+}
+
+#[tokio::test]
+async fn test_char_input_adds_to_chat() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.chat_input.lines().join("").contains('h'));
+    assert!(render_rx.try_recv().is_ok());
+}
+
+#[tokio::test]
+async fn test_enter_without_text_does_not_send() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    // No SwarmCommand should be sent for empty message
+    assert!(render_rx.try_recv().is_ok());
 }
 
 // ── dismiss_popup ─────────────────────────────────────────────────────

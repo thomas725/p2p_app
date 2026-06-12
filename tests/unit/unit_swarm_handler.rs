@@ -34,6 +34,26 @@ fn test_build_broadcast_message_with_all_fields() {
 }
 
 #[test]
+fn test_make_ack_dm_with_content() {
+    let dm = make_ack_dm("ok".to_string(), Some("msg-1".to_string()));
+    assert_eq!(dm.content, "ok");
+    assert_eq!(dm.ack_for, Some("msg-1".to_string()));
+    assert!(dm.nickname.is_none());
+    assert!(dm.msg_id.is_none());
+    assert!(dm.sent_at.is_some());
+    assert!(dm.received_at.is_some());
+}
+
+#[test]
+fn test_make_ack_dm_no_ack_for() {
+    let dm = make_ack_dm(String::new(), None);
+    assert_eq!(dm.content, "");
+    assert!(dm.ack_for.is_none());
+    assert!(dm.sent_at.is_some());
+    assert!(dm.received_at.is_some());
+}
+
+#[test]
 fn test_swarm_command_variants_all() {
     // Test all SwarmCommand variants are constructible
     let publish = SwarmCommand::Publish {

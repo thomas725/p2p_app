@@ -557,7 +557,7 @@ Improve the docs where possible to make it up to date, easy to understand and co
 
 Auto format and apply suggestions with cargo clippy.
 
-When done regenerate docs/codebase_metrics.md using scripts/generate_metrics.py.
+When done run scripts/generate_metrics.py and write output to docs/codebase_metrics.md
 
 Finally commit all changes with meaningful commit messages.
 
@@ -627,3 +627,10 @@ integrate tarpaulin-output.log into the results_timestamp.txt aggregated log set
 ah you're right it's already there. It's a bit confusing to read. tarpaulin reruns all tests, so maybe we could remove the stand-alone test run from our github action to only run the tests once as part of tarpaulin execution? Also maybe you can improve the formatting of the overall result file somehow?
 
 do we have some kind of clean between the phase 2 build and phase 4 code coverage? because it seems tarpaulin is re-building everything itself?
+
+check code coverage and add tests for untested code
+
+
+## 2026-06-12
+
+don't we already have integration test infrastructure setup? Does cargo tarpaulin only run unit tests or does it also factor in integration tests?
