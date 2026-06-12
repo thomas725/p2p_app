@@ -1,5 +1,12 @@
 use super::*;
 use crate::tui::test_helpers::test_app_state;
+use std::sync::{Mutex, OnceLock};
+use tempfile::TempDir;
+
+fn test_db_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 // ── push_outgoing_broadcast_to_state ─────────────────────────────────────
 
@@ -104,4 +111,138 @@ fn test_push_outgoing_dm_separate_peers() {
     assert_eq!(state.dm_messages.len(), 2);
     assert_eq!(state.dm_messages["pa"].len(), 1);
     assert_eq!(state.dm_messages["pb"].len(), 1);
+}
+
+// ── send_message ───────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_send_broadcast_updates_state_and_sends_command() {
+    let mut state = test_app_state();
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    send_message(
+        &mut state,
+        &swarm_cmd_tx,
+        "hello".to_string(),
+        p2p_app::tui_tabs::TabContent::Chat,
+    )
+    .await;
+
+    assert_eq!(state.messages.len(), 1);
+    assert!(state.messages[0].text.contains("hello"));
+    assert!(state.chat_input.lines().join("").is_empty());
+
+    let cmd = swarm_cmd_rx.try_recv().unwrap();
+    match cmd {
+        p2p_app::SwarmCommand::Publish { content, .. } => assert_eq!(content, "hello"),
+        _ => panic!("expected Publish"),
+    }
+}
+
+#[tokio::test]
+async fn test_send_dm_updates_state_and_sends_command() {
+    let mut state = test_app_state();
+    let peer_id = "peer-dm";
+    state.dynamic_tabs.add_dm_tab(peer_id.to_string());
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    send_message(
+        &mut state,
+        &swarm_cmd_tx,
+        "secret".to_string(),
+        p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()),
+    )
+    .await;
+
+    assert!(state.dm_messages.contains_key(peer_id));
+    assert!(state.dm_messages[peer_id][0].contains("secret"));
+    assert!(state.chat_input.lines().join("").is_empty());
+
+    let cmd = swarm_cmd_rx.try_recv().unwrap();
+    match cmd {
+        p2p_app::SwarmCommand::SendDm {
+            content,
+            ref peer_id,
+            ..
+        } => {
+            assert_eq!(content, "secret");
+            assert_eq!(peer_id, "peer-dm");
+        }
+        _ => panic!("expected SendDm"),
+    }
+}
+
+fn set_test_db_url(path: &str) {
+    p2p_app::db::reset_db_url_cache();
+    unsafe {
+        std::env::set_var("DATABASE_URL", path);
+    }
+}
+
+fn unset_test_db_url() {
+    unsafe {
+        std::env::remove_var("DATABASE_URL");
+    }
+    p2p_app::db::reset_db_url_cache();
+}
+
+#[tokio::test]
+async fn test_send_broadcast_saves_to_db() {
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().unwrap().to_string();
+    unsafe { set_test_db_url(&db_str) };
+    p2p_app::db::init_database().unwrap();
+
+    let mut state = test_app_state();
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    send_message(
+        &mut state,
+        &swarm_cmd_tx,
+        "db test".to_string(),
+        p2p_app::tui_tabs::TabContent::Chat,
+    )
+    .await;
+
+    let msgs = p2p_app::load_messages("test-net", 10).unwrap();
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(msgs[0].content, "db test");
+
+    p2p_app::db::release_db_lock();
+    unsafe { unset_test_db_url() };
+}
+
+#[tokio::test]
+async fn test_send_dm_saves_to_db() {
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().unwrap().to_string();
+    unsafe { set_test_db_url(&db_str) };
+    p2p_app::db::init_database().unwrap();
+
+    let mut state = test_app_state();
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    state.dynamic_tabs.add_dm_tab("dm-peer".to_string());
+
+    send_message(
+        &mut state,
+        &swarm_cmd_tx,
+        "dm db".to_string(),
+        p2p_app::tui_tabs::TabContent::Direct("dm-peer".to_string()),
+    )
+    .await;
+
+    let msgs = p2p_app::load_direct_messages("dm-peer", 10).unwrap();
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(msgs[0].content, "dm db");
+
+    p2p_app::db::release_db_lock();
+    unsafe { unset_test_db_url() };
 }

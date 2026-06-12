@@ -535,3 +535,105 @@ async fn test_process_swarm_event_receipt_stored_in_state() {
     assert!(s.dm_receipts.contains_key("dm-1"));
     assert!(s.broadcast_receipts.contains_key("dm-1"));
 }
+
+// ── spawn_command_processor ─────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_command_processor_processes_swarm_events() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (input_tx, input_rx) = mpsc::channel(1);
+    let (swarm_event_tx, swarm_event_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+
+    let (_handle, _) = spawn_command_processor(
+        state.clone(),
+        input_rx,
+        swarm_event_rx,
+        render_tx,
+        swarm_cmd_tx,
+    );
+
+    swarm_event_tx
+        .send(SwarmEvent::BroadcastMessage(MessageEvent {
+            content: "from loop".to_string(),
+            peer_id: "p-loop".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: Some("m-loop".to_string()),
+        }))
+        .await
+        .unwrap();
+
+    // Wait for the spawned task to process the event (signals via render_tx)
+    render_rx.recv().await;
+
+    let s = state.lock().await;
+    assert_eq!(s.messages.len(), 1);
+    assert!(s.messages[0].text.contains("from loop"));
+    drop(s);
+
+    // Drop senders to stop the loop
+    drop(input_tx);
+    drop(swarm_event_tx);
+}
+
+#[tokio::test]
+async fn test_command_processor_stops_on_input_exit() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (input_tx, input_rx) = mpsc::channel(1);
+    let (_swarm_event_tx, swarm_event_rx) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+
+    let (handle, _) = spawn_command_processor(
+        state.clone(),
+        input_rx,
+        swarm_event_rx,
+        render_tx,
+        swarm_cmd_tx,
+    );
+
+    // Send Ctrl+Q (exit signal)
+    input_tx
+        .send(crate::tui::event_source::InputEvent::Key(
+            crossterm::event::KeyEvent::new(
+                crossterm::event::KeyCode::Char('q'),
+                crossterm::event::KeyModifiers::CONTROL,
+            ),
+        ))
+        .await
+        .unwrap();
+
+    // The event loop should exit and the handle should complete
+    tokio::time::timeout(std::time::Duration::from_secs(1), handle)
+        .await
+        .expect("handle should complete within timeout")
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_command_processor_breaks_on_channel_close() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (input_tx, input_rx) = mpsc::channel(1);
+    let (swarm_event_tx, swarm_event_rx) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+
+    let (handle, _) = spawn_command_processor(
+        state.clone(),
+        input_rx,
+        swarm_event_rx,
+        render_tx,
+        swarm_cmd_tx,
+    );
+
+    // Drop all senders - loop should break
+    drop(input_tx);
+    drop(swarm_event_tx);
+
+    tokio::time::timeout(std::time::Duration::from_secs(1), handle)
+        .await
+        .expect("handle should complete within timeout")
+        .unwrap();
+}
