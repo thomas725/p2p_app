@@ -42,7 +42,7 @@
 | src/bin/tui             | input_processor.rs   |   356 | 12090 |     5 |   82% | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |   305 | 10740 |     4 |   28% | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |   138 |  4473 |     5 |  100% | Message sending logic               |
-| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   92% | Scroll & hover-aware navigation     |
+| src/bin/tui             | scroll_handlers.rs   |   252 |  8766 |     5 |   98% | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |   226 |  8341 |     3 |   95% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |    56 |  1882 |     3 |  0.0% | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |   151 |  5074 |     4 |   48% | Render loop orchestration (60 FPS)  |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |   110 |  3895 |     1 |     - | Queryable data models               |
 | src/generated           | schema.rs            |    71 |  1570 |     2 |   98% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,797 lines, 234,190 characters (1636/2474 testable lines covered, 66%)
+**Total:** 37 files, 6,797 lines, 234,190 characters (1645/2474 testable lines covered, 66%)
 
 ## Test Files
 
