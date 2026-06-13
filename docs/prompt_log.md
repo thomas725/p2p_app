@@ -639,3 +639,7 @@ looking at latest github action created codebase metrics shows we improved code 
 > **Total:** 37 files, 6,797 lines, 234,190 characters
 
 with the number of testable and tested lines as tarpaulin reports them.
+
+continue increasing code coverage
+
+add "purpose" for the 3 files currently having generic "source file", I think that's a static map in the python metrics generation script.
