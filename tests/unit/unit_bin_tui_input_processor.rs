@@ -1,5 +1,4 @@
 use super::*;
-#[allow(unused_imports)]
 use crate::tui::test_helpers::app_state_with_peers;
 use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
@@ -323,7 +322,6 @@ fn test_toggle_mouse_capture_toggles_state() {
 
 #[tokio::test]
 async fn test_enter_key_in_peers_tab_opens_dm() {
-    use crate::tui::test_helpers::app_state_with_peers;
     let mut state = app_state_with_peers(3);
     state.active_tab = 1; // Peers tab
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
@@ -375,6 +373,25 @@ async fn test_shift_enter_inserts_newline() {
 
     let text = state.chat_input.lines().join("\n");
     assert_eq!(text, "hello\n");
+}
+
+#[tokio::test]
+async fn test_shift_enter_in_peers_tab_is_noop() {
+    let mut state = app_state_with_peers(3);
+    state.active_tab = 1;
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    handle_enter_key(
+        &mut state,
+        &swarm_cmd_tx,
+        true,
+        p2p_app::tui_tabs::TabContent::Peers,
+    )
+    .await;
+
+    // Shift+Enter in Peers tab (input disabled) is a noop
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
 }
 
 // ── handle_nickname_submission ────────────────────────────────────────
