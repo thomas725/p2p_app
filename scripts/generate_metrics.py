@@ -272,7 +272,7 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
 
 def collect_files(
     coverage_per_file: Dict[str, Tuple[int, int]],
-) -> List[Tuple[str, str, str, int, int, int, str, Optional[float]]]:
+) -> List[Tuple[str, str, str, int, int, int, int, Optional[float], str]]:
     files_data = []
 
     if Path('build.rs').exists():
@@ -281,10 +281,11 @@ def collect_files(
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
         cov = coverage_per_file.get(filepath)
+        coverable = cov[1] if cov else 0
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, pct))
+        files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
 
     for rs_file in sorted(Path('src').glob('**/*.rs')):
         filepath = str(rs_file)
@@ -296,11 +297,12 @@ def collect_files(
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
         cov = coverage_per_file.get(filepath)
+        coverable = cov[1] if cov else 0
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
 
-        files_data.append((folder, filename, filepath, lines, chars, nesting, purpose, pct))
+        files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
 
     files_data.sort(key=lambda x: (x[0], x[1]))
     return files_data
@@ -379,14 +381,15 @@ def generate_test_files_table(test_files: List[Tuple]) -> str:
 
 def generate_markdown_table(files_data: List[Tuple]) -> str:
     output = []
-    output.append('| Folder                  | File                 | Lines | Chars | Depth | Cover | Purpose                             |')
-    output.append('|:------------------------|:---------------------|------:|------:|------:|------:|------------------------------------:|')
+    output.append('| Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |')
+    output.append('|:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|')
 
-    for folder, filename, _, lines, chars, nesting, purpose, coverage in files_data:
+    for folder, filename, _, lines, chars, nesting, coverable, pct, purpose in files_data:
         if len(purpose) > 35:
             purpose = purpose[:34] + '…'
 
-        output.append(f'| {folder:<23} | {filename:<20} | {lines:>5} | {chars:>5} | {nesting:>5} | {get_coverage_str(coverage)} | {purpose:<35} |')
+        testable_str = f'{coverable:>8}' if coverable > 0 else '        -'
+        output.append(f'| {folder:<23} | {filename:<20} | {nesting:>5} | {chars:>5} | {lines:>5} | {testable_str} | {get_coverage_str(pct)} | {purpose:<35} |')
 
     return '\n'.join(output)
 
