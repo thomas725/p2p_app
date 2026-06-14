@@ -194,7 +194,7 @@ async fn test_send_broadcast_saves_to_db() {
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    unsafe { set_test_db_url(&db_str) };
+    set_test_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
     let mut state = test_app_state();
@@ -213,7 +213,8 @@ async fn test_send_broadcast_saves_to_db() {
     assert_eq!(msgs[0].content, "db test");
 
     p2p_app::db::release_db_lock();
-    unsafe { unset_test_db_url() };
+    unset_test_db_url();
+    drop(_guard);
 }
 
 #[tokio::test]
@@ -224,7 +225,7 @@ async fn test_send_dm_saves_to_db() {
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    unsafe { set_test_db_url(&db_str) };
+    set_test_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
     let mut state = test_app_state();
@@ -244,5 +245,6 @@ async fn test_send_dm_saves_to_db() {
     assert_eq!(msgs[0].content, "dm db");
 
     p2p_app::db::release_db_lock();
-    unsafe { unset_test_db_url() };
+    unset_test_db_url();
+    drop(_guard);
 }
