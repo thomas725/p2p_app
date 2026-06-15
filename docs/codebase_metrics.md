@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,873 |
-| Total Characters        | 237,639 |
+| Total Lines of Code     |   6,874 |
+| Total Characters        | 237,709 |
 | Average Lines per File  |     185 |
-| Average Characters/File |   6,422 |
+| Average Characters/File |   6,424 |
 
 ## All Source Files
 
@@ -18,7 +18,7 @@
 | src                     | behavior.rs          |     4 |  6157 |   181 |       25 |  96.00% | Network behavior definitions        |
 | src                     | db.rs                |     6 | 15198 |   421 |      158 |  90.51% | Database connection & identity mgmt |
 | src                     | dioxus_app.rs        |    11 | 19980 |   552 |      178 |   0.00% | Web UI app shell & components (Dio… |
-| src                     | dioxus_styles.rs     |     0 |  3792 |    49 |        0 |       - | Web UI CSS styles (Dioxus)          |
+| src                     | dioxus_styles.rs     |     0 |  3862 |    50 |        0 |       - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |       98 |   0.00% | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |     4 |  3547 |   117 |       39 |  94.87% | Formatting & display utilities      |
 | src                     | lib.rs               |     1 |  5586 |   147 |        1 | 100.00% | Module declarations & re-exports    |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,873 lines, 237,639 characters (1728/2483 testable lines covered, 70%)
+**Total:** 37 files, 6,874 lines, 237,709 characters (1728/2483 testable lines covered, 70%)
 
 ## Test Files
 
