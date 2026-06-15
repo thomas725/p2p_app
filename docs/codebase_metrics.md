@@ -16,7 +16,7 @@
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
 | /                       | build.rs             |     5 |  3949 |   118 |        0 |       - | Build script                        |
 | src                     | behavior.rs          |     4 |  6157 |   181 |       25 |  64.00% | Network behavior definitions        |
-| src                     | db.rs                |     6 | 14561 |   401 |      149 |  92.62% | Database connection & identity mgmt |
+| src                     | db.rs                |     6 | 14561 |   401 |      149 |  91.28% | Database connection & identity mgmt |
 | src                     | dioxus_app.rs        |    11 | 19052 |   537 |      178 |   0.00% | Web UI app shell & components (Dio… |
 | src                     | dioxus_styles.rs     |     0 |  3753 |    47 |        0 |       - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |       98 |   0.00% | Web UI swarm event handling (Dioxu… |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,797 lines, 234,190 characters (1645/2474 testable lines covered, 66%)
+**Total:** 37 files, 6,797 lines, 234,190 characters (1643/2474 testable lines covered, 66%)
 
 ## Test Files
 
