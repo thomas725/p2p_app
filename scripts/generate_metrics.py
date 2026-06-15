@@ -187,7 +187,7 @@ def get_file_purpose(filepath: str) -> str:
 def get_coverage_str(coverage: Optional[float]) -> str:
     if coverage is None:
         return "      -"
-    return f"{coverage:>7.3f}"
+    return f"{coverage:>6.2f}%"
 
 
 def get_test_file_purpose(filepath: str) -> str:
