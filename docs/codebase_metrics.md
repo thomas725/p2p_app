@@ -27,7 +27,7 @@
 | src                     | network.rs           |     3 |  1851 |    61 |       13 | 100.00% | Network size classification         |
 | src                     | nickname.rs          |     5 |  3445 |    98 |       49 | 100.00% | Nickname management                 |
 | src                     | peers.rs             |     3 |  6171 |   182 |       64 | 100.00% | Peer management & tracking          |
-| src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  74.36% | Network event translation           |
+| src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  66.67% | Network event translation           |
 | src                     | tui_helpers.rs       |     3 |  6896 |   226 |       91 | 100.00% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |     5 | 11816 |   363 |      185 |  88.11% | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |     4 | 11457 |   372 |      136 |  97.79% | TUI render state & tab content      |
@@ -41,7 +41,7 @@
 | src/bin/tui             | event_source.rs      |     4 |  1224 |    40 |       12 |  41.67% | Terminal event polling (60 FPS)     |
 | src/bin/tui             | input_processor.rs   |     5 | 12090 |   356 |      174 |  82.18% | Input event routing & processing    |
 | src/bin/tui             | main_loop.rs         |     4 | 10740 |   305 |      143 |  27.97% | Task orchestration & async          |
-| src/bin/tui             | message_handlers.rs  |     5 |  4473 |   138 |       73 | 100.00% | Message sending logic               |
+| src/bin/tui             | message_handlers.rs  |     5 |  4473 |   138 |       73 |  98.63% | Message sending logic               |
 | src/bin/tui             | scroll_handlers.rs   |     5 |  8766 |   252 |      110 |  98.18% | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |     3 |  8341 |   226 |       40 |  95.00% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |     3 |  1882 |    56 |       23 |   0.00% | UI layout component rendering       |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,817 lines, 234,827 characters (1739/2483 testable lines covered, 70%)
+**Total:** 37 files, 6,817 lines, 234,827 characters (1729/2483 testable lines covered, 70%)
 
 ## Test Files
 
