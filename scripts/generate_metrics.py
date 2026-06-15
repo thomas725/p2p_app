@@ -272,7 +272,7 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
 
 def collect_files(
     coverage_per_file: Dict[str, Tuple[int, int]],
-) -> List[Tuple[str, str, str, int, int, int, int, Optional[float], str]]:
+) -> List[Tuple[str, str, str, int, int, int, Optional[int], Optional[float], str]]:
     files_data = []
 
     if Path('build.rs').exists():
@@ -281,7 +281,7 @@ def collect_files(
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
         cov = coverage_per_file.get(filepath)
-        coverable = cov[1] if cov else 0
+        coverable = cov[1] if cov else None
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
@@ -297,7 +297,7 @@ def collect_files(
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
         cov = coverage_per_file.get(filepath)
-        coverable = cov[1] if cov else 0
+        coverable = cov[1] if cov else None
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
@@ -388,7 +388,10 @@ def generate_markdown_table(files_data: List[Tuple]) -> str:
         if len(purpose) > 35:
             purpose = purpose[:34] + '…'
 
-        testable_str = f'{coverable:>8}' if coverable > 0 else '        -'
+        if coverable is None:
+            testable_str = '        -'
+        else:
+            testable_str = f'{coverable:>8}'
         output.append(f'| {folder:<23} | {filename:<20} | {nesting:>5} | {chars:>5} | {lines:>5} | {testable_str} | {get_coverage_str(pct)} | {purpose:<35} |')
 
     return '\n'.join(output)

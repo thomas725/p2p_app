@@ -14,11 +14,11 @@
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
-| /                       | build.rs             |     5 |  3949 |   118 |         - |     - | Build script                        |
+| /                       | build.rs             |     5 |  3949 |   118 |        0 |     - | Build script                        |
 | src                     | behavior.rs          |     4 |  6157 |   181 |       25 |   64% | Network behavior definitions        |
 | src                     | db.rs                |     6 | 14561 |   401 |      149 |   93% | Database connection & identity mgmt |
 | src                     | dioxus_app.rs        |    11 | 19052 |   537 |      178 |  0.0% | Web UI app shell & components (Dio… |
-| src                     | dioxus_styles.rs     |     0 |  3753 |    47 |         - |     - | Web UI CSS styles (Dioxus)          |
+| src                     | dioxus_styles.rs     |     0 |  3753 |    47 |        0 |     - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |       98 |  0.0% | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |     4 |  3547 |   117 |       39 |   95% | Formatting & display utilities      |
 | src                     | lib.rs               |     1 |  5586 |   147 |        1 |  100% | Module declarations & re-exports    |
@@ -46,10 +46,10 @@
 | src/bin/tui             | state.rs             |     3 |  8341 |   226 |       40 |   95% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |     3 |  1882 |    56 |       23 |  0.0% | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |     4 |  5074 |   151 |       62 |   48% | Render loop orchestration (60 FPS)  |
-| src/generated           | columns.rs           |     1 |  1653 |    42 |         - |     - | Auto-generated column definitions   |
-| src/generated           | mod.rs               |     0 |   488 |    11 |         - |     - | Module declarations                 |
-| src/generated           | models_insertable.rs |     1 |  3256 |    92 |         - |     - | Insertable data models              |
-| src/generated           | models_queryable.rs  |     1 |  3895 |   110 |         - |     - | Queryable data models               |
+| src/generated           | columns.rs           |     1 |  1653 |    42 |        0 |     - | Auto-generated column definitions   |
+| src/generated           | mod.rs               |     0 |   488 |    11 |        0 |     - | Module declarations                 |
+| src/generated           | models_insertable.rs |     1 |  3256 |    92 |        0 |     - | Insertable data models              |
+| src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |     - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |   98% | Database schema (Diesel)            |
 
 **Total:** 37 files, 6,797 lines, 234,190 characters (1645/2474 testable lines covered, 66%)
