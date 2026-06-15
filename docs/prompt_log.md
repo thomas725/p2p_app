@@ -665,3 +665,9 @@ Next we want to increase the percentage precision of the values in the "Covered"
 Ah, my logic was flawed, we want to also have the "%" sign in the end, so we need to remove 1 decimal place (2 instead of 3) and add that in the end so the total remains 7 characters.
 
 Whatever you wrote into docs/codebase_metrics.md is not the correct scripts/generate_metrics.py - analyze and fix it to get back to the correct content + format
+
+something broke with the code coverage data generation? analyze and fix
+
+Are you sure we didn't use a cached tarpaulin report instead of regenerating a new one? I have the suspicion that tarpaulin fails for some reason as it did in the last github action?
+
+I think you are wrong about your full tmp judgment. It looks to me as if just 168K of 16G available in /tmp are currently used.
