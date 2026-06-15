@@ -322,173 +322,261 @@ fn test_add_peer_to_state_list_appends_and_sorts() {
 
 // ── handle_incoming_message ───────────────────────────────────────────
 
-#[tokio::test]
-async fn test_handle_incoming_broadcast_adds_message() {
-    let mut state = test_app_state();
-    handle_incoming_message(
-        &mut state,
-        "hello all",
-        "peer-1",
-        None,
-        None,
-        Some("m1".to_string()),
-        false,
-    )
-    .await;
-    assert_eq!(state.messages.len(), 1);
-    assert!(state.messages[0].text.contains("hello all"));
-    assert_eq!(state.message_ids[0], Some("m1".to_string()));
+#[test]
+fn test_handle_incoming_broadcast_adds_message() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        handle_incoming_message(
+            &mut state,
+            "hello all",
+            "peer-1",
+            None,
+            None,
+            Some("m1".to_string()),
+            false,
+        )
+        .await;
+        assert_eq!(state.messages.len(), 1);
+        assert!(state.messages[0].text.contains("hello all"));
+        assert_eq!(state.message_ids[0], Some("m1".to_string()));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_handle_incoming_dm_adds_message_and_tab() {
-    let mut state = test_app_state();
-    let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    handle_incoming_message(
-        &mut state,
-        "secret dm",
-        "peer-dm",
-        None,
-        None,
-        Some("dm1".to_string()),
-        true,
-    )
-    .await;
-    assert!(state.dm_messages.contains_key("peer-dm"));
-    assert!(state.dm_messages["peer-dm"][0].contains("secret dm"));
-    assert_eq!(state.dm_message_ids["peer-dm"][0], Some("dm1".to_string()));
-    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+#[test]
+fn test_handle_incoming_dm_adds_message_and_tab() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        handle_incoming_message(
+            &mut state,
+            "secret dm",
+            "peer-dm",
+            None,
+            None,
+            Some("dm1".to_string()),
+            true,
+        )
+        .await;
+        assert!(state.dm_messages.contains_key("peer-dm"));
+        assert!(state.dm_messages["peer-dm"][0].contains("secret dm"));
+        assert_eq!(state.dm_message_ids["peer-dm"][0], Some("dm1".to_string()));
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_handle_incoming_empty_content_with_nickname_returns_early() {
-    let mut state = test_app_state();
-    handle_incoming_message(
-        &mut state,
-        "",
-        "peer-2",
-        None,
-        Some("Nickname".to_string()),
-        None,
-        false,
-    )
-    .await;
-    // Should NOT add a message (empty content + nickname is just a nick update)
-    assert!(state.messages.is_empty());
-    // But should update received_nicknames
-    assert_eq!(
-        state.received_nicknames.get("peer-2"),
-        Some(&"Nickname".to_string())
-    );
+#[test]
+fn test_handle_incoming_empty_content_with_nickname_returns_early() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        handle_incoming_message(
+            &mut state,
+            "",
+            "peer-2",
+            None,
+            Some("Nickname".to_string()),
+            None,
+            false,
+        )
+        .await;
+        // Should NOT add a message (empty content + nickname is just a nick update)
+        assert!(state.messages.is_empty());
+        // But should update received_nicknames
+        assert_eq!(
+            state.received_nicknames.get("peer-2"),
+            Some(&"Nickname".to_string())
+        );
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_handle_incoming_sets_received_nickname() {
-    let mut state = test_app_state();
-    handle_incoming_message(
-        &mut state,
-        "hello",
-        "peer-3",
-        None,
-        Some("Alice".to_string()),
-        None,
-        false,
-    )
-    .await;
-    assert_eq!(
-        state.received_nicknames.get("peer-3"),
-        Some(&"Alice".to_string())
-    );
-    // Message should still be added
-    assert_eq!(state.messages.len(), 1);
+#[test]
+fn test_handle_incoming_sets_received_nickname() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        handle_incoming_message(
+            &mut state,
+            "hello",
+            "peer-3",
+            None,
+            Some("Alice".to_string()),
+            None,
+            false,
+        )
+        .await;
+        assert_eq!(
+            state.received_nicknames.get("peer-3"),
+            Some(&"Alice".to_string())
+        );
+        // Message should still be added
+        assert_eq!(state.messages.len(), 1);
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_handle_incoming_broadcast_with_latency() {
-    let mut state = test_app_state();
-    handle_incoming_message(
-        &mut state,
-        "ping",
-        "peer-4",
-        Some("42ms".to_string()),
-        None,
-        None,
-        false,
-    )
-    .await;
-    assert_eq!(state.messages.len(), 1);
-    assert!(state.messages[0].text.contains("42ms"));
+#[test]
+fn test_handle_incoming_broadcast_with_latency() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        handle_incoming_message(
+            &mut state,
+            "ping",
+            "peer-4",
+            Some("42ms".to_string()),
+            None,
+            None,
+            false,
+        )
+        .await;
+        assert_eq!(state.messages.len(), 1);
+        assert!(state.messages[0].text.contains("42ms"));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_handle_incoming_dm_with_nickname_and_latency() {
-    let mut state = test_app_state();
-    state
-        .local_nicknames
-        .insert("peer-5".to_string(), "Bob".to_string());
-    handle_incoming_message(
-        &mut state,
-        "hey",
-        "peer-5",
-        Some("5ms".to_string()),
-        Some("Bob".to_string()),
-        Some("dm-5".to_string()),
-        true,
-    )
-    .await;
-    assert!(state.dm_messages.contains_key("peer-5"));
-    assert!(state.dm_messages["peer-5"][0].contains("hey"));
-    assert!(state.dm_messages["peer-5"][0].contains("5ms"));
-    assert_eq!(state.dm_message_ids["peer-5"][0], Some("dm-5".to_string()));
+#[test]
+fn test_handle_incoming_dm_with_nickname_and_latency() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state
+            .local_nicknames
+            .insert("peer-5".to_string(), "Bob".to_string());
+        handle_incoming_message(
+            &mut state,
+            "hey",
+            "peer-5",
+            Some("5ms".to_string()),
+            Some("Bob".to_string()),
+            Some("dm-5".to_string()),
+            true,
+        )
+        .await;
+        assert!(state.dm_messages.contains_key("peer-5"));
+        assert!(state.dm_messages["peer-5"][0].contains("hey"));
+        assert!(state.dm_messages["peer-5"][0].contains("5ms"));
+        assert_eq!(state.dm_message_ids["peer-5"][0], Some("dm-5".to_string()));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 // ── process_swarm_event ───────────────────────────────────────────────
 
-#[tokio::test]
-async fn test_process_swarm_event_broadcast_adds_message() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
+#[test]
+fn test_process_swarm_event_broadcast_adds_message() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
 
-    process_swarm_event(
-        SwarmEvent::BroadcastMessage(MessageEvent {
-            content: "hello".to_string(),
-            peer_id: "p1".to_string(),
-            latency: None,
-            nickname: None,
-            msg_id: Some("m1".to_string()),
-        }),
-        &state,
-        &swarm_cmd_tx,
-    )
-    .await;
+        process_swarm_event(
+            SwarmEvent::BroadcastMessage(MessageEvent {
+                content: "hello".to_string(),
+                peer_id: "p1".to_string(),
+                latency: None,
+                nickname: None,
+                msg_id: Some("m1".to_string()),
+            }),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
 
-    let s = state.lock().await;
-    assert_eq!(s.messages.len(), 1);
-    assert!(s.messages[0].text.contains("hello"));
-    assert_eq!(s.message_ids[0], Some("m1".to_string()));
+        let s = state.lock().await;
+        assert_eq!(s.messages.len(), 1);
+        assert!(s.messages[0].text.contains("hello"));
+        assert_eq!(s.message_ids[0], Some("m1".to_string()));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_process_swarm_event_dm_adds_message() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
+#[test]
+fn test_process_swarm_event_dm_adds_message() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
 
-    process_swarm_event(
-        SwarmEvent::DirectMessage(MessageEvent {
-            content: "secret".to_string(),
-            peer_id: "p2".to_string(),
-            latency: None,
-            nickname: None,
-            msg_id: Some("dm1".to_string()),
-        }),
-        &state,
-        &swarm_cmd_tx,
-    )
-    .await;
+        process_swarm_event(
+            SwarmEvent::DirectMessage(MessageEvent {
+                content: "secret".to_string(),
+                peer_id: "p2".to_string(),
+                latency: None,
+                nickname: None,
+                msg_id: Some("dm1".to_string()),
+            }),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
 
-    let s = state.lock().await;
-    assert!(s.dm_messages.contains_key("p2"));
-    assert_eq!(s.dm_message_ids["p2"][0], Some("dm1".to_string()));
+        let s = state.lock().await;
+        assert!(s.dm_messages.contains_key("p2"));
+        assert_eq!(s.dm_message_ids["p2"][0], Some("dm1".to_string()));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[tokio::test]
@@ -511,72 +599,94 @@ async fn test_process_swarm_event_peer_disconnected_decrements() {
     assert_eq!(s.concurrent_peers, 2);
 }
 
-#[tokio::test]
-async fn test_process_swarm_event_receipt_stored_in_state() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
-    {
-        let mut s = state.lock().await;
-        s.dm_message_ids
-            .insert("p1".to_string(), VecDeque::from([Some("dm-1".to_string())]));
-    }
+#[test]
+fn test_process_swarm_event_receipt_stored_in_state() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
+        {
+            let mut s = state.lock().await;
+            s.dm_message_ids
+                .insert("p1".to_string(), VecDeque::from([Some("dm-1".to_string())]));
+        }
 
-    process_swarm_event(
-        SwarmEvent::Receipt {
-            peer_id: "p1".to_string(),
-            ack_for: "dm-1".to_string(),
-            received_at: Some(100.0),
-        },
-        &state,
-        &swarm_cmd_tx,
-    )
-    .await;
+        process_swarm_event(
+            SwarmEvent::Receipt {
+                peer_id: "p1".to_string(),
+                ack_for: "dm-1".to_string(),
+                received_at: Some(100.0),
+            },
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
 
-    let s = state.lock().await;
-    assert!(s.dm_receipts.contains_key("dm-1"));
-    assert!(s.broadcast_receipts.contains_key("dm-1"));
+        let s = state.lock().await;
+        assert!(s.dm_receipts.contains_key("dm-1"));
+        assert!(s.broadcast_receipts.contains_key("dm-1"));
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 // ── spawn_command_processor ─────────────────────────────────────────────
 
-#[tokio::test]
-async fn test_command_processor_processes_swarm_events() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (input_tx, input_rx) = mpsc::channel(1);
-    let (swarm_event_tx, swarm_event_rx) = mpsc::channel(1);
-    let (render_tx, mut render_rx) = mpsc::channel(1);
-    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+#[test]
+fn test_command_processor_processes_swarm_events() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (input_tx, input_rx) = mpsc::channel(1);
+        let (swarm_event_tx, swarm_event_rx) = mpsc::channel(1);
+        let (render_tx, mut render_rx) = mpsc::channel(1);
+        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
 
-    let (_handle, _) = spawn_command_processor(
-        state.clone(),
-        input_rx,
-        swarm_event_rx,
-        render_tx,
-        swarm_cmd_tx,
-    );
+        let (_handle, _) = spawn_command_processor(
+            state.clone(),
+            input_rx,
+            swarm_event_rx,
+            render_tx,
+            swarm_cmd_tx,
+        );
 
-    swarm_event_tx
-        .send(SwarmEvent::BroadcastMessage(MessageEvent {
-            content: "from loop".to_string(),
-            peer_id: "p-loop".to_string(),
-            latency: None,
-            nickname: None,
-            msg_id: Some("m-loop".to_string()),
-        }))
-        .await
-        .unwrap();
+        swarm_event_tx
+            .send(SwarmEvent::BroadcastMessage(MessageEvent {
+                content: "from loop".to_string(),
+                peer_id: "p-loop".to_string(),
+                latency: None,
+                nickname: None,
+                msg_id: Some("m-loop".to_string()),
+            }))
+            .await
+            .unwrap();
 
-    // Wait for the spawned task to process the event (signals via render_tx)
-    render_rx.recv().await;
+        // Wait for the spawned task to process the event (signals via render_tx)
+        render_rx.recv().await;
 
-    let s = state.lock().await;
-    assert_eq!(s.messages.len(), 1);
-    assert!(s.messages[0].text.contains("from loop"));
-    drop(s);
+        let s = state.lock().await;
+        assert_eq!(s.messages.len(), 1);
+        assert!(s.messages[0].text.contains("from loop"));
+        drop(s);
 
-    // Drop senders to stop the loop
-    drop(input_tx);
-    drop(swarm_event_tx);
+        // Drop senders to stop the loop
+        drop(input_tx);
+        drop(swarm_event_tx);
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[tokio::test]

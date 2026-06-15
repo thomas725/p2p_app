@@ -4,6 +4,7 @@ use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
 use std::sync::Arc;
+use tempfile::TempDir;
 use tokio::sync::{Mutex, mpsc};
 
 // ── update_dm_transcript_labels ──────────────────────────────────────────
@@ -320,23 +321,34 @@ fn test_toggle_mouse_capture_toggles_state() {
 
 // ── handle_enter_key ──────────────────────────────────────────────────
 
-#[tokio::test]
-async fn test_enter_key_in_peers_tab_opens_dm() {
-    let mut state = app_state_with_peers(3);
-    state.active_tab = 1; // Peers tab
-    let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
+#[test]
+fn test_enter_key_in_peers_tab_opens_dm() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = app_state_with_peers(3);
+        state.active_tab = 1; // Peers tab
+        let dm_count_before = state.dynamic_tabs.dm_tab_count();
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
 
-    handle_enter_key(
-        &mut state,
-        &swarm_cmd_tx,
-        false,
-        p2p_app::tui_tabs::TabContent::Peers,
-    )
-    .await;
+        handle_enter_key(
+            &mut state,
+            &swarm_cmd_tx,
+            false,
+            p2p_app::tui_tabs::TabContent::Peers,
+        )
+        .await;
 
-    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
-    assert!(state.active_tab >= dm_count_before);
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+        assert!(state.active_tab >= dm_count_before);
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[tokio::test]
@@ -410,51 +422,73 @@ async fn test_nickname_submission_empty_clears_edit() {
     assert_eq!(state.editing_nickname_peer, None);
 }
 
-#[tokio::test]
-async fn test_nickname_submission_per_peer_sends_dm() {
-    let mut state = test_app_state();
-    state.editing_nickname = true;
-    state.editing_nickname_peer = Some("peer-nick".to_string());
-    state.own_nickname = "OldGlobal".to_string();
-    state.chat_input.insert_str("NewPerPeer");
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+#[test]
+fn test_nickname_submission_per_peer_sends_dm() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.editing_nickname = true;
+        state.editing_nickname_peer = Some("peer-nick".to_string());
+        state.own_nickname = "OldGlobal".to_string();
+        state.chat_input.insert_str("NewPerPeer");
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
 
-    handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
+        handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-    assert!(!state.editing_nickname);
-    assert_eq!(
-        state.self_nicknames_for_peers.get("peer-nick"),
-        Some(&"NewPerPeer".to_string())
-    );
-    // Should have sent a SendDm with the new nickname
-    let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
-        .await
-        .expect("timeout")
-        .expect("expected SendDm");
-    match cmd {
-        SwarmCommand::SendDm {
-            peer_id, nickname, ..
-        } => {
-            assert_eq!(peer_id, "peer-nick");
-            assert_eq!(nickname, Some("NewPerPeer".to_string()));
+        assert!(!state.editing_nickname);
+        assert_eq!(
+            state.self_nicknames_for_peers.get("peer-nick"),
+            Some(&"NewPerPeer".to_string())
+        );
+        // Should have sent a SendDm with the new nickname
+        let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+            .await
+            .expect("timeout")
+            .expect("expected SendDm");
+        match cmd {
+            SwarmCommand::SendDm {
+                peer_id, nickname, ..
+            } => {
+                assert_eq!(peer_id, "peer-nick");
+                assert_eq!(nickname, Some("NewPerPeer".to_string()));
+            }
+            _ => panic!("expected SendDm"),
         }
-        _ => panic!("expected SendDm"),
-    }
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_nickname_submission_global_updates_own_nickname() {
-    let mut state = test_app_state();
-    state.editing_nickname = true;
-    state.editing_nickname_peer = None;
-    state.own_nickname = "OldGlobal".to_string();
-    state.chat_input.insert_str("NewGlobal");
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
+#[test]
+fn test_nickname_submission_global_updates_own_nickname() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.editing_nickname = true;
+        state.editing_nickname_peer = None;
+        state.own_nickname = "OldGlobal".to_string();
+        state.chat_input.insert_str("NewGlobal");
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
 
-    handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
+        handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-    assert!(!state.editing_nickname);
-    assert_eq!(state.own_nickname, "NewGlobal");
+        assert!(!state.editing_nickname);
+        assert_eq!(state.own_nickname, "NewGlobal");
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 // ── process_key_event: ESC + editing_nickname ─────────────────────────
@@ -486,29 +520,40 @@ async fn test_esc_cancels_nickname_edit() {
 
 // ── process_key_event: Enter + editing_nickname ────────────────────────
 
-#[tokio::test]
-async fn test_enter_during_nickname_edit_submits_nickname() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
-    let (render_tx, _) = mpsc::channel(1);
-    {
-        let mut s = state.lock().await;
-        s.editing_nickname = true;
-        s.editing_nickname_peer = Some("p1".to_string());
-        s.chat_input.insert_str("NewNick");
-    }
+#[test]
+fn test_enter_during_nickname_edit_submits_nickname() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
+        let (render_tx, _) = mpsc::channel(1);
+        {
+            let mut s = state.lock().await;
+            s.editing_nickname = true;
+            s.editing_nickname_peer = Some("p1".to_string());
+            s.chat_input.insert_str("NewNick");
+        }
 
-    let exited = process_input_event(
-        InputEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
-        &state,
-        &swarm_cmd_tx,
-        &render_tx,
-    )
-    .await;
+        let exited = process_input_event(
+            InputEvent::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
 
-    assert!(!exited);
-    let s = state.lock().await;
-    assert!(!s.editing_nickname);
+        assert!(!exited);
+        let s = state.lock().await;
+        assert!(!s.editing_nickname);
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[test]

@@ -1,6 +1,7 @@
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
 use std::collections::HashMap;
+use tempfile::TempDir;
 
 // ── handle_tab_click ──────────────────────────────────────────────────
 
@@ -53,18 +54,38 @@ fn test_tab_click_close_button_on_dm_tab() {
 
 #[test]
 fn test_peer_row_click_opens_dm_tab() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
     let mut state = app_state_with_peers(3);
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
     handle_peer_row_click(&mut state, 3); // row 3 = first peer (header is at rows 0-2)
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[test]
 fn test_peer_row_click_selects_correct_peer() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
     let mut state = app_state_with_peers(3);
     let peer_id = state.peers[1].peer_id.clone(); // second peer
     handle_peer_row_click(&mut state, 4); // row 4 = second peer (header offset)
     assert!(state.dm_messages.contains_key(&peer_id));
+
+    p2p_app::db::reset_db_url_cache();
 }
 
 #[test]

@@ -109,61 +109,83 @@ fn test_push_outgoing_dm_separate_peers() {
 
 // ── send_message ───────────────────────────────────────────────────────
 
-#[tokio::test]
-async fn test_send_broadcast_updates_state_and_sends_command() {
-    let mut state = test_app_state();
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+#[test]
+fn test_send_broadcast_updates_state_and_sends_command() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
 
-    send_message(
-        &mut state,
-        &swarm_cmd_tx,
-        "hello".to_string(),
-        p2p_app::tui_tabs::TabContent::Chat,
-    )
-    .await;
+        send_message(
+            &mut state,
+            &swarm_cmd_tx,
+            "hello".to_string(),
+            p2p_app::tui_tabs::TabContent::Chat,
+        )
+        .await;
 
-    assert_eq!(state.messages.len(), 1);
-    assert!(state.messages[0].text.contains("hello"));
-    assert!(state.chat_input.lines().join("").is_empty());
+        assert_eq!(state.messages.len(), 1);
+        assert!(state.messages[0].text.contains("hello"));
+        assert!(state.chat_input.lines().join("").is_empty());
 
-    let cmd = swarm_cmd_rx.try_recv().unwrap();
-    match cmd {
-        p2p_app::SwarmCommand::Publish { content, .. } => assert_eq!(content, "hello"),
-        _ => panic!("expected Publish"),
-    }
+        let cmd = swarm_cmd_rx.try_recv().unwrap();
+        match cmd {
+            p2p_app::SwarmCommand::Publish { content, .. } => assert_eq!(content, "hello"),
+            _ => panic!("expected Publish"),
+        }
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_send_dm_updates_state_and_sends_command() {
-    let mut state = test_app_state();
-    let peer_id = "peer-dm";
-    state.dynamic_tabs.add_dm_tab(peer_id.to_string());
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+#[test]
+fn test_send_dm_updates_state_and_sends_command() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        let peer_id = "peer-dm";
+        state.dynamic_tabs.add_dm_tab(peer_id.to_string());
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
 
-    send_message(
-        &mut state,
-        &swarm_cmd_tx,
-        "secret".to_string(),
-        p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()),
-    )
-    .await;
+        send_message(
+            &mut state,
+            &swarm_cmd_tx,
+            "secret".to_string(),
+            p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()),
+        )
+        .await;
 
-    assert!(state.dm_messages.contains_key(peer_id));
-    assert!(state.dm_messages[peer_id][0].contains("secret"));
-    assert!(state.chat_input.lines().join("").is_empty());
+        assert!(state.dm_messages.contains_key(peer_id));
+        assert!(state.dm_messages[peer_id][0].contains("secret"));
+        assert!(state.chat_input.lines().join("").is_empty());
 
-    let cmd = swarm_cmd_rx.try_recv().unwrap();
-    match cmd {
-        p2p_app::SwarmCommand::SendDm {
-            content,
-            ref peer_id,
-            ..
-        } => {
-            assert_eq!(content, "secret");
-            assert_eq!(peer_id, "peer-dm");
+        let cmd = swarm_cmd_rx.try_recv().unwrap();
+        match cmd {
+            p2p_app::SwarmCommand::SendDm {
+                content,
+                ref peer_id,
+                ..
+            } => {
+                assert_eq!(content, "secret");
+                assert_eq!(peer_id, "peer-dm");
+            }
+            _ => panic!("expected SendDm"),
         }
-        _ => panic!("expected SendDm"),
-    }
+    });
+    p2p_app::db::reset_db_url_cache();
 }
 
 fn with_test_db(f: impl FnOnce(mpsc::Sender<p2p_app::SwarmCommand>)) {

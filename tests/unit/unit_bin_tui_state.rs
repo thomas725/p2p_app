@@ -214,10 +214,20 @@ fn test_app_state_new_defaults() {
 
 #[test]
 fn test_load_and_format_messages_db_failure_returns_empty() {
-    // When DB load fails, returns empty fallback
+    let _guard = p2p_app::db::shared_db_test_lock().lock().unwrap();
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().unwrap().to_string();
+    p2p_app::db::set_cached_db_url(&db_str);
+    p2p_app::db::init_database().unwrap();
+
     let (msgs, ids, sent_at) =
         load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
     assert!(sent_at.is_empty());
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url_cache();
+    drop(dir);
 }
