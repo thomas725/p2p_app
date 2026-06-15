@@ -1,12 +1,6 @@
 use super::*;
 use crate::tui::test_helpers::test_app_state;
-use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
-
-fn test_db_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-}
 
 // ── push_outgoing_broadcast_to_state ─────────────────────────────────────
 
@@ -172,79 +166,64 @@ async fn test_send_dm_updates_state_and_sends_command() {
     }
 }
 
-fn set_test_db_url(path: &str) {
-    p2p_app::db::reset_db_url_cache();
-    unsafe {
-        std::env::set_var("DATABASE_URL", path);
-    }
-}
-
-fn unset_test_db_url() {
-    unsafe {
-        std::env::remove_var("DATABASE_URL");
-    }
-    p2p_app::db::reset_db_url_cache();
-}
-
-#[tokio::test]
-async fn test_send_broadcast_saves_to_db() {
-    let _guard = test_db_lock()
+fn with_test_db(f: impl FnOnce(mpsc::Sender<p2p_app::SwarmCommand>)) {
+    let _guard = p2p_app::db::shared_db_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    set_test_db_url(&db_str);
+    p2p_app::db::set_cached_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
-
-    let mut state = test_app_state();
     let (swarm_cmd_tx, _) = mpsc::channel(1);
 
-    send_message(
-        &mut state,
-        &swarm_cmd_tx,
-        "db test".to_string(),
-        p2p_app::tui_tabs::TabContent::Chat,
-    )
-    .await;
-
-    let msgs = p2p_app::load_messages("test-net", 10).unwrap();
-    assert_eq!(msgs.len(), 1);
-    assert_eq!(msgs[0].content, "db test");
+    f(swarm_cmd_tx);
 
     p2p_app::db::release_db_lock();
-    unset_test_db_url();
-    drop(_guard);
+    p2p_app::db::reset_db_url_cache();
 }
 
-#[tokio::test]
-async fn test_send_dm_saves_to_db() {
-    let _guard = test_db_lock()
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let dir = TempDir::new().unwrap();
-    let db_path = dir.path().join("test.db");
-    let db_str = db_path.to_str().unwrap().to_string();
-    set_test_db_url(&db_str);
-    p2p_app::db::init_database().unwrap();
+#[test]
+fn test_send_broadcast_saves_to_db() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    with_test_db(|swarm_cmd_tx| {
+        rt.block_on(async {
+            let mut state = test_app_state();
 
-    let mut state = test_app_state();
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
-    state.dynamic_tabs.add_dm_tab("dm-peer".to_string());
+            send_message(
+                &mut state,
+                &swarm_cmd_tx,
+                "db test".to_string(),
+                p2p_app::tui_tabs::TabContent::Chat,
+            )
+            .await;
 
-    send_message(
-        &mut state,
-        &swarm_cmd_tx,
-        "dm db".to_string(),
-        p2p_app::tui_tabs::TabContent::Direct("dm-peer".to_string()),
-    )
-    .await;
+            let msgs = p2p_app::load_messages("test-net", 10).unwrap();
+            assert_eq!(msgs.len(), 1);
+            assert_eq!(msgs[0].content, "db test");
+        });
+    });
+}
 
-    let msgs = p2p_app::load_direct_messages("dm-peer", 10).unwrap();
-    assert_eq!(msgs.len(), 1);
-    assert_eq!(msgs[0].content, "dm db");
+#[test]
+fn test_send_dm_saves_to_db() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    with_test_db(|swarm_cmd_tx| {
+        rt.block_on(async {
+            let mut state = test_app_state();
+            state.dynamic_tabs.add_dm_tab("dm-peer".to_string());
 
-    p2p_app::db::release_db_lock();
-    unset_test_db_url();
-    drop(_guard);
+            send_message(
+                &mut state,
+                &swarm_cmd_tx,
+                "dm db".to_string(),
+                p2p_app::tui_tabs::TabContent::Direct("dm-peer".to_string()),
+            )
+            .await;
+
+            let msgs = p2p_app::load_direct_messages("dm-peer", 10).unwrap();
+            assert_eq!(msgs.len(), 1);
+            assert_eq!(msgs[0].content, "dm db");
+        });
+    });
 }

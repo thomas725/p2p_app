@@ -39,6 +39,23 @@ mod test_utils;
 #[cfg(any(test, feature = "test-utils"))]
 pub use test_utils::reset_db_url_cache;
 
+/// Set the cached database URL directly (avoids needing DATABASE_URL env var).
+/// This is the preferred mechanism for tests — it avoids race conditions
+/// on the process-global environment variable.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn set_cached_db_url(url: &str) {
+    if let Ok(mut cached) = db_url_cache().lock() {
+        *cached = Some(url.to_string());
+    }
+}
+
+/// Shared lock for serialising test DB setup/teardown.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn shared_db_test_lock() -> &'static std::sync::Mutex<()> {
+    static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| std::sync::Mutex::new(()))
+}
+
 /// Establish a connection to the `SQLite` database and run pending migrations.
 ///
 /// If `DATABASE_URL` is set, uses that file directly.
@@ -63,17 +80,24 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
     // Register cleanup on panic after path is determined and cached (to ensure it lives for the app lifetime)
     static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
     let () = PANIC_HOOK_SET.get_or_init(|| {
-        std::panic::set_hook(Box::new(|_info| {
+        let prev = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
             if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
                 let lock_path = format!("{db_path}.lock");
                 let _ = std::fs::remove_file(&lock_path);
                 crate::logging::p2plog_debug(format!("[DB] released lock on panic: {lock_path}"));
             }
+            prev(info);
         }));
     });
 
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
+
+    // Set busy timeout so we retry instead of getting "database is locked"
+    diesel::sql_query("PRAGMA busy_timeout = 5000")
+        .execute(&mut conn)
+        .ok();
 
     // Run migrations first to create tables
     conn.run_pending_migrations(MIGRATIONS)
@@ -302,23 +326,19 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 pub fn get_database_url() -> String {
     dotenv().ok();
 
-    // Always check the environment variable first - it may have changed (e.g., tests)
     if let Ok(url) = env::var("DATABASE_URL") {
-        // Only update cache if we have a new value
         if let Ok(mut cached) = db_url_cache().lock() {
             *cached = Some(url.clone());
         }
         return url;
     }
 
-    // No DATABASE_URL env - check if we have a cached value from an earlier call
     if let Ok(cached) = db_url_cache().lock()
         && let Some(url) = cached.clone()
     {
         return url;
     }
 
-    // No env var and no cache - determine a new path (first-time startup)
     let url = determine_db_path().unwrap_or_else(|_| "sqlite.db".to_owned());
     if let Ok(mut cached) = db_url_cache().lock() {
         *cached = Some(url.clone());

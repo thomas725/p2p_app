@@ -3,6 +3,7 @@ use crate::tui::test_helpers::test_app_state;
 use p2p_app::{MessageEvent, PeerRecord, SwarmEvent};
 use std::collections::VecDeque;
 use std::sync::Arc;
+use tempfile::TempDir;
 use tokio::sync::{Mutex, mpsc};
 
 // ── sort_peers_by_last_seen ──────────────────────────────────────────────
@@ -614,32 +615,44 @@ async fn test_command_processor_stops_on_input_exit() {
 
 // ── process_swarm_event: PeerConnected ─────────────────────────────────
 
-#[tokio::test]
-async fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
-    let state = Arc::new(Mutex::new(test_app_state()));
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+#[test]
+fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
+    let _guard = p2p_app::db::shared_db_test_lock().lock().unwrap();
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().unwrap().to_string();
+    p2p_app::db::set_cached_db_url(&db_str);
+    p2p_app::db::init_database().unwrap();
 
-    process_swarm_event(
-        SwarmEvent::PeerConnected("new-peer".to_string()),
-        &state,
-        &swarm_cmd_tx,
-    )
-    .await;
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
 
-    let s = state.lock().await;
-    assert_eq!(s.concurrent_peers, 1);
-    assert!(s.peers.iter().any(|p| p.peer_id == "new-peer"));
-    drop(s);
+        process_swarm_event(
+            SwarmEvent::PeerConnected("new-peer".to_string()),
+            &state,
+            &swarm_cmd_tx,
+        )
+        .await;
 
-    // Should have sent a SendDm with nickname
-    let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
-        .await
-        .expect("timeout")
-        .expect("expected SendDm");
-    match cmd {
-        SwarmCommand::SendDm { peer_id, .. } => assert_eq!(peer_id, "new-peer"),
-        _ => panic!("expected SendDm"),
-    }
+        let s = state.lock().await;
+        assert_eq!(s.concurrent_peers, 1);
+        assert!(s.peers.iter().any(|p| p.peer_id == "new-peer"));
+        drop(s);
+
+        let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+            .await
+            .expect("timeout")
+            .expect("expected SendDm");
+        match cmd {
+            SwarmCommand::SendDm { peer_id, .. } => assert_eq!(peer_id, "new-peer"),
+            _ => panic!("expected SendDm"),
+        }
+    });
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url_cache();
 }
 
 // ── process_swarm_event: ListenAddrEstablished ─────────────────────────
