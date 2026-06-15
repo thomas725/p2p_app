@@ -663,3 +663,5 @@ Since we renamed the "Cover" column to "Covered" we need to make the values 2 ch
 Next we want to increase the percentage precision of the values in the "Covered" column. We have 7 characters available, the largest value we need to be able to represent is 100, and we want to have the decimal point always at the same location. So we want to represent 100 as "100.000" which is using all the 7 characters and the smallest number 0 should have 2 leading spaces and also 3 decimal places: "  0.000". values >= 10 should only have 1 leading space then.
 
 Ah, my logic was flawed, we want to also have the "%" sign in the end, so we need to remove 1 decimal place (2 instead of 3) and add that in the end so the total remains 7 characters.
+
+Whatever you wrote into docs/codebase_metrics.md is not the correct scripts/generate_metrics.py - analyze and fix it to get back to the correct content + format
