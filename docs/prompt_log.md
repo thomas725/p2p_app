@@ -532,7 +532,7 @@ Think like an owl — slow, observant and analytical. Examine this problem from 
 
 ## 2026-06-09
 
-check latest github action results:
+check latest github action results (not all of them!):
 
 - .github/ci-results/dependency-check_*.txt
 - .github/ci-results/results_*.txt
@@ -551,7 +551,7 @@ Find and fix bugs. Remove dead code and unused dependencies. Simplify code where
 
 Make use of rust's rich type system to make invalid state unrepresentable. Minimize boilerplate. Use abstractions only as instrumental goal, not for it's own sake.
 
-Use docs/codebase_metrics.md to identify tiny files that we might be able to eliminate and huge files or files with the deepest nestings that we could structure better. Add unit tests for components with low code coverage. Refactor currently untestable components to make them testable.
+Use docs/codebase_metrics.md to identify tiny files that we might be able to eliminate and huge files or files with the deepest nestings that we could structure better. Also use coverage info to add unit and integration tests for components with low code coverage. Refactor currently untestable components to make them testable.
 
 Improve the docs where possible to make it up to date, easy to understand and concise.
 
@@ -643,3 +643,22 @@ with the number of testable and tested lines as tarpaulin reports them.
 continue increasing code coverage
 
 add "purpose" for the 3 files currently having generic "source file", I think that's a static map in the python metrics generation script.
+
+
+## 2026-06-14
+
+adapt scripts/generate_metrics.py columns of the "All Source Files" table from currently:
+Folder, File, Lines, Chars, Depth, Cover, Purpose
+to:
+Folder, File, Depth, Chars, Lines, Testable, Covered, Purpose
+where Testable is the number of testable lines and Covered is the same percentage we currently see in the "Cover" column.
+
+## 2026-06-15
+
+scripts/generate_metrics.py outputs one too many spaces in the column "Testable" when the value is "-", which I believe should be "0" instead if there are no testable lines? "-" should only output if we are missing the tarpaulin output and don't know how many testable lines that *.rs file contains.
+
+Since we renamed the "Cover" column to "Covered" we need to make the values 2 characters longer. Make the values above 10 use 1 decimal place (instead of 0, which adds 2 characters) and the values below 10 use 3 instead of 1 decimal places...
+
+Next we want to increase the percentage precision of the values in the "Covered" column. We have 7 characters available, the largest value we need to be able to represent is 100, and we want to have the decimal point always at the same location. So we want to represent 100 as "100.000" which is using all the 7 characters and the smallest number 0 should have 2 leading spaces and also 3 decimal places: "  0.000". values >= 10 should only have 1 leading space then.
+
+Ah, my logic was flawed, we want to also have the "%" sign in the end, so we need to remove 1 decimal place (2 instead of 3) and add that in the end so the total remains 7 characters.
