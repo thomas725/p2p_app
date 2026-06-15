@@ -7,6 +7,7 @@ With --with-coverage, uses cargo-tarpaulin JSON output for real coverage data.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -102,11 +103,18 @@ def run_tarpaulin(force: bool = False) -> CoverageData:
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
     sys.stderr.flush()
 
+    target_dir = str(Path.cwd() / 'target' / 'tarpaulin')
+    tmp_dir = Path(target_dir) / 'tmp'
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    env = {**os.environ, 'TMPDIR': str(tmp_dir)}
+
     proc = subprocess.Popen(
-        ['cargo', 'tarpaulin', '--all-features', '-o', 'Json'],
+        ['cargo', 'tarpaulin', '--all-features', '-o', 'Json', '--target-dir', target_dir],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        env=env,
     )
     try:
         for line in proc.stdout or []:
@@ -121,6 +129,7 @@ def run_tarpaulin(force: bool = False) -> CoverageData:
     if proc.returncode != 0:
         print(f"tarpaulin failed (exit {proc.returncode})", file=sys.stderr)
         Path(report_path).unlink(missing_ok=True)
+        print("  (if out of disk space, try clearing target/ or use a cached report)", file=sys.stderr)
         return {}, (0, 0)
 
     if not Path(report_path).exists():
