@@ -532,7 +532,7 @@ Think like an owl — slow, observant and analytical. Examine this problem from 
 
 ## 2026-06-09
 
-check latest github action results (not all of them!):
+check latest github action result for each action type:
 
 - .github/ci-results/dependency-check_*.txt
 - .github/ci-results/results_*.txt
@@ -551,17 +551,18 @@ Find and fix bugs. Remove dead code and unused dependencies. Simplify code where
 
 Make use of rust's rich type system to make invalid state unrepresentable. Minimize boilerplate. Use abstractions only as instrumental goal, not for it's own sake.
 
-Use docs/codebase_metrics.md to identify tiny files that we might be able to eliminate and huge files or files with the deepest nestings that we could structure better. Also use coverage info to add unit and integration tests for components with low code coverage. Refactor currently untestable components to make them testable.
+Use docs/codebase_metrics.md to identify tiny files that we might be able to eliminate and huge files or files with the deepest nestings that we could structure better. Also use coverage info to identify untested code and add unit and integration tests for it. Refactor currently untestable components to make them testable.
 
 Improve the docs where possible to make it up to date, easy to understand and concise.
 
 Auto format and apply suggestions with cargo clippy.
 
-When done run scripts/generate_metrics.py and write output to docs/codebase_metrics.md
+When done run `scripts/generate_metrics.py --force-coverage` and write output to docs/codebase_metrics.md
 
 Finally commit all changes with meaningful commit messages.
 
 Think like an owl — slow, observant and analytical. Examine this problem from multiple perspectives and identify the hidden factors most people overlook.
+
 
 ## 2026-06-10
 
