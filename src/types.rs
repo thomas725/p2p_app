@@ -11,15 +11,20 @@ mod tests;
 /// Carries the rendered text and the sender's peer ID (`None` = sent by local user).
 #[derive(Debug, Clone)]
 pub struct DisplayMessage {
+    /// The rendered text to show in the UI.
     pub text: String,
+    /// Peer ID of the sender, or `None` if sent by the local user.
     pub sender_peer_id: Option<String>,
 }
 
 /// Peer record with identification and timestamps.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PeerRecord {
+    /// The peer's libp2p peer ID.
     pub peer_id: String,
+    /// Timestamp (RFC 3339) when this peer was first seen.
     pub first_seen: String,
+    /// Timestamp (RFC 3339) when this peer was last seen.
     pub last_seen: String,
 }
 

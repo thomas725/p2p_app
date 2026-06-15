@@ -297,6 +297,8 @@ where
     count.max(MIN_VISIBLE)
 }
 
+/// Return a checkmark prefix (`"v "`) if any peer has acknowledged the given
+/// broadcast message, or two spaces otherwise.
 #[must_use]
 pub fn broadcast_receipt_prefix(
     msg_id: Option<&str>,
@@ -313,6 +315,8 @@ pub fn broadcast_receipt_prefix(
     }
 }
 
+/// Return a checkmark prefix (`"v "`) if the recipient has acknowledged the
+/// given direct message, or two spaces otherwise.
 #[must_use]
 pub fn dm_receipt_prefix(
     msg_id: Option<&str>,
@@ -324,6 +328,9 @@ pub fn dm_receipt_prefix(
     }
 }
 
+/// Map a clicked terminal row to the index of the message it falls within,
+/// given each message's rendered line count and the row where content starts.
+/// Returns `None` if the click was above the content area or past the last message.
 #[must_use]
 pub fn row_to_visible_index(
     line_counts: &[usize],

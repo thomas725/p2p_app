@@ -8,22 +8,36 @@ use futures_channel::mpsc::UnboundedSender;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, OnceLock};
 
+/// Channel used by the Dioxus UI to send commands to the swarm task.
 pub static SWARM_CMD_TX: OnceLock<Mutex<tokio::sync::mpsc::Sender<SwarmCommand>>> = OnceLock::new();
+/// Channel used by the swarm task to push events to the Dioxus UI.
 pub static SWARM_EVENT_TX: OnceLock<UnboundedSender<SwarmEvent>> = OnceLock::new();
 
+/// Snapshot of application state captured at startup, before the UI mounts.
 pub struct InitData {
+    /// This node's nickname.
     pub own_nickname: String,
+    /// This node's libp2p peer ID.
     pub local_peer_id: String,
+    /// The pubsub topic name used for broadcasts.
     pub topic_str: String,
+    /// Nicknames we've assigned to peers, keyed by peer ID.
     pub local_nicknames: HashMap<String, String>,
+    /// Nicknames peers have announced about themselves, keyed by peer ID.
     pub received_nicknames: HashMap<String, String>,
+    /// Chat message history loaded from the database.
     pub messages: VecDeque<DisplayMessage>,
+    /// Message IDs aligned with `messages`, for receipt tracking.
     pub message_ids: VecDeque<Option<String>>,
+    /// Known peers loaded from the database.
     pub peers: VecDeque<PeerRecord>,
+    /// Delivery receipts for broadcast messages: `msg_id -> (peer_id -> received_at)`.
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+    /// Delivery receipts for direct messages: `msg_id -> (peer_id, received_at)`.
     pub dm_receipts: HashMap<String, (String, f64)>,
 }
 
+/// Holds the [`InitData`] snapshot until the UI's startup effect consumes it.
 pub static INIT_DATA: OnceLock<Mutex<Option<InitData>>> = OnceLock::new();
 
 pub(crate) const MAX_MESSAGE_HISTORY: usize = 1000;
@@ -398,6 +412,7 @@ fn render_popup_modal(mut state: Signal<AppState>, popup_text: Option<String>) -
     })
 }
 
+/// Root component of the Dioxus chat UI.
 #[allow(non_snake_case)]
 pub fn App() -> Element {
     let state = use_signal(|| AppState {

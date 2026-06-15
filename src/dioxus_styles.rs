@@ -1,3 +1,5 @@
+//! CSS stylesheet for the Dioxus UI.
+
 pub const STYLESHEET: &str = "
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
