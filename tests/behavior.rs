@@ -174,3 +174,34 @@ fn test_build_behaviour_returns_valid_behaviour() {
             });
     });
 }
+
+#[serial]
+#[test]
+fn test_build_swarm_small_network() {
+    with_test_db(|| {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let result = p2p_app::behavior::build_swarm(p2p_app::network::NetworkSize::Small);
+        assert!(result.is_ok());
+    });
+}
+
+#[test]
+fn test_direct_message_serialization_roundtrip() {
+    use p2p_app::behavior::DirectMessage;
+    let dm = DirectMessage {
+        content: "roundtrip".to_string(),
+        timestamp: 999,
+        sent_at: Some(1.5),
+        nickname: Some("Bob".to_string()),
+        msg_id: Some("dm-42".to_string()),
+        ack_for: Some("orig-7".to_string()),
+        received_at: Some(3.0),
+    };
+    let json = serde_json::to_string(&dm).unwrap();
+    let parsed: DirectMessage = serde_json::from_str(&json).unwrap();
+    assert_eq!(parsed.content, "roundtrip");
+    assert_eq!(parsed.timestamp, 999);
+    assert_eq!(parsed.nickname.as_deref(), Some("Bob"));
+    assert_eq!(parsed.ack_for.as_deref(), Some("orig-7"));
+}
