@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      37 |
-| Total Lines of Code     |   6,817 |
-| Total Characters        | 234,827 |
-| Average Lines per File  |     184 |
-| Average Characters/File |   6,346 |
+| Total Lines of Code     |   6,873 |
+| Total Characters        | 237,639 |
+| Average Lines per File  |     185 |
+| Average Characters/File |   6,422 |
 
 ## All Source Files
 
@@ -17,24 +17,24 @@
 | /                       | build.rs             |     5 |  3949 |   118 |        0 |       - | Build script                        |
 | src                     | behavior.rs          |     4 |  6157 |   181 |       25 |  96.00% | Network behavior definitions        |
 | src                     | db.rs                |     6 | 15198 |   421 |      158 |  90.51% | Database connection & identity mgmt |
-| src                     | dioxus_app.rs        |    11 | 19052 |   537 |      178 |   0.00% | Web UI app shell & components (Dio… |
-| src                     | dioxus_styles.rs     |     0 |  3753 |    47 |        0 |       - | Web UI CSS styles (Dioxus)          |
+| src                     | dioxus_app.rs        |    11 | 19980 |   552 |      178 |   0.00% | Web UI app shell & components (Dio… |
+| src                     | dioxus_styles.rs     |     0 |  3792 |    49 |        0 |       - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |       98 |   0.00% | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |     4 |  3547 |   117 |       39 |  94.87% | Formatting & display utilities      |
 | src                     | lib.rs               |     1 |  5586 |   147 |        1 | 100.00% | Module declarations & re-exports    |
 | src                     | logging.rs           |     4 |  7042 |   238 |       86 | 100.00% | Logging utilities & setup           |
 | src                     | messages.rs          |     4 |  8406 |   227 |       84 | 100.00% | Message persistence & retrieval     |
 | src                     | network.rs           |     3 |  1851 |    61 |       13 | 100.00% | Network size classification         |
-| src                     | nickname.rs          |     5 |  3445 |    98 |       49 | 100.00% | Nickname management                 |
+| src                     | nickname.rs          |     5 |  4472 |   123 |       49 | 100.00% | Nickname management                 |
 | src                     | peers.rs             |     3 |  6171 |   182 |       64 | 100.00% | Peer management & tracking          |
 | src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  66.67% | Network event translation           |
 | src                     | tui_helpers.rs       |     3 |  6896 |   226 |       91 | 100.00% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |     5 | 11816 |   363 |      185 |  88.11% | TUI rendering & state management    |
-| src                     | tui_render_state.rs  |     4 | 11457 |   372 |      136 |  97.79% | TUI render state & tab content      |
+| src                     | tui_render_state.rs  |     4 | 11951 |   379 |      136 |  97.79% | TUI render state & tab content      |
 | src                     | tui_tabs.rs          |     5 |  4793 |   168 |       52 |  98.08% | Tab management & navigation         |
-| src                     | types.rs             |     2 |  3279 |   110 |        3 |  66.67% | Event & command type defs           |
+| src                     | types.rs             |     2 |  3546 |   115 |        3 |  66.67% | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |     7 |  4936 |   134 |       62 |   0.00% | CLI chat application                |
-| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8206 |   215 |      112 |   0.00% | Web UI (Dioxus framework)           |
+| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8263 |   217 |      112 |   0.00% | Web UI (Dioxus framework)           |
 | src/bin                 | p2p_chat_tui.rs      |     4 |  4511 |   115 |       18 |   0.00% | Main TUI application entry point    |
 | src/bin/tui             | click_handlers.rs    |     5 |  5185 |   137 |       77 | 100.00% | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |     6 | 10698 |   321 |      158 |  99.37% | Event routing & state updates       |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,817 lines, 234,827 characters (1728/2483 testable lines covered, 70%)
+**Total:** 37 files, 6,873 lines, 237,639 characters (1728/2483 testable lines covered, 70%)
 
 ## Test Files
 
@@ -75,7 +75,7 @@
 | tests  | p2p_integration.rs                |  1021 | 36271 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   322 |  8933 |     3 | peers module tests                    |
 | tests  | swarm_handler.rs                  |   328 | 11166 |     8 | swarm_handler module tests            |
-| tests  | test_utils.rs                     |    66 |  2156 |     2 | Test utilities                        |
+| tests  | test_utils.rs                     |    33 |  1292 |     2 | Test utilities                        |
 | tests  | tui_binary_integration.rs         |   284 |  8871 |     3 | TUI binary integration tests          |
 | tests  | tui_chat.rs                       |   759 | 24232 |     4 | TUI chat functionality tests          |
 | tests  | tui_helpers.rs                    |   665 | 19787 |     3 | TUI helpers tests                     |
@@ -109,4 +109,4 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 13,836 lines, 428,017 characters
+**Total:** 50 test files, 13,803 lines, 427,153 characters
