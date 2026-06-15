@@ -1,6 +1,7 @@
 /target
 *.db
 *.db.lock
+**/__pycache__
 
 # NixOS dev dependencies direnv temp folder
 .direnv
