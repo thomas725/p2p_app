@@ -27,7 +27,7 @@
 | src                     | network.rs           |     3 |  1851 |    61 |       13 | 100.00% | Network size classification         |
 | src                     | nickname.rs          |     5 |  4472 |   123 |       49 | 100.00% | Nickname management                 |
 | src                     | peers.rs             |     3 |  6171 |   182 |       64 | 100.00% | Peer management & tracking          |
-| src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  66.67% | Network event translation           |
+| src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  88.03% | Network event translation           |
 | src                     | tui_helpers.rs       |     3 |  6896 |   226 |       91 | 100.00% | TUI helper functions & utilities    |
 | src                     | tui_render.rs        |     5 | 11816 |   363 |      185 |  88.11% | TUI rendering & state management    |
 | src                     | tui_render_state.rs  |     4 | 11951 |   379 |      136 |  97.79% | TUI render state & tab content      |
@@ -52,7 +52,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)            |
 
-**Total:** 37 files, 6,874 lines, 237,709 characters (1728/2483 testable lines covered, 70%)
+**Total:** 37 files, 6,874 lines, 237,709 characters (1753/2483 testable lines covered, 71%)
 
 ## Test Files
 
@@ -74,7 +74,7 @@
 | tests  | nickname.rs                       |   398 | 12478 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                |  1021 | 36271 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   322 |  8933 |     3 | peers module tests                    |
-| tests  | swarm_handler.rs                  |   328 | 11166 |     8 | swarm_handler module tests            |
+| tests  | swarm_handler.rs                  |   514 | 17548 |     8 | swarm_handler module tests            |
 | tests  | test_utils.rs                     |    33 |  1292 |     2 | Test utilities                        |
 | tests  | tui_binary_integration.rs         |   284 |  8871 |     3 | TUI binary integration tests          |
 | tests  | tui_chat.rs                       |   759 | 24232 |     4 | TUI chat functionality tests          |
@@ -109,4 +109,4 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 13,803 lines, 427,153 characters
+**Total:** 50 test files, 13,989 lines, 433,535 characters
