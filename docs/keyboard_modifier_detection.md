@@ -1,21 +1,18 @@
-# Keyboard Modifier Detection Issue
+# Keyboard and Input Handling
 
-## Problem
+## Current Key Bindings
 
-Detecting modifier keys (Shift, Ctrl, Alt) combined with Enter key in the TUI is unreliable. 
+| Key Combination | Action |
+|----------------|--------|
+| Enter | Send message |
+| Shift+Enter | Insert newline (multi-line message) |
+| Ctrl+Q | Exit application |
+| F12 | Toggle mouse capture on/off |
+| Arrow keys / Page Up/Down | Navigate messages/peers |
 
-### Observed Behavior
+## Implementation Details
 
-| Key Combination | Expected | Actual |
-|----------------|----------|--------|
-| Enter | Send message | Works |
-| Alt+Enter | Insert newline | Works |
-| Ctrl+Enter | Insert newline | Sends message (not detected) |
-| Shift+Enter | Insert newline | Does nothing (not detected) |
-
-## Technical Details
-
-The application uses `crossterm` for terminal input. The keyboard enhancement flags are set in the TUI initialization:
+The TUI uses `crossterm` for terminal input with keyboard enhancement flags:
 
 ```rust
 PushKeyboardEnhancementFlags(
@@ -24,54 +21,54 @@ PushKeyboardEnhancementFlags(
 )
 ```
 
-### Current Code
+### Enter Key Handling
+
+The current implementation in `src/bin/tui/input_processor.rs`:
 
 ```rust
-if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::ALT) {
-    // Insert newline
-} else if key.code == KeyCode::Enter {
-    // Send message
+/// Handles Enter key (send message or multi-line input)
+async fn handle_enter_key(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    shift_held: bool,  // Shift+Enter detected
+    tab_content: TabContent,
+) {
+    if shift_held {
+        if tab_content.is_input_enabled() {
+            state.chat_input.insert_str("\n");  // Insert newline
+        }
+    } else if /* ... */ {
+        // Send message on Enter (without Shift)
+    }
 }
 ```
 
-## Possible Causes
+**Key points:**
+- Plain `Enter` sends the message
+- `Shift+Enter` inserts a newline for multi-line messages
+- This works reliably across terminal emulators
 
-1. **Terminal handling**: Some terminals don't properly report modifier keys with Enter
-2. **Crossterm version**: Different versions handle modifiers differently  
-3. **Raw mode**: Terminal in raw mode may strip modifier info
-4. **Keyboard enhancement**: Need additional enhancement flags
+### Mouse Handling
 
-## Current Workaround
-
-**Alt+Enter** works for inserting new lines. This is the documented approach.
-
-## Attempts Made
-
-1. Added `KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS` - did not help
-2. Checking for `SHIFT` modifier - not detected by crossterm
-3. Checking for `CONTROL` modifier - detected as plain Enter
-4. Using `key.modifiers.is_empty()` - causes other issues with input handling
-
-## Mouse Handling
-
-From the original TUI implementation:
-> Disable mouse capture to allow text selection/copying
-
-Mouse is currently disabled in the TUI. If needed, it could be toggled with a function key (e.g., F12).
-
-## Debug Logging
-
-Debug logging can be enabled to see what modifiers are actually detected:
+Mouse capture is **enabled by default** and can be toggled with **F12**:
 
 ```rust
-if key.code == KeyCode::Enter {
-    log_debug(&logs, format!("Enter key, modifiers: {:?}", key.modifiers));
+/// Toggles mouse capture mode (F12)
+fn toggle_mouse_capture(state: &mut AppState) {
+    // Enable/disable mouse capture
+    state.mouse_capture = !state.mouse_capture;
 }
 ```
 
-## Recommendations
+Mouse enables:
+- Click-to-select peers from the peer list
+- Click-to-navigate between tabs
+- Scroll wheel for message history navigation
+- Drag to select text for copying
 
-1. **Stay with Alt+Enter**: This works reliably across terminals
-2. **Document clearly**: Show shortcuts in the UI help text
-3. **Add F12 mouse toggle**: Could re-enable mouse with a toggle key if needed
-4. **Accept limitation**: Some terminals have poor modifier key support
+## Related Files
+
+- `src/bin/tui/input_processor.rs` — keyboard event processing
+- `src/bin/tui/click_handlers.rs` — mouse click handling (100% coverage)
+- `src/bin/tui/scroll_handlers.rs` — scroll wheel handling (98.2% coverage)
+- `src/bin/tui/main_loop.rs` — terminal setup (`EnableMouseCapture` on line 126)
