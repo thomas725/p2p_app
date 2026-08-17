@@ -5,3 +5,17 @@
 
 # NixOS dev dependencies direnv temp folder
 .direnv
+
+# Build outputs
+/build/
+*.apk
+
+# Flutter app
+apps/flutter_app/build/
+apps/flutter_app/android/.gradle/
+apps/flutter_app/.gradle/
+apps/flutter_app/android/local.properties
+apps/flutter_app/.dart_tool/
+
+# Tooling
+.opencode/
