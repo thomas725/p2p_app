@@ -51,12 +51,9 @@ The script excludes:
 
 To update the metrics in `docs/codebase_metrics.md`:
 
-1. Run the script: `python3 scripts/generate_metrics.py`
-2. Copy the markdown table output
-3. Replace the table in the documentation file
-4. Update the generated date in the docs
-
-Or manually update the "All Source Files" section as needed.
+1. Fast (no coverage): `python3 scripts/generate_metrics.py > docs/codebase_metrics.md`
+2. With coverage: `python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md`
+3. Force fresh coverage: `python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.md`
 
 ### Nesting Depth Algorithm
 
