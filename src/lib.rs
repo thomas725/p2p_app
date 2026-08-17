@@ -58,6 +58,8 @@ pub mod dioxus_swarm;
 pub mod fmt;
 pub mod logging;
 pub mod messages;
+#[cfg(feature = "mobile")]
+pub mod mobile_api;
 pub mod network;
 pub mod nickname;
 pub mod peers;
@@ -102,6 +104,10 @@ pub use messages::{
     MessageMeta, get_unsent_direct_messages, get_unsent_messages, load_direct_messages,
     load_messages, load_receipts, mark_message_sent, save_message, save_message_with_meta,
     save_receipt,
+};
+#[cfg(feature = "mobile")]
+pub use mobile_api::{
+    MobileInitStatus, MobilePeerStatus, get_mobile_peer_status, init_mobile_database,
 };
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{

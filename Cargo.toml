@@ -29,6 +29,7 @@ tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subs
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
 dioxus = [ "dep:dioxus" ]
 dioxus-desktop = [ "dioxus", "dep:dioxus-desktop", "dioxus/desktop", "dep:futures-channel" ]
+mobile = [ "basic", "sqlite_bundled", "quic" ]
 test-utils = []
 
 [dependencies]

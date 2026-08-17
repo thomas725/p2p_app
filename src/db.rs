@@ -42,7 +42,7 @@ pub use test_utils::reset_db_url_cache;
 /// Set the cached database URL directly (avoids needing DATABASE_URL env var).
 /// This is the preferred mechanism for tests — it avoids race conditions
 /// on the process-global environment variable.
-#[cfg(any(test, feature = "test-utils"))]
+#[cfg(any(test, feature = "test-utils", feature = "mobile"))]
 pub fn set_cached_db_url(url: &str) {
     if let Ok(mut cached) = db_url_cache().lock() {
         *cached = Some(url.to_string());
