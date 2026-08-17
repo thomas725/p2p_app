@@ -49,10 +49,12 @@ The script excludes:
 
 ### Updating Documentation
 
-To update the metrics in `docs/`:
+To update the metrics in `docs/codebase_metrics.md`:
 
-1. Run the script: `python3 scripts/generate_metrics.py > docs/$(date +%Y-%m-%d)_codebase_metrics.md`
-2. Or with coverage: `python3 scripts/generate_metrics.py --with-coverage > docs/$(date +%Y-%m-%d)_codebase_metrics.md`
+1. Run the script: `python3 scripts/generate_metrics.py`
+2. Copy the markdown table output
+3. Replace the table in the documentation file
+4. Update the generated date in the docs
 
 Or manually update the "All Source Files" section as needed.
 
