@@ -125,6 +125,10 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       await _loadHistory();
       await _refreshPeers();
+      // On desktop, auto-start the node (no foreground service needed)
+      if (!_isAndroid && !_serviceRunning) {
+        await _toggleService();
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
