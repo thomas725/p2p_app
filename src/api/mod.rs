@@ -77,3 +77,8 @@ pub fn save_incoming_message(
 ) -> Result<ChatMessage, String> {
     crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname)
 }
+
+/// Set the local user's nickname.
+pub fn set_self_nickname(nickname: String) -> Result<(), String> {
+    crate::set_self_nickname(&nickname).map_err(|e| e.to_string())
+}

@@ -75,3 +75,7 @@ Future<ChatMessage> saveIncomingMessage({
   isDirect: isDirect,
   nickname: nickname,
 );
+
+/// Set the local user's nickname.
+Future<void> setSelfNickname({required String nickname}) =>
+    RustLib.instance.api.crateApiSetSelfNickname(nickname: nickname);

@@ -7,28 +7,26 @@ import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
+import 'src/rust/types.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
-
   _serviceChannel.setMethodCallHandler(_handleServiceCall);
-
   runApp(const P2pApp());
 }
 
 Future<dynamic> _handleServiceCall(MethodCall call) async {
   switch (call.method) {
     case 'startNetworking':
-      final dbPath = call.arguments as String? ??
-          '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
+      final dbPath = call.arguments as String? ?? _dbPath;
       try {
         await startNode(dbPath: dbPath);
         _startEventPolling();
         return true;
-      } catch (e) {
+      } catch (_) {
         return false;
       }
     case 'stopNetworking':
@@ -40,17 +38,18 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
   }
 }
 
+const _dbPath =
+    '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
+
 Timer? _pollTimer;
-Function(SwarmEventJson)? _onEvent;
+void Function(SwarmEventJson)? _onEvent;
 
 void _startEventPolling() {
   _pollTimer?.cancel();
   _pollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) async {
     try {
       final event = await pollEvent();
-      if (event != null) {
-        _onEvent?.call(event);
-      }
+      if (event != null) _onEvent?.call(event);
     } catch (_) {}
   });
 }
@@ -84,6 +83,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  int _tabIndex = 0;
   MobilePeerStatus? _status;
   String? _error;
   bool _loading = true;
@@ -91,11 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _nodeRunning = false;
 
   final List<ChatMessage> _messages = [];
-  final _messageController = TextEditingController();
-  final _scrollController = ScrollController();
-
-  static const _dbPath =
-      '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
+  List<PeerRecord> _peers = [];
 
   @override
   void initState() {
@@ -106,8 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
     _onEvent = null;
     super.dispose();
   }
@@ -123,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _status = status;
         _loading = false;
       });
-      // Load message history
       await _loadHistory();
+      await _refreshPeers();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -141,59 +135,39 @@ class _HomeScreenState extends State<HomeScreen> {
           ..clear()
           ..addAll(messages);
       });
-      _scrollToBottom();
     } catch (_) {}
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
-  }
-
-  void _refresh() {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    _init();
+  Future<void> _refreshPeers() async {
+    try {
+      final peers = await getKnownPeers();
+      setState(() => _peers = peers);
+    } catch (_) {}
   }
 
   void _handleSwarmEvent(SwarmEventJson event) {
     if (!mounted) return;
-
     switch (event.eventType) {
       case 'broadcast':
       case 'dm':
         if (event.content != null && event.peerId != null) {
-          _saveIncoming(
-            event.content!,
-            event.peerId!,
-            event.eventType == 'dm',
-            event.nickname,
-          );
+          _saveIncoming(event.content!, event.peerId!,
+              event.eventType == 'dm', event.nickname);
         }
         break;
-      default:
-        debugPrint('Swarm event: ${event.eventType} peer=${event.peerId}');
+      case 'peer_connected':
+      case 'peer_discovered':
+      case 'peer_disconnected':
+        _refreshPeers();
+        break;
     }
   }
 
-  Future<void> _saveIncoming(
-    String content,
-    String peerId,
-    bool isDirect,
-    String? nickname,
-  ) async {
+  Future<void> _saveIncoming(String content, String peerId, bool isDirect,
+      String? nickname) async {
     try {
       final msg = await saveIncomingMessage(
-        content: content,
-        peerId: peerId,
-        isDirect: isDirect,
-        nickname: nickname,
-      );
+          content: content, peerId: peerId, isDirect: isDirect, nickname: nickname);
       if (mounted) {
         setState(() => _messages.add(msg));
         _scrollToBottom();
@@ -203,12 +177,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _sendBroadcast() async {
-    final text = _messageController.text.trim();
+  final _scrollController = ScrollController();
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  Future<void> _sendBroadcast(String text) async {
     if (text.isEmpty) return;
     try {
       final msg = await saveOutgoingBroadcast(content: text);
-      _messageController.clear();
       setState(() => _messages.add(msg));
       _scrollToBottom();
     } catch (e) {
@@ -227,8 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _nodeRunning = false;
         });
       } else {
-        await _serviceChannel
-            .invokeMethod('startService', {'dbPath': _dbPath});
+        await _serviceChannel.invokeMethod('startService', {'dbPath': _dbPath});
         final peerId = await startNode(dbPath: _dbPath);
         _startEventPolling();
         setState(() {
@@ -237,6 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         debugPrint('Node started: $peerId');
         await _loadHistory();
+        await _refreshPeers();
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -251,120 +233,146 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _openDmChat(PeerRecord peer) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DmChatScreen(peer: peer, serviceRunning: _serviceRunning),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('p2p_app'),
-        actions: [
-          IconButton(
-            onPressed: _shareApk,
-            icon: const Icon(Icons.share),
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _init, child: const Text('Retry')),
+            ],
           ),
+        ),
+      );
+    }
+
+    final screens = [
+      _BroadcastChat(
+        messages: _messages,
+        scrollController: _scrollController,
+        serviceRunning: _serviceRunning,
+        onSend: _sendBroadcast,
+      ),
+      _PeerList(
+        peers: _peers,
+        onTap: _openDmChat,
+      ),
+      _Settings(
+        status: _status!,
+        serviceRunning: _serviceRunning,
+        onToggleService: _toggleService,
+        onShareApk: _shareApk,
+      ),
+    ];
+
+    return Scaffold(
+      body: IndexedStack(index: _tabIndex, children: screens),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tabIndex,
+        onDestinationSelected: (i) => setState(() => _tabIndex = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
+          NavigationDestination(icon: Icon(Icons.people), label: 'Peers'),
+          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorState(error: _error!, onRetry: _refresh)
-              : _ChatView(
-                  status: _status!,
-                  serviceRunning: _serviceRunning,
-                  messages: _messages,
-                  scrollController: _scrollController,
-                  onRefresh: _refresh,
-                  onToggleService: _toggleService,
-                  onSendBroadcast: _sendBroadcast,
-                  messageController: _messageController,
-                ),
     );
   }
 }
 
-class _ChatView extends StatelessWidget {
-  const _ChatView({
-    required this.status,
-    required this.serviceRunning,
+// --- Broadcast Chat Tab ---
+
+class _BroadcastChat extends StatefulWidget {
+  const _BroadcastChat({
     required this.messages,
     required this.scrollController,
-    required this.onRefresh,
-    required this.onToggleService,
-    required this.onSendBroadcast,
-    required this.messageController,
+    required this.serviceRunning,
+    required this.onSend,
   });
 
-  final MobilePeerStatus status;
-  final bool serviceRunning;
   final List<ChatMessage> messages;
   final ScrollController scrollController;
-  final VoidCallback onRefresh;
-  final VoidCallback onToggleService;
-  final VoidCallback onSendBroadcast;
-  final TextEditingController messageController;
+  final bool serviceRunning;
+  final Future<void> Function(String) onSend;
+
+  @override
+  State<_BroadcastChat> createState() => _BroadcastChatState();
+}
+
+class _BroadcastChatState extends State<_BroadcastChat> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSend(text);
+    _controller.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Status bar
+        // Header
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          color: Theme.of(context).colorScheme.primaryContainer,
           child: Row(
             children: [
-              Icon(
-                serviceRunning ? Icons.wifi : Icons.wifi_off,
-                size: 16,
-                color: serviceRunning ? Colors.green : Colors.grey,
-              ),
+              const Icon(Icons.public, size: 20),
               const SizedBox(width: 8),
               Text(
-                status.localPeerId.substring(0, 12),
-                style: Theme.of(context).textTheme.bodySmall,
+                'Broadcast',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
               ),
               const Spacer(),
-              TextButton(
-                onPressed: onToggleService,
-                child: Text(serviceRunning ? 'Stop' : 'Start'),
-              ),
+              if (!widget.serviceRunning)
+                const Text('Offline', style: TextStyle(fontSize: 12, color: Colors.orange)),
             ],
           ),
         ),
         // Messages
         Expanded(
-          child: messages.isEmpty
+          child: widget.messages.isEmpty
               ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        serviceRunning ? Icons.chat_bubble_outline : Icons.wifi_off,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        serviceRunning
-                            ? 'No messages yet. Send one!'
-                            : 'Start the service to chat.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
-                      ),
-                    ],
+                  child: Text(
+                    widget.serviceRunning
+                        ? 'No messages yet. Send one!'
+                        : 'Start the service to chat.',
+                    style: TextStyle(color: Colors.grey[500]),
                   ),
                 )
               : ListView.builder(
-                  controller: scrollController,
+                  controller: widget.scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isOwn = msg.peerId == null;
-                    return _MessageBubble(
-                      message: msg,
-                      isOwn: isOwn,
-                    );
+                  itemCount: widget.messages.length,
+                  itemBuilder: (_, i) {
+                    final msg = widget.messages[i];
+                    return _MessageBubble(message: msg, isOwn: msg.peerId == null);
                   },
                 ),
         ),
@@ -376,21 +384,19 @@ class _ChatView extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: messageController,
+                    controller: _controller,
                     decoration: InputDecoration(
-                      hintText: serviceRunning
-                          ? 'Broadcast message...'
-                          : 'Start the service first',
+                      hintText: widget.serviceRunning ? 'Broadcast...' : 'Offline',
                       border: const OutlineInputBorder(),
                       isDense: true,
-                      enabled: serviceRunning,
+                      enabled: widget.serviceRunning,
                     ),
-                    onSubmitted: (_) => onSendBroadcast(),
+                    onSubmitted: (_) => _send(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  onPressed: serviceRunning ? onSendBroadcast : null,
+                  onPressed: widget.serviceRunning ? _send : null,
                   icon: const Icon(Icons.send),
                 ),
               ],
@@ -402,71 +408,56 @@ class _ChatView extends StatelessWidget {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
-    required this.isOwn,
-  });
+// --- Message Bubble ---
 
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({required this.message, required this.isOwn});
   final ChatMessage message;
   final bool isOwn;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bubbleColor =
-        isOwn ? colorScheme.primaryContainer : colorScheme.surfaceContainerHighest;
-    final textColor =
-        isOwn ? colorScheme.onPrimaryContainer : colorScheme.onSurface;
+    final cs = Theme.of(context).colorScheme;
+    final bg = isOwn ? cs.primaryContainer : cs.surfaceContainerHighest;
+    final fg = isOwn ? cs.onPrimaryContainer : cs.onSurface;
 
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
+        margin: const EdgeInsets.symmetric(vertical: 3),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: bubbleColor,
+          color: bg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!isOwn) ...[
-              Text(
-                message.senderNickname ??
-                    (message.peerId?.substring(0, 12) ?? 'Unknown'),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: textColor.withValues(alpha: 0.7),
+            if (!isOwn)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  message.senderNickname ??
+                      (message.peerId?.substring(0, 12) ?? 'Unknown'),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                 ),
               ),
-              const SizedBox(height: 2),
-            ],
-            Text(
-              message.content,
-              style: TextStyle(fontSize: 14, color: textColor),
-            ),
+            Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  message.sentAt ?? _formatTime(message.createdAt),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: textColor.withValues(alpha: 0.5),
-                  ),
+                  message.sentAt ?? _fmtTime(message.createdAt),
+                  style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
                 if (isOwn) ...[
                   const SizedBox(width: 4),
                   Icon(
                     message.sent ? Icons.check : Icons.access_time,
                     size: 12,
-                    color: textColor.withValues(alpha: 0.5),
+                    color: fg.withAlpha(130),
                   ),
                 ],
               ],
@@ -477,32 +468,391 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  String _formatTime(String dt) {
-    // Extract HH:MM from "2026-08-18 07:29:19"
-    if (dt.length >= 16) return dt.substring(11, 16);
-    return dt;
-  }
+  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
 }
 
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.error, required this.onRetry});
+// --- Peers Tab ---
 
-  final String error;
-  final VoidCallback onRetry;
+class _PeerList extends StatelessWidget {
+  const _PeerList({required this.peers, required this.onTap});
+  final List<PeerRecord> peers;
+  final void Function(PeerRecord) onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(error, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: onRetry, child: const Text('Retry')),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Row(
+            children: [
+              const Icon(Icons.people, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Peers (${peers.length})',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+              ),
+            ],
+          ),
         ),
+        Expanded(
+          child: peers.isEmpty
+              ? Center(
+                  child: Text(
+                    'No peers discovered yet.',
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: peers.length,
+                  itemBuilder: (_, i) {
+                    final p = peers[i];
+                    return ListTile(
+                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      title: Text(
+                        p.peerId.substring(0, 16),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => onTap(p),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// --- DM Chat Screen ---
+
+class DmChatScreen extends StatefulWidget {
+  const DmChatScreen({super.key, required this.peer, required this.serviceRunning});
+  final PeerRecord peer;
+  final bool serviceRunning;
+
+  @override
+  State<DmChatScreen> createState() => _DmChatScreenState();
+}
+
+class _DmChatScreenState extends State<DmChatScreen> {
+  final List<ChatMessage> _messages = [];
+  final _controller = TextEditingController();
+  final _scrollController = ScrollController();
+  bool _loading = true;
+
+  String get _peerId => widget.peer.peerId;
+  String get _label => _peerId.substring(0, 16);
+
+  @override
+  void initState() {
+    super.initState();
+    _onEvent = _handleDmEvent;
+    _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    _onEvent = null;
+    super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final msgs = await loadDmMessages(peerId: _peerId, limit: 200);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(msgs);
+        _loading = false;
+      });
+      _scrollToBottom();
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  void _handleDmEvent(SwarmEventJson event) {
+    if (!mounted || event.eventType != 'dm') return;
+    if (event.peerId == _peerId && event.content != null) {
+      saveIncomingMessage(
+        content: event.content!,
+        peerId: event.peerId!,
+        isDirect: true,
+        nickname: event.nickname,
+      ).then((msg) {
+        setState(() => _messages.add(msg));
+        _scrollToBottom();
+      });
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    try {
+      final msg = await saveOutgoingDm(peerId: _peerId, content: text);
+      _controller.clear();
+      setState(() => _messages.add(msg));
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('DM send failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_label),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Text(
+                _peerId.substring(0, 8),
+                style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No messages with this peer.',
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        itemCount: _messages.length,
+                        itemBuilder: (_, i) {
+                          final msg = _messages[i];
+                          return _MessageBubble(message: msg, isOwn: msg.peerId == null);
+                        },
+                      ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: widget.serviceRunning
+                            ? 'Message $_label...'
+                            : 'Offline',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        enabled: widget.serviceRunning,
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: widget.serviceRunning ? _send : null,
+                    icon: const Icon(Icons.send),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Settings Tab ---
+
+class _Settings extends StatefulWidget {
+  const _Settings({
+    required this.status,
+    required this.serviceRunning,
+    required this.onToggleService,
+    required this.onShareApk,
+  });
+
+  final MobilePeerStatus status;
+  final bool serviceRunning;
+  final VoidCallback onToggleService;
+  final VoidCallback onShareApk;
+
+  @override
+  State<_Settings> createState() => _SettingsState();
+}
+
+class _SettingsState extends State<_Settings> {
+  String? _nickname;
+
+  @override
+  void initState() {
+    super.initState();
+    _nickname = widget.status.selfNickname;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Settings', style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 16),
+        // Nickname
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Nickname', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _nickname ?? 'Not set',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _editNickname,
+                      icon: const Icon(Icons.edit),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Peer ID
+        Card(
+          child: ListTile(
+            title: const Text('Peer ID'),
+            subtitle: SelectableText(widget.status.localPeerId),
+          ),
+        ),
+        // Database
+        Card(
+          child: ListTile(
+            title: const Text('Database'),
+            subtitle: SelectableText(widget.status.databaseUrl),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Service control
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      widget.serviceRunning ? Icons.wifi : Icons.wifi_off,
+                      color: widget.serviceRunning ? Colors.green : Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.serviceRunning ? 'Service Running' : 'Service Stopped',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    FilledButton(
+                      onPressed: widget.serviceRunning ? null : widget.onToggleService,
+                      child: const Text('Start'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: widget.serviceRunning ? widget.onToggleService : null,
+                      child: const Text('Stop'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Share APK
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share App'),
+            subtitle: const Text('Send this APK to another device'),
+            onTap: widget.onShareApk,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _editNickname() {
+    final ctrl = TextEditingController(text: _nickname ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Nickname'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter nickname',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              final nick = ctrl.text.trim();
+              if (nick.isNotEmpty) {
+                try {
+                  await setSelfNickname(nickname: nick);
+                  setState(() => _nickname = nick);
+                } catch (e) {
+                  debugPrint('Failed to set nickname: $e');
+                }
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

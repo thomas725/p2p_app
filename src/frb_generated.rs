@@ -38,7 +38,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 2037531323;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1681382835;
 
 // Section: executor
 
@@ -417,6 +417,39 @@ fn wire__crate__api__send_dm_impl(
         },
     )
 }
+fn wire__crate__api__set_self_nickname_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_self_nickname",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_nickname = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::set_self_nickname(api_nickname)?;
+                    Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__start_node_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -696,8 +729,9 @@ fn pde_ffi_dispatcher_primary_impl(
         9 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
         10 => wire__crate__api__send_broadcast_impl(port, ptr, rust_vec_len, data_len),
         11 => wire__crate__api__send_dm_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
