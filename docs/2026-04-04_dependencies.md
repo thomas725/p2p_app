@@ -1,9 +1,14 @@
 # Dependencies Documentation
 
-This document lists all project dependencies, their purpose, and update status.
+This document lists key project dependencies and their purpose.
 
 **Last checked:** 2026-04-06T20:00:00Z
-**Last updated:** 2026-04-06T20:00:00Z
+
+> **Note:** version numbers and "latest"/"up to date" status below are a
+> snapshot from the date above and may be outdated. For the current
+> resolved versions, see `Cargo.lock`; for current outdated/audit results,
+> see the latest `.github/ci-results/dependency-check_*.txt` (see
+> [`ci_pipeline.md`](ci_pipeline.md)).
 
 ## Core Dependencies
 

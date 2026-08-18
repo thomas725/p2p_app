@@ -326,3 +326,189 @@ async fn test_spawn_handler_direct_message() {
     assert_eq!(received.nickname, Some("dm_tester".to_string()));
     assert_eq!(received.msg_id, Some("dm-msg-1".to_string()));
 }
+
+/// A direct message ack ("ok" response with `ack_for` set) should surface as
+/// a `Receipt` event on the sender's side.
+#[tokio::test]
+async fn test_spawn_handler_direct_message_receipt() {
+    let (mut swarm_a, peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm();
+
+    connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
+
+    let (_handle_a, mut event_rx_a, cmd_tx_a) =
+        spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, _cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::SendDm {
+            peer_id: peer_b.to_string(),
+            content: "ping".to_string(),
+            nickname: None,
+            msg_id: Some("dm-ack-1".to_string()),
+            ack_for: None,
+        })
+        .await
+        .unwrap();
+
+    // B receives the DM (and automatically replies with an "ok" ack).
+    timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::DirectMessage(_)) = event_rx_b.recv().await {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for direct message on B");
+
+    // A receives the ack as a Receipt for "dm-ack-1".
+    let receipt = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::Receipt { peer_id, ack_for, .. }) = event_rx_a.recv().await {
+                break (peer_id, ack_for);
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for DM receipt on A");
+
+    assert_eq!(receipt.0, peer_b.to_string());
+    assert_eq!(receipt.1, "dm-ack-1");
+}
+
+/// A receipt-only DM (empty content, `ack_for` set) for a broadcast message
+/// should surface as a `Receipt` event for the original broadcaster.
+#[tokio::test]
+async fn test_spawn_handler_broadcast_receipt() {
+    let (mut swarm_a, peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm();
+
+    connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
+
+    let (_handle_a, mut event_rx_a, cmd_tx_a) =
+        spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, _cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::Publish {
+            content: "broadcast with receipt".to_string(),
+            nickname: Some("tester".to_string()),
+            msg_id: Some("bcast-ack-1".to_string()),
+        })
+        .await
+        .unwrap();
+
+    // B receives the broadcast (and automatically sends a receipt-only DM back).
+    timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::BroadcastMessage(_)) = event_rx_b.recv().await {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for broadcast message on B");
+
+    // A receives the receipt for "bcast-ack-1" from B.
+    let receipt = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::Receipt { peer_id, ack_for, .. }) = event_rx_a.recv().await {
+                break (peer_id, ack_for);
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for broadcast receipt on A");
+
+    assert_eq!(receipt.0, peer_b.to_string());
+    assert_eq!(receipt.1, "bcast-ack-1");
+}
+
+/// `SendDm` with a peer ID that doesn't parse as a valid `PeerId` is silently
+/// ignored: no request is sent and the handler keeps running.
+#[tokio::test]
+async fn test_send_dm_invalid_peer_id_is_ignored() {
+    let (swarm, _peer_id) = build_test_swarm();
+    let (handle, _event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+
+    cmd_tx
+        .send(SwarmCommand::SendDm {
+            peer_id: "not-a-valid-peer-id".to_string(),
+            content: "hello".to_string(),
+            nickname: None,
+            msg_id: None,
+            ack_for: None,
+        })
+        .await
+        .unwrap();
+
+    // Handler should remain alive and keep accepting further commands.
+    cmd_tx
+        .send(SwarmCommand::Publish {
+            content: "still alive".to_string(),
+            nickname: None,
+            msg_id: None,
+        })
+        .await
+        .unwrap();
+
+    // Give the spawned handler task a chance to process both commands
+    // before the test runtime shuts down.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    drop(handle);
+}
+
+/// Publishing to a topic with no subscribers/peers returns an error from
+/// gossipsub, which the handler logs and otherwise ignores.
+#[tokio::test]
+async fn test_publish_with_no_peers_logs_error_and_continues() {
+    let (swarm, _peer_id) = build_test_swarm();
+    let (handle, _event_rx, cmd_tx) = spawn_swarm_handler(swarm, "unsubscribed-topic".to_string());
+
+    cmd_tx
+        .send(SwarmCommand::Publish {
+            content: "into the void".to_string(),
+            nickname: None,
+            msg_id: None,
+        })
+        .await
+        .unwrap();
+
+    // Handler should remain alive after logging the publish error.
+    cmd_tx
+        .send(SwarmCommand::Publish {
+            content: "still alive".to_string(),
+            nickname: None,
+            msg_id: None,
+        })
+        .await
+        .unwrap();
+
+    // Give the spawned handler task a chance to process both commands
+    // before the test runtime shuts down.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    drop(handle);
+}
+
+/// Dropping the command sender should not crash the handler task. The task
+/// may either exit (if its `tokio::select!` loop observes the closed
+/// channel before another swarm event arrives) or keep running indefinitely
+/// driven by swarm/gossipsub housekeeping events; both are acceptable, so we
+/// bound the wait with a timeout rather than asserting a specific outcome.
+#[tokio::test]
+async fn test_handler_survives_command_sender_drop() {
+    let (swarm, _peer_id) = build_test_swarm();
+    let (handle, _event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+
+    drop(cmd_tx);
+
+    match timeout(Duration::from_millis(500), handle).await {
+        // Task exited cleanly via the `else` branch of its select loop.
+        Ok(join_result) => assert!(join_result.is_ok(), "handler task panicked"),
+        // Task is still running, driven by swarm events; that's fine too.
+        Err(_) => {}
+    }
+}

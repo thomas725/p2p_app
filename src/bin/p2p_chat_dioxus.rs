@@ -1,3 +1,5 @@
+//! Dioxus desktop binary for the P2P chat application.
+
 #[cfg(feature = "dioxus-desktop")]
 mod dioxus {
     use dioxus_desktop::tao;
