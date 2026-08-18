@@ -38,3 +38,40 @@ Future<void> sendDm({required String peerId, required String content}) =>
 /// Get all known peers.
 Future<List<PeerRecord>> getKnownPeers() =>
     RustLib.instance.api.crateApiGetKnownPeers();
+
+/// Load broadcast chat messages (chronological order).
+Future<List<ChatMessage>> loadBroadcastMessages({
+  required PlatformInt64 limit,
+}) => RustLib.instance.api.crateApiLoadBroadcastMessages(limit: limit);
+
+/// Load DM history with a specific peer (chronological order).
+Future<List<ChatMessage>> loadDmMessages({
+  required String peerId,
+  required PlatformInt64 limit,
+}) => RustLib.instance.api.crateApiLoadDmMessages(peerId: peerId, limit: limit);
+
+/// Save an outgoing broadcast message to DB and send via swarm.
+Future<ChatMessage> saveOutgoingBroadcast({required String content}) =>
+    RustLib.instance.api.crateApiSaveOutgoingBroadcast(content: content);
+
+/// Save an outgoing DM to DB and send via swarm.
+Future<ChatMessage> saveOutgoingDm({
+  required String peerId,
+  required String content,
+}) => RustLib.instance.api.crateApiSaveOutgoingDm(
+  peerId: peerId,
+  content: content,
+);
+
+/// Save an incoming message (broadcast or DM) to the database.
+Future<ChatMessage> saveIncomingMessage({
+  required String content,
+  required String peerId,
+  required bool isDirect,
+  String? nickname,
+}) => RustLib.instance.api.crateApiSaveIncomingMessage(
+  content: content,
+  peerId: peerId,
+  isDirect: isDirect,
+  nickname: nickname,
+);

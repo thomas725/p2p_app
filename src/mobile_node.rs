@@ -3,10 +3,12 @@
 //! The swarm runs on a background tokio task. Commands are sent via MPSC,
 //! events are polled by Dart via `poll_event()`.
 
+use crate::messages::MessageMeta;
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
-    build_swarm, get_local_peer_id, get_network_size, p2plog_debug, spawn_swarm_handler,
-    CHAT_TOPIC,
+    build_swarm, current_timestamp, gen_msg_id, get_local_peer_id, get_network_size,
+    load_direct_messages, load_messages, mark_message_sent, p2plog_debug,
+    save_message_with_meta, spawn_swarm_handler, CHAT_TOPIC,
 };
 use libp2p::gossipsub;
 use std::sync::{Mutex, OnceLock};
@@ -138,6 +140,156 @@ pub fn get_known_peers() -> Result<Vec<crate::PeerRecord>, String> {
             last_seen: kp.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
         })
         .collect())
+}
+
+// --- Message history types ---
+
+#[derive(Debug, Clone)]
+pub struct ChatMessage {
+    pub id: i32,
+    pub content: String,
+    pub peer_id: Option<String>,
+    pub is_broadcast: bool,
+    pub target_peer: Option<String>,
+    pub sent: bool,
+    pub msg_id: Option<String>,
+    pub sent_at: Option<String>,
+    pub created_at: String,
+    pub sender_nickname: Option<String>,
+}
+
+fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
+    ChatMessage {
+        id: msg.id,
+        content: msg.content,
+        peer_id: msg.peer_id,
+        is_broadcast: msg.is_direct == 0,
+        target_peer: msg.target_peer,
+        sent: msg.sent == 1,
+        msg_id: msg.msg_id,
+        sent_at: msg.sent_at.map(|t| {
+            let dt = chrono::DateTime::from_timestamp(t as i64, 0)
+                .unwrap_or_default();
+            dt.format("%H:%M").to_string()
+        }),
+        created_at: msg
+            .created_at
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+        sender_nickname: msg.sender_nickname,
+    }
+}
+
+/// Load broadcast messages (newest-first from DB, reversed to chronological).
+pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
+    let msgs = load_messages(CHAT_TOPIC, limit as usize).map_err(|e| e.to_string())?;
+    Ok(msgs.into_iter().rev().map(message_to_chat).collect())
+}
+
+/// Load DM history with a specific peer (already oldest-first in DB).
+pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>, String> {
+    let msgs =
+        load_direct_messages(&peer_id, limit as usize).map_err(|e| e.to_string())?;
+    Ok(msgs.into_iter().map(message_to_chat).collect())
+}
+
+/// Save an outgoing broadcast message, persist to DB, and send via swarm.
+/// Returns the saved ChatMessage.
+pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
+    let msg_id = gen_msg_id();
+    let sent_at = current_timestamp();
+    let nickname = crate::get_self_nickname().ok().flatten();
+
+    let meta = MessageMeta {
+        sender_nickname: nickname.clone(),
+        msg_id: Some(msg_id.clone()),
+        sent_at: Some(sent_at),
+    };
+    let msg = save_message_with_meta(&content, None, CHAT_TOPIC, false, None, meta)
+        .map_err(|e| e.to_string())?;
+
+    // Send via swarm
+    if let Some(m) = NODE.get() {
+        let node = m.lock().unwrap();
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::Publish {
+                content,
+                nickname,
+                msg_id: Some(msg_id),
+            });
+        }
+    }
+
+    let chat = message_to_chat(msg);
+    // Mark sent in DB (best-effort)
+    let _ = mark_message_sent(chat.id);
+    Ok(chat)
+}
+
+/// Save an outgoing DM, persist to DB, and send via swarm.
+/// Returns the saved ChatMessage.
+pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage, String> {
+    let msg_id = gen_msg_id();
+    let sent_at = current_timestamp();
+    let nickname = crate::get_self_nickname().ok().flatten();
+
+    let meta = MessageMeta {
+        sender_nickname: nickname.clone(),
+        msg_id: Some(msg_id.clone()),
+        sent_at: Some(sent_at),
+    };
+    let msg = save_message_with_meta(
+        &content,
+        None,
+        CHAT_TOPIC,
+        true,
+        Some(&peer_id),
+        meta,
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Send via swarm
+    if let Some(m) = NODE.get() {
+        let node = m.lock().unwrap();
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::SendDm {
+                peer_id,
+                content,
+                nickname,
+                msg_id: Some(msg_id),
+                ack_for: None,
+            });
+        }
+    }
+
+    let chat = message_to_chat(msg);
+    let _ = mark_message_sent(chat.id);
+    Ok(chat)
+}
+
+/// Save an incoming message (broadcast or DM) to the database.
+pub fn save_incoming_message(
+    content: String,
+    peer_id: String,
+    is_direct: bool,
+    nickname: Option<String>,
+) -> Result<ChatMessage, String> {
+    let target = is_direct.then_some(peer_id.as_str());
+    let meta = MessageMeta {
+        sender_nickname: nickname,
+        msg_id: None,
+        sent_at: None,
+    };
+    let msg = save_message_with_meta(
+        &content,
+        Some(&peer_id),
+        CHAT_TOPIC,
+        is_direct,
+        target,
+        meta,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(message_to_chat(msg))
 }
 
 // --- JSON types for FRB ---

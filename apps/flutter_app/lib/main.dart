@@ -14,13 +14,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
 
-  // Register platform channel callbacks so Kotlin service can call into Rust
   _serviceChannel.setMethodCallHandler(_handleServiceCall);
 
   runApp(const P2pApp());
 }
 
-/// Called by the Kotlin foreground service to start/stop Rust networking.
 Future<dynamic> _handleServiceCall(MethodCall call) async {
   switch (call.method) {
     case 'startNetworking':
@@ -43,6 +41,7 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
 }
 
 Timer? _pollTimer;
+Function(SwarmEventJson)? _onEvent;
 
 void _startEventPolling() {
   _pollTimer?.cancel();
@@ -50,22 +49,15 @@ void _startEventPolling() {
     try {
       final event = await pollEvent();
       if (event != null) {
-        _handleSwarmEvent(event);
+        _onEvent?.call(event);
       }
-    } catch (_) {
-      // Swarm may have stopped
-    }
+    } catch (_) {}
   });
 }
 
 void _stopEventPolling() {
   _pollTimer?.cancel();
   _pollTimer = null;
-}
-
-void _handleSwarmEvent(SwarmEventJson event) {
-  debugPrint('Swarm event: ${event.eventType} '
-      'peer=${event.peerId} content=${event.content}');
 }
 
 class P2pApp extends StatelessWidget {
@@ -97,8 +89,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = true;
   bool _serviceRunning = false;
   bool _nodeRunning = false;
-  final List<String> _events = [];
+
+  final List<ChatMessage> _messages = [];
   final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
 
   static const _dbPath =
       '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
@@ -106,13 +100,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _onEvent = _handleSwarmEvent;
     _init();
-    _startEventPolling();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
+    _onEvent = null;
     super.dispose();
   }
 
@@ -127,6 +123,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _status = status;
         _loading = false;
       });
+      // Load message history
+      await _loadHistory();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -135,12 +133,87 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _loadHistory() async {
+    try {
+      final messages = await loadBroadcastMessages(limit: 200);
+      setState(() {
+        _messages
+          ..clear()
+          ..addAll(messages);
+      });
+      _scrollToBottom();
+    } catch (_) {}
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
   void _refresh() {
     setState(() {
       _loading = true;
       _error = null;
     });
     _init();
+  }
+
+  void _handleSwarmEvent(SwarmEventJson event) {
+    if (!mounted) return;
+
+    switch (event.eventType) {
+      case 'broadcast':
+      case 'dm':
+        if (event.content != null && event.peerId != null) {
+          _saveIncoming(
+            event.content!,
+            event.peerId!,
+            event.eventType == 'dm',
+            event.nickname,
+          );
+        }
+        break;
+      default:
+        debugPrint('Swarm event: ${event.eventType} peer=${event.peerId}');
+    }
+  }
+
+  Future<void> _saveIncoming(
+    String content,
+    String peerId,
+    bool isDirect,
+    String? nickname,
+  ) async {
+    try {
+      final msg = await saveIncomingMessage(
+        content: content,
+        peerId: peerId,
+        isDirect: isDirect,
+        nickname: nickname,
+      );
+      if (mounted) {
+        setState(() => _messages.add(msg));
+        _scrollToBottom();
+      }
+    } catch (e) {
+      debugPrint('Failed to save incoming: $e');
+    }
+  }
+
+  Future<void> _sendBroadcast() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+    try {
+      final msg = await saveOutgoingBroadcast(content: text);
+      _messageController.clear();
+      setState(() => _messages.add(msg));
+      _scrollToBottom();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
   }
 
   Future<void> _toggleService() async {
@@ -163,19 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _nodeRunning = true;
         });
         debugPrint('Node started: $peerId');
+        await _loadHistory();
       }
-    } catch (e) {
-      setState(() => _error = e.toString());
-    }
-  }
-
-  Future<void> _sendBroadcast() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
-    try {
-      await sendBroadcast(content: text);
-      _messageController.clear();
-      setState(() => _events.add('Sent: $text'));
     } catch (e) {
       setState(() => _error = e.toString());
     }
@@ -192,19 +254,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('p2p_app')),
+      appBar: AppBar(
+        title: const Text('p2p_app'),
+        actions: [
+          IconButton(
+            onPressed: _shareApk,
+            icon: const Icon(Icons.share),
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _ErrorState(error: _error!, onRetry: _refresh)
-              : _StatusView(
+              : _ChatView(
                   status: _status!,
                   serviceRunning: _serviceRunning,
-                  nodeRunning: _nodeRunning,
-                  events: _events,
+                  messages: _messages,
+                  scrollController: _scrollController,
                   onRefresh: _refresh,
                   onToggleService: _toggleService,
-                  onShareApk: _shareApk,
                   onSendBroadcast: _sendBroadcast,
                   messageController: _messageController,
                 ),
@@ -212,26 +281,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _StatusView extends StatelessWidget {
-  const _StatusView({
+class _ChatView extends StatelessWidget {
+  const _ChatView({
     required this.status,
     required this.serviceRunning,
-    required this.nodeRunning,
-    required this.events,
+    required this.messages,
+    required this.scrollController,
     required this.onRefresh,
     required this.onToggleService,
-    required this.onShareApk,
     required this.onSendBroadcast,
     required this.messageController,
   });
 
   final MobilePeerStatus status;
   final bool serviceRunning;
-  final bool nodeRunning;
-  final List<String> events;
+  final List<ChatMessage> messages;
+  final ScrollController scrollController;
   final VoidCallback onRefresh;
   final VoidCallback onToggleService;
-  final VoidCallback onShareApk;
   final VoidCallback onSendBroadcast;
   final TextEditingController messageController;
 
@@ -239,66 +306,69 @@ class _StatusView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
+        // Status bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Row(
             children: [
-              Text('Mobile node',
-                  style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 16),
-              _StatusTile(
-                label: 'Service',
-                value: serviceRunning ? 'Running' : 'Stopped',
+              Icon(
+                serviceRunning ? Icons.wifi : Icons.wifi_off,
+                size: 16,
+                color: serviceRunning ? Colors.green : Colors.grey,
               ),
-              _StatusTile(
-                label: 'Node',
-                value: nodeRunning ? 'Active' : 'Inactive',
+              const SizedBox(width: 8),
+              Text(
+                status.localPeerId.substring(0, 12),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
-              _StatusTile(label: 'Local peer ID', value: status.localPeerId),
-              _StatusTile(label: 'Database', value: status.databaseUrl),
-              _StatusTile(
-                label: 'Nickname',
-                value: status.selfNickname ?? 'Not set',
+              const Spacer(),
+              TextButton(
+                onPressed: onToggleService,
+                child: Text(serviceRunning ? 'Stop' : 'Start'),
               ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  FilledButton(
-                    onPressed: serviceRunning ? null : onToggleService,
-                    child: const Text('Start service'),
-                  ),
-                  OutlinedButton(
-                    onPressed: serviceRunning ? onToggleService : null,
-                    child: const Text('Stop service'),
-                  ),
-                  TextButton(onPressed: onRefresh, child: const Text('Refresh')),
-                  OutlinedButton.icon(
-                    onPressed: onShareApk,
-                    icon: const Icon(Icons.share),
-                    label: const Text('Share App'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (events.isNotEmpty) ...[
-                Text('Events',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                ...events.reversed.take(20).map(
-                      (e) => Card(
-                        child: ListTile(
-                          dense: true,
-                          title: Text(e, style: const TextStyle(fontSize: 12)),
-                        ),
-                      ),
-                    ),
-              ],
             ],
           ),
         ),
-        // Broadcast input
+        // Messages
+        Expanded(
+          child: messages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        serviceRunning ? Icons.chat_bubble_outline : Icons.wifi_off,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        serviceRunning
+                            ? 'No messages yet. Send one!'
+                            : 'Start the service to chat.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey,
+                            ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[index];
+                    final isOwn = msg.peerId == null;
+                    return _MessageBubble(
+                      message: msg,
+                      isOwn: isOwn,
+                    );
+                  },
+                ),
+        ),
+        // Input
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -307,17 +377,20 @@ class _StatusView extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Broadcast message...',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: serviceRunning
+                          ? 'Broadcast message...'
+                          : 'Start the service first',
+                      border: const OutlineInputBorder(),
                       isDense: true,
+                      enabled: serviceRunning,
                     ),
                     onSubmitted: (_) => onSendBroadcast(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  onPressed: onSendBroadcast,
+                  onPressed: serviceRunning ? onSendBroadcast : null,
                   icon: const Icon(Icons.send),
                 ),
               ],
@@ -329,20 +402,85 @@ class _StatusView extends StatelessWidget {
   }
 }
 
-class _StatusTile extends StatelessWidget {
-  const _StatusTile({required this.label, required this.value});
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({
+    required this.message,
+    required this.isOwn,
+  });
 
-  final String label;
-  final String value;
+  final ChatMessage message;
+  final bool isOwn;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        title: Text(label),
-        subtitle: SelectableText(value),
+    final colorScheme = Theme.of(context).colorScheme;
+    final bubbleColor =
+        isOwn ? colorScheme.primaryContainer : colorScheme.surfaceContainerHighest;
+    final textColor =
+        isOwn ? colorScheme.onPrimaryContainer : colorScheme.onSurface;
+
+    return Align(
+      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isOwn) ...[
+              Text(
+                message.senderNickname ??
+                    (message.peerId?.substring(0, 12) ?? 'Unknown'),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: textColor.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
+            Text(
+              message.content,
+              style: TextStyle(fontSize: 14, color: textColor),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.sentAt ?? _formatTime(message.createdAt),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: textColor.withValues(alpha: 0.5),
+                  ),
+                ),
+                if (isOwn) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    message.sent ? Icons.check : Icons.access_time,
+                    size: 12,
+                    color: textColor.withValues(alpha: 0.5),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatTime(String dt) {
+    // Extract HH:MM from "2026-08-18 07:29:19"
+    if (dt.length >= 16) return dt.substring(11, 16);
+    return dt;
   }
 }
 

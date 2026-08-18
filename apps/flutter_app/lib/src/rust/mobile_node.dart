@@ -6,6 +6,61 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+class ChatMessage {
+  final int id;
+  final String content;
+  final String? peerId;
+  final bool isBroadcast;
+  final String? targetPeer;
+  final bool sent;
+  final String? msgId;
+  final String? sentAt;
+  final String createdAt;
+  final String? senderNickname;
+
+  const ChatMessage({
+    required this.id,
+    required this.content,
+    this.peerId,
+    required this.isBroadcast,
+    this.targetPeer,
+    required this.sent,
+    this.msgId,
+    this.sentAt,
+    required this.createdAt,
+    this.senderNickname,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      content.hashCode ^
+      peerId.hashCode ^
+      isBroadcast.hashCode ^
+      targetPeer.hashCode ^
+      sent.hashCode ^
+      msgId.hashCode ^
+      sentAt.hashCode ^
+      createdAt.hashCode ^
+      senderNickname.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          content == other.content &&
+          peerId == other.peerId &&
+          isBroadcast == other.isBroadcast &&
+          targetPeer == other.targetPeer &&
+          sent == other.sent &&
+          msgId == other.msgId &&
+          sentAt == other.sentAt &&
+          createdAt == other.createdAt &&
+          senderNickname == other.senderNickname;
+}
+
 class SwarmEventJson {
   final String eventType;
   final String? peerId;
