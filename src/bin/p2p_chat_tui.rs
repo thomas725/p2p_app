@@ -1,5 +1,7 @@
 //! TUI binary — ratatui-based terminal interface and headless fallback entry point.
 
+use std::sync::Arc;
+
 use libp2p::gossipsub;
 use p2p_app::build_swarm;
 use p2p_app::logging::{init_logging, p2plog_info};
@@ -83,7 +85,7 @@ mod tui {
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
-    p2p_app::logging::set_tui_callback(|_| p2p_app::logging::request_tui_redraw());
+    p2p_app::logging::register_log_callback(Arc::new(|_| p2p_app::logging::request_tui_redraw()));
 
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;

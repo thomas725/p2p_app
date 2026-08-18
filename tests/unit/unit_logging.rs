@@ -43,11 +43,11 @@ fn test_push_log_stores_entries() {
 fn test_push_log_keeps_max_capacity() {
     init_logging();
     clear_tui_logs();
-    for i in 0..(MAX_TUI_LOGS + 50) {
+    for i in 0..(MAX_LOGS + 50) {
         push_log(format!("entry-{i}"));
     }
     let logs = get_tui_logs();
-    assert_eq!(logs.len(), MAX_TUI_LOGS);
+    assert_eq!(logs.len(), MAX_LOGS);
     assert!(logs[0].contains("entry-"));
 }
 
@@ -62,11 +62,12 @@ fn test_callback_receives_messages() {
         .clone();
     if !CALLBACK_SET.swap(true, Ordering::SeqCst) {
         let seen_for_cb = seen.clone();
-        set_tui_callback(move |msg| {
+        let cb: Arc<dyn Fn(String) + Send + Sync> = Arc::new(move |msg| {
             if let Ok(mut v) = seen_for_cb.lock() {
                 v.push(msg);
             }
         });
+        register_log_callback(cb);
     }
 
     if let Ok(mut v) = seen.lock() {
@@ -74,7 +75,7 @@ fn test_callback_receives_messages() {
     }
     init_logging();
     push_log("cb-test");
-    let seen_msgs = seen.lock().expect("lock seen");
+    let seen_msgs = seen.lock().expect("lock see");
     assert!(seen_msgs.iter().any(|m| m.contains("cb-test")));
 }
 
@@ -151,12 +152,12 @@ fn test_tracing_layer_keeps_max_capacity() {
     init_logging();
     clear_tui_logs();
 
-    for i in 0..(MAX_TUI_LOGS + 25) {
+    for i in 0..(MAX_LOGS + 25) {
         tracing::event!(target: "p2p_app::test", Level::INFO, idx = i);
     }
 
     let logs = get_tui_logs();
-    assert_eq!(logs.len(), MAX_TUI_LOGS);
+    assert_eq!(logs.len(), MAX_LOGS);
 }
 
 #[test]

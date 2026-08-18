@@ -1,9 +1,9 @@
-use super::TUI_LOGS;
+use super::LOG_BUFFER;
 use tracing_subscriber::filter::{LevelFilter, Targets};
 
-/// Test utility: Clears the TUI log storage for test isolation.
+/// Test utility: Clears the log storage for test isolation.
 pub fn clear_tui_logs() {
-    if let Some(logs) = TUI_LOGS.get()
+    if let Some(logs) = LOG_BUFFER.get()
         && let Ok(mut guard) = logs.lock()
     {
         guard.clear();

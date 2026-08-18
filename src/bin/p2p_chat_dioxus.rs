@@ -6,6 +6,7 @@ mod dioxus {
     use dioxus_desktop::{Config, WindowBuilder};
     use libp2p::gossipsub;
     use std::collections::{HashMap, VecDeque};
+    use std::sync::Arc;
 
     type Messages = VecDeque<p2p_app::DisplayMessage>;
     type MessageIds = VecDeque<Option<String>>;
@@ -56,7 +57,7 @@ mod dioxus {
 
         rt.block_on(async {
             p2p_app::logging::init_logging();
-            p2p_app::logging::set_tui_callback(|msg| eprintln!("{}", msg));
+            p2p_app::logging::register_log_callback(Arc::new(|msg| eprintln!("{}", msg)));
             let _db = p2p_app::init_database().expect("Failed to init database");
 
             let network_size = match p2p_app::get_network_size() {
