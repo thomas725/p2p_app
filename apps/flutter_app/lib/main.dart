@@ -917,6 +917,13 @@ class _LogTabState extends State<_LogTab> {
       try {
         final logs = await getLogs();
         setState(() => _logs = logs);
+        // Auto-scroll to bottom after new logs are displayed
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
       } catch (e) {
         debugPrint('Failed to get logs: $e');
       }
