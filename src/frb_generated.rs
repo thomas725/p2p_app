@@ -587,13 +587,15 @@ impl SseDecode for Vec<crate::mobile_node::ChatMessage> {
     }
 }
 
-impl SseDecode for Vec<crate::types::PeerRecord> {
+impl SseDecode for Vec<crate::mobile_node::MobilePeerRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::types::PeerRecord>::sse_decode(deserializer));
+            ans_.push(<crate::mobile_node::MobilePeerRecord>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -619,6 +621,24 @@ impl SseDecode for crate::mobile_api::MobileInitStatus {
         return crate::mobile_api::MobileInitStatus {
             database_url: var_databaseUrl,
             local_peer_id: var_localPeerId,
+        };
+    }
+}
+
+impl SseDecode for crate::mobile_node::MobilePeerRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_peerId = <String>::sse_decode(deserializer);
+        let mut var_firstSeen = <String>::sse_decode(deserializer);
+        let mut var_lastSeen = <String>::sse_decode(deserializer);
+        let mut var_nickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_localNickname = <Option<String>>::sse_decode(deserializer);
+        return crate::mobile_node::MobilePeerRecord {
+            peer_id: var_peerId,
+            first_seen: var_firstSeen,
+            last_seen: var_lastSeen,
+            nickname: var_nickname,
+            local_nickname: var_localNickname,
         };
     }
 }
@@ -658,20 +678,6 @@ impl SseDecode for Option<crate::mobile_node::SwarmEventJson> {
         } else {
             return None;
         }
-    }
-}
-
-impl SseDecode for crate::types::PeerRecord {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_peerId = <String>::sse_decode(deserializer);
-        let mut var_firstSeen = <String>::sse_decode(deserializer);
-        let mut var_lastSeen = <String>::sse_decode(deserializer);
-        return crate::types::PeerRecord {
-            peer_id: var_peerId,
-            first_seen: var_firstSeen,
-            last_seen: var_lastSeen,
-        };
     }
 }
 
@@ -801,6 +807,30 @@ impl flutter_rust_bridge::IntoIntoDart<crate::mobile_api::MobileInitStatus>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::mobile_node::MobilePeerRecord {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.peer_id.into_into_dart().into_dart(),
+            self.first_seen.into_into_dart().into_dart(),
+            self.last_seen.into_into_dart().into_dart(),
+            self.nickname.into_into_dart().into_dart(),
+            self.local_nickname.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::mobile_node::MobilePeerRecord
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::mobile_node::MobilePeerRecord>
+    for crate::mobile_node::MobilePeerRecord
+{
+    fn into_into_dart(self) -> crate::mobile_node::MobilePeerRecord {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::mobile_api::MobilePeerStatus {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -819,23 +849,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::mobile_api::MobilePeerStatus>
     for crate::mobile_api::MobilePeerStatus
 {
     fn into_into_dart(self) -> crate::mobile_api::MobilePeerStatus {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::types::PeerRecord {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.peer_id.into_into_dart().into_dart(),
-            self.first_seen.into_into_dart().into_dart(),
-            self.last_seen.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::types::PeerRecord {}
-impl flutter_rust_bridge::IntoIntoDart<crate::types::PeerRecord> for crate::types::PeerRecord {
-    fn into_into_dart(self) -> crate::types::PeerRecord {
         self
     }
 }
@@ -920,12 +933,12 @@ impl SseEncode for Vec<crate::mobile_node::ChatMessage> {
     }
 }
 
-impl SseEncode for Vec<crate::types::PeerRecord> {
+impl SseEncode for Vec<crate::mobile_node::MobilePeerRecord> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::types::PeerRecord>::sse_encode(item, serializer);
+            <crate::mobile_node::MobilePeerRecord>::sse_encode(item, serializer);
         }
     }
 }
@@ -945,6 +958,17 @@ impl SseEncode for crate::mobile_api::MobileInitStatus {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.database_url, serializer);
         <String>::sse_encode(self.local_peer_id, serializer);
+    }
+}
+
+impl SseEncode for crate::mobile_node::MobilePeerRecord {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.peer_id, serializer);
+        <String>::sse_encode(self.first_seen, serializer);
+        <String>::sse_encode(self.last_seen, serializer);
+        <Option<String>>::sse_encode(self.nickname, serializer);
+        <Option<String>>::sse_encode(self.local_nickname, serializer);
     }
 }
 
@@ -974,15 +998,6 @@ impl SseEncode for Option<crate::mobile_node::SwarmEventJson> {
         if let Some(value) = self {
             <crate::mobile_node::SwarmEventJson>::sse_encode(value, serializer);
         }
-    }
-}
-
-impl SseEncode for crate::types::PeerRecord {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.peer_id, serializer);
-        <String>::sse_encode(self.first_seen, serializer);
-        <String>::sse_encode(self.last_seen, serializer);
     }
 }
 

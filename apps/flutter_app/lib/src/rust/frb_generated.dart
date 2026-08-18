@@ -12,7 +12,6 @@ import 'frb_generated.io.dart'
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'types.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -79,7 +78,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<List<PeerRecord>> crateApiGetKnownPeers();
+  Future<List<MobilePeerRecord>> crateApiGetKnownPeers();
 
   Future<MobilePeerStatus> crateApiGetMobilePeerStatus();
 
@@ -133,7 +132,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<List<PeerRecord>> crateApiGetKnownPeers() {
+  Future<List<MobilePeerRecord>> crateApiGetKnownPeers() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -146,7 +145,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_peer_record,
+          decodeSuccessData: sse_decode_list_mobile_peer_record,
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiGetKnownPeersConstMeta,
@@ -620,9 +619,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<PeerRecord> dco_decode_list_peer_record(dynamic raw) {
+  List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_peer_record).toList();
+    return (raw as List<dynamic>).map(dco_decode_mobile_peer_record).toList();
   }
 
   @protected
@@ -640,6 +639,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return MobileInitStatus(
       databaseUrl: dco_decode_String(arr[0]),
       localPeerId: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  MobilePeerRecord dco_decode_mobile_peer_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return MobilePeerRecord(
+      peerId: dco_decode_String(arr[0]),
+      firstSeen: dco_decode_String(arr[1]),
+      lastSeen: dco_decode_String(arr[2]),
+      nickname: dco_decode_opt_String(arr[3]),
+      localNickname: dco_decode_opt_String(arr[4]),
     );
   }
 
@@ -666,19 +680,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_swarm_event_json(raw);
-  }
-
-  @protected
-  PeerRecord dco_decode_peer_record(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return PeerRecord(
-      peerId: dco_decode_String(arr[0]),
-      firstSeen: dco_decode_String(arr[1]),
-      lastSeen: dco_decode_String(arr[2]),
-    );
   }
 
   @protected
@@ -783,13 +784,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<PeerRecord> sse_decode_list_peer_record(SseDeserializer deserializer) {
+  List<MobilePeerRecord> sse_decode_list_mobile_peer_record(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <PeerRecord>[];
+    var ans_ = <MobilePeerRecord>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_peer_record(deserializer));
+      ans_.add(sse_decode_mobile_peer_record(deserializer));
     }
     return ans_;
   }
@@ -809,6 +812,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return MobileInitStatus(
       databaseUrl: var_databaseUrl,
       localPeerId: var_localPeerId,
+    );
+  }
+
+  @protected
+  MobilePeerRecord sse_decode_mobile_peer_record(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peerId = sse_decode_String(deserializer);
+    var var_firstSeen = sse_decode_String(deserializer);
+    var var_lastSeen = sse_decode_String(deserializer);
+    var var_nickname = sse_decode_opt_String(deserializer);
+    var var_localNickname = sse_decode_opt_String(deserializer);
+    return MobilePeerRecord(
+      peerId: var_peerId,
+      firstSeen: var_firstSeen,
+      lastSeen: var_lastSeen,
+      nickname: var_nickname,
+      localNickname: var_localNickname,
     );
   }
 
@@ -847,19 +867,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
-  }
-
-  @protected
-  PeerRecord sse_decode_peer_record(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_peerId = sse_decode_String(deserializer);
-    var var_firstSeen = sse_decode_String(deserializer);
-    var var_lastSeen = sse_decode_String(deserializer);
-    return PeerRecord(
-      peerId: var_peerId,
-      firstSeen: var_firstSeen,
-      lastSeen: var_lastSeen,
-    );
   }
 
   @protected
@@ -955,14 +962,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_peer_record(
-    List<PeerRecord> self,
+  void sse_encode_list_mobile_peer_record(
+    List<MobilePeerRecord> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_peer_record(item, serializer);
+      sse_encode_mobile_peer_record(item, serializer);
     }
   }
 
@@ -984,6 +991,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.databaseUrl, serializer);
     sse_encode_String(self.localPeerId, serializer);
+  }
+
+  @protected
+  void sse_encode_mobile_peer_record(
+    MobilePeerRecord self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peerId, serializer);
+    sse_encode_String(self.firstSeen, serializer);
+    sse_encode_String(self.lastSeen, serializer);
+    sse_encode_opt_String(self.nickname, serializer);
+    sse_encode_opt_String(self.localNickname, serializer);
   }
 
   @protected
@@ -1018,14 +1038,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_autoadd_swarm_event_json(self, serializer);
     }
-  }
-
-  @protected
-  void sse_encode_peer_record(PeerRecord self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.peerId, serializer);
-    sse_encode_String(self.firstSeen, serializer);
-    sse_encode_String(self.lastSeen, serializer);
   }
 
   @protected

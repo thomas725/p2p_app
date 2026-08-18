@@ -8,7 +8,6 @@ import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
-import 'src/rust/types.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 final bool _isAndroid = Platform.isAndroid;
@@ -95,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _serviceRunning = false;
 
   final List<ChatMessage> _messages = [];
-  List<PeerRecord> _peers = [];
+  List<MobilePeerRecord> _peers = [];
 
   @override
   void initState() {
@@ -242,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openDmChat(PeerRecord peer) {
+  void _openDmChat(MobilePeerRecord peer) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -479,8 +478,8 @@ class _MessageBubble extends StatelessWidget {
 
 class _PeerList extends StatelessWidget {
   const _PeerList({required this.peers, required this.onTap});
-  final List<PeerRecord> peers;
-  final void Function(PeerRecord) onTap;
+  final List<MobilePeerRecord> peers;
+  final void Function(MobilePeerRecord) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -515,14 +514,24 @@ class _PeerList extends StatelessWidget {
                   itemCount: peers.length,
                   itemBuilder: (_, i) {
                     final p = peers[i];
+                    final displayName = p.localNickname ??
+                        p.nickname ??
+                        p.peerId.substring(0, 16);
                     return ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      leading: CircleAvatar(
+                        child: Text(
+                          displayName.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
                       title: Text(
-                        p.peerId.substring(0, 16),
+                        displayName,
                         style: const TextStyle(fontSize: 14),
                       ),
                       subtitle: Text(
-                        'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
+                        p.nickname != null && p.nickname != displayName
+                            ? '${p.peerId.substring(0, 12)} - Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}'
+                            : 'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
                         style: const TextStyle(fontSize: 11),
                       ),
                       trailing: const Icon(Icons.chevron_right),
@@ -540,7 +549,7 @@ class _PeerList extends StatelessWidget {
 
 class DmChatScreen extends StatefulWidget {
   const DmChatScreen({super.key, required this.peer, required this.serviceRunning});
-  final PeerRecord peer;
+  final MobilePeerRecord peer;
   final bool serviceRunning;
 
   @override

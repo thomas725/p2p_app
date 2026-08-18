@@ -3,8 +3,7 @@
 //! This module defines the functions and types exposed to Dart via FRB.
 
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
-use crate::mobile_node::{ChatMessage, SwarmEventJson};
-use crate::PeerRecord;
+use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
 
 /// Initialize the mobile database at the given path and return peer info.
 pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String> {
@@ -41,8 +40,8 @@ pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
     crate::mobile_node::send_dm(peer_id, content)
 }
 
-/// Get all known peers.
-pub fn get_known_peers() -> Result<Vec<PeerRecord>, String> {
+/// Get all known peers with nicknames.
+pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
     crate::mobile_node::get_known_peers()
 }
 

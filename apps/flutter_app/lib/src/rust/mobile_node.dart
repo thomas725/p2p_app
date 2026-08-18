@@ -61,6 +61,41 @@ class ChatMessage {
           senderNickname == other.senderNickname;
 }
 
+class MobilePeerRecord {
+  final String peerId;
+  final String firstSeen;
+  final String lastSeen;
+  final String? nickname;
+  final String? localNickname;
+
+  const MobilePeerRecord({
+    required this.peerId,
+    required this.firstSeen,
+    required this.lastSeen,
+    this.nickname,
+    this.localNickname,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      firstSeen.hashCode ^
+      lastSeen.hashCode ^
+      nickname.hashCode ^
+      localNickname.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobilePeerRecord &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          firstSeen == other.firstSeen &&
+          lastSeen == other.lastSeen &&
+          nickname == other.nickname &&
+          localNickname == other.localNickname;
+}
+
 class SwarmEventJson {
   final String eventType;
   final String? peerId;

@@ -7,7 +7,6 @@ import 'frb_generated.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'types.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
 Future<MobileInitStatus> initMobileDatabase({required String dbPath}) =>
@@ -35,8 +34,8 @@ Future<void> sendBroadcast({required String content}) =>
 Future<void> sendDm({required String peerId, required String content}) =>
     RustLib.instance.api.crateApiSendDm(peerId: peerId, content: content);
 
-/// Get all known peers.
-Future<List<PeerRecord>> getKnownPeers() =>
+/// Get all known peers with nicknames.
+Future<List<MobilePeerRecord>> getKnownPeers() =>
     RustLib.instance.api.crateApiGetKnownPeers();
 
 /// Load broadcast chat messages (chronological order).

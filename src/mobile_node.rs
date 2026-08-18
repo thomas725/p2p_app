@@ -199,15 +199,28 @@ pub fn get_node_peer_id() -> Result<String, String> {
     Ok(node.peer_id.clone())
 }
 
-/// Get all known peers from the database (as FRB-compatible PeerRecord list).
-pub fn get_known_peers() -> Result<Vec<crate::PeerRecord>, String> {
-    let known = crate::load_known_peers().map_err(|e| e.to_string())?;
+// --- Mobile peer record with nicknames ---
+
+#[derive(Debug, Clone)]
+pub struct MobilePeerRecord {
+    pub peer_id: String,
+    pub first_seen: String,
+    pub last_seen: String,
+    pub nickname: Option<String>,
+    pub local_nickname: Option<String>,
+}
+
+/// Get all known peers from the database with nickname info.
+pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
+    let known = crate::load_peers().map_err(|e| e.to_string())?;
     Ok(known
         .into_iter()
-        .map(|kp| crate::PeerRecord {
-            peer_id: kp.peer_id,
-            first_seen: kp.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-            last_seen: kp.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        .map(|p| MobilePeerRecord {
+            peer_id: p.peer_id,
+            first_seen: p.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            last_seen: p.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            nickname: p.received_nickname,
+            local_nickname: p.peer_local_nickname,
         })
         .collect())
 }
