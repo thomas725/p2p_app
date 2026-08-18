@@ -5,7 +5,9 @@
 
 import 'frb_generated.dart';
 import 'mobile_api.dart';
+import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'types.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
 Future<MobileInitStatus> initMobileDatabase({required String dbPath}) =>
@@ -14,3 +16,25 @@ Future<MobileInitStatus> initMobileDatabase({required String dbPath}) =>
 /// Get current peer status (DB URL, peer ID, nickname).
 Future<MobilePeerStatus> getMobilePeerStatus() =>
     RustLib.instance.api.crateApiGetMobilePeerStatus();
+
+/// Start the p2p node: init DB, build swarm, begin listening.
+Future<String> startNode({required String dbPath}) =>
+    RustLib.instance.api.crateApiStartNode(dbPath: dbPath);
+
+/// Stop the p2p node.
+Future<void> stopNode() => RustLib.instance.api.crateApiStopNode();
+
+/// Poll the next swarm event (non-blocking).
+Future<SwarmEventJson?> pollEvent() => RustLib.instance.api.crateApiPollEvent();
+
+/// Send a broadcast message.
+Future<void> sendBroadcast({required String content}) =>
+    RustLib.instance.api.crateApiSendBroadcast(content: content);
+
+/// Send a direct message to a peer.
+Future<void> sendDm({required String peerId, required String content}) =>
+    RustLib.instance.api.crateApiSendDm(peerId: peerId, content: content);
+
+/// Get all known peers.
+Future<List<PeerRecord>> getKnownPeers() =>
+    RustLib.instance.api.crateApiGetKnownPeers();

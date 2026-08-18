@@ -1,0 +1,230 @@
+//! Mobile node: manages the libp2p swarm lifecycle for Android/iOS.
+//!
+//! The swarm runs on a background tokio task. Commands are sent via MPSC,
+//! events are polled by Dart via `poll_event()`.
+
+use crate::types::{SwarmCommand, SwarmEvent};
+use crate::{
+    build_swarm, get_local_peer_id, get_network_size, p2plog_debug, spawn_swarm_handler,
+    CHAT_TOPIC,
+};
+use libp2p::gossipsub;
+use std::sync::{Mutex, OnceLock};
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::error::TryRecvError;
+
+static NODE: OnceLock<Mutex<MobileNode>> = OnceLock::new();
+
+struct MobileNode {
+    event_rx: Option<mpsc::Receiver<SwarmEvent>>,
+    cmd_tx: Option<mpsc::Sender<SwarmCommand>>,
+    peer_id: String,
+}
+
+/// Start the p2p node: init DB, build swarm, begin listening.
+/// Returns the local peer ID.
+pub fn start_node(db_path: String) -> Result<String, String> {
+    if NODE.get().is_some() {
+        let node = NODE.get().unwrap().lock().unwrap();
+        if node.cmd_tx.is_some() {
+            return Ok(node.peer_id.clone());
+        }
+    }
+
+    crate::mobile_api::init_mobile_database(db_path)?;
+
+    let network_size = get_network_size().map_err(|e| e.to_string())?;
+    let mut swarm =
+        build_swarm(network_size).map_err(|e| format!("Failed to build swarm: {e}"))?;
+
+    let topic = gossipsub::IdentTopic::new(CHAT_TOPIC);
+    swarm
+        .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap())
+        .map_err(|e| format!("Failed to listen: {e}"))?;
+    swarm
+        .behaviour_mut()
+        .gossipsub
+        .subscribe(&topic)
+        .map_err(|e| format!("Failed to subscribe: {e}"))?;
+
+    let (_handle, event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+
+    let peer_id = get_local_peer_id()
+        .map_err(|e| e.to_string())?
+        .to_string();
+
+    let node = MobileNode {
+        event_rx: Some(event_rx),
+        cmd_tx: Some(cmd_tx),
+        peer_id: peer_id.clone(),
+    };
+
+    let _ = NODE.set(Mutex::new(node));
+    p2plog_debug(format!("Mobile node started: peer_id={peer_id}"));
+    Ok(peer_id)
+}
+
+/// Stop the p2p node (drops the swarm task).
+pub fn stop_node() -> Result<(), String> {
+    if let Some(m) = NODE.get() {
+        let mut node = m.lock().unwrap();
+        node.cmd_tx.take();
+        node.event_rx.take();
+        p2plog_debug("Mobile node stopped".to_string());
+    }
+    Ok(())
+}
+
+/// Poll the next swarm event (non-blocking). Returns None if no event ready.
+pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let mut node = m.lock().unwrap();
+    let rx = node.event_rx.as_mut().ok_or("Node stopped")?;
+
+    match rx.try_recv() {
+        Ok(ev) => Ok(Some(event_to_json(ev))),
+        Err(TryRecvError::Empty) => Ok(None),
+        Err(TryRecvError::Disconnected) => Err("Swarm task ended".into()),
+    }
+}
+
+/// Send a broadcast message to all connected peers.
+pub fn send_broadcast(content: String) -> Result<(), String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let node = m.lock().unwrap();
+    let tx = node.cmd_tx.as_ref().ok_or("Node stopped")?;
+    let msg_id = Some(crate::gen_msg_id());
+    let nickname = crate::get_self_nickname().ok().flatten();
+    tx.blocking_send(SwarmCommand::Publish {
+        content,
+        nickname,
+        msg_id,
+    })
+    .map_err(|e| format!("Send failed: {e}"))
+}
+
+/// Send a direct message to a specific peer.
+pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let node = m.lock().unwrap();
+    let tx = node.cmd_tx.as_ref().ok_or("Node stopped")?;
+    let msg_id = Some(crate::gen_msg_id());
+    let nickname = crate::get_self_nickname().ok().flatten();
+    tx.blocking_send(SwarmCommand::SendDm {
+        peer_id,
+        content,
+        nickname,
+        msg_id,
+        ack_for: None,
+    })
+    .map_err(|e| format!("Send failed: {e}"))
+}
+
+/// Get the local peer ID.
+pub fn get_node_peer_id() -> Result<String, String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let node = m.lock().unwrap();
+    Ok(node.peer_id.clone())
+}
+
+/// Get all known peers from the database (as FRB-compatible PeerRecord list).
+pub fn get_known_peers() -> Result<Vec<crate::PeerRecord>, String> {
+    let known = crate::load_known_peers().map_err(|e| e.to_string())?;
+    Ok(known
+        .into_iter()
+        .map(|kp| crate::PeerRecord {
+            peer_id: kp.peer_id,
+            first_seen: kp.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+            last_seen: kp.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        })
+        .collect())
+}
+
+// --- JSON types for FRB ---
+
+#[derive(Debug, Clone)]
+pub struct SwarmEventJson {
+    pub event_type: String,
+    pub peer_id: Option<String>,
+    pub content: Option<String>,
+    pub latency: Option<String>,
+    pub nickname: Option<String>,
+    pub msg_id: Option<String>,
+    pub address: Option<String>,
+}
+
+fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
+    match ev {
+        SwarmEvent::BroadcastMessage(m) => SwarmEventJson {
+            event_type: "broadcast".into(),
+            peer_id: Some(m.peer_id),
+            content: Some(m.content),
+            latency: m.latency,
+            nickname: m.nickname,
+            msg_id: m.msg_id,
+            address: None,
+        },
+        SwarmEvent::DirectMessage(m) => SwarmEventJson {
+            event_type: "dm".into(),
+            peer_id: Some(m.peer_id),
+            content: Some(m.content),
+            latency: m.latency,
+            nickname: m.nickname,
+            msg_id: m.msg_id,
+            address: None,
+        },
+        SwarmEvent::PeerConnected(id) => SwarmEventJson {
+            event_type: "peer_connected".into(),
+            peer_id: Some(id),
+            ..default_event()
+        },
+        SwarmEvent::PeerDisconnected(id) => SwarmEventJson {
+            event_type: "peer_disconnected".into(),
+            peer_id: Some(id),
+            ..default_event()
+        },
+        SwarmEvent::ListenAddrEstablished(addr) => SwarmEventJson {
+            event_type: "listen_addr".into(),
+            address: Some(addr),
+            ..default_event()
+        },
+        SwarmEvent::Receipt {
+            peer_id,
+            ack_for,
+            ..
+        } => SwarmEventJson {
+            event_type: "receipt".into(),
+            peer_id: Some(peer_id),
+            msg_id: Some(ack_for),
+            ..default_event()
+        },
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerDiscovered {
+            peer_id,
+            addresses,
+        } => SwarmEventJson {
+            event_type: "peer_discovered".into(),
+            peer_id: Some(peer_id),
+            address: addresses.first().map(|a| a.to_string()),
+            ..default_event()
+        },
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerExpired { peer_id } => SwarmEventJson {
+            event_type: "peer_expired".into(),
+            peer_id: Some(peer_id),
+            ..default_event()
+        },
+    }
+}
+
+fn default_event() -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: String::new(),
+        peer_id: None,
+        content: None,
+        latency: None,
+        nickname: None,
+        msg_id: None,
+        address: None,
+    }
+}

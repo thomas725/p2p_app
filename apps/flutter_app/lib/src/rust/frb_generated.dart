@@ -10,7 +10,9 @@ import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'mobile_api.dart';
+import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'types.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -65,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 1004956477;
+  int get rustContentHash => 1582877796;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -77,9 +79,24 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<List<PeerRecord>> crateApiGetKnownPeers();
+
   Future<MobilePeerStatus> crateApiGetMobilePeerStatus();
 
   Future<MobileInitStatus> crateApiInitMobileDatabase({required String dbPath});
+
+  Future<SwarmEventJson?> crateApiPollEvent();
+
+  Future<void> crateApiSendBroadcast({required String content});
+
+  Future<void> crateApiSendDm({
+    required String peerId,
+    required String content,
+  });
+
+  Future<String> crateApiStartNode({required String dbPath});
+
+  Future<void> crateApiStopNode();
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -91,7 +108,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<MobilePeerStatus> crateApiGetMobilePeerStatus() {
+  Future<List<PeerRecord>> crateApiGetKnownPeers() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -100,6 +117,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_peer_record,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiGetKnownPeersConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetKnownPeersConstMeta =>
+      const TaskConstMeta(debugName: "get_known_peers", argNames: []);
+
+  @override
+  Future<MobilePeerStatus> crateApiGetMobilePeerStatus() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
             port: port_,
           );
         },
@@ -129,7 +173,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -149,10 +193,166 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     argNames: ["dbPath"],
   );
 
+  @override
+  Future<SwarmEventJson?> crateApiPollEvent() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_swarm_event_json,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiPollEventConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPollEventConstMeta =>
+      const TaskConstMeta(debugName: "poll_event", argNames: []);
+
+  @override
+  Future<void> crateApiSendBroadcast({required String content}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(content, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSendBroadcastConstMeta,
+        argValues: [content],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSendBroadcastConstMeta =>
+      const TaskConstMeta(debugName: "send_broadcast", argNames: ["content"]);
+
+  @override
+  Future<void> crateApiSendDm({
+    required String peerId,
+    required String content,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(peerId, serializer);
+          sse_encode_String(content, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSendDmConstMeta,
+        argValues: [peerId, content],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSendDmConstMeta => const TaskConstMeta(
+    debugName: "send_dm",
+    argNames: ["peerId", "content"],
+  );
+
+  @override
+  Future<String> crateApiStartNode({required String dbPath}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(dbPath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiStartNodeConstMeta,
+        argValues: [dbPath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStartNodeConstMeta =>
+      const TaskConstMeta(debugName: "start_node", argNames: ["dbPath"]);
+
+  @override
+  Future<void> crateApiStopNode() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiStopNodeConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStopNodeConstMeta =>
+      const TaskConstMeta(debugName: "stop_node", argNames: []);
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_swarm_event_json(raw);
+  }
+
+  @protected
+  List<PeerRecord> dco_decode_list_peer_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_peer_record).toList();
   }
 
   @protected
@@ -193,9 +393,51 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_swarm_event_json(raw);
+  }
+
+  @protected
+  PeerRecord dco_decode_peer_record(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return PeerRecord(
+      peerId: dco_decode_String(arr[0]),
+      firstSeen: dco_decode_String(arr[1]),
+      lastSeen: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  SwarmEventJson dco_decode_swarm_event_json(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return SwarmEventJson(
+      eventType: dco_decode_String(arr[0]),
+      peerId: dco_decode_opt_String(arr[1]),
+      content: dco_decode_opt_String(arr[2]),
+      latency: dco_decode_opt_String(arr[3]),
+      nickname: dco_decode_opt_String(arr[4]),
+      msgId: dco_decode_opt_String(arr[5]),
+      address: dco_decode_opt_String(arr[6]),
+    );
+  }
+
+  @protected
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  void dco_decode_unit(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return;
   }
 
   @protected
@@ -203,6 +445,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_swarm_event_json(deserializer));
+  }
+
+  @protected
+  List<PeerRecord> sse_decode_list_peer_record(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PeerRecord>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_peer_record(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -248,9 +510,61 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_swarm_event_json(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  PeerRecord sse_decode_peer_record(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peerId = sse_decode_String(deserializer);
+    var var_firstSeen = sse_decode_String(deserializer);
+    var var_lastSeen = sse_decode_String(deserializer);
+    return PeerRecord(
+      peerId: var_peerId,
+      firstSeen: var_firstSeen,
+      lastSeen: var_lastSeen,
+    );
+  }
+
+  @protected
+  SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_eventType = sse_decode_String(deserializer);
+    var var_peerId = sse_decode_opt_String(deserializer);
+    var var_content = sse_decode_opt_String(deserializer);
+    var var_latency = sse_decode_opt_String(deserializer);
+    var var_nickname = sse_decode_opt_String(deserializer);
+    var var_msgId = sse_decode_opt_String(deserializer);
+    var var_address = sse_decode_opt_String(deserializer);
+    return SwarmEventJson(
+      eventType: var_eventType,
+      peerId: var_peerId,
+      content: var_content,
+      latency: var_latency,
+      nickname: var_nickname,
+      msgId: var_msgId,
+      address: var_address,
+    );
+  }
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
+  }
+
+  @protected
+  void sse_decode_unit(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
   }
 
   @protected
@@ -269,6 +583,27 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_swarm_event_json(
+    SwarmEventJson self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_swarm_event_json(self, serializer);
+  }
+
+  @protected
+  void sse_encode_list_peer_record(
+    List<PeerRecord> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_peer_record(item, serializer);
+    }
   }
 
   @protected
@@ -313,9 +648,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_swarm_event_json(
+    SwarmEventJson? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_swarm_event_json(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_peer_record(PeerRecord self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peerId, serializer);
+    sse_encode_String(self.firstSeen, serializer);
+    sse_encode_String(self.lastSeen, serializer);
+  }
+
+  @protected
+  void sse_encode_swarm_event_json(
+    SwarmEventJson self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.eventType, serializer);
+    sse_encode_opt_String(self.peerId, serializer);
+    sse_encode_opt_String(self.content, serializer);
+    sse_encode_opt_String(self.latency, serializer);
+    sse_encode_opt_String(self.nickname, serializer);
+    sse_encode_opt_String(self.msgId, serializer);
+    sse_encode_opt_String(self.address, serializer);
+  }
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
+  }
+
+  @protected
+  void sse_encode_unit(void self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
   }
 
   @protected

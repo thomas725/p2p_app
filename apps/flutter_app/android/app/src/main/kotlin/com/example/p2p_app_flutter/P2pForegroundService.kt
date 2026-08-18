@@ -10,6 +10,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import io.flutter.plugin.common.MethodChannel
 
 class P2pForegroundService : Service() {
 
@@ -20,6 +21,12 @@ class P2pForegroundService : Service() {
         const val ACTION_STOP = "com.example.p2p_app_flutter.ACTION_STOP"
         const val EXTRA_DB_PATH = "db_path"
         private var instance: P2pForegroundService? = null
+        private var methodChannel: MethodChannel? = null
+
+        fun setMethodChannel(channel: MethodChannel) {
+            methodChannel = channel
+        }
+
         fun isRunning(): Boolean = instance != null
     }
 
@@ -37,6 +44,7 @@ class P2pForegroundService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 releaseMulticastLock()
+                sendStopNetworking()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -45,7 +53,7 @@ class P2pForegroundService : Service() {
                 val dbPath = intent.getStringExtra(EXTRA_DB_PATH) ?: "p2p.db"
                 acquireMulticastLock()
                 startForeground(NOTIFICATION_ID, buildNotification("P2P networking active"))
-                startNativeNetworking(dbPath)
+                sendStartNetworking(dbPath)
             }
         }
         return START_STICKY
@@ -53,7 +61,7 @@ class P2pForegroundService : Service() {
 
     override fun onDestroy() {
         releaseMulticastLock()
-        stopNativeNetworking()
+        sendStopNetworking()
         instance = null
         super.onDestroy()
     }
@@ -101,11 +109,11 @@ class P2pForegroundService : Service() {
         multicastLock = null
     }
 
-    private fun startNativeNetworking(dbPath: String) {
-        // TODO: call into Rust libp2p via JNI/FRB to start networking
+    private fun sendStartNetworking(dbPath: String) {
+        methodChannel?.invokeMethod("startNetworking", dbPath)
     }
 
-    private fun stopNativeNetworking() {
-        // TODO: call into Rust to stop networking
+    private fun sendStopNetworking() {
+        methodChannel?.invokeMethod("stopNetworking", null)
     }
 }

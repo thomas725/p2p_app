@@ -61,6 +61,8 @@ pub mod messages;
 #[cfg(feature = "mobile")]
 pub mod mobile_api;
 #[cfg(feature = "mobile")]
+pub mod mobile_node;
+#[cfg(feature = "mobile")]
 pub mod api;
 pub mod network;
 pub mod nickname;
