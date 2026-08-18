@@ -7,8 +7,9 @@ use crate::messages::MessageMeta;
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
     build_swarm, current_timestamp, gen_msg_id, get_local_peer_id, get_network_size,
-    load_direct_messages, load_messages, mark_message_sent, p2plog_debug,
-    save_message_with_meta, spawn_swarm_handler, CHAT_TOPIC,
+    get_self_nickname, load_direct_messages, load_messages, mark_message_sent, p2plog_debug,
+    save_message_with_meta, save_peer, set_peer_received_nickname, spawn_swarm_handler,
+    CHAT_TOPIC,
 };
 use libp2p::gossipsub;
 use std::sync::{Mutex, OnceLock};
@@ -21,6 +22,7 @@ struct MobileNode {
     event_rx: Option<mpsc::Receiver<SwarmEvent>>,
     cmd_tx: Option<mpsc::Sender<SwarmCommand>>,
     peer_id: String,
+    _runtime: tokio::runtime::Runtime,
 }
 
 /// Start the p2p node: init DB, build swarm, begin listening.
@@ -35,30 +37,42 @@ pub fn start_node(db_path: String) -> Result<String, String> {
 
     crate::mobile_api::init_mobile_database(db_path)?;
 
-    let network_size = get_network_size().map_err(|e| e.to_string())?;
-    let mut swarm =
-        build_swarm(network_size).map_err(|e| format!("Failed to build swarm: {e}"))?;
+    // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
+    // but mDNS/swarm need a reactor.
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|e| format!("Failed to create runtime: {e}"))?;
 
-    let topic = gossipsub::IdentTopic::new(CHAT_TOPIC);
-    swarm
-        .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap())
-        .map_err(|e| format!("Failed to listen: {e}"))?;
-    swarm
-        .behaviour_mut()
-        .gossipsub
-        .subscribe(&topic)
-        .map_err(|e| format!("Failed to subscribe: {e}"))?;
+    // Block on swarm setup: build_swarm (mDNS), listen, subscribe, spawn handler.
+    // tokio::spawn inside block_on uses this runtime; keeping it alive keeps the task alive.
+    let (event_rx, cmd_tx, peer_id) = runtime.block_on(async {
+        let network_size = get_network_size().map_err(|e| e.to_string())?;
+        let mut swarm =
+            build_swarm(network_size).map_err(|e| format!("Failed to build swarm: {e}"))?;
 
-    let (_handle, event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+        let topic = gossipsub::IdentTopic::new(CHAT_TOPIC);
+        swarm
+            .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap())
+            .map_err(|e| format!("Failed to listen: {e}"))?;
+        swarm
+            .behaviour_mut()
+            .gossipsub
+            .subscribe(&topic)
+            .map_err(|e| format!("Failed to subscribe: {e}"))?;
 
-    let peer_id = get_local_peer_id()
-        .map_err(|e| e.to_string())?
-        .to_string();
+        let (_handle, event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+
+        let pid = get_local_peer_id()
+            .map_err(|e| e.to_string())?
+            .to_string();
+
+        Ok::<_, String>((event_rx, cmd_tx, pid))
+    })?;
 
     let node = MobileNode {
         event_rx: Some(event_rx),
         cmd_tx: Some(cmd_tx),
         peer_id: peer_id.clone(),
+        _runtime: runtime,
     };
 
     let _ = NODE.set(Mutex::new(node));
@@ -78,15 +92,71 @@ pub fn stop_node() -> Result<(), String> {
 }
 
 /// Poll the next swarm event (non-blocking). Returns None if no event ready.
+/// Also processes events: saves peers, sends nickname DMs, stores received nicknames.
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
     let mut node = m.lock().unwrap();
     let rx = node.event_rx.as_mut().ok_or("Node stopped")?;
 
     match rx.try_recv() {
-        Ok(ev) => Ok(Some(event_to_json(ev))),
+        Ok(ev) => {
+            // Process events like the TUI does (save peers, exchange nicknames)
+            process_event_for_mobile(&ev, &node.cmd_tx);
+            Ok(Some(event_to_json(ev)))
+        }
         Err(TryRecvError::Empty) => Ok(None),
         Err(TryRecvError::Disconnected) => Err("Swarm task ended".into()),
+    }
+}
+
+/// Process a swarm event for side effects: save peers, send nickname, store received nicknames.
+fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmCommand>>) {
+    match ev {
+        SwarmEvent::PeerConnected(peer_id) => {
+            // Save peer to DB (like TUI does)
+            if let Err(e) = save_peer(peer_id, &[]) {
+                p2plog_debug(format!("Failed to save peer: {e}"));
+            }
+            // Send our nickname to the peer (nickname exchange)
+            if let Some(tx) = cmd_tx {
+                let nickname = get_self_nickname().ok().flatten();
+                let msg_id = gen_msg_id();
+                let _ = tx.blocking_send(SwarmCommand::SendDm {
+                    peer_id: peer_id.clone(),
+                    content: String::new(),
+                    nickname,
+                    msg_id: Some(msg_id),
+                    ack_for: None,
+                });
+            }
+        }
+        SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
+            // Store the sender's announced nickname
+            if let Some(nick) = &m.nickname {
+                if !nick.is_empty() {
+                    let _ = set_peer_received_nickname(&m.peer_id, nick);
+                }
+            }
+            // If DM is empty with a nickname, it's a nickname-only exchange — don't persist as message
+            if matches!(ev, SwarmEvent::DirectMessage(_))
+                && m.content.is_empty()
+                && m.nickname.is_some()
+            {
+                // Nickname-only DM, already stored above
+                return;
+            }
+        }
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerDiscovered {
+            peer_id,
+            addresses,
+        } => {
+            let addrs: Vec<String> = addresses.iter().map(|a| a.to_string()).collect();
+            if let Err(e) = save_peer(peer_id, &addrs) {
+                p2plog_debug(format!("Failed to save discovered peer: {e}"));
+            }
+        }
+        _ => {}
     }
 }
 
