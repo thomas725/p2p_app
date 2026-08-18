@@ -5,10 +5,10 @@
 | Metric                  | Value   |
 |:------------------------|--------:|
 | Total Rust Files        |      41 |
-| Total Lines of Code     |   7,934 |
-| Total Characters        | 275,879 |
-| Average Lines per File  |     193 |
-| Average Characters/File |   6,728 |
+| Total Lines of Code     |   8,748 |
+| Total Characters        | 307,644 |
+| Average Lines per File  |     213 |
+| Average Characters/File |   7,503 |
 
 ## All Source Files
 
@@ -21,13 +21,13 @@
 | src                     | dioxus_styles.rs     |     0 |  3862 |    50 |         - |       - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |         - |       - | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |     4 |  3547 |   117 |         - |       - | Formatting & display utilities      |
-| src                     | frb_generated.rs     |     5 | 27014 |   710 |         - |       - | Source file                         |
-| src                     | lib.rs               |     1 |  6027 |   159 |         - |       - | Module declarations & re-exports    |
-| src                     | logging.rs           |     4 |  7042 |   238 |         - |       - | Logging utilities & setup           |
+| src                     | frb_generated.rs     |     6 | 45651 |  1164 |         - |       - | Source file                         |
+| src                     | lib.rs               |     1 |  6032 |   159 |         - |       - | Module declarations & re-exports    |
+| src                     | logging.rs           |     4 |  9003 |   280 |         - |       - | Logging utilities & setup           |
 | src                     | messages.rs          |     4 |  8406 |   227 |         - |       - | Message persistence & retrieval     |
 | src                     | mobile_api.rs        |     3 |  1943 |    61 |         - |       - | Source file                         |
-| src                     | mobile_node.rs       |     3 |  7254 |   230 |         - |       - | Source file                         |
-| src                     | mod.rs               |     1 |  1498 |    47 |         - |       - | Module declarations                 |
+| src                     | mobile_node.rs       |     5 | 16592 |   498 |         - |       - | Source file                         |
+| src                     | mod.rs               |     1 |  3247 |    94 |         - |       - | Module declarations                 |
 | src                     | network.rs           |     3 |  1851 |    61 |         - |       - | Network size classification         |
 | src                     | nickname.rs          |     5 |  4472 |   123 |         - |       - | Nickname management                 |
 | src                     | peers.rs             |     3 |  6171 |   182 |         - |       - | Peer management & tracking          |
@@ -38,8 +38,8 @@
 | src                     | tui_tabs.rs          |     5 |  4793 |   168 |         - |       - | Tab management & navigation         |
 | src                     | types.rs             |     2 |  3546 |   115 |         - |       - | Event & command type defs           |
 | src/bin                 | p2p_chat.rs          |     7 |  4936 |   134 |         - |       - | CLI chat application                |
-| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8263 |   217 |         - |       - | Web UI (Dioxus framework)           |
-| src/bin                 | p2p_chat_tui.rs      |     4 |  4511 |   115 |         - |       - | Main TUI application entry point    |
+| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8302 |   218 |         - |       - | Web UI (Dioxus framework)           |
+| src/bin                 | p2p_chat_tui.rs      |     4 |  4547 |   117 |         - |       - | Main TUI application entry point    |
 | src/bin/tui             | click_handlers.rs    |     5 |  5185 |   137 |         - |       - | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |     6 | 10698 |   321 |         - |       - | Event routing & state updates       |
 | src/bin/tui             | event_source.rs      |     4 |  1224 |    40 |         - |       - | Terminal event polling (60 FPS)     |
@@ -56,7 +56,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |         - |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |         - |       - | Database schema (Diesel)            |
 
-**Total:** 41 files, 7,934 lines, 275,879 characters
+**Total:** 41 files, 8,748 lines, 307,644 characters
 
 ## Test Files
 
@@ -72,7 +72,7 @@
 | tests  | db.rs                             |   188 |  5305 |     3 | database module tests                 |
 | tests  | db_selection.rs                   |    57 |  1737 |     4 | Database selection tests              |
 | tests  | fmt.rs                            |   291 |  7626 |     2 | fmt module tests                      |
-| tests  | logging.rs                        |   296 |  8328 |     3 | logging module tests                  |
+| tests  | logging.rs                        |   296 |  8311 |     3 | logging module tests                  |
 | tests  | messages.rs                       |   496 | 14906 |     3 | messages module tests                 |
 | tests  | network.rs                        |    49 |  1638 |     1 | network module tests                  |
 | tests  | nickname.rs                       |   398 | 12478 |     4 | nickname module tests                 |
@@ -101,7 +101,7 @@
 | unit   | unit_bin_tui_test_helpers.rs      |    62 |  1896 |     3 | Unit tests for TUI test helpers       |
 | unit   | unit_db.rs                        |   281 |  8768 |     4 | Unit tests for database module        |
 | unit   | unit_lib.rs                       |   264 |  7191 |     2 | Unit tests for library re-exports/api |
-| unit   | unit_logging.rs                   |   203 |  5147 |     4 | Unit tests for logging module         |
+| unit   | unit_logging.rs                   |   204 |  5201 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                  |   190 |  6084 |     4 | Unit tests for messages module        |
 | unit   | unit_network.rs                   |    46 |  1371 |     3 | Unit tests for network module         |
 | unit   | unit_nickname.rs                  |   100 |  3032 |     3 | Unit tests for nickname module        |
@@ -113,4 +113,4 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 13,989 lines, 433,535 characters
+**Total:** 50 test files, 13,990 lines, 433,572 characters
