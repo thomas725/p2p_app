@@ -936,6 +936,12 @@ class _LogTabState extends State<_LogTab> {
       appBar: AppBar(
         title: const Text('Log'),
         actions: [
+          if (_logs.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.copy),
+              onPressed: _copyAll,
+              tooltip: 'Copy All',
+            ),
           IconButton(
             icon: const Icon(Icons.clear),
             onPressed: () => setState(() => _logs.clear()),
@@ -945,19 +951,29 @@ class _LogTabState extends State<_LogTab> {
       ),
       body: _logs.isEmpty
           ? const Center(child: Text('No logs yet'))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: _logs.length,
-              itemBuilder: (_, i) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  child: Text(
-                    _logs[i],
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                );
-              },
+          : SelectionArea(
+              child: ListView.builder(
+                controller: _scrollController,
+                itemCount: _logs.length,
+                itemBuilder: (_, i) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    child: SelectableText(
+                      _logs[i],
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  );
+                },
+              ),
             ),
+    );
+  }
+
+  void _copyAll() {
+    final text = _logs.join('\n');
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logs copied to clipboard')),
     );
   }
 }
