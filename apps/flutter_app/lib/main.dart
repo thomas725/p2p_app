@@ -90,6 +90,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _shareApk() async {
+    try {
+      await _serviceChannel.invokeMethod('shareApk');
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   serviceRunning: _serviceRunning,
                   onRefresh: _refresh,
                   onToggleService: _toggleService,
+                  onShareApk: _shareApk,
                 ),
     );
   }
@@ -114,12 +123,14 @@ class _StatusView extends StatelessWidget {
     required this.serviceRunning,
     required this.onRefresh,
     required this.onToggleService,
+    required this.onShareApk,
   });
 
   final MobilePeerStatus status;
   final bool serviceRunning;
   final VoidCallback onRefresh;
   final VoidCallback onToggleService;
+  final VoidCallback onShareApk;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +163,11 @@ class _StatusView extends StatelessWidget {
               child: const Text('Stop service'),
             ),
             TextButton(onPressed: onRefresh, child: const Text('Refresh')),
+            OutlinedButton.icon(
+              onPressed: onShareApk,
+              icon: const Icon(Icons.share),
+              label: const Text('Share App'),
+            ),
           ],
         ),
       ],
