@@ -456,7 +456,11 @@ class _MessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   message.senderNickname ??
-                      (message.peerId?.substring(0, 12) ?? 'Unknown'),
+                      (message.peerId != null
+                        ? (message.peerId!.length >= 12
+                            ? message.peerId!.substring(0, 12)
+                            : message.peerId!)
+                        : 'Unknown'),
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                 ),
               ),
@@ -540,7 +544,7 @@ class _PeerList extends StatelessWidget {
                         style: const TextStyle(fontSize: 14),
                       ),
                       subtitle: Text(
-                        'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
+                        'Seen ${(p.lastSeen.length >= 19 ? p.lastSeen.substring(0, 19) : p.lastSeen).replaceAll('T', ' ')}',
                         style: const TextStyle(fontSize: 11),
                       ),
                       trailing: const Icon(Icons.chevron_right),
@@ -572,7 +576,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   bool _loading = true;
 
   String get _peerId => widget.peer.peerId;
-  String get _label => _peerId.substring(0, 16);
+  String get _label => _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
 
   @override
   void initState() {
@@ -650,7 +654,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
-                _peerId.substring(0, 8),
+                (_peerId.length >= 8 ? _peerId.substring(0, 8) : _peerId),
                 style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
               ),
             ),
