@@ -16,6 +16,7 @@ apps/flutter_app/android/.gradle/
 apps/flutter_app/.gradle/
 apps/flutter_app/android/local.properties
 apps/flutter_app/.dart_tool/
+apps/flutter_app/android/app/src/main/jniLibs/
 
 # Tooling
 .opencode/
