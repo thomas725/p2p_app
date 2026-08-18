@@ -5,10 +5,12 @@
 //! - Supports multiple subscribers (file, stdout, TUI)
 //! - Provides a TUI callback for displaying logs in the UI
 //! - Integrates with libp2p's existing tracing usage
+//! - Writes to a persistent log file in `target/` or CWD
+//! - Allows frontends (Flutter, TUI, Dioxus) to register log callbacks
 
 use std::collections::VecDeque;
-use std::sync::OnceLock;
-use std::sync::{Arc, Mutex};
+use std::io::Write;
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing::field::Visit;
 
 /// Maximum number of logs to keep in memory for TUI
@@ -139,7 +141,7 @@ where
 
 /// Request a TUI redraw if a redraw hook has been installed.
 pub fn request_tui_redraw() {
-    let Some(hook_cell) = TUI_REDRAW_HOOK.get() else {
+    let Some(hook_cell) = OnceLock::get(&TUI_REDRAW_HOOK) else {
         return;
     };
     if let Ok(guard) = hook_cell.lock()
@@ -185,24 +187,74 @@ pub fn push_log(message: impl Into<String>) {
     }
 }
 
-/// Log function implementation
-fn p2plog(level: &str, msg: String) {
-    push_log(format!("[{level}] {msg}"));
+// ============================================================
+// === Persistent log file + frontend callback registry ===
+// ============================================================
+
+/// Path to the application log file.
+///
+/// Checks for `target/` folder first (if it exists as a subdirectory of CWD),
+/// otherwise falls back to the current working directory.
+fn log_file_path() -> std::path::PathBuf {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let target_dir = cwd.join("target");
+    if target_dir.is_dir() {
+        target_dir.join(format!("p2p_app_{}.log", chrono::Local::now().format("%F_%H%M-%S")))
+    } else {
+        cwd.join(format!("p2p_app_{}.log", chrono::Local::now().format("%F_%H%M-%S")))
+    }
 }
 
-/// Debug log alias
-pub fn p2plog_debug(msg: impl Into<String>) {
-    p2plog("DEBUG", msg.into());
+/// Global log file handle (append mode, thread-safe via Mutex).
+///
+/// Writes to `target/p2p_app_YYYY-MM-DD_HHMM-SS.log` if the `target/` folder
+/// exists as a subdirectory of the current working directory.
+/// Otherwise falls back to `p2p_app_YYYY-MM-DD_HHMM-SS.log` in the current directory.
+static LOG_FILE: std::sync::Mutex<Option<std::fs::File>> = std::sync::Mutex::new(None);
+
+/// Global callback registry: external UIs (Flutter, TUI, Dioxus) can register
+/// a closure that receives log messages and appends them to the same log file.
+static LOG_CALLBACKS: std::sync::Mutex<Vec<Arc<dyn Fn(String) + Send + Sync>>> = std::sync::Mutex::new(vec![]);
+
+/// Register a callback that will receive all log messages.
+/// External frontends (Flutter FRB, TUI, Dioxus) can use this to add their
+/// own log entries to the Rust-managed log file.
+pub fn register_log_callback(callback: Arc<dyn Fn(String) + Send + Sync>) {
+    let mut callbacks = LOG_CALLBACKS.lock().unwrap();
+    callbacks.push(callback);
 }
 
-/// Info log alias
-pub fn p2plog_info(msg: impl Into<String>) {
-    p2plog("INFO", msg.into());
-}
+/// Push a log message to the file and all registered callbacks.
+pub fn push_log_to_file(message: impl Into<String>) {
+    let msg = message.into();
+    let ts = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+    let formatted = format!("[{ts}] {msg}\n");
 
-/// Error log alias
-pub fn p2plog_error(msg: impl Into<String>) {
-    p2plog("ERROR", msg.into());
+    // Write to file (create if needed, append otherwise)
+    {
+        let mut file = LOG_FILE.lock().unwrap();
+        if file.is_none() {
+            let path = log_file_path();
+            let _ = std::fs::create_dir_all(path.parent().unwrap_or(&std::path::PathBuf::new()));
+            match std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+            {
+                Ok(f) => *file = Some(f),
+                Err(_) => *file = None,
+            }
+        }
+        if let Some(f) = file.as_mut() {
+            let _ = f.write_all(formatted.as_bytes());
+        }
+    }
+
+    // Notify all registered callbacks
+    let callbacks = LOG_CALLBACKS.lock().unwrap();
+    for cb in callbacks.iter() {
+        let _ = cb(formatted.clone());
+    }
 }
 
 /// Remove ANSI escape codes from a string (e.g., color/formatting codes).
@@ -224,6 +276,27 @@ pub fn strip_ansi_codes(s: &str) -> String {
         }
     }
     result
+}
+
+/// Log function implementation
+#[allow(dead_code)]
+fn p2plog(level: &str, msg: String) {
+    push_log(format!("[{level}] {msg}"));
+}
+
+/// Debug log alias
+pub fn p2plog_debug(msg: impl Into<String>) {
+    push_log(format!("[DEBUG] {}", msg.into()));
+}
+
+/// Info log alias
+pub fn p2plog_info(msg: impl Into<String>) {
+    push_log(format!("[INFO] {}", msg.into()));
+}
+
+/// Error log alias
+pub fn p2plog_error(msg: impl Into<String>) {
+    push_log(format!("[ERROR] {}", msg.into()));
 }
 
 #[cfg(any(test, feature = "test-utils"))]

@@ -290,6 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onSend: _sendBroadcast,
       ),
       _PeerList(peers: _peers, onTap: _openDmChat),
+      const _LogTab(),
       _Settings(
         status: _status!,
         serviceRunning: _serviceRunning,
@@ -307,6 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
           NavigationDestination(icon: Icon(Icons.people), label: 'Peers'),
+          NavigationDestination(icon: Icon(Icons.list), label: 'Log'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
@@ -887,6 +889,71 @@ class _SettingsState extends State<_Settings> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// --- Log Tab ---
+
+class _LogTab extends StatefulWidget {
+  const _LogTab();
+  State<_LogTab> createState() => _LogTabState();
+}
+
+class _LogTabState extends State<_LogTab> {
+  final _scrollController = ScrollController();
+  List<String> _logs = [];
+  late Timer _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Poll for logs every second
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      try {
+        final logs = await getLogs();
+        setState(() => _logs = logs);
+      } catch (e) {
+        debugPrint('Failed to get logs: $e');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer.cancel();
+    super.dispose();
+    _scrollController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Log'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () => setState(() => _logs.clear()),
+            tooltip: 'Clear',
+          ),
+        ],
+      ),
+      body: _logs.isEmpty
+          ? const Center(child: Text('No logs yet'))
+          : ListView.builder(
+              controller: _scrollController,
+              itemCount: _logs.length,
+              itemBuilder: (_, i) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: Text(
+                    _logs[i],
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

@@ -31,6 +31,11 @@ pub fn stop_node() -> Result<(), String> {
     crate::mobile_node::stop_node()
 }
 
+/// Get all stored TUI log messages (for Log tab display).
+pub fn get_logs() -> Vec<String> {
+    crate::logging::get_tui_logs()
+}
+
 /// Poll the next swarm event (non-blocking).
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     crate::mobile_node::poll_event()

@@ -27,6 +27,9 @@ Future<String> startNodeAuto() => RustLib.instance.api.crateApiStartNodeAuto();
 /// Stop the p2p node.
 Future<void> stopNode() => RustLib.instance.api.crateApiStopNode();
 
+/// Get all stored TUI log messages (for Log tab display).
+Future<List<String>> getLogs() => RustLib.instance.api.crateApiGetLogs();
+
 /// Poll the next swarm event (non-blocking).
 Future<SwarmEventJson?> pollEvent() => RustLib.instance.api.crateApiPollEvent();
 
