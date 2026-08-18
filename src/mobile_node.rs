@@ -112,6 +112,9 @@ pub fn stop_node() -> Result<(), String> {
         node.event_rx.take();
         p2plog_debug("Mobile node stopped".to_string());
     }
+    // Release DB lock so subsequent starts can acquire the same database
+    crate::logging::p2plog_debug("[stop_node] releasing database lock".to_string());
+    crate::db::release_db_lock();
     Ok(())
 }
 
