@@ -17,5 +17,6 @@ flutter pub get
 flutter build linux --debug
 
 echo "Launching desktop app..."
-exec env LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  ./build/linux/x64/debug/bundle/p2p_app_flutter
+cd "$(dirname "$0")"
+exec env LD_LIBRARY_PATH=apps/flutter_app/build/linux/x64/debug/bundle/lib \
+  apps/flutter_app/build/linux/x64/debug/bundle/p2p_app_flutter
