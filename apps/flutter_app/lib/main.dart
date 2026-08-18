@@ -115,7 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_isAndroid) {
         running = await _serviceChannel.invokeMethod<bool>('isServiceRunning') ?? false;
       }
-      await initMobileDatabase(dbPath: _defaultDbPath);
+      if (_isAndroid) {
+        await initMobileDatabase(dbPath: _defaultDbPath);
+      }
       final status = await getMobilePeerStatus();
       setState(() {
         _serviceRunning = running;
@@ -220,7 +222,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_isAndroid) {
           await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
         }
-        final peerId = await startNode(dbPath: _defaultDbPath);
+        final peerId = _isAndroid
+            ? await startNode(dbPath: _defaultDbPath)
+            : await startNodeAuto();
         _startEventPolling();
         setState(() => _serviceRunning = true);
         debugPrint('Node started: $peerId');

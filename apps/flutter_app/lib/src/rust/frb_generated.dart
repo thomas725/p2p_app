@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 1681382835;
+  int get rustContentHash => 1806975339;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -119,6 +119,8 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiSetSelfNickname({required String nickname});
 
   Future<String> crateApiStartNode({required String dbPath});
+
+  Future<String> crateApiStartNodeAuto();
 
   Future<void> crateApiStopNode();
 }
@@ -536,7 +538,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "start_node", argNames: ["dbPath"]);
 
   @override
-  Future<void> crateApiStopNode() {
+  Future<String> crateApiStartNodeAuto() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -545,6 +547,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiStartNodeAutoConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiStartNodeAutoConstMeta =>
+      const TaskConstMeta(debugName: "start_node_auto", argNames: []);
+
+  @override
+  Future<void> crateApiStopNode() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
             port: port_,
           );
         },

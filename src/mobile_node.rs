@@ -25,9 +25,20 @@ struct MobileNode {
     _runtime: tokio::runtime::Runtime,
 }
 
-/// Start the p2p node: init DB, build swarm, begin listening.
+/// Start the p2p node with an explicit DB path.
 /// Returns the local peer ID.
 pub fn start_node(db_path: String) -> Result<String, String> {
+    start_node_impl(Some(db_path))
+}
+
+/// Start the p2p node using automatic DB selection (lock-based, same as TUI).
+/// Scans CWD for unlocked .db files, picks the first one, or creates a new one.
+/// Returns the local peer ID.
+pub fn start_node_auto() -> Result<String, String> {
+    start_node_impl(None)
+}
+
+fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     if NODE.get().is_some() {
         let node = NODE.get().unwrap().lock().unwrap();
         if node.cmd_tx.is_some() {
@@ -35,7 +46,12 @@ pub fn start_node(db_path: String) -> Result<String, String> {
         }
     }
 
-    crate::mobile_api::init_mobile_database(db_path)?;
+    if let Some(path) = db_path {
+        crate::mobile_api::init_mobile_database(path)?;
+    } else {
+        // No path: use lock-based DB selection (same as TUI/Dioxus)
+        crate::init_database().map_err(|e| e.to_string())?;
+    }
 
     // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
     // but mDNS/swarm need a reactor.

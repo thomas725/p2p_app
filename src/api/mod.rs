@@ -20,6 +20,12 @@ pub fn start_node(db_path: String) -> Result<String, String> {
     crate::mobile_node::start_node(db_path)
 }
 
+/// Start the p2p node with automatic DB selection (lock-based, same as TUI).
+/// Scans CWD for unlocked .db files, picks the first one, or creates a new one.
+pub fn start_node_auto() -> Result<String, String> {
+    crate::mobile_node::start_node_auto()
+}
+
 /// Stop the p2p node.
 pub fn stop_node() -> Result<(), String> {
     crate::mobile_node::stop_node()

@@ -20,6 +20,10 @@ Future<MobilePeerStatus> getMobilePeerStatus() =>
 Future<String> startNode({required String dbPath}) =>
     RustLib.instance.api.crateApiStartNode(dbPath: dbPath);
 
+/// Start the p2p node with automatic DB selection (lock-based, same as TUI).
+/// Scans CWD for unlocked .db files, picks the first one, or creates a new one.
+Future<String> startNodeAuto() => RustLib.instance.api.crateApiStartNodeAuto();
+
 /// Stop the p2p node.
 Future<void> stopNode() => RustLib.instance.api.crateApiStopNode();
 
