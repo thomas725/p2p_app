@@ -952,18 +952,18 @@ class _LogTabState extends State<_LogTab> {
       body: _logs.isEmpty
           ? const Center(child: Text('No logs yet'))
           : SelectionArea(
-              child: ListView.builder(
+              child: SingleChildScrollView(
                 controller: _scrollController,
-                itemCount: _logs.length,
-                itemBuilder: (_, i) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    child: SelectableText(
-                      _logs[i],
-                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                    ),
-                  );
-                },
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: SelectableText(
+                  _logs.join('\n'),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.left,
+                ),
               ),
             ),
     );
