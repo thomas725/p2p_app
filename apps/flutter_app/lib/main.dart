@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,18 +11,25 @@ import 'src/rust/mobile_node.dart';
 import 'src/rust/types.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
+final bool _isAndroid = Platform.isAndroid;
+
+String get _defaultDbPath => _isAndroid
+    ? '/data/data/com.example.p2p_app_flutter/databases/p2p.db'
+    : 'p2p.db';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await RustLib.init();
-  _serviceChannel.setMethodCallHandler(_handleServiceCall);
+  if (_isAndroid) {
+    _serviceChannel.setMethodCallHandler(_handleServiceCall);
+  }
   runApp(const P2pApp());
 }
 
 Future<dynamic> _handleServiceCall(MethodCall call) async {
   switch (call.method) {
     case 'startNetworking':
-      final dbPath = call.arguments as String? ?? _dbPath;
+      final dbPath = call.arguments as String? ?? _defaultDbPath;
       try {
         await startNode(dbPath: dbPath);
         _startEventPolling();
@@ -37,9 +45,6 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
       return null;
   }
 }
-
-const _dbPath =
-    '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
 
 Timer? _pollTimer;
 void Function(SwarmEventJson)? _onEvent;
@@ -88,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   bool _loading = true;
   bool _serviceRunning = false;
-  bool _nodeRunning = false;
 
   final List<ChatMessage> _messages = [];
   List<PeerRecord> _peers = [];
@@ -108,9 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _init() async {
     try {
-      final running =
-          await _serviceChannel.invokeMethod<bool>('isServiceRunning') ?? false;
-      await initMobileDatabase(dbPath: _dbPath);
+      bool running = false;
+      if (_isAndroid) {
+        running = await _serviceChannel.invokeMethod<bool>('isServiceRunning') ?? false;
+      }
+      await initMobileDatabase(dbPath: _defaultDbPath);
       final status = await getMobilePeerStatus();
       setState(() {
         _serviceRunning = running;
@@ -201,21 +207,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _toggleService() async {
     try {
       if (_serviceRunning) {
-        await _serviceChannel.invokeMethod('stopService');
+        if (_isAndroid) {
+          await _serviceChannel.invokeMethod('stopService');
+        }
         _stopEventPolling();
         await stopNode();
-        setState(() {
-          _serviceRunning = false;
-          _nodeRunning = false;
-        });
+        setState(() => _serviceRunning = false);
       } else {
-        await _serviceChannel.invokeMethod('startService', {'dbPath': _dbPath});
-        final peerId = await startNode(dbPath: _dbPath);
+        if (_isAndroid) {
+          await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
+        }
+        final peerId = await startNode(dbPath: _defaultDbPath);
         _startEventPolling();
-        setState(() {
-          _serviceRunning = true;
-          _nodeRunning = true;
-        });
+        setState(() => _serviceRunning = true);
         debugPrint('Node started: $peerId');
         await _loadHistory();
         await _refreshPeers();
@@ -226,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _shareApk() async {
+    if (!_isAndroid) return;
     try {
       await _serviceChannel.invokeMethod('shareApk');
     } catch (e) {
@@ -233,8 +238,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _openDmChat(PeerRecord peer) async {
-    await Navigator.push(
+  void _openDmChat(PeerRecord peer) {
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DmChatScreen(peer: peer, serviceRunning: _serviceRunning),
@@ -269,15 +274,13 @@ class _HomeScreenState extends State<HomeScreen> {
         serviceRunning: _serviceRunning,
         onSend: _sendBroadcast,
       ),
-      _PeerList(
-        peers: _peers,
-        onTap: _openDmChat,
-      ),
+      _PeerList(peers: _peers, onTap: _openDmChat),
       _Settings(
         status: _status!,
         serviceRunning: _serviceRunning,
         onToggleService: _toggleService,
         onShareApk: _shareApk,
+        isAndroid: _isAndroid,
       ),
     ];
 
@@ -335,7 +338,6 @@ class _BroadcastChatState extends State<_BroadcastChat> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           color: Theme.of(context).colorScheme.primaryContainer,
@@ -355,7 +357,6 @@ class _BroadcastChatState extends State<_BroadcastChat> {
             ],
           ),
         ),
-        // Messages
         Expanded(
           child: widget.messages.isEmpty
               ? Center(
@@ -376,7 +377,6 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                   },
                 ),
         ),
-        // Input
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -699,12 +699,14 @@ class _Settings extends StatefulWidget {
     required this.serviceRunning,
     required this.onToggleService,
     required this.onShareApk,
+    required this.isAndroid,
   });
 
   final MobilePeerStatus status;
   final bool serviceRunning;
   final VoidCallback onToggleService;
   final VoidCallback onShareApk;
+  final bool isAndroid;
 
   @override
   State<_Settings> createState() => _SettingsState();
@@ -721,6 +723,8 @@ class _SettingsState extends State<_Settings> {
 
   @override
   Widget build(BuildContext context) {
+    final platformLabel = widget.isAndroid ? 'Android' : 'Desktop';
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -768,6 +772,14 @@ class _SettingsState extends State<_Settings> {
             subtitle: SelectableText(widget.status.databaseUrl),
           ),
         ),
+        // Platform
+        Card(
+          child: ListTile(
+            leading: Icon(widget.isAndroid ? Icons.phone_android : Icons.computer),
+            title: const Text('Platform'),
+            subtitle: Text(platformLabel),
+          ),
+        ),
         const SizedBox(height: 16),
         // Service control
         Card(
@@ -784,7 +796,7 @@ class _SettingsState extends State<_Settings> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      widget.serviceRunning ? 'Service Running' : 'Service Stopped',
+                      widget.serviceRunning ? 'Node Running' : 'Node Stopped',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ],
@@ -807,16 +819,17 @@ class _SettingsState extends State<_Settings> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        // Share APK
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text('Share App'),
-            subtitle: const Text('Send this APK to another device'),
-            onTap: widget.onShareApk,
+        if (widget.isAndroid) ...[
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share App'),
+              subtitle: const Text('Send this APK to another device'),
+              onTap: widget.onShareApk,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
