@@ -646,14 +646,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MobilePeerRecord dco_decode_mobile_peer_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return MobilePeerRecord(
       peerId: dco_decode_String(arr[0]),
       firstSeen: dco_decode_String(arr[1]),
       lastSeen: dco_decode_String(arr[2]),
       nickname: dco_decode_opt_String(arr[3]),
       localNickname: dco_decode_opt_String(arr[4]),
+      displayName: dco_decode_String(arr[5]),
     );
   }
 
@@ -823,12 +824,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_lastSeen = sse_decode_String(deserializer);
     var var_nickname = sse_decode_opt_String(deserializer);
     var var_localNickname = sse_decode_opt_String(deserializer);
+    var var_displayName = sse_decode_String(deserializer);
     return MobilePeerRecord(
       peerId: var_peerId,
       firstSeen: var_firstSeen,
       lastSeen: var_lastSeen,
       nickname: var_nickname,
       localNickname: var_localNickname,
+      displayName: var_displayName,
     );
   }
 
@@ -1004,6 +1007,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.lastSeen, serializer);
     sse_encode_opt_String(self.nickname, serializer);
     sse_encode_opt_String(self.localNickname, serializer);
+    sse_encode_String(self.displayName, serializer);
   }
 
   @protected

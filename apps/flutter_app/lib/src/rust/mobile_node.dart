@@ -67,6 +67,7 @@ class MobilePeerRecord {
   final String lastSeen;
   final String? nickname;
   final String? localNickname;
+  final String displayName;
 
   const MobilePeerRecord({
     required this.peerId,
@@ -74,6 +75,7 @@ class MobilePeerRecord {
     required this.lastSeen,
     this.nickname,
     this.localNickname,
+    required this.displayName,
   });
 
   @override
@@ -82,7 +84,8 @@ class MobilePeerRecord {
       firstSeen.hashCode ^
       lastSeen.hashCode ^
       nickname.hashCode ^
-      localNickname.hashCode;
+      localNickname.hashCode ^
+      displayName.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -93,7 +96,8 @@ class MobilePeerRecord {
           firstSeen == other.firstSeen &&
           lastSeen == other.lastSeen &&
           nickname == other.nickname &&
-          localNickname == other.localNickname;
+          localNickname == other.localNickname &&
+          displayName == other.displayName;
 }
 
 class SwarmEventJson {

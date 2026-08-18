@@ -514,24 +514,19 @@ class _PeerList extends StatelessWidget {
                   itemCount: peers.length,
                   itemBuilder: (_, i) {
                     final p = peers[i];
-                    final displayName = p.localNickname ??
-                        p.nickname ??
-                        p.peerId.substring(0, 16);
                     return ListTile(
                       leading: CircleAvatar(
                         child: Text(
-                          displayName.substring(0, 1).toUpperCase(),
+                          p.displayName.substring(0, 1).toUpperCase(),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                       title: Text(
-                        displayName,
+                        p.displayName,
                         style: const TextStyle(fontSize: 14),
                       ),
                       subtitle: Text(
-                        p.nickname != null && p.nickname != displayName
-                            ? '${p.peerId.substring(0, 12)} - Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}'
-                            : 'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
+                        'Seen ${p.lastSeen.substring(0, 19).replaceAll('T', ' ')}',
                         style: const TextStyle(fontSize: 11),
                       ),
                       trailing: const Icon(Icons.chevron_right),

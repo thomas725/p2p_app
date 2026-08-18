@@ -208,6 +208,7 @@ pub struct MobilePeerRecord {
     pub last_seen: String,
     pub nickname: Option<String>,
     pub local_nickname: Option<String>,
+    pub display_name: String,
 }
 
 /// Get all known peers from the database with nickname info.
@@ -215,12 +216,17 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
     let known = crate::load_peers().map_err(|e| e.to_string())?;
     Ok(known
         .into_iter()
-        .map(|p| MobilePeerRecord {
-            peer_id: p.peer_id,
-            first_seen: p.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-            last_seen: p.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-            nickname: p.received_nickname,
-            local_nickname: p.peer_local_nickname,
+        .map(|p| {
+            let display_name = crate::get_peer_display_name(&p.peer_id)
+                .unwrap_or_else(|_| p.peer_id.clone());
+            MobilePeerRecord {
+                peer_id: p.peer_id,
+                first_seen: p.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                last_seen: p.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                nickname: p.received_nickname,
+                local_nickname: p.peer_local_nickname,
+                display_name,
+            }
         })
         .collect())
 }

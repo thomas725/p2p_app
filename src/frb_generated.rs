@@ -633,12 +633,14 @@ impl SseDecode for crate::mobile_node::MobilePeerRecord {
         let mut var_lastSeen = <String>::sse_decode(deserializer);
         let mut var_nickname = <Option<String>>::sse_decode(deserializer);
         let mut var_localNickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_displayName = <String>::sse_decode(deserializer);
         return crate::mobile_node::MobilePeerRecord {
             peer_id: var_peerId,
             first_seen: var_firstSeen,
             last_seen: var_lastSeen,
             nickname: var_nickname,
             local_nickname: var_localNickname,
+            display_name: var_displayName,
         };
     }
 }
@@ -815,6 +817,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::MobilePeerRecord {
             self.last_seen.into_into_dart().into_dart(),
             self.nickname.into_into_dart().into_dart(),
             self.local_nickname.into_into_dart().into_dart(),
+            self.display_name.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -969,6 +972,7 @@ impl SseEncode for crate::mobile_node::MobilePeerRecord {
         <String>::sse_encode(self.last_seen, serializer);
         <Option<String>>::sse_encode(self.nickname, serializer);
         <Option<String>>::sse_encode(self.local_nickname, serializer);
+        <String>::sse_encode(self.display_name, serializer);
     }
 }
 
