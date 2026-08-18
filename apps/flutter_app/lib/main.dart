@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
-import 'src/mobile_host_api.dart';
+import 'src/rust/frb_generated.dart';
+import 'src/rust/api.dart';
+import 'src/rust/mobile_api.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await RustLib.init();
   runApp(const P2pApp());
 }
 
@@ -30,72 +34,61 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _hostApi = const MobileHostApi();
-  late Future<MobileHostStatus> _status;
+  MobilePeerStatus? _status;
+  String? _error;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _status = _hostApi.getStatus();
+    _init();
   }
 
-  void _refreshStatus() {
-    setState(() {
-      _status = _hostApi.getStatus();
-    });
+  Future<void> _init() async {
+    try {
+      // Use app documents directory for the database
+      // On Android this is /data/data/<package>/app_flutter/
+      final dbPath = '/data/data/com.example.p2p_app_flutter/databases/p2p.db';
+      await initMobileDatabase(dbPath: dbPath);
+      final status = await getMobilePeerStatus();
+      setState(() {
+        _status = status;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
-  Future<void> _setServiceRunning(bool running) async {
-    final nextStatus =
-        running ? await _hostApi.startService() : await _hostApi.stopService();
+  void _refresh() {
     setState(() {
-      _status = Future.value(nextStatus);
+      _loading = true;
+      _error = null;
     });
+    _init();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('p2p_app')),
-      body: FutureBuilder<MobileHostStatus>(
-        future: _status,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return _ErrorState(
-              error: snapshot.error.toString(),
-              onRetry: _refreshStatus,
-            );
-          }
-
-          final status = snapshot.requireData;
-          return _StatusView(
-            status: status,
-            onRefresh: _refreshStatus,
-            onStart: () => _setServiceRunning(true),
-            onStop: () => _setServiceRunning(false),
-          );
-        },
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _ErrorState(error: _error!, onRetry: _refresh)
+              : _StatusView(status: _status!, onRefresh: _refresh),
     );
   }
 }
 
 class _StatusView extends StatelessWidget {
-  const _StatusView({
-    required this.status,
-    required this.onRefresh,
-    required this.onStart,
-    required this.onStop,
-  });
+  const _StatusView({required this.status, required this.onRefresh});
 
-  final MobileHostStatus status;
+  final MobilePeerStatus status;
   final VoidCallback onRefresh;
-  final VoidCallback onStart;
-  final VoidCallback onStop;
 
   @override
   Widget build(BuildContext context) {
@@ -104,10 +97,6 @@ class _StatusView extends StatelessWidget {
       children: [
         Text('Mobile node', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 16),
-        _StatusTile(
-          label: 'Service',
-          value: status.serviceRunning ? 'Running' : 'Stopped',
-        ),
         _StatusTile(label: 'Local peer ID', value: status.localPeerId),
         _StatusTile(label: 'Database', value: status.databaseUrl),
         _StatusTile(
@@ -115,21 +104,7 @@ class _StatusView extends StatelessWidget {
           value: status.selfNickname ?? 'Not set',
         ),
         const SizedBox(height: 24),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            FilledButton(
-              onPressed: status.serviceRunning ? null : onStart,
-              child: const Text('Start service'),
-            ),
-            OutlinedButton(
-              onPressed: status.serviceRunning ? onStop : null,
-              child: const Text('Stop service'),
-            ),
-            TextButton(onPressed: onRefresh, child: const Text('Refresh')),
-          ],
-        ),
+        TextButton(onPressed: onRefresh, child: const Text('Refresh')),
       ],
     );
   }
