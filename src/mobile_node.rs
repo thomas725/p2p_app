@@ -46,6 +46,12 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         }
     }
 
+    // Initialize logging - capture messages for the Flutter Log tab
+    crate::logging::init_logging();
+    // Set up TUI callback that adds logs to the in-memory buffer
+    // (Flutter polls get_logs() to retrieve them)
+    crate::logging::set_tui_callback(|_msg| {});
+
     if let Some(path) = db_path {
         crate::mobile_api::init_mobile_database(path)?;
     } else {
