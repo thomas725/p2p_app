@@ -60,6 +60,8 @@ pub mod logging;
 pub mod messages;
 #[cfg(feature = "mobile")]
 pub mod mobile_api;
+#[cfg(feature = "mobile")]
+pub mod api;
 pub mod network;
 pub mod nickname;
 pub mod peers;
@@ -79,6 +81,8 @@ pub mod tui_helpers;
 pub mod tui_render;
 #[cfg(feature = "tui")]
 pub mod tui_render_state;
+#[cfg(feature = "mobile")]
+mod frb_generated; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
