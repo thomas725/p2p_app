@@ -169,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final msg = _messages[sorted[i]];
       final isOwn = msg.peerId == null;
       final peerName = isOwn
-          ? 'You'
+          ? 'Me'
           : (msg.senderNickname ??
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
@@ -667,14 +667,19 @@ class _MessageBubble extends StatelessWidget {
             TextSpan(
               style: TextStyle(fontSize: 14, color: fg),
               children: [
-                if (!isOwn)
-                  TextSpan(
-                    text: '${message.senderNickname ?? (message.peerId != null ? (message.peerId!.length >= 12 ? message.peerId!.substring(0, 12) : message.peerId!) : 'Unknown')}\n',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
-                  ),
+                TextSpan(
+                  text: '\n\n',
+                  style: TextStyle(fontSize: 0, height: 0),
+                ),
+                TextSpan(
+                  text: isOwn ? 'Me\n' : '${message.senderNickname ?? (message.peerId != null ? (message.peerId!.length >= 12 ? message.peerId!.substring(0, 12) : message.peerId!) : 'Unknown')}\n',
+                  style: isOwn
+                      ? TextStyle(fontSize: 0, height: 0)
+                      : TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
+                ),
                 TextSpan(text: message.content),
                 TextSpan(
-                  text: '\n${message.sentAt ?? _fmtTime(message.createdAt)}\n\n',
+                  text: '\n${message.sentAt ?? _fmtTime(message.createdAt)}',
                   style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
               ],
@@ -875,7 +880,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
       final msg = _messages[sorted[i]];
       final isOwn = msg.peerId == null;
       final peerName = isOwn
-          ? 'You'
+          ? 'Me'
           : (msg.senderNickname ??
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
