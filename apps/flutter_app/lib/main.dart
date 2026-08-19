@@ -436,8 +436,13 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         child: Column(
                           children: [
-                            for (final msg in widget.messages)
-                              _MessageBubble(message: msg, isOwn: msg.peerId == null),
+                            for (int i = 0; i < widget.messages.length; i++) ...[
+                              if (i > 0) const Text('\n'),
+                              _MessageBubble(
+                                message: widget.messages[i],
+                                isOwn: widget.messages[i].peerId == null,
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -780,8 +785,13 @@ class _DmChatScreenState extends State<DmChatScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               child: Column(
                                 children: [
-                                  for (final msg in _messages)
-                                    _MessageBubble(message: msg, isOwn: msg.peerId == null),
+                                  for (int i = 0; i < _messages.length; i++) ...[
+                                    if (i > 0) const Text('\n'),
+                                    _MessageBubble(
+                                      message: _messages[i],
+                                      isOwn: _messages[i].peerId == null,
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
