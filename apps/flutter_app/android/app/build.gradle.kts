@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    id("jacoco")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -25,9 +26,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
         release {
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -43,4 +49,36 @@ android {
 
 flutter {
     source = "../.."
+}
+
+tasks.register<JacocoReport>("testDebugUnitTestJacocoReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(false)
+    }
+
+    classDirectories.setFrom(
+        fileTree("build/tmp/kotlin-classes/debug") {
+            exclude("**/R\$*.class")
+            exclude("**/BuildConfig.*")
+        }
+    )
+
+    sourceDirectories.setFrom(files("src/main/kotlin"))
+
+    executionData.setFrom(
+        fileTree("build") {
+            include("**/*.exec")
+        }
+    )
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("io.mockk:mockk:1.14.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
 }
