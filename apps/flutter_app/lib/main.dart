@@ -424,14 +424,16 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                         style: TextStyle(color: Colors.grey[500]),
                       ),
                     )
-                  : ListView.builder(
-                      controller: widget.scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      itemCount: widget.messages.length,
-                      itemBuilder: (_, i) {
-                        final msg = widget.messages[i];
-                        return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                      },
+                  : SelectionArea(
+                      child: ListView.builder(
+                        controller: widget.scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        itemCount: widget.messages.length,
+                        itemBuilder: (_, i) {
+                          final msg = widget.messages[i];
+                          return _MessageBubble(message: msg, isOwn: msg.peerId == null);
+                        },
+                      ),
                     ),
               if (widget.unreadCount > 0)
                 Padding(
@@ -522,7 +524,7 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                 ),
               ),
-            Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
+            SelectableText(message.content, style: TextStyle(fontSize: 14, color: fg)),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -765,14 +767,16 @@ class _DmChatScreenState extends State<DmChatScreen> {
                               style: TextStyle(color: Colors.grey[500]),
                             ),
                           )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            itemCount: _messages.length,
-                            itemBuilder: (_, i) {
-                              final msg = _messages[i];
-                              return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                            },
+                        : SelectionArea(
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              itemCount: _messages.length,
+                              itemBuilder: (_, i) {
+                                final msg = _messages[i];
+                                return _MessageBubble(message: msg, isOwn: msg.peerId == null);
+                              },
+                            ),
                           ),
                 if (_unreadCount > 0)
                   Padding(
