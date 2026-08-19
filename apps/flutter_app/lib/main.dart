@@ -100,6 +100,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   bool _loading = true;
   bool _serviceRunning = false;
+  bool _atBottom = true;
+  int _unreadCount = 0;
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
@@ -108,13 +110,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _onEvent = _handleSwarmEvent;
+    _scrollController.addListener(_onScroll);
     _init();
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _onEvent = null;
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    final atBottom = pos.maxScrollExtent - pos.pixels < 80;
+    if (atBottom != _atBottom) {
+      setState(() {
+        _atBottom = atBottom;
+        if (_atBottom) _unreadCount = 0;
+      });
+    }
   }
 
   Future<void> _init() async {
@@ -188,7 +204,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final msg = await saveIncomingMessage(
           content: content, peerId: peerId, isDirect: isDirect, nickname: nickname);
       if (mounted) {
-        setState(() => _messages.add(msg));
+        setState(() {
+          _messages.add(msg);
+          if (!_atBottom) _unreadCount++;
+        });
         _scrollToBottom();
       }
     } catch (e) {
@@ -200,8 +219,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _atBottom) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  void _forceScrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        setState(() {
+          _atBottom = true;
+          _unreadCount = 0;
+        });
       }
     });
   }
@@ -211,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final msg = await saveOutgoingBroadcast(content: text);
       setState(() => _messages.add(msg));
-      _scrollToBottom();
+      _forceScrollToBottom();
     } catch (e) {
       setState(() => _error = e.toString());
     }
@@ -288,6 +319,8 @@ class _HomeScreenState extends State<HomeScreen> {
         scrollController: _scrollController,
         serviceRunning: _serviceRunning,
         onSend: _sendBroadcast,
+        unreadCount: _unreadCount,
+        onJumpToBottom: _forceScrollToBottom,
       ),
       _PeerList(peers: _peers, onTap: _openDmChat),
       const _LogTab(),
@@ -324,12 +357,16 @@ class _BroadcastChat extends StatefulWidget {
     required this.scrollController,
     required this.serviceRunning,
     required this.onSend,
+    required this.unreadCount,
+    required this.onJumpToBottom,
   });
 
   final List<ChatMessage> messages;
   final ScrollController scrollController;
   final bool serviceRunning;
   final Future<void> Function(String) onSend;
+  final int unreadCount;
+  final VoidCallback onJumpToBottom;
 
   @override
   State<_BroadcastChat> createState() => _BroadcastChatState();
@@ -375,24 +412,45 @@ class _BroadcastChatState extends State<_BroadcastChat> {
           ),
         ),
         Expanded(
-          child: widget.messages.isEmpty
-              ? Center(
-                  child: Text(
-                    widget.serviceRunning
-                        ? 'No messages yet. Send one!'
-                        : 'Start the service to chat.',
-                    style: TextStyle(color: Colors.grey[500]),
+          child: Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              widget.messages.isEmpty
+                  ? Center(
+                      child: Text(
+                        widget.serviceRunning
+                            ? 'No messages yet. Send one!'
+                            : 'Start the service to chat.',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: widget.scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      itemCount: widget.messages.length,
+                      itemBuilder: (_, i) {
+                        final msg = widget.messages[i];
+                        return _MessageBubble(message: msg, isOwn: msg.peerId == null);
+                      },
+                    ),
+              if (widget.unreadCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: FilledButton.icon(
+                    onPressed: widget.onJumpToBottom,
+                    icon: const Icon(Icons.arrow_downward, size: 16),
+                    label: Text(
+                      '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  controller: widget.scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  itemCount: widget.messages.length,
-                  itemBuilder: (_, i) {
-                    final msg = widget.messages[i];
-                    return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                  },
                 ),
+            ],
+          ),
         ),
         SafeArea(
           child: Padding(
@@ -574,6 +632,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
+  bool _atBottom = true;
+  int _unreadCount = 0;
 
   String get _peerId => widget.peer.peerId;
   String get _label => _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
@@ -582,15 +642,29 @@ class _DmChatScreenState extends State<DmChatScreen> {
   void initState() {
     super.initState();
     _onEvent = _handleDmEvent;
+    _scrollController.addListener(_onScroll);
     _loadHistory();
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
     _onEvent = null;
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    final atBottom = pos.maxScrollExtent - pos.pixels < 80;
+    if (atBottom != _atBottom) {
+      setState(() {
+        _atBottom = atBottom;
+        if (_atBottom) _unreadCount = 0;
+      });
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -610,8 +684,20 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _atBottom) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  void _forceScrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        setState(() {
+          _atBottom = true;
+          _unreadCount = 0;
+        });
       }
     });
   }
@@ -625,7 +711,10 @@ class _DmChatScreenState extends State<DmChatScreen> {
         isDirect: true,
         nickname: event.nickname,
       ).then((msg) {
-        setState(() => _messages.add(msg));
+        setState(() {
+          _messages.add(msg);
+          if (!_atBottom) _unreadCount++;
+        });
         _scrollToBottom();
       });
     }
@@ -638,7 +727,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
       final msg = await saveOutgoingDm(peerId: _peerId, content: text);
       _controller.clear();
       setState(() => _messages.add(msg));
-      _scrollToBottom();
+      _forceScrollToBottom();
     } catch (e) {
       debugPrint('DM send failed: $e');
     }
@@ -664,24 +753,45 @@ class _DmChatScreenState extends State<DmChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No messages with this peer.',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        itemCount: _messages.length,
-                        itemBuilder: (_, i) {
-                          final msg = _messages[i];
-                          return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                        },
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No messages with this peer.',
+                              style: TextStyle(color: Colors.grey[500]),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            itemCount: _messages.length,
+                            itemBuilder: (_, i) {
+                              final msg = _messages[i];
+                              return _MessageBubble(message: msg, isOwn: msg.peerId == null);
+                            },
+                          ),
+                if (_unreadCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FilledButton.icon(
+                      onPressed: _forceScrollToBottom,
+                      icon: const Icon(Icons.arrow_downward, size: 16),
+                      label: Text(
+                        '$_unreadCount new',
+                        style: const TextStyle(fontSize: 12),
                       ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           SafeArea(
             child: Padding(
