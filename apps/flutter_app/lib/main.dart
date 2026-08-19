@@ -102,6 +102,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _serviceRunning = false;
   bool _atBottom = true;
   int _unreadCount = 0;
+  bool _selectionMode = false;
+  final Set<int> _selectedIndices = {};
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
@@ -132,6 +134,62 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
+  void _onBubbleLongPress(int index) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIndices.add(index);
+    });
+  }
+
+  void _onBubbleTap(int index) {
+    if (!_selectionMode) return;
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+        if (_selectedIndices.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIndices.clear();
+    });
+  }
+
+  void _copySelected() {
+    final buf = StringBuffer();
+    final sorted = _selectedIndices.toList()..sort();
+    for (var i = 0; i < sorted.length; i++) {
+      final msg = _messages[sorted[i]];
+      final isOwn = msg.peerId == null;
+      final peerName = isOwn
+          ? 'You'
+          : (msg.senderNickname ??
+              (msg.peerId!.length >= 12
+                  ? msg.peerId!.substring(0, 12)
+                  : msg.peerId!));
+      final time = msg.sentAt ?? _fmtTime(msg.createdAt);
+      buf.writeln(peerName);
+      buf.writeln(msg.content);
+      buf.writeln(time);
+      if (i < sorted.length - 1) buf.writeln();
+    }
+    Clipboard.setData(ClipboardData(text: buf.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    _cancelSelection();
+  }
+
+  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
 
   Future<void> _init() async {
     try {
@@ -321,6 +379,12 @@ class _HomeScreenState extends State<HomeScreen> {
         onSend: _sendBroadcast,
         unreadCount: _unreadCount,
         onJumpToBottom: _forceScrollToBottom,
+        selectionMode: _selectionMode,
+        selectedIndices: _selectedIndices,
+        onBubbleLongPress: _onBubbleLongPress,
+        onBubbleTap: _onBubbleTap,
+        onCancelSelection: _cancelSelection,
+        onCopySelected: _copySelected,
       ),
       _PeerList(peers: _peers, onTap: _openDmChat),
       const _LogTab(),
@@ -359,6 +423,12 @@ class _BroadcastChat extends StatefulWidget {
     required this.onSend,
     required this.unreadCount,
     required this.onJumpToBottom,
+    required this.selectionMode,
+    required this.selectedIndices,
+    required this.onBubbleLongPress,
+    required this.onBubbleTap,
+    required this.onCancelSelection,
+    required this.onCopySelected,
   });
 
   final List<ChatMessage> messages;
@@ -367,6 +437,12 @@ class _BroadcastChat extends StatefulWidget {
   final Future<void> Function(String) onSend;
   final int unreadCount;
   final VoidCallback onJumpToBottom;
+  final bool selectionMode;
+  final Set<int> selectedIndices;
+  final void Function(int) onBubbleLongPress;
+  final void Function(int) onBubbleTap;
+  final VoidCallback onCancelSelection;
+  final VoidCallback onCopySelected;
 
   @override
   State<_BroadcastChat> createState() => _BroadcastChatState();
@@ -424,30 +500,52 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                         style: TextStyle(color: Colors.grey[500]),
                       ),
                     )
-                   : SelectionArea(
-                      // SingleChildScrollView + Column instead of ListView.builder:
-                      // ListView renders items in separate slivers, preventing
-                      // SelectionArea from spanning across items. Column puts all
-                      // bubbles in one widget tree for cross-message selection.
-                      // Tradeoff: all messages render at once (no virtualization),
-                      // acceptable with the 200-message cap from _loadHistory.
-                      child: SingleChildScrollView(
-                        controller: widget.scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < widget.messages.length; i++) ...[
-                              if (i > 0) const Text('\n'),
-                              _MessageBubble(
-                                message: widget.messages[i],
-                                isOwn: widget.messages[i].peerId == null,
-                              ),
-                            ],
-                          ],
-                        ),
+                  : SingleChildScrollView(
+                      controller: widget.scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < widget.messages.length; i++)
+                            _MessageBubble(
+                              message: widget.messages[i],
+                              isOwn: widget.messages[i].peerId == null,
+                              selected: widget.selectedIndices.contains(i),
+                              onLongPress: () => widget.onBubbleLongPress(i),
+                              onTap: () => widget.onBubbleTap(i),
+                            ),
+                        ],
                       ),
                     ),
-              if (widget.unreadCount > 0)
+              if (widget.selectionMode)
+                Positioned(
+                  bottom: 8,
+                  child: Card(
+                    elevation: 4,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          onPressed: widget.onCancelSelection,
+                          icon: const Icon(Icons.close),
+                          tooltip: 'Cancel',
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            '${widget.selectedIndices.length} selected',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: widget.selectedIndices.isEmpty ? null : widget.onCopySelected,
+                          icon: const Icon(Icons.copy),
+                          tooltip: 'Copy',
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (widget.unreadCount > 0)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: FilledButton.icon(
@@ -500,9 +598,18 @@ class _BroadcastChatState extends State<_BroadcastChat> {
 // --- Message Bubble ---
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.isOwn});
+  const _MessageBubble({
+    required this.message,
+    required this.isOwn,
+    this.selected = false,
+    this.onLongPress,
+    this.onTap,
+  });
   final ChatMessage message;
   final bool isOwn;
+  final bool selected;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -512,50 +619,55 @@ class _MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 3),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isOwn)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  message.senderNickname ??
-                      (message.peerId != null
-                        ? (message.peerId!.length >= 12
-                            ? message.peerId!.substring(0, 12)
-                            : message.peerId!)
-                        : 'Unknown'),
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
-                ),
-              ),
-            Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  message.sentAt ?? _fmtTime(message.createdAt),
-                  style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
-                ),
-                if (isOwn) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    message.sent ? Icons.check : Icons.access_time,
-                    size: 12,
-                    color: fg.withAlpha(130),
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 3),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? cs.primary.withAlpha(40) : bg,
+            borderRadius: BorderRadius.circular(12),
+            border: selected ? Border.all(color: cs.primary, width: 2) : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isOwn)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    message.senderNickname ??
+                        (message.peerId != null
+                            ? (message.peerId!.length >= 12
+                                ? message.peerId!.substring(0, 12)
+                                : message.peerId!)
+                            : 'Unknown'),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                   ),
+                ),
+              Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    message.sentAt ?? _fmtTime(message.createdAt),
+                    style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
+                  ),
+                  if (isOwn) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      message.sent ? Icons.check : Icons.access_time,
+                      size: 12,
+                      color: fg.withAlpha(130),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -648,6 +760,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
   bool _loading = true;
   bool _atBottom = true;
   int _unreadCount = 0;
+  bool _selectionMode = false;
+  final Set<int> _selectedIndices = {};
 
   String get _peerId => widget.peer.peerId;
   String get _label => _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
@@ -716,6 +830,64 @@ class _DmChatScreenState extends State<DmChatScreen> {
     });
   }
 
+  void _onBubbleLongPress(int index) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIndices.add(index);
+    });
+  }
+
+  void _onBubbleTap(int index) {
+    if (!_selectionMode) return;
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+        if (_selectedIndices.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIndices.clear();
+    });
+  }
+
+  void _copySelected() {
+    final buf = StringBuffer();
+    final sorted = _selectedIndices.toList()..sort();
+    for (var i = 0; i < sorted.length; i++) {
+      final msg = _messages[sorted[i]];
+      final isOwn = msg.peerId == null;
+      final peerName = isOwn
+          ? 'You'
+          : (msg.senderNickname ??
+              (msg.peerId!.length >= 12
+                  ? msg.peerId!.substring(0, 12)
+                  : msg.peerId!));
+      final time = msg.sentAt ?? _fmtTime(msg.createdAt);
+      buf.writeln(peerName);
+      buf.writeln(msg.content);
+      buf.writeln(time);
+      if (i < sorted.length - 1) buf.writeln();
+    }
+    Clipboard.setData(ClipboardData(text: buf.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+    _cancelSelection();
+  }
+
+  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
+
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted || event.eventType != 'dm') return;
     if (event.peerId == _peerId && event.content != null) {
@@ -779,24 +951,52 @@ class _DmChatScreenState extends State<DmChatScreen> {
                               style: TextStyle(color: Colors.grey[500]),
                             ),
                           )
-                        : SelectionArea(
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: Column(
-                                children: [
-                                  for (int i = 0; i < _messages.length; i++) ...[
-                                    if (i > 0) const Text('\n'),
-                                    _MessageBubble(
-                                      message: _messages[i],
-                                      isOwn: _messages[i].peerId == null,
-                                    ),
-                                  ],
-                                ],
-                              ),
+                        : SingleChildScrollView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < _messages.length; i++)
+                                  _MessageBubble(
+                                    message: _messages[i],
+                                    isOwn: _messages[i].peerId == null,
+                                    selected: _selectedIndices.contains(i),
+                                    onLongPress: () => _onBubbleLongPress(i),
+                                    onTap: () => _onBubbleTap(i),
+                                  ),
+                              ],
                             ),
                           ),
-                if (_unreadCount > 0)
+                if (_selectionMode)
+                  Positioned(
+                    bottom: 8,
+                    child: Card(
+                      elevation: 4,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: _cancelSelection,
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Cancel',
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Text(
+                              '${_selectedIndices.length} selected',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _selectedIndices.isEmpty ? null : _copySelected,
+                            icon: const Icon(Icons.copy),
+                            tooltip: 'Copy',
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (_unreadCount > 0)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: FilledButton.icon(
