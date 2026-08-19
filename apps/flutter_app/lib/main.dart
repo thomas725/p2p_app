@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
@@ -208,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       await _loadHistory();
       await _refreshPeers();
-      _forceScrollToBottom();
+      await _scrollToFirstUnread();
       // On desktop, auto-start the node (no foreground service needed)
       if (!_isAndroid && !_serviceRunning) {
         await _toggleService();
@@ -294,6 +295,34 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
+    _saveViewedCount();
+  }
+
+  static const _lastViewedKey = 'broadcast_last_viewed_count';
+
+  Future<void> _saveViewedCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastViewedKey, _messages.length);
+  }
+
+  Future<void> _scrollToFirstUnread() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastViewed = prefs.getInt(_lastViewedKey) ?? 0;
+    final unreadCount = _messages.length - lastViewed;
+
+    if (unreadCount > 0 && _messages.isNotEmpty) {
+      _unreadCount = unreadCount;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          final firstUnreadIndex = lastViewed.clamp(0, _messages.length - 1);
+          final targetOffset = (firstUnreadIndex * 70.0) - 20.0;
+          _scrollController.jumpTo(targetOffset.clamp(
+            0.0, _scrollController.position.maxScrollExtent));
+        }
+      });
+    } else {
+      _forceScrollToBottom();
+    }
   }
 
   Future<void> _sendBroadcast(String text) async {
@@ -501,20 +530,22 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                         style: TextStyle(color: Colors.grey[500]),
                       ),
                     )
-                  : SingleChildScrollView(
-                      controller: widget.scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < widget.messages.length; i++)
-                            _MessageBubble(
-                              message: widget.messages[i],
-                              isOwn: widget.messages[i].peerId == null,
-                              selected: widget.selectedIndices.contains(i),
-                              onDoubleTap: () => widget.onBubbleDoubleTap(i),
-                              onTap: () => widget.onBubbleTap(i),
-                            ),
-                        ],
+                  : SelectionArea(
+                      child: SingleChildScrollView(
+                        controller: widget.scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Column(
+                          children: [
+                            for (int i = 0; i < widget.messages.length; i++)
+                              _MessageBubble(
+                                message: widget.messages[i],
+                                isOwn: widget.messages[i].peerId == null,
+                                selected: widget.selectedIndices.contains(i),
+                                onDoubleTap: () => widget.onBubbleDoubleTap(i),
+                                onTap: () => widget.onBubbleTap(i),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
               if (widget.selectionMode)
@@ -632,42 +663,22 @@ class _MessageBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: selected ? Border.all(color: cs.primary, width: 2) : null,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isOwn)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    message.senderNickname ??
-                        (message.peerId != null
-                            ? (message.peerId!.length >= 12
-                                ? message.peerId!.substring(0, 12)
-                                : message.peerId!)
-                            : 'Unknown'),
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(fontSize: 14, color: fg),
+              children: [
+                if (!isOwn)
+                  TextSpan(
+                    text: '${message.senderNickname ?? (message.peerId != null ? (message.peerId!.length >= 12 ? message.peerId!.substring(0, 12) : message.peerId!) : 'Unknown')}\n',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                   ),
+                TextSpan(text: message.content),
+                TextSpan(
+                  text: '\n${message.sentAt ?? _fmtTime(message.createdAt)}\n\n',
+                  style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
-              Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    message.sentAt ?? _fmtTime(message.createdAt),
-                    style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
-                  ),
-                  if (isOwn) ...[
-                    const SizedBox(width: 4),
-                    Icon(
-                      message.sent ? Icons.check : Icons.access_time,
-                      size: 12,
-                      color: fg.withAlpha(130),
-                    ),
-                  ],
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -952,20 +963,22 @@ class _DmChatScreenState extends State<DmChatScreen> {
                               style: TextStyle(color: Colors.grey[500]),
                             ),
                           )
-                        : SingleChildScrollView(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            child: Column(
-                              children: [
-                                for (int i = 0; i < _messages.length; i++)
-                                  _MessageBubble(
-                                    message: _messages[i],
-                                    isOwn: _messages[i].peerId == null,
-                                    selected: _selectedIndices.contains(i),
-                                    onDoubleTap: () => _onBubbleDoubleTap(i),
-                                    onTap: () => _onBubbleTap(i),
-                                  ),
-                              ],
+                        : SelectionArea(
+                            child: SingleChildScrollView(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Column(
+                                children: [
+                                  for (int i = 0; i < _messages.length; i++)
+                                    _MessageBubble(
+                                      message: _messages[i],
+                                      isOwn: _messages[i].peerId == null,
+                                      selected: _selectedIndices.contains(i),
+                                      onDoubleTap: () => _onBubbleDoubleTap(i),
+                                      onTap: () => _onBubbleTap(i),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                 if (_selectionMode)

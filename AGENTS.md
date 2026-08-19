@@ -74,7 +74,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 When modifying the data model (adding columns to tables):
 
 1. **Add columns to CREATE TABLE statements** in the base migration (e.g., `migrations/2026-04-04-225730_messages/up.sql`)
-2. **DO NOT use ALTER TABLE** in new migrations to add columns to existing databases
+2. **DO NOT use ALTER TABLE** in new migrations to add columns to existing tables
 3. **Rely on Rust's ensure_columns() logic** in `db.rs` to add columns to pre-existing databases automatically
 
 This approach:
