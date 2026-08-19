@@ -11,6 +11,9 @@ use std::io::Write;
 use std::sync::{Arc, Mutex, OnceLock};
 use tracing::field::Visit;
 
+type LogCallback = Arc<dyn Fn(String) + Send + Sync>;
+type RedrawHook = Arc<dyn Fn() + Send + Sync>;
+
 /// Maximum number of logs to keep in memory for UI replay
 const MAX_LOGS: usize = 1000;
 
@@ -19,11 +22,10 @@ static LOG_BUFFER: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
 
 /// Unified callback registry: all frontends (Flutter FRB, TUI, Dioxus)
 /// register here to receive log messages. One entry per registration.
-static LOG_CALLBACKS: Mutex<Vec<Arc<dyn Fn(String) + Send + Sync>>> = Mutex::new(vec![]);
+static LOG_CALLBACKS: Mutex<Vec<LogCallback>> = Mutex::new(vec![]);
 
 /// Optional hook that requests a TUI redraw when new logs arrive.
-#[allow(clippy::type_complexity)]
-static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>> = OnceLock::new();
+static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<RedrawHook>>> = OnceLock::new();
 
 /// Custom tracing layer that sends log events through `push_log`
 struct TuiTracingLayer;
@@ -210,7 +212,7 @@ pub fn push_log(message: impl Into<String>) {
         eprintln!("[{ts}] {msg}");
     } else {
         for cb in callbacks.iter() {
-            let _ = cb(format!("[{ts}] {msg}"));
+            cb(format!("[{ts}] {msg}"));
         }
     }
 }
@@ -219,15 +221,15 @@ pub fn push_log(message: impl Into<String>) {
 /// External frontends (Flutter FRB, TUI, Dioxus) can use this to add their
 /// own log display. When registered, all previously accumulated logs in the
 /// buffer are immediately replayed to the callback.
-pub fn register_log_callback(callback: Arc<dyn Fn(String) + Send + Sync>) {
+pub fn register_log_callback(callback: LogCallback) {
     let mut callbacks = LOG_CALLBACKS.lock().unwrap();
 
     // Replay accumulated logs that were captured before this callback was registered
-    if let Some(logs) = LOG_BUFFER.get() {
-        if let Ok(l) = logs.lock() {
-            for log in l.iter() {
-                let _ = callback(log.clone());
-            }
+    if let Some(logs) = LOG_BUFFER.get()
+        && let Ok(l) = logs.lock()
+    {
+        for log in l.iter() {
+            callback(log.clone());
         }
     }
 

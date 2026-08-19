@@ -901,6 +901,7 @@ class _SettingsState extends State<_Settings> {
 
 class _LogTab extends StatefulWidget {
   const _LogTab();
+  @override
   State<_LogTab> createState() => _LogTabState();
 }
 

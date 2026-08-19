@@ -505,10 +505,9 @@ async fn test_handler_survives_command_sender_drop() {
 
     drop(cmd_tx);
 
-    match timeout(Duration::from_millis(500), handle).await {
-        // Task exited cleanly via the `else` branch of its select loop.
-        Ok(join_result) => assert!(join_result.is_ok(), "handler task panicked"),
-        // Task is still running, driven by swarm events; that's fine too.
-        Err(_) => {}
+    // Task exited cleanly via the `else` branch of its select loop,
+    // or is still running driven by swarm events; both are fine.
+    if let Ok(join_result) = timeout(Duration::from_millis(500), handle).await {
+        assert!(join_result.is_ok(), "handler task panicked");
     }
 }
