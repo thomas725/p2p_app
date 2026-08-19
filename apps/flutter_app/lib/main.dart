@@ -425,14 +425,15 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                       ),
                     )
                   : SelectionArea(
-                      child: ListView.builder(
+                      child: SingleChildScrollView(
                         controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        itemCount: widget.messages.length,
-                        itemBuilder: (_, i) {
-                          final msg = widget.messages[i];
-                          return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                        },
+                        child: Column(
+                          children: [
+                            for (final msg in widget.messages)
+                              _MessageBubble(message: msg, isOwn: msg.peerId == null),
+                          ],
+                        ),
                       ),
                     ),
               if (widget.unreadCount > 0)
@@ -768,14 +769,15 @@ class _DmChatScreenState extends State<DmChatScreen> {
                             ),
                           )
                         : SelectionArea(
-                            child: ListView.builder(
+                            child: SingleChildScrollView(
                               controller: _scrollController,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              itemCount: _messages.length,
-                              itemBuilder: (_, i) {
-                                final msg = _messages[i];
-                                return _MessageBubble(message: msg, isOwn: msg.peerId == null);
-                              },
+                              child: Column(
+                                children: [
+                                  for (final msg in _messages)
+                                    _MessageBubble(message: msg, isOwn: msg.peerId == null),
+                                ],
+                              ),
                             ),
                           ),
                 if (_unreadCount > 0)
