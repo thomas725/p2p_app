@@ -4,13 +4,25 @@
 
 | Metric                  | Value   |
 |:------------------------|--------:|
-| Total Rust Files        |      41 |
-| Total Lines of Code     |   8,748 |
-| Total Characters        | 307,644 |
-| Average Lines per File  |     213 |
-| Average Characters/File |   7,503 |
+| Total Rust Files         |      41 |
+| Total Rust Lines         |   8,750 |
+| Total Rust Chars         | 307,615 |
+| Avg Lines/Rust File      |     213 |
+| Avg Chars/Rust File      |   7,502 |
+| Total Dart Files         |      8 |
+| Total Dart Lines         |  3,280 |
+| Total Dart Chars         | 97,780 |
+| Avg Lines/Dart File      |    410 |
+| Avg Chars/Dart File      | 12,222 |
+| Total Kotlin Files       |     2 |
+| Total Kotlin Lines       |   199 |
+| Total Kotlin Chars       | 6,491 |
+| Avg Lines/Kotlin File    |    99 |
+| Avg Chars/Kotlin File    | 3,245 |
 
-## All Source Files
+**Grand Total:** 51 files, 12,229 lines, 411,886 characters
+
+## Rust Source Files
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
@@ -21,12 +33,12 @@
 | src                     | dioxus_styles.rs     |     0 |  3862 |    50 |         - |       - | Web UI CSS styles (Dioxus)          |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |         - |       - | Web UI swarm event handling (Dioxu… |
 | src                     | fmt.rs               |     4 |  3547 |   117 |         - |       - | Formatting & display utilities      |
-| src                     | frb_generated.rs     |     6 | 45651 |  1164 |         - |       - | Source file                         |
+| src                     | frb_generated.rs     |     6 | 45651 |  1164 |         - |       - | flutter_rust_bridge codegen         |
 | src                     | lib.rs               |     1 |  6032 |   159 |         - |       - | Module declarations & re-exports    |
-| src                     | logging.rs           |     4 |  9003 |   280 |         - |       - | Logging utilities & setup           |
+| src                     | logging.rs           |     4 |  8974 |   282 |         - |       - | Logging utilities & setup           |
 | src                     | messages.rs          |     4 |  8406 |   227 |         - |       - | Message persistence & retrieval     |
-| src                     | mobile_api.rs        |     3 |  1943 |    61 |         - |       - | Source file                         |
-| src                     | mobile_node.rs       |     5 | 16592 |   498 |         - |       - | Source file                         |
+| src                     | mobile_api.rs        |     3 |  1943 |    61 |         - |       - | Mobile FRB API surface              |
+| src                     | mobile_node.rs       |     5 | 16592 |   498 |         - |       - | Mobile node lifecycle & swarm       |
 | src                     | mod.rs               |     1 |  3247 |    94 |         - |       - | Module declarations                 |
 | src                     | network.rs           |     3 |  1851 |    61 |         - |       - | Network size classification         |
 | src                     | nickname.rs          |     5 |  4472 |   123 |         - |       - | Nickname management                 |
@@ -56,9 +68,9 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |         - |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |         - |       - | Database schema (Diesel)            |
 
-**Total:** 41 files, 8,748 lines, 307,644 characters
+**Total:** 41 files, 8,750 lines, 307,615 characters
 
-## Test Files
+## Rust Test Files
 
 | Folder | File                              | Lines | Chars | Depth | Description                           |
 |:-------|:----------------------------------|------:|------:|------:|--------------------------------------:|
@@ -78,7 +90,7 @@
 | tests  | nickname.rs                       |   398 | 12478 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                |  1021 | 36271 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   322 |  8933 |     3 | peers module tests                    |
-| tests  | swarm_handler.rs                  |   514 | 17548 |     8 | swarm_handler module tests            |
+| tests  | swarm_handler.rs                  |   513 | 17514 |     8 | swarm_handler module tests            |
 | tests  | test_utils.rs                     |    33 |  1292 |     2 | Test utilities                        |
 | tests  | tui_binary_integration.rs         |   284 |  8871 |     3 | TUI binary integration tests          |
 | tests  | tui_chat.rs                       |   759 | 24232 |     4 | TUI chat functionality tests          |
@@ -113,4 +125,47 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 13,990 lines, 433,572 characters
+**Total:** 50 test files, 13,989 lines, 433,538 characters
+
+## Dart Source Files
+
+| Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |
+|:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
+| lib                     | main.dart            |    19 | 41181 |  1338 |         - |       - | Flutter app entry point             |
+| lib/src/rust            | api.dart             |     2 |  3414 |    87 |         - |       - | FRB API bindings (generated)        |
+| lib/src/rust            | frb_generated.dart   |     6 | 35310 |  1157 |         - |       - | flutter_rust_bridge codegen         |
+| lib/src/rust            | frb_generated.io.dart |     3 |  5878 |   232 |         - |       - | FRB IO bindings (generated)         |
+| lib/src/rust            | frb_generated.web.dart |     2 |  5798 |   232 |         - |       - | FRB web bindings (generated)        |
+| lib/src/rust            | mobile_api.dart      |     5 |  1464 |    53 |         - |       - | Mobile API bindings (generated)     |
+| lib/src/rust            | mobile_node.dart     |     5 |  3652 |   144 |         - |       - | Mobile node bindings (generated)    |
+| lib/src/rust            | types.dart           |     5 |  1083 |    37 |         - |       - | Shared type definitions (generated) |
+
+**Total:** 8 files, 3,280 lines, 97,780 characters
+
+## Dart Test Files
+
+| Folder  | File                           | Lines | Chars | Depth | Description                           |
+|:--------|:-------------------------------|------:|------:|------:|--------------------------------------:|
+| helpers | test_helpers.dart              |    46 |  1422 |     4 | Test utilities & helpers              |
+| unit    | api_test.dart                  |    42 |  1059 |     4 | Dart API layer unit tests             |
+| test    | widget_test.dart               |    19 |   615 |     2 | Widget smoke tests                    |
+
+**Total:** 3 test files, 107 lines, 3,096 characters
+
+## Kotlin Source Files
+
+| Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |
+|:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
+| com/example/p2p_app_flutter | MainActivity.kt      |     5 |  2669 |    80 |         - |       - | Flutter activity & method channel … |
+| com/example/p2p_app_flutter | P2pForegroundService.kt |     4 |  3822 |   119 |         - |       - | Foreground service for background … |
+
+**Total:** 2 files, 199 lines, 6,491 characters
+
+## Kotlin Test Files
+
+| Folder                      | File                           | Lines | Chars | Depth | Description                           |
+|:----------------------------|:-------------------------------|------:|------:|------:|--------------------------------------:|
+| com/example/p2p_app_flutter | MainActivityTest.kt            |    69 |  2411 |     3 | MainActivity unit tests               |
+| com/example/p2p_app_flutter | P2pForegroundServiceTest.kt    |    99 |  3093 |     3 | ForegroundService unit tests          |
+
+**Total:** 2 test files, 168 lines, 5,504 characters

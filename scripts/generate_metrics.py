@@ -572,7 +572,7 @@ def run_kotlin_coverage() -> CoverageData:
 def generate_source_table(files_data: List[Tuple], max_folder: int = 23, max_file: int = 20, max_purpose: int = 35) -> str:
     output = []
     output.append(f'| {"Folder":<{max_folder}} | {"File":<{max_file}} | {"Depth":>5} | {"Chars":>5} | {"Lines":>5} | {"Testable":>8} | {"Covered":>7} | {"Purpose":<{max_purpose}} |')
-    output.append(f'|:{("-" * (max_folder - 1))}|:{("-" * (max_file - 1))}|{"-" * 4}:|{"-" * 4}:|{"-" * 4}:|{"-" * 7}:|{"-" * 6}:|{"-" * max_purpose}:|')
+    output.append(f'|:{("-" * (max_folder + 1))}|:{("-" * (max_file + 1))}|{"-" * 6}:|{"-" * 6}:|{"-" * 6}:|{"-" * 9}:|{"-" * 8}:|{"-" * (max_purpose + 1)}:|')
     for folder, filename, _, lines, chars, nesting, coverable, pct, purpose in files_data:
         if len(purpose) > max_purpose:
             purpose = purpose[:max_purpose - 1] + '…'
@@ -589,7 +589,7 @@ def generate_test_files_table(test_files: List[Tuple], max_folder: int = 6, max_
     actual_desc = max(max_desc, max((len(f[5]) for f in test_files), default=0))
     output = []
     output.append(f'| {"Folder":<{actual_folder}} | {"File":<{actual_file}} | {"Lines":>5} | {"Chars":>5} | {"Depth":>5} | {"Description":<{actual_desc}} |')
-    output.append(f'|:{("-" * (actual_folder - 1))}|:{("-" * (actual_file - 1))}|{"-" * 4}:|{"-" * 4}:|{"-" * 4}:|{"-" * actual_desc}:|')
+    output.append(f'|:{("-" * (actual_folder + 1))}|:{("-" * (actual_file + 1))}|{"-" * 6}:|{"-" * 6}:|{"-" * 6}:|{"-" * (actual_desc + 1)}:|')
     for folder, filename, lines, chars, nesting, purpose in test_files:
         if len(purpose) > actual_desc:
             purpose = purpose[:actual_desc - 1] + '…'
