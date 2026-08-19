@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Generate codebase metrics table by analyzing all Rust source files.
+Generate codebase metrics table by analyzing Rust, Dart, and Kotlin source files.
 Counts lines, characters, determines maximum nesting depth.
-With --with-coverage, uses cargo-tarpaulin JSON output for real coverage data.
+With --with-coverage, uses cargo-tarpaulin for Rust, LCOV for Dart, JaCoCo XML for Kotlin.
 """
 
 import argparse
@@ -10,8 +10,17 @@ import json
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+DART_APP_DIR = 'apps/flutter_app'
+DART_LIB_DIR = 'apps/flutter_app/lib'
+DART_TEST_DIR = 'apps/flutter_app/test'
+KOTLIN_SRC_DIR = 'apps/flutter_app/android/app/src/main/kotlin'
+KOTLIN_TEST_DIR = 'apps/flutter_app/android/app/src/test/kotlin'
+
+CoverageData = Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]
 
 
 def count_lines(filepath: str) -> int:
@@ -30,43 +39,39 @@ def count_characters(filepath: str) -> int:
         return 0
 
 
-def calculate_max_nesting(filepath: str) -> int:
+def calculate_max_nesting(filepath: str, spaces_per_tab: int = 4) -> int:
     max_nesting = 0
-    SPACES_PER_TAB = 4
-
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             for line in f:
                 stripped = line.lstrip()
                 if not stripped or stripped.startswith('//'):
                     continue
-
                 leading_ws = len(line) - len(stripped)
                 tabs_in_leading = line[:leading_ws].count('\t')
                 spaces_in_leading = line[:leading_ws].count(' ')
-                total_spaces = (tabs_in_leading * SPACES_PER_TAB) + spaces_in_leading
-                nesting_depth = total_spaces // 4
-
+                total_spaces = (tabs_in_leading * spaces_per_tab) + spaces_in_leading
+                nesting_depth = total_spaces // spaces_per_tab
                 max_nesting = max(max_nesting, nesting_depth)
     except Exception:
         pass
-
     return max_nesting
 
 
-def load_tarpaulin_coverage(report_path: str) -> Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]:
-    """
-    Load coverage data from cargo-tarpaulin JSON report.
-    Returns (dict mapping relative source path -> (covered_lines, coverable_lines),
-             (covered_total, coverable_total)).
-    """
+def get_coverage_str(coverage: Optional[float]) -> str:
+    if coverage is None:
+        return "      -"
+    return f"{coverage:>6.2f}%"
+
+
+# ─── Rust ────────────────────────────────────────────────────────────────────
+
+
+def load_tarpaulin_coverage(report_path: str) -> CoverageData:
     with open(report_path) as f:
         data = json.load(f)
-
     files = data['files']
     totals = (data['covered'], data['coverable'])
-
-    # Compute the common path prefix from the report entries
     prefix = list(files[0]['path'])
     for entry in files[1:]:
         i = 0
@@ -74,47 +79,29 @@ def load_tarpaulin_coverage(report_path: str) -> Tuple[Dict[str, Tuple[int, int]
             i += 1
         prefix = prefix[:i]
     prefix_len = len(prefix)
-
     coverage = {}
     for entry in files:
-        covered = entry['covered']
-        coverable = entry['coverable']
         rel_path = '/'.join(entry['path'][prefix_len:])
-        coverage[rel_path] = (covered, coverable)
-
+        coverage[rel_path] = (entry['covered'], entry['coverable'])
     return coverage, totals
 
 
-CoverageData = Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]
-# Type alias: (per_file_coverage, (covered_total, coverable_total))
-
-
 def run_tarpaulin(force: bool = False) -> CoverageData:
-    """Run cargo tarpaulin with --all-features and return coverage data."""
     report_path = 'tarpaulin-report.json'
-
     if force:
         Path(report_path).unlink(missing_ok=True)
-
     if Path(report_path).exists():
         print("Using existing tarpaulin-report.json", file=sys.stderr)
         return load_tarpaulin_coverage(report_path)
-
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
     sys.stderr.flush()
-
     target_dir = str(Path.cwd() / 'target' / 'tarpaulin')
     tmp_dir = Path(target_dir) / 'tmp'
     tmp_dir.mkdir(parents=True, exist_ok=True)
-
     env = {**os.environ, 'TMPDIR': str(tmp_dir)}
-
     proc = subprocess.Popen(
         ['cargo', 'tarpaulin', '--all-features', '-o', 'Json', '--target-dir', target_dir],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
     )
     try:
         for line in proc.stdout or []:
@@ -125,17 +112,13 @@ def run_tarpaulin(force: bool = False) -> CoverageData:
         proc.kill()
         Path(report_path).unlink(missing_ok=True)
         return {}, (0, 0)
-
     if proc.returncode != 0:
         print(f"tarpaulin failed (exit {proc.returncode})", file=sys.stderr)
         Path(report_path).unlink(missing_ok=True)
-        print("  (if out of disk space, try clearing target/ or use a cached report)", file=sys.stderr)
         return {}, (0, 0)
-
     if not Path(report_path).exists():
         print(f"tarpaulin did not produce {report_path}", file=sys.stderr)
         return {}, (0, 0)
-
     return load_tarpaulin_coverage(report_path)
 
 
@@ -148,7 +131,6 @@ def get_file_purpose(filepath: str) -> str:
         return 'UI layout component rendering'
     if 'render_loop/tab_renderers.rs' in filepath:
         return 'Tab-specific renderers'
-
     purposes = {
         'build.rs': 'Build script',
         'lib.rs': 'Module declarations & re-exports',
@@ -189,14 +171,12 @@ def get_file_purpose(filepath: str) -> str:
         'dioxus_app.rs': 'Web UI app shell & components (Dioxus)',
         'dioxus_swarm.rs': 'Web UI swarm event handling (Dioxus)',
         'dioxus_styles.rs': 'Web UI CSS styles (Dioxus)',
+        'mobile_node.rs': 'Mobile node lifecycle & swarm',
+        'mobile_api.rs': 'Mobile FRB API surface',
+        'api.rs': 'FRB API surface',
+        'frb_generated.rs': 'flutter_rust_bridge codegen',
     }
     return purposes.get(Path(filepath).name, 'Source file')
-
-
-def get_coverage_str(coverage: Optional[float]) -> str:
-    if coverage is None:
-        return "      -"
-    return f"{coverage:>6.2f}%"
 
 
 def get_test_file_purpose(filepath: str) -> str:
@@ -257,7 +237,6 @@ def get_test_file_purpose(filepath: str) -> str:
 
 def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
     path = Path(filepath)
-
     if path.name == 'build.rs':
         return ('/', 'build.rs')
     elif 'src/bin/tui/render_loop' in filepath:
@@ -274,11 +253,8 @@ def normalize_path_for_display(filepath: str) -> Tuple[str, str]:
         return (str(path.parent), path.name)
 
 
-def collect_files(
-    coverage_per_file: Dict[str, Tuple[int, int]],
-) -> List[Tuple[str, str, str, int, int, int, Optional[int], Optional[float], str]]:
+def collect_files(coverage_per_file: Dict[str, Tuple[int, int]]) -> List[Tuple]:
     files_data = []
-
     if Path('build.rs').exists():
         filepath = 'build.rs'
         lines = count_lines(filepath)
@@ -290,13 +266,10 @@ def collect_files(
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
         files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
-
     for rs_file in sorted(Path('src').glob('**/*.rs')):
         filepath = str(rs_file)
-
-        if 'tests' in filepath or '#[cfg(test)]' in str(rs_file):
+        if 'tests' in filepath:
             continue
-
         lines = count_lines(filepath)
         chars = count_characters(filepath)
         nesting = calculate_max_nesting(filepath)
@@ -305,142 +278,384 @@ def collect_files(
         pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
         folder, filename = normalize_path_for_display(filepath)
         purpose = get_file_purpose(filepath)
-
         files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
-
     files_data.sort(key=lambda x: (x[0], x[1]))
     return files_data
 
 
-def collect_test_files() -> List[Tuple[str, str, int, int, int, str]]:
+def collect_test_files() -> List[Tuple]:
     test_files = []
-
     for pattern in ['tests/*.rs', 'tests/**/*.rs']:
         for test_file in sorted(Path('.').glob(pattern)):
             filepath = str(test_file)
             if not filepath.endswith('.rs'):
                 continue
-
             lines = count_lines(filepath)
             chars = count_characters(filepath)
             nesting = calculate_max_nesting(filepath)
-
             folder = str(test_file.parent)
             if folder == '.':
                 folder = 'tests'
             elif folder.startswith('tests/'):
                 folder = folder[6:]
-
             purpose = get_test_file_purpose(filepath)
             test_files.append((folder, test_file.name, lines, chars, nesting, purpose))
-
     seen = set()
-    unique_tests = []
+    unique = []
     for item in test_files:
         key = (item[0], item[1])
         if key not in seen:
             seen.add(key)
-            unique_tests.append(item)
+            unique.append(item)
+    unique.sort(key=lambda x: (x[0], x[1]))
+    return unique
 
-    unique_tests.sort(key=lambda x: (x[0], x[1]))
-    return unique_tests
+
+# ─── Dart ────────────────────────────────────────────────────────────────────
 
 
-def generate_test_files_table(test_files: List[Tuple]) -> str:
-    folder_col_width = max(len("Folder"), 6)
-    file_col_width = max(
-        len("File"),
-        max((len(filename) for _, filename, _, _, _, _ in test_files), default=0),
+def get_dart_file_purpose(filepath: str) -> str:
+    purposes = {
+        'main.dart': 'Flutter app entry point',
+        'api.dart': 'FRB API bindings (generated)',
+        'frb_generated.dart': 'flutter_rust_bridge codegen',
+        'frb_generated.io.dart': 'FRB IO bindings (generated)',
+        'frb_generated.web.dart': 'FRB web bindings (generated)',
+        'mobile_api.dart': 'Mobile API bindings (generated)',
+        'mobile_node.dart': 'Mobile node bindings (generated)',
+        'types.dart': 'Shared type definitions (generated)',
+        'test_helpers.dart': 'Test utilities & helpers',
+        'api_test.dart': 'Dart API layer tests',
+        'widget_test.dart': 'Widget smoke tests',
+    }
+    return purposes.get(Path(filepath).name, 'Dart source file')
+
+
+def get_dart_test_purpose(filepath: str) -> str:
+    purposes = {
+        'test_helpers.dart': 'Test utilities & helpers',
+        'api_test.dart': 'Dart API layer unit tests',
+        'widget_test.dart': 'Widget smoke tests',
+    }
+    return purposes.get(Path(filepath).name, 'Dart test file')
+
+
+def normalize_dart_path(filepath: str) -> Tuple[str, str]:
+    path = Path(filepath)
+    if 'src/rust' in filepath:
+        return ('lib/src/rust', path.name)
+    elif 'lib/' in filepath:
+        return ('lib', path.name)
+    elif 'test/' in filepath:
+        parts = path.parts
+        rel = '/'.join(parts[parts.index('test') + 1:]) if 'test' in parts else path.name
+        return (str(Path(rel).parent) if '/' in rel else 'test', path.name)
+    else:
+        return (str(path.parent), path.name)
+
+
+def collect_dart_files(dart_coverage: Dict[str, Tuple[int, int]]) -> List[Tuple]:
+    files_data = []
+    lib_dir = Path(DART_LIB_DIR)
+    if not lib_dir.exists():
+        return files_data
+    for dart_file in sorted(lib_dir.glob('**/*.dart')):
+        filepath = str(dart_file)
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath, spaces_per_tab=2)
+        cov = dart_coverage.get(filepath)
+        coverable = cov[1] if cov else None
+        pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
+        folder, filename = normalize_dart_path(filepath)
+        purpose = get_dart_file_purpose(filepath)
+        files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
+    return files_data
+
+
+def collect_dart_test_files() -> List[Tuple]:
+    test_files = []
+    test_dir = Path(DART_TEST_DIR)
+    if not test_dir.exists():
+        return test_files
+    for dart_file in sorted(test_dir.glob('**/*.dart')):
+        filepath = str(dart_file)
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath, spaces_per_tab=2)
+        folder, filename = normalize_dart_path(filepath)
+        purpose = get_dart_test_purpose(filepath)
+        test_files.append((folder, filename, lines, chars, nesting, purpose))
+    return test_files
+
+
+def parse_dart_lcov(lcov_path: str, prefix: str) -> CoverageData:
+    coverage = {}
+    current_file = None
+    lf = 0
+    lh = 0
+    with open(lcov_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('SF:'):
+                current_file = line[3:]
+            elif line.startswith('LF:'):
+                lf = int(line[3:])
+            elif line.startswith('LH:'):
+                lh = int(line[3:])
+            elif line == 'end_of_record' and current_file:
+                full_path = str(Path(prefix) / current_file)
+                coverage[full_path] = (lh, lf)
+                current_file = None
+    total_hit = sum(v[0] for v in coverage.values())
+    total_found = sum(v[1] for v in coverage.values())
+    return coverage, (total_hit, total_found)
+
+
+def run_dart_coverage() -> CoverageData:
+    lcov_path = Path(DART_APP_DIR) / 'coverage' / 'lcov.info'
+    if lcov_path.exists():
+        print(f"Using existing {lcov_path}", file=sys.stderr)
+        return parse_dart_lcov(str(lcov_path), DART_APP_DIR)
+    print("Running flutter test --coverage ...", file=sys.stderr)
+    sys.stderr.flush()
+    proc = subprocess.Popen(
+        ['flutter', 'test', '--coverage'],
+        cwd=DART_APP_DIR,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )
-    lines_col_width = max(len("Lines"), 5)
-    chars_col_width = max(len("Chars"), 5)
-    depth_col_width = max(len("Depth"), 5)
-    desc_col_width = max(len("Description"), 37)
-
-    output = []
-    output.append(
-        f"| {'Folder':<{folder_col_width}} | {'File':<{file_col_width}} | {'Lines':>{lines_col_width}} | {'Chars':>{chars_col_width}} | {'Depth':>{depth_col_width}} | {'Description':<{desc_col_width}} |"
-    )
-    folder_sep_width = folder_col_width + 2
-    file_sep_width = file_col_width + 2
-    lines_sep_width = lines_col_width + 2
-    chars_sep_width = chars_col_width + 2
-    depth_sep_width = depth_col_width + 2
-    desc_sep_width = desc_col_width + 2
-    output.append(
-        f"|:{'-' * (folder_sep_width - 1)}|:{'-' * (file_sep_width - 1)}|{'-' * (lines_sep_width - 1)}:|{'-' * (chars_sep_width - 1)}:|{'-' * (depth_sep_width - 1)}:|{'-' * (desc_sep_width - 1)}:|"
-    )
-
-    for folder, filename, lines, chars, nesting, purpose in test_files:
-        if len(purpose) > desc_col_width:
-            purpose = purpose[:desc_col_width - 1] + '…'
-
-        folder_display = folder if folder else 'tests'
-        output.append(
-            f"| {folder_display:<{folder_col_width}} | {filename:<{file_col_width}} | {lines:>{lines_col_width}} | {chars:>{chars_col_width}} | {nesting:>{depth_col_width}} | {purpose:<{desc_col_width}} |"
-        )
-
-    return '\n'.join(output)
+    try:
+        for line in proc.stdout or []:
+            print(line, end='', file=sys.stderr)
+        proc.wait(timeout=120)
+    except subprocess.TimeoutExpired:
+        print("flutter test timed out", file=sys.stderr)
+        proc.kill()
+        return {}, (0, 0)
+    if proc.returncode != 0:
+        print(f"flutter test failed (exit {proc.returncode})", file=sys.stderr)
+        return {}, (0, 0)
+    if not lcov_path.exists():
+        print(f"flutter test did not produce {lcov_path}", file=sys.stderr)
+        return {}, (0, 0)
+    return parse_dart_lcov(str(lcov_path), DART_APP_DIR)
 
 
-def generate_markdown_table(files_data: List[Tuple]) -> str:
-    output = []
-    output.append('| Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                             |')
-    output.append('|:------------------------|:---------------------|------:|------:|------:|---------:|--------:|------------------------------------:|')
+# ─── Kotlin ──────────────────────────────────────────────────────────────────
 
-    for folder, filename, _, lines, chars, nesting, coverable, pct, purpose in files_data:
-        if len(purpose) > 35:
-            purpose = purpose[:34] + '…'
 
-        if coverable is None:
-            testable_str = '        -'
+def get_kotlin_file_purpose(filepath: str) -> str:
+    purposes = {
+        'MainActivity.kt': 'Flutter activity & method channel bridge',
+        'P2pForegroundService.kt': 'Foreground service for background networking',
+    }
+    return purposes.get(Path(filepath).name, 'Kotlin source file')
+
+
+def get_kotlin_test_purpose(filepath: str) -> str:
+    purposes = {
+        'MainActivityTest.kt': 'MainActivity unit tests',
+        'P2pForegroundServiceTest.kt': 'ForegroundService unit tests',
+    }
+    return purposes.get(Path(filepath).name, 'Kotlin test file')
+
+
+def normalize_kotlin_path(filepath: str, base: str) -> Tuple[str, str]:
+    path = Path(filepath)
+    try:
+        idx = filepath.index(base)
+        rel = filepath[idx:]
+        parts = Path(rel).parts
+        if len(parts) > 2:
+            folder = '/'.join(parts[1:-1])
         else:
-            testable_str = f'{coverable:>8}'
-        output.append(f'| {folder:<23} | {filename:<20} | {nesting:>5} | {chars:>5} | {lines:>5} | {testable_str} | {get_coverage_str(pct)} | {purpose:<35} |')
+            folder = str(Path(rel).parent)
+        return (folder, path.name)
+    except ValueError:
+        return (str(path.parent), path.name)
 
+
+def collect_kotlin_files(kotlin_coverage: Dict[str, Tuple[int, int]]) -> List[Tuple]:
+    files_data = []
+    src_dir = Path(KOTLIN_SRC_DIR)
+    if not src_dir.exists():
+        return files_data
+    for kt_file in sorted(src_dir.glob('**/*.kt')):
+        filepath = str(kt_file)
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath, spaces_per_tab=4)
+        cov = kotlin_coverage.get(filepath)
+        coverable = cov[1] if cov else None
+        pct = (cov[0] / cov[1] * 100) if cov and cov[1] > 0 else None
+        folder, filename = normalize_kotlin_path(filepath, 'kotlin/')
+        purpose = get_kotlin_file_purpose(filepath)
+        files_data.append((folder, filename, filepath, lines, chars, nesting, coverable, pct, purpose))
+    return files_data
+
+
+def collect_kotlin_test_files() -> List[Tuple]:
+    test_files = []
+    test_dir = Path(KOTLIN_TEST_DIR)
+    if not test_dir.exists():
+        return test_files
+    for kt_file in sorted(test_dir.glob('**/*.kt')):
+        filepath = str(kt_file)
+        lines = count_lines(filepath)
+        chars = count_characters(filepath)
+        nesting = calculate_max_nesting(filepath, spaces_per_tab=4)
+        folder, filename = normalize_kotlin_path(filepath, 'kotlin/')
+        purpose = get_kotlin_test_purpose(filepath)
+        test_files.append((folder, filename, lines, chars, nesting, purpose))
+    return test_files
+
+
+def parse_kotlin_jacoco(xml_path: str, src_base: str) -> CoverageData:
+    coverage = {}
+    try:
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+    except ET.ParseError as e:
+        print(f"Failed to parse JaCoCo XML: {e}", file=sys.stderr)
+        return {}, (0, 0)
+    for sourcefile in root.iter('sourcefile'):
+        name = sourcefile.get('name', '')
+        ci = sum(int(line.get('ci', '0')) for line in sourcefile.findall('line'))
+        mi = sum(int(line.get('mi', '0')) for line in sourcefile.findall('line'))
+        total = ci + mi
+        if total == 0:
+            continue
+        found = False
+        for candidate in Path(src_base).rglob(name):
+            coverage[str(candidate)] = (ci, total)
+            found = True
+            break
+        if not found:
+            coverage[name] = (ci, total)
+    total_hit = sum(v[0] for v in coverage.values())
+    total_found = sum(v[1] for v in coverage.values())
+    return coverage, (total_hit, total_found)
+
+
+def run_kotlin_coverage() -> CoverageData:
+    report_xml = Path(DART_APP_DIR) / 'build' / 'reports' / 'jacoco' / 'testDebugUnitTest' / 'jacocoTestReport.xml'
+    if report_xml.exists():
+        print(f"Using existing {report_xml}", file=sys.stderr)
+        return parse_kotlin_jacoco(str(report_xml), KOTLIN_SRC_DIR)
+    print("Running Gradle JaCoCo coverage report ...", file=sys.stderr)
+    sys.stderr.flush()
+    proc = subprocess.Popen(
+        ['./gradlew', ':app:testDebugUnitTestJacocoReport', '--no-daemon'],
+        cwd=DART_APP_DIR + '/android',
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    try:
+        for line in proc.stdout or []:
+            print(line, end='', file=sys.stderr)
+        proc.wait(timeout=300)
+    except subprocess.TimeoutExpired:
+        print("Gradle JaCoCo timed out", file=sys.stderr)
+        proc.kill()
+        return {}, (0, 0)
+    if proc.returncode != 0:
+        print(f"Gradle JaCoCo failed (exit {proc.returncode})", file=sys.stderr)
+        return {}, (0, 0)
+    if not report_xml.exists():
+        print(f"Gradle did not produce {report_xml}", file=sys.stderr)
+        return {}, (0, 0)
+    return parse_kotlin_jacoco(str(report_xml), KOTLIN_SRC_DIR)
+
+
+# ─── Table generation ────────────────────────────────────────────────────────
+
+
+def generate_source_table(files_data: List[Tuple], max_folder: int = 23, max_file: int = 20, max_purpose: int = 35) -> str:
+    output = []
+    output.append(f'| {"Folder":<{max_folder}} | {"File":<{max_file}} | {"Depth":>5} | {"Chars":>5} | {"Lines":>5} | {"Testable":>8} | {"Covered":>7} | {"Purpose":<{max_purpose}} |')
+    output.append(f'|:{("-" * (max_folder - 1))}|:{("-" * (max_file - 1))}|{"-" * 4}:|{"-" * 4}:|{"-" * 4}:|{"-" * 7}:|{"-" * 6}:|{"-" * max_purpose}:|')
+    for folder, filename, _, lines, chars, nesting, coverable, pct, purpose in files_data:
+        if len(purpose) > max_purpose:
+            purpose = purpose[:max_purpose - 1] + '…'
+        testable_str = f'{coverable:>8}' if coverable is not None else '        -'
+        output.append(f'| {folder:<{max_folder}} | {filename:<{max_file}} | {nesting:>5} | {chars:>5} | {lines:>5} | {testable_str} | {get_coverage_str(pct)} | {purpose:<{max_purpose}} |')
     return '\n'.join(output)
+
+
+def generate_test_files_table(test_files: List[Tuple], max_folder: int = 6, max_file: int = 30, max_desc: int = 37) -> str:
+    if not test_files:
+        return "(none)"
+    actual_folder = max(max_folder, max((len(f[0]) for f in test_files), default=0))
+    actual_file = max(max_file, max((len(f[1]) for f in test_files), default=0))
+    actual_desc = max(max_desc, max((len(f[5]) for f in test_files), default=0))
+    output = []
+    output.append(f'| {"Folder":<{actual_folder}} | {"File":<{actual_file}} | {"Lines":>5} | {"Chars":>5} | {"Depth":>5} | {"Description":<{actual_desc}} |')
+    output.append(f'|:{("-" * (actual_folder - 1))}|:{("-" * (actual_file - 1))}|{"-" * 4}:|{"-" * 4}:|{"-" * 4}:|{"-" * actual_desc}:|')
+    for folder, filename, lines, chars, nesting, purpose in test_files:
+        if len(purpose) > actual_desc:
+            purpose = purpose[:actual_desc - 1] + '…'
+        output.append(f'| {folder:<{actual_folder}} | {filename:<{actual_file}} | {lines:>5} | {chars:>5} | {nesting:>5} | {purpose:<{actual_desc}} |')
+    return '\n'.join(output)
+
+
+# ─── Main ────────────────────────────────────────────────────────────────────
+
+
+def print_summary(label: str, total_files: int, total_lines: int, total_chars: int,
+                  covered: int, coverable: int):
+    avg_lines = total_lines // total_files if total_files > 0 else 0
+    avg_chars = total_chars // total_files if total_files > 0 else 0
+    W = max(len(str(total_files)), len(f"{total_lines:,}"), len(f"{total_chars:,}"),
+            len(str(avg_lines)), len(f"{avg_chars:,}"))
+    LW = 24
+    print(f"| {'Total ' + label + ' Files':<{LW}} | {str(total_files).rjust(W)} |")
+    print(f"| {'Total ' + label + ' Lines':<{LW}} | {f'{total_lines:,}'.rjust(W)} |")
+    print(f"| {'Total ' + label + ' Chars':<{LW}} | {f'{total_chars:,}'.rjust(W)} |")
+    print(f"| {'Avg Lines/' + label + ' File':<{LW}} | {str(avg_lines).rjust(W)} |")
+    print(f"| {'Avg Chars/' + label + ' File':<{LW}} | {f'{avg_chars:,}'.rjust(W)} |")
+    if coverable > 0:
+        pct = covered / coverable * 100
+        print(f"| {'Covered ' + label + ' Lines':<{LW}} | {f'{covered:,} / {coverable:,} ({pct:.0f}%)'.rjust(W)} |")
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate codebase metrics')
-    parser.add_argument(
-        '--with-coverage',
-        action='store_true',
-        help='Include real code coverage data from cargo-tarpaulin (slow: runs tarpaulin if no cached report)',
-    )
-    parser.add_argument(
-        '--force-coverage',
-        action='store_true',
-        help='Force re-running tarpaulin even if cached report exists (implies --with-coverage)',
-    )
+    parser.add_argument('--with-coverage', action='store_true',
+                        help='Include Rust coverage from cargo-tarpaulin')
+    parser.add_argument('--force-coverage', action='store_true',
+                        help='Force re-running tarpaulin (implies --with-coverage)')
+    parser.add_argument('--dart-coverage', action='store_true',
+                        help='Include Dart coverage from flutter test --coverage')
+    parser.add_argument('--kotlin-coverage', action='store_true',
+                        help='Include Kotlin coverage from Gradle JaCoCo')
     args = parser.parse_args()
 
-    coverage_per_file: Dict[str, Tuple[int, int]] = {}
-    coverage_totals: Tuple[int, int] = (0, 0)
+    rust_cov: CoverageData = ({}, (0, 0))
     if args.with_coverage or args.force_coverage:
-        coverage_per_file, coverage_totals = run_tarpaulin(force=args.force_coverage)
+        rust_cov = run_tarpaulin(force=args.force_coverage)
+    rust_coverage, rust_totals = rust_cov
 
-    files_data = collect_files(coverage_per_file)
+    dart_cov: CoverageData = ({}, (0, 0))
+    if args.dart_coverage:
+        dart_cov = run_dart_coverage()
+    dart_coverage, dart_totals = dart_cov
 
-    total_lines = sum(f[3] for f in files_data)
-    total_chars = sum(f[4] for f in files_data)
-    total_files = len(files_data)
-    avg_lines = total_lines // total_files if total_files > 0 else 0
-    avg_chars = total_chars // total_files if total_files > 0 else 0
+    kotlin_cov: CoverageData = ({}, (0, 0))
+    if args.kotlin_coverage:
+        kotlin_cov = run_kotlin_coverage()
+    kotlin_coverage, kotlin_totals = kotlin_cov
 
-    W = max(
-        len(str(total_files)),
-        len(f"{total_lines:,}"),
-        len(f"{total_chars:,}"),
-        len(str(avg_lines)),
-        len(f"{avg_chars:,}")
-    )
+    rust_files = collect_files(rust_coverage)
+    dart_files = collect_dart_files(dart_coverage)
+    kotlin_files = collect_kotlin_files(kotlin_coverage)
 
-    v1 = str(total_files).rjust(W)
-    v2 = f"{total_lines:,}".rjust(W)
-    v3 = f"{total_chars:,}".rjust(W)
-    v4 = str(avg_lines).rjust(W)
-    v5 = f"{avg_chars:,}".rjust(W)
+    rust_test = collect_test_files()
+    dart_test = collect_dart_test_files()
+    kotlin_test = collect_kotlin_test_files()
+
+    all_files = rust_files + dart_files + kotlin_files
+    total_files = len(all_files)
+    total_lines = sum(f[3] for f in all_files)
+    total_chars = sum(f[4] for f in all_files)
 
     print("# Codebase Metrics")
     print()
@@ -448,36 +663,74 @@ def main():
     print()
     print("| Metric                  | Value   |")
     print("|:------------------------|--------:|")
-    print(f"| Total Rust Files        | {v1} |")
-    print(f"| Total Lines of Code     | {v2} |")
-    print(f"| Total Characters        | {v3} |")
-    print(f"| Average Lines per File  | {v4} |")
-    print(f"| Average Characters/File | {v5} |")
+    print_summary("Rust", len(rust_files), sum(f[3] for f in rust_files), sum(f[4] for f in rust_files), *rust_totals)
+    print_summary("Dart", len(dart_files), sum(f[3] for f in dart_files), sum(f[4] for f in dart_files), *dart_totals)
+    print_summary("Kotlin", len(kotlin_files), sum(f[3] for f in kotlin_files), sum(f[4] for f in kotlin_files), *kotlin_totals)
     print()
-    print("## All Source Files")
+    print(f"**Grand Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
     print()
-    table = generate_markdown_table(files_data)
-    print(table)
+
+    # ── Rust ──
+    print("## Rust Source Files")
     print()
-    covered_total, coverable_total = coverage_totals
-    if coverable_total > 0:
-        cov_pct = covered_total / coverable_total * 100
-        print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters ({covered_total}/{coverable_total} testable lines covered, {cov_pct:.0f}%)")
+    print(generate_source_table(rust_files))
+    print()
+    r_cov = rust_totals
+    if r_cov[1] > 0:
+        print(f"**Total:** {len(rust_files)} files, {sum(f[3] for f in rust_files):,} lines, {sum(f[4] for f in rust_files):,} characters ({r_cov[0]}/{r_cov[1]} testable lines covered, {r_cov[0] / r_cov[1] * 100:.0f}%)")
     else:
-        print(f"**Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
+        print(f"**Total:** {len(rust_files)} files, {sum(f[3] for f in rust_files):,} lines, {sum(f[4] for f in rust_files):,} characters")
     print()
 
-    test_files = collect_test_files()
-    test_total_lines = sum(f[2] for f in test_files)
-    test_total_chars = sum(f[3] for f in test_files)
-    test_total_files = len(test_files)
+    print("## Rust Test Files")
+    print()
+    print(generate_test_files_table(rust_test))
+    rtl = sum(f[2] for f in rust_test)
+    rtc = sum(f[3] for f in rust_test)
+    print()
+    print(f"**Total:** {len(rust_test)} test files, {rtl:,} lines, {rtc:,} characters")
+    print()
 
-    print("## Test Files")
+    # ── Dart ──
+    print("## Dart Source Files")
     print()
-    test_table = generate_test_files_table(test_files)
-    print(test_table)
+    print(generate_source_table(dart_files))
     print()
-    print(f"**Total:** {test_total_files} test files, {test_total_lines:,} lines, {test_total_chars:,} characters")
+    d_cov = dart_totals
+    if d_cov[1] > 0:
+        print(f"**Total:** {len(dart_files)} files, {sum(f[3] for f in dart_files):,} lines, {sum(f[4] for f in dart_files):,} characters ({d_cov[0]}/{d_cov[1]} testable lines covered, {d_cov[0] / d_cov[1] * 100:.0f}%)")
+    else:
+        print(f"**Total:** {len(dart_files)} files, {sum(f[3] for f in dart_files):,} lines, {sum(f[4] for f in dart_files):,} characters")
+    print()
+
+    print("## Dart Test Files")
+    print()
+    print(generate_test_files_table(dart_test))
+    dtl = sum(f[2] for f in dart_test)
+    dtc = sum(f[3] for f in dart_test)
+    print()
+    print(f"**Total:** {len(dart_test)} test files, {dtl:,} lines, {dtc:,} characters")
+    print()
+
+    # ── Kotlin ──
+    print("## Kotlin Source Files")
+    print()
+    print(generate_source_table(kotlin_files))
+    print()
+    k_cov = kotlin_totals
+    if k_cov[1] > 0:
+        print(f"**Total:** {len(kotlin_files)} files, {sum(f[3] for f in kotlin_files):,} lines, {sum(f[4] for f in kotlin_files):,} characters ({k_cov[0]}/{k_cov[1]} testable lines covered, {k_cov[0] / k_cov[1] * 100:.0f}%)")
+    else:
+        print(f"**Total:** {len(kotlin_files)} files, {sum(f[3] for f in kotlin_files):,} lines, {sum(f[4] for f in kotlin_files):,} characters")
+    print()
+
+    print("## Kotlin Test Files")
+    print()
+    print(generate_test_files_table(kotlin_test))
+    ktl = sum(f[2] for f in kotlin_test)
+    ktc = sum(f[3] for f in kotlin_test)
+    print()
+    print(f"**Total:** {len(kotlin_test)} test files, {ktl:,} lines, {ktc:,} characters")
 
 
 if __name__ == '__main__':
