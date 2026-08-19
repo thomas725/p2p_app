@@ -135,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _onBubbleLongPress(int index) {
+  void _onBubbleDoubleTap(int index) {
     setState(() {
       _selectionMode = true;
       _selectedIndices.add(index);
@@ -208,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       await _loadHistory();
       await _refreshPeers();
+      _forceScrollToBottom();
       // On desktop, auto-start the node (no foreground service needed)
       if (!_isAndroid && !_serviceRunning) {
         await _toggleService();
@@ -381,7 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onJumpToBottom: _forceScrollToBottom,
         selectionMode: _selectionMode,
         selectedIndices: _selectedIndices,
-        onBubbleLongPress: _onBubbleLongPress,
+        onBubbleDoubleTap: _onBubbleDoubleTap,
         onBubbleTap: _onBubbleTap,
         onCancelSelection: _cancelSelection,
         onCopySelected: _copySelected,
@@ -425,7 +426,7 @@ class _BroadcastChat extends StatefulWidget {
     required this.onJumpToBottom,
     required this.selectionMode,
     required this.selectedIndices,
-    required this.onBubbleLongPress,
+    required this.onBubbleDoubleTap,
     required this.onBubbleTap,
     required this.onCancelSelection,
     required this.onCopySelected,
@@ -439,7 +440,7 @@ class _BroadcastChat extends StatefulWidget {
   final VoidCallback onJumpToBottom;
   final bool selectionMode;
   final Set<int> selectedIndices;
-  final void Function(int) onBubbleLongPress;
+  final void Function(int) onBubbleDoubleTap;
   final void Function(int) onBubbleTap;
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
@@ -510,7 +511,7 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                               message: widget.messages[i],
                               isOwn: widget.messages[i].peerId == null,
                               selected: widget.selectedIndices.contains(i),
-                              onLongPress: () => widget.onBubbleLongPress(i),
+                              onDoubleTap: () => widget.onBubbleDoubleTap(i),
                               onTap: () => widget.onBubbleTap(i),
                             ),
                         ],
@@ -602,13 +603,13 @@ class _MessageBubble extends StatelessWidget {
     required this.message,
     required this.isOwn,
     this.selected = false,
-    this.onLongPress,
+    this.onDoubleTap,
     this.onTap,
   });
   final ChatMessage message;
   final bool isOwn;
   final bool selected;
-  final VoidCallback? onLongPress;
+  final VoidCallback? onDoubleTap;
   final VoidCallback? onTap;
 
   @override
@@ -620,7 +621,7 @@ class _MessageBubble extends StatelessWidget {
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
       child: GestureDetector(
-        onLongPress: onLongPress,
+        onDoubleTap: onDoubleTap,
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
@@ -830,7 +831,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
     });
   }
 
-  void _onBubbleLongPress(int index) {
+  void _onBubbleDoubleTap(int index) {
     setState(() {
       _selectionMode = true;
       _selectedIndices.add(index);
@@ -961,7 +962,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
                                     message: _messages[i],
                                     isOwn: _messages[i].peerId == null,
                                     selected: _selectedIndices.contains(i),
-                                    onLongPress: () => _onBubbleLongPress(i),
+                                    onDoubleTap: () => _onBubbleDoubleTap(i),
                                     onTap: () => _onBubbleTap(i),
                                   ),
                               ],
