@@ -424,7 +424,13 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                         style: TextStyle(color: Colors.grey[500]),
                       ),
                     )
-                  : SelectionArea(
+                   : SelectionArea(
+                      // SingleChildScrollView + Column instead of ListView.builder:
+                      // ListView renders items in separate slivers, preventing
+                      // SelectionArea from spanning across items. Column puts all
+                      // bubbles in one widget tree for cross-message selection.
+                      // Tradeoff: all messages render at once (no virtualization),
+                      // acceptable with the 200-message cap from _loadHistory.
                       child: SingleChildScrollView(
                         controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -525,7 +531,7 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg.withAlpha(180)),
                 ),
               ),
-            SelectableText(message.content, style: TextStyle(fontSize: 14, color: fg)),
+            Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
