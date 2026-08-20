@@ -12,6 +12,7 @@
 
 # Flutter app
 apps/flutter_app/build/
+apps/flutter_app/android/build/
 apps/flutter_app/android/.gradle/
 apps/flutter_app/.gradle/
 apps/flutter_app/android/local.properties
