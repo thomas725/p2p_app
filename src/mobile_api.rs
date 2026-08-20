@@ -47,6 +47,7 @@ mod tests {
     #[test]
     #[serial]
     fn init_mobile_database_uses_supplied_path() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("mobile.sqlite");
         crate::reset_db_url_cache();
@@ -57,5 +58,44 @@ mod tests {
         assert_eq!(status.database_url, db_path.to_string_lossy());
         assert!(!status.local_peer_id.is_empty());
         assert!(db_path.exists());
+    }
+
+    #[test]
+    #[serial]
+    fn get_mobile_peer_status_returns_current_state() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("status_test.sqlite");
+        crate::reset_db_url_cache();
+
+        init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
+
+        let status = get_mobile_peer_status().expect("peer status");
+        assert_eq!(status.database_url, db_path.to_string_lossy());
+        assert!(!status.local_peer_id.is_empty());
+    }
+
+    #[test]
+    fn test_mobile_init_status_clone_debug() {
+        let s = MobileInitStatus {
+            database_url: "db.sqlite".into(),
+            local_peer_id: "peer1".into(),
+        };
+        let cloned = s.clone();
+        assert_eq!(cloned.database_url, "db.sqlite");
+        assert_eq!(cloned.local_peer_id, "peer1");
+        let _ = format!("{:?}", s);
+    }
+
+    #[test]
+    fn test_mobile_peer_status_clone_debug() {
+        let s = MobilePeerStatus {
+            database_url: "db.sqlite".into(),
+            local_peer_id: "peer1".into(),
+            self_nickname: Some("Alice".into()),
+        };
+        let cloned = s.clone();
+        assert_eq!(cloned.self_nickname.as_deref(), Some("Alice"));
+        let _ = format!("{:?}", s);
     }
 }

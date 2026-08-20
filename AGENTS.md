@@ -100,8 +100,8 @@ Use the cargo aliases defined in `.cargo/config.toml` to auto-include the featur
 
 | Command | Alias | Expands to |
 |---------|-------|------------|
-| Run tests | `cargo t` | `cargo test --features test-utils` |
-| Lint all | `cargo ct` | `cargo clippy --all-targets --features test-utils` |
+| Run tests | `cargo t` | `cargo test --all-features` |
+| Lint all | `cargo ct` | `cargo clippy --all-targets --all-features` |
 
 For other commands that need `test-utils` (e.g. `cargo check --tests`), pass
 `--features test-utils` explicitly.

@@ -496,3 +496,378 @@ fn default_event() -> SwarmEventJson {
         address: None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::generated::models_queryable::Message;
+    use crate::types::MessageEvent;
+    use chrono::NaiveDateTime;
+
+    fn dt(s: &str) -> NaiveDateTime {
+        NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").unwrap()
+    }
+
+    // ── event_to_json ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_event_to_json_broadcast() {
+        let ev = SwarmEvent::BroadcastMessage(MessageEvent {
+            content: "hello".into(),
+            peer_id: "p1".into(),
+            latency: Some("5ms".into()),
+            nickname: Some("Alice".into()),
+            msg_id: Some("m1".into()),
+        });
+        let j = event_to_json(ev);
+        assert_eq!(j.event_type, "broadcast");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.content.as_deref(), Some("hello"));
+        assert_eq!(j.latency.as_deref(), Some("5ms"));
+        assert_eq!(j.nickname.as_deref(), Some("Alice"));
+        assert_eq!(j.msg_id.as_deref(), Some("m1"));
+        assert!(j.address.is_none());
+    }
+
+    #[test]
+    fn test_event_to_json_direct_message() {
+        let ev = SwarmEvent::DirectMessage(MessageEvent {
+            content: "secret".into(),
+            peer_id: "p2".into(),
+            latency: None,
+            nickname: None,
+            msg_id: None,
+        });
+        let j = event_to_json(ev);
+        assert_eq!(j.event_type, "dm");
+        assert_eq!(j.peer_id.as_deref(), Some("p2"));
+        assert_eq!(j.content.as_deref(), Some("secret"));
+        assert!(j.latency.is_none());
+        assert!(j.nickname.is_none());
+    }
+
+    #[test]
+    fn test_event_to_json_peer_connected() {
+        let j = event_to_json(SwarmEvent::PeerConnected("p1".into()));
+        assert_eq!(j.event_type, "peer_connected");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert!(j.content.is_none());
+    }
+
+    #[test]
+    fn test_event_to_json_peer_disconnected() {
+        let j = event_to_json(SwarmEvent::PeerDisconnected("p3".into()));
+        assert_eq!(j.event_type, "peer_disconnected");
+        assert_eq!(j.peer_id.as_deref(), Some("p3"));
+    }
+
+    #[test]
+    fn test_event_to_json_listen_addr() {
+        let j = event_to_json(SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/4000".into()));
+        assert_eq!(j.event_type, "listen_addr");
+        assert_eq!(j.address.as_deref(), Some("/ip4/0.0.0.0/tcp/4000"));
+    }
+
+    #[test]
+    fn test_event_to_json_receipt() {
+        let j = event_to_json(SwarmEvent::Receipt {
+            peer_id: "p1".into(),
+            ack_for: "msg-42".into(),
+            received_at: Some(1000.0),
+        });
+        assert_eq!(j.event_type, "receipt");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.msg_id.as_deref(), Some("msg-42"));
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_event_to_json_peer_discovered() {
+        let addr: libp2p::Multiaddr = "/ip4/10.0.0.1/tcp/9000".parse().unwrap();
+        let j = event_to_json(SwarmEvent::PeerDiscovered {
+            peer_id: "p5".into(),
+            addresses: vec![addr],
+        });
+        assert_eq!(j.event_type, "peer_discovered");
+        assert_eq!(j.peer_id.as_deref(), Some("p5"));
+        assert!(j.address.is_some());
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_event_to_json_peer_expired() {
+        let j = event_to_json(SwarmEvent::PeerExpired {
+            peer_id: "p6".into(),
+        });
+        assert_eq!(j.event_type, "peer_expired");
+        assert_eq!(j.peer_id.as_deref(), Some("p6"));
+    }
+
+    // ── default_event ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_default_event_fields() {
+        let j = default_event();
+        assert!(j.event_type.is_empty());
+        assert!(j.peer_id.is_none());
+        assert!(j.content.is_none());
+        assert!(j.latency.is_none());
+        assert!(j.nickname.is_none());
+        assert!(j.msg_id.is_none());
+        assert!(j.address.is_none());
+    }
+
+    // ── message_to_chat ────────────────────────────────────────────────
+
+    #[test]
+    fn test_message_to_chat_broadcast() {
+        let msg = Message {
+            id: 1,
+            created_at: dt("2024-06-15 10:30:00"),
+            content: "hello world".into(),
+            peer_id: None,
+            topic: "chat".into(),
+            sent: 1,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: Some("msg-1".into()),
+            sent_at: Some(1718455800.0),
+            sender_nickname: Some("Alice".into()),
+        };
+        let chat = message_to_chat(msg);
+        assert_eq!(chat.id, 1);
+        assert_eq!(chat.content, "hello world");
+        assert!(chat.peer_id.is_none());
+        assert!(chat.is_broadcast);
+        assert!(chat.sent);
+        assert_eq!(chat.msg_id.as_deref(), Some("msg-1"));
+        assert!(chat.sent_at.is_some());
+        assert_eq!(chat.sender_nickname.as_deref(), Some("Alice"));
+    }
+
+    #[test]
+    fn test_message_to_chat_dm() {
+        let msg = Message {
+            id: 2,
+            created_at: dt("2024-06-15 11:00:00"),
+            content: "secret msg".into(),
+            peer_id: Some("peer-bob".into()),
+            topic: "chat".into(),
+            sent: 0,
+            is_direct: 1,
+            target_peer: Some("peer-bob".into()),
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: None,
+        };
+        let chat = message_to_chat(msg);
+        assert_eq!(chat.id, 2);
+        assert!(!chat.is_broadcast);
+        assert!(!chat.sent);
+        assert!(chat.sent_at.is_none());
+        assert!(chat.sender_nickname.is_none());
+        assert_eq!(chat.target_peer.as_deref(), Some("peer-bob"));
+    }
+
+    #[test]
+    fn test_message_to_chat_empty_content() {
+        let msg = Message {
+            id: 3,
+            created_at: dt("2024-01-01 00:00:00"),
+            content: String::new(),
+            peer_id: None,
+            topic: "chat".into(),
+            sent: 0,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: None,
+        };
+        let chat = message_to_chat(msg);
+        assert!(chat.content.is_empty());
+    }
+
+    #[test]
+    fn test_message_to_chat_none_sent_at() {
+        let msg = Message {
+            id: 4,
+            created_at: dt("2024-03-01 00:00:00"),
+            content: "test".into(),
+            peer_id: Some("p1".into()),
+            topic: "t".into(),
+            sent: 0,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: Some("m4".into()),
+            sent_at: None,
+            sender_nickname: None,
+        };
+        let chat = message_to_chat(msg);
+        assert!(chat.sent_at.is_none());
+    }
+
+    // ── process_event_for_mobile ───────────────────────────────────────
+
+    #[test]
+    fn test_process_event_stores_nickname_from_dm() {
+        let ev = SwarmEvent::DirectMessage(MessageEvent {
+            content: String::new(),
+            peer_id: "peer-nick".into(),
+            latency: None,
+            nickname: Some("Bob".into()),
+            msg_id: None,
+        });
+        process_event_for_mobile(&ev, &None);
+    }
+
+    #[test]
+    fn test_process_event_broadcast_with_nickname() {
+        let ev = SwarmEvent::BroadcastMessage(MessageEvent {
+            content: "hi all".into(),
+            peer_id: "peer-broad".into(),
+            latency: None,
+            nickname: Some("Charlie".into()),
+            msg_id: Some("msg-b1".into()),
+        });
+        process_event_for_mobile(&ev, &None);
+    }
+
+    #[test]
+    fn test_process_event_peer_connected_no_sender() {
+        process_event_for_mobile(&SwarmEvent::PeerConnected("p1".into()), &None);
+    }
+
+    #[test]
+    fn test_process_event_ignored_variants() {
+        process_event_for_mobile(&SwarmEvent::PeerDisconnected("p1".into()), &None);
+        process_event_for_mobile(
+            &SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/0".into()),
+            &None,
+        );
+        process_event_for_mobile(
+            &SwarmEvent::Receipt {
+                peer_id: "p1".into(),
+                ack_for: "m1".into(),
+                received_at: None,
+            },
+            &None,
+        );
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_process_event_peer_discovered() {
+        let addr: libp2p::Multiaddr = "/ip4/10.0.0.1/tcp/9000".parse().unwrap();
+        let ev = SwarmEvent::PeerDiscovered {
+            peer_id: "p-disc".into(),
+            addresses: vec![addr],
+        };
+        process_event_for_mobile(&ev, &None);
+    }
+
+    // ── SwarmEventJson / ChatMessage / MobilePeerRecord ────────────────
+
+    #[test]
+    fn test_swarm_event_json_clone_debug() {
+        let j = default_event();
+        let cloned = j.clone();
+        assert!(cloned.event_type.is_empty());
+        let _ = format!("{:?}", j);
+    }
+
+    #[test]
+    fn test_chat_message_clone_debug() {
+        let msg = Message {
+            id: 1,
+            created_at: dt("2024-01-01 00:00:00"),
+            content: "test".into(),
+            peer_id: None,
+            topic: "t".into(),
+            sent: 1,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: None,
+        };
+        let chat = message_to_chat(msg);
+        let cloned = chat.clone();
+        assert_eq!(cloned.id, 1);
+        let _ = format!("{:?}", chat);
+    }
+
+    #[test]
+    fn test_mobile_peer_record_clone_debug() {
+        let r = MobilePeerRecord {
+            peer_id: "p1".into(),
+            first_seen: "2024-01-01".into(),
+            last_seen: "2024-06-01".into(),
+            nickname: Some("Alice".into()),
+            local_nickname: None,
+            display_name: "Alice".into(),
+        };
+        let cloned = r.clone();
+        assert_eq!(cloned.peer_id, "p1");
+        let _ = format!("{:?}", r);
+    }
+
+    // ── start/stop node error paths ────────────────────────────────────
+
+    #[test]
+    fn test_stop_node_without_start_is_noop() {
+        // stop_node should not panic even if NODE was never set
+        // (it uses OnceLock::get which returns None)
+        let _ = stop_node();
+    }
+
+    #[test]
+    fn test_get_node_peer_id_without_start_fails() {
+        let result = get_node_peer_id();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_poll_event_without_start_fails() {
+        let result = poll_event();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_send_broadcast_without_start_fails() {
+        let result = send_broadcast("hello".into());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_send_dm_without_start_fails() {
+        let result = send_dm("peer1".into(), "hi".into());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_broadcast_messages_empty_db() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("bc_test.sqlite");
+        crate::reset_db_url_cache();
+        crate::db::set_cached_db_url(&db_path.to_string_lossy());
+        let _ = crate::init_database();
+
+        let msgs = load_broadcast_messages(100).expect("load broadcast");
+        assert!(msgs.is_empty());
+    }
+
+    #[test]
+    fn test_load_dm_messages_empty_db() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("dm_test.sqlite");
+        crate::reset_db_url_cache();
+        crate::db::set_cached_db_url(&db_path.to_string_lossy());
+        let _ = crate::init_database();
+
+        let msgs = load_dm_messages("peer1".into(), 100).expect("load dm");
+        assert!(msgs.is_empty());
+    }
+}

@@ -1,3 +1,4 @@
 [alias]
-t = "test --features test-utils"
+t = "test --all-features"
 c = "clippy --all-targets --all-features"
+ct = "clippy --all-targets --all-features"
