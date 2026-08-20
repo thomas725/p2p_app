@@ -10,6 +10,8 @@ import 'src/rust/api.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
 
+import 'package:p2p_app/p2p_app.dart' as p2p;
+
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 final bool _isAndroid = Platform.isAndroid;
 
@@ -127,7 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
-    final atBottom = pos.maxScrollExtent - pos.pixels < 80;
+    // Use Rust's is_at_bottom logic for consistency
+    final atBottom = p2p.is_at_bottom(pos.pixels, pos.maxScrollExtent, 80);
     if (atBottom != _atBottom) {
       setState(() {
         _atBottom = atBottom;
@@ -174,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-      final time = msg.sentAt ?? _fmtTime(msg.createdAt);
+      final time = msg.sentAt ?? p2p.format_time_hhmm(msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
       buf.writeln(time);
@@ -190,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _cancelSelection();
   }
 
-  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
 
   Future<void> _init() async {
     try {
@@ -679,7 +681,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 TextSpan(text: message.content),
                 TextSpan(
-                  text: '\n${message.sentAt ?? _fmtTime(message.createdAt)}',
+                  text: '\n${message.sentAt}',
                   style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
               ],
@@ -690,7 +692,6 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
 }
 
 // --- Peers Tab ---
@@ -803,7 +804,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
-    final atBottom = pos.maxScrollExtent - pos.pixels < 80;
+    // Use Rust's is_at_bottom logic for consistency
+    final atBottom = p2p.is_at_bottom(pos.pixels, pos.maxScrollExtent, 80);
     if (atBottom != _atBottom) {
       setState(() {
         _atBottom = atBottom;
@@ -885,7 +887,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-      final time = msg.sentAt ?? _fmtTime(msg.createdAt);
+      final time = msg.sentAt ?? p2p.format_time_hhmm(msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
       buf.writeln(time);
@@ -903,7 +905,6 @@ class _DmChatScreenState extends State<DmChatScreen> {
     _cancelSelection();
   }
 
-  String _fmtTime(String dt) => dt.length >= 16 ? dt.substring(11, 16) : dt;
 
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted || event.eventType != 'dm') return;

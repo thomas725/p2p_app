@@ -64,6 +64,18 @@ pub fn short_peer_id(id: &str) -> String {
         .collect()
 }
 
+/// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
+///
+/// Used by Dart/Flutter UI to display message timestamps.
+#[must_use]
+pub fn format_time_hhmm(dt: &str) -> String {
+    if dt.len() >= 16 {
+        dt[11..16].to_string()
+    } else {
+        dt.to_string()
+    }
+}
+
 /// Get display name for a peer - uses local nickname if set, else received nickname, else short ID
 #[must_use]
 pub fn peer_display_name(
@@ -86,14 +98,6 @@ pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
     total.saturating_sub(visible)
 }
 
-/// Generate a title for scrollable content showing current scroll position
-///
-/// Format: "Prefix (offset/total)"
-#[must_use]
-pub fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
-    format!("{} ({}/{})", prefix, scroll_offset.min(total), total)
-}
-
 /// Calculate the latency in milliseconds between sent and received times
 #[must_use]
 pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
@@ -114,4 +118,12 @@ pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
         }
         None => "?".to_string(),
     }
+}
+
+/// Generate a title for scrollable content showing current scroll position
+///
+/// Format: "Prefix (offset/total)"
+#[must_use]
+pub fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
+    format!("{} ({}/{})", prefix, scroll_offset.min(total), total)
 }

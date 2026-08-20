@@ -103,6 +103,12 @@ pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<St
     get_peer_field(peer_id, |p| p.received_nickname)
 }
 
+/// Validate a nickname: alphanumeric and dash only, max 20 chars.
+#[must_use]
+pub fn validate_nickname(nick: &str) -> bool {
+    !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
+}
+
 /// Get a human-friendly display name for a peer: their nickname (local
 /// preferred over received) followed by a short ID suffix, or just the
 /// short ID if no nickname is known.

@@ -1,4 +1,5 @@
 use super::*;
+use crate::nickname;
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
@@ -96,5 +97,30 @@ fn peer_display_name_received_then_fallback() {
 
         let fallback = get_peer_display_name("peer-fallback").expect("fallback");
         assert_eq!(fallback, crate::fmt::short_peer_id("peer-fallback"));
+    });
+}
+
+/// Validate a nickname: alphanumeric and dash only, max 20 chars.
+#[test]
+#[serial(db)]
+fn validate_nickname_valid() {
+    with_test_db(|| {
+        assert!(nickname::validate_nickname("valid-nick"));
+        assert!(nickname::validate_nickname("abc123"));
+        assert!(nickname::validate_nickname("a"));
+    });
+}
+
+/// Validate a nickname: rejects empty, too long, or special chars
+#[test]
+#[serial(db)]
+fn validate_nickname_invalid() {
+    with_test_db(|| {
+        assert!(!nickname::validate_nickname(""));
+        assert!(!nickname::validate_nickname("this-nickname-is-way-too-long-exceeds-twenty-chars"));
+        assert!(!nickname::validate_nickname("nick with spaces"));
+        assert!(!nickname::validate_nickname("nick@special"));
+        assert!(!nickname::validate_nickname("nick$dollar"));
+        assert!(!nickname::validate_nickname("nick%percent"));
     });
 }

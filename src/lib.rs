@@ -114,6 +114,7 @@ pub use messages::{
 #[cfg(feature = "mobile")]
 pub use mobile_api::{
     MobileInitStatus, MobilePeerStatus, get_mobile_peer_status, init_mobile_database,
+    format_time_hhmm,
 };
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{
