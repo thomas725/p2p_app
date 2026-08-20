@@ -537,6 +537,18 @@ def parse_kotlin_jacoco(xml_path: str, src_base: str) -> CoverageData:
     return coverage, (total_hit, total_found)
 
 
+def _find_flutter_project_cache_dir() -> str | None:
+    """Find the Flutter Gradle plugin project-cache-dir (required in Nix envs)."""
+    flutter_cache = Path.home() / '.cache' / 'flutter' / 'nix-flutter-tools-gradle'
+    if not flutter_cache.is_dir():
+        return None
+    for d in flutter_cache.iterdir():
+        cache = d / 'cache'
+        if cache.is_dir():
+            return str(cache)
+    return None
+
+
 def run_kotlin_coverage() -> CoverageData:
     report_xml = Path(DART_APP_DIR) / 'build' / 'reports' / 'jacoco' / 'testDebugUnitTest' / 'jacocoTestReport.xml'
     if report_xml.exists():
@@ -544,8 +556,17 @@ def run_kotlin_coverage() -> CoverageData:
         return parse_kotlin_jacoco(str(report_xml), KOTLIN_SRC_DIR)
     print("Running Gradle JaCoCo coverage report ...", file=sys.stderr)
     sys.stderr.flush()
+    cmd = [
+        './gradlew',
+        ':app:testDebugUnitTest',
+        ':app:testDebugUnitTestJacocoReport',
+        '--no-daemon',
+    ]
+    cache_dir = _find_flutter_project_cache_dir()
+    if cache_dir:
+        cmd.extend(['--project-cache-dir', cache_dir])
     proc = subprocess.Popen(
-        ['./gradlew', ':app:testDebugUnitTestJacocoReport', '--no-daemon'],
+        cmd,
         cwd=DART_APP_DIR + '/android',
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
     )

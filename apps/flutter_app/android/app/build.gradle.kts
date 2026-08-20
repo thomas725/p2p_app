@@ -31,9 +31,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            enableUnitTestCoverage = true
-        }
         release {
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -51,16 +48,23 @@ flutter {
     source = "../.."
 }
 
+tasks.withType<Test>().configureEach {
+    extensions.configure(JacocoTaskExtension::class) {
+        isEnabled = true
+    }
+}
+
 tasks.register<JacocoReport>("testDebugUnitTestJacocoReport") {
     dependsOn("testDebugUnitTest")
 
     reports {
         xml.required.set(true)
+        xml.outputLocation.set(file("${layout.buildDirectory.get().asFile.parentFile}/reports/jacoco/testDebugUnitTest/jacocoTestReport.xml"))
         html.required.set(false)
     }
 
     classDirectories.setFrom(
-        fileTree("build/tmp/kotlin-classes/debug") {
+        fileTree("../../build/app/tmp/kotlin-classes/debug") {
             exclude("**/R\$*.class")
             exclude("**/BuildConfig.*")
         }
@@ -71,7 +75,11 @@ tasks.register<JacocoReport>("testDebugUnitTestJacocoReport") {
     executionData.setFrom(
         fileTree("build") {
             include("**/*.exec")
-        }
+        }.plus(
+            fileTree("../../build/app/jacoco") {
+                include("**/*.exec")
+            }
+        )
     )
 }
 

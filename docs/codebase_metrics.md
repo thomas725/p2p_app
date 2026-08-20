@@ -2,23 +2,26 @@
 
 ## Summary
 
-| Metric                |   Value |
-|:----------------------|:--------|
-| Total Rust Files      |      41 |
-| Total Rust Lines      |   8,750 |
-| Total Rust Chars      | 307,615 |
-| Avg Lines/Rust File   |     213 |
-| Avg Chars/Rust File   |   7,502 |
-| Total Dart Files      |       8 |
-| Total Dart Lines      |   3,280 |
-| Total Dart Chars      |  97,780 |
-| Avg Lines/Dart File   |     410 |
-| Avg Chars/Dart File   |  12,222 |
-| Total Kotlin Files    |       2 |
-| Total Kotlin Lines    |     199 |
-| Total Kotlin Chars    |   6,491 |
-| Avg Lines/Kotlin File |      99 |
-| Avg Chars/Kotlin File |   3,245 |
+| Metric                |               Value |
+|:----------------------|:--------------------|
+| Total Rust Files      |                  41 |
+| Total Rust Lines      |               8,750 |
+| Total Rust Chars      |             307,615 |
+| Avg Lines/Rust File   |                 213 |
+| Avg Chars/Rust File   |               7,502 |
+| Covered Rust Lines    | 1,777 / 3,256 (55%) |
+| Total Dart Files      |                   8 |
+| Total Dart Lines      |               3,280 |
+| Total Dart Chars      |              97,780 |
+| Avg Lines/Dart File   |                 410 |
+| Avg Chars/Dart File   |              12,222 |
+| Covered Dart Lines    |     38 / 1,008 (4%) |
+| Total Kotlin Files    |                   2 |
+| Total Kotlin Lines    |                 199 |
+| Total Kotlin Chars    |               6,491 |
+| Avg Lines/Kotlin File |                  99 |
+| Avg Chars/Kotlin File |               3,245 |
+| Covered Kotlin Lines  |       14 / 377 (4%) |
 
 **Grand Total:** 51 files, 12,229 lines, 411,886 characters
 
@@ -26,49 +29,49 @@
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                                |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
-| /                       | build.rs             |     5 |  3949 |   118 |        - |       - | Build script                           |
-| src                     | behavior.rs          |     4 |  6157 |   181 |        - |       - | Network behavior definitions           |
-| src                     | db.rs                |     6 | 15218 |   421 |        - |       - | Database connection & identity mgmt    |
-| src                     | dioxus_app.rs        |    11 | 19980 |   552 |        - |       - | Web UI app shell & components (Dioxus) |
-| src                     | dioxus_styles.rs     |     0 |  3862 |    50 |        - |       - | Web UI CSS styles (Dioxus)             |
-| src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |        - |       - | Web UI swarm event handling (Dioxus)   |
-| src                     | fmt.rs               |     4 |  3547 |   117 |        - |       - | Formatting & display utilities         |
-| src                     | frb_generated.rs     |     6 | 45651 |  1164 |        - |       - | flutter_rust_bridge codegen            |
-| src                     | lib.rs               |     1 |  6032 |   159 |        - |       - | Module declarations & re-exports       |
-| src                     | logging.rs           |     4 |  8974 |   282 |        - |       - | Logging utilities & setup              |
-| src                     | messages.rs          |     4 |  8406 |   227 |        - |       - | Message persistence & retrieval        |
-| src                     | mobile_api.rs        |     3 |  1943 |    61 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 16592 |   498 |        - |       - | Mobile node lifecycle & swarm          |
-| src                     | mod.rs               |     1 |  3247 |    94 |        - |       - | Module declarations                    |
-| src                     | network.rs           |     3 |  1851 |    61 |        - |       - | Network size classification            |
-| src                     | nickname.rs          |     5 |  4472 |   123 |        - |       - | Nickname management                    |
-| src                     | peers.rs             |     3 |  6171 |   182 |        - |       - | Peer management & tracking             |
-| src                     | swarm_handler.rs     |     7 |  9362 |   272 |        - |       - | Network event translation              |
-| src                     | tui_helpers.rs       |     3 |  6896 |   226 |        - |       - | TUI helper functions & utilities       |
-| src                     | tui_render.rs        |     5 | 11816 |   363 |        - |       - | TUI rendering & state management       |
-| src                     | tui_render_state.rs  |     4 | 11951 |   379 |        - |       - | TUI render state & tab content         |
-| src                     | tui_tabs.rs          |     5 |  4793 |   168 |        - |       - | Tab management & navigation            |
-| src                     | types.rs             |     2 |  3546 |   115 |        - |       - | Event & command type defs              |
-| src/bin                 | p2p_chat.rs          |     7 |  4936 |   134 |        - |       - | CLI chat application                   |
-| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8302 |   218 |        - |       - | Web UI (Dioxus framework)              |
-| src/bin                 | p2p_chat_tui.rs      |     4 |  4547 |   117 |        - |       - | Main TUI application entry point       |
-| src/bin/tui             | click_handlers.rs    |     5 |  5185 |   137 |        - |       - | Click handlers & index mapping         |
-| src/bin/tui             | command_processor.rs |     6 | 10698 |   321 |        - |       - | Event routing & state updates          |
-| src/bin/tui             | event_source.rs      |     4 |  1224 |    40 |        - |       - | Terminal event polling (60 FPS)        |
-| src/bin/tui             | input_processor.rs   |     5 | 12090 |   356 |        - |       - | Input event routing & processing       |
-| src/bin/tui             | main_loop.rs         |     4 | 10740 |   305 |        - |       - | Task orchestration & async             |
-| src/bin/tui             | message_handlers.rs  |     5 |  4473 |   138 |        - |       - | Message sending logic                  |
-| src/bin/tui             | scroll_handlers.rs   |     5 |  8766 |   252 |        - |       - | Scroll & hover-aware navigation        |
-| src/bin/tui             | state.rs             |     3 |  8341 |   226 |        - |       - | Shared application state               |
-| src/bin/tui/render_loop | layout.rs            |     3 |  1882 |    56 |        - |       - | UI layout component rendering          |
-| src/bin/tui/render_loop | mod.rs               |     4 |  5074 |   151 |        - |       - | Render loop orchestration (60 FPS)     |
-| src/generated           | columns.rs           |     1 |  1653 |    42 |        - |       - | Auto-generated column definitions      |
-| src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
-| src/generated           | models_insertable.rs |     1 |  3256 |    92 |        - |       - | Insertable data models                 |
-| src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        - |       - | Queryable data models                  |
-| src/generated           | schema.rs            |     2 |  1570 |    71 |        - |       - | Database schema (Diesel)               |
+| /                       | build.rs             |     5 |  3949 |   118 |        0 |       - | Build script                           |
+| src                     | behavior.rs          |     4 |  6157 |   181 |       25 |  96.00% | Network behavior definitions           |
+| src                     | db.rs                |     6 | 15218 |   421 |      158 |  90.51% | Database connection & identity mgmt    |
+| src                     | dioxus_app.rs        |    11 | 19980 |   552 |      178 |   0.00% | Web UI app shell & components (Dioxus) |
+| src                     | dioxus_styles.rs     |     0 |  3862 |    50 |        0 |       - | Web UI CSS styles (Dioxus)             |
+| src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |       98 |   0.00% | Web UI swarm event handling (Dioxus)   |
+| src                     | fmt.rs               |     4 |  3547 |   117 |       39 |  94.87% | Formatting & display utilities         |
+| src                     | frb_generated.rs     |     6 | 45651 |  1164 |      486 |   0.00% | flutter_rust_bridge codegen            |
+| src                     | lib.rs               |     1 |  6032 |   159 |        1 | 100.00% | Module declarations & re-exports       |
+| src                     | logging.rs           |     4 |  8974 |   282 |      107 |  96.26% | Logging utilities & setup              |
+| src                     | messages.rs          |     4 |  8406 |   227 |       84 | 100.00% | Message persistence & retrieval        |
+| src                     | mobile_api.rs        |     3 |  1943 |    61 |       14 |  50.00% | Mobile FRB API surface                 |
+| src                     | mobile_node.rs       |     5 | 16592 |   498 |      220 |   0.00% | Mobile node lifecycle & swarm          |
+| src                     | mod.rs               |     1 |  3247 |    94 |       32 |   0.00% | Module declarations                    |
+| src                     | network.rs           |     3 |  1851 |    61 |       13 | 100.00% | Network size classification            |
+| src                     | nickname.rs          |     5 |  4472 |   123 |       49 | 100.00% | Nickname management                    |
+| src                     | peers.rs             |     3 |  6171 |   182 |       64 | 100.00% | Peer management & tracking             |
+| src                     | swarm_handler.rs     |     7 |  9362 |   272 |      117 |  88.03% | Network event translation              |
+| src                     | tui_helpers.rs       |     3 |  6896 |   226 |       91 | 100.00% | TUI helper functions & utilities       |
+| src                     | tui_render.rs        |     5 | 11816 |   363 |      185 |  88.11% | TUI rendering & state management       |
+| src                     | tui_render_state.rs  |     4 | 11951 |   379 |      136 |  97.79% | TUI render state & tab content         |
+| src                     | tui_tabs.rs          |     5 |  4793 |   168 |       52 |  98.08% | Tab management & navigation            |
+| src                     | types.rs             |     2 |  3546 |   115 |        3 |  66.67% | Event & command type defs              |
+| src/bin                 | p2p_chat.rs          |     7 |  4936 |   134 |       62 |   0.00% | CLI chat application                   |
+| src/bin                 | p2p_chat_dioxus.rs   |     8 |  8302 |   218 |      112 |   0.00% | Web UI (Dioxus framework)              |
+| src/bin                 | p2p_chat_tui.rs      |     4 |  4547 |   117 |       18 |   0.00% | Main TUI application entry point       |
+| src/bin/tui             | click_handlers.rs    |     5 |  5185 |   137 |       77 | 100.00% | Click handlers & index mapping         |
+| src/bin/tui             | command_processor.rs |     6 | 10698 |   321 |      158 |  99.37% | Event routing & state updates          |
+| src/bin/tui             | event_source.rs      |     4 |  1224 |    40 |       12 |  41.67% | Terminal event polling (60 FPS)        |
+| src/bin/tui             | input_processor.rs   |     5 | 12090 |   356 |      174 |  82.18% | Input event routing & processing       |
+| src/bin/tui             | main_loop.rs         |     4 | 10740 |   305 |      143 |  27.97% | Task orchestration & async             |
+| src/bin/tui             | message_handlers.rs  |     5 |  4473 |   138 |       73 |  98.63% | Message sending logic                  |
+| src/bin/tui             | scroll_handlers.rs   |     5 |  8766 |   252 |      110 |  98.18% | Scroll & hover-aware navigation        |
+| src/bin/tui             | state.rs             |     3 |  8341 |   226 |       40 |  95.00% | Shared application state               |
+| src/bin/tui/render_loop | layout.rs            |     3 |  1882 |    56 |       23 |   0.00% | UI layout component rendering          |
+| src/bin/tui/render_loop | mod.rs               |     4 |  5074 |   151 |       62 |  48.39% | Render loop orchestration (60 FPS)     |
+| src/generated           | columns.rs           |     1 |  1653 |    42 |        0 |       - | Auto-generated column definitions      |
+| src/generated           | mod.rs               |     0 |   488 |    11 |        0 |       - | Module declarations                    |
+| src/generated           | models_insertable.rs |     1 |  3256 |    92 |        0 |       - | Insertable data models                 |
+| src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        0 |       - | Queryable data models                  |
+| src/generated           | schema.rs            |     2 |  1570 |    71 |       40 |  97.50% | Database schema (Diesel)               |
 
-**Total:** 41 files, 8,750 lines, 307,615 characters
+**Total:** 41 files, 8,750 lines, 307,615 characters (1777/3256 testable lines covered, 55%)
 
 ## Rust Test Files
 
@@ -131,16 +134,16 @@
 
 | Folder       | File                   | Depth | Chars | Lines | Testable | Covered | Purpose                             |
 |:-------------|:-----------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
-| lib          | main.dart              |    19 | 41181 |  1338 |        - |       - | Flutter app entry point             |
-| lib/src/rust | api.dart               |     2 |  3414 |    87 |        - |       - | FRB API bindings (generated)        |
-| lib/src/rust | frb_generated.dart     |     6 | 35310 |  1157 |        - |       - | flutter_rust_bridge codegen         |
-| lib/src/rust | frb_generated.io.dart  |     3 |  5878 |   232 |        - |       - | FRB IO bindings (generated)         |
+| lib          | main.dart              |    19 | 41181 |  1338 |      448 |   7.59% | Flutter app entry point             |
+| lib/src/rust | api.dart               |     2 |  3414 |    87 |       28 |   7.14% | FRB API bindings (generated)        |
+| lib/src/rust | frb_generated.dart     |     6 | 35310 |  1157 |      449 |   0.45% | flutter_rust_bridge codegen         |
+| lib/src/rust | frb_generated.io.dart  |     3 |  5878 |   232 |        5 |   0.00% | FRB IO bindings (generated)         |
 | lib/src/rust | frb_generated.web.dart |     2 |  5798 |   232 |        - |       - | FRB web bindings (generated)        |
-| lib/src/rust | mobile_api.dart        |     5 |  1464 |    53 |        - |       - | Mobile API bindings (generated)     |
-| lib/src/rust | mobile_node.dart       |     5 |  3652 |   144 |        - |       - | Mobile node bindings (generated)    |
+| lib/src/rust | mobile_api.dart        |     5 |  1464 |    53 |       17 |   0.00% | Mobile API bindings (generated)     |
+| lib/src/rust | mobile_node.dart       |     5 |  3652 |   144 |       61 |   0.00% | Mobile node bindings (generated)    |
 | lib/src/rust | types.dart             |     5 |  1083 |    37 |        - |       - | Shared type definitions (generated) |
 
-**Total:** 8 files, 3,280 lines, 97,780 characters
+**Total:** 8 files, 3,280 lines, 97,780 characters (38/1008 testable lines covered, 4%)
 
 ## Dart Test Files
 
@@ -156,10 +159,10 @@
 
 | Folder                      | File                    | Depth | Chars | Lines | Testable | Covered | Purpose                                      |
 |:----------------------------|:------------------------|------:|------:|------:|---------:|--------:|---------------------------------------------:|
-| com/example/p2p_app_flutter | MainActivity.kt         |     5 |  2669 |    80 |        - |       - | Flutter activity & method channel bridge     |
-| com/example/p2p_app_flutter | P2pForegroundService.kt |     4 |  3822 |   119 |        - |       - | Foreground service for background networking |
+| com/example/p2p_app_flutter | MainActivity.kt         |     5 |  2669 |    80 |      171 |   0.00% | Flutter activity & method channel bridge     |
+| com/example/p2p_app_flutter | P2pForegroundService.kt |     4 |  3822 |   119 |      206 |   6.80% | Foreground service for background networking |
 
-**Total:** 2 files, 199 lines, 6,491 characters
+**Total:** 2 files, 199 lines, 6,491 characters (14/377 testable lines covered, 4%)
 
 ## Kotlin Test Files
 
