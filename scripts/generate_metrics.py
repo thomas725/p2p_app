@@ -569,7 +569,12 @@ def run_kotlin_coverage() -> CoverageData:
 # ─── Table generation ────────────────────────────────────────────────────────
 
 
-def generate_source_table(files_data: List[Tuple], max_folder: int = 23, max_file: int = 20, max_purpose: int = 35) -> str:
+def generate_source_table(files_data: List[Tuple]) -> str:
+    if not files_data:
+        return "(none)"
+    max_folder = max(max((len(f[0]) for f in files_data), default=0), len("Folder"))
+    max_file = max(max((len(f[1]) for f in files_data), default=0), len("File"))
+    max_purpose = max(max((len(f[8]) for f in files_data), default=0), len("Purpose"))
     output = []
     output.append(f'| {"Folder":<{max_folder}} | {"File":<{max_file}} | {"Depth":>5} | {"Chars":>5} | {"Lines":>5} | {"Testable":>8} | {"Covered":>7} | {"Purpose":<{max_purpose}} |')
     output.append(f'|:{("-" * (max_folder + 1))}|:{("-" * (max_file + 1))}|{"-" * 6}:|{"-" * 6}:|{"-" * 6}:|{"-" * 9}:|{"-" * 8}:|{"-" * (max_purpose + 1)}:|')
@@ -601,20 +606,18 @@ def generate_test_files_table(test_files: List[Tuple], max_folder: int = 6, max_
 
 
 def print_summary(label: str, total_files: int, total_lines: int, total_chars: int,
-                  covered: int, coverable: int):
+                  covered: int, coverable: int, lw: int, vw: int):
     avg_lines = total_lines // total_files if total_files > 0 else 0
     avg_chars = total_chars // total_files if total_files > 0 else 0
-    W = max(len(str(total_files)), len(f"{total_lines:,}"), len(f"{total_chars:,}"),
-            len(str(avg_lines)), len(f"{avg_chars:,}"))
-    LW = 24
-    print(f"| {'Total ' + label + ' Files':<{LW}} | {str(total_files).rjust(W)} |")
-    print(f"| {'Total ' + label + ' Lines':<{LW}} | {f'{total_lines:,}'.rjust(W)} |")
-    print(f"| {'Total ' + label + ' Chars':<{LW}} | {f'{total_chars:,}'.rjust(W)} |")
-    print(f"| {'Avg Lines/' + label + ' File':<{LW}} | {str(avg_lines).rjust(W)} |")
-    print(f"| {'Avg Chars/' + label + ' File':<{LW}} | {f'{avg_chars:,}'.rjust(W)} |")
+    print(f"| {'Total ' + label + ' Files':<{lw}} | {str(total_files).rjust(vw)} |")
+    print(f"| {'Total ' + label + ' Lines':<{lw}} | {f'{total_lines:,}'.rjust(vw)} |")
+    print(f"| {'Total ' + label + ' Chars':<{lw}} | {f'{total_chars:,}'.rjust(vw)} |")
+    print(f"| {'Avg Lines/' + label + ' File':<{lw}} | {str(avg_lines).rjust(vw)} |")
+    print(f"| {'Avg Chars/' + label + ' File':<{lw}} | {f'{avg_chars:,}'.rjust(vw)} |")
     if coverable > 0:
         pct = covered / coverable * 100
-        print(f"| {'Covered ' + label + ' Lines':<{LW}} | {f'{covered:,} / {coverable:,} ({pct:.0f}%)'.rjust(W)} |")
+        val_str = f'{covered:,} / {coverable:,} ({pct:.0f}%)'
+        print(f"| {'Covered ' + label + ' Lines':<{lw}} | {val_str.rjust(vw)} |")
 
 
 def main():
@@ -661,11 +664,33 @@ def main():
     print()
     print("## Summary")
     print()
-    print("| Metric                  | Value   |")
-    print("|:------------------------|--------:|")
-    print_summary("Rust", len(rust_files), sum(f[3] for f in rust_files), sum(f[4] for f in rust_files), *rust_totals)
-    print_summary("Dart", len(dart_files), sum(f[3] for f in dart_files), sum(f[4] for f in dart_files), *dart_totals)
-    print_summary("Kotlin", len(kotlin_files), sum(f[3] for f in kotlin_files), sum(f[4] for f in kotlin_files), *kotlin_totals)
+
+    # Compute max widths for label and value columns
+    labels = ['Rust', 'Dart', 'Kotlin']
+    lang_data = [
+        (len(rust_files), sum(f[3] for f in rust_files), sum(f[4] for f in rust_files), *rust_totals),
+        (len(dart_files), sum(f[3] for f in dart_files), sum(f[4] for f in dart_files), *dart_totals),
+        (len(kotlin_files), sum(f[3] for f in kotlin_files), sum(f[4] for f in kotlin_files), *kotlin_totals),
+    ]
+    all_labels = []
+    all_vals = []
+    for label, (fc, fl, fc2, cv, ct) in zip(labels, lang_data):
+        avg_l = fl // fc if fc > 0 else 0
+        avg_c = fc2 // fc if fc > 0 else 0
+        all_labels += [f'Total {label} Files', f'Total {label} Lines', f'Total {label} Chars',
+                       f'Avg Lines/{label} File', f'Avg Chars/{label} File']
+        all_vals += [str(fc), f'{fl:,}', f'{fc2:,}', str(avg_l), f'{avg_c:,}']
+        if ct > 0:
+            pct = cv / ct * 100
+            all_labels.append(f'Covered {label} Lines')
+            all_vals.append(f'{cv:,} / {ct:,} ({pct:.0f}%)')
+    lw = max(len(s) for s in all_labels)
+    vw = max(len(s) for s in all_vals)
+
+    print(f"| {'Metric':<{lw}} | {'Value':>{vw}} |")
+    print(f"|:{'-' * (lw + 1)}|:{'-' * (vw + 1)}|")
+    for label, data in zip(labels, lang_data):
+        print_summary(label, *data, lw=lw, vw=vw)
     print()
     print(f"**Grand Total:** {total_files} files, {total_lines:,} lines, {total_chars:,} characters")
     print()
