@@ -581,7 +581,7 @@ def generate_source_table(files_data: List[Tuple]) -> str:
     for folder, filename, _, lines, chars, nesting, coverable, pct, purpose in files_data:
         if len(purpose) > max_purpose:
             purpose = purpose[:max_purpose - 1] + '…'
-        testable_str = f'{coverable:>8}' if coverable is not None else '        -'
+        testable_str = f'{coverable:>8}' if coverable is not None else '       -'
         output.append(f'| {folder:<{max_folder}} | {filename:<{max_file}} | {nesting:>5} | {chars:>5} | {lines:>5} | {testable_str} | {get_coverage_str(pct)} | {purpose:<{max_purpose}} |')
     return '\n'.join(output)
 
