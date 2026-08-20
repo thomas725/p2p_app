@@ -5,10 +5,10 @@
 | Metric                |           Value |
 |:----------------------|:----------------|
 | Total Rust Files      |              41 |
-| Total Rust Lines      |           8,750 |
-| Total Rust Chars      |         307,615 |
-| Avg Lines/Rust File   |             213 |
-| Avg Chars/Rust File   |           7,502 |
+| Total Rust Lines      |           9,165 |
+| Total Rust Chars      |         320,921 |
+| Avg Lines/Rust File   |             223 |
+| Avg Chars/Rust File   |           7,827 |
 | Total Dart Files      |               8 |
 | Total Dart Lines      |           3,280 |
 | Total Dart Chars      |          97,780 |
@@ -21,7 +21,7 @@
 | Avg Lines/Kotlin File |              99 |
 | Avg Chars/Kotlin File |           3,245 |
 
-**Grand Total:** 51 files, 12,229 lines, 411,886 characters
+**Grand Total:** 51 files, 12,644 lines, 425,192 characters
 
 ## Rust Source Files
 
@@ -38,8 +38,8 @@
 | src                     | lib.rs               |     1 |  6032 |   159 |        - |       - | Module declarations & re-exports       |
 | src                     | logging.rs           |     4 |  8974 |   282 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     4 |  8406 |   227 |        - |       - | Message persistence & retrieval        |
-| src                     | mobile_api.rs        |     3 |  1943 |    61 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 16592 |   498 |        - |       - | Mobile node lifecycle & swarm          |
+| src                     | mobile_api.rs        |     3 |  3371 |   101 |        - |       - | Mobile FRB API surface                 |
+| src                     | mobile_node.rs       |     5 | 28470 |   873 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     1 |  3247 |    94 |        - |       - | Module declarations                    |
 | src                     | network.rs           |     3 |  1851 |    61 |        - |       - | Network size classification            |
 | src                     | nickname.rs          |     5 |  4472 |   123 |        - |       - | Nickname management                    |
@@ -69,7 +69,7 @@
 | src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  1570 |    71 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 41 files, 8,750 lines, 307,615 characters
+**Total:** 41 files, 9,165 lines, 320,921 characters
 
 ## Rust Test Files
 
