@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -20,7 +21,17 @@ DART_TEST_DIR = 'apps/flutter_app/test'
 KOTLIN_SRC_DIR = 'apps/flutter_app/android/app/src/main/kotlin'
 KOTLIN_TEST_DIR = 'apps/flutter_app/android/app/src/test/kotlin'
 
+MAX_REPORT_AGE_SECONDS = 24 * 60 * 60  # 24 hours
+
 CoverageData = Tuple[Dict[str, Tuple[int, int]], Tuple[int, int]]
+
+
+def _report_is_stale(path: Path) -> bool:
+    """Return True if *path* does not exist or is older than MAX_REPORT_AGE_SECONDS."""
+    if not path.exists():
+        return True
+    age = time.time() - path.stat().st_mtime
+    return age > MAX_REPORT_AGE_SECONDS
 
 
 def count_lines(filepath: str) -> int:
@@ -90,7 +101,7 @@ def run_tarpaulin(force: bool = False) -> CoverageData:
     report_path = 'tarpaulin-report.json'
     if force:
         Path(report_path).unlink(missing_ok=True)
-    if Path(report_path).exists():
+    if not _report_is_stale(Path(report_path)):
         print("Using existing tarpaulin-report.json", file=sys.stderr)
         return load_tarpaulin_coverage(report_path)
     print("Running cargo tarpaulin --all-features -o Json ...", file=sys.stderr)
@@ -414,7 +425,7 @@ def parse_dart_lcov(lcov_path: str, prefix: str) -> CoverageData:
 
 def run_dart_coverage() -> CoverageData:
     lcov_path = Path(DART_APP_DIR) / 'coverage' / 'lcov.info'
-    if lcov_path.exists():
+    if not _report_is_stale(lcov_path):
         print(f"Using existing {lcov_path}", file=sys.stderr)
         return parse_dart_lcov(str(lcov_path), DART_APP_DIR)
     print("Running flutter test --coverage ...", file=sys.stderr)
@@ -551,7 +562,7 @@ def _find_flutter_project_cache_dir() -> str | None:
 
 def run_kotlin_coverage() -> CoverageData:
     report_xml = Path(DART_APP_DIR) / 'build' / 'reports' / 'jacoco' / 'testDebugUnitTest' / 'jacocoTestReport.xml'
-    if report_xml.exists():
+    if not _report_is_stale(report_xml):
         print(f"Using existing {report_xml}", file=sys.stderr)
         return parse_kotlin_jacoco(str(report_xml), KOTLIN_SRC_DIR)
     print("Running Gradle JaCoCo coverage report ...", file=sys.stderr)
