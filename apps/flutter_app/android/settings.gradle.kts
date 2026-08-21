@@ -19,7 +19,10 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.0.1" apply false
+    id("com.android.application") version "9.3.1" apply false
+    // Built-in Kotlin (android.builtInKotlin=true) uses whatever KGP is on the
+    // classpath; declaring it here upgrades past AGP 9.x's embedded 2.2.10,
+    // which is below Flutter's minimum supported Kotlin (2.2.20).
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
