@@ -10,8 +10,6 @@ import 'src/rust/api.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
 
-import 'src/rust/mobile_api.dart';
-
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 final bool _isAndroid = Platform.isAndroid;
 
@@ -685,7 +683,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 TextSpan(text: message.content),
                 TextSpan(
-                  text: '\n${message.sentAt}',
+                  text: '\n${message.sentAt ?? formatTimeHhmm(dt: message.createdAt)}',
                   style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
               ],
