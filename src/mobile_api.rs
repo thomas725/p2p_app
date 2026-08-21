@@ -106,6 +106,21 @@ mod tests {
 
     #[test]
     #[serial]
+    fn init_mobile_database_creates_missing_parent_dirs() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        // Simulate Android: nested `databases` folder does not exist yet.
+        let db_path = dir.path().join("databases").join("p2p.db");
+        assert!(!db_path.parent().unwrap().exists());
+        crate::reset_db_url_cache();
+
+        init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
+
+        assert!(db_path.exists());
+    }
+
+    #[test]
+    #[serial]
     fn get_mobile_peer_status_returns_current_state() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");

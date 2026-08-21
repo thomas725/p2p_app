@@ -91,6 +91,16 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
         }));
     });
 
+    // Ensure the parent directory exists before opening the database.
+    // SQLite creates missing files but not missing directories, which breaks
+    // first launch on Android where the app `databases` folder doesn't exist yet.
+    if let Some(parent) = std::path::Path::new(&db_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)
+                .wrap_err_with(|| format!("Error creating directory {}", parent.display()))?;
+        }
+    }
+
     let mut conn = SqliteConnection::establish(&db_path)
         .wrap_err_with(|| format!("Error connecting to {db_path}"))?;
 
