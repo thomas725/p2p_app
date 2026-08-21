@@ -6,10 +6,10 @@
 use crate::messages::MessageMeta;
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
-    build_swarm, current_timestamp, gen_msg_id, get_local_peer_id, get_network_size,
-    get_self_nickname, load_direct_messages, load_messages, mark_message_sent, p2plog_debug,
-    save_message_with_meta, save_peer, set_peer_received_nickname, spawn_swarm_handler,
-    CHAT_TOPIC,
+    build_swarm, current_timestamp, ensure_self_nickname, gen_msg_id, get_local_peer_id,
+    get_network_size, get_self_nickname, load_direct_messages, load_messages, mark_message_sent,
+    p2plog_debug, save_message_with_meta, save_peer, set_peer_received_nickname,
+    spawn_swarm_handler, CHAT_TOPIC,
 };
 use libp2p::gossipsub;
 use std::sync::Arc;
@@ -61,6 +61,11 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     } else {
         // No path: use lock-based DB selection (same as TUI/Dioxus)
         crate::init_database().map_err(|e| e.to_string())?;
+    }
+
+    // Generate and persist a random nickname on first start (same as TUI/Dioxus)
+    if let Err(e) = ensure_self_nickname() {
+        p2plog_debug(format!("Failed to ensure self nickname: {e}"));
     }
 
     // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
