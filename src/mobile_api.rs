@@ -8,6 +8,7 @@
 ///
 /// Used by Dart/Flutter UI to display message timestamps.
 #[must_use]
+#[flutter_rust_bridge::frb(sync)]
 pub fn format_time_hhmm(dt: &str) -> String {
     if dt.len() >= 16 {
         dt[11..16].to_string()
@@ -21,6 +22,8 @@ pub fn format_time_hhmm(dt: &str) -> String {
 /// Returns true if the scroll offset is at or past the point where the bottom
 /// of the content becomes visible given the visible area size.
 #[must_use]
+#[flutter_rust_bridge::frb(sync)]
+#[flutter_rust_bridge::frb(type_64bit_int)]
 pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool {
     scroll_offset >= total.saturating_sub(visible)
 }
@@ -56,6 +59,7 @@ pub struct MobilePeerStatus {
     pub self_nickname: Option<String>,
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String> {
     crate::db::set_cached_db_url(&db_path);
     crate::init_database().map_err(|e| e.to_string())?;
@@ -67,6 +71,7 @@ pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String>
     })
 }
 
+#[flutter_rust_bridge::frb(ignore)]
 pub fn get_mobile_peer_status() -> Result<MobilePeerStatus, String> {
     let local_peer_id = crate::get_local_peer_id().map_err(|e| e.to_string())?;
     let self_nickname = crate::get_self_nickname().map_err(|e| e.to_string())?;

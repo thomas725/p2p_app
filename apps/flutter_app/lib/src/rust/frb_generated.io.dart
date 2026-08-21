@@ -21,6 +21,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
+  int dco_decode_CastedPrimitive_usize(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -66,6 +69,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
 
   @protected
+  (BigInt, BigInt) dco_decode_record_usize_usize(dynamic raw);
+
+  @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
 
   @protected
@@ -73,6 +79,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void dco_decode_unit(dynamic raw);
+
+  @protected
+  BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  int sse_decode_CastedPrimitive_usize(SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -126,6 +138,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  (BigInt, BigInt) sse_decode_record_usize_usize(SseDeserializer deserializer);
+
+  @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
 
   @protected
@@ -133,6 +148,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  void sse_encode_CastedPrimitive_usize(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
@@ -204,6 +225,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_record_usize_usize(
+    (BigInt, BigInt) self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_swarm_event_json(
     SwarmEventJson self,
     SseSerializer serializer,
@@ -214,6 +241,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
 // Section: wire_class

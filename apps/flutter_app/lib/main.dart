@@ -10,7 +10,7 @@ import 'src/rust/api.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
 
-import 'package:p2p_app/p2p_app.dart' as p2p;
+import 'src/rust/mobile_api.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 final bool _isAndroid = Platform.isAndroid;
@@ -130,7 +130,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
     // Use Rust's is_at_bottom logic for consistency
-    final atBottom = p2p.is_at_bottom(pos.pixels, pos.maxScrollExtent, 80);
+    final atBottom = isAtBottom(
+      scrollOffset: pos.pixels.round(),
+      total: pos.maxScrollExtent.round(),
+      visible: 80,
+    );
     if (atBottom != _atBottom) {
       setState(() {
         _atBottom = atBottom;
@@ -177,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-      final time = msg.sentAt ?? p2p.format_time_hhmm(msg.createdAt);
+      final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
       buf.writeln(time);
@@ -805,7 +809,11 @@ class _DmChatScreenState extends State<DmChatScreen> {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
     // Use Rust's is_at_bottom logic for consistency
-    final atBottom = p2p.is_at_bottom(pos.pixels, pos.maxScrollExtent, 80);
+    final atBottom = isAtBottom(
+      scrollOffset: pos.pixels.round(),
+      total: pos.maxScrollExtent.round(),
+      visible: 80,
+    );
     if (atBottom != _atBottom) {
       setState(() {
         _atBottom = atBottom;
@@ -887,7 +895,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-      final time = msg.sentAt ?? p2p.format_time_hhmm(msg.createdAt);
+      final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
       buf.writeln(time);

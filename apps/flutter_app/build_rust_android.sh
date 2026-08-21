@@ -11,6 +11,7 @@ RUST_PROFILE="${RUST_PROFILE:-release}"
 declare -A TARGETS=(
     ["arm64-v8a"]="aarch64-linux-android"
     ["armeabi-v7a"]="armv7-linux-androideabi"
+    ["x86_64"]="x86_64-linux-android"
 )
 
 # Find NDK clang if ANDROID_HOME is set
@@ -23,17 +24,18 @@ CARGO_ARGS=(
     --profile "$RUST_PROFILE"
 )
 
-if [[ "$RUST_PROFILE" == "release" ]]; then
-    CARGO_ARGS+=(--release)
-fi
-
 # Set cross-compilation env vars
-export CC_aarch64-linux-android="$NDK_BIN/aarch64-linux-android35-clang"
-export CC_armv7-linux-androideabi="$NDK_BIN/armv7a-linux-androideabi35-clang"
-export AR_aarch64-linux-android="$NDK_BIN/llvm-ar"
-export AR_armv7-linux-androideabi="$NDK_BIN/llvm-ar"
+# NOTE: bash identifiers cannot contain hyphens, so use the underscore form
+# (the `cc` crate looks up CC_<target> with '-' replaced by '_').
+export CC_aarch64_linux_android="$NDK_BIN/aarch64-linux-android35-clang"
+export CC_armv7_linux_androideabi="$NDK_BIN/armv7a-linux-androideabi35-clang"
+export CC_x86_64_linux_android="$NDK_BIN/x86_64-linux-android35-clang"
+export AR_aarch64_linux_android="$NDK_BIN/llvm-ar"
+export AR_armv7_linux_androideabi="$NDK_BIN/llvm-ar"
+export AR_x86_64_linux_android="$NDK_BIN/llvm-ar"
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_BIN/aarch64-linux-android35-clang"
 export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$NDK_BIN/armv7a-linux-androideabi35-clang"
+export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$NDK_BIN/x86_64-linux-android35-clang"
 # Clear host env that pollutes cross-compilation
 unset CC CFLAGS LDFLAGS PKG_CONFIG_PATH BINDGEN_EXTRA_CLANG_ARGS 2>/dev/null || true
 export PKG_CONFIG_ALLOW_CROSS=1

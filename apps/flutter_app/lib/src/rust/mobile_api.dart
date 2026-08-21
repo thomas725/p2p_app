@@ -6,6 +6,44 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_mobile_peer_status`, `init_mobile_database`
+
+/// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
+///
+/// Used by Dart/Flutter UI to display message timestamps.
+String formatTimeHhmm({required String dt}) =>
+    RustLib.instance.api.crateMobileApiFormatTimeHhmm(dt: dt);
+
+/// Check if scroll position indicates at bottom
+///
+/// Returns true if the scroll offset is at or past the point where the bottom
+/// of the content becomes visible given the visible area size.
+bool isAtBottom({
+  required int scrollOffset,
+  required int total,
+  required int visible,
+}) => RustLib.instance.api.crateMobileApiIsAtBottom(
+  scrollOffset: scrollOffset,
+  total: total,
+  visible: visible,
+);
+
+/// Calculate first visible message index accounting for scroll
+Future<(BigInt, BigInt)> calculateVisibleRange({
+  required BigInt totalMessages,
+  required BigInt scrollOffset,
+  required BigInt visibleCount,
+}) => RustLib.instance.api.crateMobileApiCalculateVisibleRange(
+  totalMessages: totalMessages,
+  scrollOffset: scrollOffset,
+  visibleCount: visibleCount,
+);
+
+/// Validate a nickname: alphanumeric and dash only, max 20 chars.
+Future<bool> validateNickname({required String nick}) =>
+    RustLib.instance.api.crateMobileApiValidateNickname(nick: nick);
+
 class MobileInitStatus {
   final String databaseUrl;
   final String localPeerId;

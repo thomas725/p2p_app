@@ -28,6 +28,7 @@ struct MobileNode {
 
 /// Start the p2p node with an explicit DB path.
 /// Returns the local peer ID.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn start_node(db_path: String) -> Result<String, String> {
     start_node_impl(Some(db_path))
 }
@@ -35,6 +36,7 @@ pub fn start_node(db_path: String) -> Result<String, String> {
 /// Start the p2p node using automatic DB selection (lock-based, same as TUI).
 /// Scans CWD for unlocked .db files, picks the first one, or creates a new one.
 /// Returns the local peer ID.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn start_node_auto() -> Result<String, String> {
     start_node_impl(None)
 }
@@ -105,6 +107,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 }
 
 /// Stop the p2p node (drops the swarm task).
+#[flutter_rust_bridge::frb(ignore)]
 pub fn stop_node() -> Result<(), String> {
     if let Some(m) = NODE.get() {
         let mut node = m.lock().unwrap();
@@ -120,6 +123,7 @@ pub fn stop_node() -> Result<(), String> {
 
 /// Poll the next swarm event (non-blocking). Returns None if no event ready.
 /// Also processes events: saves peers, sends nickname DMs, stores received nicknames.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
     let mut node = m.lock().unwrap();
@@ -188,6 +192,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
 }
 
 /// Send a broadcast message to all connected peers.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn send_broadcast(content: String) -> Result<(), String> {
     let m = NODE.get().ok_or("Node not started")?;
     let node = m.lock().unwrap();
@@ -203,6 +208,7 @@ pub fn send_broadcast(content: String) -> Result<(), String> {
 }
 
 /// Send a direct message to a specific peer.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
     let m = NODE.get().ok_or("Node not started")?;
     let node = m.lock().unwrap();
@@ -239,6 +245,7 @@ pub struct MobilePeerRecord {
 }
 
 /// Get all known peers from the database with nickname info.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
     let known = crate::load_peers().map_err(|e| e.to_string())?;
     Ok(known
@@ -297,12 +304,14 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
 }
 
 /// Load broadcast messages (newest-first from DB, reversed to chronological).
+#[flutter_rust_bridge::frb(ignore)]
 pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
     let msgs = load_messages(CHAT_TOPIC, limit as usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().rev().map(message_to_chat).collect())
 }
 
 /// Load DM history with a specific peer (already oldest-first in DB).
+#[flutter_rust_bridge::frb(ignore)]
 pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>, String> {
     let msgs =
         load_direct_messages(&peer_id, limit as usize).map_err(|e| e.to_string())?;
@@ -311,6 +320,7 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
 
 /// Save an outgoing broadcast message, persist to DB, and send via swarm.
 /// Returns the saved ChatMessage.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
@@ -344,6 +354,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
 
 /// Save an outgoing DM, persist to DB, and send via swarm.
 /// Returns the saved ChatMessage.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
@@ -384,6 +395,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
 }
 
 /// Save an incoming message (broadcast or DM) to the database.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn save_incoming_message(
     content: String,
     peer_id: String,
