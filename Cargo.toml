@@ -7,6 +7,11 @@ default-run = "p2p_chat_tui"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[lints.rust]
+# flutter_rust_bridge's attribute macros expand code containing cfg(frb_expand)
+# into this crate; declaring it here stops unexpected_cfgs warnings.
+unexpected_cfgs = { check-cfg = ['cfg(frb_expand)'] }
+
 [profile.release]
 ## https://github.com/johnthagen/min-sized-rust
 strip = true      # Strip symbols from binary
