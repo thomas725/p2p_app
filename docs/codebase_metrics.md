@@ -2,25 +2,26 @@
 
 ## Summary
 
-| Metric                |   Value |
-|:----------------------|:--------|
-| Total Rust Files      |      41 |
-| Total Rust Lines      |   9,289 |
-| Total Rust Chars      | 324,998 |
-| Avg Lines/Rust File   |     226 |
-| Avg Chars/Rust File   |   7,926 |
-| Total Dart Files      |       8 |
-| Total Dart Lines      |   3,281 |
-| Total Dart Chars      |  97,727 |
-| Avg Lines/Dart File   |     410 |
-| Avg Chars/Dart File   |  12,215 |
-| Total Kotlin Files    |       2 |
-| Total Kotlin Lines    |     199 |
-| Total Kotlin Chars    |   6,491 |
-| Avg Lines/Kotlin File |      99 |
-| Avg Chars/Kotlin File |   3,245 |
+| Metric                |           Value |
+|:----------------------|:----------------|
+| Total Rust Files      |              41 |
+| Total Rust Lines      |           9,559 |
+| Total Rust Chars      |         336,229 |
+| Avg Lines/Rust File   |             233 |
+| Avg Chars/Rust File   |           8,200 |
+| Total Dart Files      |               8 |
+| Total Dart Lines      |           3,625 |
+| Total Dart Chars      |         108,959 |
+| Avg Lines/Dart File   |             453 |
+| Avg Chars/Dart File   |          13,619 |
+| Covered Dart Lines    | 40 / 1,297 (3%) |
+| Total Kotlin Files    |               2 |
+| Total Kotlin Lines    |             199 |
+| Total Kotlin Chars    |           6,491 |
+| Avg Lines/Kotlin File |              99 |
+| Avg Chars/Kotlin File |           3,245 |
 
-**Grand Total:** 51 files, 12,769 lines, 429,216 characters
+**Grand Total:** 51 files, 13,383 lines, 451,679 characters
 
 ## Rust Source Files
 
@@ -28,21 +29,21 @@
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
 | /                       | build.rs             |     5 |  3949 |   118 |        - |       - | Build script                           |
 | src                     | behavior.rs          |     4 |  6157 |   181 |        - |       - | Network behavior definitions           |
-| src                     | db.rs                |     6 | 15218 |   421 |        - |       - | Database connection & identity mgmt    |
+| src                     | db.rs                |     6 | 15701 |   431 |        - |       - | Database connection & identity mgmt    |
 | src                     | dioxus_app.rs        |    11 | 19980 |   552 |        - |       - | Web UI app shell & components (Dioxus) |
 | src                     | dioxus_styles.rs     |     0 |  3862 |    50 |        - |       - | Web UI CSS styles (Dioxus)             |
 | src                     | dioxus_swarm.rs      |     5 |  6079 |   160 |        - |       - | Web UI swarm event handling (Dioxus)   |
 | src                     | fmt.rs               |     4 |  3838 |   129 |        - |       - | Formatting & display utilities         |
-| src                     | frb_generated.rs     |     6 | 45651 |  1164 |        - |       - | flutter_rust_bridge codegen            |
+| src                     | frb_generated.rs     |     7 | 54385 |  1377 |        - |       - | flutter_rust_bridge codegen            |
 | src                     | lib.rs               |     1 |  6054 |   160 |        - |       - | Module declarations & re-exports       |
 | src                     | logging.rs           |     4 |  8974 |   282 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     4 |  8406 |   227 |        - |       - | Message persistence & retrieval        |
-| src                     | mobile_api.rs        |     3 |  6908 |   206 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 28470 |   873 |        - |       - | Mobile node lifecycle & swarm          |
+| src                     | mobile_api.rs        |     3 |  7675 |   226 |        - |       - | Mobile FRB API surface                 |
+| src                     | mobile_node.rs       |     5 | 29128 |   890 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     1 |  3247 |    94 |        - |       - | Module declarations                    |
 | src                     | network.rs           |     3 |  1851 |    61 |        - |       - | Network size classification            |
-| src                     | nickname.rs          |     5 |  4699 |   129 |        - |       - | Nickname management                    |
-| src                     | peers.rs             |     3 |  6171 |   182 |        - |       - | Peer management & tracking             |
+| src                     | nickname.rs          |     5 |  4866 |   132 |        - |       - | Nickname management                    |
+| src                     | peers.rs             |     3 |  6248 |   183 |        - |       - | Peer management & tracking             |
 | src                     | swarm_handler.rs     |     7 |  9362 |   272 |        - |       - | Network event translation              |
 | src                     | tui_helpers.rs       |     3 |  6896 |   226 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render.rs        |     5 | 11816 |   363 |        - |       - | TUI rendering & state management       |
@@ -62,13 +63,13 @@
 | src/bin/tui             | state.rs             |     3 |  8341 |   226 |        - |       - | Shared application state               |
 | src/bin/tui/render_loop | layout.rs            |     3 |  1882 |    56 |        - |       - | UI layout component rendering          |
 | src/bin/tui/render_loop | mod.rs               |     4 |  5074 |   151 |        - |       - | Render loop orchestration (60 FPS)     |
-| src/generated           | columns.rs           |     1 |  1653 |    42 |        - |       - | Auto-generated column definitions      |
+| src/generated           | columns.rs           |     1 |  1698 |    43 |        - |       - | Auto-generated column definitions      |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
-| src/generated           | models_insertable.rs |     1 |  3256 |    92 |        - |       - | Insertable data models                 |
-| src/generated           | models_queryable.rs  |     1 |  3895 |   110 |        - |       - | Queryable data models                  |
-| src/generated           | schema.rs            |     2 |  1570 |    71 |        - |       - | Database schema (Diesel)               |
+| src/generated           | models_insertable.rs |     1 |  3383 |    94 |        - |       - | Insertable data models                 |
+| src/generated           | models_queryable.rs  |     1 |  4022 |   112 |        - |       - | Queryable data models                  |
+| src/generated           | schema.rs            |     2 |  1616 |    72 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 41 files, 9,289 lines, 324,998 characters
+**Total:** 41 files, 9,559 lines, 336,229 characters
 
 ## Rust Test Files
 
@@ -81,13 +82,13 @@
 | shared | tui_test_state.rs                 |   241 |  6963 |     6 | Test file                             |
 | tests  | additional_coverage.rs            |   119 |  3892 |     2 | Additional coverage tests             |
 | tests  | behavior.rs                       |   207 |  5990 |     5 | behavior module tests                 |
-| tests  | db.rs                             |   188 |  5305 |     3 | database module tests                 |
+| tests  | db.rs                             |   194 |  5686 |     3 | database module tests                 |
 | tests  | db_selection.rs                   |    57 |  1737 |     4 | Database selection tests              |
 | tests  | fmt.rs                            |   291 |  7626 |     2 | fmt module tests                      |
 | tests  | logging.rs                        |   296 |  8311 |     3 | logging module tests                  |
 | tests  | messages.rs                       |   496 | 14906 |     3 | messages module tests                 |
 | tests  | network.rs                        |    49 |  1638 |     1 | network module tests                  |
-| tests  | nickname.rs                       |   398 | 12478 |     4 | nickname module tests                 |
+| tests  | nickname.rs                       |   422 | 13508 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                |  1021 | 36271 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   322 |  8933 |     3 | peers module tests                    |
 | tests  | swarm_handler.rs                  |   513 | 17514 |     8 | swarm_handler module tests            |
@@ -105,7 +106,7 @@
 | unit   | unit_bin_tui_command_processor.rs |   874 | 29128 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1347 |     2 | Unit tests for TUI event source       |
 | unit   | unit_bin_tui_input_processor.rs   |   610 | 18637 |     4 | Unit tests for TUI input processor    |
-| unit   | unit_bin_tui_main_loop.rs         |   236 |  7238 |     3 | Unit tests for TUI main loop          |
+| unit   | unit_bin_tui_main_loop.rs         |   239 |  7348 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs  |   251 |  8153 |     4 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_mod.rs   |   193 |  5783 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs   |   497 | 15673 |     3 | Unit tests for TUI scroll handlers    |
@@ -125,22 +126,22 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3073 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   254 |  6822 |     3 | Unit tests for types module           |
 
-**Total:** 50 test files, 14,015 lines, 434,441 characters
+**Total:** 50 test files, 14,048 lines, 435,962 characters
 
 ## Dart Source Files
 
 | Folder       | File                   | Depth | Chars | Lines | Testable | Covered | Purpose                             |
 |:-------------|:-----------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
-| lib          | main.dart              |    19 | 41128 |  1339 |        - |       - | Flutter app entry point             |
-| lib/src/rust | api.dart               |     2 |  3414 |    87 |        - |       - | FRB API bindings (generated)        |
-| lib/src/rust | frb_generated.dart     |     6 | 35310 |  1157 |        - |       - | flutter_rust_bridge codegen         |
-| lib/src/rust | frb_generated.io.dart  |     3 |  5878 |   232 |        - |       - | FRB IO bindings (generated)         |
-| lib/src/rust | frb_generated.web.dart |     2 |  5798 |   232 |        - |       - | FRB web bindings (generated)        |
-| lib/src/rust | mobile_api.dart        |     5 |  1464 |    53 |        - |       - | Mobile API bindings (generated)     |
-| lib/src/rust | mobile_node.dart       |     5 |  3652 |   144 |        - |       - | Mobile node bindings (generated)    |
+| lib          | main.dart              |    19 | 41243 |  1345 |      638 |   5.64% | Flutter app entry point             |
+| lib/src/rust | api.dart               |     2 |  3414 |    87 |       28 |   7.14% | FRB API bindings (generated)        |
+| lib/src/rust | frb_generated.dart     |     6 | 42472 |  1388 |      538 |   0.37% | flutter_rust_bridge codegen         |
+| lib/src/rust | frb_generated.io.dart  |     3 |  6608 |   262 |        5 |   0.00% | FRB IO bindings (generated)         |
+| lib/src/rust | frb_generated.web.dart |     2 |  6528 |   262 |        - |       - | FRB web bindings (generated)        |
+| lib/src/rust | mobile_api.dart        |     5 |  3038 |    91 |       25 |   0.00% | Mobile API bindings (generated)     |
+| lib/src/rust | mobile_node.dart       |     5 |  4573 |   153 |       63 |   0.00% | Mobile node bindings (generated)    |
 | lib/src/rust | types.dart             |     5 |  1083 |    37 |        - |       - | Shared type definitions (generated) |
 
-**Total:** 8 files, 3,281 lines, 97,727 characters
+**Total:** 8 files, 3,625 lines, 108,959 characters (40/1297 testable lines covered, 3%)
 
 ## Dart Test Files
 
