@@ -216,8 +216,8 @@ class _HomeScreenState extends State<HomeScreen> {
       await _loadHistory();
       await _refreshPeers();
       await _scrollToFirstUnread();
-      // On desktop, auto-start the node (no foreground service needed)
-      if (!_isAndroid && !_serviceRunning) {
+      // Auto-start the node (on Android this also starts the foreground service)
+      if (!_serviceRunning) {
         await _toggleService();
       }
     } catch (e) {
