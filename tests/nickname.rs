@@ -300,6 +300,30 @@ fn test_get_peer_display_name_includes_short_id_suffix() {
     });
 }
 
+#[serial]
+#[test]
+fn test_save_peer_generates_stable_name_for_silent_peer() {
+    with_test_db(|| {
+        p2p_app::save_peer("peer-silent", &[]).unwrap();
+        // Re-saving must not regenerate the name
+        p2p_app::save_peer("peer-silent", &[]).unwrap();
+
+        let name1 = p2p_app::nickname::get_peer_display_name("peer-silent").unwrap();
+        let name2 = p2p_app::nickname::get_peer_display_name("peer-silent").unwrap();
+        assert_eq!(name1, name2, "generated name must be stable");
+        assert!(
+            !name1.starts_with("peer-silent"),
+            "should not fall back to raw ID: {name1}"
+        );
+        assert!(name1.contains('(') && name1.contains(')'), "got: {name1}");
+
+        // Announced nickname takes precedence over the generated one
+        p2p_app::nickname::set_peer_received_nickname("peer-silent", "RealName").unwrap();
+        let name = p2p_app::nickname::get_peer_display_name("peer-silent").unwrap();
+        assert!(name.starts_with("RealName"), "got: {name}");
+    });
+}
+
 // ── Additional edge cases ──────────────────────────────────────────────────────
 
 #[serial]

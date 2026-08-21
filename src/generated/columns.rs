@@ -33,6 +33,7 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("peers", "addresses", "TEXT"),
     ("peers", "created_at", "TIMESTAMP"),
     ("peers", "first_seen", "TIMESTAMP"),
+    ("peers", "generated_nickname", "TEXT"),
     ("peers", "id", "INTEGER"),
     ("peers", "last_seen", "TIMESTAMP"),
     ("peers", "peer_id", "TEXT"),

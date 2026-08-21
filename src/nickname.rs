@@ -110,8 +110,8 @@ pub fn validate_nickname(nick: &str) -> bool {
 }
 
 /// Get a human-friendly display name for a peer: their nickname (local
-/// preferred over received) followed by a short ID suffix, or just the
-/// short ID if no nickname is known.
+/// preferred over received, then an auto-generated name) followed by a short
+/// ID suffix, or just the short ID if nothing is known.
 pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     let short_id = crate::fmt::short_peer_id(peer_id);
     let suffix = &short_id[..3.min(short_id.len())];
@@ -120,6 +120,9 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     }
     if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
         return Ok(format!("{received_nick} ({suffix})"));
+    }
+    if let Some(generated) = get_peer_field(peer_id, |p| p.generated_nickname)? {
+        return Ok(format!("{generated} ({suffix})"));
     }
     Ok(short_id)
 }

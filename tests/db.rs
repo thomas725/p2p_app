@@ -180,7 +180,13 @@ fn test_sqlite_connect_fails_with_bad_path() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("DATABASE_URL", Some("/nonexistent/dir/test.db"), || {
+    // Use a regular file as parent directory: create_dir_all cannot replace
+    // it with a directory, so the connect must fail even when running as root.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let file_parent = dir.path().join("not_a_dir");
+    std::fs::write(&file_parent, b"").expect("create file");
+    let db_path = file_parent.join("sub").join("test.db");
+    temp_env::with_var("DATABASE_URL", Some(db_path.to_str().unwrap()), || {
         p2p_app::db::reset_db_url_cache();
         let result = p2p_app::db::sqlite_connect();
         assert!(result.is_err());

@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS peers (
     last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     peer_local_nickname TEXT,
     self_nickname_for_peer TEXT,
-    received_nickname TEXT
+    received_nickname TEXT,
+    generated_nickname TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_peers_peer_id ON peers(peer_id);

@@ -89,4 +89,6 @@ pub struct NewPeer {
     pub self_nickname_for_peer: Option<String>,
     /// Nickname this peer has advertised to us
     pub received_nickname: Option<String>,
+    /// Random pronounceable nickname generated for peers that never announced one
+    pub generated_nickname: Option<String>,
 }

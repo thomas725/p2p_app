@@ -29,6 +29,7 @@ fn test_extract_nickname_maps_all_fields() {
         peer_local_nickname: Some("Alice".to_string()),
         self_nickname_for_peer: Some("SelfA".to_string()),
         received_nickname: Some("Bob".to_string()),
+        generated_nickname: None,
     }];
     let (l, r, s) = extract_nickname_maps(&peers);
     assert_eq!(l.get("peer-1"), Some(&"Alice".to_string()));
@@ -49,6 +50,7 @@ fn test_extract_nickname_maps_partial_fields() {
             peer_local_nickname: Some("Local".to_string()),
             self_nickname_for_peer: None,
             received_nickname: None,
+            generated_nickname: None,
         },
         Peer {
             id: 2,
@@ -60,6 +62,7 @@ fn test_extract_nickname_maps_partial_fields() {
             peer_local_nickname: None,
             self_nickname_for_peer: Some("SelfB".to_string()),
             received_nickname: Some("RecB".to_string()),
+            generated_nickname: None,
         },
     ];
     let (l, r, s) = extract_nickname_maps(&peers);
