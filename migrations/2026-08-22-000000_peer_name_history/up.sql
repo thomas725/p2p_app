@@ -1,0 +1,8 @@
+-- Your SQL goes here
+CREATE TABLE peer_name_history (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    peer_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    name_kind TEXT NOT NULL,
+    set_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

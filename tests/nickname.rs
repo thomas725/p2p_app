@@ -212,6 +212,38 @@ fn test_set_peer_received_nickname_overwrite() {
     });
 }
 
+#[serial]
+#[test]
+fn test_received_name_change_archives_history() {
+    with_test_db(|| {
+        p2p_app::save_peer("peer-hist", &[]).unwrap();
+
+        // First received name: nothing to archive yet.
+        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Alice").unwrap();
+        let hist1 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
+        assert!(hist1.is_empty(), "no history before a name changes");
+
+        // Change to Bob: Alice is archived.
+        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Bob").unwrap();
+        let hist2 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
+        assert_eq!(hist2.len(), 1);
+        assert_eq!(hist2[0].name, "Alice");
+        assert_eq!(hist2[0].name_kind, "received");
+
+        // Change to Carol: Bob is archived (most recent first).
+        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Carol").unwrap();
+        let hist3 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
+        assert_eq!(hist3.len(), 2);
+        assert_eq!(hist3[0].name, "Bob");
+        assert_eq!(hist3[1].name, "Alice");
+
+        // Setting the same name again must not create a new history entry.
+        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Carol").unwrap();
+        let hist4 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
+        assert_eq!(hist4.len(), 2);
+    });
+}
+
 // ── self nickname for peer ────────────────────────────────────────────────────
 
 #[serial]

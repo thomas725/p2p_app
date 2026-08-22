@@ -8,7 +8,7 @@ use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
     build_swarm, current_timestamp, ensure_self_nickname, gen_msg_id, get_local_peer_id,
     get_network_size, get_self_nickname, load_direct_messages, load_messages, mark_message_sent,
-    p2plog_debug, save_message_with_meta, save_peer, set_peer_received_nickname,
+    p2plog_debug, save_message_with_meta, save_peer, record_peer_received_name_change,
     spawn_swarm_handler, CHAT_TOPIC,
 };
 use libp2p::gossipsub;
@@ -170,7 +170,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
             // Store the sender's announced nickname
             if let Some(nick) = &m.nickname {
                 if !nick.is_empty() {
-                    let _ = set_peer_received_nickname(&m.peer_id, nick);
+                    let _ = record_peer_received_name_change(&m.peer_id, nick);
                 }
             }
             // If DM is empty with a nickname, it's a nickname-only exchange — don't persist as message

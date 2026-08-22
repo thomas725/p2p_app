@@ -7,6 +7,16 @@ use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
 
+diesel::table! {
+    peer_name_history (id) {
+        id -> Integer,
+        peer_id -> Text,
+        name -> Text,
+        name_kind -> Text,
+        set_at -> Timestamp,
+    }
+}
+
 /// Generate a random two-word nickname (e.g. `"brave-otter"`).
 #[must_use]
 pub fn generate_self_nickname() -> String {
@@ -105,6 +115,72 @@ pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Opti
 /// Get the nickname this peer announced about themselves, if any.
 pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<String>> {
     get_peer_field(peer_id, |p| p.received_nickname)
+}
+
+/// An archived previous nickname for a peer, kept so we retain a timeline of
+/// the names we knew them by before the current one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PeerNameHistoryEntry {
+    pub name: String,
+    pub name_kind: String,
+    pub set_at: chrono::NaiveDateTime,
+}
+
+/// Persist a superseded nickname into the `peer_name_history` table.
+fn archive_peer_name(peer_id: &str, name: &str, kind: &str) -> color_eyre::Result<()> {
+    let conn = &mut sqlite_connect()?;
+    let now = chrono::Utc::now().naive_utc();
+    diesel::insert_into(peer_name_history::table)
+        .values((
+            peer_name_history::peer_id.eq(peer_id),
+            peer_name_history::name.eq(name),
+            peer_name_history::name_kind.eq(kind),
+            peer_name_history::set_at.eq(now),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Record a nickname received from a remote peer. If it differs from the name
+/// we had stored, the old one is archived into `peer_name_history` with a
+/// timestamp so we keep a record of the names we knew this peer by before.
+pub fn record_peer_received_name_change(
+    peer_id: &str,
+    new_name: &str,
+) -> color_eyre::Result<()> {
+    let current = get_peer_received_nickname(peer_id)?;
+    match current {
+        Some(old) if old == new_name => Ok(()),
+        Some(old) => {
+            archive_peer_name(peer_id, &old, "received")?;
+            set_peer_received_nickname(peer_id, new_name)
+        }
+        None => set_peer_received_nickname(peer_id, new_name),
+    }
+}
+
+/// Read the archived nickname history for a peer (most recent first).
+pub fn get_peer_name_history(
+    peer_id: &str,
+) -> color_eyre::Result<Vec<PeerNameHistoryEntry>> {
+    let conn = &mut sqlite_connect()?;
+    let rows = peer_name_history::table
+        .filter(peer_name_history::peer_id.eq(peer_id))
+        .order(peer_name_history::set_at.desc())
+        .select((
+            peer_name_history::name,
+            peer_name_history::name_kind,
+            peer_name_history::set_at,
+        ))
+        .load::<(String, String, chrono::NaiveDateTime)>(conn)?;
+    Ok(rows
+        .into_iter()
+        .map(|(name, name_kind, set_at)| PeerNameHistoryEntry {
+            name,
+            name_kind,
+            set_at,
+        })
+        .collect())
 }
 
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.

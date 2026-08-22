@@ -119,9 +119,9 @@ pub use mobile_api::{
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{
     ensure_self_nickname, generate_self_nickname, get_peer_display_name, get_peer_local_nickname,
-    get_peer_received_nickname, get_peer_self_nickname_for_peer, get_self_nickname,
-    set_peer_local_nickname, set_peer_received_nickname, set_peer_self_nickname_for_peer,
-    set_self_nickname,
+    get_peer_name_history, get_peer_received_nickname, get_peer_self_nickname_for_peer,
+    get_self_nickname, record_peer_received_name_change, set_peer_local_nickname,
+    set_peer_received_nickname, set_peer_self_nickname_for_peer, set_self_nickname,
 };
 pub use peers::{
     get_average_peer_count, get_recent_peer_count, load_known_peers, load_listen_ports, load_peers,

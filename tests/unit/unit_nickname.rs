@@ -96,7 +96,10 @@ fn peer_display_name_received_then_fallback() {
         assert!(received_display.starts_with("recv "));
 
         let fallback = get_peer_display_name("peer-fallback").expect("fallback");
-        assert_eq!(fallback, crate::fmt::short_peer_id("peer-fallback"));
+        // Unknown (never-seen) peers get an auto-generated petname rather than
+        // the raw short ID, so the display name is always human-friendly.
+        assert_ne!(fallback, crate::fmt::short_peer_id("peer-fallback"));
+        assert!(fallback.contains('('), "expected a petname with an ID suffix");
     });
 }
 
