@@ -3,6 +3,7 @@
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
+use diesel::RunQueryDsl as _;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -249,11 +250,21 @@ fn test_set_peer_self_nickname_for_peer_overwrite() {
 
 #[serial]
 #[test]
-fn test_get_peer_display_name_short_id_fallback() {
+fn test_get_peer_display_name_assigns_generated_petname_for_silent_peer() {
     with_test_db(|| {
-        let name = p2p_app::nickname::get_peer_display_name("12D3KooWABCDEFGH").unwrap();
-        assert!(!name.is_empty());
-        assert!(name.contains("ABCDEFGH") || name.len() <= 8);
+        // A silent peer (no announced/local nickname) gets a stable generated
+        // petname on first lookup, persisted so subsequent lookups match.
+        let name1 = p2p_app::nickname::get_peer_display_name("12D3KooWABCDEFGH").unwrap();
+        let name2 = p2p_app::nickname::get_peer_display_name("12D3KooWABCDEFGH").unwrap();
+        assert_eq!(name1, name2, "generated petname must be stable");
+        assert!(
+            name1.contains('(') && name1.contains(')'),
+            "silent peer should show a generated petname, got: {name1}"
+        );
+        assert!(
+            !name1.contains("12D3KooWABCDEFGH"),
+            "should not be the raw id: {name1}"
+        );
     });
 }
 
@@ -321,6 +332,46 @@ fn test_save_peer_generates_stable_name_for_silent_peer() {
         p2p_app::nickname::set_peer_received_nickname("peer-silent", "RealName").unwrap();
         let name = p2p_app::nickname::get_peer_display_name("peer-silent").unwrap();
         assert!(name.starts_with("RealName"), "got: {name}");
+    });
+}
+
+#[serial]
+#[test]
+fn test_save_peer_assigns_name_for_legacy_peer() {
+    with_test_db(|| {
+        // Simulate a peer created before the petname feature: its
+        // generated_nickname column is NULL. It must still resolve to a stable
+        // generated petname (assigned lazily on display) and not a raw ID.
+        {
+            let conn = &mut p2p_app::db::sqlite_connect().unwrap();
+            diesel::sql_query(
+                "INSERT INTO peers (peer_id, addresses, created_at, first_seen, last_seen) \
+                 VALUES ('peer-legacy', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            )
+            .execute(conn)
+            .unwrap();
+        }
+
+        // First lookup assigns and persists a petname.
+        let name1 = p2p_app::nickname::get_peer_display_name("peer-legacy").unwrap();
+        assert!(
+            name1.contains('(') && name1.contains(')'),
+            "legacy peer should resolve to a generated name: {name1}"
+        );
+        assert!(
+            !name1.contains("peer-legacy"),
+            "should not be the raw id: {name1}"
+        );
+
+        // save_peer (e.g. on reconnect) must not disturb the assigned name.
+        p2p_app::save_peer("peer-legacy", &[]).unwrap();
+        let name2 = p2p_app::nickname::get_peer_display_name("peer-legacy").unwrap();
+        assert_eq!(name1, name2, "assigned name must be stable across saves");
+
+        // Saving again must still keep the same name.
+        p2p_app::save_peer("peer-legacy", &[]).unwrap();
+        let name3 = p2p_app::nickname::get_peer_display_name("peer-legacy").unwrap();
+        assert_eq!(name1, name3, "assigned name must remain stable");
     });
 }
 

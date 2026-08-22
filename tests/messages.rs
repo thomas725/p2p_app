@@ -494,3 +494,45 @@ fn test_save_message_boolean_variants() {
         assert_eq!(sent.content, "s");
     });
 }
+
+// ── Mobile message sender display ─────────────────────────────────────────────
+
+#[cfg(feature = "mobile")]
+#[serial]
+#[test]
+fn test_incoming_message_from_silent_peer_shows_generated_name() {
+    with_test_db(|| {
+        // Silent peer: no announced nickname, but it gets a generated petname.
+        p2p_app::save_peer("silent-peer", &[]).unwrap();
+
+        let chat = p2p_app::mobile_node::save_incoming_message(
+            "hello".to_string(),
+            "silent-peer".to_string(),
+            false,
+            None,
+        )
+        .unwrap();
+
+        // sender_nickname must be resolved to the petname, not a raw ID fragment.
+        let name = chat
+            .sender_nickname
+            .expect("sender name should be resolved");
+        assert!(
+            name.contains('(') && name.contains(')'),
+            "silent peer message should show generated petname, got: {name}"
+        );
+        assert!(
+            !name.starts_with("silent-peer"),
+            "should not fall back to raw ID: {name}"
+        );
+
+        // Reloading from DB keeps the resolved name.
+        let loaded = p2p_app::mobile_node::load_broadcast_messages(10)
+            .unwrap()
+            .into_iter()
+            .find(|m| m.content == "hello")
+            .expect("message persisted");
+        assert_eq!(loaded.sender_nickname, Some(name));
+    });
+}
+
