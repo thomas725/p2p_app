@@ -60,5 +60,9 @@ done
 bash "$APP_DIR/build_rust_android.sh"
 
 # 4. Build and launch the Flutter app on the Waydroid device.
+#    `flutter clean` forces a fresh build so a stale cached APK can't keep
+#    shipping the old Rust .so. Leave it enabled when chasing native changes;
+#    comment it out to reuse the previous Flutter build for faster launches.
 cd "$APP_DIR"
+flutter clean
 exec flutter run -d "$SERIAL"
