@@ -1,6 +1,8 @@
 //! Nickname management for peers and local identity
 
 use crate::sqlite_connect;
+use crate::generated::models_insertable::NewPeer;
+use crate::logging::p2plog_debug;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
@@ -33,9 +35,11 @@ pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
 /// Return this node's nickname, generating and storing a random one if none exists yet.
 pub fn ensure_self_nickname() -> color_eyre::Result<String> {
     if let Some(nick) = get_self_nickname()? {
+        p2plog_debug(format!("[Nickname] loaded self nickname from db: {nick}"));
         return Ok(nick);
     }
     let nickname = generate_self_nickname();
+    p2plog_debug(format!("[Nickname] generated and stored self nickname: {nickname}"));
     set_self_nickname(&nickname)?;
     Ok(nickname)
 }
@@ -109,6 +113,46 @@ pub fn validate_nickname(nick: &str) -> bool {
     !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
 }
 
+/// Ensure a silent peer has a stable generated petname, assigning and storing
+/// one on first use. Returns the petname. This is what makes silent peers show
+/// a name instead of a raw ID even for peers discovered before this feature or
+/// loaded from history before they reconnect this session.
+fn ensure_generated_nickname(peer_id: &str) -> color_eyre::Result<String> {
+    if let Some(existing) = get_peer_field(peer_id, |p| p.generated_nickname)? {
+        return Ok(existing);
+    }
+    let name = generate_self_nickname();
+    let conn = &mut sqlite_connect()?;
+    // Make sure a row exists so the UPDATE has a row to match.
+    let exists = crate::generated::schema::peers::table
+        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+        .count()
+        .get_result::<i64>(conn)? > 0;
+    if !exists {
+        let now = chrono::Utc::now().naive_utc();
+        let _ = diesel::insert_into(crate::generated::schema::peers::table)
+            .values(NewPeer {
+                peer_id: peer_id.to_string(),
+                addresses: String::new(),
+                first_seen: now,
+                last_seen: now,
+                peer_local_nickname: None,
+                self_nickname_for_peer: None,
+                received_nickname: None,
+                generated_nickname: None,
+            })
+            .on_conflict(crate::generated::schema::peers::peer_id)
+            .do_nothing()
+            .execute(conn);
+    }
+    diesel::update(crate::generated::schema::peers::table)
+        .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+        .set(crate::generated::schema::peers::generated_nickname.eq(&name))
+        .execute(conn)?;
+    p2plog_debug(format!("[Nickname] assigned petname '{name}' for silent peer {peer_id}"));
+    Ok(name)
+}
+
 /// Get a human-friendly display name for a peer: their nickname (local
 /// preferred over received, then an auto-generated name) followed by a short
 /// ID suffix, or just the short ID if nothing is known.
@@ -121,10 +165,10 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
         return Ok(format!("{received_nick} ({suffix})"));
     }
-    if let Some(generated) = get_peer_field(peer_id, |p| p.generated_nickname)? {
-        return Ok(format!("{generated} ({suffix})"));
-    }
-    Ok(short_id)
+    // Silent peer: assign a stable petname on demand (and persist it) so it
+    // shows a name instead of the raw ID across sessions and reloading.
+    let generated = ensure_generated_nickname(peer_id)?;
+    Ok(format!("{generated} ({suffix})"))
 }
 
 #[cfg(test)]

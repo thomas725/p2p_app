@@ -4,6 +4,7 @@ use crate::{
     generated::models_insertable::{NewPeer, NewPeerSession},
     generated::models_queryable::Peer,
     generated::schema::peers::dsl::peers,
+    logging::p2plog_debug,
 };
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
@@ -39,6 +40,25 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
     let addresses_str = addresses.join(",");
     let now = chrono::Utc::now().naive_utc();
 
+    // Generate a petname only for a brand-new peer. Re-seen peers keep the name
+    // already stored in the database. Silent peers that predate this feature
+    // (NULL generated_nickname) get a petname lazily via get_peer_display_name.
+    let generated_nickname = {
+        let exists = peers
+            .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
+            .count()
+            .get_result::<i64>(conn)? > 0;
+        if exists {
+            None
+        } else {
+            let name = crate::nickname::generate_self_nickname();
+            p2plog_debug(format!(
+                "[Nickname] generated petname '{name}' for new silent peer {peer_id}"
+            ));
+            Some(name)
+        }
+    };
+
     let new_peer = NewPeer {
         peer_id: peer_id.to_string(),
         addresses: addresses_str.clone(),
@@ -47,7 +67,7 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         peer_local_nickname: None,
         self_nickname_for_peer: None,
         received_nickname: None,
-        generated_nickname: Some(crate::nickname::generate_self_nickname()),
+        generated_nickname,
     };
 
     let peer = diesel::insert_into(crate::generated::schema::peers::table)

@@ -287,6 +287,14 @@ pub struct ChatMessage {
 }
 
 fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
+    // Fall back to the peer's resolved display name (local > received >
+    // generated petname > short ID) when no nickname was announced, so silent
+    // peers show a petname instead of a raw ID fragment in the message list.
+    let sender_nickname = msg.sender_nickname.clone().or_else(|| {
+        msg.peer_id.as_ref().map(|pid| {
+            crate::get_peer_display_name(pid).unwrap_or_else(|_| pid.clone())
+        })
+    });
     ChatMessage {
         id: msg.id,
         content: msg.content,
@@ -304,7 +312,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
             .created_at
             .format("%Y-%m-%d %H:%M:%S")
             .to_string(),
-        sender_nickname: msg.sender_nickname,
+        sender_nickname,
     }
 }
 
@@ -408,6 +416,12 @@ pub fn save_incoming_message(
     nickname: Option<String>,
 ) -> Result<ChatMessage, String> {
     let target = is_direct.then_some(peer_id.as_str());
+    // Ensure the peer row exists (and gets a generated petname if it's a
+    // silent peer seen for the first time / before this feature) so the
+    // message's sender label can resolve to a name instead of a raw ID.
+    if let Err(e) = crate::save_peer(&peer_id, &[]) {
+        p2plog_debug(format!("Failed to ensure peer on incoming message: {e}"));
+    }
     let meta = MessageMeta {
         sender_nickname: nickname,
         msg_id: None,
