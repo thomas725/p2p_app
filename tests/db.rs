@@ -192,3 +192,80 @@ fn test_sqlite_connect_fails_with_bad_path() {
         assert!(result.is_err());
     });
 }
+
+#[serial]
+#[test]
+fn test_db_path_determined_once_per_init() {
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::tempdir().expect("tempdir");
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(dir.path()).unwrap();
+    p2p_app::db::reset_db_url_cache();
+    p2p_app::logging::clear_tui_logs();
+    // No DATABASE_URL -> path determination actually runs.
+    temp_env::with_var("DATABASE_URL", None::<&str>, || {
+        let _ = p2p_app::db::init_database();
+    });
+    let _ = std::env::set_current_dir(&old_cwd);
+    let logs = p2p_app::logging::get_tui_logs();
+    let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
+    let checking_count = logs
+        .iter()
+        .filter(|l| l.contains("[DB] checking"))
+        .count();
+    println!("DEBUG cwd_count={cwd_count} checking_count={checking_count}");
+    assert_eq!(
+        cwd_count, 1,
+        "path determination should log [DB] cwd exactly once per init_database call, got {cwd_count}"
+    );
+    assert!(
+        checking_count <= 1,
+        "path determination should check dbs at most once per init_database call, got {checking_count}"
+    );
+}
+
+#[serial]
+#[test]
+fn test_db_path_determined_once_under_concurrent_calls() {
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::tempdir().expect("tempdir");
+    // Pre-existing .db so the "checking" loop actually logs.
+    std::fs::write(dir.path().join("sqlite.db"), b"").expect("seed db");
+    std::fs::write(dir.path().join("sqlite.db.lock"), b"1").expect("seed lock");
+    let old_cwd = std::env::current_dir().unwrap();
+    std::env::set_current_dir(dir.path()).unwrap();
+    p2p_app::db::reset_db_url_cache();
+    p2p_app::logging::clear_tui_logs();
+
+    temp_env::with_var("DATABASE_URL", None::<&str>, || {
+        let mut handles = Vec::new();
+        for _ in 0..4 {
+            handles.push(std::thread::spawn(|| {
+                let _ = p2p_app::db::init_database();
+            }));
+        }
+        for h in handles {
+            let _ = h.join();
+        }
+    });
+    let _ = std::env::set_current_dir(&old_cwd);
+    let logs = p2p_app::logging::get_tui_logs();
+    let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
+    let checking_count = logs
+        .iter()
+        .filter(|l| l.contains("[DB] checking"))
+        .count();
+    println!("DEBUG concurrent cwd_count={cwd_count} checking_count={checking_count}");
+    assert!(
+        cwd_count == 1,
+        "concurrent init_database must determine path exactly once, got {cwd_count}"
+    );
+    assert!(
+        checking_count <= 1,
+        "concurrent init_database must check dbs at most once, got {checking_count}"
+    );
+}

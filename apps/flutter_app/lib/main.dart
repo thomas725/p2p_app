@@ -358,7 +358,6 @@ class _HomeScreenState extends State<HomeScreen> {
             : await startNodeAuto();
         _startEventPolling();
         setState(() => _serviceRunning = true);
-        debugPrint('Node started: $peerId');
         await _loadHistory();
         await _refreshPeers();
       }

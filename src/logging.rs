@@ -208,7 +208,10 @@ pub fn push_log(message: impl Into<String>) {
     // Notify all registered callbacks (or stderr if none registered)
     let callbacks = LOG_CALLBACKS.lock().unwrap();
     if callbacks.is_empty() {
-        // Use the line without trailing newline for terminal output
+        // On the mobile frontend the stderr mirror below already emits every
+        // line, so avoid printing it twice during early startup (before the
+        // Flutter callback is registered).
+        #[cfg(not(feature = "mobile"))]
         eprintln!("[{ts}] {msg}");
     } else {
         for cb in callbacks.iter() {

@@ -17,7 +17,17 @@ rm -rf build/linux
 flutter pub get
 flutter build linux --debug
 
-echo "Launching desktop app..."
+# Flutter can reuse a cached Rust core, so force the freshly built library into
+# the bundle. This guarantees the launched app always runs the latest rust core.
 cd "$SCRIPT_DIR"
-exec env LD_LIBRARY_PATH=apps/flutter_app/build/linux/x64/debug/bundle/lib \
+BUNDLE_LIB="apps/flutter_app/build/linux/x64/debug/bundle/lib"
+if [ -f "target/release/libp2p_app.so" ] && [ -d "$BUNDLE_LIB" ]; then
+    cp -f "target/release/libp2p_app.so" "$BUNDLE_LIB/libp2p_app.so"
+    echo "Rust core updated in bundle: $BUNDLE_LIB/libp2p_app.so"
+else
+    echo "WARNING: could not locate built Rust core or bundle lib dir" >&2
+fi
+
+echo "Launching desktop app..."
+exec env LD_LIBRARY_PATH="$BUNDLE_LIB" \
   apps/flutter_app/build/linux/x64/debug/bundle/p2p_app_flutter
