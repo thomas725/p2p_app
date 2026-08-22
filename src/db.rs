@@ -343,16 +343,19 @@ pub fn get_database_url() -> String {
         return url;
     }
 
-    if let Ok(cached) = db_url_cache().lock()
-        && let Some(url) = cached.clone()
-    {
+    // Hold the cache lock across determination so concurrent callers (several
+    // DB operations firing at startup) don't each run find_or_create_unused_db.
+    // Without this, the path-selection logs fire twice and the threads could
+    // even end up choosing different database files.
+    let mut cache = db_url_cache()
+        .lock()
+        .expect("DB_URL cache mutex poisoned");
+    if let Some(url) = cache.clone() {
         return url;
     }
 
     let url = determine_db_path().unwrap_or_else(|_| "sqlite.db".to_owned());
-    if let Ok(mut cached) = db_url_cache().lock() {
-        *cached = Some(url.clone());
-    }
+    *cache = Some(url.clone());
     url
 }
 
