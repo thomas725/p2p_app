@@ -706,44 +706,39 @@ class _MessageBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: selected ? Border.all(color: cs.primary, width: 2) : null,
           ),
-          child: Text.rich(
-            TextSpan(
-              style: TextStyle(fontSize: 14, color: fg),
-              children: [
-                TextSpan(
-                  text: '\n\n',
-                  style: TextStyle(fontSize: 0, height: 0),
-                ),
-                if (isOwn)
-                  TextSpan(
-                    text: 'Me\n',
-                    style: TextStyle(fontSize: 0, height: 0),
-                  )
-                else
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: GestureDetector(
-                      onTap: openDm,
-                      child: Text(
-                        '$senderName\n',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: openDm != null ? cs.primary : fg.withAlpha(180),
-                          decoration: openDm != null
-                              ? TextDecoration.underline
-                              : TextDecoration.none,
-                        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isOwn)
+                GestureDetector(
+                  onTap: openDm,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      senderName,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: openDm != null ? cs.primary : fg.withAlpha(180),
+                        decoration: openDm != null
+                            ? TextDecoration.underline
+                            : TextDecoration.none,
                       ),
                     ),
                   ),
-                TextSpan(text: message.content),
-                TextSpan(
-                  text: '\n${message.sentAt ?? formatTimeHhmm(dt: message.createdAt)}',
+                ),
+              Text(
+                message.content,
+                style: TextStyle(fontSize: 14, color: fg),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  message.sentAt ?? formatTimeHhmm(dt: message.createdAt),
                   style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
