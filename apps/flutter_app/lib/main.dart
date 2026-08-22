@@ -385,10 +385,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Open a DM with the sender of a broadcast message. If the peer isn't in the
-  // discovered list yet, synthesize a record from what we know so the DM still
-  // opens.
-  void _openDmForPeerId(String peerId) {
+  // Open the info page for the sender of a broadcast message. If the peer
+  // isn't in the discovered list yet, synthesize a record from what we know.
+  void _openPeerInfoForPeerId(String peerId) {
     final known = _peers.where((p) => p.peerId == peerId).firstOrNull;
     final record = known ??
         MobilePeerRecord(
@@ -399,7 +398,12 @@ class _HomeScreenState extends State<HomeScreen> {
           localNickname: null,
           displayName: peerId,
         );
-    _openDmChat(record);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PeerInfoScreen(peer: record, serviceRunning: _serviceRunning),
+      ),
+    );
   }
 
   @override
@@ -436,7 +440,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onBubbleTap: _onBubbleTap,
         onCancelSelection: _cancelSelection,
         onCopySelected: _copySelected,
-        onOpenDm: _openDmForPeerId,
+        onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
       _PeerList(peers: _peers, onTap: _openDmChat, serviceRunning: _serviceRunning),
       const _LogTab(),
@@ -481,7 +485,7 @@ class _BroadcastChat extends StatefulWidget {
     required this.onBubbleTap,
     required this.onCancelSelection,
     required this.onCopySelected,
-    required this.onOpenDm,
+    required this.onOpenPeerInfo,
   });
 
   final List<ChatMessage> messages;
@@ -496,7 +500,7 @@ class _BroadcastChat extends StatefulWidget {
   final void Function(int) onBubbleTap;
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
-  final void Function(String) onOpenDm;
+  final void Function(String) onOpenPeerInfo;
 
   @override
   State<_BroadcastChat> createState() => _BroadcastChatState();
@@ -568,7 +572,7 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                                 selectionMode: widget.selectionMode,
                                 onDoubleTap: () => widget.onBubbleDoubleTap(i),
                                 onTap: () => widget.onBubbleTap(i),
-                                onOpenDm: widget.onOpenDm,
+                                onOpenPeerInfo: widget.onOpenPeerInfo,
                               ),
                           ],
                         ),
@@ -663,7 +667,7 @@ class _MessageBubble extends StatelessWidget {
     this.selectionMode = false,
     this.onDoubleTap,
     this.onTap,
-    this.onOpenDm,
+    this.onOpenPeerInfo,
   });
   final ChatMessage message;
   final bool isOwn;
@@ -671,7 +675,7 @@ class _MessageBubble extends StatelessWidget {
   final bool selectionMode;
   final VoidCallback? onDoubleTap;
   final VoidCallback? onTap;
-  final void Function(String)? onOpenDm;
+  final void Function(String)? onOpenPeerInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -687,9 +691,9 @@ class _MessageBubble extends StatelessWidget {
                     ? message.peerId!.substring(0, 12)
                     : message.peerId!)
                 : 'Unknown'));
-    // Tapping the sender name opens a DM with that peer (unless selecting).
-    final openDm = (!isOwn && !selectionMode && onOpenDm != null)
-        ? () => onOpenDm!(message.peerId!)
+    // Tapping the sender name opens the peer info page (unless selecting).
+    final onOpenPeerInfo = (!isOwn && !selectionMode && this.onOpenPeerInfo != null)
+        ? () => this.onOpenPeerInfo!(message.peerId!)
         : null;
 
     return Align(
@@ -711,7 +715,7 @@ class _MessageBubble extends StatelessWidget {
             children: [
               if (!isOwn)
                 GestureDetector(
-                  onTap: openDm,
+                  onTap: onOpenPeerInfo,
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 2),
                     child: Text(
@@ -719,8 +723,8 @@ class _MessageBubble extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: openDm != null ? cs.primary : fg.withAlpha(180),
-                        decoration: openDm != null
+                        color: onOpenPeerInfo != null ? cs.primary : fg.withAlpha(180),
+                        decoration: onOpenPeerInfo != null
                             ? TextDecoration.underline
                             : TextDecoration.none,
                       ),
