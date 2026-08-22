@@ -215,6 +215,15 @@ pub fn push_log(message: impl Into<String>) {
             cb(format!("[{ts}] {msg}"));
         }
     }
+
+    // When compiled for the Flutter/mobile frontend, also mirror every log line
+    // to stderr so the lines shown in the in-app log tab are also visible in the
+    // terminal that launched the app (run_flutter_desktop.sh / run_waydroid.sh).
+    // Excluded under `cfg(test)` so the test harness stays quiet.
+    #[cfg(all(feature = "mobile", not(test)))]
+    {
+        eprintln!("[{ts}] {msg}");
+    }
 }
 
 /// Register a callback that will receive all log messages.

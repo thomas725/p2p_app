@@ -168,10 +168,10 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
         }
         SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
             // Store the sender's announced nickname
-            if let Some(nick) = &m.nickname {
-                if !nick.is_empty() {
-                    let _ = record_peer_received_name_change(&m.peer_id, nick);
-                }
+            if let Some(nick) = &m.nickname
+                && !nick.is_empty()
+            {
+                let _ = record_peer_received_name_change(&m.peer_id, nick);
             }
             // If DM is empty with a nickname, it's a nickname-only exchange — don't persist as message
             if matches!(ev, SwarmEvent::DirectMessage(_))
@@ -179,7 +179,6 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
                 && m.nickname.is_some()
             {
                 // Nickname-only DM, already stored above
-                return;
             }
         }
         #[cfg(feature = "mdns")]
