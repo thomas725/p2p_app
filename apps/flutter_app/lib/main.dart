@@ -13,6 +13,27 @@ import 'src/rust/mobile_node.dart';
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 final bool _isAndroid = Platform.isAndroid;
 
+/// Network/topic name the node joins. Mirrors CHAT_TOPIC in the Rust core.
+const String _kNetworkName = 'test-net';
+
+String _formatTimestamp(DateTime? dt) {
+  if (dt == null) return 'Never';
+  final d = dt.toLocal();
+  final p = (int n) => n.toString().padLeft(2, '0');
+  return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}:${p(d.second)}';
+}
+
+/// Adaptive network-size class, mirroring the Rust core's `NetworkSize`
+/// thresholds (0-3 Small, 4-15 Medium, 16+ Large). Derived from the current
+/// connected count because the Flutter side only observes live connection
+/// events (the Rust historical average isn't exposed without regenerating
+/// the Rust<->Flutter bindings).
+String _networkSizeLabel(int connectedCount) {
+  if (connectedCount <= 3) return 'Small';
+  if (connectedCount <= 15) return 'Medium';
+  return 'Large';
+}
+
 String get _defaultDbPath => _isAndroid
     ? '/data/data/com.example.p2p_app_flutter/databases/p2p.db'
     : 'p2p.db';
@@ -108,6 +129,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
+  int _connectedCount = 0;
+  List<String> _connectedPeerIds = [];
+  List<String> _listenAddresses = [];
+  DateTime? _lastConnectionAt;
 
   @override
   void initState() {
@@ -253,11 +278,41 @@ class _HomeScreenState extends State<HomeScreen> {
           _saveIncoming(event.content!, event.peerId!,
               event.eventType == 'dm', event.nickname);
         }
+        // A nickname in the event means we just learned or updated this peer's
+        // name. Refresh the peer list so the info page (and peer list) reflect
+        // the new name instead of the previously id-only/petname display.
+        if (event.nickname != null) {
+          _refreshPeers();
+        }
         break;
       case 'peer_connected':
-      case 'peer_discovered':
-      case 'peer_disconnected':
+        setState(() {
+          if (event.peerId != null &&
+              !_connectedPeerIds.contains(event.peerId!)) {
+            _connectedPeerIds.add(event.peerId!);
+          }
+          _connectedCount = _connectedPeerIds.length;
+          _lastConnectionAt = DateTime.now();
+        });
         _refreshPeers();
+        break;
+      case 'peer_discovered':
+        _refreshPeers();
+        break;
+      case 'peer_disconnected':
+        setState(() {
+          if (event.peerId != null) {
+            _connectedPeerIds.remove(event.peerId!);
+          }
+          _connectedCount = _connectedPeerIds.length;
+          _lastConnectionAt = DateTime.now();
+        });
+        _refreshPeers();
+        break;
+      case 'listen_addr':
+        if (event.address != null && !_listenAddresses.contains(event.address)) {
+          setState(() => _listenAddresses.add(event.address!));
+        }
         break;
     }
   }
@@ -449,6 +504,12 @@ class _HomeScreenState extends State<HomeScreen> {
         onToggleService: _toggleService,
         onShareApk: _shareApk,
         isAndroid: _isAndroid,
+        connectedCount: _connectedCount,
+        connectedPeerIds: _connectedPeerIds,
+        peers: _peers,
+        listenAddresses: _listenAddresses,
+        lastConnectionAt: _lastConnectionAt,
+        networkName: _kNetworkName,
       ),
     ];
 
@@ -1314,6 +1375,12 @@ class _Settings extends StatefulWidget {
     required this.onToggleService,
     required this.onShareApk,
     required this.isAndroid,
+    required this.connectedCount,
+    required this.connectedPeerIds,
+    required this.peers,
+    required this.listenAddresses,
+    required this.lastConnectionAt,
+    required this.networkName,
   });
 
   final MobilePeerStatus status;
@@ -1321,6 +1388,12 @@ class _Settings extends StatefulWidget {
   final VoidCallback onToggleService;
   final VoidCallback onShareApk;
   final bool isAndroid;
+  final int connectedCount;
+  final List<String> connectedPeerIds;
+  final List<MobilePeerRecord> peers;
+  final List<String> listenAddresses;
+  final DateTime? lastConnectionAt;
+  final String networkName;
 
   @override
   State<_Settings> createState() => _SettingsState();
@@ -1433,6 +1506,52 @@ class _SettingsState extends State<_Settings> {
             ),
           ),
         ),
+        const SizedBox(height: 16),
+        // Node & network status
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Node & Network',
+                    style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 12),
+                _statusRow(Icons.link, 'Connected peers',
+                    widget.connectedCount.toString()),
+                if (widget.connectedPeerIds.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('—', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ..._connectedPeerRows(),
+                if (widget.connectedCount == 0)
+                  _statusRow(Icons.history, 'Last connection',
+                      _formatTimestamp(widget.lastConnectionAt)),
+                _statusRow(
+                    Icons.network_cell, 'Network name', widget.networkName),
+                _statusRow(Icons.hub, 'Network size',
+                    _networkSizeLabel(widget.connectedCount)),
+                const SizedBox(height: 8),
+                Text('Listen addresses',
+                    style: Theme.of(context).textTheme.labelSmall),
+                if (widget.listenAddresses.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('—', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ...widget.listenAddresses.map(
+                    (a) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: SelectableText(a),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
         if (widget.isAndroid) ...[
           const SizedBox(height: 8),
           Card(
@@ -1446,6 +1565,47 @@ class _SettingsState extends State<_Settings> {
         ],
       ],
     );
+  }
+
+  Widget _statusRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Text(
+            value,
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _connectedPeerRows() {
+    final byId = {for (final p in widget.peers) p.peerId: p};
+    return [
+      for (final id in widget.connectedPeerIds)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.person, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SelectableText(byId[id]?.displayName ?? id),
+              ),
+            ],
+          ),
+        ),
+    ];
   }
 
   void _editNickname() {
