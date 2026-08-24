@@ -89,7 +89,7 @@ mod tests {
     use serial_test::serial;
 
     #[test]
-    #[serial]
+    #[serial(db)]
     fn init_mobile_database_uses_supplied_path() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
@@ -105,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    #[serial]
+    #[serial(db)]
     fn init_mobile_database_creates_missing_parent_dirs() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
@@ -120,14 +120,16 @@ mod tests {
     }
 
     #[test]
-    #[serial]
+    #[serial(db)]
     fn get_mobile_peer_status_returns_current_state() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("status_test.sqlite");
+        let db_url = db_path.to_string_lossy().into_owned();
         crate::reset_db_url_cache();
+        crate::db::set_cached_db_url(&db_url);
 
-        init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
+        init_mobile_database(db_url).expect("mobile init");
 
         let status = get_mobile_peer_status().expect("peer status");
         assert_eq!(status.database_url, db_path.to_string_lossy());

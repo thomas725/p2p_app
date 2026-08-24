@@ -538,6 +538,7 @@ mod tests {
     use crate::generated::models_queryable::Message;
     use crate::types::MessageEvent;
     use chrono::NaiveDateTime;
+    use serial_test::serial;
 
     fn dt(s: &str) -> NaiveDateTime {
         NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").unwrap()
@@ -681,7 +682,17 @@ mod tests {
     }
 
     #[test]
+    #[serial(db)]
     fn test_message_to_chat_dm() {
+        // Isolate DB state so the resolved display name is deterministic and
+        // not contaminated by other tests running in parallel.
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_url = dir.path().join("msg_to_chat.sqlite").to_string_lossy().into_owned();
+        crate::reset_db_url_cache();
+        crate::db::set_cached_db_url(&db_url);
+        crate::init_database().expect("init db");
+
         let msg = Message {
             id: 2,
             created_at: dt("2024-06-15 11:00:00"),
@@ -700,8 +711,57 @@ mod tests {
         assert!(!chat.is_broadcast);
         assert!(!chat.sent);
         assert!(chat.sent_at.is_none());
-        assert!(chat.sender_nickname.is_none());
+        // No announced nickname: falls back to the resolved display name
+        // (petname + short-id suffix), not a raw ID fragment.
+        let expected = crate::get_peer_display_name("peer-bob").expect("resolved name");
+        assert_eq!(chat.sender_nickname.as_deref(), Some(expected.as_str()));
         assert_eq!(chat.target_peer.as_deref(), Some("peer-bob"));
+    }
+
+    #[test]
+    #[serial(db)]
+    fn test_message_to_chat_announced_nickname_gets_suffix() {
+        // Announced nickname + peer id => "Nick (short-id)" consistently.
+        let msg = Message {
+            id: 10,
+            created_at: dt("2024-02-02 12:00:00"),
+            content: "hello".into(),
+            peer_id: Some("peer-bob".into()),
+            topic: "chat".into(),
+            sent: 0,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: Some("Bob".into()),
+        };
+        let chat = message_to_chat(msg);
+        let short = crate::fmt::short_peer_id("peer-bob");
+        let suffix = &short[..3.min(short.len())];
+        assert_eq!(chat.sender_nickname.as_deref(), Some(format!("Bob ({suffix})").as_str()));
+        assert!(chat.is_broadcast);
+    }
+
+    #[test]
+    #[serial(db)]
+    fn test_message_to_chat_own_message_uses_nickname() {
+        // No peer id (own message) => the announced nickname is used verbatim.
+        let msg = Message {
+            id: 11,
+            created_at: dt("2024-03-03 09:00:00"),
+            content: "mine".into(),
+            peer_id: None,
+            topic: "chat".into(),
+            sent: 1,
+            is_direct: 0,
+            target_peer: None,
+            msg_id: None,
+            sent_at: None,
+            sender_nickname: Some("Me".into()),
+        };
+        let chat = message_to_chat(msg);
+        assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
+        assert!(chat.sent);
     }
 
     #[test]
@@ -881,6 +941,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(db)]
     fn test_load_broadcast_messages_empty_db() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
@@ -894,6 +955,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(db)]
     fn test_load_dm_messages_empty_db() {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
