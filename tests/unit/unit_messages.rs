@@ -14,16 +14,14 @@ fn with_test_db(f: impl FnOnce()) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().expect("tempdir");
     let db_path = dir.path().join("test.db");
-    temp_env::with_var(
-        "DATABASE_URL",
-        Some(db_path.to_str().expect("db path")),
-        || {
-            crate::db::init_database().expect("init db");
-            f();
-            crate::db::release_db_lock();
-            crate::db::reset_db_url_cache();
-        },
-    );
+    // Use the cached-URL mechanism rather than mutating the process-global
+    // DATABASE_URL env var. This avoids races with other DB tests running in
+    // parallel and keeps each test isolated and idempotent.
+    crate::db::set_cached_db_url(db_path.to_str().expect("db path"));
+    crate::db::init_database().expect("init db");
+    f();
+    crate::db::release_db_lock();
+    crate::db::reset_db_url_cache();
 }
 
 #[test]

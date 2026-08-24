@@ -20,6 +20,12 @@ use dotenvy::dotenv;
 use std::env;
 use std::sync::{Mutex, OnceLock};
 
+/// Serializes schema migration so concurrent connections to the same database
+/// (e.g. parallel DB tests that momentarily share the cached DB URL) cannot race
+/// `run_pending_migrations`, which would otherwise hit a `UNIQUE constraint
+/// failed: __diesel_schema_migrations.version` error.
+static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
+
 pub use crate::MIGRATIONS;
 
 /// Cache the database URL after first connection to avoid repeated lock file checks.
@@ -109,12 +115,19 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
         .execute(&mut conn)
         .ok();
 
-    // Run migrations first to create tables
-    conn.run_pending_migrations(MIGRATIONS)
-        .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
+    // Run migrations first to create tables. Hold a process-wide lock so two
+    // connections opening the same database concurrently don't both try to
+    // insert the same migration version (UNIQUE violation).
+    {
+        let _guard = MIGRATION_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        conn.run_pending_migrations(MIGRATIONS)
+            .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
 
-    // Then ensure columns that may be missing from older schemas
-    ensure_columns(&mut conn);
+        // Then ensure columns that may be missing from older schemas
+        ensure_columns(&mut conn);
+    }
     Ok(conn)
 }
 
@@ -347,9 +360,7 @@ pub fn get_database_url() -> String {
     // DB operations firing at startup) don't each run find_or_create_unused_db.
     // Without this, the path-selection logs fire twice and the threads could
     // even end up choosing different database files.
-    let mut cache = db_url_cache()
-        .lock()
-        .expect("DB_URL cache mutex poisoned");
+    let mut cache = db_url_cache().lock().expect("DB_URL cache mutex poisoned");
     if let Some(url) = cache.clone() {
         return url;
     }
