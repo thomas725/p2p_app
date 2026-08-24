@@ -19,8 +19,8 @@ const String _kNetworkName = 'test-net';
 String _formatTimestamp(DateTime? dt) {
   if (dt == null) return 'Never';
   final d = dt.toLocal();
-  final p = (int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}:${p(d.second)}';
+  String pad2(int n) => n.toString().padLeft(2, '0');
+  return '${d.year}-${pad2(d.month)}-${pad2(d.day)} ${pad2(d.hour)}:${pad2(d.minute)}:${pad2(d.second)}';
 }
 
 /// Adaptive network-size class, mirroring the Rust core's `NetworkSize`
@@ -130,8 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
   int _connectedCount = 0;
-  List<String> _connectedPeerIds = [];
-  List<String> _listenAddresses = [];
+  final List<String> _connectedPeerIds = [];
+  final List<String> _listenAddresses = [];
   DateTime? _lastConnectionAt;
 
   @override
@@ -413,9 +413,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_isAndroid) {
           await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
         }
-        final peerId = _isAndroid
-            ? await startNode(dbPath: _defaultDbPath)
-            : await startNodeAuto();
+        if (_isAndroid) {
+          await startNode(dbPath: _defaultDbPath);
+        } else {
+          await startNodeAuto();
+        }
         _startEventPolling();
         setState(() {
           _serviceRunning = true;
