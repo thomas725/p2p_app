@@ -286,14 +286,19 @@ pub struct ChatMessage {
 }
 
 fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
-    // Fall back to the peer's resolved display name (local > received >
-    // generated petname > short ID) when no nickname was announced, so silent
-    // peers show a petname instead of a raw ID fragment in the message list.
-    let sender_nickname = msg.sender_nickname.clone().or_else(|| {
-        msg.peer_id.as_ref().map(|pid| {
-            crate::get_peer_display_name(pid).unwrap_or_else(|_| pid.clone())
-        })
-    });
+    // Always append a short peer-ID suffix to the sender name so it stays
+    // consistent across messages (announced nickname or generated petname).
+    // Falls back to the resolved display name when no nickname was announced.
+    let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
+        (Some(nick), Some(pid)) => {
+            let short = crate::fmt::short_peer_id(&pid);
+            let suffix = &short[..3.min(short.len())];
+            Some(format!("{nick} ({suffix})"))
+        }
+        (Some(nick), None) => Some(nick),
+        (None, Some(pid)) => crate::get_peer_display_name(&pid).ok(),
+        (None, None) => None,
+    };
     ChatMessage {
         id: msg.id,
         content: msg.content,
