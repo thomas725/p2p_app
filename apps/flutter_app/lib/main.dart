@@ -403,7 +403,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         _stopEventPolling();
         await stopNode();
-        setState(() => _serviceRunning = false);
+        setState(() {
+          _serviceRunning = false;
+          _connectedCount = 0;
+          _connectedPeerIds.clear();
+          _listenAddresses.clear();
+        });
       } else {
         if (_isAndroid) {
           await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
@@ -412,7 +417,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ? await startNode(dbPath: _defaultDbPath)
             : await startNodeAuto();
         _startEventPolling();
-        setState(() => _serviceRunning = true);
+        setState(() {
+          _serviceRunning = true;
+          _connectedCount = 0;
+          _connectedPeerIds.clear();
+          _listenAddresses.clear();
+          _lastConnectionAt = null;
+        });
+        final status = await getMobilePeerStatus();
+        setState(() => _status = status);
         await _loadHistory();
         await _refreshPeers();
       }
