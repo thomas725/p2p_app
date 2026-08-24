@@ -47,7 +47,8 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         let exists = peers
             .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
             .count()
-            .get_result::<i64>(conn)? > 0;
+            .get_result::<i64>(conn)?
+            > 0;
         if exists {
             None
         } else {

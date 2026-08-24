@@ -1,9 +1,9 @@
 //! Tests for nickname.rs module
 
+use diesel::RunQueryDsl as _;
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
-use diesel::RunQueryDsl as _;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

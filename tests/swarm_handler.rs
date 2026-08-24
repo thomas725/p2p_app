@@ -366,7 +366,10 @@ async fn test_spawn_handler_direct_message_receipt() {
     // A receives the ack as a Receipt for "dm-ack-1".
     let receipt = timeout(Duration::from_secs(10), async {
         loop {
-            if let Some(SwarmEvent::Receipt { peer_id, ack_for, .. }) = event_rx_a.recv().await {
+            if let Some(SwarmEvent::Receipt {
+                peer_id, ack_for, ..
+            }) = event_rx_a.recv().await
+            {
                 break (peer_id, ack_for);
             }
         }
@@ -415,7 +418,10 @@ async fn test_spawn_handler_broadcast_receipt() {
     // A receives the receipt for "bcast-ack-1" from B.
     let receipt = timeout(Duration::from_secs(10), async {
         loop {
-            if let Some(SwarmEvent::Receipt { peer_id, ack_for, .. }) = event_rx_a.recv().await {
+            if let Some(SwarmEvent::Receipt {
+                peer_id, ack_for, ..
+            }) = event_rx_a.recv().await
+            {
                 break (peer_id, ack_for);
             }
         }

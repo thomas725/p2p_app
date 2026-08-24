@@ -47,6 +47,8 @@
 //! - [`fmt`] - formatting utilities
 //! - [`logging`] - tracing-based logging with TUI callback
 
+#[cfg(feature = "mobile")]
+pub mod api;
 pub mod behavior;
 pub mod db;
 #[cfg(feature = "dioxus")]
@@ -62,8 +64,6 @@ pub mod messages;
 pub mod mobile_api;
 #[cfg(feature = "mobile")]
 pub mod mobile_node;
-#[cfg(feature = "mobile")]
-pub mod api;
 pub mod network;
 pub mod nickname;
 pub mod peers;
@@ -77,14 +77,14 @@ pub mod generated;
 #[path = "../tests/shared/tui_test_state.rs"]
 pub mod tui_test_state;
 
+#[cfg(feature = "mobile")]
+mod frb_generated;
 #[cfg(feature = "tui")]
 pub mod tui_helpers;
 #[cfg(feature = "tui")]
 pub mod tui_render;
 #[cfg(feature = "tui")]
-pub mod tui_render_state;
-#[cfg(feature = "mobile")]
-mod frb_generated; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
+pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
@@ -113,8 +113,8 @@ pub use messages::{
 };
 #[cfg(feature = "mobile")]
 pub use mobile_api::{
-    MobileInitStatus, MobilePeerStatus, get_mobile_peer_status, init_mobile_database,
-    format_time_hhmm,
+    MobileInitStatus, MobilePeerStatus, format_time_hhmm, get_mobile_peer_status,
+    init_mobile_database,
 };
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{

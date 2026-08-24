@@ -211,10 +211,7 @@ fn test_db_path_determined_once_per_init() {
     let _ = std::env::set_current_dir(&old_cwd);
     let logs = p2p_app::logging::get_tui_logs();
     let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
-    let checking_count = logs
-        .iter()
-        .filter(|l| l.contains("[DB] checking"))
-        .count();
+    let checking_count = logs.iter().filter(|l| l.contains("[DB] checking")).count();
     println!("DEBUG cwd_count={cwd_count} checking_count={checking_count}");
     assert_eq!(
         cwd_count, 1,
@@ -255,10 +252,7 @@ fn test_db_path_determined_once_under_concurrent_calls() {
     let _ = std::env::set_current_dir(&old_cwd);
     let logs = p2p_app::logging::get_tui_logs();
     let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
-    let checking_count = logs
-        .iter()
-        .filter(|l| l.contains("[DB] checking"))
-        .count();
+    let checking_count = logs.iter().filter(|l| l.contains("[DB] checking")).count();
     println!("DEBUG concurrent cwd_count={cwd_count} checking_count={checking_count}");
     assert!(
         cwd_count == 1,

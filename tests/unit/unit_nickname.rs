@@ -99,7 +99,10 @@ fn peer_display_name_received_then_fallback() {
         // Unknown (never-seen) peers get an auto-generated petname rather than
         // the raw short ID, so the display name is always human-friendly.
         assert_ne!(fallback, crate::fmt::short_peer_id("peer-fallback"));
-        assert!(fallback.contains('('), "expected a petname with an ID suffix");
+        assert!(
+            fallback.contains('('),
+            "expected a petname with an ID suffix"
+        );
     });
 }
 
@@ -120,7 +123,9 @@ fn validate_nickname_valid() {
 fn validate_nickname_invalid() {
     with_test_db(|| {
         assert!(!nickname::validate_nickname(""));
-        assert!(!nickname::validate_nickname("this-nickname-is-way-too-long-exceeds-twenty-chars"));
+        assert!(!nickname::validate_nickname(
+            "this-nickname-is-way-too-long-exceeds-twenty-chars"
+        ));
         assert!(!nickname::validate_nickname("nick with spaces"));
         assert!(!nickname::validate_nickname("nick@special"));
         assert!(!nickname::validate_nickname("nick$dollar"));

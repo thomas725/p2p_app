@@ -535,4 +535,3 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
         assert_eq!(loaded.sender_nickname, Some(name));
     });
 }
-

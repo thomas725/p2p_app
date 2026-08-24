@@ -6,10 +6,10 @@
 use crate::messages::MessageMeta;
 use crate::types::{SwarmCommand, SwarmEvent};
 use crate::{
-    build_swarm, current_timestamp, ensure_self_nickname, gen_msg_id, get_local_peer_id,
-    get_network_size, get_self_nickname, load_direct_messages, load_messages, mark_message_sent,
-    p2plog_debug, save_message_with_meta, save_peer, record_peer_received_name_change,
-    spawn_swarm_handler, CHAT_TOPIC,
+    CHAT_TOPIC, build_swarm, current_timestamp, ensure_self_nickname, gen_msg_id,
+    get_local_peer_id, get_network_size, get_self_nickname, load_direct_messages, load_messages,
+    mark_message_sent, p2plog_debug, record_peer_received_name_change, save_message_with_meta,
+    save_peer, spawn_swarm_handler,
 };
 use libp2p::gossipsub;
 use std::sync::Arc;
@@ -70,8 +70,8 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 
     // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
     // but mDNS/swarm need a reactor.
-    let runtime = tokio::runtime::Runtime::new()
-        .map_err(|e| format!("Failed to create runtime: {e}"))?;
+    let runtime =
+        tokio::runtime::Runtime::new().map_err(|e| format!("Failed to create runtime: {e}"))?;
 
     // Block on swarm setup: build_swarm (mDNS), listen, subscribe, spawn handler.
     // tokio::spawn inside block_on uses this runtime; keeping it alive keeps the task alive.
@@ -92,9 +92,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 
         let (_handle, event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
 
-        let pid = get_local_peer_id()
-            .map_err(|e| e.to_string())?
-            .to_string();
+        let pid = get_local_peer_id().map_err(|e| e.to_string())?.to_string();
 
         Ok::<_, String>((event_rx, cmd_tx, pid))
     })?;
@@ -182,10 +180,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
             }
         }
         #[cfg(feature = "mdns")]
-        SwarmEvent::PeerDiscovered {
-            peer_id,
-            addresses,
-        } => {
+        SwarmEvent::PeerDiscovered { peer_id, addresses } => {
             let addrs: Vec<String> = addresses.iter().map(|a| a.to_string()).collect();
             if let Err(e) = save_peer(peer_id, &addrs) {
                 p2plog_debug(format!("Failed to save discovered peer: {e}"));
@@ -255,8 +250,8 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
     Ok(known
         .into_iter()
         .map(|p| {
-            let display_name = crate::get_peer_display_name(&p.peer_id)
-                .unwrap_or_else(|_| p.peer_id.clone());
+            let display_name =
+                crate::get_peer_display_name(&p.peer_id).unwrap_or_else(|_| p.peer_id.clone());
             MobilePeerRecord {
                 peer_id: p.peer_id,
                 first_seen: p.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
@@ -308,14 +303,10 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
         sent_at: msg.sent_at.map(|t| {
-            let dt = chrono::DateTime::from_timestamp(t as i64, 0)
-                .unwrap_or_default();
+            let dt = chrono::DateTime::from_timestamp(t as i64, 0).unwrap_or_default();
             dt.format("%H:%M").to_string()
         }),
-        created_at: msg
-            .created_at
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string(),
+        created_at: msg.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
         sender_nickname,
     }
 }
@@ -330,8 +321,7 @@ pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
 /// Load DM history with a specific peer (already oldest-first in DB).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>, String> {
-    let msgs =
-        load_direct_messages(&peer_id, limit as usize).map_err(|e| e.to_string())?;
+    let msgs = load_direct_messages(&peer_id, limit as usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().map(message_to_chat).collect())
 }
 
@@ -382,15 +372,8 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
     };
-    let msg = save_message_with_meta(
-        &content,
-        None,
-        CHAT_TOPIC,
-        true,
-        Some(&peer_id),
-        meta,
-    )
-    .map_err(|e| e.to_string())?;
+    let msg = save_message_with_meta(&content, None, CHAT_TOPIC, true, Some(&peer_id), meta)
+        .map_err(|e| e.to_string())?;
 
     // Send via swarm
     if let Some(m) = NODE.get() {
@@ -492,9 +475,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             ..default_event()
         },
         SwarmEvent::Receipt {
-            peer_id,
-            ack_for,
-            ..
+            peer_id, ack_for, ..
         } => SwarmEventJson {
             event_type: "receipt".into(),
             peer_id: Some(peer_id),
@@ -502,10 +483,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             ..default_event()
         },
         #[cfg(feature = "mdns")]
-        SwarmEvent::PeerDiscovered {
-            peer_id,
-            addresses,
-        } => SwarmEventJson {
+        SwarmEvent::PeerDiscovered { peer_id, addresses } => SwarmEventJson {
             event_type: "peer_discovered".into(),
             peer_id: Some(peer_id),
             address: addresses.first().map(|a| a.to_string()),
@@ -599,7 +577,9 @@ mod tests {
 
     #[test]
     fn test_event_to_json_listen_addr() {
-        let j = event_to_json(SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/4000".into()));
+        let j = event_to_json(SwarmEvent::ListenAddrEstablished(
+            "/ip4/0.0.0.0/tcp/4000".into(),
+        ));
         assert_eq!(j.event_type, "listen_addr");
         assert_eq!(j.address.as_deref(), Some("/ip4/0.0.0.0/tcp/4000"));
     }
@@ -688,7 +668,11 @@ mod tests {
         // not contaminated by other tests running in parallel.
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
-        let db_url = dir.path().join("msg_to_chat.sqlite").to_string_lossy().into_owned();
+        let db_url = dir
+            .path()
+            .join("msg_to_chat.sqlite")
+            .to_string_lossy()
+            .into_owned();
         crate::reset_db_url_cache();
         crate::db::set_cached_db_url(&db_url);
         crate::init_database().expect("init db");
@@ -738,7 +722,10 @@ mod tests {
         let chat = message_to_chat(msg);
         let short = crate::fmt::short_peer_id("peer-bob");
         let suffix = &short[..3.min(short.len())];
-        assert_eq!(chat.sender_nickname.as_deref(), Some(format!("Bob ({suffix})").as_str()));
+        assert_eq!(
+            chat.sender_nickname.as_deref(),
+            Some(format!("Bob ({suffix})").as_str())
+        );
         assert!(chat.is_broadcast);
     }
 

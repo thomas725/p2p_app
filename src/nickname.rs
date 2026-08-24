@@ -1,8 +1,8 @@
 //! Nickname management for peers and local identity
 
-use crate::sqlite_connect;
 use crate::generated::models_insertable::NewPeer;
 use crate::logging::p2plog_debug;
+use crate::sqlite_connect;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
@@ -49,7 +49,9 @@ pub fn ensure_self_nickname() -> color_eyre::Result<String> {
         return Ok(nick);
     }
     let nickname = generate_self_nickname();
-    p2plog_debug(format!("[Nickname] generated and stored self nickname: {nickname}"));
+    p2plog_debug(format!(
+        "[Nickname] generated and stored self nickname: {nickname}"
+    ));
     set_self_nickname(&nickname)?;
     Ok(nickname)
 }
@@ -144,10 +146,7 @@ fn archive_peer_name(peer_id: &str, name: &str, kind: &str) -> color_eyre::Resul
 /// Record a nickname received from a remote peer. If it differs from the name
 /// we had stored, the old one is archived into `peer_name_history` with a
 /// timestamp so we keep a record of the names we knew this peer by before.
-pub fn record_peer_received_name_change(
-    peer_id: &str,
-    new_name: &str,
-) -> color_eyre::Result<()> {
+pub fn record_peer_received_name_change(peer_id: &str, new_name: &str) -> color_eyre::Result<()> {
     let current = get_peer_received_nickname(peer_id)?;
     match current {
         Some(old) if old == new_name => Ok(()),
@@ -160,9 +159,7 @@ pub fn record_peer_received_name_change(
 }
 
 /// Read the archived nickname history for a peer (most recent first).
-pub fn get_peer_name_history(
-    peer_id: &str,
-) -> color_eyre::Result<Vec<PeerNameHistoryEntry>> {
+pub fn get_peer_name_history(peer_id: &str) -> color_eyre::Result<Vec<PeerNameHistoryEntry>> {
     let conn = &mut sqlite_connect()?;
     let rows = peer_name_history::table
         .filter(peer_name_history::peer_id.eq(peer_id))
@@ -203,7 +200,8 @@ fn ensure_generated_nickname(peer_id: &str) -> color_eyre::Result<String> {
     let exists = crate::generated::schema::peers::table
         .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
         .count()
-        .get_result::<i64>(conn)? > 0;
+        .get_result::<i64>(conn)?
+        > 0;
     if !exists {
         let now = chrono::Utc::now().naive_utc();
         let _ = diesel::insert_into(crate::generated::schema::peers::table)
@@ -225,7 +223,9 @@ fn ensure_generated_nickname(peer_id: &str) -> color_eyre::Result<String> {
         .filter(crate::generated::schema::peers::peer_id.eq(peer_id))
         .set(crate::generated::schema::peers::generated_nickname.eq(&name))
         .execute(conn)?;
-    p2plog_debug(format!("[Nickname] assigned petname '{name}' for silent peer {peer_id}"));
+    p2plog_debug(format!(
+        "[Nickname] assigned petname '{name}' for silent peer {peer_id}"
+    ));
     Ok(name)
 }
 

@@ -151,9 +151,15 @@ fn log_file_path() -> std::path::PathBuf {
     let cwd = std::env::current_dir().unwrap_or_default();
     let target_dir = cwd.join("target");
     if target_dir.is_dir() {
-        target_dir.join(format!("p2p_app_{}.log", chrono::Local::now().format("%F_%H%M-%S")))
+        target_dir.join(format!(
+            "p2p_app_{}.log",
+            chrono::Local::now().format("%F_%H%M-%S")
+        ))
     } else {
-        cwd.join(format!("p2p_app_{}.log", chrono::Local::now().format("%F_%H%M-%S")))
+        cwd.join(format!(
+            "p2p_app_{}.log",
+            chrono::Local::now().format("%F_%H%M-%S")
+        ))
     }
 }
 
