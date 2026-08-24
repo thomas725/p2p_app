@@ -41,9 +41,11 @@ pub fn calculate_visible_range(
 }
 
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.
+///
+/// Delegates to the canonical [`crate::nickname::validate_nickname`].
 #[must_use]
 pub fn validate_nickname(nick: &str) -> bool {
-    !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
+    crate::nickname::validate_nickname(nick)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,17 +177,17 @@ mod tests {
         assert_eq!(result, "09:05");
     }
 
-#[test]
+    #[test]
     fn test_is_at_bottom() {
         // scroll_offset >= total - visible  => at bottom
-        assert!(is_at_bottom(95, 100, 10));   // 95 >= 90 => true
-        assert!(!is_at_bottom(89, 100, 10));  // 89 >= 90 => false
-        assert!(is_at_bottom(100, 100, 10));  // 100 >= 90 => true
-        assert!(!is_at_bottom(0, 100, 10));   // 0 >= 90 => false
+        assert!(is_at_bottom(95, 100, 10)); // 95 >= 90 => true
+        assert!(!is_at_bottom(89, 100, 10)); // 89 >= 90 => false
+        assert!(is_at_bottom(100, 100, 10)); // 100 >= 90 => true
+        assert!(!is_at_bottom(0, 100, 10)); // 0 >= 90 => false
 
         // Edge cases
-        assert!(is_at_bottom(5, 5, 10));       // 5 >= 0 => true (total <= visible)
-        assert!(is_at_bottom(0, 0, 0));        // 0 >= 0 => true (empty)
+        assert!(is_at_bottom(5, 5, 10)); // 5 >= 0 => true (total <= visible)
+        assert!(is_at_bottom(0, 0, 0)); // 0 >= 0 => true (empty)
     }
 
     #[test]
@@ -220,7 +222,9 @@ mod tests {
 
         // Invalid nicknames
         assert!(!validate_nickname(""));
-        assert!(!validate_nickname("this-nickname-is-way-too-long-exceeds-twenty-chars"));
+        assert!(!validate_nickname(
+            "this-nickname-is-way-too-long-exceeds-twenty-chars"
+        ));
         assert!(!validate_nickname("nick with spaces"));
         assert!(!validate_nickname("nick@special"));
         assert!(!validate_nickname("nick%dollar"));
