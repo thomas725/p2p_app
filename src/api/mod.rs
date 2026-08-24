@@ -4,6 +4,7 @@
 
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
+use crate::network::NetworkSize;
 
 /// Initialize the mobile database at the given path and return peer info.
 pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String> {
@@ -91,4 +92,20 @@ pub fn save_incoming_message(
 /// Set the local user's nickname.
 pub fn set_self_nickname(nickname: String) -> Result<(), String> {
     crate::set_self_nickname(&nickname).map_err(|e| e.to_string())
+}
+
+/// Validate a nickname before persisting it.
+///
+/// Single source of truth shared with the desktop/TUI path
+/// ([`crate::nickname::validate_nickname`]). Exposed so the Flutter UI can
+/// reject invalid input without re-implementing the rules in Dart.
+pub fn validate_nickname(nickname: String) -> bool {
+    crate::nickname::validate_nickname(&nickname)
+}
+
+/// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
+/// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't
+/// re-derive the thresholds in Dart.
+pub fn network_size_label(peer_count: i64) -> String {
+    NetworkSize::from_peer_count(peer_count as f64).to_string()
 }
