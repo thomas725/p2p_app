@@ -523,6 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
         listenAddresses: _listenAddresses,
         lastConnectionAt: _lastConnectionAt,
         networkName: _kNetworkName,
+        onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
     ];
 
@@ -1394,6 +1395,7 @@ class _Settings extends StatefulWidget {
     required this.listenAddresses,
     required this.lastConnectionAt,
     required this.networkName,
+    required this.onOpenPeerInfo,
   });
 
   final MobilePeerStatus status;
@@ -1407,6 +1409,7 @@ class _Settings extends StatefulWidget {
   final List<String> listenAddresses;
   final DateTime? lastConnectionAt;
   final String networkName;
+  final void Function(String) onOpenPeerInfo;
 
   @override
   State<_Settings> createState() => _SettingsState();
@@ -1606,16 +1609,20 @@ class _SettingsState extends State<_Settings> {
     final byId = {for (final p in widget.peers) p.peerId: p};
     return [
       for (final id in widget.connectedPeerIds)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(
-            children: [
-              const Icon(Icons.person, size: 16),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SelectableText(byId[id]?.displayName ?? id),
-              ),
-            ],
+        InkWell(
+          onTap: () => widget.onOpenPeerInfo(id),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.person, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(byId[id]?.displayName ?? id),
+                ),
+                const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+              ],
+            ),
           ),
         ),
     ];
