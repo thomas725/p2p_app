@@ -11,6 +11,7 @@ use crate::{
     mark_message_sent, p2plog_debug, record_peer_received_name_change, save_message_with_meta,
     save_peer, spawn_swarm_handler,
 };
+use chrono::TimeZone;
 use libp2p::gossipsub;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -269,8 +270,16 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
                 crate::get_peer_display_name(&p.peer_id).unwrap_or_else(|_| p.peer_id.clone());
             MobilePeerRecord {
                 peer_id: p.peer_id,
-                first_seen: p.first_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-                last_seen: p.last_seen.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                first_seen: chrono::Utc
+                    .from_utc_datetime(&p.first_seen)
+                    .with_timezone(&chrono::Local)
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
+                last_seen: chrono::Utc
+                    .from_utc_datetime(&p.last_seen)
+                    .with_timezone(&chrono::Local)
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
                 nickname: p.received_nickname,
                 local_nickname: p.peer_local_nickname,
                 display_name,
@@ -318,10 +327,16 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
         sent_at: msg.sent_at.map(|t| {
-            let dt = chrono::DateTime::from_timestamp(t as i64, 0).unwrap_or_default();
+            let dt = chrono::DateTime::from_timestamp(t as i64, 0)
+                .unwrap_or_default()
+                .with_timezone(&chrono::Local);
             dt.format("%H:%M").to_string()
         }),
-        created_at: msg.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+        created_at: chrono::Utc
+            .from_utc_datetime(&msg.created_at)
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
         sender_nickname,
     }
 }
