@@ -75,6 +75,9 @@ async fn handle_swarm_event(
                 swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
             }
         }
+        // Ping results drive connection liveness; the resulting close is
+        // handled by the ConnectionClosed arm below, so nothing to do here.
+        Libp2pSwarmEvent::Behaviour(AppEv::Ping(_)) => {}
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             let _ = event_tx
                 .send(SwarmEvent::PeerConnected(peer_id.to_string()))
