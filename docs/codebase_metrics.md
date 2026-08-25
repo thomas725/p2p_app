@@ -10,18 +10,18 @@
 | Avg Lines/Rust File   |             246 |
 | Avg Chars/Rust File   |           8,723 |
 | Total Dart Files      |               9 |
-| Total Dart Lines      |           4,428 |
-| Total Dart Chars      |         135,324 |
-| Avg Lines/Dart File   |             492 |
-| Avg Chars/Dart File   |          15,036 |
-| Covered Dart Lines    | 41 / 1,630 (3%) |
+| Total Dart Lines      |           4,504 |
+| Total Dart Chars      |         137,425 |
+| Avg Lines/Dart File   |             500 |
+| Avg Chars/Dart File   |          15,269 |
+| Covered Dart Lines    | 41 / 1,656 (2%) |
 | Total Kotlin Files    |               2 |
 | Total Kotlin Lines    |             199 |
 | Total Kotlin Chars    |           6,491 |
 | Avg Lines/Kotlin File |              99 |
 | Avg Chars/Kotlin File |           3,245 |
 
-**Grand Total:** 52 files, 14,720 lines, 499,477 characters
+**Grand Total:** 52 files, 14,796 lines, 501,578 characters
 
 ## Rust Source Files
 
@@ -131,7 +131,7 @@
 
 | Folder       | File                   | Depth | Chars | Lines | Testable | Covered | Purpose                             |
 |:-------------|:-----------------------|------:|------:|------:|---------:|--------:|------------------------------------:|
-| lib          | main.dart              |    19 | 60623 |  1931 |      899 |   4.12% | Flutter app entry point             |
+| lib          | main.dart              |    19 | 62724 |  2007 |      925 |   4.00% | Flutter app entry point             |
 | lib/src/rust | api.dart               |     2 |  4371 |   106 |       34 |   5.88% | FRB API bindings (generated)        |
 | lib/src/rust | frb_generated.dart     |     6 | 46553 |  1520 |      595 |   0.34% | flutter_rust_bridge codegen         |
 | lib/src/rust | frb_generated.io.dart  |     3 |  6917 |   275 |        5 |   0.00% | FRB IO bindings (generated)         |
@@ -141,7 +141,7 @@
 | lib/src/rust | mobile_node.dart       |     5 |  4573 |   153 |       63 |   0.00% | Mobile node bindings (generated)    |
 | lib/src/rust | types.dart             |     5 |  1083 |    37 |        - |       - | Shared type definitions (generated) |
 
-**Total:** 9 files, 4,428 lines, 135,324 characters (41/1630 testable lines covered, 3%)
+**Total:** 9 files, 4,504 lines, 137,425 characters (41/1656 testable lines covered, 2%)
 
 ## Dart Test Files
 
