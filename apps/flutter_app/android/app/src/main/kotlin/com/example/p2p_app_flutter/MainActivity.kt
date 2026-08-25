@@ -64,11 +64,16 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun shareApk() {
-        val apkFile = File(packageCodePath)
+        // The installed APK is exposed by the system as `base.apk`; copy it to a
+        // cache file named `p2p_app.apk` so the share sheet offers a sensible
+        // filename instead of the internal `base.apk`.
+        val source = File(packageCodePath)
+        val target = File(cacheDir, "p2p_app.apk")
+        source.copyTo(target, overwrite = true)
         val uri = FileProvider.getUriForFile(
             this,
             "${packageName}.fileprovider",
-            apkFile,
+            target,
         )
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/vnd.android.package-archive"
