@@ -104,14 +104,28 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         Ok::<_, String>((event_rx, cmd_tx, pid))
     })?;
 
-    let node = MobileNode {
+    let new_node = MobileNode {
         event_rx: Some(event_rx),
         cmd_tx: Some(cmd_tx),
         peer_id: peer_id.clone(),
         _runtime: runtime,
     };
 
-    let _ = NODE.set(Mutex::new(node));
+    // NODE is an OnceLock, so it can only be initialized once. On the first
+    // start it is empty; on a restart (after stop_node) it already holds the
+    // previous, now-inactive node. Replacing the inner value keeps the new
+    // runtime and swarm handler alive — calling NODE.set here would fail
+    // (already set) and silently drop the new node, killing the relaunched
+    // swarm so its listen addresses (and all events) never come back.
+    match NODE.get() {
+        Some(existing) => {
+            let mut g = existing.lock().unwrap();
+            *g = new_node;
+        }
+        None => {
+            let _ = NODE.set(Mutex::new(new_node));
+        }
+    }
     p2plog_debug(format!("Mobile node started: peer_id={peer_id}"));
     Ok(peer_id)
 }
