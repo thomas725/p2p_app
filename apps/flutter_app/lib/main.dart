@@ -546,6 +546,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openDmChat(MobilePeerRecord peer) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DmChatScreen(
+          peer: peer,
+          serviceRunning: _serviceRunning,
+          onNavigate: _navigateToTab,
+          currentTab: 1,
+        ),
+      ),
+    );
+  }
+
   // Open the info page for the sender of a broadcast message. If the peer
   // isn't in the discovered list yet, synthesize a record from what we know.
   void _openPeerInfoForPeerId(String peerId) {
@@ -611,7 +625,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _PeerList(
         peers: _peers,
         stats: _peerStats,
-        onTap: _openPeerInfo,
+        onOpenInfo: _openPeerInfo,
+        onOpenDm: _openDmChat,
         serviceRunning: _serviceRunning,
       ),
       const _LogTab(),
@@ -935,12 +950,14 @@ class _PeerList extends StatefulWidget {
   const _PeerList({
     required this.peers,
     required this.stats,
-    required this.onTap,
+    required this.onOpenInfo,
+    required this.onOpenDm,
     required this.serviceRunning,
   });
   final List<MobilePeerRecord> peers;
   final Map<String, PeerMessageStats> stats;
-  final void Function(MobilePeerRecord) onTap;
+  final void Function(MobilePeerRecord) onOpenInfo;
+  final void Function(MobilePeerRecord) onOpenDm;
   final bool serviceRunning;
 
   @override
@@ -1059,7 +1076,6 @@ class _PeerListState extends State<_PeerList> {
                     rows: [
                       for (final p in sorted)
                         DataRow(
-                          onSelectChanged: (_) => widget.onTap(p),
                           cells: [
                             DataCell(Text(p.displayName)),
                             DataCell(Text('${_dmCount(p)}')),
@@ -1068,18 +1084,20 @@ class _PeerListState extends State<_PeerList> {
                               Text(_fmtLastSeen(p.lastSeen)),
                             ),
                             DataCell(
-                              IconButton(
-                                icon: const Icon(Icons.info_outline),
-                                tooltip: 'Peer info',
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PeerInfoScreen(
-                                      peer: p,
-                                      serviceRunning: widget.serviceRunning,
-                                    ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.info_outline),
+                                    tooltip: 'Peer info',
+                                    onPressed: () => widget.onOpenInfo(p),
                                   ),
-                                ),
+                                  IconButton(
+                                    icon: const Icon(Icons.chat),
+                                    tooltip: 'Direct message',
+                                    onPressed: () => widget.onOpenDm(p),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
