@@ -1,0 +1,7 @@
+rust_input: "crate::api,crate::mobile_api,crate::mobile_node"
+rust_output: src/frb_generated.rs
+dart_output: apps/flutter_app/lib/src/rust
+rust_root: .
+c_output: src/frb_generated.h
+rust_features:
+  - mobile

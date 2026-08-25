@@ -4,6 +4,7 @@
 
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
+use crate::messages::PeerMessageStats;
 use crate::network::NetworkSize;
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -92,6 +93,11 @@ pub fn save_incoming_message(
 /// Set the local user's nickname.
 pub fn set_self_nickname(nickname: String) -> Result<(), String> {
     crate::set_self_nickname(&nickname).map_err(|e| e.to_string())
+}
+
+/// Per-peer message statistics (DMs exchanged, broadcasts received/sent).
+pub fn get_peer_stats(peer_id: String) -> Result<PeerMessageStats, String> {
+    crate::messages::get_peer_stats(&peer_id).map_err(|e| e.to_string())
 }
 
 /// Validate a nickname before persisting it.

@@ -41,6 +41,8 @@ Future<(BigInt, BigInt)> calculateVisibleRange({
 );
 
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.
+///
+/// Delegates to the canonical [`crate::nickname::validate_nickname`].
 Future<bool> validateNickname({required String nick}) =>
     RustLib.instance.api.crateMobileApiValidateNickname(nick: nick);
 

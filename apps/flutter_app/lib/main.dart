@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
+import 'src/rust/messages.dart';
 import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
 
@@ -148,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
+  Map<String, PeerMessageStats> _peerStats = {};
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
@@ -325,7 +327,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshPeers() async {
     try {
       final peers = await getKnownPeers();
-      setState(() => _peers = peers);
+      final stats = <String, PeerMessageStats>{};
+      await Future.wait(peers.map((p) async {
+        try {
+          stats[p.peerId] = await getPeerStats(peerId: p.peerId);
+        } catch (_) {
+          stats[p.peerId] = PeerMessageStats(
+            dmCount: 0,
+            broadcastReceived: 0,
+            broadcastSent: 0,
+          );
+        }
+      }));
+      setState(() {
+        _peers = peers;
+        _peerStats = stats;
+      });
     } catch (_) {}
   }
 
@@ -574,7 +591,12 @@ class _HomeScreenState extends State<HomeScreen> {
         onCopySelected: _copySelected,
         onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
-      _PeerList(peers: _peers, onTap: _openDmChat, serviceRunning: _serviceRunning),
+      _PeerList(
+        peers: _peers,
+        stats: _peerStats,
+        onTap: _openDmChat,
+        serviceRunning: _serviceRunning,
+      ),
       const _LogTab(),
       _Settings(
         liveStatus: _liveStatus,
@@ -892,86 +914,161 @@ class _MessageBubble extends StatelessWidget {
 
 // --- Peers Tab ---
 
-class _PeerList extends StatelessWidget {
+class _PeerList extends StatefulWidget {
   const _PeerList({
     required this.peers,
+    required this.stats,
     required this.onTap,
     required this.serviceRunning,
   });
   final List<MobilePeerRecord> peers;
+  final Map<String, PeerMessageStats> stats;
   final void Function(MobilePeerRecord) onTap;
   final bool serviceRunning;
 
   @override
+  State<_PeerList> createState() => _PeerListState();
+}
+
+class _PeerListState extends State<_PeerList> {
+  static const int _kName = 0;
+  static const int _kDm = 1;
+  static const int _kBroadcast = 2;
+  static const int _kLastSeen = 3;
+
+  int _sortColumn = _kName;
+  bool _ascending = true;
+
+  int _dmCount(MobilePeerRecord p) =>
+      (widget.stats[p.peerId]?.dmCount ?? 0).toInt();
+  int _broadcastCount(MobilePeerRecord p) =>
+      (widget.stats[p.peerId]?.broadcastSent ?? 0).toInt();
+
+  int _lastSeenMs(MobilePeerRecord p) {
+    final normalized = p.lastSeen.replaceAll(' ', 'T');
+    final dt = DateTime.tryParse(normalized);
+    return dt?.millisecondsSinceEpoch ?? 0;
+  }
+
+  List<MobilePeerRecord> get _sorted {
+    final list = List<MobilePeerRecord>.from(widget.peers);
+    list.sort((a, b) {
+      late final int cmp;
+      switch (_sortColumn) {
+        case _kName:
+          cmp = a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+        case _kDm:
+          cmp = _dmCount(a).compareTo(_dmCount(b));
+        case _kBroadcast:
+          cmp = _broadcastCount(a).compareTo(_broadcastCount(b));
+        case _kLastSeen:
+          cmp = _lastSeenMs(a).compareTo(_lastSeenMs(b));
+        default:
+          cmp = 0;
+      }
+      return _ascending ? cmp : -cmp;
+    });
+    return list;
+  }
+
+  void _sort(int column, bool ascending) {
+    setState(() {
+      _sortColumn = column;
+      _ascending = ascending;
+    });
+  }
+
+  String _fmtLastSeen(String value) {
+    final trimmed =
+        value.length >= 19 ? value.substring(0, 19) : value;
+    return trimmed.replaceAll('T', ' ');
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final sorted = _sorted;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          color: Theme.of(context).colorScheme.primaryContainer,
+          color: cs.primaryContainer,
           child: Row(
             children: [
               const Icon(Icons.people, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Peers (${peers.length})',
+                'Peers (${widget.peers.length})',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      color: cs.onPrimaryContainer,
                     ),
               ),
             ],
           ),
         ),
         Expanded(
-          child: peers.isEmpty
+          child: sorted.isEmpty
               ? Center(
                   child: Text(
                     'No peers discovered yet.',
                     style: TextStyle(color: Colors.grey[500]),
                   ),
                 )
-              : ListView.builder(
-                  itemCount: peers.length,
-                  itemBuilder: (_, i) {
-                    final p = peers[i];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        child: Text(
-                          p.displayName.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    sortColumnIndex: _sortColumn,
+                    sortAscending: _ascending,
+                    columns: [
+                      DataColumn(
+                        label: const Text('Name'),
+                        onSort: _sort,
                       ),
-                      title: Text(
-                        p.displayName,
-                        style: const TextStyle(fontSize: 14),
+                      DataColumn(
+                        label: const Text('DMs'),
+                        onSort: _sort,
                       ),
-                      subtitle: Text(
-                        'Seen ${(p.lastSeen.length >= 19 ? p.lastSeen.substring(0, 19) : p.lastSeen).replaceAll('T', ' ')}',
-                        style: const TextStyle(fontSize: 11),
+                      DataColumn(
+                        label: const Text('Broadcasts'),
+                        onSort: _sort,
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.info_outline),
-                            tooltip: 'Peer info',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PeerInfoScreen(
-                                  peer: p,
-                                  serviceRunning: serviceRunning,
+                      DataColumn(
+                        label: const Text('Last seen'),
+                        onSort: _sort,
+                      ),
+                      const DataColumn(label: Text('')),
+                    ],
+                    rows: [
+                      for (final p in sorted)
+                        DataRow(
+                          onSelectChanged: (_) => widget.onTap(p),
+                          cells: [
+                            DataCell(Text(p.displayName)),
+                            DataCell(Text('${_dmCount(p)}')),
+                            DataCell(Text('${_broadcastCount(p)}')),
+                            DataCell(
+                              Text(_fmtLastSeen(p.lastSeen)),
+                            ),
+                            DataCell(
+                              IconButton(
+                                icon: const Icon(Icons.info_outline),
+                                tooltip: 'Peer info',
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PeerInfoScreen(
+                                      peer: p,
+                                      serviceRunning: widget.serviceRunning,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const Icon(Icons.chevron_right),
-                        ],
-                      ),
-                      onTap: () => onTap(p),
-                    );
-                  },
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
         ),
       ],
@@ -1304,7 +1401,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_label),
+        title: Text(widget.peer.displayName),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),

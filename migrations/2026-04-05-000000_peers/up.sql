@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS peers (
     peer_local_nickname TEXT,
     self_nickname_for_peer TEXT,
     received_nickname TEXT,
-    generated_nickname TEXT
+    generated_nickname TEXT,
+    broadcasts_sent INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_peers_peer_id ON peers(peer_id);

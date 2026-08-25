@@ -8,7 +8,9 @@ use crate::{
 };
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
+    sql_query,
 };
+use diesel::sql_types::Text;
 
 /// Peer row returned by `load_known_peers()`.
 #[derive(Debug, Clone, diesel::QueryableByName)]
@@ -197,6 +199,35 @@ pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
         .first::<i32>(conn)
         .optional()?;
     Ok(last.unwrap_or(0))
+}
+
+/// Increment the `broadcasts_sent` counter for each peer that was connected
+/// when a broadcast was transmitted. This records, per peer, how many
+/// broadcasts we sent while that peer was online.
+///
+/// Peers that connected are always saved (via `save_peer`) before this is
+/// called, but guard with `INSERT OR IGNORE` in case a peer is only known from
+/// message history.
+pub fn record_broadcasts_sent(peer_ids: &[String]) -> color_eyre::Result<()> {
+    let conn = &mut crate::sqlite_connect()?;
+    for pid in peer_ids {
+        let updated = sql_query(
+            "UPDATE peers SET broadcasts_sent = COALESCE(broadcasts_sent, 0) + 1 \
+             WHERE peer_id = ?",
+        )
+        .bind::<Text, _>(pid)
+        .execute(conn)?;
+        if updated == 0 {
+            let _ = sql_query(
+                "INSERT OR IGNORE INTO peers \
+                 (peer_id, addresses, first_seen, last_seen, broadcasts_sent) \
+                 VALUES (?, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
+            )
+            .bind::<Text, _>(pid)
+            .execute(conn);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

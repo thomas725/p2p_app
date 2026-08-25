@@ -60,6 +60,7 @@ diesel::table! {
         self_nickname_for_peer -> Nullable<Text>,
         received_nickname -> Nullable<Text>,
         generated_nickname -> Nullable<Text>,
+        broadcasts_sent -> Integer,
     }
 }
 

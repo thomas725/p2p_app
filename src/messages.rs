@@ -6,7 +6,7 @@ use crate::{
     generated::schema::messages::dsl::messages,
 };
 use color_eyre::eyre::Context;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _, dsl::sql, BoolExpressionMethods};
 
 /// Optional metadata for message creation
 #[derive(Default)]
@@ -210,7 +210,7 @@ pub fn save_receipt(
 ///
 /// # Returns
 /// Vector of all message receipts
-pub fn load_receipts() -> color_eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
+pub fn load_receipts() -> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
 {
     let conn = &mut crate::sqlite_connect()?;
     use crate::generated::models_queryable::MessageReceipt;
@@ -220,6 +220,55 @@ pub fn load_receipts() -> color_eyre::Result<Vec<crate::generated::models_querya
         .select(MessageReceipt::as_select())
         .load(conn)?;
     Ok(receipts)
+}
+
+/// Per-peer message statistics shown in the peer-list table.
+#[derive(Debug, Clone)]
+pub struct PeerMessageStats {
+    /// Direct messages exchanged with this peer (sent + received).
+    pub dm_count: i64,
+    /// Broadcast messages received from this peer (peer was the sender).
+    pub broadcast_received: i64,
+    /// Broadcasts we sent while this peer was connected.
+    pub broadcast_sent: i64,
+}
+
+/// Compute message statistics for a single peer.
+///
+/// * `dm_count` counts direct messages where the peer is either sender or
+///   recipient (received + sent).
+/// * `broadcast_received` counts broadcast messages whose sender is this peer.
+/// * `broadcast_sent` is the persisted counter incremented whenever we
+///   broadcast while this peer was connected.
+pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStats> {
+    use crate::generated::schema::messages::dsl as m;
+    use crate::generated::schema::peers::dsl as p;
+    let conn = &mut crate::sqlite_connect()?;
+
+    let dm_count: i64 = m::messages
+        .filter(m::is_direct.eq(1))
+        .filter(m::peer_id.eq(peer_id).or(m::target_peer.eq(peer_id)))
+        .count()
+        .get_result(conn)?;
+
+    let broadcast_received: i64 = m::messages
+        .filter(m::is_direct.eq(0))
+        .filter(m::peer_id.eq(peer_id))
+        .count()
+        .get_result(conn)?;
+
+    let broadcast_sent: i64 = p::peers
+        .filter(p::peer_id.eq(peer_id))
+        .select(sql::<diesel::sql_types::Integer>("COALESCE(broadcasts_sent, 0)"))
+        .first::<i32>(conn)
+        .unwrap_or(0)
+        .into();
+
+    Ok(PeerMessageStats {
+        dm_count,
+        broadcast_received,
+        broadcast_sent,
+    })
 }
 
 #[cfg(test)]

@@ -12,12 +12,18 @@ use crate::{
     save_peer, spawn_swarm_handler,
 };
 use libp2p::gossipsub;
+use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex, OnceLock};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 
 static NODE: OnceLock<Mutex<MobileNode>> = OnceLock::new();
+
+/// Live set of peers currently connected to this node. Used to attribute
+/// broadcasts we send to the peers that were online to receive them.
+static CONNECTED_PEERS: LazyLock<Mutex<HashSet<String>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
 
 struct MobileNode {
     event_rx: Option<mpsc::Receiver<SwarmEvent>>,
@@ -147,6 +153,10 @@ pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
 fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmCommand>>) {
     match ev {
         SwarmEvent::PeerConnected(peer_id) => {
+            // Track connected peers for broadcast attribution.
+            if let Ok(mut set) = CONNECTED_PEERS.lock() {
+                set.insert(peer_id.clone());
+            }
             // Save peer to DB (like TUI does)
             if let Err(e) = save_peer(peer_id, &[]) {
                 p2plog_debug(format!("Failed to save peer: {e}"));
@@ -162,6 +172,11 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
                     msg_id: Some(msg_id),
                     ack_for: None,
                 });
+            }
+        }
+        SwarmEvent::PeerDisconnected(peer_id) => {
+            if let Ok(mut set) = CONNECTED_PEERS.lock() {
+                set.remove(peer_id);
             }
         }
         SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
@@ -356,6 +371,16 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
     let chat = message_to_chat(msg);
     // Mark sent in DB (best-effort)
     let _ = mark_message_sent(chat.id);
+
+    // Attribute this broadcast to every peer that was online to receive it.
+    let connected: Vec<String> = CONNECTED_PEERS
+        .lock()
+        .map(|set| set.iter().cloned().collect())
+        .unwrap_or_default();
+    if !connected.is_empty() {
+        let _ = crate::peers::record_broadcasts_sent(&connected);
+    }
+
     Ok(chat)
 }
 

@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'messages.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
@@ -66,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => 658083845;
+  int get rustContentHash => -1259942970;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -94,6 +95,8 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateMobileNodeGetNodePeerId();
 
+  Future<PeerMessageStats> crateApiGetPeerStats({required String peerId});
+
   Future<MobileInitStatus> crateApiInitMobileDatabase({required String dbPath});
 
   bool crateMobileApiIsAtBottom({
@@ -110,6 +113,8 @@ abstract class RustLibApi extends BaseApi {
     required String peerId,
     required PlatformInt64 limit,
   });
+
+  Future<String> crateApiNetworkSizeLabel({required PlatformInt64 peerCount});
 
   Future<SwarmEventJson?> crateApiPollEvent();
 
@@ -141,6 +146,8 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiStartNodeAuto();
 
   Future<void> crateApiStopNode();
+
+  Future<bool> crateApiValidateNickname({required String nickname});
 
   Future<bool> crateMobileApiValidateNickname({required String nick});
 }
@@ -322,6 +329,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_node_peer_id", argNames: []);
 
   @override
+  Future<PeerMessageStats> crateApiGetPeerStats({required String peerId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(peerId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_peer_message_stats,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiGetPeerStatsConstMeta,
+        argValues: [peerId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetPeerStatsConstMeta =>
+      const TaskConstMeta(debugName: "get_peer_stats", argNames: ["peerId"]);
+
+  @override
   Future<MobileInitStatus> crateApiInitMobileDatabase({
     required String dbPath,
   }) {
@@ -333,7 +368,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -366,7 +401,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_CastedPrimitive_usize(scrollOffset, serializer);
           sse_encode_CastedPrimitive_usize(total, serializer);
           sse_encode_CastedPrimitive_usize(visible, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -396,7 +431,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -431,7 +466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -452,6 +487,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<String> crateApiNetworkSizeLabel({required PlatformInt64 peerCount}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_i_64(peerCount, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiNetworkSizeLabelConstMeta,
+        argValues: [peerCount],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiNetworkSizeLabelConstMeta => const TaskConstMeta(
+    debugName: "network_size_label",
+    argNames: ["peerCount"],
+  );
+
+  @override
   Future<SwarmEventJson?> crateApiPollEvent() {
     return handler.executeNormal(
       NormalTask(
@@ -460,7 +525,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -496,7 +561,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -527,7 +592,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -562,7 +627,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -592,7 +657,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -624,7 +689,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -654,7 +719,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 19,
             port: port_,
           );
         },
@@ -684,7 +749,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 20,
             port: port_,
           );
         },
@@ -711,7 +776,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 21,
             port: port_,
           );
         },
@@ -738,7 +803,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 22,
             port: port_,
           );
         },
@@ -757,6 +822,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "stop_node", argNames: []);
 
   @override
+  Future<bool> crateApiValidateNickname({required String nickname}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(nickname, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 23,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiValidateNicknameConstMeta,
+        argValues: [nickname],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiValidateNicknameConstMeta => const TaskConstMeta(
+    debugName: "validate_nickname",
+    argNames: ["nickname"],
+  );
+
+  @override
   Future<bool> crateMobileApiValidateNickname({required String nick}) {
     return handler.executeNormal(
       NormalTask(
@@ -766,7 +861,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 24,
             port: port_,
           );
         },
@@ -917,6 +1012,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_swarm_event_json(raw);
+  }
+
+  @protected
+  PeerMessageStats dco_decode_peer_message_stats(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return PeerMessageStats(
+      dmCount: dco_decode_i_64(arr[0]),
+      broadcastReceived: dco_decode_i_64(arr[1]),
+      broadcastSent: dco_decode_i_64(arr[2]),
+    );
   }
 
   @protected
@@ -1144,6 +1252,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  PeerMessageStats sse_decode_peer_message_stats(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_dmCount = sse_decode_i_64(deserializer);
+    var var_broadcastReceived = sse_decode_i_64(deserializer);
+    var var_broadcastSent = sse_decode_i_64(deserializer);
+    return PeerMessageStats(
+      dmCount: var_dmCount,
+      broadcastReceived: var_broadcastReceived,
+      broadcastSent: var_broadcastSent,
+    );
+  }
+
+  @protected
   (BigInt, BigInt) sse_decode_record_usize_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_usize(deserializer);
@@ -1342,6 +1463,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_box_autoadd_swarm_event_json(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_peer_message_stats(
+    PeerMessageStats self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.dmCount, serializer);
+    sse_encode_i_64(self.broadcastReceived, serializer);
+    sse_encode_i_64(self.broadcastSent, serializer);
   }
 
   @protected

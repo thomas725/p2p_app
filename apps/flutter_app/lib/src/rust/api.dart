@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import 'frb_generated.dart';
+import 'messages.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
@@ -85,3 +86,21 @@ Future<ChatMessage> saveIncomingMessage({
 /// Set the local user's nickname.
 Future<void> setSelfNickname({required String nickname}) =>
     RustLib.instance.api.crateApiSetSelfNickname(nickname: nickname);
+
+/// Per-peer message statistics (DMs exchanged, broadcasts received/sent).
+Future<PeerMessageStats> getPeerStats({required String peerId}) =>
+    RustLib.instance.api.crateApiGetPeerStats(peerId: peerId);
+
+/// Validate a nickname before persisting it.
+///
+/// Single source of truth shared with the desktop/TUI path
+/// ([`crate::nickname::validate_nickname`]). Exposed so the Flutter UI can
+/// reject invalid input without re-implementing the rules in Dart.
+Future<bool> validateNickname({required String nickname}) =>
+    RustLib.instance.api.crateApiValidateNickname(nickname: nickname);
+
+/// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
+/// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't
+/// re-derive the thresholds in Dart.
+Future<String> networkSizeLabel({required PlatformInt64 peerCount}) =>
+    RustLib.instance.api.crateApiNetworkSizeLabel(peerCount: peerCount);
