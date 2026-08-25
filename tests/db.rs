@@ -15,23 +15,23 @@ fn with_test_db(f: impl FnOnce()) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
-    temp_env::with_var("DATABASE_URL", Some(db_path.to_str().unwrap()), || {
-        p2p_app::db::init_database().unwrap();
-        f();
-        p2p_app::db::release_db_lock();
-    });
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    f();
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
 }
 
 #[serial]
 #[test]
-fn test_get_database_url_env_set() {
+fn test_get_database_url_set_url() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("DATABASE_URL", Some("/tmp/test.db"), || {
-        let url = p2p_app::db::get_database_url();
-        assert_eq!(url, "/tmp/test.db");
-    });
+    p2p_app::db::set_db_url("/tmp/test.db");
+    let url = p2p_app::db::get_database_url();
+    assert_eq!(url, "/tmp/test.db");
+    p2p_app::db::reset_db_url();
 }
 
 #[serial]
@@ -90,33 +90,34 @@ fn test_sqlite_connect_runs_migrations() {
 
 #[serial]
 #[test]
-fn test_get_database_url_from_env() {
+fn test_get_database_url_from_set_url() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("DATABASE_URL", Some("/tmp/explicit.db"), || {
-        let url = p2p_app::db::get_database_url();
-        assert_eq!(url, "/tmp/explicit.db");
-    });
+    p2p_app::db::set_db_url("/tmp/explicit.db");
+    let url = p2p_app::db::get_database_url();
+    assert_eq!(url, "/tmp/explicit.db");
+    p2p_app::db::reset_db_url();
 }
 
 #[serial]
 #[test]
-fn test_reset_db_url_cache() {
-    temp_env::with_var("DATABASE_URL", Some("/tmp/test.db"), || {
-        let url1 = p2p_app::get_database_url();
-        assert_eq!(url1, "/tmp/test.db");
+fn test_reset_db_url_clears_set_url() {
+    let _guard = test_db_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    p2p_app::db::set_db_url("/tmp/test.db");
+    let url1 = p2p_app::get_database_url();
+    assert_eq!(url1, "/tmp/test.db");
 
-        temp_env::with_var("DATABASE_URL", Some("/tmp/other.db"), || {
-            let url2 = p2p_app::get_database_url();
-            assert!(!url2.is_empty());
+    p2p_app::db::set_db_url("/tmp/other.db");
+    let url2 = p2p_app::get_database_url();
+    assert!(!url2.is_empty());
 
-            p2p_app::db::reset_db_url_cache();
-
-            let url3 = p2p_app::get_database_url();
-            assert_eq!(url3, "/tmp/other.db");
-        });
-    });
+    p2p_app::db::reset_db_url();
+    let url3 = p2p_app::db::get_database_url();
+    assert_ne!(url3, "/tmp/other.db");
+    assert!(url3.ends_with(".db"));
 }
 
 // ── Additional database edge cases ─────────────────────────────────────────────
@@ -163,16 +164,14 @@ fn test_release_db_lock_idempotent() {
 
 #[serial]
 #[test]
-fn test_reset_db_url_cache_then_get_url_without_env() {
+fn test_reset_db_url_then_get_url_without_set_url() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    temp_env::with_var("DATABASE_URL", None::<&str>, || {
-        p2p_app::db::reset_db_url_cache();
-        let url = p2p_app::db::get_database_url();
-        assert!(!url.is_empty());
-        p2p_app::db::release_db_lock();
-    });
+    p2p_app::db::reset_db_url();
+    let url = p2p_app::db::get_database_url();
+    assert!(!url.is_empty());
+    p2p_app::db::release_db_lock();
 }
 
 #[test]
@@ -186,11 +185,10 @@ fn test_sqlite_connect_fails_with_bad_path() {
     let file_parent = dir.path().join("not_a_dir");
     std::fs::write(&file_parent, b"").expect("create file");
     let db_path = file_parent.join("sub").join("test.db");
-    temp_env::with_var("DATABASE_URL", Some(db_path.to_str().unwrap()), || {
-        p2p_app::db::reset_db_url_cache();
-        let result = p2p_app::db::sqlite_connect();
-        assert!(result.is_err());
-    });
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    let result = p2p_app::db::sqlite_connect();
+    assert!(result.is_err());
+    p2p_app::db::reset_db_url();
 }
 
 #[serial]
@@ -202,12 +200,10 @@ fn test_db_path_determined_once_per_init() {
     let dir = tempfile::tempdir().expect("tempdir");
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(dir.path()).unwrap();
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
     p2p_app::logging::clear_tui_logs();
-    // No DATABASE_URL -> path determination actually runs.
-    temp_env::with_var("DATABASE_URL", None::<&str>, || {
-        let _ = p2p_app::db::init_database();
-    });
+    // No set URL -> path determination actually runs.
+    let _ = p2p_app::db::init_database();
     let _ = std::env::set_current_dir(&old_cwd);
     let logs = p2p_app::logging::get_tui_logs();
     let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
@@ -225,7 +221,7 @@ fn test_db_path_determined_once_per_init() {
 
 #[serial]
 #[test]
-fn test_db_path_determined_once_under_concurrent_calls() {
+fn test_concurrent_init_uses_isolated_databases() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -235,31 +231,32 @@ fn test_db_path_determined_once_under_concurrent_calls() {
     std::fs::write(dir.path().join("sqlite.db.lock"), b"1").expect("seed lock");
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(dir.path()).unwrap();
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
     p2p_app::logging::clear_tui_logs();
 
-    temp_env::with_var("DATABASE_URL", None::<&str>, || {
-        let mut handles = Vec::new();
-        for _ in 0..4 {
-            handles.push(std::thread::spawn(|| {
-                let _ = p2p_app::db::init_database();
-            }));
-        }
-        for h in handles {
-            let _ = h.join();
-        }
-    });
+    // Each thread has its own thread-local URL, so concurrent init_database
+    // calls independently select a database. The PID-based lock file ensures
+    // threads in the same process never pick the same file, so no migration race.
+    let mut handles = Vec::new();
+    for _ in 0..4 {
+        handles.push(std::thread::spawn(|| p2p_app::db::init_database().is_ok()));
+    }
+    let mut all_ok = true;
+    for h in handles {
+        all_ok &= h.join().unwrap_or(false);
+    }
     let _ = std::env::set_current_dir(&old_cwd);
+    assert!(all_ok, "all concurrent init_database calls should succeed");
     let logs = p2p_app::logging::get_tui_logs();
     let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
     let checking_count = logs.iter().filter(|l| l.contains("[DB] checking")).count();
     println!("DEBUG concurrent cwd_count={cwd_count} checking_count={checking_count}");
-    assert!(
-        cwd_count == 1,
-        "concurrent init_database must determine path exactly once, got {cwd_count}"
+    assert_eq!(
+        cwd_count, 4,
+        "each concurrent thread should determine its own path, got {cwd_count}"
     );
     assert!(
-        checking_count <= 1,
-        "concurrent init_database must check dbs at most once, got {checking_count}"
+        checking_count >= 1,
+        "path determination should run for concurrent threads, got {checking_count}"
     );
 }

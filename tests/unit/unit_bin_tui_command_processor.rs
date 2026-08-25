@@ -329,7 +329,7 @@ fn test_handle_incoming_broadcast_adds_message() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -348,7 +348,7 @@ fn test_handle_incoming_broadcast_adds_message() {
         assert!(state.messages[0].text.contains("hello all"));
         assert_eq!(state.message_ids[0], Some("m1".to_string()));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -358,7 +358,7 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -379,7 +379,7 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
         assert_eq!(state.dm_message_ids["peer-dm"][0], Some("dm1".to_string()));
         assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -389,7 +389,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -412,7 +412,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
             Some(&"Nickname".to_string())
         );
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn test_handle_incoming_sets_received_nickname() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -444,7 +444,7 @@ fn test_handle_incoming_sets_received_nickname() {
         // Message should still be added
         assert_eq!(state.messages.len(), 1);
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -454,7 +454,7 @@ fn test_handle_incoming_broadcast_with_latency() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -472,7 +472,7 @@ fn test_handle_incoming_broadcast_with_latency() {
         assert_eq!(state.messages.len(), 1);
         assert!(state.messages[0].text.contains("42ms"));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -482,7 +482,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -505,7 +505,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
         assert!(state.dm_messages["peer-5"][0].contains("5ms"));
         assert_eq!(state.dm_message_ids["peer-5"][0], Some("dm-5".to_string()));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 // ── process_swarm_event ───────────────────────────────────────────────
@@ -517,7 +517,7 @@ fn test_process_swarm_event_broadcast_adds_message() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -542,7 +542,7 @@ fn test_process_swarm_event_broadcast_adds_message() {
         assert!(s.messages[0].text.contains("hello"));
         assert_eq!(s.message_ids[0], Some("m1".to_string()));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -552,7 +552,7 @@ fn test_process_swarm_event_dm_adds_message() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -576,7 +576,7 @@ fn test_process_swarm_event_dm_adds_message() {
         assert!(s.dm_messages.contains_key("p2"));
         assert_eq!(s.dm_message_ids["p2"][0], Some("dm1".to_string()));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[tokio::test]
@@ -606,7 +606,7 @@ fn test_process_swarm_event_receipt_stored_in_state() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -633,7 +633,7 @@ fn test_process_swarm_event_receipt_stored_in_state() {
         assert!(s.dm_receipts.contains_key("dm-1"));
         assert!(s.broadcast_receipts.contains_key("dm-1"));
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 // ── spawn_command_processor ─────────────────────────────────────────────
@@ -645,7 +645,7 @@ fn test_command_processor_processes_swarm_events() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -686,7 +686,7 @@ fn test_command_processor_processes_swarm_events() {
         drop(input_tx);
         drop(swarm_event_tx);
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[tokio::test]
@@ -731,7 +731,7 @@ fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    p2p_app::db::set_cached_db_url(&db_str);
+    p2p_app::db::set_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -762,7 +762,7 @@ fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
     });
 
     p2p_app::db::release_db_lock();
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 // ── process_swarm_event: ListenAddrEstablished ─────────────────────────

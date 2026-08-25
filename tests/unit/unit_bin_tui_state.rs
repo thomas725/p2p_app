@@ -218,7 +218,7 @@ fn test_load_and_format_messages_db_failure_returns_empty() {
     let dir = tempfile::TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    p2p_app::db::set_cached_db_url(&db_str);
+    p2p_app::db::set_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
     let (msgs, ids, sent_at) =
@@ -228,6 +228,6 @@ fn test_load_and_format_messages_db_failure_returns_empty() {
     assert!(sent_at.is_empty());
 
     p2p_app::db::release_db_lock();
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
     drop(dir);
 }

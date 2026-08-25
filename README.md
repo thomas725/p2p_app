@@ -22,9 +22,8 @@ frontends:
 * **Network-size tuning** — gossipsub mesh parameters adapt to peer count
   (Small / Medium / Large, see `crate::network::NetworkSize`).
 * **Debug logging** — structured, scrollable logs with ANSI stripping.
-* **Multi-instance safety** — picks the first unused `sqlite_*.db` via lock files
-  when `DATABASE_URL` is unset; refuses to open a DB already locked by another
-  instance.
+* **Multi-instance safety** — picks the first unused `sqlite_*.db` via lock files;
+  refuses to open a DB already locked by another instance.
 
 ## User Stories
 
@@ -55,7 +54,10 @@ cargo run --no-default-features --bin p2p_chat
 cargo run --features dioxus-desktop --bin p2p_chat_dioxus
 
 # Custom database location
-DATABASE_URL=my.db cargo run
+#
+# The desktop app auto-selects an unused `sqlite_*.db` in the working directory.
+# On mobile / via the Rust API, point a thread at a specific database with
+# `p2p_app::db::set_db_url(path)` (per-thread, so callers stay isolated).
 ```
 
 ### Flutter (mobile / desktop GUI)

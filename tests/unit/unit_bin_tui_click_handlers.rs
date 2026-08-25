@@ -59,7 +59,7 @@ fn test_peer_row_click_opens_dm_tab() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
 
     let mut state = app_state_with_peers(3);
@@ -67,7 +67,7 @@ fn test_peer_row_click_opens_dm_tab() {
     handle_peer_row_click(&mut state, 3); // row 3 = first peer (header is at rows 0-2)
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
 
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -77,7 +77,7 @@ fn test_peer_row_click_selects_correct_peer() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
 
     let mut state = app_state_with_peers(3);
@@ -85,7 +85,7 @@ fn test_peer_row_click_selects_correct_peer() {
     handle_peer_row_click(&mut state, 4); // row 4 = second peer (header offset)
     assert!(state.dm_messages.contains_key(&peer_id));
 
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]

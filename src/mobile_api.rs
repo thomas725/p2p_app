@@ -63,7 +63,7 @@ pub struct MobilePeerStatus {
 
 #[flutter_rust_bridge::frb(ignore)]
 pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String> {
-    crate::db::set_cached_db_url(&db_path);
+    crate::db::set_db_url(&db_path);
     crate::init_database().map_err(|e| e.to_string())?;
     let local_peer_id = crate::get_local_peer_id().map_err(|e| e.to_string())?;
 
@@ -96,7 +96,7 @@ mod tests {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("mobile.sqlite");
-        crate::reset_db_url_cache();
+        crate::reset_db_url();
 
         let status =
             init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
@@ -114,7 +114,7 @@ mod tests {
         // Simulate Android: nested `databases` folder does not exist yet.
         let db_path = dir.path().join("databases").join("p2p.db");
         assert!(!db_path.parent().unwrap().exists());
-        crate::reset_db_url_cache();
+        crate::reset_db_url();
 
         init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
 
@@ -128,8 +128,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("status_test.sqlite");
         let db_url = db_path.to_string_lossy().into_owned();
-        crate::reset_db_url_cache();
-        crate::db::set_cached_db_url(&db_url);
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_url);
 
         init_mobile_database(db_url).expect("mobile init");
 

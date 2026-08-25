@@ -673,8 +673,8 @@ mod tests {
             .join("msg_to_chat.sqlite")
             .to_string_lossy()
             .into_owned();
-        crate::reset_db_url_cache();
-        crate::db::set_cached_db_url(&db_url);
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_url);
         crate::init_database().expect("init db");
 
         let msg = Message {
@@ -933,8 +933,8 @@ mod tests {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("bc_test.sqlite");
-        crate::reset_db_url_cache();
-        crate::db::set_cached_db_url(&db_path.to_string_lossy());
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
         let _ = crate::init_database();
 
         let msgs = load_broadcast_messages(100).expect("load broadcast");
@@ -947,8 +947,8 @@ mod tests {
         let _guard = crate::db::shared_db_test_lock().lock().unwrap();
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("dm_test.sqlite");
-        crate::reset_db_url_cache();
-        crate::db::set_cached_db_url(&db_path.to_string_lossy());
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
         let _ = crate::init_database();
 
         let msgs = load_dm_messages("peer1".into(), 100).expect("load dm");

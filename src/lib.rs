@@ -91,7 +91,7 @@ pub use behavior::{
     build_behaviour, build_swarm,
 };
 #[cfg(any(test, feature = "test-utils"))]
-pub use db::reset_db_url_cache;
+pub use db::reset_db_url;
 pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
     sqlite_connect,

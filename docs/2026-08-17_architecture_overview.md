@@ -124,11 +124,14 @@ State lives in `AppState` (messages, peers, DMs, receipts, scroll states, nickna
 
 ### Multi-Instance Support
 
-When `DATABASE_URL` is unset:
-1. Scans CWD for `sqlite_*.db` files
-2. Checks `.db.lock` files (PID-based, Linux /proc check)
-3. Uses first unlocked database
-4. Creates new sequential database if all locked
+The database path is resolved per-thread (no process-global or env-var state),
+so each test/worker opens its own database:
+
+ 1. If a thread set a path via `db::set_db_url`, that path is used.
+ 2. Otherwise, scans CWD for `sqlite_*.db` files
+ 3. Checks `.db.lock` files (PID-based, Linux /proc check)
+ 4. Uses first unlocked database
+ 5. Creates new sequential database if all locked
 
 ### Migration Strategy
 

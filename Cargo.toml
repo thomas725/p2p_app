@@ -61,10 +61,6 @@ libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
 diesel_migrations = { version = "^2.3" }
 
-# this library allows us to load environment variables from a .env file.
-# This allows users a second way to specify the path to the database (with variable name: "DATABASE_URL")
-dotenvy = {version = "=0.15.7" }
-
 # feature set copied from chat example
 libp2p = { version = "=0.56.0", features = [
     "tokio",
@@ -104,7 +100,6 @@ petname = "3.0"
 [dev-dependencies]
 tempfile = "3"
 serial_test = "3"
-temp-env = "0.3"
 diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 
 [[bin]]

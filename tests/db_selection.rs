@@ -25,12 +25,10 @@ fn test_two_instances_get_different_databases_parallel() {
     thread::spawn(move || {
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
-        temp_env::with_var("DATABASE_URL", None::<&str>, || {
-            let url = p2p_app::db::get_database_url();
-            if let Ok(mut e) = errors_clone.lock() {
-                e.push(format!("A: {url}"));
-            }
-        });
+        let url = p2p_app::db::get_database_url();
+        if let Ok(mut e) = errors_clone.lock() {
+            e.push(format!("A: {url}"));
+        }
     });
 
     let cwd_clone = cwd.clone();
@@ -40,12 +38,10 @@ fn test_two_instances_get_different_databases_parallel() {
         thread::sleep(Duration::from_millis(50));
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
-        temp_env::with_var("DATABASE_URL", None::<&str>, || {
-            let url = p2p_app::db::get_database_url();
-            if let Ok(mut e) = errors_clone.lock() {
-                e.push(format!("B: {url}"));
-            }
-        });
+        let url = p2p_app::db::get_database_url();
+        if let Ok(mut e) = errors_clone.lock() {
+            e.push(format!("B: {url}"));
+        }
     });
 
     thread::sleep(Duration::from_millis(200));

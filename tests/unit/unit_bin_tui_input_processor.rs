@@ -328,7 +328,7 @@ fn test_enter_key_in_peers_tab_opens_dm() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -348,7 +348,7 @@ fn test_enter_key_in_peers_tab_opens_dm() {
         assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
         assert!(state.active_tab >= dm_count_before);
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[tokio::test]
@@ -429,7 +429,7 @@ fn test_nickname_submission_per_peer_sends_dm() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -462,7 +462,7 @@ fn test_nickname_submission_per_peer_sends_dm() {
             _ => panic!("expected SendDm"),
         }
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -472,7 +472,7 @@ fn test_nickname_submission_global_updates_own_nickname() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -488,7 +488,7 @@ fn test_nickname_submission_global_updates_own_nickname() {
         assert!(!state.editing_nickname);
         assert_eq!(state.own_nickname, "NewGlobal");
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 // ── process_key_event: ESC + editing_nickname ─────────────────────────
@@ -527,7 +527,7 @@ fn test_enter_during_nickname_edit_submits_nickname() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -553,7 +553,7 @@ fn test_enter_during_nickname_edit_submits_nickname() {
         let s = state.lock().await;
         assert!(!s.editing_nickname);
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]

@@ -18,11 +18,11 @@ fn with_test_db(f: impl FnOnce()) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
-    temp_env::with_var("DATABASE_URL", Some(db_path.to_str().unwrap()), || {
-        p2p_app::db::init_database().unwrap();
-        f();
-        p2p_app::db::release_db_lock();
-    });
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    f();
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
 }
 
 // ── generate_self_nickname ───────────────────────────────────────────────────

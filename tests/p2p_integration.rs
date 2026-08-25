@@ -592,14 +592,11 @@ fn save_stale_peer_to_db(
     peer_id: &str,
     stale_address: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    temp_env::with_var(
-        "DATABASE_URL",
-        Some(db_path),
-        || -> Result<(), Box<dyn std::error::Error>> {
-            p2p_app::save_peer(peer_id, &[stale_address.to_string()])?;
-            Ok(())
-        },
-    )
+    p2p_app::db::set_db_url(db_path);
+    p2p_app::save_peer(peer_id, &[stale_address.to_string()])?;
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+    Ok(())
 }
 
 #[tokio::test]

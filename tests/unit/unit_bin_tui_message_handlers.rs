@@ -116,7 +116,7 @@ fn test_send_broadcast_updates_state_and_sends_command() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -141,7 +141,7 @@ fn test_send_broadcast_updates_state_and_sends_command() {
             _ => panic!("expected Publish"),
         }
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]
@@ -151,7 +151,7 @@ fn test_send_dm_updates_state_and_sends_command() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let _dir = tempfile::TempDir::new().unwrap();
     let db_path = _dir.path().join("test.db");
-    p2p_app::db::set_cached_db_url(db_path.to_str().unwrap());
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
@@ -185,7 +185,7 @@ fn test_send_dm_updates_state_and_sends_command() {
             _ => panic!("expected SendDm"),
         }
     });
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 fn with_test_db(f: impl FnOnce(mpsc::Sender<p2p_app::SwarmCommand>)) {
@@ -195,14 +195,14 @@ fn with_test_db(f: impl FnOnce(mpsc::Sender<p2p_app::SwarmCommand>)) {
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();
-    p2p_app::db::set_cached_db_url(&db_str);
+    p2p_app::db::set_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
     let (swarm_cmd_tx, _) = mpsc::channel(1);
 
     f(swarm_cmd_tx);
 
     p2p_app::db::release_db_lock();
-    p2p_app::db::reset_db_url_cache();
+    p2p_app::db::reset_db_url();
 }
 
 #[test]

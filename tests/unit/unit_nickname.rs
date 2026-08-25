@@ -15,16 +15,11 @@ fn with_test_db(f: impl FnOnce()) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().expect("tempdir");
     let db_path = dir.path().join("test.db");
-    temp_env::with_var(
-        "DATABASE_URL",
-        Some(db_path.to_str().expect("db path")),
-        || {
-            crate::db::init_database().expect("init db");
-            f();
-            crate::db::release_db_lock();
-            crate::db::reset_db_url_cache();
-        },
-    );
+    crate::db::set_db_url(db_path.to_str().expect("db path"));
+    crate::db::init_database().expect("init db");
+    f();
+    crate::db::release_db_lock();
+    crate::db::reset_db_url();
 }
 
 #[test]

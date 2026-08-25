@@ -8,7 +8,6 @@
 //! For future multi-threaded use, consider using r2d2 connection pooling.
 
 use crate::generated::columns::SCHEMA_ENTRIES;
-
 use crate::generated::models_queryable::Identity;
 use crate::generated::schema::identities::dsl::identities;
 use color_eyre::eyre::{Context, eyre};
@@ -16,43 +15,33 @@ use diesel::{
     Connection as _, QueryDsl, RunQueryDsl as _, SelectableHelper as _, SqliteConnection,
 };
 use diesel_migrations::MigrationHarness;
-use dotenvy::dotenv;
-use std::env;
-use std::sync::{Mutex, OnceLock};
-
-/// Serializes schema migration so concurrent connections to the same database
-/// (e.g. parallel DB tests that momentarily share the cached DB URL) cannot race
-/// `run_pending_migrations`, which would otherwise hit a `UNIQUE constraint
-/// failed: __diesel_schema_migrations.version` error.
-static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
+use std::cell::RefCell;
+use std::sync::OnceLock;
 
 pub use crate::MIGRATIONS;
 
-/// Cache the database URL after first connection to avoid repeated lock file checks.
-///
-/// Explicit `DATABASE_URL` values always refresh this cache, which keeps integration tests
-/// isolated even when they point each test at a different temporary database.
-static DB_URL: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+thread_local! {
+    /// Database path for the current thread.
+    ///
+    /// Each test (and each runtime task) runs on its own OS thread, so storing the
+    /// URL here — instead of a process-global variable or a `DATABASE_URL` env var —
+    /// keeps callers fully isolated: no test can observe or stomp another test's
+    /// database. The FRB/mobile entry points set this once on their worker thread.
+    static DB_URL: RefCell<Option<String>> = const { RefCell::new(None) };
+}
 
-fn db_url_cache() -> &'static Mutex<Option<String>> {
-    DB_URL.get_or_init(|| Mutex::new(None))
+/// Override the database path for the current thread.
+///
+/// Preferred over any global/env mechanism: it cannot race with other threads
+/// and keeps tests independent of each other.
+#[cfg(any(test, feature = "test-utils", feature = "mobile"))]
+pub fn set_db_url(url: &str) {
+    DB_URL.with(|u| *u.borrow_mut() = Some(url.to_string()));
 }
 
 #[cfg(any(test, feature = "test-utils"))]
-#[path = "../tests/shared/db_test_utils.rs"]
-mod test_utils;
-
-#[cfg(any(test, feature = "test-utils"))]
-pub use test_utils::reset_db_url_cache;
-
-/// Set the cached database URL directly (avoids needing DATABASE_URL env var).
-/// This is the preferred mechanism for tests — it avoids race conditions
-/// on the process-global environment variable.
-#[cfg(any(test, feature = "test-utils", feature = "mobile"))]
-pub fn set_cached_db_url(url: &str) {
-    if let Ok(mut cached) = db_url_cache().lock() {
-        *cached = Some(url.to_string());
-    }
+pub fn reset_db_url() {
+    DB_URL.with(|u| *u.borrow_mut() = None);
 }
 
 /// Shared lock for serialising test DB setup/teardown.
@@ -64,13 +53,10 @@ pub fn shared_db_test_lock() -> &'static std::sync::Mutex<()> {
 
 /// Establish a connection to the `SQLite` database and run pending migrations.
 ///
-/// If `DATABASE_URL` is set, uses that file directly.
-/// Otherwise, finds the first unused `SQLite` database in the current working directory
-/// using lock files (`.lock` files with our PID), or creates a new one.
-/// Automatically runs all pending Diesel migrations on first call.
-///
-/// **Optimization:** The database path is cached after the first connection,
-/// avoiding expensive lock file checks on subsequent operations.
+/// Uses the per-thread database URL set via [`set_db_url`] (or the default
+/// auto-selected database when none is set). Because the URL is per-thread,
+/// each test (and each runtime task) opens its own database file, so concurrent
+/// connections never race on the same migrations table.
 ///
 /// # Returns
 /// A new `SqliteConnection` with all migrations applied, or an error if connection/migration fails
@@ -79,16 +65,14 @@ pub fn shared_db_test_lock() -> &'static std::sync::Mutex<()> {
 /// - If database file cannot be found or created
 /// - If migrations fail to execute
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
-    dotenv().ok();
-
     let db_path = get_database_url();
 
-    // Register cleanup on panic after path is determined and cached (to ensure it lives for the app lifetime)
+    // Register cleanup on panic after path is determined (to ensure it lives for the app lifetime)
     static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
     let () = PANIC_HOOK_SET.get_or_init(|| {
         let prev = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
-            if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
+            if let Some(db_path) = DB_URL.with(|u| u.borrow().clone()) {
                 let lock_path = format!("{db_path}.lock");
                 let _ = std::fs::remove_file(&lock_path);
                 crate::logging::p2plog_debug(format!("[DB] released lock on panic: {lock_path}"));
@@ -115,19 +99,13 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
         .execute(&mut conn)
         .ok();
 
-    // Run migrations first to create tables. Hold a process-wide lock so two
-    // connections opening the same database concurrently don't both try to
-    // insert the same migration version (UNIQUE violation).
-    {
-        let _guard = MIGRATION_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        conn.run_pending_migrations(MIGRATIONS)
-            .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
+    // Run migrations first to create tables, then ensure columns that may be
+    // missing from older schemas.
+    conn.run_pending_migrations(MIGRATIONS)
+        .map_err(|e| eyre!(format!("Error executing migrations on {db_path}: {e}")))?;
 
-        // Then ensure columns that may be missing from older schemas
-        ensure_columns(&mut conn);
-    }
+    ensure_columns(&mut conn);
+
     Ok(conn)
 }
 
@@ -178,17 +156,6 @@ fn ensure_columns(conn: &mut SqliteConnection) {
             }
         }
     }
-}
-
-/// Determine the database path (cached version to avoid repeated lock file checks).
-fn determine_db_path() -> color_eyre::Result<String> {
-    // If DATABASE_URL is explicitly set, use it directly (lock-file logic not needed)
-    if let Ok(url) = env::var("DATABASE_URL") {
-        return Ok(url);
-    }
-
-    // No DATABASE_URL set: find or create an unused database in cwd
-    find_or_create_unused_db()
 }
 
 /// Checks if a database file is locked by examining its lock file.
@@ -341,39 +308,28 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
     }
 }
 
-/// Get the database URL from environment or default value.
+/// Get the database URL for the current thread.
 ///
-/// Respects `DATABASE_URL` environment variable or `.env` file, defaulting to "sqlite.db".
-/// Caches result in `DB_URL` so subsequent calls (like from `sqlite_connect`) use same db.
+/// Returns the URL set via [`set_db_url`], or auto-selects an unused database in
+/// the working directory when none has been set. Because the URL is per-thread,
+/// this is isolated across tests and runtime tasks.
 #[must_use]
 pub fn get_database_url() -> String {
-    dotenv().ok();
-
-    if let Ok(url) = env::var("DATABASE_URL") {
-        if let Ok(mut cached) = db_url_cache().lock() {
-            *cached = Some(url.clone());
-        }
+    if let Some(url) = DB_URL.with(|u| u.borrow().clone()) {
         return url;
     }
-
-    // Hold the cache lock across determination so concurrent callers (several
-    // DB operations firing at startup) don't each run find_or_create_unused_db.
-    // Without this, the path-selection logs fire twice and the threads could
-    // even end up choosing different database files.
-    let mut cache = db_url_cache().lock().expect("DB_URL cache mutex poisoned");
-    if let Some(url) = cache.clone() {
-        return url;
-    }
-
-    let url = determine_db_path().unwrap_or_else(|_| "sqlite.db".to_owned());
-    *cache = Some(url.clone());
+    // No thread-local URL set yet: pick an unused database for this thread and
+    // cache it so subsequent calls (e.g. from `sqlite_connect` and later DB
+    // ops) reuse the same file for the lifetime of this thread.
+    let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
+    DB_URL.with(|u| *u.borrow_mut() = Some(url.clone()));
     url
 }
 
 /// Release the database lock file by deleting the .lock file.
 /// Called on normal exit to clean up the lock file.
 pub fn release_db_lock() {
-    if let Some(db_path) = db_url_cache().lock().ok().and_then(|cached| cached.clone()) {
+    if let Some(db_path) = DB_URL.with(|u| u.borrow().clone()) {
         let lock_path = format!("{db_path}.lock");
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
             crate::logging::p2plog_debug(format!("[DB] released lock on exit: {lock_path}"));
