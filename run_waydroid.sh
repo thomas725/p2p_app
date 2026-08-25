@@ -65,4 +65,22 @@ bash "$APP_DIR/build_rust_android.sh"
 #    comment it out to reuse the previous Flutter build for faster launches.
 cd "$APP_DIR"
 flutter clean
-exec flutter run -d "$SERIAL"
+
+# The Rust `mobile` build mirrors the in-app Log-tab lines to stderr
+# (src/logging.rs, `#[cfg(all(feature = "mobile", not(test)))]`). On Android
+# that stderr is captured by logcat under the `stderr` tag. Echo those lines to
+# this script's stdout (so they show up in the terminal and the outer `tee`)
+# by filtering logcat for our `[YYYY-MM-DD HH:MM:SS` timestamp prefix that
+# `push_log` always emits. Duplicates any lines `flutter run` already forwards.
+APLOG_PID=""
+cleanup_applog() {
+  [ -n "$APLOG_PID" ] && kill "$APLOG_PID" 2>/dev/null || true
+}
+trap cleanup_applog EXIT
+
+adb -s "$SERIAL" logcat -c 2>/dev/null || true
+adb -s "$SERIAL" logcat 2>/dev/null \
+  | grep --line-buffered -E '\[20[0-9]{2}-[0-9]{2}-[0-9]{2} ' &
+APLOG_PID=$!
+
+flutter run -d "$SERIAL"
