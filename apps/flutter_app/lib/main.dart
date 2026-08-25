@@ -525,11 +525,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openDmChat(MobilePeerRecord peer) {
+  // Switch the main tab from a full-screen route (peer info / DM chat) so the
+  // user can navigate without the back button.
+  void _navigateToTab(int i) {
+    setState(() => _tabIndex = i);
+    if (i == 3) _refreshSettingsOnOpen();
+  }
+
+  void _openPeerInfo(MobilePeerRecord peer) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DmChatScreen(peer: peer, serviceRunning: _serviceRunning),
+        builder: (_) => PeerInfoScreen(
+          peer: peer,
+          serviceRunning: _serviceRunning,
+          onNavigate: _navigateToTab,
+          currentTab: 1,
+        ),
       ),
     );
   }
@@ -550,7 +562,12 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PeerInfoScreen(peer: record, serviceRunning: _serviceRunning),
+        builder: (_) => PeerInfoScreen(
+          peer: record,
+          serviceRunning: _serviceRunning,
+          onNavigate: _navigateToTab,
+          currentTab: 0,
+        ),
       ),
     );
   }
@@ -594,7 +611,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _PeerList(
         peers: _peers,
         stats: _peerStats,
-        onTap: _openDmChat,
+        onTap: _openPeerInfo,
         serviceRunning: _serviceRunning,
       ),
       const _LogTab(),
@@ -1078,10 +1095,43 @@ class _PeerListState extends State<_PeerList> {
 
 // --- Peer Info Screen ---
 
+// Bottom navigation shown on full-screen routes (peer info, DM chat) so the
+// user can jump back to any main tab without using the back button.
+class _MainTabNavBar extends StatelessWidget {
+  const _MainTabNavBar({
+    required this.currentIndex,
+    required this.onSelect,
+  });
+  final int currentIndex;
+  final void Function(int) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigationBar(
+      selectedIndex: currentIndex,
+      onDestinationSelected: onSelect,
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
+        NavigationDestination(icon: Icon(Icons.people), label: 'Peers'),
+        NavigationDestination(icon: Icon(Icons.list), label: 'Log'),
+        NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+      ],
+    );
+  }
+}
+
 class PeerInfoScreen extends StatelessWidget {
-  const PeerInfoScreen({super.key, required this.peer, required this.serviceRunning});
+  const PeerInfoScreen({
+    super.key,
+    required this.peer,
+    required this.serviceRunning,
+    this.onNavigate,
+    this.currentTab = 1,
+  });
   final MobilePeerRecord peer;
   final bool serviceRunning;
+  final void Function(int)? onNavigate;
+  final int currentTab;
 
   static String _fmt(String s) {
     if (s.isEmpty) return 'unknown';
@@ -1113,6 +1163,13 @@ class PeerInfoScreen extends StatelessWidget {
     final (origin, originDetail) = _origin(peer);
     return Scaffold(
       appBar: AppBar(title: Text(peer.displayName)),
+      bottomNavigationBar: _MainTabNavBar(
+        currentIndex: currentTab,
+        onSelect: (i) {
+          Navigator.pop(context);
+          onNavigate?.call(i);
+        },
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1190,6 +1247,8 @@ class PeerInfoScreen extends StatelessWidget {
                 builder: (_) => DmChatScreen(
                   peer: peer,
                   serviceRunning: serviceRunning,
+                  onNavigate: onNavigate,
+                  currentTab: currentTab,
                 ),
               ),
             ),
@@ -1219,9 +1278,17 @@ class PeerInfoScreen extends StatelessWidget {
 // --- DM Chat Screen ---
 
 class DmChatScreen extends StatefulWidget {
-  const DmChatScreen({super.key, required this.peer, required this.serviceRunning});
+  const DmChatScreen({
+    super.key,
+    required this.peer,
+    required this.serviceRunning,
+    this.onNavigate,
+    this.currentTab = 1,
+  });
   final MobilePeerRecord peer;
   final bool serviceRunning;
+  final void Function(int)? onNavigate;
+  final int currentTab;
 
   @override
   State<DmChatScreen> createState() => _DmChatScreenState();
@@ -1412,6 +1479,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
                 builder: (_) => PeerInfoScreen(
                   peer: widget.peer,
                   serviceRunning: widget.serviceRunning,
+                  onNavigate: widget.onNavigate,
+                  currentTab: widget.currentTab,
                 ),
               ),
             ),
@@ -1426,6 +1495,13 @@ class _DmChatScreenState extends State<DmChatScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: _MainTabNavBar(
+        currentIndex: widget.currentTab,
+        onSelect: (i) {
+          Navigator.pop(context);
+          widget.onNavigate?.call(i);
+        },
       ),
       body: Column(
         children: [
