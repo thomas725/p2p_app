@@ -30,13 +30,47 @@ thread_local! {
     static DB_URL: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
+/// Process-wide primary database URL.
+///
+/// `get_database_url` is called from many threads (the tokio swarm handler, the
+/// FRB worker thread, etc.) and tokio tasks migrate between worker threads, so a
+/// thread-local URL alone would force every thread to independently re-run DB
+/// selection and lock its own `sqlite_N.db`. We cache the selected URL here so the
+/// application reuses a single database across all threads.
+#[cfg(not(any(test, feature = "test-utils")))]
+static PRIMARY_DB_URL: OnceLock<std::sync::Mutex<Option<String>>> = OnceLock::new();
+
+#[cfg(not(any(test, feature = "test-utils")))]
+fn primary_db_url() -> Option<String> {
+    PRIMARY_DB_URL
+        .get()
+        .and_then(|m| m.lock().ok().and_then(|g| g.clone()))
+}
+
+#[cfg(not(any(test, feature = "test-utils")))]
+fn set_primary_db_url(url: String) {
+    let slot = PRIMARY_DB_URL.get_or_init(|| std::sync::Mutex::new(None));
+    if let Ok(mut g) = slot.lock() {
+        *g = Some(url);
+    }
+}
+
 /// Override the database path for the current thread.
 ///
 /// Preferred over any global/env mechanism: it cannot race with other threads
 /// and keeps tests independent of each other.
-#[cfg(any(test, feature = "test-utils", feature = "mobile"))]
+#[cfg(any(test, feature = "test-utils"))]
 pub fn set_db_url(url: &str) {
     DB_URL.with(|u| *u.borrow_mut() = Some(url.to_string()));
+}
+
+/// Production (non-test) override: set both the thread-local and the shared
+/// primary URL so every thread in the process converges on the same database.
+#[cfg(not(any(test, feature = "test-utils")))]
+pub fn set_db_url(url: &str) {
+    let s = url.to_string();
+    DB_URL.with(|u| *u.borrow_mut() = Some(s.clone()));
+    set_primary_db_url(s);
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -318,12 +352,31 @@ pub fn get_database_url() -> String {
     if let Some(url) = DB_URL.with(|u| u.borrow().clone()) {
         return url;
     }
-    // No thread-local URL set yet: pick an unused database for this thread and
-    // cache it so subsequent calls (e.g. from `sqlite_connect` and later DB
-    // ops) reuse the same file for the lifetime of this thread.
-    let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
-    DB_URL.with(|u| *u.borrow_mut() = Some(url.clone()));
-    url
+
+    // Tests intentionally re-run selection on every call so each test gets a
+    // fresh, isolated database. Production reuses the single primary database
+    // shared across all threads (set via `set_db_url` or on first selection).
+    #[cfg(any(test, feature = "test-utils"))]
+    {
+        let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
+        DB_URL.with(|u| *u.borrow_mut() = Some(url.clone()));
+        return url;
+    }
+
+    #[cfg(not(any(test, feature = "test-utils")))]
+    {
+        if let Some(url) = primary_db_url() {
+            return url;
+        }
+        let slot = PRIMARY_DB_URL.get_or_init(|| std::sync::Mutex::new(None));
+        let mut guard = slot.lock().unwrap();
+        if let Some(url) = guard.clone() {
+            return url;
+        }
+        let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
+        *guard = Some(url.clone());
+        url
+    }
 }
 
 /// Release the database lock file by deleting the .lock file.

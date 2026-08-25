@@ -116,6 +116,25 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// Immutable snapshot of the live connection state shown on the Settings page.
+///
+/// Held in a [ValueNotifier] so the Settings page can repaint on connect/
+/// disconnect events even while it is offscreen (it then reads the latest value
+/// once it becomes visible again).
+class _LiveStatus {
+  const _LiveStatus({
+    required this.connectedCount,
+    required this.connectedPeerIds,
+    required this.listenAddresses,
+    required this.lastConnectionAt,
+  });
+
+  final int connectedCount;
+  final List<String> connectedPeerIds;
+  final List<String> listenAddresses;
+  final DateTime? lastConnectionAt;
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   int _tabIndex = 0;
   MobilePeerStatus? _status;
@@ -133,6 +152,45 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
   DateTime? _lastConnectionAt;
+
+  /// Live connection snapshot, broadcast to the Settings page.
+  final ValueNotifier<_LiveStatus> _liveStatus = ValueNotifier(const _LiveStatus(
+    connectedCount: 0,
+    connectedPeerIds: [],
+    listenAddresses: [],
+    lastConnectionAt: null,
+  ));
+
+  /// Live node status (peer id, nickname, db url), broadcast to the Settings page.
+  final ValueNotifier<MobilePeerStatus?> _statusNotifier =
+      ValueNotifier<MobilePeerStatus?>(null);
+
+  void _syncLiveStatus() {
+    _liveStatus.value = _LiveStatus(
+      connectedCount: _connectedCount,
+      connectedPeerIds: List<String>.from(_connectedPeerIds),
+      listenAddresses: List<String>.from(_listenAddresses),
+      lastConnectionAt: _lastConnectionAt,
+    );
+  }
+
+  void _syncStatus() {
+    _statusNotifier.value = _status;
+  }
+
+  /// Re-fetch the node status when the Settings tab is (re)opened so it always
+  /// shows current data even if it was offscreen when something changed.
+  Future<void> _refreshSettingsOnOpen() async {
+    if (!_serviceRunning) return;
+    try {
+      final status = await getMobilePeerStatus();
+      if (mounted) {
+        _status = status;
+        _syncStatus();
+        _syncLiveStatus();
+      }
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -236,6 +294,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _status = status;
         _loading = false;
       });
+      _syncStatus();
+      _syncLiveStatus();
       await _loadHistory();
       await _refreshPeers();
       await _scrollToFirstUnread();
@@ -292,7 +352,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _connectedPeerIds.add(event.peerId!);
           }
           _connectedCount = _connectedPeerIds.length;
-          _lastConnectionAt = DateTime.now();
         });
         _refreshPeers();
         break;
@@ -315,6 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         break;
     }
+    _syncLiveStatus();
   }
 
   Future<void> _saveIncoming(String content, String peerId, bool isDirect,
@@ -409,6 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _connectedPeerIds.clear();
           _listenAddresses.clear();
         });
+        _syncLiveStatus();
       } else {
         if (_isAndroid) {
           await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
@@ -428,6 +489,8 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         final status = await getMobilePeerStatus();
         setState(() => _status = status);
+        _syncStatus();
+        _syncLiveStatus();
         await _loadHistory();
         await _refreshPeers();
       }
@@ -514,16 +577,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _PeerList(peers: _peers, onTap: _openDmChat, serviceRunning: _serviceRunning),
       const _LogTab(),
       _Settings(
-        status: _status!,
+        liveStatus: _liveStatus,
+        status: _statusNotifier,
         serviceRunning: _serviceRunning,
         onToggleService: _toggleService,
         onShareApk: _shareApk,
         isAndroid: _isAndroid,
-        connectedCount: _connectedCount,
-        connectedPeerIds: _connectedPeerIds,
         peers: _peers,
-        listenAddresses: _listenAddresses,
-        lastConnectionAt: _lastConnectionAt,
         networkName: _kNetworkName,
         onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
@@ -533,7 +593,10 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(index: _tabIndex, children: screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabIndex,
-        onDestinationSelected: (i) => setState(() => _tabIndex = i),
+        onDestinationSelected: (i) {
+          setState(() => _tabIndex = i);
+          if (i == 3) _refreshSettingsOnOpen();
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
           NavigationDestination(icon: Icon(Icons.people), label: 'Peers'),
@@ -1386,30 +1449,24 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
 class _Settings extends StatefulWidget {
   const _Settings({
+    required this.liveStatus,
     required this.status,
     required this.serviceRunning,
     required this.onToggleService,
     required this.onShareApk,
     required this.isAndroid,
-    required this.connectedCount,
-    required this.connectedPeerIds,
     required this.peers,
-    required this.listenAddresses,
-    required this.lastConnectionAt,
     required this.networkName,
     required this.onOpenPeerInfo,
   });
 
-  final MobilePeerStatus status;
+  final ValueNotifier<_LiveStatus> liveStatus;
+  final ValueNotifier<MobilePeerStatus?> status;
   final bool serviceRunning;
   final VoidCallback onToggleService;
   final VoidCallback onShareApk;
   final bool isAndroid;
-  final int connectedCount;
-  final List<String> connectedPeerIds;
   final List<MobilePeerRecord> peers;
-  final List<String> listenAddresses;
-  final DateTime? lastConnectionAt;
   final String networkName;
   final void Function(String) onOpenPeerInfo;
 
@@ -1419,16 +1476,36 @@ class _Settings extends StatefulWidget {
 
 class _SettingsState extends State<_Settings> {
   String? _nickname;
+  late _LiveStatus _live;
+  MobilePeerStatus? _statusData;
 
   @override
   void initState() {
     super.initState();
-    _nickname = widget.status.selfNickname;
+    _live = widget.liveStatus.value;
+    _statusData = widget.status.value;
+    _nickname = _statusData?.selfNickname;
+    widget.liveStatus.addListener(_onLive);
+    widget.status.addListener(_onStatus);
   }
+
+  @override
+  void dispose() {
+    widget.liveStatus.removeListener(_onLive);
+    widget.status.removeListener(_onStatus);
+    super.dispose();
+  }
+
+  void _onLive() => setState(() => _live = widget.liveStatus.value);
+  void _onStatus() => setState(() {
+        _statusData = widget.status.value;
+        _nickname = _statusData?.selfNickname;
+      });
 
   @override
   Widget build(BuildContext context) {
     final platformLabel = widget.isAndroid ? 'Android' : 'Desktop';
+    final status = _statusData;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -1467,14 +1544,14 @@ class _SettingsState extends State<_Settings> {
         Card(
           child: ListTile(
             title: const Text('Peer ID'),
-            subtitle: SelectableText(widget.status.localPeerId),
+            subtitle: SelectableText(status?.localPeerId ?? ''),
           ),
         ),
         // Database
         Card(
           child: ListTile(
             title: const Text('Database'),
-            subtitle: SelectableText(widget.status.databaseUrl),
+            subtitle: SelectableText(status?.databaseUrl ?? ''),
           ),
         ),
         // Platform
@@ -1536,31 +1613,31 @@ class _SettingsState extends State<_Settings> {
                     style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 12),
                 _statusRow(Icons.link, 'Connected peers',
-                    widget.connectedCount.toString()),
-                if (widget.connectedPeerIds.isEmpty)
+                    _live.connectedCount.toString()),
+                if (_live.connectedPeerIds.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text('—', style: TextStyle(color: Colors.grey)),
                   )
                 else
                   ..._connectedPeerRows(),
-                if (widget.connectedCount == 0)
-                  _statusRow(Icons.history, 'Last connection',
-                      _formatTimestamp(widget.lastConnectionAt)),
+                if (_live.connectedCount == 0)
+                  _statusRow(Icons.history, 'Last connection lost',
+                      _formatTimestamp(_live.lastConnectionAt)),
                 _statusRow(
                     Icons.network_cell, 'Network name', widget.networkName),
                 _statusRow(Icons.hub, 'Network size',
-                    _networkSizeLabel(widget.connectedCount)),
+                    _networkSizeLabel(_live.connectedCount)),
                 const SizedBox(height: 8),
                 Text('Listen addresses',
                     style: Theme.of(context).textTheme.labelSmall),
-                if (widget.listenAddresses.isEmpty)
+                if (_live.listenAddresses.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text('—', style: TextStyle(color: Colors.grey)),
                   )
                 else
-                  ...widget.listenAddresses.map(
+                  ..._live.listenAddresses.map(
                     (a) => Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: SelectableText(a),
@@ -1610,7 +1687,7 @@ class _SettingsState extends State<_Settings> {
   List<Widget> _connectedPeerRows() {
     final byId = {for (final p in widget.peers) p.peerId: p};
     return [
-      for (final id in widget.connectedPeerIds)
+      for (final id in _live.connectedPeerIds)
         InkWell(
           onTap: () => widget.onOpenPeerInfo(id),
           child: Padding(
