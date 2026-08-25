@@ -936,8 +936,8 @@ class _PeerListState extends State<_PeerList> {
   static const int _kBroadcast = 2;
   static const int _kLastSeen = 3;
 
-  int _sortColumn = _kName;
-  bool _ascending = true;
+  int _sortColumn = _kLastSeen;
+  bool _ascending = false;
 
   int _dmCount(MobilePeerRecord p) =>
       (widget.stats[p.peerId]?.dmCount ?? 0).toInt();
