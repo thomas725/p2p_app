@@ -11,6 +11,54 @@ use std::io::Write;
 use std::sync::{Arc, Mutex, OnceLock};
 use tracing::field::Visit;
 
+/// Direct-to-logcat sink for Android.
+///
+/// A native app's stdout/stderr are not reliably routed to logcat on Android
+/// (they usually go to /dev/null), so `eprintln!` from the Rust core would never
+/// show up in `adb logcat` / `flutter run`. We therefore call the NDK `liblog`
+/// directly so the in-app Log-tab lines surface in logcat and can be captured
+/// by `run_waydroid.sh`.
+#[cfg(target_os = "android")]
+mod android_log {
+    use std::os::raw::{c_char, c_int};
+
+    #[link(name = "log")]
+    unsafe extern "C" {
+        fn __android_log_write(prio: c_int, tag: *const c_char, text: *const c_char) -> c_int;
+    }
+
+    const ANDROID_LOG_DEBUG: c_int = 3;
+    const ANDROID_LOG_INFO: c_int = 4;
+    const ANDROID_LOG_WARN: c_int = 5;
+    const ANDROID_LOG_ERROR: c_int = 6;
+
+    pub fn write(line: &str) {
+        let prio = if let Some(rest) = line.split_once('[') {
+            let up = rest.1.to_ascii_uppercase();
+            if up.contains("[ERROR]") {
+                ANDROID_LOG_ERROR
+            } else if up.contains("[WARN]") {
+                ANDROID_LOG_WARN
+            } else if up.contains("[DEBUG]") {
+                ANDROID_LOG_DEBUG
+            } else {
+                ANDROID_LOG_INFO
+            }
+        } else {
+            ANDROID_LOG_INFO
+        };
+
+        let tag = b"p2p_app\0".as_ptr() as *const c_char;
+        let text = match std::ffi::CString::new(line.trim_end_matches('\n')) {
+            Ok(c) => c,
+            Err(_) => return,
+        };
+        unsafe {
+            __android_log_write(prio, tag, text.as_ptr());
+        }
+    }
+}
+
 type LogCallback = Arc<dyn Fn(String) + Send + Sync>;
 type RedrawHook = Arc<dyn Fn() + Send + Sync>;
 
@@ -225,11 +273,17 @@ pub fn push_log(message: impl Into<String>) {
         }
     }
 
-    // When compiled for the Flutter/mobile frontend, also mirror every log line
-    // to stderr so the lines shown in the in-app log tab are also visible in the
-    // terminal that launched the app (run_flutter_desktop.sh / run_waydroid.sh).
+    // When compiled for the Flutter/mobile frontend, mirror every log line so
+    // the lines shown in the in-app Log tab are also visible where the app runs:
+    //  - on Android, write directly to logcat (stderr is not routed to logcat),
+    //    so `adb logcat` / `flutter run` actually receive them;
+    //  - elsewhere (desktop), print to stderr so run_flutter_desktop.sh shows them.
     // Excluded under `cfg(test)` so the test harness stays quiet.
-    #[cfg(all(feature = "mobile", not(test)))]
+    #[cfg(all(feature = "mobile", target_os = "android", not(test)))]
+    {
+        android_log::write(&formatted);
+    }
+    #[cfg(all(feature = "mobile", not(target_os = "android"), not(test)))]
     {
         eprintln!("[{ts}] {msg}");
     }

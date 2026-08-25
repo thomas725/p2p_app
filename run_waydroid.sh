@@ -83,4 +83,8 @@ adb -s "$SERIAL" logcat 2>/dev/null \
   | grep --line-buffered -E '\[20[0-9]{2}-[0-9]{2}-[0-9]{2} ' &
 APLOG_PID=$!
 
-flutter run -d "$SERIAL"
+# `flutter run` also forwards the app's logcat, so drop our own lines from its
+# stream to avoid showing them twice; the dedicated `adb logcat` above is the
+# single source for the in-app Log-tab lines on this script's stdout.
+flutter run -d "$SERIAL" 2>&1 \
+  | grep -v --line-buffered -E '\[20[0-9]{2}-[0-9]{2}-[0-9]{2} '
