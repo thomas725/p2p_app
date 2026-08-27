@@ -67,6 +67,7 @@ fn save_message_with_meta_persists_fields() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)]
 #[serial(db)]
 fn save_receipt_upserts_same_key() {
     with_test_db(|| {
@@ -173,7 +174,7 @@ fn load_messages_respects_limit() {
     with_test_db(|| {
         for i in 0..10 {
             let _ = save_message(
-                &format!("msg-{}", i),
+                &format!("msg-{i}"),
                 Some("peer-a"),
                 "topic-limit",
                 false,

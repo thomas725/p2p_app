@@ -1,5 +1,7 @@
 //! Tests for db.rs module - database URL and identity functions
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
@@ -117,7 +119,9 @@ fn test_reset_db_url_clears_set_url() {
     p2p_app::db::reset_db_url();
     let url3 = p2p_app::db::get_database_url();
     assert_ne!(url3, "/tmp/other.db");
-    assert!(url3.ends_with(".db"));
+    assert!(std::path::Path::new(&url3)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("db")));
 }
 
 // ── Additional database edge cases ─────────────────────────────────────────────

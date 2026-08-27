@@ -9,7 +9,7 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
     match key_code {
         crossterm::event::KeyCode::Tab => {
             let max_tabs = state.dynamic_tabs.total_tab_count();
-            state.active_tab = (state.active_tab + 1) % max_tabs;
+            state.active_tab = state.active_tab.saturating_add(1).checked_rem(max_tabs).unwrap_or(0);
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
@@ -17,9 +17,9 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
         crossterm::event::KeyCode::BackTab => {
             let max_tabs = state.dynamic_tabs.total_tab_count();
             state.active_tab = if state.active_tab == 0 {
-                max_tabs - 1
+                max_tabs.saturating_sub(1)
             } else {
-                state.active_tab - 1
+                state.active_tab.saturating_sub(1)
             };
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
@@ -111,6 +111,7 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 }
 
 /// Handle scroll key for Peers tab
+#[allow(clippy::missing_const_for_fn)]
 fn compute_new_peer_selection(
     key_code: crossterm::event::KeyCode,
     current_selection: usize,
@@ -119,7 +120,7 @@ fn compute_new_peer_selection(
     match key_code {
         crossterm::event::KeyCode::Up => current_selection.saturating_sub(1),
         crossterm::event::KeyCode::Down if current_selection < peer_count.saturating_sub(1) => {
-            current_selection + 1
+            current_selection.saturating_add(1)
         }
         _ => current_selection,
     }
@@ -138,8 +139,8 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
             scroll_peers_tab(key_code, state);
         }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-            let mid_row = 2 + (state.chat_area_height / 2);
-            let mouse_row = state.last_mouse_row as usize;
+            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(2);
+            let mouse_row = usize::from(state.last_mouse_row);
             if mouse_row < mid_row {
                 scroll_broadcast_section(key_code, state, peer_id);
             } else {
@@ -149,7 +150,7 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
         p2p_app::tui_tabs::TabContent::Log => {
             scroll_log_tab(key_code, state);
         }
-        _ => {
+        p2p_app::tui_tabs::TabContent::Chat => {
             scroll_chat_tab(key_code, state);
         }
     }
@@ -167,7 +168,7 @@ fn apply_mouse_scroll(
     let before = *scroll_offset;
     match scroll_dir {
         "up" => *scroll_offset = scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
-        "down" => *scroll_offset = (*scroll_offset + WHEEL_SCROLL_LINES).min(max_offset),
+        "down" => *scroll_offset = (*scroll_offset).saturating_add(WHEEL_SCROLL_LINES).min(max_offset),
         _ => {}
     }
     Some(before)
@@ -218,19 +219,19 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
 
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(pid) => {
-            let mid_row = 2 + (state.chat_area_height / 2);
-            let mouse_row = state.last_mouse_row as usize;
+            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(2);
+            let mouse_row = usize::from(state.last_mouse_row);
             let pid = peer_id.unwrap_or(pid);
             if mouse_row < mid_row {
-                let msgs: Vec<_> = state
+                let msg_count = state
                     .messages
                     .iter()
                     .filter(|dm| dm.sender_peer_id.as_ref().is_some_and(|id| id == pid))
-                    .collect();
+                    .count();
                 if let Some((scroll_offset, auto_scroll)) =
                     state.dm_broadcast_scroll_state.get_mut(pid)
                 {
-                    mouse_scroll_dm_section(scroll_offset, *auto_scroll, msgs.len(), scroll_dir)
+                    mouse_scroll_dm_section(scroll_offset, *auto_scroll, msg_count, scroll_dir)
                 } else {
                     false
                 }

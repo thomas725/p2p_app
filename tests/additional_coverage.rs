@@ -1,5 +1,7 @@
 //! Additional unit tests to increase coverage
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 // Test Debug format coverage (no serde needed)
 #[test]
 fn test_direct_message_debug() {
@@ -8,7 +10,7 @@ fn test_direct_message_debug() {
     let dm = DirectMessage {
         content: "test".to_string(),
         timestamp: 12345,
-        sent_at: Some(1234567890.0),
+        sent_at: Some(1_234_567_890.0),
         nickname: Some("TestNick".to_string()),
         msg_id: Some("msg-1".to_string()),
         ack_for: None,
@@ -26,7 +28,7 @@ fn test_broadcast_message_debug() {
 
     let bm = BroadcastMessage {
         content: "broadcast".to_string(),
-        sent_at: Some(1234567890.0),
+        sent_at: Some(1_234_567_890.0),
         nickname: Some("Broadcaster".to_string()),
         msg_id: Some("bcast-1".to_string()),
     };
@@ -100,7 +102,7 @@ fn test_swarm_event_debug() {
     let receipt = SwarmEvent::Receipt {
         peer_id: "peer3".to_string(),
         ack_for: "msg-abc".to_string(),
-        received_at: Some(1234567890.0),
+        received_at: Some(1_234_567_890.0),
     };
     let receipt_debug = format!("{receipt:?}");
     assert!(receipt_debug.contains("msg-abc"));

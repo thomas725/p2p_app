@@ -76,8 +76,14 @@ pub struct AppBehaviour {
 /// # Arguments
 /// * `key` - libp2p identity keypair
 /// * `network_size` - Network size enum for tuning behavior parameters
-#[must_use]
-pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize) -> AppBehaviour {
+///
+/// # Errors
+/// Returns an error if any underlying libp2p protocol behavior fails to build
+/// (e.g. an invalid gossipsub configuration or mDNS setup).
+pub fn build_behaviour(
+    key: &libp2p_identity::Keypair,
+    network_size: NetworkSize,
+) -> Result<AppBehaviour, String> {
     p2plog_debug(format!(
         "Building behavior for network size: {network_size:?}"
     ));
@@ -91,7 +97,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
                 .history_length(20)
                 .heartbeat_interval(std::time::Duration::from_secs(1))
                 .build()
-                .expect("valid gossipsub config")
+                .map_err(|e| format!("invalid gossipsub config: {e}"))?
         }
         NetworkSize::Medium => {
             // 4-15 peers: balanced settings
@@ -101,7 +107,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
                 .history_length(30)
                 .heartbeat_interval(std::time::Duration::from_secs(2))
                 .build()
-                .expect("valid gossipsub config")
+                .map_err(|e| format!("invalid gossipsub config: {e}"))?
         }
         NetworkSize::Large => {
             // 16+ peers: conservative settings
@@ -111,7 +117,7 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
                 .history_length(50)
                 .heartbeat_interval(std::time::Duration::from_secs(5))
                 .build()
-                .expect("valid gossipsub config")
+                .map_err(|e| format!("invalid gossipsub config: {e}"))?
         }
     };
 
@@ -119,16 +125,14 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         gossipsub::MessageAuthenticity::Signed(key.clone()),
         gossipsub_config,
     )
-    .unwrap_or_else(|e| {
-        panic!("Failed to create gossipsub behavior: {e}");
-    });
+    .map_err(|e| format!("Failed to create gossipsub behavior: {e}"))?;
 
     let request_response = request_response::Behaviour::new(
         [(
             libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
             request_response::ProtocolSupport::Full,
         )],
-        Default::default(),
+        request_response::Config::default(),
     );
 
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
@@ -145,21 +149,25 @@ pub fn build_behaviour(key: &libp2p_identity::Keypair, network_size: NetworkSize
         libp2p::mdns::Config::default(),
         libp2p::PeerId::from_public_key(&key.public()),
     )
-    .expect("valid mdns");
+    .map_err(|e| format!("invalid mdns: {e}"))?;
 
-    AppBehaviour {
+    Ok(AppBehaviour {
         gossipsub,
         request_response,
         #[cfg(feature = "mdns")]
         mdns,
         ping,
-    }
+    })
 }
 
 /// Build a fully configured libp2p swarm for chat.
 ///
 /// Sets up TCP (with nodelay), optional QUIC transport, the app behaviour
 /// with adaptive network size, and a 60-second idle connection timeout.
+///
+/// # Errors
+/// Returns an error if the libp2p identity cannot be loaded or if the swarm
+/// (transport + behaviour) fails to build.
 pub fn build_swarm(
     network_size: NetworkSize,
 ) -> color_eyre::Result<libp2p::swarm::Swarm<AppBehaviour>> {
@@ -178,14 +186,22 @@ pub fn build_swarm(
     #[cfg(feature = "quic")]
     let swarm = base
         .with_quic()
-        .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+                Box::new(std::io::Error::other(e))
+            })
+        })?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
         .build();
 
     #[cfg(not(feature = "quic"))]
     let swarm = base
-        .with_behaviour(|key| Ok(build_behaviour(key, network_size)))?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(60)))
+        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+                Box::new(std::io::Error::other(e))
+            })
+        })?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
         .build();
 
     Ok(swarm)

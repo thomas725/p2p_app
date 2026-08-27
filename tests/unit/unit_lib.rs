@@ -1,12 +1,12 @@
 use super::*;
 
 #[test]
-fn test_format_peer_datetime() -> Result<(), chrono::ParseError> {
+fn test_format_peer_datetime() {
     use chrono::NaiveDateTime;
-    let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")?;
+    let dt = NaiveDateTime::parse_from_str("2024-01-01 12:00:00", "%Y-%m-%d %H:%M:%S")
+        .expect("valid datetime literal");
     let formatted = format_peer_datetime(dt);
     assert!(formatted.contains("2024"));
-    Ok(())
 }
 
 #[test]
@@ -112,8 +112,8 @@ fn test_direct_message_serialization() {
     use serde_json;
     let dm = DirectMessage {
         content: "Hello".to_string(),
-        timestamp: 1234567890,
-        sent_at: Some(1234567890.5),
+        timestamp: 1_234_567_890,
+        sent_at: Some(1_234_567_890.5),
         nickname: None,
         msg_id: None,
         ack_for: None,
@@ -129,7 +129,7 @@ fn test_broadcast_message_serialization() {
     use serde_json;
     let bm = BroadcastMessage {
         content: "World".to_string(),
-        sent_at: Some(1234567890.5),
+        sent_at: Some(1_234_567_890.5),
         nickname: None,
         msg_id: None,
     };
@@ -224,16 +224,15 @@ fn test_gen_msg_id_format() {
 #[test]
 fn test_format_system_time() {
     use std::time::UNIX_EPOCH;
-    let time = UNIX_EPOCH + std::time::Duration::from_millis(1234567);
+    let time = UNIX_EPOCH + std::time::Duration::from_millis(1_234_567);
     let formatted = fmt::format_system_time(time);
     assert!(formatted.contains(':'));
 }
 
 #[test]
 fn test_format_latency_sub_millisecond() {
-    use std::time::UNIX_EPOCH;
-    let _sent = UNIX_EPOCH;
-    let received = UNIX_EPOCH + std::time::Duration::from_millis(0);
+    let received =
+        std::time::UNIX_EPOCH + std::time::Duration::from_millis(0);
     let latency = fmt::format_latency(Some(0.0), received);
     assert_eq!(latency, "<1ms");
 }

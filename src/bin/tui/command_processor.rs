@@ -38,11 +38,8 @@ fn apply_broadcast_to_state(
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
     let msg = format!(
-        "{} {} [{}] {}",
-        ts,
+        "{ts} {} [{sender_display}] {content}",
         latency.unwrap_or_default(),
-        sender_display,
-        content
     );
     state.messages.push_back(DisplayMessage {
         text: msg.clone(),
@@ -66,11 +63,8 @@ fn apply_dm_to_state(
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
     let msg = format!(
-        "{} {} [{}] {}",
-        ts,
+        "{ts} {} [{sender_display}] {content}",
         latency.unwrap_or_default(),
-        sender_display,
-        content
     );
     state
         .dm_message_ids
@@ -116,8 +110,9 @@ fn apply_receipt_to_state(
 }
 
 /// State mutation: increment connected peer count. Returns new count.
+#[allow(clippy::missing_const_for_fn)]
 fn apply_peer_connected_count(state: &mut AppState) -> usize {
-    state.concurrent_peers += 1;
+    state.concurrent_peers = state.concurrent_peers.saturating_add(1);
     state.concurrent_peers
 }
 
@@ -132,6 +127,7 @@ fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str,
 }
 
 /// State mutation: decrement connected peer count. Returns new count.
+#[allow(clippy::missing_const_for_fn)]
 fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
     state.concurrent_peers = state.concurrent_peers.saturating_sub(1);
     state.concurrent_peers
@@ -150,6 +146,7 @@ fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     }
 }
 
+#[allow(clippy::unused_async)]
 async fn handle_incoming_message(
     s: &mut AppState,
     content: &str,
@@ -209,6 +206,7 @@ async fn process_swarm_event(
                 false,
             )
             .await;
+            drop(s);
         }
         SwarmEvent::DirectMessage(msg) => {
             let mut s = state.lock().await;
@@ -222,6 +220,7 @@ async fn process_swarm_event(
                 true,
             )
             .await;
+            drop(s);
         }
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
@@ -231,14 +230,15 @@ async fn process_swarm_event(
 
             let is_dm = is_dm_receipt(&s, &ack_for);
             apply_receipt_to_state(&mut s, &ack_for, &peer_id, at, is_dm);
-            let kind = if is_dm { 1 } else { 0 };
+            drop(s);
+            let kind = i32::from(is_dm);
             let _ = p2p_app::save_receipt(&ack_for, &peer_id, kind, at);
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let (own_nickname, _concurrent_peers) = {
                 let mut s = state.lock().await;
                 let count = apply_peer_connected_count(&mut s);
-                p2plog_debug(format!("Peer connected: {} (total: {})", peer_id, count));
+                p2plog_debug(format!("Peer connected: {peer_id} (total: {count})"));
                 if !s.peers.iter().any(|p| p.peer_id == peer_id)
                     && let Ok(peer) = p2p_app::save_peer(&peer_id, &[])
                 {
@@ -246,7 +246,9 @@ async fn process_swarm_event(
                     let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
                     add_peer_to_state_list(&mut s, &peer_id, &first_seen, &last_seen);
                 }
-                (s.own_nickname.clone(), count)
+                let own_nick = s.own_nickname.clone();
+                drop(s);
+                (own_nick, count)
             };
 
             let msg_id = p2p_app::gen_msg_id();
@@ -263,7 +265,8 @@ async fn process_swarm_event(
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
             let count = apply_peer_disconnected_count(&mut s);
-            p2plog_debug(format!("Peer disconnected: {} (total: {})", peer_id, count));
+            p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
+            drop(s);
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
             p2plog_debug(format!("Listening on: {addr}"));
@@ -272,6 +275,7 @@ async fn process_swarm_event(
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
             let mut s = state.lock().await;
             apply_peer_discovered_state(&mut s, &peer_id);
+            drop(s);
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {

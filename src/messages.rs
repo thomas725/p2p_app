@@ -33,6 +33,9 @@ pub struct MessageMeta {
 ///
 /// # Returns
 /// The inserted Message with auto-generated id and timestamps
+///
+/// # Errors
+/// Returns an error if the message cannot be inserted into the database.
 pub fn save_message(
     content: &str,
     peer_id: Option<&str>,
@@ -65,6 +68,9 @@ pub fn save_message(
 ///
 /// # Returns
 /// The saved message with database-assigned ID
+///
+/// # Errors
+/// Returns an error if the message cannot be inserted into the database.
 pub fn save_message_with_meta(
     content: &str,
     peer_id: Option<&str>,
@@ -101,6 +107,9 @@ pub fn save_message_with_meta(
 }
 
 /// Get all unsent broadcast messages for a topic, ordered by creation time.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     messages
@@ -115,6 +124,9 @@ pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
 }
 
 /// Mark a message as sent by ID.
+///
+/// # Errors
+/// Returns an error if the database update fails.
 pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
     diesel::update(
@@ -127,6 +139,10 @@ pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
 }
 
 /// Load broadcast messages for a topic, newest first, limited to count.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
@@ -141,6 +157,10 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
 }
 
 /// Load direct messages with a peer, oldest first, limited to count.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
@@ -155,6 +175,9 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
 }
 
 /// Get all unsent direct messages to a specific peer, ordered by creation time.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     messages
@@ -178,6 +201,9 @@ pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<M
 /// * `peer_id` - ID of the peer sending the receipt
 /// * `kind` - Receipt type (0=sent, 1=delivered, 2=read)
 /// * `confirmed_at` - Timestamp when the receipt was confirmed
+///
+/// # Errors
+/// Returns an error if the database insert fails.
 pub fn save_receipt(
     msg_id: &str,
     peer_id: &str,
@@ -210,12 +236,16 @@ pub fn save_receipt(
 ///
 /// # Returns
 /// Vector of all message receipts
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn load_receipts() -> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
 {
-    let conn = &mut crate::sqlite_connect()?;
     use crate::generated::models_queryable::MessageReceipt;
     use crate::generated::schema::message_receipts::dsl::message_receipts;
     use diesel::SelectableHelper;
+
+    let conn = &mut crate::sqlite_connect()?;
     let receipts = message_receipts
         .select(MessageReceipt::as_select())
         .load(conn)?;
@@ -240,6 +270,9 @@ pub struct PeerMessageStats {
 /// * `broadcast_received` counts broadcast messages whose sender is this peer.
 /// * `broadcast_sent` is the persisted counter incremented whenever we
 ///   broadcast while this peer was connected.
+///
+/// # Errors
+/// Returns an error if the database queries fail.
 pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStats> {
     use crate::generated::schema::messages::dsl as m;
     use crate::generated::schema::peers::dsl as p;

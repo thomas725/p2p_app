@@ -26,21 +26,20 @@ mod dioxus {
                 let sender = if msg.peer_id.is_none() {
                     msg.sender_nickname
                         .as_ref()
-                        .map(|n| format!("[{}]", n))
-                        .unwrap_or_else(|| format!("[{}]", own_nickname))
+                        .map_or_else(|| format!("[{own_nickname}]"), |n| format!("[{n}]"))
                 } else {
-                    msg.sender_nickname
-                        .as_ref()
-                        .map(|n| format!("[{}]", n))
-                        .unwrap_or_else(|| {
+                    msg.sender_nickname.as_ref().map_or_else(
+                        || {
                             let p = msg.peer_id.as_deref().unwrap_or("unknown");
                             let display =
                                 p2p_app::peer_display_name(p, local_nicknames, received_nicknames);
-                            format!("[{}]", display)
-                        })
+                            format!("[{display}]")
+                        },
+                        |n| format!("[{n}]"),
+                    )
                 };
                 messages.push_back(p2p_app::DisplayMessage {
-                    text: format!("{} {} {}", ts, sender, msg.content),
+                    text: format!("{ts} {sender} {}", msg.content),
                     sender_peer_id: msg.peer_id.clone(),
                 });
                 message_ids.push_back(msg.msg_id.clone());
@@ -49,7 +48,12 @@ mod dioxus {
         (messages, message_ids)
     }
 
+    #[allow(clippy::too_many_lines)]
+    #[allow(clippy::expect_used)]
+    #[allow(clippy::unwrap_used)]
+    #[allow(clippy::as_conversions)]
     pub fn main() {
+        // fatal: abort on startup failure
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
@@ -57,23 +61,24 @@ mod dioxus {
 
         rt.block_on(async {
             p2p_app::logging::init_logging();
-            p2p_app::logging::register_log_callback(Arc::new(|msg| eprintln!("{}", msg)));
+            p2p_app::logging::register_log_callback(Arc::new(|msg| eprintln!("{msg}")));
             let _db = p2p_app::init_database().expect("Failed to init database");
 
             let network_size = match p2p_app::get_network_size() {
                 Ok(size) => {
-                    p2p_app::p2plog_info(format!("Network size: {:?}", size));
+                    p2p_app::p2plog_info(format!("Network size: {size:?}"));
                     size
                 }
                 Err(e) => {
-                    p2p_app::p2plog_info(format!("Defaulting to Small: {}", e));
+                    p2p_app::p2plog_info(format!("Defaulting to Small: {e}"));
                     p2p_app::NetworkSize::Small
                 }
             };
 
             let mut swarm = p2p_app::build_swarm(network_size).expect("Failed to build swarm");
 
-            let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
+            let _ = swarm
+                .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
             let _ = swarm
                 .behaviour_mut()
                 .gossipsub
@@ -89,22 +94,22 @@ mod dioxus {
             let own_nickname =
                 p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
 
-            let (local_nicknames, received_nicknames) = if let Ok(db_peers) = p2p_app::load_peers()
-            {
-                let mut local = HashMap::new();
-                let mut received = HashMap::new();
-                for p in db_peers {
-                    if let Some(n) = p.peer_local_nickname {
-                        local.insert(p.peer_id.clone(), n);
+            let (local_nicknames, received_nicknames) = p2p_app::load_peers().map_or_else(
+                |_| (HashMap::new(), HashMap::new()),
+                |db_peers| {
+                    let mut local = HashMap::new();
+                    let mut received = HashMap::new();
+                    for p in db_peers {
+                        if let Some(n) = p.peer_local_nickname {
+                            local.insert(p.peer_id.clone(), n);
+                        }
+                        if let Some(n) = p.received_nickname {
+                            received.insert(p.peer_id.clone(), n);
+                        }
                     }
-                    if let Some(n) = p.received_nickname {
-                        received.insert(p.peer_id.clone(), n);
-                    }
-                }
-                (local, received)
-            } else {
-                (HashMap::new(), HashMap::new())
-            };
+                    (local, received)
+                },
+            );
 
             let (initial_messages, initial_message_ids) = format_messages(
                 p2p_app::CHAT_TOPIC,
@@ -114,25 +119,26 @@ mod dioxus {
                 &own_nickname,
             );
 
-            let mut initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
-                let mut peers = VecDeque::new();
-                let mut seen = std::collections::HashSet::new();
-                for p in &db_peers {
-                    if !seen.insert(p.peer_id.clone()) {
-                        continue;
+            let mut initial_peers = p2p_app::load_known_peers().map_or_else(
+                |_| VecDeque::new(),
+                |db_peers| {
+                    let mut peers = VecDeque::new();
+                    let mut seen = std::collections::HashSet::new();
+                    for p in &db_peers {
+                        if !seen.insert(p.peer_id.clone()) {
+                            continue;
+                        }
+                        peers.push_back(p2p_app::PeerRecord {
+                            peer_id: p.peer_id.clone(),
+                            first_seen: p2p_app::format_peer_datetime(p.first_seen),
+                            last_seen: p2p_app::format_peer_datetime(p.last_seen),
+                        });
                     }
-                    peers.push_back(p2p_app::PeerRecord {
-                        peer_id: p.peer_id.clone(),
-                        first_seen: p2p_app::format_peer_datetime(p.first_seen),
-                        last_seen: p2p_app::format_peer_datetime(p.last_seen),
-                    });
-                }
-                peers
-            } else {
-                VecDeque::new()
-            };
+                    peers
+                },
+            );
 
-            let mut pv: Vec<_> = initial_peers.drain(..).collect();
+            let mut pv: Vec<_> = initial_peers.into_iter().collect();
             pv.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
             initial_peers = pv.into();
 
@@ -152,8 +158,7 @@ mod dioxus {
             }
 
             let local_peer_id = p2p_app::get_local_peer_id()
-                .map(|id| id.to_string())
-                .unwrap_or_else(|_| "unknown".to_string());
+                .map_or_else(|_| "unknown".to_string(), |id| id.to_string());
 
             let init_data = p2p_app::dioxus_app::InitData {
                 own_nickname,
@@ -194,7 +199,7 @@ mod dioxus {
                     .with_inner_size(tao::dpi::LogicalSize::new(900.0, 700.0)),
             )
             .with_custom_head(
-                r#"<style>html,body{margin:0;padding:0;height:100%;overflow:hidden;}</style>"#
+                r"<style>html,body{margin:0;padding:0;height:100%;overflow:hidden;}</style>"
                     .to_string(),
             );
 

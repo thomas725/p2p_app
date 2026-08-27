@@ -67,7 +67,7 @@ fn test_swarm_command_variants_all() {
         SwarmCommand::Publish { content, .. } => {
             assert_eq!(content, "msg");
         }
-        _ => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -93,6 +93,6 @@ fn test_swarm_command_variants_all() {
             assert_eq!(msg_id, Some("msg-1".to_string()));
             assert_eq!(ack_for, Some("prev-msg".to_string()));
         }
-        _ => panic!("expected SendDm"),
+        SwarmCommand::Publish { .. } => panic!("expected SendDm"),
     }
 }

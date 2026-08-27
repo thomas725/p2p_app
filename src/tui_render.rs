@@ -27,15 +27,23 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
         ])
         .split(f.area());
 
-    render_tabs(f, chunks[0], state);
-    render_peer_info(f, chunks[1], state);
+    let default_rect = Rect::default();
+    let tab_area = chunks.first().unwrap_or(&default_rect);
+    let peer_area = chunks.get(1).unwrap_or(&default_rect);
+    let content_area = chunks.get(2).unwrap_or(&default_rect);
+    let input_area = chunks.get(3).unwrap_or(&default_rect);
+    let shortcut_area = chunks.get(4).unwrap_or(&default_rect);
+    let status_area = chunks.get(5).unwrap_or(&default_rect);
+
+    render_tabs(f, *tab_area, state);
+    render_peer_info(f, *peer_area, state);
 
     let tab_content = get_tab_content(state);
-    render_tab_content(f, chunks[2], &tab_content, state);
+    render_tab_content(f, *content_area, &tab_content, state);
 
-    render_input_section(f, chunks[3], state, &tab_content);
-    render_shortcuts(f, chunks[4]);
-    render_status_bar(f, chunks[5], state);
+    render_input_section(f, *input_area, state, &tab_content);
+    render_shortcuts(f, *shortcut_area);
+    render_status_bar(f, *status_area, state);
 
     if let Some(ref text) = state.popup {
         render_popup(f, text.clone());
@@ -79,8 +87,8 @@ pub fn render_tab_content(
 
 /// Render chat messages with scroll support and receipt markers
 pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRenderState) {
-    let text_width = area.width.saturating_sub(4) as usize;
-    let usable_height = area.height.saturating_sub(2) as usize;
+    let text_width = usize::from(area.width.saturating_sub(4));
+    let usable_height = usize::from(area.height.saturating_sub(2));
 
     let (visible, effective_offset) = calc_visible_strings(
         &state.messages,
@@ -97,7 +105,7 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
         .enumerate()
         .take(visible)
         .map(|(visible_idx, msg)| {
-            let global_idx = effective_offset + visible_idx;
+            let global_idx = effective_offset.saturating_add(visible_idx);
             let is_selected = state.broadcast_selection == Some(global_idx);
             let msg_id = state
                 .message_ids
@@ -156,18 +164,19 @@ pub fn render_dm_content(
     peer_id: &str,
     state: &mut TuiRenderState,
 ) {
-    let text_width = area.width.saturating_sub(4) as usize;
+    let text_width = usize::from(area.width.saturating_sub(4));
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
-    let broadcast_area = chunks[0];
-    let dm_area = chunks[1];
+    let default_rect = Rect::default();
+    let broadcast_area = *chunks.first().unwrap_or(&default_rect);
+    let dm_area = *chunks.get(1).unwrap_or(&default_rect);
 
-    let broadcast_usable_height = broadcast_area.height.saturating_sub(2) as usize;
-    let dm_usable_height = dm_area.height.saturating_sub(2) as usize;
+    let broadcast_usable_height = usize::from(broadcast_area.height.saturating_sub(2));
+    let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
 
     let short_id = short_peer_id(peer_id);
 
@@ -240,8 +249,8 @@ pub fn render_dm_content(
             .skip(effective_offset)
             .take(visible)
             .enumerate()
-            .map(|(visible_idx, m)| {
-                let global_idx = effective_offset + visible_idx;
+                .map(|(visible_idx, m)| {
+                    let global_idx = effective_offset.saturating_add(visible_idx);
                 let msg_id = state
                     .dm_message_ids
                     .get(peer_id)
@@ -270,8 +279,8 @@ pub fn render_dm_content(
 
 /// Render log content
 pub fn render_log_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let text_width = area.width.saturating_sub(4) as usize;
-    let usable_height = area.height.saturating_sub(2) as usize;
+    let text_width = usize::from(area.width.saturating_sub(4));
+    let usable_height = usize::from(area.height.saturating_sub(2));
 
     let (visible, effective_offset) = calc_visible_strings(
         &state.log_messages,
@@ -338,6 +347,12 @@ pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSt
 }
 
 /// Render popup
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::arithmetic_side_effects
+)]
 pub fn render_popup(f: &mut ratatui::Frame, text: String) {
     let area = f.area();
     let w = (f32::from(area.width) * 0.70) as u16;

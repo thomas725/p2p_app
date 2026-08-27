@@ -17,17 +17,17 @@ pub struct DmTab {
 impl DmTab {
     /// Create a new DM tab for a peer
     #[must_use]
-    pub fn new(peer_id: String) -> Self {
+    pub const fn new(peer_id: String) -> Self {
         Self {
             peer_id,
             messages: VecDeque::new(),
         }
     }
 
-    /// Test utility: Create a DmTab with initial test messages.
+    /// Test utility: Create a `DmTab` with initial test messages.
     #[cfg(any(test, feature = "test-utils"))]
     #[must_use]
-    pub fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
+    pub const fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
         Self { peer_id, messages }
     }
 
@@ -55,9 +55,9 @@ impl DynamicTabs {
     /// Add or retrieve index of DM tab for peer
     pub fn add_dm_tab(&mut self, peer_id: String) -> usize {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
-            return pos + FIXED_TAB_COUNT;
+            return pos.saturating_add(FIXED_TAB_COUNT);
         }
-        let idx = self.dm_tabs.len() + FIXED_TAB_COUNT;
+        let idx = self.dm_tabs.len().saturating_add(FIXED_TAB_COUNT);
         self.dm_tabs.push(DmTab::new(peer_id));
         idx
     }
@@ -66,7 +66,7 @@ impl DynamicTabs {
     pub fn remove_dm_tab(&mut self, peer_id: &str) -> Option<usize> {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
             self.dm_tabs.remove(pos);
-            return Some(pos + FIXED_TAB_COUNT);
+            return Some(pos.saturating_add(FIXED_TAB_COUNT));
         }
         None
     }
@@ -84,6 +84,7 @@ impl DynamicTabs {
 
     /// Count of active DM tabs
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn dm_tab_count(&self) -> usize {
         self.dm_tabs.len()
     }
@@ -109,18 +110,16 @@ impl DynamicTabs {
     /// Convert tab index to content type
     #[must_use]
     pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
-        let log_index = FIXED_TAB_COUNT + self.dm_tabs.len();
+        let log_index = FIXED_TAB_COUNT.saturating_add(self.dm_tabs.len());
         match tab_idx {
             0 => TabContent::Chat,
             1 => TabContent::Peers,
             idx if idx == log_index => TabContent::Log,
             idx if idx >= FIXED_TAB_COUNT && idx < log_index => {
-                let dm_idx = idx - FIXED_TAB_COUNT;
-                if let Some(tab) = self.dm_tabs.get(dm_idx) {
-                    TabContent::Direct(tab.peer_id.clone())
-                } else {
-                    TabContent::Chat
-                }
+                let dm_idx = idx.saturating_sub(FIXED_TAB_COUNT);
+                self.dm_tabs
+                    .get(dm_idx)
+                    .map_or(TabContent::Chat, |tab| TabContent::Direct(tab.peer_id.clone()))
             }
             _ => TabContent::Chat,
         }
@@ -128,8 +127,9 @@ impl DynamicTabs {
 
     /// Total count of tabs including Chat, Peers, DMs, and Log
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn total_tab_count(&self) -> usize {
-        3 + self.dm_tabs.len()
+        self.dm_tabs.len().saturating_add(3)
     }
 }
 
@@ -151,15 +151,16 @@ impl TabContent {
     #[must_use]
     pub fn peer_id(&self) -> Option<&str> {
         match self {
-            TabContent::Direct(id) => Some(id),
+            Self::Direct(id) => Some(id),
             _ => None,
         }
     }
 
     /// Check if this tab allows text input
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn is_input_enabled(&self) -> bool {
-        matches!(self, TabContent::Chat | TabContent::Direct(_))
+        matches!(self, Self::Chat | Self::Direct(_))
     }
 }
 

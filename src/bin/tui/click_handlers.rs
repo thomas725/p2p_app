@@ -5,18 +5,18 @@ use std::collections::{HashMap, VecDeque};
 
 /// Handles tab bar clicks and close button
 fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
-    let mut col_pos = 0;
+    let mut col_pos: usize = 0;
     for (idx, title) in tab_titles.iter().enumerate() {
-        let tab_width = title.len() + 3;
-        let tab_end = col_pos + tab_width;
-        if (mouse_column as usize) >= col_pos && (mouse_column as usize) < tab_end {
-            let close_start = tab_end - 4;
-            if (mouse_column as usize) >= close_start && title.contains("(X)") {
+        let tab_width = title.len().saturating_add(3);
+        let tab_end = col_pos.saturating_add(tab_width);
+        if usize::from(mouse_column) >= col_pos && usize::from(mouse_column) < tab_end {
+            let close_start = tab_end.saturating_sub(4);
+            if usize::from(mouse_column) >= close_start && title.contains("(X)") {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
                 if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
                     && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
                 {
-                    state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
+                    state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
                     p2plog_debug(format!("Closed DM tab via mouse: {peer_id}"));
                 }
                 return true;
@@ -98,7 +98,7 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
 
 /// Handles peer row clicks in the Peers tab
 fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
-    let peer_row = (row as usize).saturating_sub(3);
+    let peer_row = usize::from(row).saturating_sub(3);
     if peer_row < state.peers.len()
         && let Some(p) = state.peers.get(peer_row)
     {
@@ -124,8 +124,8 @@ pub fn handle_mouse_left_click(
         let tab_titles = state.dynamic_tabs.all_titles();
         return handle_tab_click(state, mouse_column, &tab_titles);
     } else if is_peers_tab {
-        let max_row = (state.chat_area_height as u16) + 2;
-        if mouse_row > 2 && mouse_row < max_row {
+        let max_row = state.chat_area_height.saturating_add(2);
+        if mouse_row > 2 && usize::from(mouse_row) < max_row {
             return handle_peer_row_click(state, mouse_row);
         }
     }

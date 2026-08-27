@@ -1,5 +1,7 @@
 //! Tests for behavior.rs module via libp2p behavior
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 mod test_utils;
 use serial_test::serial;
 use test_utils::with_test_db;
@@ -29,7 +31,7 @@ fn test_direct_message_serialization() {
     let dm = p2p_app::behavior::DirectMessage {
         content: "hello".to_string(),
         timestamp: 12345,
-        sent_at: Some(1234567890.0),
+        sent_at: Some(1_234_567_890.0),
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
         ack_for: None,
@@ -44,7 +46,7 @@ fn test_broadcast_message_serialization() {
     use serde_json;
     let bm = p2p_app::behavior::BroadcastMessage {
         content: "broadcast test".to_string(),
-        sent_at: Some(1234567890.0),
+        sent_at: Some(1_234_567_890.0),
         nickname: Some("Bob".to_string()),
         msg_id: Some("bcast-1".to_string()),
     };

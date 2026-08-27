@@ -45,7 +45,7 @@ fn test_swarm_event_receipt() {
     let event = SwarmEvent::Receipt {
         peer_id: "peer1".to_string(),
         ack_for: "msg-1".to_string(),
-        received_at: Some(123456.0),
+        received_at: Some(123_456.0),
     };
     match event {
         SwarmEvent::Receipt {
@@ -101,7 +101,7 @@ fn test_swarm_command_publish() {
             assert_eq!(content, "hello");
             assert_eq!(nickname, Some("Alice".to_string()));
         }
-        _ => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
     }
 }
 
@@ -125,7 +125,7 @@ fn test_swarm_command_send_dm() {
             assert_eq!(content, "hi");
             assert_eq!(ack_for, Some("orig-msg".to_string()));
         }
-        _ => panic!("expected SendDm"),
+        SwarmCommand::Publish { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -159,6 +159,7 @@ fn test_swarm_event_peer_expired() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn test_swarm_event_clone() {
     let event = SwarmEvent::PeerConnected("peer1".to_string());
     let cloned = event.clone();
@@ -169,6 +170,7 @@ fn test_swarm_event_clone() {
 }
 
 #[test]
+#[allow(clippy::redundant_clone)]
 fn test_swarm_command_clone() {
     let cmd = SwarmCommand::Publish {
         content: "test".to_string(),
@@ -178,7 +180,7 @@ fn test_swarm_command_clone() {
     let cloned = cmd.clone();
     match cloned {
         SwarmCommand::Publish { content, .. } => assert_eq!(content, "test"),
-        _ => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
     }
 }
 
@@ -189,7 +191,7 @@ fn test_peer_record_display() {
         first_seen: "2024-01-01 12:00:00".to_string(),
         last_seen: "2024-01-02 12:00:00".to_string(),
     };
-    let formatted = format!("{}", record);
+    let formatted = format!("{record}");
     assert_eq!(formatted, "peer1 (2024-01-02 12:00:00)");
 }
 

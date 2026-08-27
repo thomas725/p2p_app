@@ -4,6 +4,7 @@ use crate::dioxus_app::{AppState, MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, send_swar
 use crate::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent};
 use dioxus::prelude::*;
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEvent) {
     match event {
         SwarmEvent::BroadcastMessage(e) => {
@@ -107,7 +108,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let mut s = state.write();
-            s.concurrent_peers += 1;
+            s.concurrent_peers = s.concurrent_peers.saturating_add(1);
             if !s.peers.iter().any(|p| p.peer_id == peer_id)
                 && let Ok(peer) = crate::save_peer(&peer_id, &[])
             {
@@ -133,11 +134,11 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
             let mut s = state.write();
             s.connected = false;
             s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
-            s.push_log(format!("Peer disconnected: {}", peer_id));
+            s.push_log(format!("Peer disconnected: {peer_id}"));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
             let mut s = state.write();
-            s.push_log(format!("Listening on: {}", addr));
+            s.push_log(format!("Listening on: {addr}"));
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
@@ -154,7 +155,7 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {
             let mut s = state.write();
-            s.push_log(format!("Peer expired: {}", peer_id));
+            s.push_log(format!("Peer expired: {peer_id}"));
         }
     }
 }

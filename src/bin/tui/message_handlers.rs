@@ -12,7 +12,7 @@ fn push_outgoing_broadcast_to_state(
     msg_id: String,
     sent_at: f64,
 ) {
-    let msg = format!("{} [{}] {}", ts, own_nickname, content);
+    let msg = format!("{ts} [{own_nickname}] {content}");
     state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
     state.messages.push_back(DisplayMessage {
         text: msg,
@@ -33,7 +33,7 @@ fn push_outgoing_dm_to_state(
     msg_id: String,
     sent_at: f64,
 ) {
-    let msg = format!("{} [{}] {}", ts, dm_self_nickname, content);
+    let msg = format!("{ts} [{dm_self_nickname}] {content}");
     state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);

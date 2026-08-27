@@ -15,14 +15,16 @@ pub fn sort_peers_by_last_seen(
     peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
     *peers = peers_vec.into();
 
-    match selected_peer_id {
-        Some(sel_id) => peers
-            .iter()
-            .position(|p| p.peer_id == sel_id)
-            .unwrap_or(0)
-            .min(peers.len().saturating_sub(1)),
-        None => current_selection.min(peers.len().saturating_sub(1)),
-    }
+    selected_peer_id.map_or_else(
+        || current_selection.min(peers.len().saturating_sub(1)),
+        |sel_id| {
+            peers
+                .iter()
+                .position(|p| p.peer_id == sel_id)
+                .unwrap_or(0)
+                .min(peers.len().saturating_sub(1))
+        },
+    )
 }
 
 /// Insert or update peer last seen time
@@ -58,7 +60,7 @@ pub fn calculate_visible_range(
     visible_count: usize,
 ) -> (usize, usize) {
     let start = scroll_offset.min(total_messages.saturating_sub(1));
-    let end = (start + visible_count).min(total_messages);
+    let end = start.saturating_add(visible_count).min(total_messages);
     (start, end)
 }
 
@@ -74,7 +76,7 @@ pub fn truncate_message(msg: &str, max_len: usize) -> String {
     if msg.len() <= max_len {
         msg.to_string()
     } else {
-        format!("{}...", &msg[..max_len.saturating_sub(3)])
+        format!("{}...", msg.get(..max_len.saturating_sub(3)).unwrap_or(msg))
     }
 }
 
@@ -94,6 +96,7 @@ pub fn parse_latency(latency: &str) -> Option<f64> {
 
 /// Check if scroll position indicates at bottom
 #[must_use]
+#[allow(clippy::missing_const_for_fn)]
 pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool {
     scroll_offset >= total.saturating_sub(visible)
 }
@@ -109,6 +112,7 @@ pub const PAGE_SIZE: usize = 8;
 pub const WHEEL_SCROLL_LINES: usize = 3;
 
 /// Disables auto-scroll and sets offset to max if auto-scroll was enabled
+#[allow(clippy::missing_const_for_fn)]
 pub fn disable_auto_scroll_to_max(
     auto_scroll: &mut bool,
     scroll_offset: &mut usize,
@@ -121,18 +125,20 @@ pub fn disable_auto_scroll_to_max(
 }
 
 /// Scroll up by one line or page
+#[allow(clippy::missing_const_for_fn)]
 pub fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
     *scroll_offset = scroll_offset.saturating_sub(lines);
 }
 
 /// Scroll down to target, enabling auto-scroll if reaching max
+#[allow(clippy::missing_const_for_fn)]
 pub fn scroll_down_lines(
     scroll_offset: &mut usize,
     auto_scroll: &mut bool,
     lines: usize,
     max_offset: usize,
 ) {
-    *scroll_offset = (*scroll_offset + lines).min(max_offset);
+    *scroll_offset = scroll_offset.saturating_add(lines).min(max_offset);
     if *scroll_offset >= max_offset {
         *auto_scroll = true;
     }
@@ -140,6 +146,7 @@ pub fn scroll_down_lines(
 
 /// Convert crossterm `KeyCode` to scroll action string
 #[must_use]
+#[allow(clippy::missing_const_for_fn)]
 pub fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
     match key_code {
         crossterm::event::KeyCode::Up => Some("Up"),
@@ -213,12 +220,18 @@ pub fn relabel_dm_transcript(
 
 /// Calculate tab index from current + delta (wrapping)
 #[must_use]
-pub fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::arithmetic_side_effects
+)]
+pub const fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> usize {
     if max_tabs == 0 {
         return 0;
     }
     let sum = current as isize + delta;
-    ((sum % max_tabs as isize) + max_tabs as isize) as usize % max_tabs
+    ((sum % max_tabs as isize).wrapping_add(max_tabs as isize)) as usize % max_tabs
 }
 
 #[cfg(test)]

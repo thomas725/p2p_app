@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
 use super::*;
 use chrono::NaiveDateTime;
 use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
@@ -23,7 +24,7 @@ fn test_extract_nickname_maps_all_fields() {
         id: 1,
         created_at: dt("2024-01-01 12:00:00"),
         peer_id: "peer-1".to_string(),
-        addresses: "".to_string(),
+        addresses: String::new(),
         first_seen: dt("2024-01-01 12:00:00"),
         last_seen: dt("2024-01-01 12:00:00"),
         peer_local_nickname: Some("Alice".to_string()),
@@ -44,7 +45,7 @@ fn test_extract_nickname_maps_partial_fields() {
             id: 1,
             created_at: dt("2024-01-01 12:00:00"),
             peer_id: "p1".to_string(),
-            addresses: "".to_string(),
+            addresses: String::new(),
             first_seen: dt("2024-01-01 12:00:00"),
             last_seen: dt("2024-01-01 12:00:00"),
             peer_local_nickname: Some("Local".to_string()),
@@ -56,7 +57,7 @@ fn test_extract_nickname_maps_partial_fields() {
             id: 2,
             created_at: dt("2024-01-01 12:00:00"),
             peer_id: "p2".to_string(),
-            addresses: "".to_string(),
+            addresses: String::new(),
             first_seen: dt("2024-01-01 12:00:00"),
             last_seen: dt("2024-01-01 12:00:00"),
             peer_local_nickname: None,

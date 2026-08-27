@@ -1,0 +1,6 @@
+# Allow these lints inside test code (the [lints.clippy] deny settings still
+# apply everywhere else, including production code in test modules' non-test fns).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true

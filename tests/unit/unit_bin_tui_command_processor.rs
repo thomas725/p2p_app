@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening, clippy::match_wildcard_for_single_variants)]
 use super::*;
 use crate::tui::test_helpers::test_app_state;
 use p2p_app::{MessageEvent, PeerRecord, SwarmEvent};

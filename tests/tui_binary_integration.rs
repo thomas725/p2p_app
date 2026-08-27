@@ -2,12 +2,15 @@
 //!
 //! These tests simulate realistic TUI usage patterns without requiring database access
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(clippy::match_wildcard_for_single_variants)]
+
 #[test]
 fn test_message_meta_serialization() {
     let meta = p2p_app::messages::MessageMeta {
         sender_nickname: Some("TestSender".to_string()),
         msg_id: Some("msg-abc-123".to_string()),
-        sent_at: Some(1234567890.123),
+        sent_at: Some(1_234_567_890.123),
     };
 
     // Verify default works
@@ -56,7 +59,7 @@ fn test_swarm_command_variants() {
     assert!(debug.contains("Publish"));
 
     // Test clone
-    let cloned = publish.clone();
+    let cloned = publish;
     match cloned {
         SwarmCommand::Publish { content, .. } => {
             assert_eq!(content, "test content");
@@ -110,7 +113,7 @@ fn test_swarm_event_variants() {
     let receipt = SwarmEvent::Receipt {
         peer_id: "ReceiptPeer".to_string(),
         ack_for: "ack-msg-123".to_string(),
-        received_at: Some(1234567890.0),
+        received_at: Some(1_234_567_890.0),
     };
 
     let receipt_debug = format!("{receipt:?}");
@@ -189,7 +192,7 @@ fn test_dm_tab_creation() {
     assert!(dm.messages.is_empty());
 
     let msgs = std::collections::VecDeque::from(vec!["msg1".to_string(), "msg2".to_string()]);
-    let dm2 = DmTab::with_messages("peer2".to_string(), msgs.clone());
+    let dm2 = DmTab::with_messages("peer2".to_string(), msgs);
     assert_eq!(dm2.messages.len(), 2);
 }
 
@@ -245,12 +248,12 @@ fn test_direct_message_struct() {
 
     let dm = DirectMessage {
         content: "test content".to_string(),
-        timestamp: 1234567890,
-        sent_at: Some(1234567890.5),
+        timestamp: 1_234_567_890,
+        sent_at: Some(1_234_567_890.5),
         nickname: Some("DMNick".to_string()),
         msg_id: Some("dm-msg-1".to_string()),
         ack_for: Some("original-msg".to_string()),
-        received_at: Some(1234567891.0),
+        received_at: Some(1_234_567_891.0),
     };
 
     // Test Debug format
@@ -270,7 +273,7 @@ fn test_broadcast_message_struct() {
 
     let bm = BroadcastMessage {
         content: "broadcast content".to_string(),
-        sent_at: Some(1234567890.5),
+        sent_at: Some(1_234_567_890.5),
         nickname: Some("BcastNick".to_string()),
         msg_id: Some("bcast-msg-1".to_string()),
     };

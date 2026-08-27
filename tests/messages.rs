@@ -1,5 +1,7 @@
 //! Tests for messages.rs module
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use p2p_app::messages::MessageMeta;
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
@@ -317,6 +319,7 @@ fn test_mark_message_sent() {
 // ── save_receipt / load_receipts ──────────────────────────────────────────────
 
 #[serial]
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_save_and_load_receipt() {
     with_test_db(|| {
@@ -332,6 +335,7 @@ fn test_save_and_load_receipt() {
 }
 
 #[serial]
+#[allow(clippy::float_cmp)]
 #[test]
 fn test_save_receipt_upsert() {
     with_test_db(|| {

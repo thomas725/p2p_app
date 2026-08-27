@@ -29,30 +29,30 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
     let mut lines: Vec<&str> = schema_content.lines().collect();
     lines.push("");
 
-    let mut i = 0;
+    let mut i = 0usize;
     let mut table_name = String::new();
     while i < lines.len() {
-        let line = lines[i].trim();
+        let line = lines.get(i).map_or("", |l| l.trim());
 
         if line.starts_with("diesel::table!") {
             table_name.clear();
-            i += 1;
+            i = i.saturating_add(1);
             while i < lines.len() {
-                let inner_line = lines[i].trim();
+                let inner_line = lines.get(i).map_or("", |l| l.trim());
                 if inner_line.contains("(id)") {
                     let part = inner_line.split('(').next().unwrap_or("");
                     table_name = part.trim().to_string();
                     break;
                 }
-                i += 1;
+                i = i.saturating_add(1);
             }
         }
 
         if !table_name.is_empty() && line.contains("->") {
             let parts: Vec<&str> = line.split("->").collect();
             if parts.len() == 2 {
-                let col_name = parts[0].trim();
-                let type_part = parts[1].trim().trim_end_matches(',');
+                let col_name = parts.first().map_or("", |s| s.trim());
+                let type_part = parts.get(1).map_or("", |s| s.trim().trim_end_matches(','));
                 let sql_type = map_sql_type(type_part);
                 let tn = table_name.clone();
                 entries.push((tn, col_name.to_string(), sql_type.to_string()));
@@ -63,7 +63,7 @@ fn parse_schema_rs() -> Result<(), Box<dyn std::error::Error>> {
             table_name.clear();
         }
 
-        i += 1;
+        i = i.saturating_add(1);
     }
 
     entries.sort_by(|a, b| {
@@ -111,7 +111,6 @@ fn map_sql_type(diesel_type: &str) -> &'static str {
         "Integer" | "Bool" => "INTEGER",
         "Timestamp" => "TIMESTAMP",
         "Binary" => "BLOB",
-        "Text" => "TEXT",
         "Double" => "DOUBLE",
         _ => "TEXT",
     }

@@ -1,5 +1,7 @@
 //! Tests for database selection logic
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use serial_test::serial;
 use std::fs;
 use std::sync::Arc;
@@ -31,9 +33,9 @@ fn test_two_instances_get_different_databases_parallel() {
         }
     });
 
-    let cwd_clone = cwd.clone();
+    let cwd_clone = cwd;
     let errors_clone = errors.clone();
-    let barrier_clone = barrier.clone();
+    let barrier_clone = barrier;
     thread::spawn(move || {
         thread::sleep(Duration::from_millis(50));
         barrier_clone.wait();
@@ -50,4 +52,5 @@ fn test_two_instances_get_different_databases_parallel() {
     println!("URLs: {urls:?}");
 
     assert_ne!(urls[0], urls[1], "Both picked same database!");
+    drop(urls);
 }

@@ -7,6 +7,8 @@
 //! - Mouse capture toggling
 //! - Duplicate peer prevention
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
@@ -125,7 +127,7 @@ fn test_tui_dm_tab_creation_on_peer_connection() {
     );
 
     // Adding same peer again should return existing tab index
-    let tab_idx_2 = state.add_dm_tab(peer_id.clone());
+    let tab_idx_2 = state.add_dm_tab(peer_id);
     assert_eq!(tab_idx, tab_idx_2);
     assert_eq!(state.total_tab_count(), 4); // Still 4 tabs
 }
@@ -194,7 +196,7 @@ fn test_tui_message_sending_broadcast() {
     let msg = format!("{ts} [{own_nickname}] {msg_text}");
 
     messages.push_back(p2p_app::DisplayMessage {
-        text: msg.clone(),
+        text: msg,
         sender_peer_id: None,
     }); // None = broadcast (no specific peer)
 
@@ -222,7 +224,7 @@ fn test_tui_message_sending_dm() {
     let msg = format!("{ts} [{own_nickname}] {msg_text}");
 
     let dm_msgs = dm_messages.entry(peer_id.clone()).or_default();
-    dm_msgs.push_back(msg.clone());
+    dm_msgs.push_back(msg);
 
     // Verify DM was added
     assert_eq!(dm_messages.len(), 1);
@@ -422,6 +424,7 @@ fn test_tui_peer_deduplication_with_limit() {
         ("peer4", "2024-01-01", "2024-01-01"),
     ];
 
+    #[allow(clippy::items_after_statements)]
     const MAX_PEERS: usize = 10000;
 
     // Deduplicate first, then apply limit

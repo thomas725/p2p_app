@@ -99,10 +99,11 @@ pub fn shared_db_test_lock() -> &'static std::sync::Mutex<()> {
 /// - If database file cannot be found or created
 /// - If migrations fail to execute
 pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
+    static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
+
     let db_path = get_database_url();
 
-    // Register cleanup on panic after path is determined (to ensure it lives for the app lifetime)
-    static PANIC_HOOK_SET: OnceLock<()> = OnceLock::new();
+    // Register cleanup on panic (to ensure the lock file is released on crash)
     let () = PANIC_HOOK_SET.get_or_init(|| {
         let prev = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
@@ -148,14 +149,17 @@ pub fn sqlite_connect() -> color_eyre::Result<SqliteConnection> {
 /// Returns the connection for use by the application.
 ///
 /// This should be called once at application startup before any other DB operations.
+///
+/// # Errors
+/// Returns an error if the database cannot be connected to or migrations fail.
 pub fn init_database() -> color_eyre::Result<SqliteConnection> {
     let db_path = get_database_url();
     let conn = sqlite_connect()?;
 
     // Log startup info once
-    crate::logging::p2plog_info(format!("[Startup] Database: {}", db_path));
+    crate::logging::p2plog_info(format!("[Startup] Database: {db_path}"));
     if let Ok(id) = get_local_peer_id() {
-        crate::logging::p2plog_info(format!("[Startup] Local peer ID: {}", id));
+        crate::logging::p2plog_info(format!("[Startup] Local peer ID: {id}"));
     }
 
     Ok(conn)
@@ -200,34 +204,31 @@ fn is_db_locked(lock_path: &std::path::Path) -> bool {
         return false; // No lock file = available
     }
 
-    match fs::read_to_string(lock_path) {
-        Ok(content) => {
-            if let Ok(other_pid) = content.trim().parse::<u32>() {
-                if other_pid == 0 {
-                    let _ = fs::remove_file(lock_path);
-                    return false; // Empty/zero PID = unlocked/stale
-                }
-                #[cfg(target_os = "linux")]
-                {
-                    let alive = std::path::Path::new(&format!("/proc/{other_pid}")).exists();
-                    if !alive {
-                        let _ = fs::remove_file(lock_path);
-                    }
-                    alive
-                }
-                #[cfg(not(target_os = "linux"))]
-                {
-                    true // Assume locked on non-Linux
-                }
-            } else {
+    if let Ok(content) = fs::read_to_string(lock_path) {
+        if let Ok(other_pid) = content.trim().parse::<u32>() {
+            if other_pid == 0 {
                 let _ = fs::remove_file(lock_path);
-                false // Non-numeric content = stale/invalid lock
+                return false; // Empty/zero PID = unlocked/stale
             }
-        }
-        Err(_) => {
+            #[cfg(target_os = "linux")]
+            {
+                let alive = std::path::Path::new(&format!("/proc/{other_pid}")).exists();
+                if !alive {
+                    let _ = fs::remove_file(lock_path);
+                }
+                alive
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                true // Assume locked on non-Linux
+            }
+        } else {
             let _ = fs::remove_file(lock_path);
-            false // Unreadable lock is treated as stale and removed
+            false // Non-numeric content = stale/invalid lock
         }
+    } else {
+        let _ = fs::remove_file(lock_path);
+        false // Unreadable lock is treated as stale and removed
     }
 }
 
@@ -236,17 +237,14 @@ fn try_acquire_lock(lock_path: &std::path::Path, pid: u32) -> Result<(), ()> {
     use std::fs;
     use std::io::Write;
 
-    match fs::OpenOptions::new()
+    fs::OpenOptions::new()
         .create_new(true)
         .write(true)
         .open(lock_path)
-    {
-        Ok(mut f) => {
+        .map(|mut f| {
             let _ = f.write_all(pid.to_string().as_bytes());
-            Ok(())
-        }
-        Err(_) => Err(()),
-    }
+        })
+        .map_err(|_| ())
 }
 
 /// Finds the first unused `SQLite` database in the current working directory using lock files.
@@ -321,8 +319,8 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
         })
         .max()
         .unwrap_or(0);
-    let mut candidate = format!("sqlite_{}.db", max_n + 1);
-    let mut attempts = 0;
+    let mut candidate = format!("sqlite_{}.db", max_n.saturating_add(1));
+    let mut attempts: u32 = 0;
 
     loop {
         if attempts > 1000 {
@@ -337,8 +335,8 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
             let _ = f.write_all(pid.to_string().as_bytes());
             return candidate;
         }
-        attempts += 1;
-        candidate = format!("sqlite_{}.db", max_n + attempts);
+        attempts = attempts.saturating_add(1);
+        candidate = format!("sqlite_{}.db", max_n.saturating_add(attempts));
     }
 }
 
@@ -360,7 +358,7 @@ pub fn get_database_url() -> String {
     {
         let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
         DB_URL.with(|u| *u.borrow_mut() = Some(url.clone()));
-        return url;
+        url
     }
 
     #[cfg(not(any(test, feature = "test-utils")))]
@@ -394,6 +392,9 @@ pub fn release_db_lock() {
 ///
 /// Checks the database for an existing identity. If found, deserializes and returns it.
 /// If no valid identity exists, generates a new Ed25519 keypair, stores it, and returns it.
+///
+/// # Errors
+/// Returns an error if the database connection fails.
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     let conn = &mut sqlite_connect()?;
     if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
@@ -444,6 +445,9 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
 }
 
 /// Get the local peer ID from the stored identity.
+///
+/// # Errors
+/// Returns an error if the identity cannot be loaded or generated.
 pub fn get_local_peer_id() -> color_eyre::Result<libp2p::PeerId> {
     let keypair = get_libp2p_identity()?;
     Ok(keypair.public().to_peer_id())

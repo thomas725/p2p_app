@@ -5,6 +5,8 @@
 //! - Event handling and propagation
 //! - Bounds checking on collections
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 #[cfg(feature = "tui")]
 mod tui_architecture_tests {
     use std::collections::{HashMap, VecDeque};
@@ -55,7 +57,7 @@ mod tui_architecture_tests {
                 return false;
             }
             self.peers.push_front((peer_id, first_seen, last_seen));
-            self.concurrent_peers += 1;
+            self.concurrent_peers = self.concurrent_peers.saturating_add(1);
             true
         }
 
@@ -181,6 +183,7 @@ mod tui_architecture_tests {
         let final_state = state.lock().unwrap();
         assert_eq!(final_state.messages.len(), 1000); // Bounded
         assert!(final_state.dm_messages.len() <= 5);
+        drop(final_state);
     }
 
     #[test]

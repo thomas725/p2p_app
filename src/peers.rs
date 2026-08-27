@@ -37,6 +37,9 @@ pub struct KnownPeer {
 ///
 /// # Returns
 /// The saved or updated Peer record
+///
+/// # Errors
+/// Returns an error if the database operation fails.
 pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer> {
     let conn = &mut crate::sqlite_connect()?;
     let addresses_str = addresses.join(",");
@@ -87,6 +90,9 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
 }
 
 /// Load all known peers, ordered by most recently seen first.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
     let conn = &mut crate::sqlite_connect()?;
     let peers_list = peers
@@ -100,6 +106,9 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
 ///
 /// This fixes older databases where messages may exist but the `peers` table is empty.
 /// Ordering is by most-recently-seen first (max of `peer.last_seen` and latest message timestamp).
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn load_known_peers() -> color_eyre::Result<Vec<KnownPeer>> {
     use diesel::sql_query;
 
@@ -140,6 +149,9 @@ ORDER BY last_seen DESC
 }
 
 /// Record a peer session snapshot with the concurrent peer count.
+///
+/// # Errors
+/// Returns an error if the database insert fails.
 pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
     let new_session = NewPeerSession {
@@ -153,6 +165,9 @@ pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
 }
 
 /// Save the last used TCP and QUIC ports to the database.
+///
+/// # Errors
+/// Returns an error if the database update fails.
 pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
     diesel::update(crate::generated::schema::identities::table)
@@ -165,6 +180,9 @@ pub fn save_listen_ports(tcp_port: Option<i32>, quic_port: Option<i32>) -> color
 }
 
 /// Load the last used TCP and QUIC ports from the database.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
     let conn = &mut crate::sqlite_connect()?;
     let result = crate::generated::schema::identities::table
@@ -178,6 +196,9 @@ pub fn load_listen_ports() -> color_eyre::Result<(Option<i32>, Option<i32>)> {
 }
 
 /// Calculate the average peer count across all recorded sessions.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     let conn = &mut crate::sqlite_connect()?;
     let sessions = crate::generated::schema::peer_sessions::table
@@ -187,10 +208,15 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
         return Ok(0.0);
     }
     let sum: i64 = sessions.iter().map(|&c| i64::from(c)).sum();
-    Ok(sum as f64 / sessions.len() as f64)
+    #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
+    let avg = sum as f64 / sessions.len() as f64;
+    Ok(avg)
 }
 
 /// Get the most recently recorded peer count.
+///
+/// # Errors
+/// Returns an error if the database query fails.
 pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
     let conn = &mut crate::sqlite_connect()?;
     let last = crate::generated::schema::peer_sessions::table
@@ -208,6 +234,9 @@ pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
 /// Peers that connected are always saved (via `save_peer`) before this is
 /// called, but guard with `INSERT OR IGNORE` in case a peer is only known from
 /// message history.
+///
+/// # Errors
+/// Returns an error if the database operation fails.
 pub fn record_broadcasts_sent(peer_ids: &[String]) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
     for pid in peer_ids {

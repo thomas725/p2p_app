@@ -1,4 +1,14 @@
 //! TUI test state and mouse event handling
+// This module is a test-utils helper compiled under `feature = "test-utils"` or `#[cfg(test)]`
+// but is not auto-recognized by clippy as test code, so the lints normally relaxed in tests
+// must be explicitly allowed here.
+#![allow(
+    clippy::arithmetic_side_effects,
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::indexing_slicing,
+    clippy::missing_const_for_fn
+)]
 
 use std::collections::{BTreeMap, VecDeque};
 

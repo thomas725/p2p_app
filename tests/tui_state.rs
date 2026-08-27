@@ -1,5 +1,7 @@
 //! Tests for public API modules
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 #[test]
 fn test_tui_test_state_new() {
     let state = p2p_app::tui_test_state::TuiTestState::new();
@@ -14,7 +16,7 @@ fn test_tui_test_state_with_messages() {
         "[You] test1".to_string(),
         "[Peer] test2".to_string(),
     ]);
-    let state = p2p_app::tui_test_state::TuiTestState::with_messages(messages.clone());
+    let state = p2p_app::tui_test_state::TuiTestState::with_messages(messages);
 
     assert_eq!(state.messages.len(), 2);
 }
@@ -85,7 +87,7 @@ fn test_notification_target_dm() {
     let target = p2p_app::tui_test_state::NotificationTarget::Dm("peer1".to_string());
     match target {
         p2p_app::tui_test_state::NotificationTarget::Dm(id) => assert_eq!(id, "peer1"),
-        _ => panic!("Expected Dm"),
+        p2p_app::tui_test_state::NotificationTarget::Broadcasts => panic!("Expected Dm"),
     }
 }
 

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use libp2p::{
     Multiaddr,
     futures::StreamExt as _,
@@ -38,6 +40,7 @@ struct TestNode {
     listen_addr: Option<Multiaddr>,
 }
 
+#[allow(clippy::unused_async)]
 async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
     let keypair = identity::Keypair::generate_ed25519();
     let peer_id = keypair.public().to_peer_id();
@@ -312,6 +315,7 @@ async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
     let mut node_a = create_node().await?;
@@ -430,13 +434,13 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     let mut subscribed_a = false;
     let mut subscribed_b = false;
     let subscribe_deadline = Duration::from_secs(10);
-    let mut event_count_a = 0;
-    let mut event_count_b = 0;
+    let mut event_count_a: usize = 0;
+    let mut event_count_b: usize = 0;
     let _ = timeout(subscribe_deadline, async {
         loop {
             tokio::select! {
                 event = node_a.swarm.select_next_some() => {
-                    event_count_a += 1;
+                    event_count_a = event_count_a.saturating_add(1);
                     match event {
                         SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gs_event)) => {
                             match gs_event {
@@ -460,7 +464,7 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                     }
                 }
                 event = node_b.swarm.select_next_some() => {
-                    event_count_b += 1;
+                    event_count_b = event_count_b.saturating_add(1);
                     match event {
                         SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(gs_event)) => {
                             match gs_event {
@@ -534,6 +538,7 @@ struct NodeWithDB {
     peer_id: libp2p::PeerId,
 }
 
+#[allow(clippy::unused_async)]
 async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::error::Error>> {
     let _ = std::fs::remove_file(db_path);
 
@@ -600,6 +605,7 @@ fn save_stale_peer_to_db(
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_connection_with_stale_db_address_and_mdns_recovery()
 -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();

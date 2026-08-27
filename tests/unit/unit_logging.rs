@@ -77,6 +77,7 @@ fn test_callback_receives_messages() {
     push_log("cb-test");
     let seen_msgs = seen.lock().expect("lock see");
     assert!(seen_msgs.iter().any(|m| m.contains("cb-test")));
+    drop(seen_msgs);
 }
 
 #[test]

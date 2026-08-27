@@ -36,7 +36,7 @@ pub fn calculate_visible_range(
     visible_count: usize,
 ) -> (usize, usize) {
     let start = scroll_offset.min(total_messages.saturating_sub(1));
-    let end = (start + visible_count).min(total_messages);
+    let end = start.saturating_add(visible_count).min(total_messages);
     (start, end)
 }
 
@@ -147,7 +147,7 @@ mod tests {
         let cloned = s.clone();
         assert_eq!(cloned.database_url, "db.sqlite");
         assert_eq!(cloned.local_peer_id, "peer1");
-        let _ = format!("{:?}", s);
+        let _ = format!("{s:?}");
     }
 
     #[test]
@@ -159,7 +159,7 @@ mod tests {
         };
         let cloned = s.clone();
         assert_eq!(cloned.self_nickname.as_deref(), Some("Alice"));
-        let _ = format!("{:?}", s);
+        let _ = format!("{s:?}");
     }
 
     #[test]

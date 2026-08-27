@@ -1,5 +1,7 @@
 //! Tests for fmt.rs module
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -23,7 +25,7 @@ fn test_now_timestamp() {
 
 #[test]
 fn test_format_system_time() {
-    let time = UNIX_EPOCH + std::time::Duration::from_secs(1700000);
+    let time = UNIX_EPOCH + std::time::Duration::from_secs(1_700_000);
     let result = p2p_app::fmt::format_system_time(time);
     assert!(result.contains(':'));
     assert!(result.contains("000"));

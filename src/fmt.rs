@@ -70,7 +70,8 @@ pub fn short_peer_id(id: &str) -> String {
 #[must_use]
 pub fn format_time_hhmm(dt: &str) -> String {
     if dt.len() >= 16 {
-        dt[11..16].to_string()
+        dt.get(11..16)
+            .map_or_else(|| dt.to_string(), std::string::ToString::to_string)
     } else {
         dt.to_string()
     }
@@ -78,6 +79,7 @@ pub fn format_time_hhmm(dt: &str) -> String {
 
 /// Get display name for a peer - uses local nickname if set, else received nickname, else short ID
 #[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn peer_display_name(
     peer_id: &str,
     local_nicknames: &std::collections::HashMap<String, String>,
@@ -94,15 +96,16 @@ pub fn peer_display_name(
 ///
 /// Returns the line offset that should be visible when auto-scrolling to show the latest content.
 #[must_use]
-pub fn auto_scroll_offset(total: usize, visible: usize) -> usize {
+pub const fn auto_scroll_offset(total: usize, visible: usize) -> usize {
     total.saturating_sub(visible)
 }
 
 /// Calculate the latency in milliseconds between sent and received times
 #[must_use]
 pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
-    match sent_at {
-        Some(sent) => {
+    sent_at.map_or_else(
+        || "?".to_string(),
+        |sent| {
             let now = received_at
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
@@ -115,9 +118,8 @@ pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
             } else {
                 format!("{elapsed:.1}s")
             }
-        }
-        None => "?".to_string(),
-    }
+        },
+    )
 }
 
 /// Generate a title for scrollable content showing current scroll position

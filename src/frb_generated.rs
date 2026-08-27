@@ -21,7 +21,11 @@
     clippy::explicit_auto_deref,
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
-    clippy::needless_borrow
+    clippy::needless_borrow,
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::restriction
 )]
 
 // Section: imports

@@ -100,9 +100,10 @@ pub struct RenderEvent;
 /// Returns the last `limit` logs in original order.
 fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
     let start = logs.len().saturating_sub(limit);
-    logs[start..].to_vec()
+    logs.get(start..).unwrap_or(&[]).to_vec()
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn run_new_tui(
     swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
     topic_str: String,
@@ -139,11 +140,10 @@ pub async fn run_new_tui(
 
     // Load nickname maps from database (used for rendering historical messages and peer display).
     let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
-        if let Ok(db_peers) = p2p_app::load_peers() {
-            extract_nickname_maps(&db_peers)
-        } else {
-            (HashMap::new(), HashMap::new(), HashMap::new())
-        };
+        p2p_app::load_peers().map_or_else(
+            |_| (HashMap::new(), HashMap::new(), HashMap::new()),
+            |db_peers| extract_nickname_maps(&db_peers),
+        );
 
     // Load initial messages from database
     let (initial_messages, initial_message_ids, loaded_sent_at) =
@@ -160,37 +160,41 @@ pub async fn run_new_tui(
     ));
 
     // Load initial peers from database (including peer IDs that only exist in messages)
-    let mut initial_peers = if let Ok(db_peers) = p2p_app::load_known_peers() {
-        let peers = deduplicate_peers(&db_peers);
-        p2plog_debug(format!(
-            "Loaded {} unique peers from {} total database entries",
-            peers.len(),
-            db_peers.len()
-        ));
-        peers
-    } else {
-        p2plog_debug("No peers found in database".to_string());
-        VecDeque::new()
-    };
+    let mut initial_peers = p2p_app::load_known_peers().map_or_else(
+        |_| {
+            p2plog_debug("No peers found in database".to_string());
+            VecDeque::new()
+        },
+        |db_peers| {
+            let peers = deduplicate_peers(&db_peers);
+            p2plog_debug(format!(
+                "Loaded {} unique peers from {} total database entries",
+                peers.len(),
+                db_peers.len()
+            ));
+            peers
+        },
+    );
 
     // Sort by last_seen (latest first) - format is "YYYY-MM-DD HH:MM:SS" so lexicographic works
-    let mut peers_vec: Vec<_> = initial_peers.drain(..).collect();
+    let mut peers_vec: Vec<_> = initial_peers.into_iter().collect();
     peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen)); // reverse order for latest first
     initial_peers = peers_vec.into();
 
     // Load receipts from database
     let (loaded_broadcast_receipts, loaded_dm_receipts) =
-        if let Ok(receipts) = p2p_app::load_receipts() {
-            let (br, dr) = organize_receipts(&receipts);
-            p2plog_debug(format!(
-                "Loaded {} broadcast receipts and {} DM receipts from database",
-                br.len(),
-                dr.len()
-            ));
-            (br, dr)
-        } else {
-            (HashMap::new(), HashMap::new())
-        };
+        p2p_app::load_receipts().map_or_else(
+            |_| (HashMap::new(), HashMap::new()),
+            |receipts| {
+                let (br, dr) = organize_receipts(&receipts);
+                p2plog_debug(format!(
+                    "Loaded {} broadcast receipts and {} DM receipts from database",
+                    br.len(),
+                    dr.len()
+                ));
+                (br, dr)
+            },
+        );
 
     let local_peer_id =
         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());

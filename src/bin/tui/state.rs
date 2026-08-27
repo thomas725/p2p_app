@@ -11,7 +11,7 @@ pub const MAX_DM_HISTORY: usize = 1000;
 /// Input poll interval in milliseconds
 pub const FRAME_TIME_MS: u64 = 16;
 
-/// Trim a VecDeque to a maximum length, removing oldest (front) items.
+/// Trim a `VecDeque` to a maximum length, removing oldest (front) items.
 pub fn trim_history<T>(queue: &mut VecDeque<T>, limit: usize) {
     while queue.len() > limit {
         queue.pop_front();
@@ -23,7 +23,6 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 /// Shared application state for all tasks
 ///
 /// This struct centralizes all mutable state needed by the TUI.
-///
 /// Only the `CommandProcessor` task directly mutates this state.
 /// Other tasks:
 /// - **`RenderLoop`**: Read-only access to render current state
@@ -31,6 +30,7 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 /// - **`SwarmHandler`**: No direct access, sends `SwarmEvent` to `CommandProcessor`
 ///
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
+#[allow(clippy::struct_excessive_bools)]
 pub struct AppState {
     // Messages & Chat
     pub messages: VecDeque<p2p_app::DisplayMessage>,
@@ -167,6 +167,7 @@ type FormattedMessages = (
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
 #[allow(clippy::type_complexity)]
+#[allow(clippy::option_if_let_else)]
 fn format_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
     local_nicknames: &HashMap<String, String>,
@@ -187,7 +188,7 @@ fn format_messages_from_db(
             format!("[{own_nickname}]")
         };
         messages.push_back(p2p_app::DisplayMessage {
-            text: format!("{} {} {}", ts, sender, msg.content),
+            text: format!("{ts} {sender} {}", msg.content),
             sender_peer_id: msg.peer_id.clone(),
         });
         message_ids.push_back(msg.msg_id.clone());
@@ -208,17 +209,15 @@ pub fn load_and_format_messages(
     received_nicknames: &HashMap<String, String>,
     own_nickname: &str,
 ) -> FormattedMessages {
-    if let Ok(db_messages) = p2p_app::load_messages(topic_str, max_messages) {
-        format_messages_from_db(
-            &db_messages,
-            local_nicknames,
-            received_nicknames,
-            own_nickname,
-        )
-    } else {
-        p2p_app::p2plog_debug("Failed to load messages from database");
-        (VecDeque::new(), VecDeque::new(), HashMap::new())
-    }
+    p2p_app::load_messages(topic_str, max_messages).map_or_else(
+        |_| {
+            p2p_app::p2plog_debug("Failed to load messages from database");
+            (VecDeque::new(), VecDeque::new(), HashMap::new())
+        },
+        |db_messages| {
+            format_messages_from_db(&db_messages, local_nicknames, received_nicknames, own_nickname)
+        },
+    )
 }
 
 #[cfg(test)]

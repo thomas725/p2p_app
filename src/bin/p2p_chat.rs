@@ -40,7 +40,7 @@ fn handle_listen_addr_event(address: &libp2p::Multiaddr) {
 
 fn handle_message_event(propagation_source: &libp2p::PeerId, message: &gossipsub::Message) {
     let sender = propagation_source.to_string();
-    let sender_short = &sender[..8.min(sender.len())];
+    let sender_short = sender.get(..8.min(sender.len())).unwrap_or(&sender);
     let msg_str = String::from_utf8_lossy(&message.data);
     if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
         p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));

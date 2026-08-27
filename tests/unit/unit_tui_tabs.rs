@@ -10,7 +10,7 @@ fn test_dm_tab_new() {
 #[test]
 fn test_dm_tab_with_messages() {
     let msgs = VecDeque::from(vec!["msg1".to_string(), "msg2".to_string()]);
-    let dm = DmTab::with_messages("peer1".to_string(), msgs.clone());
+    let dm = DmTab::with_messages("peer1".to_string(), msgs);
     assert_eq!(dm.peer_id, "peer1");
     assert_eq!(dm.messages.len(), 2);
 }

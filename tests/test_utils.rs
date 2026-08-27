@@ -5,6 +5,8 @@
 //! (set via [`p2p_app::db::set_db_url`]), so each test gets its own database
 //! without mutating a process-wide env var or global variable.
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
@@ -12,6 +14,7 @@ use tempfile::TempDir;
 /// deterministic on-disk layout (e.g. relying on the default path-selection)
 /// serialise here; tests using [`with_test_db`] are already isolated by their
 /// own thread-local database URL.
+#[allow(clippy::too_long_first_doc_paragraph)]
 pub fn test_db_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
@@ -20,8 +23,9 @@ pub fn test_db_lock() -> &'static Mutex<()> {
 /// Run a test closure with an isolated temp database.
 ///
 /// Creates a temp dir, points the current thread's database URL at a fresh
-/// SQLite file inside it, runs migrations, invokes `f`, then cleans up and
+/// `SQLite` file inside it, runs migrations, invokes `f`, then cleans up and
 /// resets the thread-local URL so subsequent tests start clean.
+#[allow(clippy::missing_panics_doc)]
 pub fn with_test_db(f: impl FnOnce()) {
     let _guard = test_db_lock()
         .lock()

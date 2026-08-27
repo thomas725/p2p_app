@@ -7,6 +7,7 @@ use crate::PeerRecord;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 /// Minimum state needed to render a TUI frame
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug)]
 pub struct TuiRenderState {
     /// Names of tabs for display (Chat, Peers, Log, plus DM tabs)
@@ -164,7 +165,7 @@ impl TuiRenderState {
         }
     }
 
-    /// Add a message to chat (peer_id of None means local user)
+    /// Add a message to chat (`peer_id` of `None` means local user)
     pub fn add_message(&mut self, msg: impl Into<String>) {
         self.messages.push_back(msg.into());
         self.message_peer_ids.push_back(None);
@@ -216,14 +217,14 @@ pub fn count_lines(text: &str, text_width: usize) -> usize {
     let clean_text = crate::logging::strip_ansi_codes(text);
     let lines: Vec<&str> = clean_text.split('\n').collect();
 
-    let mut total = 0;
+    let mut total: usize = 0;
     for (i, line) in lines.iter().enumerate() {
         if line.is_empty() {
-            if i < lines.len() - 1 {
-                total += 1;
+            if i < lines.len().saturating_sub(1) {
+                total = total.saturating_add(1);
             }
         } else {
-            total += line.len().div_ceil(text_width);
+            total = total.saturating_add(line.len().div_ceil(text_width));
         }
     }
     total.max(1)
@@ -259,15 +260,15 @@ fn calc_auto_scroll<F>(messages: &[String], usable_height: usize, get_lines: F) 
 where
     F: Fn(&str) -> usize,
 {
-    let mut used = 0;
-    let mut count = 0;
+    let mut used: usize = 0;
+    let mut count: usize = 0;
     for msg in messages.iter().rev() {
         let msg_lines = get_lines(msg);
-        if used > 0 && used + msg_lines > usable_height {
+        if used > 0 && used.saturating_add(msg_lines) > usable_height {
             break;
         }
-        used += msg_lines;
-        count += 1;
+        used = used.saturating_add(msg_lines);
+        count = count.saturating_add(1);
     }
     (count, 0)
 }
@@ -284,15 +285,15 @@ where
     if scroll_offset >= messages.len() {
         return MIN_VISIBLE;
     }
-    let mut used = 0;
-    let mut count = 0;
+    let mut used: usize = 0;
+    let mut count: usize = 0;
     for msg in messages.iter().skip(scroll_offset) {
         let msg_lines = get_lines(msg);
-        if used > 0 && used + msg_lines > usable_height {
+        if used > 0 && used.saturating_add(msg_lines) > usable_height {
             break;
         }
-        used += msg_lines;
-        count += 1;
+        used = used.saturating_add(msg_lines);
+        count = count.saturating_add(1);
     }
     count.max(MIN_VISIBLE)
 }
@@ -300,24 +301,23 @@ where
 /// Return a checkmark prefix (`"v "`) if any peer has acknowledged the given
 /// broadcast message, or two spaces otherwise.
 #[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn broadcast_receipt_prefix(
     msg_id: Option<&str>,
     broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
 ) -> &'static str {
-    match msg_id {
-        Some(msg_id) => {
-            let confirmed = broadcast_receipts
-                .get(msg_id)
-                .map_or(0, std::collections::HashMap::len);
-            if confirmed == 0 { "  " } else { "v " }
-        }
-        _ => "  ",
-    }
+    msg_id.map_or("  ", |msg_id| {
+        let confirmed = broadcast_receipts
+            .get(msg_id)
+            .map_or(0, std::collections::HashMap::len);
+        if confirmed == 0 { "  " } else { "v " }
+    })
 }
 
 /// Return a checkmark prefix (`"v "`) if the recipient has acknowledged the
 /// given direct message, or two spaces otherwise.
 #[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn dm_receipt_prefix(
     msg_id: Option<&str>,
     dm_receipts: &HashMap<String, (String, f64)>,
@@ -328,9 +328,11 @@ pub fn dm_receipt_prefix(
     }
 }
 
-/// Map a clicked terminal row to the index of the message it falls within,
-/// given each message's rendered line count and the row where content starts.
-/// Returns `None` if the click was above the content area or past the last message.
+/// Maps a clicked terminal row to the message index it falls within.
+///
+/// Uses each message's rendered line count and the starting content row to
+/// locate the message. Returns `None` if the click was above the content area
+/// or past the last message.
 #[must_use]
 pub fn row_to_visible_index(
     line_counts: &[usize],
@@ -343,7 +345,7 @@ pub fn row_to_visible_index(
     let mut current_row = first_content_row;
 
     for (idx, line_count) in line_counts.iter().copied().enumerate() {
-        let message_end_row = current_row + line_count;
+        let message_end_row = current_row.saturating_add(line_count);
         if click_row < message_end_row {
             return Some(idx);
         }

@@ -87,7 +87,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
 }
 
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
-fn render_frame(f: &mut Frame, state: &mut AppState) {
+fn render_frame(f: &mut Frame, state: &AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -102,28 +102,28 @@ fn render_frame(f: &mut Frame, state: &mut AppState) {
 
     let mut render_state = app_state_to_render_state(state);
 
-    tui_render::render_tabs(f, chunks[0], &render_state);
-    tui_render::render_peer_info(f, chunks[1], &render_state);
+    tui_render::render_tabs(f, chunks.first().copied().unwrap_or_default(), &render_state);
+    tui_render::render_peer_info(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
 
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
         TabContent::Chat => {
-            tui_render::render_chat_content(f, chunks[2], &mut render_state);
+            tui_render::render_chat_content(f, chunks.get(2).copied().unwrap_or_default(), &mut render_state);
         }
         TabContent::Peers => {
-            tui_render::render_peers_content(f, chunks[2], &render_state);
+            tui_render::render_peers_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
         }
         TabContent::Direct(peer_id) => {
-            tui_render::render_dm_content(f, chunks[2], peer_id, &mut render_state);
+            tui_render::render_dm_content(f, chunks.get(2).copied().unwrap_or_default(), peer_id, &mut render_state);
         }
         TabContent::Log => {
-            tui_render::render_log_content(f, chunks[2], &render_state);
+            tui_render::render_log_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
         }
     }
 
-    layout::render_input_section(f, chunks[3], state, &tab_content);
-    layout::render_shortcuts(f, chunks[4]);
-    layout::render_status_bar(f, chunks[5], state);
+    layout::render_input_section(f, chunks.get(3).copied().unwrap_or_default(), state, &tab_content);
+    layout::render_shortcuts(f, chunks.get(4).copied().unwrap_or_default());
+    layout::render_status_bar(f, chunks.get(5).copied().unwrap_or_default(), state);
 
     if let Some(ref text) = state.popup {
         render_popup(f, text.clone());
@@ -138,9 +138,9 @@ pub fn spawn_render_loop(
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         while render_rx.recv().await.is_some() {
-            let mut s = state.lock().await;
+            let s = state.lock().await;
             let _ = terminal.draw(|f| {
-                render_frame(f, &mut s);
+                render_frame(f, &s);
             });
         }
     })

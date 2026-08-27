@@ -108,24 +108,24 @@ impl Visit for FormatVisitor<'_> {
         if field.name() == "message" {
             self.0.push_str(value);
         } else {
-            self.0.push_str(&format!(" {}={value}", field.name()));
+            let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
         }
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        self.0.push_str(&format!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        self.0.push_str(&format!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        self.0.push_str(&format!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        self.0.push_str(&format!(" {}={value:?}", field.name()));
+        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value:?}", field.name()));
     }
 }
 
@@ -186,10 +186,8 @@ pub fn get_tui_logs() -> Vec<String> {
         .get()
         .map(|m| {
             m.lock()
-                .expect("Log buffer not poisoned")
-                .clone()
-                .into_iter()
-                .collect()
+                .map(|g| g.clone().into_iter().collect())
+                .unwrap_or_default()
         })
         .unwrap_or_default()
 }
@@ -216,7 +214,9 @@ static LOG_FILE: Mutex<Option<std::fs::File>> = Mutex::new(None);
 
 /// Write a log line to the persistent log file.
 fn write_to_file(formatted: &str) {
-    let mut file = LOG_FILE.lock().unwrap();
+    let Ok(mut file) = LOG_FILE.lock() else {
+        return;
+    };
     if file.is_none() {
         let path = log_file_path();
         let _ = std::fs::create_dir_all(path.parent().unwrap_or(&std::path::PathBuf::new()));
@@ -249,7 +249,7 @@ pub fn push_log(message: impl Into<String>) {
             && let Ok(mut l) = logs.lock()
         {
             let display = format!("[{ts}] {msg}");
-            l.push_back(display.clone());
+            l.push_back(display);
             if l.len() > MAX_LOGS {
                 l.pop_front();
             }
@@ -260,7 +260,9 @@ pub fn push_log(message: impl Into<String>) {
     write_to_file(&formatted);
 
     // Notify all registered callbacks (or stderr if none registered)
-    let callbacks = LOG_CALLBACKS.lock().unwrap();
+    let Ok(callbacks) = LOG_CALLBACKS.lock() else {
+        return;
+    };
     if callbacks.is_empty() {
         // On the mobile frontend the stderr mirror below already emits every
         // line, so avoid printing it twice during early startup (before the
@@ -290,11 +292,14 @@ pub fn push_log(message: impl Into<String>) {
 }
 
 /// Register a callback that will receive all log messages.
+///
 /// External frontends (Flutter FRB, TUI, Dioxus) can use this to add their
 /// own log display. When registered, all previously accumulated logs in the
 /// buffer are immediately replayed to the callback.
 pub fn register_log_callback(callback: LogCallback) {
-    let mut callbacks = LOG_CALLBACKS.lock().unwrap();
+    let Ok(mut callbacks) = LOG_CALLBACKS.lock() else {
+        return;
+    };
 
     // Replay accumulated logs that were captured before this callback was registered
     if let Some(logs) = LOG_BUFFER.get()

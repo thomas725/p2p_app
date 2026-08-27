@@ -15,7 +15,7 @@ use chrono::TimeZone;
 use libp2p::gossipsub;
 use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::{LazyLock, Mutex, OnceLock};
+use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 
@@ -48,9 +48,16 @@ pub fn start_node_auto() -> Result<String, String> {
     start_node_impl(None)
 }
 
+fn lock_node_mutex(mu: &Mutex<MobileNode>) -> MutexGuard<'_, MobileNode> {
+    match mu.lock() {
+        Ok(g) => g,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
 fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
-    if NODE.get().is_some() {
-        let node = NODE.get().unwrap().lock().unwrap();
+    if let Some(existing) = NODE.get() {
+        let node = lock_node_mutex(existing);
         if node.cmd_tx.is_some() {
             return Ok(node.peer_id.clone());
         }
@@ -89,7 +96,11 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 
         let topic = gossipsub::IdentTopic::new(CHAT_TOPIC);
         swarm
-            .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap())
+            .listen_on(
+                "/ip4/0.0.0.0/tcp/0"
+                    .parse()
+                    .map_err(|e| format!("Failed to listen: {e}"))?,
+            )
             .map_err(|e| format!("Failed to listen: {e}"))?;
         swarm
             .behaviour_mut()
@@ -119,7 +130,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     // swarm so its listen addresses (and all events) never come back.
     match NODE.get() {
         Some(existing) => {
-            let mut g = existing.lock().unwrap();
+            let mut g = lock_node_mutex(existing);
             *g = new_node;
         }
         None => {
@@ -148,15 +159,16 @@ pub fn stop_node() -> Result<(), String> {
 /// Poll the next swarm event (non-blocking). Returns None if no event ready.
 /// Also processes events: saves peers, sends nickname DMs, stores received nicknames.
 #[flutter_rust_bridge::frb(ignore)]
+#[allow(clippy::significant_drop_tightening)]
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
-    let mut node = m.lock().unwrap();
+    let mut node = lock_node_mutex(m);
     let rx = node.event_rx.as_mut().ok_or("Node stopped")?;
 
     match rx.try_recv() {
         Ok(ev) => {
             // Process events like the TUI does (save peers, exchange nicknames)
-            process_event_for_mobile(&ev, &node.cmd_tx);
+            process_event_for_mobile(&ev, node.cmd_tx.as_ref());
             Ok(Some(event_to_json(ev)))
         }
         Err(TryRecvError::Empty) => Ok(None),
@@ -165,7 +177,7 @@ pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
 }
 
 /// Process a swarm event for side effects: save peers, send nickname, store received nicknames.
-fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmCommand>>) {
+fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmCommand>>) {
     match ev {
         SwarmEvent::PeerConnected(peer_id) => {
             // Track connected peers for broadcast attribution.
@@ -211,7 +223,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
-            let addrs: Vec<String> = addresses.iter().map(|a| a.to_string()).collect();
+            let addrs: Vec<String> = addresses.iter().map(ToString::to_string).collect();
             if let Err(e) = save_peer(peer_id, &addrs) {
                 p2plog_debug(format!("Failed to save discovered peer: {e}"));
             }
@@ -224,8 +236,10 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: &Option<mpsc::Sender<SwarmC
 #[flutter_rust_bridge::frb(ignore)]
 pub fn send_broadcast(content: String) -> Result<(), String> {
     let m = NODE.get().ok_or("Node not started")?;
-    let node = m.lock().unwrap();
-    let tx = node.cmd_tx.as_ref().ok_or("Node stopped")?;
+    let tx = {
+        let node = lock_node_mutex(m);
+        node.cmd_tx.as_ref().ok_or("Node stopped")?.clone()
+    };
     let msg_id = Some(crate::gen_msg_id());
     let nickname = crate::get_self_nickname().ok().flatten();
     tx.blocking_send(SwarmCommand::Publish {
@@ -240,8 +254,10 @@ pub fn send_broadcast(content: String) -> Result<(), String> {
 #[flutter_rust_bridge::frb(ignore)]
 pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
     let m = NODE.get().ok_or("Node not started")?;
-    let node = m.lock().unwrap();
-    let tx = node.cmd_tx.as_ref().ok_or("Node stopped")?;
+    let tx = {
+        let node = lock_node_mutex(m);
+        node.cmd_tx.as_ref().ok_or("Node stopped")?.clone()
+    };
     let msg_id = Some(crate::gen_msg_id());
     let nickname = crate::get_self_nickname().ok().flatten();
     tx.blocking_send(SwarmCommand::SendDm {
@@ -255,9 +271,12 @@ pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
 }
 
 /// Get the local peer ID.
+///
+/// # Errors
+/// Returns an error if the node has not been started yet.
 pub fn get_node_peer_id() -> Result<String, String> {
     let m = NODE.get().ok_or("Node not started")?;
-    let node = m.lock().unwrap();
+    let node = lock_node_mutex(m);
     Ok(node.peer_id.clone())
 }
 
@@ -325,7 +344,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
     let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
         (Some(nick), Some(pid)) => {
             let short = crate::fmt::short_peer_id(&pid);
-            let suffix = &short[..3.min(short.len())];
+            let suffix = short.get(..3.min(short.len())).unwrap_or("");
             Some(format!("{nick} ({suffix})"))
         }
         (Some(nick), None) => Some(nick),
@@ -341,7 +360,11 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
         sent_at: msg.sent_at.map(|t| {
-            let dt = chrono::DateTime::from_timestamp(t as i64, 0)
+            // SAFETY: `sent_at` is a Unix timestamp in seconds and is well within
+            // i64 range; the fractional part is intentionally truncated.
+            #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+            let secs = t as i64;
+            let dt = chrono::DateTime::from_timestamp(secs, 0)
                 .unwrap_or_default()
                 .with_timezone(&chrono::Local);
             dt.format("%H:%M").to_string()
@@ -358,14 +381,30 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
 /// Load broadcast messages (newest-first from DB, reversed to chronological).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
-    let msgs = load_messages(CHAT_TOPIC, limit as usize).map_err(|e| e.to_string())?;
+    // SAFETY: `limit` is a non-negative message count; converting to usize is
+    // lossless in practice and a negative/wrapping value never occurs.
+    #[allow(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
+    let limit_usize = limit as usize;
+    let msgs = load_messages(CHAT_TOPIC, limit_usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().rev().map(message_to_chat).collect())
 }
 
 /// Load DM history with a specific peer (already oldest-first in DB).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>, String> {
-    let msgs = load_direct_messages(&peer_id, limit as usize).map_err(|e| e.to_string())?;
+    // SAFETY: `limit` is a non-negative message count; converting to usize is
+    // lossless in practice and a negative/wrapping value never occurs.
+    #[allow(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
+    let limit_usize = limit as usize;
+    let msgs = load_direct_messages(&peer_id, limit_usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().map(message_to_chat).collect())
 }
 
@@ -540,7 +579,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
         SwarmEvent::PeerDiscovered { peer_id, addresses } => SwarmEventJson {
             event_type: "peer_discovered".into(),
             peer_id: Some(peer_id),
-            address: addresses.first().map(|a| a.to_string()),
+            address: addresses.first().map(ToString::to_string),
             ..default_event()
         },
         #[cfg(feature = "mdns")]
@@ -552,6 +591,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
     }
 }
 
+#[allow(clippy::missing_const_for_fn)]
 fn default_event() -> SwarmEventJson {
     SwarmEventJson {
         event_type: String::new(),
@@ -701,7 +741,7 @@ mod tests {
             is_direct: 0,
             target_peer: None,
             msg_id: Some("msg-1".into()),
-            sent_at: Some(1718455800.0),
+            sent_at: Some(1_718_455_800.0),
             sender_nickname: Some("Alice".into()),
         };
         let chat = message_to_chat(msg);
@@ -775,7 +815,7 @@ mod tests {
         };
         let chat = message_to_chat(msg);
         let short = crate::fmt::short_peer_id("peer-bob");
-        let suffix = &short[..3.min(short.len())];
+        let suffix = short.get(..3.min(short.len())).unwrap_or("");
         assert_eq!(
             chat.sender_nickname.as_deref(),
             Some(format!("Bob ({suffix})").as_str())
@@ -854,7 +894,7 @@ mod tests {
             nickname: Some("Bob".into()),
             msg_id: None,
         });
-        process_event_for_mobile(&ev, &None);
+        process_event_for_mobile(&ev, None);
     }
 
     #[test]
@@ -866,20 +906,20 @@ mod tests {
             nickname: Some("Charlie".into()),
             msg_id: Some("msg-b1".into()),
         });
-        process_event_for_mobile(&ev, &None);
+        process_event_for_mobile(&ev, None);
     }
 
     #[test]
     fn test_process_event_peer_connected_no_sender() {
-        process_event_for_mobile(&SwarmEvent::PeerConnected("p1".into()), &None);
+        process_event_for_mobile(&SwarmEvent::PeerConnected("p1".into()), None);
     }
 
     #[test]
     fn test_process_event_ignored_variants() {
-        process_event_for_mobile(&SwarmEvent::PeerDisconnected("p1".into()), &None);
+        process_event_for_mobile(&SwarmEvent::PeerDisconnected("p1".into()), None);
         process_event_for_mobile(
             &SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/0".into()),
-            &None,
+            None,
         );
         process_event_for_mobile(
             &SwarmEvent::Receipt {
@@ -887,7 +927,7 @@ mod tests {
                 ack_for: "m1".into(),
                 received_at: None,
             },
-            &None,
+            None,
         );
     }
 
@@ -899,7 +939,7 @@ mod tests {
             peer_id: "p-disc".into(),
             addresses: vec![addr],
         };
-        process_event_for_mobile(&ev, &None);
+        process_event_for_mobile(&ev, None);
     }
 
     // ── SwarmEventJson / ChatMessage / MobilePeerRecord ────────────────
@@ -909,7 +949,7 @@ mod tests {
         let j = default_event();
         let cloned = j.clone();
         assert!(cloned.event_type.is_empty());
-        let _ = format!("{:?}", j);
+        let _ = format!("{j:?}");
     }
 
     #[test]
@@ -930,7 +970,7 @@ mod tests {
         let chat = message_to_chat(msg);
         let cloned = chat.clone();
         assert_eq!(cloned.id, 1);
-        let _ = format!("{:?}", chat);
+        let _ = format!("{chat:?}");
     }
 
     #[test]
@@ -945,7 +985,7 @@ mod tests {
         };
         let cloned = r.clone();
         assert_eq!(cloned.peer_id, "p1");
-        let _ = format!("{:?}", r);
+        let _ = format!("{r:?}");
     }
 
     // ── start/stop node error paths ────────────────────────────────────

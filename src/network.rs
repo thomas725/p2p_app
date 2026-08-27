@@ -35,8 +35,12 @@ impl NetworkSize {
     /// # Returns
     /// `NetworkSize` classification for configuring gossipsub behavior
     #[must_use]
-    pub fn from_peer_count(avg: f64) -> Self {
-        match avg as i32 {
+    pub const fn from_peer_count(avg: f64) -> Self {
+        // SAFETY: average peer counts are small non-negative values, so the
+        // f64 -> i32 conversion cannot truncate meaningful data.
+        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+        let avg = avg as i32;
+        match avg {
             0..=3 => Self::Small,
             4..=15 => Self::Medium,
             _ => Self::Large,
@@ -51,6 +55,10 @@ impl NetworkSize {
 ///
 /// # Returns
 /// The current `NetworkSize` (Small, Medium, or Large)
+///
+/// # Errors
+/// Returns an error if the historical peer count cannot be read from the
+/// database.
 pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     let avg = get_average_peer_count()?;
     Ok(NetworkSize::from_peer_count(avg))

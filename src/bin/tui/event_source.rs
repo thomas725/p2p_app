@@ -11,6 +11,7 @@ pub enum InputEvent {
 }
 
 /// Pure: convert crossterm `Event` to `InputEvent`
+#[allow(clippy::needless_pass_by_value)]
 fn crossterm_event_to_input_event(event: Event) -> Option<InputEvent> {
     match event {
         Event::Key(key) => Some(InputEvent::Key(key)),

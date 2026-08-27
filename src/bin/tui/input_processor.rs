@@ -19,6 +19,7 @@ fn update_dm_transcript_labels(
 }
 
 /// Pure: flip the mouse capture flag. Returns the new state.
+#[allow(clippy::missing_const_for_fn)]
 fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
     state.mouse_capture = !state.mouse_capture;
     state.mouse_capture
@@ -42,16 +43,20 @@ fn prepare_nickname_update(
     if new_nickname.trim().is_empty() {
         return None;
     }
-    let (old_nickname, peer_id) = if let Some(pid) = &state.editing_nickname_peer {
-        let old = state
-            .self_nicknames_for_peers
-            .get(pid)
-            .cloned()
-            .unwrap_or_else(|| state.own_nickname.clone());
-        (old, Some(pid.clone()))
-    } else {
-        (state.own_nickname.clone(), None)
-    };
+    let (old_nickname, peer_id) = state
+        .editing_nickname_peer
+        .as_ref()
+        .map_or_else(
+            || (state.own_nickname.clone(), None),
+            |pid| {
+                let old = state
+                    .self_nicknames_for_peers
+                    .get(pid)
+                    .cloned()
+                    .unwrap_or_else(|| state.own_nickname.clone());
+                (old, Some(pid.clone()))
+            },
+        );
     Some((new_nickname, old_nickname, peer_id))
 }
 
@@ -104,7 +109,7 @@ async fn handle_nickname_submission(
         );
         p2plog_debug(format!("Updated per-peer nickname to: {new_nickname}"));
     } else {
-        state.own_nickname = new_nickname.clone();
+        state.own_nickname.clone_from(&new_nickname);
         let _ = p2p_app::set_self_nickname(&new_nickname);
         for p in &state.peers {
             let peer_id = &p.peer_id;
@@ -146,7 +151,7 @@ fn handle_close_dm_tab(
     if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
         && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
     {
-        state.active_tab = if closed_idx > 0 { closed_idx - 1 } else { 0 };
+        state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
         state.peer_selection = 0;
         p2plog_debug(format!("Closed DM tab with peer: {peer_id}"));
     }

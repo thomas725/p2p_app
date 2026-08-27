@@ -89,7 +89,7 @@ fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>
     let msg_id = crate::gen_msg_id();
     let ts = crate::format_now();
     let nickname = { state.read().own_nickname.clone() };
-    let display = format!("{} [{}] {}", ts, nickname, input);
+    let display = format!("{ts} [{nickname}] {input}");
     let cmd = if let Some(peer_id) = is_dm {
         let pid = peer_id.to_string();
         let mut s = state.write();
@@ -101,7 +101,7 @@ fn send_message(state: &mut Signal<AppState>, input: String, is_dm: Option<&str>
             .entry(pid.clone())
             .or_default()
             .push_back(Some(msg_id.clone()));
-        if s.dm_messages.get(&pid).map_or(0, |m| m.len()) > MAX_DM_HISTORY {
+        if s.dm_messages.get(&pid).map_or(0, VecDeque::len) > MAX_DM_HISTORY {
             if let Some(msgs) = s.dm_messages.get_mut(&pid) {
                 msgs.pop_front();
             }
@@ -180,16 +180,16 @@ fn initialize_from_init_data(state: &mut Signal<AppState>) {
     }
 }
 
-fn tab_class(i: usize, active_tab: usize) -> &'static str {
+const fn tab_class(i: usize, active_tab: usize) -> &'static str {
     if i == active_tab { "tab active" } else { "tab" }
 }
 
 fn render_chat_tab(
     mut state: Signal<AppState>,
-    messages: VecDeque<DisplayMessage>,
-    msg_ids: VecDeque<Option<String>>,
-    bc_receipts: HashMap<String, HashMap<String, f64>>,
-    chat_input: String,
+    messages: &VecDeque<DisplayMessage>,
+    msg_ids: &VecDeque<Option<String>>,
+    bc_receipts: &HashMap<String, HashMap<String, f64>>,
+    chat_input: &str,
 ) -> Element {
     rsx! {
         div { class: "messages chat-messages",
@@ -227,9 +227,9 @@ fn render_chat_tab(
 
 fn render_peers_tab(
     mut state: Signal<AppState>,
-    peers: VecDeque<PeerRecord>,
-    local_nicks: HashMap<String, String>,
-    received_nicks: HashMap<String, String>,
+    peers: &VecDeque<PeerRecord>,
+    local_nicks: &HashMap<String, String>,
+    received_nicks: &HashMap<String, String>,
     peer_count: usize,
 ) -> Element {
     rsx! {
@@ -243,7 +243,7 @@ fn render_peers_tab(
                 }
                 {
                     peers.iter().map(|p| {
-                        let display_name = crate::peer_display_name(&p.peer_id, &local_nicks, &received_nicks);
+                        let display_name = crate::peer_display_name(&p.peer_id, local_nicks, received_nicks);
                         let short = crate::short_peer_id(&p.peer_id);
                         let pid_clone = p.peer_id.clone();
                         rsx! {
@@ -303,7 +303,7 @@ fn render_dm_tab(mut state: Signal<AppState>, dm_peer: String) -> Element {
                             let now = crate::current_timestamp();
                             let lat = now - at;
                             if lat < 1.0 { format!(" read ~{:.0}ms ago", lat * 1000.0) }
-                            else { format!(" read ~{:.1}s ago", lat) }
+                            else { format!(" read ~{lat:.1}s ago") }
                         })
                         .unwrap_or_default();
                     rsx! {
@@ -331,7 +331,7 @@ fn render_dm_tab(mut state: Signal<AppState>, dm_peer: String) -> Element {
     }
 }
 
-fn render_log_tab(logs: VecDeque<String>) -> Element {
+fn render_log_tab(logs: &VecDeque<String>) -> Element {
     rsx! {
         div { class: "log-view",
             { logs.iter().map(|log| rsx! { div { class: "log-entry", "{log}" } }) }
@@ -364,8 +364,8 @@ fn cancel_nickname_edit(mut state: Signal<AppState>) {
 fn render_edit_modal(
     mut state: Signal<AppState>,
     editing: bool,
-    edit_short: String,
-    edit_current_nick: String,
+    edit_short: &str,
+    edit_current_nick: &str,
 ) -> Option<Element> {
     if !editing {
         return None;
@@ -396,24 +396,24 @@ fn render_edit_modal(
     })
 }
 
-fn render_popup_modal(mut state: Signal<AppState>, popup_text: Option<String>) -> Option<Element> {
-    popup_text.as_ref().map(|text| {
-        let text = text.clone();
-        rsx! {
-            div { class: "modal-overlay", onclick: move |_| state.write().popup = None,
-                div { class: "modal", onclick: move |e| e.stop_propagation(),
-                    pre { "{text}" }
-                    div { class: "modal-buttons",
-                        button { onclick: move |_| state.write().popup = None, "Close" }
-                    }
+fn render_popup_modal(mut state: Signal<AppState>, text: &str) -> Element {
+    rsx! {
+        div { class: "modal-overlay", onclick: move |_| state.write().popup = None,
+            div { class: "modal", onclick: move |e| e.stop_propagation(),
+                pre { "{text}" }
+                div { class: "modal-buttons",
+                    button { onclick: move |_| state.write().popup = None, "Close" }
                 }
             }
         }
-    })
+    }
 }
 
 /// Root component of the Dioxus chat UI.
-#[allow(non_snake_case)]
+///
+/// # Errors
+/// Returns a rendering error if virtual DOM node construction fails.
+#[allow(non_snake_case, clippy::too_many_lines)]
 pub fn App() -> Element {
     let state = use_signal(|| AppState {
         messages: VecDeque::new(),
@@ -446,7 +446,7 @@ pub fn App() -> Element {
     });
 
     let mut coroutine_state = state;
-    let _coroutine = use_coroutine(
+    let coroutine = use_coroutine(
         move |mut rx: futures_channel::mpsc::UnboundedReceiver<SwarmEvent>| async move {
             while let Ok(event) = rx.recv().await {
                 process_swarm_event(&mut coroutine_state, event);
@@ -455,7 +455,7 @@ pub fn App() -> Element {
     );
 
     if SWARM_EVENT_TX.get().is_none() {
-        let sender = _coroutine.tx();
+        let sender = coroutine.tx();
         let _ = SWARM_EVENT_TX.set(sender);
     }
 
@@ -474,7 +474,6 @@ pub fn App() -> Element {
         .map(|p| crate::short_peer_id(&p))
         .unwrap_or_default();
     let edit_current_nick = editing_peer
-        .clone()
         .and_then(|p| s.local_nicknames.get(&p).cloned())
         .unwrap_or_default();
     let status_label = if connected {
@@ -490,8 +489,8 @@ pub fn App() -> Element {
     drop(s);
 
     rsx! {
-        {render_edit_modal(state, editing, edit_short, edit_current_nick)}
-        {render_popup_modal(state, popup_text)}
+        {render_edit_modal(state, editing, &edit_short, &edit_current_nick)}
+        {popup_text.as_ref().map(|t| render_popup_modal(state, t))}
         style { {STYLESHEET} }
         div { class: "app",
             div { class: "header",
@@ -529,7 +528,7 @@ pub fn App() -> Element {
                         let bc_receipts = s.broadcast_receipts.clone();
                         let chat_input = s.chat_input.clone();
                         drop(s);
-                        render_chat_tab(state, messages, msg_ids, bc_receipts, chat_input)
+                        render_chat_tab(state, &messages, &msg_ids, &bc_receipts, &chat_input)
                     } else if active_tab == 1 {
                         let s = state.read();
                         let peers = s.peers.clone();
@@ -537,13 +536,14 @@ pub fn App() -> Element {
                         let received_nicks = s.received_nicknames.clone();
                         let peer_count = s.concurrent_peers;
                         drop(s);
-                        render_peers_tab(state, peers, local_nicks, received_nicks, peer_count)
-                    } else if active_tab >= 2 && active_tab - 2 < dm_tabs.len() {
-                        let dm_peer = dm_tabs[active_tab - 2].clone();
+                        render_peers_tab(state, &peers, &local_nicks, &received_nicks, peer_count)
+                    } else if active_tab >= 2 && active_tab.saturating_sub(2) < dm_tabs.len() {
+                        let idx = active_tab.saturating_sub(2);
+                        let dm_peer = dm_tabs.get(idx).cloned().unwrap_or_default();
                         render_dm_tab(state, dm_peer)
                     } else {
                         let logs = state.read().logs.clone();
-                        render_log_tab(logs)
+                        render_log_tab(&logs)
                     }
                 }
             }

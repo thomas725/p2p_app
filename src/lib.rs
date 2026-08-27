@@ -1,4 +1,4 @@
-//! # p2p_app
+//! # `p2p_app`
 //!
 //! Decentralized peer-to-peer chat on libp2p with TUI, CLI, and Dioxus desktop frontends.
 //!
@@ -41,7 +41,7 @@
 //! - [`types`] - application-level event/command enums
 //! - [`network`] - adaptive network size classification
 //! - [`messages`] - message persistence and retrieval
-//! - [`db`] - SQLite connection, identity, migrations
+//! - [`db`] - `SQLite` connection, identity, migrations
 //! - [`peers`] - peer and session tracking
 //! - [`nickname`] - nickname management
 //! - [`fmt`] - formatting utilities
@@ -152,7 +152,7 @@ pub use types::{DisplayMessage, MessageEvent, PeerRecord, SwarmCommand, SwarmEve
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 
-/// Embedded SQLite migrations.
+/// Embedded `SQLite` migrations.
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 
 #[cfg(test)]

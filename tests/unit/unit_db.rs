@@ -189,7 +189,9 @@ fn get_database_url_falls_back_when_no_set_url() {
     std::env::set_current_dir(dir.path()).expect("set cwd");
 
     let url = get_database_url();
-    assert!(url.ends_with(".db"));
+    assert!(std::path::Path::new(&url)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("db")));
     assert!(!url.is_empty());
 
     std::env::set_current_dir(old).expect("restore cwd");

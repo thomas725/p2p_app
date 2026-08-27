@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 #[cfg(feature = "tui")]
 mod tests {
     use p2p_app::tui_tabs::DmTab;
@@ -71,7 +73,7 @@ mod tests {
         let state = TuiTestState::with_messages(custom);
         let first_msg_row = state.first_message_row();
 
-        let mut scrolled = state.clone();
+        let mut scrolled = state;
         scrolled.chat_list_state_offset = 2;
 
         let peer = scrolled.handle_mouse_click(first_msg_row, 5);
@@ -118,7 +120,7 @@ mod tests {
         let state = TuiTestState::new();
         let start_row = state.calculate_content_start_row();
 
-        let mut state_with_notifs = state.clone();
+        let mut state_with_notifs = state;
         state_with_notifs.unread_broadcasts = 5;
         let start_row_with_notifs = state_with_notifs.calculate_content_start_row();
         assert!(start_row_with_notifs > start_row);
@@ -180,7 +182,7 @@ mod tests {
             String::from("[You] Hello"),
             String::from("[Peer] Hi there"),
         ]);
-        let dm = DmTab::with_messages("peer456".to_string(), messages.clone());
+        let dm = DmTab::with_messages("peer456".to_string(), messages);
         assert_eq!(dm.peer_id, "peer456");
         assert_eq!(dm.messages.len(), 2);
     }
@@ -382,8 +384,8 @@ mod tests {
         let broadcasts = p2p_app::tui_test_state::NotificationTarget::Broadcasts;
         let dm = p2p_app::tui_test_state::NotificationTarget::Dm("peer".to_string());
 
-        let broadcasts_clone = broadcasts.clone();
-        let dm_clone = dm.clone();
+        let broadcasts_clone = broadcasts;
+        let dm_clone = dm;
 
         assert!(matches!(
             broadcasts_clone,
@@ -483,7 +485,7 @@ mod tests {
         let state = TuiTestState::with_messages(custom);
         assert_eq!(state.first_message_row(), 5);
 
-        let mut state_with_notif = state.clone();
+        let mut state_with_notif = state;
         state_with_notif.unread_broadcasts = 5;
         assert_eq!(state_with_notif.first_message_row(), 6);
 

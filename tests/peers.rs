@@ -1,5 +1,7 @@
 //! Tests for peers.rs module
 
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+
 mod test_utils;
 use serial_test::serial;
 use test_utils::with_test_db;
@@ -161,7 +163,8 @@ fn test_get_recent_peer_count_returns_latest() {
 #[test]
 fn test_get_average_peer_count_zero_when_empty() {
     with_test_db(|| {
-        assert_eq!(p2p_app::get_average_peer_count().unwrap(), 0.0);
+        let avg = p2p_app::get_average_peer_count().unwrap();
+        assert!(avg.abs() < f64::EPSILON);
     });
 }
 
