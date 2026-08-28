@@ -457,7 +457,7 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                             println!("Node A: ConnectionEstablished with {peer_id}, endpoint: {endpoint:?}");
                         }
                         _ => {
-                            if event_count_a % 100 == 0 {
+                            if event_count_a.is_multiple_of(100) {
                                 println!("Node A: event #{event_count_a} (various events, not logging all)");
                             }
                         }
@@ -481,7 +481,7 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
                             println!("Node B: ConnectionEstablished with {peer_id}, endpoint: {endpoint:?}");
                         }
                         _ => {
-                            if event_count_b % 100 == 0 {
+                            if event_count_b.is_multiple_of(100) {
                                 println!("Node B: event #{event_count_b} (various events, not logging all)");
                             }
                         }

@@ -41,8 +41,8 @@ fn test_tab_click_close_button_on_dm_tab() {
     // Use a short peer ID so short_id() doesn't truncate
     let mut state = app_state_with_dm_messages("p1", 3);
     let titles = state.dynamic_tabs.all_titles();
-    // DM tab title format: "p1 (X)" — total width = "p1 (X)".len() + 3 = 9
-    let dm_idx = titles.iter().position(|t| t.contains("(X)")).unwrap();
+    // DM tab title format: "p1 [X]" — total width = "p1 [X]".len() + 3 = 9
+    let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
     let col_pos: usize = titles.iter().take(dm_idx).map(|t| t.len() + 3).sum();
     let tab_end = col_pos + titles[dm_idx].len() + 3;
     let close_col = tab_end.saturating_sub(4);
@@ -50,6 +50,21 @@ fn test_tab_click_close_button_on_dm_tab() {
     let handled = handle_tab_click(&mut state, close_col as u16, &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
+}
+
+#[test]
+fn test_tab_click_close_button_on_peer_info_tab() {
+    let mut state = app_state_with_dm_messages("p1", 3);
+    state.dynamic_tabs.add_peer_info_tab("p1".to_string());
+    let titles = state.dynamic_tabs.all_titles();
+    let info_idx = titles.iter().position(|t| t.starts_with("Info:")).unwrap();
+    let col_pos: usize = titles.iter().take(info_idx).map(|t| t.len() + 3).sum();
+    let tab_end = col_pos + titles[info_idx].len() + 3;
+    let close_col = tab_end.saturating_sub(4);
+    let count_before = state.dynamic_tabs.peer_info_tab_count();
+    let handled = handle_tab_click(&mut state, close_col as u16, &titles);
+    assert!(handled);
+    assert_eq!(state.dynamic_tabs.peer_info_tab_count(), count_before - 1);
 }
 
 // ── handle_peer_row_click ─────────────────────────────────────────────
@@ -130,6 +145,109 @@ fn test_mouse_left_click_below_max_row_is_noop() {
     state.chat_area_height = 20;
     handle_mouse_left_click(&mut state, 99, 0, false);
     assert_eq!(state.popup, None);
+}
+
+#[test]
+fn test_message_click_opens_peer_info_tab() {
+    let mut state = test_app_state();
+    state.terminal_width = 1000;
+    state.chat_area_height = 20;
+    state.chat_auto_scroll = true;
+    state.chat_scroll_offset = 0;
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "hello from peer".to_string(),
+        sender_peer_id: Some("peer-abc".to_string()),
+    });
+
+    // Row 3 is the first message row; with width 1000 it's a single line.
+    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+
+    assert!(handled);
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(matches!(
+        content,
+        p2p_app::tui_tabs::TabContent::PeerInfo(id) if id == "peer-abc"
+    ));
+}
+
+#[test]
+fn test_message_click_each_message_is_one_row() {
+    // The chat renderer shows each message as a single (non-wrapped, clipped)
+    // List item, so message N occupies exactly terminal row 3 + N regardless of
+    // how long the message text is.
+    let mut state = test_app_state();
+    state.terminal_width = 20;
+    state.chat_area_height = 20;
+    state.chat_auto_scroll = true;
+    state.chat_scroll_offset = 0;
+    // First message is long, but the renderer does not wrap it.
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "aaaaaaaaaaaaaaaaaaaa".to_string(),
+        sender_peer_id: Some("peer-abc".to_string()),
+    });
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "short".to_string(),
+        sender_peer_id: Some("peer-xyz".to_string()),
+    });
+
+    // Row 4 is the second message (one row per message, no wrapping).
+    let handled = handle_mouse_left_click(&mut state, 4, 0, false);
+
+    assert!(handled);
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(matches!(
+        content,
+        p2p_app::tui_tabs::TabContent::PeerInfo(id) if id == "peer-xyz"
+    ));
+}
+
+#[test]
+fn test_message_click_on_own_message_is_noop() {
+    let mut state = test_app_state();
+    state.terminal_width = 1000;
+    state.chat_area_height = 20;
+    state.chat_auto_scroll = true;
+    state.chat_scroll_offset = 0;
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "my own message".to_string(),
+        sender_peer_id: None,
+    });
+
+    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+
+    assert!(!handled);
+    assert_eq!(state.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[test]
+fn test_message_click_autoscroll_maps_to_first_visible_peer() {
+    // 20 single-line messages, auto-scroll, height 10 -> top visible is index 10.
+    let mut state = test_app_state();
+    state.terminal_width = 100;
+    state.chat_area_height = 10;
+    state.chat_auto_scroll = true;
+    state.chat_scroll_offset = 0;
+    for i in 0..20 {
+        let sender = if i % 2 == 0 {
+            Some(format!("peer-{i}"))
+        } else {
+            None
+        };
+        state.messages.push_back(p2p_app::DisplayMessage {
+            text: format!("msg {i}"),
+            sender_peer_id: sender,
+        });
+    }
+
+    // Row 3 is the first visible (top) message -> index 10 (peer-10).
+    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+
+    assert!(handled);
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(matches!(
+        content,
+        p2p_app::tui_tabs::TabContent::PeerInfo(id) if id == "peer-10"
+    ));
 }
 
 // ── format_dm_messages_from_db ─────────────────────────────────────────

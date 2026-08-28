@@ -281,8 +281,8 @@ mod tests {
         assert_eq!(titles.len(), 6);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
-        assert!(titles[2].contains("(X)"));
-        assert!(titles[3].contains("(X)"));
+        assert!(titles[2].contains("[X]"));
+        assert!(titles[3].contains("[X]"));
         assert_eq!(titles[4], "Log");
         assert_eq!(titles[5], "Settings");
     }

@@ -24,6 +24,8 @@ pub struct TuiRenderState {
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
     /// Known peers
     pub peers: Vec<PeerRecord>,
+    /// Peer IDs currently connected (subset of `peers`)
+    pub connected_peer_ids: std::collections::HashSet<String>,
     /// Direct messages per peer
     pub dm_messages: BTreeMap<String, VecDeque<String>>,
     /// Message IDs for DMs per peer
@@ -62,6 +64,12 @@ pub struct TuiRenderState {
     pub broadcast_selection: Option<usize>,
     /// Index of selected peer in peer list
     pub peer_selection: usize,
+    /// Map of peer ID -> local nickname set for that peer
+    pub local_nicknames: HashMap<String, String>,
+    /// Map of peer ID -> nickname received/announced by that peer
+    pub received_nicknames: HashMap<String, String>,
+    /// Map of peer ID -> self nickname presented to that peer
+    pub self_nicknames_for_peers: HashMap<String, String>,
     /// Current local nickname (for Settings tab)
     pub own_nickname: String,
     /// Local peer ID (for Settings tab)
@@ -98,6 +106,7 @@ impl TuiRenderState {
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
+            connected_peer_ids: std::collections::HashSet::new(),
             dm_messages: BTreeMap::new(),
             dm_message_ids: BTreeMap::new(),
             dm_receipts: HashMap::new(),
@@ -125,6 +134,9 @@ impl TuiRenderState {
             listen_addrs: Vec::new(),
             last_connection_lost: None,
             node_running: true,
+            local_nicknames: HashMap::new(),
+            received_nicknames: HashMap::new(),
+            self_nicknames_for_peers: HashMap::new(),
         }
     }
 
@@ -167,6 +179,7 @@ impl TuiRenderState {
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers,
+            connected_peer_ids: std::collections::HashSet::new(),
             dm_messages,
             dm_message_ids,
             dm_receipts: HashMap::new(),
@@ -194,6 +207,9 @@ impl TuiRenderState {
             listen_addrs: Vec::new(),
             last_connection_lost: None,
             node_running: true,
+            local_nicknames: HashMap::new(),
+            received_nicknames: HashMap::new(),
+            self_nicknames_for_peers: HashMap::new(),
         }
     }
 
@@ -399,6 +415,9 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
     if tab_title.starts_with("DM: ") {
         let peer = tab_title.trim_start_matches("DM: ").to_string();
         crate::tui_tabs::TabContent::Direct(peer)
+    } else if tab_title.starts_with("Info: ") {
+        let peer = tab_title.trim_start_matches("Info: ").to_string();
+        crate::tui_tabs::TabContent::PeerInfo(peer)
     } else if tab_title == "Peers" {
         crate::tui_tabs::TabContent::Peers
     } else if tab_title == "Log" {

@@ -143,17 +143,65 @@ async fn handle_nickname_submission(
     state.cancel_nickname_edit();
 }
 
-/// Handles Ctrl+W (close DM tab)
+/// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
-    tab_content: p2p_app::tui_tabs::TabContent,
+    tab_content: &p2p_app::tui_tabs::TabContent,
 ) {
-    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
-        && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
-    {
+    let closed_idx = match tab_content {
+        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+            state.dynamic_tabs.remove_dm_tab(peer_id)
+        }
+        p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
+            state.dynamic_tabs.remove_peer_info_tab(peer_id)
+        }
+        _ => None,
+    };
+    if let Some(closed_idx) = closed_idx {
         state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
         state.peer_selection = 0;
-        p2plog_debug(format!("Closed DM tab with peer: {peer_id}"));
+        p2plog_debug(format!("Closed tab: {tab_content:?}"));
+    }
+}
+
+/// Handles Esc: dismiss popup / cancel nickname edit / return to broadcast chat.
+async fn handle_esc_key(
+    state: &SharedState,
+    render_tx: &mpsc::Sender<RenderEvent>,
+) {
+    let mut s = state.lock().await;
+    dismiss_popup(&mut s);
+    if s.editing_nickname {
+        s.cancel_nickname_edit();
+        p2plog_debug("Cancelled nickname edit".to_string());
+    } else {
+        s.active_tab = 0;
+        s.broadcast_selection = None;
+        s.chat_scroll_offset = 0;
+        s.chat_auto_scroll = true;
+        p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
+    }
+    drop(s);
+    let _ = render_tx.send(RenderEvent).await;
+}
+
+/// Opens the Peer Info tab for the selected peer (Peers tab), DM partner,
+/// or the sender of the selected chat/log message.
+fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
+    let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    let peer = match &tab_content {
+        p2p_app::tui_tabs::TabContent::Peers => {
+            state.peers.get(state.peer_selection).map(|p| p.peer_id.clone())
+        }
+        p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
+        p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Log => state
+            .broadcast_selection
+            .and_then(|idx| state.messages.get(idx))
+            .and_then(|m| m.sender_peer_id.clone()),
+        _ => None,
+    };
+    if let Some(peer_id) = peer {
+        state.active_tab = state.dynamic_tabs.add_peer_info_tab(peer_id);
     }
 }
 
@@ -179,6 +227,11 @@ async fn handle_enter_key(
             state.active_tab = tab_idx;
             p2plog_debug(format!("Opened DM with peer: {peer_id}"));
         }
+    } else if let p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) = &tab_content {
+        load_dm_messages(state, peer_id);
+        let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
+        state.active_tab = tab_idx;
+        p2plog_debug(format!("Opened DM with peer: {peer_id}"));
     } else if tab_content.is_input_enabled() {
         let text: String = state.chat_input.lines().join("\n");
         if !text.trim().is_empty() {
@@ -195,22 +248,7 @@ async fn process_key_event(
     render_tx: &mpsc::Sender<RenderEvent>,
 ) -> bool {
     if key_event.code == crossterm::event::KeyCode::Esc {
-        let mut s = state.lock().await;
-        // ESC is "back" (exit is Ctrl+Q). Prefer dismissing transient UI states first.
-        dismiss_popup(&mut s);
-        if s.editing_nickname {
-            s.cancel_nickname_edit();
-            p2plog_debug("Cancelled nickname edit".to_string());
-        } else {
-            // Return to broadcast chat.
-            s.active_tab = 0;
-            s.broadcast_selection = None;
-            s.chat_scroll_offset = 0;
-            s.chat_auto_scroll = true;
-            p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
-        }
-        drop(s);
-        let _ = render_tx.send(RenderEvent).await;
+        handle_esc_key(state, render_tx).await;
         return false;
     }
 
@@ -264,7 +302,7 @@ async fn process_key_event(
                 .contains(crossterm::event::KeyModifiers::CONTROL) =>
         {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            handle_close_dm_tab(&mut s, tab_content);
+            handle_close_dm_tab(&mut s, &tab_content);
         }
         crossterm::event::KeyCode::Char('n')
             if !key_event
@@ -280,6 +318,15 @@ async fn process_key_event(
             s.editing_nickname_peer = None;
             s.chat_input = super::TextArea::default();
             p2plog_debug("Started nickname edit from Settings tab".to_string());
+        }
+        crossterm::event::KeyCode::Char('i')
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && !s.editing_nickname =>
+        {
+            open_peer_info_for_active_tab(&mut s);
+            p2plog_debug("Opened Peer Info tab".to_string());
         }
         _ => {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);

@@ -11,13 +11,21 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
         let tab_end = col_pos.saturating_add(tab_width);
         if usize::from(mouse_column) >= col_pos && usize::from(mouse_column) < tab_end {
             let close_start = tab_end.saturating_sub(4);
-            if usize::from(mouse_column) >= close_start && title.contains("(X)") {
+            if usize::from(mouse_column) >= close_start && title.contains("[X]") {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
-                if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content
-                    && let Some(closed_idx) = state.dynamic_tabs.remove_dm_tab(&peer_id)
-                {
-                    state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
-                    p2plog_debug(format!("Closed DM tab via mouse: {peer_id}"));
+                let closed_idx = match &tab_content {
+                    p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+                        state.dynamic_tabs.remove_dm_tab(peer_id)
+                    }
+                    p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
+                        state.dynamic_tabs.remove_peer_info_tab(peer_id)
+                    }
+                    _ => None,
+                };
+                if let Some(closed_idx) = closed_idx {
+                    state.active_tab =
+                        if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
+                    p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
                 }
                 return true;
             } else if idx != state.active_tab {
@@ -113,6 +121,55 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     false
 }
 
+/// Handles message row clicks in the Chat / DM tabs, opening the
+/// sender's Peer Info tab. (Log lines have no sender, so they are a no-op.)
+fn handle_message_click(state: &mut AppState, mouse_row: u16, tab_content: &p2p_app::tui_tabs::TabContent) -> bool {
+    match tab_content {
+        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+            let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+            state.active_tab = idx;
+            p2plog_debug(format!("Opened Peer Info for DM peer: {peer_id}"));
+            true
+        }
+        p2p_app::tui_tabs::TabContent::Chat => {
+            let strings: VecDeque<String> = state.messages.iter().map(|m| m.text.clone()).collect();
+            if strings.is_empty() {
+                return false;
+            }
+            // Match render_chat_content: text wraps at `width - 4`, usable height is
+            // `chat_area_height` (content block height minus its 2-line border).
+            let text_width = state.terminal_width.saturating_sub(4).max(1);
+            let usable_height = state.chat_area_height;
+            let (visible, start) = p2p_app::calc_visible_strings(
+                &strings,
+                state.chat_auto_scroll,
+                state.chat_scroll_offset,
+                text_width,
+                usable_height,
+            );
+            // The chat renderer shows each message as a single (clipped, non-wrapped)
+            // List item, so every message occupies exactly one terminal row. The
+            // click mapping must match that layout rather than assuming word-wrap,
+            // i.e. the visible window is `visible` one-line rows starting at `start`.
+            let line_counts: Vec<usize> = vec![1; visible];
+            let click_row = usize::from(mouse_row);
+            if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 3, click_row) {
+                let actual_idx = start.saturating_add(rel);
+                if let Some(msg) = state.messages.get(actual_idx)
+                    && let Some(peer_id) = &msg.sender_peer_id
+                {
+                    let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+                    state.active_tab = idx;
+                    p2plog_debug(format!("Opened Peer Info for sender: {peer_id}"));
+                    return true;
+                }
+            }
+            false
+        }
+        _ => false,
+    }
+}
+
 /// Handles left mouse button clicks
 pub fn handle_mouse_left_click(
     state: &mut AppState,
@@ -123,11 +180,21 @@ pub fn handle_mouse_left_click(
     if mouse_row == 0 {
         let tab_titles = state.dynamic_tabs.all_titles();
         return handle_tab_click(state, mouse_column, &tab_titles);
-    } else if is_peers_tab {
-        let max_row = state.chat_area_height.saturating_add(2);
-        if mouse_row > 2 && usize::from(mouse_row) < max_row {
+    }
+    let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    let max_row = state.chat_area_height.saturating_add(2);
+    let clickable = is_peers_tab
+        || matches!(
+            tab_content,
+            p2p_app::tui_tabs::TabContent::Chat
+                | p2p_app::tui_tabs::TabContent::Log
+                | p2p_app::tui_tabs::TabContent::Direct(_)
+        );
+    if clickable && mouse_row > 2 && usize::from(mouse_row) <= max_row {
+        if is_peers_tab {
             return handle_peer_row_click(state, mouse_row);
         }
+        return handle_message_click(state, mouse_row, &tab_content);
     }
     false
 }

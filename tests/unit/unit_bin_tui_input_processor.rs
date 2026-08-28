@@ -55,7 +55,7 @@ fn test_update_dm_transcript_labels_unknown_peer() {
 fn test_close_dm_tab_removes_tab() {
     let mut state = app_state_with_dm_messages("peer-close", 3);
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    handle_close_dm_tab(&mut state, TabContent::Direct("peer-close".to_string()));
+    handle_close_dm_tab(&mut state, &TabContent::Direct("peer-close".to_string()));
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
 }
 
@@ -63,7 +63,7 @@ fn test_close_dm_tab_removes_tab() {
 fn test_close_dm_tab_switches_to_previous_tab() {
     let mut state = app_state_with_dm_messages("peer-close", 3);
     state.active_tab = state.dynamic_tabs.total_tab_count() - 1;
-    handle_close_dm_tab(&mut state, TabContent::Direct("peer-close".to_string()));
+    handle_close_dm_tab(&mut state, &TabContent::Direct("peer-close".to_string()));
     // Should fall back to previous tab
     assert!(state.active_tab < state.dynamic_tabs.total_tab_count());
 }
@@ -71,7 +71,7 @@ fn test_close_dm_tab_switches_to_previous_tab() {
 #[test]
 fn test_close_dm_tab_noop_on_chat_tab() {
     let mut state = test_app_state();
-    handle_close_dm_tab(&mut state, TabContent::Chat);
+    handle_close_dm_tab(&mut state, &TabContent::Chat);
     assert_eq!(state.active_tab, 0);
 }
 
@@ -350,6 +350,67 @@ fn test_enter_key_in_peers_tab_opens_dm() {
         assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
         assert!(state.active_tab >= dm_count_before);
     });
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
+async fn test_ctrl_w_closes_peer_info_tab() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = s.dynamic_tabs.add_peer_info_tab("peer-info-1".to_string());
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+    assert!(s.active_tab < s.dynamic_tabs.total_tab_count());
+}
+
+#[tokio::test]
+async fn test_i_key_in_peers_tab_opens_peer_info() {
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    state.lock().await.active_tab = 1; // Peers tab
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(matches!(content, TabContent::PeerInfo(_)));
+}
+
+#[tokio::test]
+async fn test_enter_key_in_peer_info_tab_opens_dm() {
+    {
+        let _guard = p2p_app::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _dir = TempDir::new().unwrap();
+        let db_path = _dir.path().join("test.db");
+        p2p_app::db::set_db_url(db_path.to_str().unwrap());
+        p2p_app::db::init_database().unwrap();
+    }
+
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = s.dynamic_tabs.add_peer_info_tab("peer-1".to_string());
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.dynamic_tabs.dm_tab_count(), 1);
     p2p_app::db::reset_db_url();
 }
 

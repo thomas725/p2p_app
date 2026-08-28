@@ -75,6 +75,10 @@ fn test_tab_content_peer_id() {
         TabContent::Direct("peer1".to_string()).peer_id(),
         Some("peer1")
     );
+    assert_eq!(
+        TabContent::PeerInfo("peer1".to_string()).peer_id(),
+        Some("peer1")
+    );
     assert_eq!(TabContent::Chat.peer_id(), None);
     assert_eq!(TabContent::Peers.peer_id(), None);
     assert_eq!(TabContent::Log.peer_id(), None);
@@ -172,6 +176,38 @@ fn test_tab_index_to_content_out_of_bounds_dm() {
 }
 
 #[test]
+fn test_dynamic_tabs_peer_info_tab() {
+    let mut tabs = DynamicTabs::new();
+    let idx = tabs.add_peer_info_tab("peer1".to_string());
+    assert_eq!(idx, 2); // Chat, Peers, then Info
+    assert_eq!(tabs.peer_info_tab_count(), 1);
+    let titles = tabs.all_titles();
+    assert_eq!(titles.len(), 5);
+    assert!(titles.iter().any(|t| t.starts_with("Info:")));
+    assert_eq!(
+        tabs.tab_index_to_content(idx),
+        TabContent::PeerInfo("peer1".to_string())
+    );
+}
+
+#[test]
+fn test_dynamic_tabs_peer_info_tab_dedup() {
+    let mut tabs = DynamicTabs::new();
+    let a = tabs.add_peer_info_tab("peer1".to_string());
+    let b = tabs.add_peer_info_tab("peer1".to_string());
+    assert_eq!(a, b);
+    assert_eq!(tabs.peer_info_tab_count(), 1);
+}
+
+#[test]
+fn test_dynamic_tabs_remove_peer_info_tab() {
+    let mut tabs = DynamicTabs::new();
+    tabs.add_peer_info_tab("peer1".to_string());
+    assert_eq!(tabs.remove_peer_info_tab("peer1"), Some(2));
+    assert_eq!(tabs.peer_info_tab_count(), 0);
+}
+
+#[test]
 fn test_all_titles_with_dms() {
     let mut tabs = DynamicTabs::new();
     let titles = tabs.all_titles();
@@ -181,7 +217,9 @@ fn test_all_titles_with_dms() {
     assert_eq!(titles.len(), 5);
     assert_eq!(titles[0], "Chat");
     assert_eq!(titles[1], "Peers");
-    assert!(titles[2].contains("peer1"));
+    let expected_label = crate::get_peer_display_name("peer1")
+        .unwrap_or_else(|_| crate::fmt::short_peer_id("peer1"));
+    assert_eq!(titles[2], format!("{expected_label} [X]"));
     assert_eq!(titles[3], "Log");
     assert_eq!(titles[4], "Settings");
 }

@@ -64,6 +64,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
                 last_seen: p.last_seen.clone(),
             })
             .collect(),
+        connected_peer_ids: state.connected_peer_ids.clone(),
         dm_messages,
         dm_message_ids,
         dm_receipts: state.dm_receipts.clone(),
@@ -72,7 +73,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         editing_nickname: state.editing_nickname,
         nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
         connected: true,
-        peer_count: state.concurrent_peers,
+        peer_count: state.connected_peer_ids.len(),
         mouse_capture: state.mouse_capture,
         popup: state.popup.clone(),
         chat_scroll_offset: state.chat_scroll_offset,
@@ -91,6 +92,9 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         listen_addrs: state.listen_addrs.clone(),
         last_connection_lost: state.last_connection_lost,
         node_running: true,
+        local_nicknames: state.local_nicknames.clone(),
+        received_nicknames: state.received_nicknames.clone(),
+        self_nicknames_for_peers: state.self_nicknames_for_peers.clone(),
     }
 }
 
@@ -130,6 +134,9 @@ fn render_frame(f: &mut Frame, state: &AppState) {
         TabContent::Settings => {
             tui_render::render_settings_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
         }
+        TabContent::PeerInfo(peer_id) => {
+            tui_render::render_peer_info_content(f, chunks.get(2).copied().unwrap_or_default(), peer_id, &render_state);
+        }
     }
 
     layout::render_input_section(f, chunks.get(3).copied().unwrap_or_default(), state, &tab_content);
@@ -149,8 +156,10 @@ pub fn spawn_render_loop(
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         while render_rx.recv().await.is_some() {
-            let s = state.lock().await;
+            let mut s = state.lock().await;
             let _ = terminal.draw(|f| {
+                s.terminal_width = usize::from(f.area().width);
+                s.chat_area_height = usize::from(f.area().height.saturating_sub(11));
                 render_frame(f, &s);
             });
         }

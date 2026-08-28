@@ -160,8 +160,10 @@ fn test_dynamic_tabs_dm_tab_titles() {
     tabs.add_dm_tab("12D3KooWABCDEFGH".to_string());
     let titles = tabs.dm_tab_titles();
     assert_eq!(titles.len(), 1);
-    assert!(titles[0].contains("ABCDEFGH"));
-    assert!(titles[0].contains("(X)"));
+    // Flutter-style label: nickname (or generated petname) + first 3 chars of id.
+    let expected_label = p2p_app::get_peer_display_name("12D3KooWABCDEFGH")
+        .unwrap_or_else(|_| p2p_app::fmt::short_peer_id("12D3KooWABCDEFGH"));
+    assert_eq!(titles[0], format!("{expected_label} [X]"));
 }
 
 #[test]

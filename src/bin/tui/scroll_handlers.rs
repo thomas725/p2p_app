@@ -153,7 +153,7 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
         p2p_app::tui_tabs::TabContent::Chat => {
             scroll_chat_tab(key_code, state);
         }
-        p2p_app::tui_tabs::TabContent::Settings => {}
+        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => {}
     }
 }
 
@@ -245,7 +245,7 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
             }
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
-        p2p_app::tui_tabs::TabContent::Settings => false,
+        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => false,
         _ => mouse_scroll_chat_tab(state, scroll_dir),
     }
 }

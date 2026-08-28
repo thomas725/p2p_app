@@ -450,7 +450,9 @@ mod tui_tests {
         tabs.add_dm_tab("peerXYZ".into());
         let titles = tabs.all_titles();
         assert_eq!(titles.len(), 5);
-        assert_eq!(titles[2], "peerXYZ (X)");
+        let expected_label = p2p_app::get_peer_display_name("peerXYZ")
+            .unwrap_or_else(|_| p2p_app::fmt::short_peer_id("peerXYZ"));
+        assert_eq!(titles[2], format!("{expected_label} [X]"));
     }
 
     #[test]

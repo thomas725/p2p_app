@@ -25,7 +25,7 @@ fn app_state() -> AppState {
 fn test_app_state_to_render_state_defaults() {
     let state = app_state();
     let rs = app_state_to_render_state(&state);
-    assert_eq!(rs.tab_titles.len(), 3); // Chat, Peers, Log
+    assert_eq!(rs.tab_titles.len(), 4); // Chat, Peers, Log, Settings
     assert_eq!(rs.active_tab, 0);
     assert!(rs.messages.is_empty());
     assert!(rs.peers.is_empty());
@@ -38,6 +38,27 @@ fn test_app_state_to_render_state_defaults() {
     assert_eq!(rs.chat_scroll_offset, 0);
     assert!(rs.chat_auto_scroll);
     assert_eq!(rs.peer_selection, 0);
+}
+
+#[test]
+fn test_app_state_to_render_state_connected_peer_ids() {
+    let mut state = app_state();
+    state.peers.push_back(p2p_app::PeerRecord {
+        peer_id: "connected-peer".to_string(),
+        first_seen: "x".to_string(),
+        last_seen: "y".to_string(),
+    });
+    state.peers.push_back(p2p_app::PeerRecord {
+        peer_id: "disconnected-peer".to_string(),
+        first_seen: "x".to_string(),
+        last_seen: "y".to_string(),
+    });
+    state.connected_peer_ids.insert("connected-peer".to_string());
+
+    let rs = app_state_to_render_state(&state);
+    assert!(rs.connected_peer_ids.contains("connected-peer"));
+    assert!(!rs.connected_peer_ids.contains("disconnected-peer"));
+    assert_eq!(rs.peers.len(), 2);
 }
 
 #[test]
@@ -76,12 +97,15 @@ fn test_app_state_to_render_state_peers() {
     });
     state.peer_selection = 1;
     state.concurrent_peers = 5;
+    state.connected_peer_ids.insert("p1".into());
+    state.connected_peer_ids.insert("p2".into());
 
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.peers.len(), 2);
     assert_eq!(rs.peers[0].peer_id, "p1");
     assert_eq!(rs.peer_selection, 1);
-    assert_eq!(rs.peer_count, 5);
+    // peer_count reflects the connected-peer set, not the raw connection counter.
+    assert_eq!(rs.peer_count, 2);
 }
 
 #[test]

@@ -246,6 +246,7 @@ async fn process_swarm_event(
                     let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
                     add_peer_to_state_list(&mut s, &peer_id, &first_seen, &last_seen);
                 }
+                s.connected_peer_ids.insert(peer_id.clone());
                 let own_nick = s.own_nickname.clone();
                 drop(s);
                 (own_nick, count)
@@ -265,6 +266,7 @@ async fn process_swarm_event(
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
             let count = apply_peer_disconnected_count(&mut s);
+            s.connected_peer_ids.remove(&peer_id);
             s.last_connection_lost = Some(p2p_app::current_timestamp());
             p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
             drop(s);

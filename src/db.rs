@@ -66,15 +66,30 @@ pub fn set_db_url(url: &str) {
 
 /// Production (non-test) override: set both the thread-local and the shared
 /// primary URL so every thread in the process converges on the same database.
+///
+/// Claims a PID lock file for the requested path (and, if another live process
+/// already owns it, diverges to a process-unique variant) so two app instances
+/// — e.g. the Flutter desktop app and the TUI — never open the same database,
+/// share one identity/peer id, or contend on the same SQLite file.
 #[cfg(not(any(test, feature = "test-utils")))]
 pub fn set_db_url(url: &str) {
-    let s = url.to_string();
-    DB_URL.with(|u| *u.borrow_mut() = Some(s.clone()));
-    set_primary_db_url(s);
+    let actual = claim_db_url_with_lock(url);
+    DB_URL.with(|u| *u.borrow_mut() = Some(actual.clone()));
+    set_primary_db_url(actual);
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 pub fn reset_db_url() {
+    DB_URL.with(|u| *u.borrow_mut() = None);
+}
+
+/// Production (non-test) reset: drop the thread-local URL and release the
+/// lock file so another instance may reclaim the database.
+#[cfg(not(any(test, feature = "test-utils")))]
+pub fn reset_db_url() {
+    if let Some(url) = DB_URL.with(|u| u.borrow().clone()) {
+        let _ = std::fs::remove_file(format!("{url}.lock"));
+    }
     DB_URL.with(|u| *u.borrow_mut() = None);
 }
 
@@ -245,6 +260,93 @@ fn try_acquire_lock(lock_path: &std::path::Path, pid: u32) -> Result<(), ()> {
             let _ = f.write_all(pid.to_string().as_bytes());
         })
         .map_err(|_| ())
+}
+
+/// Returns `true` if this process may use `url` as-is: there is no lock file,
+/// the lock is stale (dead/zero/garbage PID), or the lock is already held by
+/// this same process. Acquires the lock (or reclaims a stale one) as a side
+/// effect when it returns `true`.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn can_own_lock(lock_path: &std::path::Path, pid: u32) -> bool {
+    if !lock_path.exists() {
+        return try_acquire_lock(lock_path, pid).is_ok();
+    }
+    if let Ok(content) = std::fs::read_to_string(lock_path) {
+        if let Ok(other) = content.trim().parse::<u32>() {
+            if other == pid {
+                return true; // already ours
+            }
+            if other == 0 {
+                let _ = std::fs::remove_file(lock_path);
+                return try_acquire_lock(lock_path, pid).is_ok();
+            }
+            if !is_pid_alive(other) {
+                let _ = std::fs::remove_file(lock_path);
+                return try_acquire_lock(lock_path, pid).is_ok();
+            }
+            return false; // live foreign PID
+        }
+        // non-numeric content = stale/invalid lock
+        let _ = std::fs::remove_file(lock_path);
+        return try_acquire_lock(lock_path, pid).is_ok();
+    }
+    let _ = std::fs::remove_file(lock_path);
+    try_acquire_lock(lock_path, pid).is_ok()
+}
+
+/// Best-effort check for whether a PID is still running.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn is_pid_alive(pid: u32) -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        std::path::Path::new(&format!("/proc/{pid}")).exists()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        // No portable liveness check; treat a numeric foreign PID as live so we
+        // don't clobber another process's database.
+        let _ = pid;
+        true
+    }
+}
+
+/// Derive a process-unique database filename next to `url`, e.g.
+/// `/dir/p2p.db` -> `/dir/p2p-<pid>.db`. Used when the requested database is
+/// already owned by another live process so the two instances keep distinct
+/// identities (peer ids) and never contend on the same `SQLite` file.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn unique_db_variant(url: &str) -> String {
+    let path = std::path::Path::new(url);
+    let parent = path.parent().map(|p| p.to_string_lossy().into_owned());
+    let stem = path
+        .file_stem()
+        .map_or_else(|| "sqlite".to_string(), |s| s.to_string_lossy().into_owned());
+    let ext = path
+        .extension()
+        .map_or_else(String::new, |e| format!(".{}", e.to_string_lossy()));
+    let file = format!("{stem}-{}{ext}", std::process::id());
+    match parent {
+        Some(p) if !p.is_empty() => format!("{p}/{file}"),
+        _ => file,
+    }
+}
+
+/// Claim `url` for this process, returning the path it should actually open.
+///
+/// Creates a PID lock file so a concurrently auto-selecting process (such as
+/// the TUI scanning the working directory) skips this database. If another
+/// live process already owns `url`, returns a process-unique variant instead so
+/// the two instances never share the same identity/peer id.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn claim_db_url_with_lock(url: &str) -> String {
+    let pid = std::process::id();
+    let lock_path = format!("{url}.lock");
+    if can_own_lock(std::path::Path::new(&lock_path), pid) {
+        return url.to_string();
+    }
+    let variant = unique_db_variant(url);
+    let _ = try_acquire_lock(std::path::Path::new(&format!("{variant}.lock")), pid);
+    variant
 }
 
 /// Finds the first unused `SQLite` database in the current working directory using lock files.

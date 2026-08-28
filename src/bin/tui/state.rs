@@ -49,6 +49,8 @@ pub struct AppState {
     // Peer Management
     pub peers: VecDeque<p2p_app::PeerRecord>,
     pub concurrent_peers: usize,
+    // Peer IDs currently connected (for showing "connected peers" in Settings).
+    pub connected_peer_ids: std::collections::HashSet<String>,
     pub local_nicknames: HashMap<String, String>,
     pub received_nicknames: HashMap<String, String>,
     // Per-peer self nickname override: peer_id -> nickname we present to that peer.
@@ -67,6 +69,7 @@ pub struct AppState {
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
     pub chat_area_height: usize, // Height of message area in rows (set by render loop)
+    pub terminal_width: usize,    // Terminal width in columns (set by render loop)
 
     // Scroll State (Log tab)
     pub log_scroll_offset: usize,
@@ -139,12 +142,14 @@ impl AppState {
             chat_input: TextArea::default(),
             peer_selection: 0,
             concurrent_peers: 0,
+            connected_peer_ids: std::collections::HashSet::new(),
             mouse_capture: true,
             last_mouse_row: 0,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             visible_message_count: 1,
             chat_area_height: 0,
+            terminal_width: 0,
             log_scroll_offset: 0,
             log_auto_scroll: true,
             visible_log_count: 1,

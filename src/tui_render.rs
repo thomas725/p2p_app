@@ -83,6 +83,7 @@ pub fn render_tab_content(
         TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
         TabContent::Log => render_log_content(f, area, state),
         TabContent::Settings => render_settings_content(f, area, state),
+        TabContent::PeerInfo(peer_id) => render_peer_info_content(f, area, peer_id, state),
     }
 }
 
@@ -120,6 +121,23 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
     lines.push(format!("Network name: {}", crate::CHAT_TOPIC));
     lines.push(format!("Network size: {}", state.network_size));
     lines.push(format!("Connected peers: {connected}"));
+    let connected_peers: Vec<_> = state
+        .peers
+        .iter()
+        .filter(|p| state.connected_peer_ids.contains(&p.peer_id))
+        .collect();
+    if connected_peers.is_empty() {
+        lines.push("  —".to_string());
+    } else {
+        for p in connected_peers {
+            let display = crate::peer_display_name(
+                &p.peer_id,
+                &state.local_nicknames,
+                &state.received_nicknames,
+            );
+            lines.push(format!("  {display}  (last seen: {})", p.last_seen));
+        }
+    }
     lines.push(format!("Last connection lost: {last_lost}"));
     lines.push("Listen addresses:".to_string());
     if state.listen_addrs.is_empty() {
@@ -132,6 +150,60 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
 
     let para = Paragraph::new(lines.join("\n"))
         .block(Block::default().title("Settings").borders(Borders::ALL))
+        .wrap(Wrap { trim: false });
+    f.render_widget(para, area);
+}
+
+/// Render the Peer Info tab (mirrors the Flutter `PeerInfoScreen`).
+pub fn render_peer_info_content(f: &mut ratatui::Frame, area: Rect, peer_id: &str, state: &TuiRenderState) {
+    let display = crate::get_peer_display_name(peer_id)
+        .unwrap_or_else(|_| short_peer_id(peer_id));
+    let local = state.self_nicknames_for_peers.get(peer_id);
+    let received = state.received_nicknames.get(peer_id);
+
+    let (origin, detail) = if local.is_some() {
+        (
+            "Local nickname",
+            "You set this nickname for the peer.",
+        )
+    } else if received.is_some() {
+        (
+            "Received nickname",
+            "Announced by the peer. (Receipt time is not tracked.)",
+        )
+    } else {
+        (
+            "Generated petname",
+            "No nickname was known, so a petname was assigned locally.",
+        )
+    };
+
+    let (first_seen, last_seen) = state
+        .peers
+        .iter()
+        .find(|p| p.peer_id == peer_id)
+        .map_or_else(
+            || ("unknown".to_string(), "unknown".to_string()),
+            |p| (p.first_seen.clone(), p.last_seen.clone()),
+        );
+
+    let mut lines: Vec<String> = Vec::new();
+    lines.push(format!("Peer: {display}"));
+    lines.push(format!("Peer ID: {peer_id}"));
+    lines.push(format!("Origin: {origin}"));
+    lines.push(format!("  {detail}"));
+    if let Some(n) = local {
+        lines.push(format!("Local nickname: {n}"));
+    }
+    if let Some(n) = received {
+        lines.push(format!("Received nickname: {n}"));
+    }
+    lines.push(format!("First seen: {first_seen}"));
+    lines.push(format!("Last seen: {last_seen}"));
+    lines.push("Press Enter to open direct message".to_string());
+
+    let para = Paragraph::new(lines.join("\n"))
+        .block(Block::default().title("Peer Info").borders(Borders::ALL))
         .wrap(Wrap { trim: false });
     f.render_widget(para, area);
 }
@@ -229,7 +301,8 @@ pub fn render_dm_content(
     let broadcast_usable_height = usize::from(broadcast_area.height.saturating_sub(2));
     let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
 
-    let short_id = short_peer_id(peer_id);
+    let short_id = crate::get_peer_display_name(peer_id)
+        .unwrap_or_else(|_| short_peer_id(peer_id));
 
     let broadcast_messages: VecDeque<String> = state
         .messages

@@ -1,131 +1,51 @@
-# AGENTS.md - Developer Guidelines for p2p_app
+## Goal
+- Fix broken TUI click handlers (peer-click bug + missing message-click) and port the Flutter `PeerInfoScreen` into the TUI as a new PeerInfo tab.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+## Constraints & Preferences
+- Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`).
+- All code must be clippy-clean with the project's strict pedantic config: `cargo ct` (alias for `cargo clippy --all-targets --all-features`) must exit 0 with no warnings.
+- User decisions: peer click in Peers tab **keeps opening the DM tab**; message click in Chat/Log/DM **opens the sender's/partner's PeerInfo**.
 
-## 0. Don't Revert
+## Progress
+### Done
+- Strict clippy-lints project: committed earlier (`38241ed`). Settings tab committed earlier (`33ab735`).
+- **Fixed peer-row click bug**: `chat_area_height` (and new `terminal_width`) are now set every frame in the render loop (`src/bin/tui/render_loop/mod.rs:160`), so `handle_peer_row_click`'s guard actually fires. Also fixed an off-by-one so the last peer row is clickable (`mouse_row <= max_row`).
+- **Added message click → PeerInfo**: `handle_message_click` (`src/bin/tui/click_handlers.rs`) maps the clicked row to the message via `calc_visible_strings` + `row_to_visible_index` + `count_lines`, then opens the sender's PeerInfo tab. Direct-tab clicks open the partner's PeerInfo.
+- **Added `TabContent::PeerInfo(String)`** (`src/tui_tabs.rs`): `peer_info_tabs` Vec on `DynamicTabs`; `add_peer_info_tab` / `remove_peer_info_tab` (dedup, index computed after Chat/Peers/DMs); wired into `all_titles`, `tab_index_to_content`, `total_tab_count`, and `peer_id()`.
+- **Rendered PeerInfo tab** (`src/tui_render.rs::render_peer_info_content`): ported Flutter fields — display name, peer ID, nickname origin (local/received/generated petname), local + received nickname, first-seen/last-seen, "Press Enter to open direct message". `TuiRenderState` gained `local_nicknames`/`received_nicknames`/`self_nicknames_for_peers` (populated in `app_state_to_render_state`); `get_tab_content` recognizes the `Info: ` title prefix.
+- **Input wiring** (`src/bin/tui/input_processor.rs`): Enter on PeerInfo → opens DM (via extracted `handle_enter_key` branch); `i` key opens PeerInfo for the selected peer (Peers) or DM partner (Direct) via new `open_peer_info_for_active_tab`; Esc is a no-op on PeerInfo (extracted `handle_esc_key`). Scroll handlers (`scroll_handlers.rs`) treat PeerInfo as a no-op.
+- **PeerInfo tabs are closeable**: the `(X)` close button in `handle_tab_click` (`src/bin/tui/click_handlers.rs`) now also matches `TabContent::PeerInfo` (via `remove_peer_info_tab`), and Ctrl+W (`handle_close_dm_tab` in `src/bin/tui/input_processor.rs`) closes both DM and PeerInfo tabs.
+- **Tests added** (all passing): `tui_tabs` peer-info add/dedup/remove + `peer_id`; click-handler message-click opens PeerInfo and own-message no-op (fixed a pre-existing failing assertion `tab_titles.len() == 4` in `unit_bin_tui_render_loop_mod.rs`); `i`-key and Enter-on-PeerInfo in `input_processor`.
+- **Verification**: `cargo ct` → exit 0, 0 errors, 0 warnings. `cargo test --bin p2p_chat_tui --all-features` → 193 passed. `cargo test --lib --all-features` → 229 passed.
 
-When the user reports a bug, **DO NOT** run `git revert`. Fix the bug properly instead.
+### In Progress
+- (none)
 
-- Reverting breaks the commit history and makes debugging harder
-- If you're unsure how to fix, ask the user for clarification
-- Only proceed with fixes when you understand the problem
+### Blocked
+- (none)
 
-## 1. Think Before Coding
+## Key Decisions
+- PeerInfo is a **transient dynamic tab** (like DM), not a fixed tab: inserted after DMs, before Log/Settings. Dedup by peer ID.
+- Click row→message mapping reuses library helpers; `calc_visible_strings` returns `(visible, start)` where `start` is the first visible message index (for auto-scroll it equals `total - visible`), used to map the relative row back to the absolute message index.
+- `terminal_width` stored on `AppState` (set in render loop via `usize::from(f.area().width)`) so click mapping matches wrapping; default 0 treated as width 1 (only before first render).
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## Next Steps
+- (none outstanding — feature complete and verified)
 
-Before implementing:
+## Critical Context
+- `chat_area_height` = `f.area().height - 11` (1 tab + 1 peer-info + 5 input + 1 shortcut + 1 status = 9, minus 2 border). `terminal_width` = `f.area().width`.
+- `render_frame` match (`src/bin/tui/render_loop/mod.rs:120`) now has a `TabContent::PeerInfo(peer_id)` arm calling `render_peer_info_content`.
+- `handle_mouse_left_click(state, mouse_row, mouse_column, is_peers_tab)` keeps its 4-arg signature (tests depend on it); message clicks are gated on the active tab being Chat/Log/Direct.
+- `calc_visible_strings(&VecDeque<String>, auto_scroll, scroll_offset, text_width, usable_height) -> (usize, usize)` and `row_to_visible_index(&[usize], first_content_row, click_row) -> Option<usize>` are the helpers used for hit-testing.
 
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
-## 5. Database Schema Changes
-
-When modifying the data model (adding columns to tables):
-
-1. **Add columns to CREATE TABLE statements** in the base migration (e.g., `migrations/2026-04-04-225730_messages/up.sql`)
-2. **DO NOT use ALTER TABLE** in new migrations to add columns to existing tables
-3. **Rely on Rust's ensure_columns() logic** in `db.rs` to add columns to pre-existing databases automatically
-
-This approach:
-- Works for fresh installs (column in CREATE TABLE)
-- Works for existing databases (ensure_columns adds missing columns from SCHEMA_ENTRIES)
-- Avoids "duplicate column name" errors on re-run
-
-Example: Adding `sender_nickname` to messages table:
-- Add to CREATE TABLE: `sender_nickname TEXT`
-- Add to SCHEMA_ENTRIES in build.rs: `("messages", "sender_nickname", "TEXT")`
-- Use ensure_columns() logic (already implemented) for existing DBs
-
-## 6. Test Utilities Feature
-
-Several items are gated behind the `test-utils` feature (not in default) and marked
-`#[cfg(any(test, feature = "test-utils"))]`:
-- `tracing_filter`, `clear_tui_logs` (src/logging.rs)
-- `reset_db_url_cache` (src/db.rs)
-- `DmTab::with_messages` (src/tui_tabs.rs)
-- Entire `tui_test_state` module (src/tui_test_state.rs)
-
-Use the cargo aliases defined in `.cargo/config.toml` to auto-include the feature:
-
-| Command | Alias | Expands to |
-|---------|-------|------------|
-| Run tests | `cargo t` | `cargo test --all-features` |
-| Lint all | `cargo ct` | `cargo clippy --all-targets --all-features` |
-
-For other commands that need `test-utils` (e.g. `cargo check --tests`), pass
-`--features test-utils` explicitly.
-
-## 7. Code Coverage Metrics
-
-The script `scripts/generate_metrics.py` produces a markdown table of all source files with
-line counts, nesting depth, and test coverage. Run it in two modes:
-
-| Command | Behavior |
-|---------|----------|
-| `python3 scripts/generate_metrics.py > docs/codebase_metrics.md` | Fast: no coverage data (Cover column shows `-`) |
-| `python3 scripts/generate_metrics.py --with-coverage > docs/codebase_metrics.md` | Slow (~3 min): uses cached `tarpaulin-report.json` if available, otherwise runs `cargo tarpaulin --all-features -o Json`. Includes real line coverage percentages. |
-| `python3 scripts/generate_metrics.py --force-coverage > docs/codebase_metrics.md` | Forces a fresh tarpaulin run (deletes cache first). Implies `--with-coverage`. |
-
-The `--with-coverage` mode uses `cargo-tarpaulin` for accurate line coverage (not a heuristic).
-It caches the report in `tarpaulin-report.json`; pass `--force-coverage` or delete that file to force a fresh run.
-
-## 8. Cleaning Stale DB Lock Files
-
-When tests fail due to stale DB lock files (`.db.lock`), clean only the lock files:
-
-```bash
-rm -f *.db.lock
-```
-
-**DO NOT** delete the database files themselves (`*.db`). The databases may contain important test state, and deleting them is destructive and irreversible. Only remove `.db.lock` files to clear stale locks from interrupted test runs.
+## Relevant Files
+- `src/tui_tabs.rs` — `TabContent::PeerInfo`, `peer_info_tabs`, add/remove/titles/content/count.
+- `src/bin/tui/click_handlers.rs` — `handle_message_click`, fixed peer-click guard.
+- `src/bin/tui/input_processor.rs` — `open_peer_info_for_active_tab`, `handle_esc_key`, PeerInfo Enter branch, `i` key.
+- `src/bin/tui/scroll_handlers.rs` — PeerInfo no-op arms.
+- `src/bin/tui/render_loop/mod.rs` — sets `chat_area_height`/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps.
+- `src/tui_render.rs` — `render_peer_info_content`.
+- `src/tui_render_state.rs` — nickname fields, `get_tab_content` `Info:` prefix.
+- `src/bin/tui/state.rs` — `terminal_width` field.
+- Tests: `tests/unit/unit_tui_tabs.rs`, `tests/unit/unit_bin_tui_click_handlers.rs`, `tests/unit/unit_bin_tui_input_processor.rs`, `tests/unit/unit_bin_tui_render_loop_mod.rs`.
+- Reference: Flutter `PeerInfoScreen` at `apps/flutter_app/lib/main.dart:1141-1494`.
