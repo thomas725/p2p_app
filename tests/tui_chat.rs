@@ -278,12 +278,13 @@ mod tests {
         tabs.add_dm_tab("12D3KooWGDyE67".to_string());
 
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 5);
+        assert_eq!(titles.len(), 6);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
         assert!(titles[2].contains("(X)"));
         assert!(titles[3].contains("(X)"));
         assert_eq!(titles[4], "Log");
+        assert_eq!(titles[5], "Settings");
     }
 
     #[test]
@@ -349,13 +350,13 @@ mod tests {
     #[test]
     fn test_dynamic_tabs_total_tab_count() {
         let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
-        assert_eq!(tabs.total_tab_count(), 3);
-
-        tabs.add_dm_tab("peer1".to_string());
         assert_eq!(tabs.total_tab_count(), 4);
 
-        tabs.add_dm_tab("peer2".to_string());
+        tabs.add_dm_tab("peer1".to_string());
         assert_eq!(tabs.total_tab_count(), 5);
+
+        tabs.add_dm_tab("peer2".to_string());
+        assert_eq!(tabs.total_tab_count(), 6);
     }
 
     #[test]
@@ -534,10 +535,11 @@ mod tests {
     fn test_dynamic_tabs_all_titles_empty() {
         let tabs = p2p_app::tui_tabs::DynamicTabs::new();
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 3);
+        assert_eq!(titles.len(), 4);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
         assert_eq!(titles[2], "Log");
+        assert_eq!(titles[3], "Settings");
     }
 }
 
@@ -578,7 +580,7 @@ fn test_tab_content_peers() {
 #[test]
 fn test_tab_content_log() {
     let mut state = p2p_app::TuiTestState::new();
-    // Log is the last tab (index = total - 1)
+    // Log is the last conceptual tab the fixture models (index = total - 1)
     state.active_tab = state.tab_titles().len() - 1;
     assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Log);
 }

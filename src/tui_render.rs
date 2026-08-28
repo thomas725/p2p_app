@@ -82,7 +82,58 @@ pub fn render_tab_content(
         TabContent::Peers => render_peers_content(f, area, state),
         TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
         TabContent::Log => render_log_content(f, area, state),
+        TabContent::Settings => render_settings_content(f, area, state),
     }
+}
+
+/// Format an optional epoch-seconds timestamp as a readable local datetime.
+#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+fn format_lost_at(ts: Option<f64>) -> String {
+    ts.and_then(|t| {
+        chrono::DateTime::from_timestamp(t as i64, 0).map(|dt| {
+            crate::format_peer_datetime(dt.naive_local())
+        })
+    })
+    .unwrap_or_else(|| "—".to_string())
+}
+
+/// Render the Settings tab (mirrors the Flutter `_Settings` screen).
+pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
+    let connected = state.peer_count;
+    let last_lost = if state.peer_count == 0 {
+        format_lost_at(state.last_connection_lost)
+    } else {
+        "—".to_string()
+    };
+    let node_status = if state.node_running {
+        "Running"
+    } else {
+        "Stopped"
+    };
+
+    let mut lines: Vec<String> = Vec::new();
+    lines.push(format!("Nickname: {}  (press 'n' to edit)", state.own_nickname));
+    lines.push(format!("Peer ID: {}", state.local_peer_id));
+    lines.push(format!("Database: {}", state.db_url));
+    lines.push(format!("Platform: {}", state.platform));
+    lines.push(format!("Node: {node_status}"));
+    lines.push(format!("Network name: {}", crate::CHAT_TOPIC));
+    lines.push(format!("Network size: {}", state.network_size));
+    lines.push(format!("Connected peers: {connected}"));
+    lines.push(format!("Last connection lost: {last_lost}"));
+    lines.push("Listen addresses:".to_string());
+    if state.listen_addrs.is_empty() {
+        lines.push("  —".to_string());
+    } else {
+        for addr in &state.listen_addrs {
+            lines.push(format!("  {addr}"));
+        }
+    }
+
+    let para = Paragraph::new(lines.join("\n"))
+        .block(Block::default().title("Settings").borders(Borders::ALL))
+        .wrap(Wrap { trim: false });
+    f.render_widget(para, area);
 }
 
 /// Render chat messages with scroll support and receipt markers

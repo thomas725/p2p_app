@@ -440,7 +440,7 @@ mod tui_tests {
     fn dynamic_tabs_titles_without_dms() {
         assert_eq!(
             DynamicTabs::new().all_titles(),
-            vec!["Chat", "Peers", "Log"]
+            vec!["Chat", "Peers", "Log", "Settings"]
         );
     }
 
@@ -449,18 +449,18 @@ mod tui_tests {
         let mut tabs = DynamicTabs::new();
         tabs.add_dm_tab("peerXYZ".into());
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 4);
+        assert_eq!(titles.len(), 5);
         assert_eq!(titles[2], "peerXYZ (X)");
     }
 
     #[test]
     fn dynamic_tabs_total_tab_count() {
         let mut tabs = DynamicTabs::new();
-        assert_eq!(tabs.total_tab_count(), 3);
-        tabs.add_dm_tab("p1".into());
         assert_eq!(tabs.total_tab_count(), 4);
-        tabs.add_dm_tab("p2".into());
+        tabs.add_dm_tab("p1".into());
         assert_eq!(tabs.total_tab_count(), 5);
+        tabs.add_dm_tab("p2".into());
+        assert_eq!(tabs.total_tab_count(), 6);
     }
 
     #[test]

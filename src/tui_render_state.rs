@@ -62,6 +62,22 @@ pub struct TuiRenderState {
     pub broadcast_selection: Option<usize>,
     /// Index of selected peer in peer list
     pub peer_selection: usize,
+    /// Current local nickname (for Settings tab)
+    pub own_nickname: String,
+    /// Local peer ID (for Settings tab)
+    pub local_peer_id: String,
+    /// Database URL (for Settings tab)
+    pub db_url: String,
+    /// Platform label, e.g. "Desktop (linux)" (for Settings tab)
+    pub platform: String,
+    /// Network size classification, e.g. "Small" (for Settings tab)
+    pub network_size: String,
+    /// Listen addresses reported by the swarm
+    pub listen_addrs: Vec<String>,
+    /// Epoch seconds of last peer disconnect, if any (for Settings tab)
+    pub last_connection_lost: Option<f64>,
+    /// Whether the node is running (always true in the TUI)
+    pub node_running: bool,
 }
 
 impl Default for TuiRenderState {
@@ -75,7 +91,7 @@ impl TuiRenderState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into()],
+            tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into(), "Settings".into()],
             active_tab: 0,
             messages: VecDeque::new(),
             message_peer_ids: VecDeque::new(),
@@ -101,6 +117,14 @@ impl TuiRenderState {
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
             peer_selection: 0,
+            own_nickname: String::new(),
+            local_peer_id: String::new(),
+            db_url: String::new(),
+            platform: String::new(),
+            network_size: String::new(),
+            listen_addrs: Vec::new(),
+            last_connection_lost: None,
+            node_running: true,
         }
     }
 
@@ -162,6 +186,14 @@ impl TuiRenderState {
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
             peer_selection: 0,
+            own_nickname: String::new(),
+            local_peer_id: String::new(),
+            db_url: String::new(),
+            platform: String::new(),
+            network_size: String::new(),
+            listen_addrs: Vec::new(),
+            last_connection_lost: None,
+            node_running: true,
         }
     }
 
@@ -371,6 +403,8 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
         crate::tui_tabs::TabContent::Peers
     } else if tab_title == "Log" {
         crate::tui_tabs::TabContent::Log
+    } else if tab_title == "Settings" {
+        crate::tui_tabs::TabContent::Settings
     } else {
         crate::tui_tabs::TabContent::Chat
     }

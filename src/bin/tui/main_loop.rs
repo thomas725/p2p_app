@@ -199,7 +199,7 @@ pub async fn run_new_tui(
     let local_peer_id =
         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
 
-    let state = Arc::new(Mutex::new(super::state::AppState::new(
+    let mut app_state = super::state::AppState::new(
         topic_str.clone(),
         own_nickname.clone(),
         local_peer_id.clone(),
@@ -212,7 +212,13 @@ pub async fn run_new_tui(
         initial_peers,
         loaded_broadcast_receipts,
         loaded_dm_receipts,
-    )));
+    );
+    app_state.db_url = db_info;
+    app_state.platform = format!("Desktop ({})", std::env::consts::OS);
+    app_state.network_size = p2p_app::get_network_size()
+        .map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
+
+    let state = Arc::new(Mutex::new(app_state));
 
     // Setup channels
     let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);

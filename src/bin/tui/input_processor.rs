@@ -266,9 +266,24 @@ async fn process_key_event(
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
             handle_close_dm_tab(&mut s, tab_content);
         }
+        crossterm::event::KeyCode::Char('n')
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Settings
+                )
+                && !s.editing_nickname =>
+        {
+            s.editing_nickname = true;
+            s.editing_nickname_peer = None;
+            s.chat_input = super::TextArea::default();
+            p2plog_debug("Started nickname edit from Settings tab".to_string());
+        }
         _ => {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            if tab_content.is_input_enabled() {
+            if tab_content.is_input_enabled() || s.editing_nickname {
                 s.chat_input.input(key_event);
             }
         }

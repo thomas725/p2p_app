@@ -265,11 +265,17 @@ async fn process_swarm_event(
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
             let count = apply_peer_disconnected_count(&mut s);
+            s.last_connection_lost = Some(p2p_app::current_timestamp());
             p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
             drop(s);
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
+            let mut s = state.lock().await;
+            if !s.listen_addrs.contains(&addr) {
+                s.listen_addrs.push(addr.clone());
+            }
             p2plog_debug(format!("Listening on: {addr}"));
+            drop(s);
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {

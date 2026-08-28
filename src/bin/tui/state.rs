@@ -91,6 +91,13 @@ pub struct AppState {
 
     // Ad-hoc UI popup (used for receipt timing details, etc.)
     pub popup: Option<String>,
+
+    // Settings tab (read-only node/network diagnostics)
+    pub db_url: String,
+    pub platform: String,
+    pub network_size: String,
+    pub listen_addrs: Vec<String>,
+    pub last_connection_lost: Option<f64>,
 }
 
 impl AppState {
@@ -153,6 +160,11 @@ impl AppState {
             editing_nickname: false,
             editing_nickname_peer: None,
             popup: None,
+            db_url: String::new(),
+            platform: String::new(),
+            network_size: String::new(),
+            listen_addrs: Vec::new(),
+            last_connection_lost: None,
         }
     }
 }

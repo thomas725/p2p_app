@@ -83,6 +83,14 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         dm_broadcast_scroll_state,
         broadcast_selection: state.broadcast_selection,
         peer_selection: state.peer_selection,
+        own_nickname: state.own_nickname.clone(),
+        local_peer_id: state.local_peer_id.clone(),
+        db_url: state.db_url.clone(),
+        platform: state.platform.clone(),
+        network_size: state.network_size.clone(),
+        listen_addrs: state.listen_addrs.clone(),
+        last_connection_lost: state.last_connection_lost,
+        node_running: true,
     }
 }
 
@@ -118,6 +126,9 @@ fn render_frame(f: &mut Frame, state: &AppState) {
         }
         TabContent::Log => {
             tui_render::render_log_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
+        }
+        TabContent::Settings => {
+            tui_render::render_settings_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
         }
     }
 

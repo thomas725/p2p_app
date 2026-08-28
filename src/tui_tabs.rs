@@ -5,6 +5,11 @@ use std::collections::VecDeque;
 /// Number of fixed tabs before DM tabs (Chat, Peers)
 pub(crate) const FIXED_TAB_COUNT: usize = 2;
 
+/// Fixed tabs that always appear after any DM tabs (Log, Settings)
+const SUFFIX_TAB_COUNT: usize = 2;
+const LOG_TITLE: &str = "Log";
+const SETTINGS_TITLE: &str = "Settings";
+
 /// Direct message tab with peer ID and message history
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DmTab {
@@ -98,23 +103,27 @@ impl DynamicTabs {
             .collect()
     }
 
-    /// Get display titles for all tabs (Chat, Peers, DMs..., Log)
+    /// Get display titles for all tabs (Chat, Peers, DMs..., Log, Settings)
     #[must_use]
     pub fn all_titles(&self) -> Vec<String> {
         let mut titles = vec!["Chat".to_string(), "Peers".to_string()];
         titles.extend(self.dm_tab_titles());
-        titles.push("Log".to_string());
+        titles.push(LOG_TITLE.to_string());
+        titles.push(SETTINGS_TITLE.to_string());
         titles
     }
 
     /// Convert tab index to content type
     #[must_use]
     pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
-        let log_index = FIXED_TAB_COUNT.saturating_add(self.dm_tabs.len());
+        let dm_count = self.dm_tabs.len();
+        let log_index = FIXED_TAB_COUNT.saturating_add(dm_count);
+        let settings_index = log_index.saturating_add(1);
         match tab_idx {
             0 => TabContent::Chat,
             1 => TabContent::Peers,
             idx if idx == log_index => TabContent::Log,
+            idx if idx == settings_index => TabContent::Settings,
             idx if idx >= FIXED_TAB_COUNT && idx < log_index => {
                 let dm_idx = idx.saturating_sub(FIXED_TAB_COUNT);
                 self.dm_tabs
@@ -125,11 +134,14 @@ impl DynamicTabs {
         }
     }
 
-    /// Total count of tabs including Chat, Peers, DMs, and Log
+    /// Total count of tabs including Chat, Peers, DMs, Log, and Settings
     #[must_use]
     #[allow(clippy::missing_const_for_fn)]
     pub fn total_tab_count(&self) -> usize {
-        self.dm_tabs.len().saturating_add(3)
+        self.dm_tabs
+            .len()
+            .saturating_add(FIXED_TAB_COUNT)
+            .saturating_add(SUFFIX_TAB_COUNT)
     }
 }
 
@@ -144,6 +156,8 @@ pub enum TabContent {
     Direct(String),
     /// Debug/log view
     Log,
+    /// Settings view
+    Settings,
 }
 
 impl TabContent {

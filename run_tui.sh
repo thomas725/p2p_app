@@ -3,4 +3,4 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-exec cargo run --bin p2p_chat_tui --features "tui mdns tracing quic"
+exec cargo run --no-default-features --features "tui mdns tracing quic" --bin p2p_chat_tui
