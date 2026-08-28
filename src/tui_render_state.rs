@@ -64,6 +64,10 @@ pub struct TuiRenderState {
     pub broadcast_selection: Option<usize>,
     /// Index of selected peer in peer list
     pub peer_selection: usize,
+    /// Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
+    pub peer_sort_column: usize,
+    /// Whether the peer list is sorted ascending on the active column
+    pub peer_sort_ascending: bool,
     /// Map of peer ID -> local nickname set for that peer
     pub local_nicknames: HashMap<String, String>,
     /// Map of peer ID -> nickname received/announced by that peer
@@ -126,6 +130,8 @@ impl TuiRenderState {
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
             peer_selection: 0,
+            peer_sort_column: 3,
+            peer_sort_ascending: true,
             own_nickname: String::new(),
             local_peer_id: String::new(),
             db_url: String::new(),
@@ -199,6 +205,8 @@ impl TuiRenderState {
             dm_broadcast_scroll_state: BTreeMap::new(),
             broadcast_selection: None,
             peer_selection: 0,
+            peer_sort_column: 3,
+            peer_sort_ascending: true,
             own_nickname: String::new(),
             local_peer_id: String::new(),
             db_url: String::new(),

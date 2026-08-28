@@ -3,6 +3,7 @@ use super::input_processor::process_input_event;
 use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
+use std::collections::VecDeque;
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
 use tokio::sync::mpsc;
 
@@ -11,9 +12,25 @@ enum Event {
     SwarmEvent(SwarmEvent),
 }
 
+#[cfg(test)]
 fn sort_peers_by_last_seen(state: &mut AppState) {
     state.peer_selection =
         p2p_app::tui_helpers::sort_peers_by_last_seen(&mut state.peers, state.peer_selection);
+}
+
+/// Re-sort the peer list by the currently active column/order, keeping the
+/// selected peer (by id) selected.
+fn resort_peers_active(state: &mut AppState) {
+    let sender_ids: VecDeque<Option<String>> =
+        state.messages.iter().map(|m| m.sender_peer_id.clone()).collect();
+    state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+        &mut state.peers,
+        &state.dm_messages,
+        &sender_ids,
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+        state.peer_selection,
+    );
 }
 
 fn upsert_peer_last_seen(state: &mut AppState, peer_id: &str, seen_at: chrono::NaiveDateTime) {
@@ -123,7 +140,7 @@ fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str,
         first_seen: first_seen.to_string(),
         last_seen: last_seen.to_string(),
     });
-    sort_peers_by_last_seen(state);
+    resort_peers_active(state);
 }
 
 /// State mutation: decrement connected peer count. Returns new count.
@@ -142,7 +159,7 @@ fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
             first_seen: now.clone(),
             last_seen: now,
         });
-        sort_peers_by_last_seen(state);
+        resort_peers_active(state);
     }
 }
 
@@ -162,6 +179,7 @@ async fn handle_incoming_message(
     }
     if content.trim().is_empty() && nickname.is_some() {
         upsert_peer_last_seen(s, peer_id, chrono::Utc::now().naive_utc());
+        resort_peers_active(s);
         return;
     }
     let sender_display =

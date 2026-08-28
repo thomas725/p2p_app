@@ -1,6 +1,7 @@
 //! TUI rendering functions for both binary and tests
 
 use crate::fmt::short_peer_id;
+use crate::tui_helpers::peer_table_rows_ordered;
 use crate::tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, dm_receipt_prefix,
     get_tab_content,
@@ -9,7 +10,7 @@ use crate::tui_tabs::TabContent;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
+    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Tabs, Wrap},
 };
 use std::collections::VecDeque;
 
@@ -254,30 +255,73 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
 
 /// Render peer list with selection support
 pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let peer_items: Vec<ListItem> = state
-        .peers
+    let rows = peer_table_rows_ordered(&state.peers, &state.dm_messages, &state.message_peer_ids);
+
+    let columns = ["Name", "DM", "Broadcast", "Last Seen"];
+    let indicator = |col: usize| -> &'static str {
+        if state.peer_sort_column == col {
+            if state.peer_sort_ascending {
+                " ▲"
+            } else {
+                " ▼"
+            }
+        } else {
+            ""
+        }
+    };
+    let header_cells: Vec<Cell> = columns
         .iter()
         .enumerate()
-        .map(|(idx, p)| {
-            let line = format!(
-                "{} ({}) - {}",
-                p.first_seen,
-                short_peer_id(&p.peer_id),
-                p.last_seen
-            );
+        .map(|(i, c)| Cell::from(format!("{c}{}", indicator(i))))
+        .collect();
+    let header = Row::new(header_cells).style(Style::default().add_modifier(Modifier::BOLD));
+
+    let body: Vec<Row> = rows
+        .iter()
+        .enumerate()
+        .map(|(idx, r)| {
+            let cells = [
+                Cell::from(r.display_name.clone()),
+                Cell::from(r.dm_count.to_string()),
+                Cell::from(r.broadcast_count.to_string()),
+                Cell::from(r.last_seen.clone()),
+            ];
+            let row = Row::new(cells);
             if idx == state.peer_selection {
-                ListItem::new(line).style(Style::default().bg(Color::DarkGray))
+                row.style(Style::default().bg(Color::DarkGray))
             } else {
-                ListItem::new(line)
+                row
             }
         })
         .collect();
-    let peers_list = List::new(peer_items).block(
-        Block::default()
-            .title("Connected Peers")
-            .borders(Borders::ALL),
-    );
-    f.render_widget(peers_list, area);
+
+    let widths = [
+        Constraint::Percentage(40),
+        Constraint::Percentage(15),
+        Constraint::Percentage(15),
+        Constraint::Percentage(30),
+    ];
+    let table = Table::new(body, widths)
+        .header(header)
+        .block(
+            Block::default()
+                .title("Connected Peers")
+                .borders(Borders::ALL),
+        )
+        .row_highlight_style(Style::default().bg(Color::DarkGray));
+
+    // Reserve the last row of the block's inner area for a sort hint.
+    let inner = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+    let table_area = *inner.first().unwrap_or(&area);
+    let hint_area = *inner.get(1).unwrap_or(&area);
+
+    f.render_widget(table, table_area);
+    let hint = Paragraph::new("1/2/3/4 (or n/m/b/l): sort · o: toggle order · click header")
+        .style(Style::default().add_modifier(Modifier::DIM));
+    f.render_widget(hint, hint_area);
 }
 
 /// Render DM conversation with split view (broadcast messages on top, DM on bottom)

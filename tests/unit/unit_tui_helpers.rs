@@ -3,6 +3,63 @@ use crossterm::event::KeyCode;
 use std::collections::VecDeque;
 
 #[test]
+fn peer_table_sorts_by_active_column_like_flutter() {
+    use crate::tui_helpers::{sort_peers_table, PeerMessageMap};
+    use std::collections::HashMap;
+
+    let peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:03".to_string(),
+        },
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:01".to_string(),
+        },
+        PeerRecord {
+            peer_id: "c".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:02".to_string(),
+        },
+    ]);
+    let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    dm.insert("a".to_string(), VecDeque::from(["x".to_string(), "y".to_string()])); // 2 dms
+    dm.insert("b".to_string(), VecDeque::from(["z".to_string()])); // 1 dm
+    let msgs: VecDeque<Option<String>> =
+        VecDeque::from([Some("a".to_string()), Some("a".to_string()), Some("c".to_string())]);
+
+    // Default Flutter sort: Last Seen, descending -> c(02), a(03)? a=03 is latest.
+    // last_seen desc: a(03) > c(02) > b(01)
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 3, false);
+    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
+
+    // DM count ascending: b(1) < a(2) < c(0)
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 1, true);
+    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["c", "b", "a"]);
+    assert_eq!(rows[0].dm_count, 0);
+    assert_eq!(rows[1].dm_count, 1);
+    assert_eq!(rows[2].dm_count, 2);
+
+    // Broadcast count: a=2, c=1, b=0
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 2, false);
+    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
+
+    assert_eq!(dm.dm_count_for("a"), 2);
+}
+
+#[test]
+fn parse_last_seen_ms_parses_flutter_format() {
+    use crate::tui_helpers::parse_last_seen_ms;
+    let ms = parse_last_seen_ms("2024-01-01 00:00:01");
+    let direct = parse_last_seen_ms("2024-01-01T00:00:01");
+    assert_eq!(ms, direct);
+    assert!(ms > 0);
+    assert_eq!(parse_last_seen_ms("not-a-date"), 0);
+}
+
+#[test]
 fn peer_sort_and_upsert_keep_selection() {
     let mut peers = VecDeque::from([
         PeerRecord {

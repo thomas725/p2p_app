@@ -2,6 +2,7 @@ use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::tui::click_handlers::{handle_mouse_left_click, load_dm_messages};
@@ -205,6 +206,50 @@ fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     }
 }
 
+/// Re-sorts the peer list by the currently active column/order, preserving the
+/// selected peer (by id).
+fn resort_peers(state: &mut super::state::AppState) {
+    let sender_ids: VecDeque<Option<String>> =
+        state.messages.iter().map(|m| m.sender_peer_id.clone()).collect();
+    state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+        &mut state.peers,
+        &state.dm_messages,
+        &sender_ids,
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+        state.peer_selection,
+    );
+}
+
+/// Sets the peers-table sort column, toggling direction if the same column is
+/// chosen again (mirroring Flutter's `_PeerList` header tap behavior), and
+/// re-sorts the peer list while preserving the selected peer.
+fn apply_peer_sort(state: &mut super::state::AppState, column: usize) {
+    if state.peer_sort_column == column {
+        state.peer_sort_ascending = !state.peer_sort_ascending;
+    } else {
+        state.peer_sort_column = column;
+        state.peer_sort_ascending = false;
+    }
+    resort_peers(state);
+}
+
+/// Dispatches a peer-list sort key (`1`-`4`, `n`/`m`/`b`/`l` for columns,
+/// `o` to toggle direction) when the Peers tab is active.
+fn handle_peer_sort_key(state: &mut super::state::AppState, c: char) {
+    match c {
+        '1' | 'n' | 'N' => apply_peer_sort(state, 0),
+        '2' | 'm' | 'M' => apply_peer_sort(state, 1),
+        '3' | 'b' | 'B' => apply_peer_sort(state, 2),
+        '4' | 'l' | 'L' => apply_peer_sort(state, 3),
+        'o' | 'O' => {
+            state.peer_sort_ascending = !state.peer_sort_ascending;
+            resort_peers(state);
+        }
+        _ => {}
+    }
+}
+
 /// Handles Enter key (send message or multi-line input)
 async fn handle_enter_key(
     state: &mut super::state::AppState,
@@ -327,6 +372,18 @@ async fn process_key_event(
         {
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab".to_string());
+        }
+        crossterm::event::KeyCode::Char(c)
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && !s.editing_nickname
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Peers
+                ) =>
+        {
+            handle_peer_sort_key(&mut s, c);
         }
         _ => {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);

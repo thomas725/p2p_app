@@ -1,5 +1,6 @@
 ## Goal
 - Fix broken TUI click handlers (peer-click bug + missing message-click) and port the Flutter `PeerInfoScreen` into the TUI as a new PeerInfo tab.
+- Adapt the TUI peer list to mirror Flutter's sortable peer table (columns Name, DM count, Broadcast count, Last seen; each sortable by key or header click).
 
 ## Constraints & Preferences
 - Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`).

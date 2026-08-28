@@ -61,6 +61,8 @@ pub struct AppState {
     pub dynamic_tabs: DynamicTabs,
     pub chat_input: TextArea<'static>,
     pub peer_selection: usize, // For navigating peer list
+    pub peer_sort_column: usize, // Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
+    pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
     pub mouse_capture: bool,
     pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts
 
@@ -141,6 +143,8 @@ impl AppState {
             active_tab: 0,
             chat_input: TextArea::default(),
             peer_selection: 0,
+            peer_sort_column: 3,
+            peer_sort_ascending: false,
             concurrent_peers: 0,
             connected_peer_ids: std::collections::HashSet::new(),
             mouse_capture: true,

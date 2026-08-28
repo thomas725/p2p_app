@@ -84,6 +84,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         dm_broadcast_scroll_state,
         broadcast_selection: state.broadcast_selection,
         peer_selection: state.peer_selection,
+        peer_sort_column: state.peer_sort_column,
+        peer_sort_ascending: state.peer_sort_ascending,
         own_nickname: state.own_nickname.clone(),
         local_peer_id: state.local_peer_id.clone(),
         db_url: state.db_url.clone(),

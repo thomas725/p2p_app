@@ -99,7 +99,7 @@ fn test_peer_row_click_selects_correct_peer() {
 
     let mut state = app_state_with_peers(3);
     let peer_id = state.peers[1].peer_id.clone(); // second peer
-    handle_peer_row_click(&mut state, 4); // row 4 = second peer (header offset)
+    handle_peer_row_click(&mut state, 5); // data starts at row 4 (header at row 3), so row 5 = second peer
     assert!(state.dm_messages.contains_key(&peer_id));
 
     p2p_app::db::reset_db_url();
@@ -126,9 +126,26 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
     state.chat_area_height = 20;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
 
-    handle_mouse_left_click(&mut state, 3, 0, true);
+    handle_mouse_left_click(&mut state, 4, 0, true); // row 4 = first peer data row
 
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
+}
+
+#[test]
+fn test_mouse_left_click_peers_header_toggles_sort() {
+    let mut state = app_state_with_peers(3);
+    state.terminal_width = 100;
+    state.chat_area_height = 20;
+    // Header sits at global row 3; clicking the Name column (x=0) toggles the
+    // sort column without opening a DM tab.
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    handle_mouse_left_click(&mut state, 3, 0, true);
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
+    assert_eq!(state.peer_sort_column, 0);
+    // Clicking the same header again toggles the direction.
+    handle_mouse_left_click(&mut state, 3, 0, true);
+    assert!(state.peer_sort_ascending);
+    p2p_app::db::reset_db_url();
 }
 
 #[test]

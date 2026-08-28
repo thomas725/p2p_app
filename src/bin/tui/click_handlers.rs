@@ -106,11 +106,14 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
 
 /// Handles peer row clicks in the Peers tab
 fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
-    let peer_row = usize::from(row).saturating_sub(3);
+    // The peers view is a table: 3 layout lines (tab bar + peer info bar +
+    // block border) plus 1 header row precede the data rows.
+    let peer_row = usize::from(row).saturating_sub(4);
     if peer_row < state.peers.len()
         && let Some(p) = state.peers.get(peer_row)
     {
         let peer_id_clone = p.peer_id.clone();
+        state.peer_selection = peer_row;
         load_dm_messages(state, &peer_id_clone);
         let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
         state.active_tab = tab_idx;
@@ -192,11 +195,56 @@ pub fn handle_mouse_left_click(
         );
     if clickable && mouse_row > 2 && usize::from(mouse_row) <= max_row {
         if is_peers_tab {
+            // The peers view is a table; the row just inside the border (global
+            // row 3) is the header, which toggles/sets the sort column.
+            if mouse_row == 3 {
+                return handle_peer_header_click(state, mouse_column);
+            }
             return handle_peer_row_click(state, mouse_row);
         }
         return handle_message_click(state, mouse_row, &tab_content);
     }
     false
+}
+
+/// Handles a click on the peers-table header, mapping the column under the
+/// cursor to a sort column (mirroring Flutter's `_PeerList` header tap).
+#[allow(clippy::arithmetic_side_effects)]
+fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
+    let w = state.terminal_width.max(1);
+    let x = usize::from(column);
+    let col = if x < w * 40 / 100 {
+        0
+    } else if x < w * 55 / 100 {
+        1
+    } else if x < w * 70 / 100 {
+        2
+    } else {
+        3
+    };
+    if state.peer_sort_column == col {
+        state.peer_sort_ascending = !state.peer_sort_ascending;
+    } else {
+        state.peer_sort_column = col;
+        state.peer_sort_ascending = false;
+    }
+    state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+        &mut state.peers,
+        &state.dm_messages,
+        &state
+            .messages
+            .iter()
+            .map(|m| m.sender_peer_id.clone())
+            .collect::<VecDeque<_>>(),
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+        state.peer_selection,
+    );
+    p2plog_debug(format!(
+        "Sorted peers by column {col} ascending={}",
+        state.peer_sort_ascending
+    ));
+    true
 }
 
 #[cfg(test)]

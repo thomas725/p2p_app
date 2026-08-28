@@ -1,8 +1,10 @@
 //! Pure helper functions for TUI modules that can be unit tested.
 //! These functions avoid async state, channels, and external I/O.
 
+use chrono::NaiveDateTime;
+use std::collections::{HashMap, VecDeque};
+
 use crate::PeerRecord;
-use std::collections::VecDeque;
 
 /// Sort peers by last seen time (descending)
 pub fn sort_peers_by_last_seen(
@@ -232,6 +234,186 @@ pub const fn next_tab_index(current: usize, delta: isize, max_tabs: usize) -> us
     }
     let sum = current as isize + delta;
     ((sum % max_tabs as isize).wrapping_add(max_tabs as isize)) as usize % max_tabs
+}
+
+/// Abstraction over the per-peer direct-message map so the peers table can be
+/// built from either a `HashMap` (the app state) or a `BTreeMap` (the render state).
+pub trait PeerMessageMap {
+    /// Number of direct messages stored for `peer_id`.
+    fn dm_count_for(&self, peer_id: &str) -> usize;
+}
+
+#[allow(clippy::implicit_hasher)]
+impl PeerMessageMap for HashMap<String, VecDeque<String>> {
+    fn dm_count_for(&self, peer_id: &str) -> usize {
+        self.get(peer_id).map_or(0, VecDeque::len)
+    }
+}
+
+#[allow(clippy::implicit_hasher)]
+impl PeerMessageMap for std::collections::BTreeMap<String, VecDeque<String>> {
+    fn dm_count_for(&self, peer_id: &str) -> usize {
+        self.get(peer_id).map_or(0, VecDeque::len)
+    }
+}
+
+/// A single row of the peers table, mirroring Flutter's peer list.
+pub struct PeerTableRow {
+    pub peer_id: String,
+    pub display_name: String,
+    pub dm_count: usize,
+    pub broadcast_count: usize,
+    pub last_seen: String,
+}
+
+impl PeerTableRow {
+    #[must_use]
+    pub fn new(
+        peer_id: &str,
+        display_name: &str,
+        dm_count: usize,
+        broadcast_count: usize,
+        last_seen: &str,
+    ) -> Self {
+        Self {
+            peer_id: peer_id.to_string(),
+            display_name: display_name.to_string(),
+            dm_count,
+            broadcast_count,
+            last_seen: last_seen.to_string(),
+        }
+    }
+}
+
+/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds since epoch.
+#[must_use]
+pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
+    let norm = last_seen.replace(' ', "T");
+    NaiveDateTime::parse_from_str(&norm, "%Y-%m-%dT%H:%M:%S").map_or(0, |dt| {
+        let millis = dt.and_utc().timestamp_millis().max(0);
+        u64::try_from(millis).unwrap_or(0)
+    })
+}
+
+/// Count how many broadcast messages each peer has sent, given the list of
+/// sender peer ids (`None` entries are ignored).
+#[allow(clippy::arithmetic_side_effects)]
+#[must_use]
+pub fn compute_broadcast_counts(messages: &VecDeque<Option<String>>) -> HashMap<String, usize> {
+    let mut map: HashMap<String, usize> = HashMap::new();
+    for id in messages.iter().flatten() {
+        *map.entry(id.clone()).or_insert(0) += 1;
+    }
+    map
+}
+
+/// Build and sort the peers table according to the active column and order.
+///
+/// Mirrors Flutter's peer-list sort. Columns: name (0), DM count (1),
+/// broadcast count (2), last seen (3). The tie-breaker is always the peer id
+/// to keep the ordering stable.
+#[must_use]
+pub fn sort_peers_table(
+    peers: &[PeerRecord],
+    dm_messages: &impl PeerMessageMap,
+    messages: &VecDeque<Option<String>>,
+    sort_column: usize,
+    ascending: bool,
+) -> Vec<PeerTableRow> {
+    let broadcast_map = compute_broadcast_counts(messages);
+    let mut rows: Vec<PeerTableRow> = peers
+        .iter()
+        .map(|p| {
+            let dm_count = dm_messages.dm_count_for(&p.peer_id);
+            let broadcast_count = broadcast_map.get(&p.peer_id).copied().unwrap_or(0);
+            let display_name = crate::get_peer_display_name(&p.peer_id)
+                .unwrap_or_else(|_| crate::fmt::short_peer_id(&p.peer_id));
+            PeerTableRow::new(
+                &p.peer_id,
+                &display_name,
+                dm_count,
+                broadcast_count,
+                &p.last_seen,
+            )
+        })
+        .collect();
+
+    rows.sort_by(|a, b| {
+        let ord = match sort_column {
+            0 => {
+                let an = a.display_name.to_lowercase();
+                let bn = b.display_name.to_lowercase();
+                if an == bn {
+                    a.peer_id.cmp(&b.peer_id)
+                } else {
+                    an.cmp(&bn)
+                }
+            }
+            1 => a.dm_count.cmp(&b.dm_count).then_with(|| a.peer_id.cmp(&b.peer_id)),
+            2 => a
+                .broadcast_count
+                .cmp(&b.broadcast_count)
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            _ => parse_last_seen_ms(&a.last_seen)
+                .cmp(&parse_last_seen_ms(&b.last_seen))
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+        };
+        if ascending {
+            ord
+        } else {
+            ord.reverse()
+        }
+    });
+    rows
+}
+
+/// Reorder `peers` in place according to the active column/order, preserving
+/// the currently selected peer (by id) and returning its new index.
+#[must_use]
+pub fn sort_peers_by_column(
+    peers: &mut VecDeque<PeerRecord>,
+    dm_messages: &impl PeerMessageMap,
+    messages: &VecDeque<Option<String>>,
+    sort_column: usize,
+    ascending: bool,
+    selection: usize,
+) -> usize {
+    let selected_id = peers.get(selection).map(|p| p.peer_id.clone());
+    let rows = sort_peers_table(peers.as_slices().0, dm_messages, messages, sort_column, ascending);
+    let ordered: VecDeque<PeerRecord> = rows
+        .iter()
+        .filter_map(|r| peers.iter().find(|p| p.peer_id == r.peer_id).cloned())
+        .collect();
+    *peers = ordered;
+    selected_id
+        .and_then(|id| peers.iter().position(|p| p.peer_id == id))
+        .unwrap_or(0)
+}
+
+/// Build table rows in the order the peers are currently stored (no re-sort).
+#[must_use]
+pub fn peer_table_rows_ordered(
+    peers: &[PeerRecord],
+    dm_messages: &impl PeerMessageMap,
+    messages: &VecDeque<Option<String>>,
+) -> Vec<PeerTableRow> {
+    let broadcast_map = compute_broadcast_counts(messages);
+    peers
+        .iter()
+        .map(|p| {
+            let dm_count = dm_messages.dm_count_for(&p.peer_id);
+            let broadcast_count = broadcast_map.get(&p.peer_id).copied().unwrap_or(0);
+            let display_name = crate::get_peer_display_name(&p.peer_id)
+                .unwrap_or_else(|_| crate::fmt::short_peer_id(&p.peer_id));
+            PeerTableRow::new(
+                &p.peer_id,
+                &display_name,
+                dm_count,
+                broadcast_count,
+                &p.last_seen,
+            )
+        })
+        .collect()
 }
 
 #[cfg(test)]
