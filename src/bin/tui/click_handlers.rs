@@ -211,38 +211,33 @@ pub fn handle_mouse_left_click(
 /// cursor to a sort column (mirroring Flutter's `_PeerList` header tap).
 #[allow(clippy::arithmetic_side_effects)]
 fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
-    // The table is rendered inside a bordered block (inner width =
-    // terminal_width - 2 for the left/right borders). ratatui's Table also
-    // inserts a 1-char `column_spacing` gap between columns and subtracts
-    // those gaps from the available width *before* applying the percentage
-    // constraints, so the real column boundaries sit slightly left of a naive
-    // percentage-of-inner-width calculation. Replicate that here.
-    let inner_w = state.terminal_width.saturating_sub(2).max(1);
-    let x = usize::from(column);
-    // Convert global column to inner coordinate (block left border at x=0,
-    // inner content starts at x=1).
-    let inner_x = x.saturating_sub(1);
-
-    let avail = inner_w.saturating_sub(3).max(1); // 3 gaps between 4 columns
-    let col0_w = avail * 40 / 100;
-    let col1_w = avail * 15 / 100;
-    let col2_w = avail * 15 / 100;
-
-    // Column end boundaries (exclusive), including the trailing gap of each
-    // column: col0 ends at col0_w, then a 1-char gap, col1 ends at
-    // col0_w + 1 + col1_w, etc.
-    let b0 = col0_w;
-    let b1 = col0_w + 1 + col1_w;
-    let b2 = col0_w + 1 + col1_w + 1 + col2_w;
-
-    let col = if inner_x < b0 {
+    // Resolve the column geometry with ratatui's own `Layout` so the sort
+    // column matches exactly what the `Table` widget rendered (same percentage
+    // constraints, same `column_spacing` gaps, same block borders). This avoids
+    // any manual replication of ratatui's internal width/rounding math.
+    let width = u16::try_from(state.terminal_width.max(1)).unwrap_or(u16::MAX);
+    let area = ratatui::layout::Rect::new(0, 0, width, 1);
+    let inner = ratatui::widgets::Block::default()
+        .borders(ratatui::widgets::Borders::ALL)
+        .inner(area);
+    let cols = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints([
+            ratatui::layout::Constraint::Percentage(40),
+            ratatui::layout::Constraint::Percentage(15),
+            ratatui::layout::Constraint::Percentage(15),
+            ratatui::layout::Constraint::Percentage(30),
+        ])
+        .spacing(1)
+        .split(inner);
+    let col = if column < cols.first().map_or(0, |c| c.x) {
         0
-    } else if inner_x < b1 {
-        1
-    } else if inner_x < b2 {
-        2
     } else {
-        3
+        // The first column whose right edge is past the click; a click in the
+        // 1-char gap between columns resolves to the column that follows it.
+        cols.iter()
+            .position(|c| column < c.x.saturating_add(c.width))
+            .unwrap_or(3)
     };
     if state.peer_sort_column == col {
         state.peer_sort_ascending = !state.peer_sort_ascending;

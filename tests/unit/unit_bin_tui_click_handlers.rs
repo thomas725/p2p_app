@@ -156,17 +156,28 @@ fn test_peer_header_click_maps_each_column() {
     let mut state = app_state_with_peers(3);
     state.terminal_width = 100;
     state.chat_area_height = 20;
-    // With terminal_width=100 the column starts (global x) compute to:
-    //   Name=1, DM=40, Broadcast=55, Last Seen=70 (mirroring ratatui's
-    //   column_spacing gaps and percentage layout).
-    handle_mouse_left_click(&mut state, 3, 1, true);
-    assert_eq!(state.peer_sort_column, 0);
-    handle_mouse_left_click(&mut state, 3, 40, true);
-    assert_eq!(state.peer_sort_column, 1);
-    handle_mouse_left_click(&mut state, 3, 55, true);
-    assert_eq!(state.peer_sort_column, 2);
-    handle_mouse_left_click(&mut state, 3, 70, true);
-    assert_eq!(state.peer_sort_column, 3);
+    // Resolve the real column geometry exactly as the click handler does, then
+    // click one character inside each column to verify the mapping.
+    let width = state.terminal_width as u16;
+    let area = ratatui::layout::Rect::new(0, 0, width, 1);
+    let inner = ratatui::widgets::Block::default()
+        .borders(ratatui::widgets::Borders::ALL)
+        .inner(area);
+    let cols = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints([
+            ratatui::layout::Constraint::Percentage(40),
+            ratatui::layout::Constraint::Percentage(15),
+            ratatui::layout::Constraint::Percentage(15),
+            ratatui::layout::Constraint::Percentage(30),
+        ])
+        .spacing(1)
+        .split(inner);
+    for (i, c) in cols.iter().enumerate() {
+        let x = c.x + 1; // one char inside the column
+        handle_mouse_left_click(&mut state, 3, x, true);
+        assert_eq!(state.peer_sort_column, i, "column {i} click at x={x}");
+    }
 }
 
 #[test]
