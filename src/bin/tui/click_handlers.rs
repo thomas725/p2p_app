@@ -211,13 +211,35 @@ pub fn handle_mouse_left_click(
 /// cursor to a sort column (mirroring Flutter's `_PeerList` header tap).
 #[allow(clippy::arithmetic_side_effects)]
 fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
-    let w = state.terminal_width.max(1);
+    // The table is rendered inside a bordered block (inner width =
+    // terminal_width - 2 for the left/right borders). ratatui's Table also
+    // inserts a 1-char `column_spacing` gap between columns and subtracts
+    // those gaps from the available width *before* applying the percentage
+    // constraints, so the real column boundaries sit slightly left of a naive
+    // percentage-of-inner-width calculation. Replicate that here.
+    let inner_w = state.terminal_width.saturating_sub(2).max(1);
     let x = usize::from(column);
-    let col = if x < w * 40 / 100 {
+    // Convert global column to inner coordinate (block left border at x=0,
+    // inner content starts at x=1).
+    let inner_x = x.saturating_sub(1);
+
+    let avail = inner_w.saturating_sub(3).max(1); // 3 gaps between 4 columns
+    let col0_w = avail * 40 / 100;
+    let col1_w = avail * 15 / 100;
+    let col2_w = avail * 15 / 100;
+
+    // Column end boundaries (exclusive), including the trailing gap of each
+    // column: col0 ends at col0_w, then a 1-char gap, col1 ends at
+    // col0_w + 1 + col1_w, etc.
+    let b0 = col0_w;
+    let b1 = col0_w + 1 + col1_w;
+    let b2 = col0_w + 1 + col1_w + 1 + col2_w;
+
+    let col = if inner_x < b0 {
         0
-    } else if x < w * 55 / 100 {
+    } else if inner_x < b1 {
         1
-    } else if x < w * 70 / 100 {
+    } else if inner_x < b2 {
         2
     } else {
         3

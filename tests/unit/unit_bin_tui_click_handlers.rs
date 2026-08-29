@@ -149,6 +149,27 @@ fn test_mouse_left_click_peers_header_toggles_sort() {
 }
 
 #[test]
+fn test_peer_header_click_maps_each_column() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut state = app_state_with_peers(3);
+    state.terminal_width = 100;
+    state.chat_area_height = 20;
+    // With terminal_width=100 the column starts (global x) compute to:
+    //   Name=1, DM=40, Broadcast=55, Last Seen=70 (mirroring ratatui's
+    //   column_spacing gaps and percentage layout).
+    handle_mouse_left_click(&mut state, 3, 1, true);
+    assert_eq!(state.peer_sort_column, 0);
+    handle_mouse_left_click(&mut state, 3, 40, true);
+    assert_eq!(state.peer_sort_column, 1);
+    handle_mouse_left_click(&mut state, 3, 55, true);
+    assert_eq!(state.peer_sort_column, 2);
+    handle_mouse_left_click(&mut state, 3, 70, true);
+    assert_eq!(state.peer_sort_column, 3);
+}
+
+#[test]
 fn test_mouse_left_click_outside_content_area_is_noop() {
     let mut state = test_app_state();
     state.chat_area_height = 20;
