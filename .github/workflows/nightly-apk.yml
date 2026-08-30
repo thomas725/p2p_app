@@ -2,6 +2,10 @@ name: Nightly APK
 
 # Build a Flutter Android APK and publish it as a rolling "nightly" GitHub
 # release so it can be downloaded directly from the repo.
+#
+# Scheduled runs skip the build when HEAD has not moved since the last
+# nightly was published (i.e. nothing new to ship today). Manual runs via
+# "Run workflow" always build.
 on:
   schedule:
     # Nightly at 03:17 UTC.
@@ -24,13 +28,48 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Skip if no new commits since last nightly
+        id: skip-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Manual runs always build: the trigger is explicit human intent.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch: forcing build."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          HEAD=$(git rev-parse HEAD)
+          echo "HEAD: $HEAD"
+
+          # The "nightly-latest" pointer release always exists after the first
+          # build; it is overwritten to point at the newest nightly commit.
+          LAST=$(gh release view nightly-latest --json targetCommitish --jq '.targetCommitish' 2>/dev/null) || true
+          if [ -z "$LAST" ]; then
+            echo "No prior nightly found; will build."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "LAST: $LAST"
+
+          if [ "$HEAD" = "$LAST" ]; then
+            echo "No commits since last nightly ($LAST); skipping build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "New commits since last nightly; building."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up JDK 17
+        if: steps.skip-check.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Set up Android SDK and NDK
+        if: steps.skip-check.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
         with:
           packages: >-
@@ -42,36 +81,44 @@ jobs:
             ndk;29.0.14206865
 
       - name: Accept Android licenses
+        if: steps.skip-check.outputs.skip != 'true'
         run: yes | sdkmanager --licenses || true
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
       - name: Set up Rust
+        if: steps.skip-check.outputs.skip != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
       - name: Rust cache
+        if: steps.skip-check.outputs.skip != 'true'
         uses: Swatinem/rust-cache@v2
 
       - name: Set up Flutter
+        if: steps.skip-check.outputs.skip != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
 
       - name: Flutter pub get
+        if: steps.skip-check.outputs.skip != 'true'
         working-directory: apps/flutter_app
         run: flutter pub get
 
       - name: Build Rust native library (Android)
+        if: steps.skip-check.outputs.skip != 'true'
         run: bash apps/flutter_app/build_rust_android.sh
 
       - name: Build APK
+        if: steps.skip-check.outputs.skip != 'true'
         working-directory: apps/flutter_app
         run: flutter build apk --release
 
       - name: Prepare artifact
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           cd apps/flutter_app/build/app/outputs/flutter-apk
           cp app-release.apk p2p_app.apk
@@ -79,10 +126,12 @@ jobs:
           ls -la
 
       - name: Set nightly tag
+        if: steps.skip-check.outputs.skip != 'true'
         id: tag
         run: echo "tag=nightly-$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
 
       - name: Publish nightly release
+        if: steps.skip-check.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
@@ -99,6 +148,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prune old nightly releases (keep last 15)
+        if: steps.skip-check.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -116,6 +166,7 @@ jobs:
           fi
 
       - name: Publish latest nightly pointer
+        if: steps.skip-check.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly-latest
