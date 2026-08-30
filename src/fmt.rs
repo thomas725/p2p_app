@@ -64,6 +64,21 @@ pub fn short_peer_id(id: &str) -> String {
         .collect()
 }
 
+/// The last 3 characters of a peer ID, used as a human-friendly `(suffix)` hint beside a nickname.
+///
+/// Taking the *tail* (like Git short hashes) reads as a distinctive end marker
+/// instead of a truncation prefix.
+#[must_use]
+pub fn peer_id_suffix(id: &str) -> String {
+    id.chars()
+        .rev()
+        .take(3)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect()
+}
+
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
 /// Used by Dart/Flutter UI to display message timestamps.

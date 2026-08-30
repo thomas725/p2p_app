@@ -35,6 +35,7 @@
 - **Sort reorder is now O(n) + wraps fix**: `sort_peers_by_column` was O(n²) (`rows.iter().find(...)` per row) and fed `peers.as_slices().0` to the row builder — which silently **dropped peers** when the `VecDeque` ring buffer wrapped. It now collects the full list (`peers.iter()`, both slices), builds rows from that, and reorders via a `HashMap<&str, PeerRecord>` index. `sort_peers_table` also precomputes `display_name.to_lowercase()` once per row so name-column sorts lowercase N times instead of N·log N.
 - **Tests added** (this task): `unit_nickname::peer_display_name_stable_until_setter_invalidates` (repeated resolution is stable; a setter busts the cache); `unit_tui_helpers::sort_peers_by_column_keeps_every_peer_when_deque_wraps` (fill-8/pop-1/push-1 forces a wrapped ring where `as_slices().0` misses `peer-8`; asserts all 8 peers survive the sort in Last-Seen-desc order and the selection is preserved). Verified empirically (`rustc` probe): drain-all-then-refill **does not** wrap (head resets to 0), but fill/pop/push does (`as_slices().1` non-empty).
 - **Verification (this task)**: `cargo ct` → exit 0, 0 warnings. `cargo test --lib --all-features` → 248 passed (+2 above). `cargo test --bin p2p_chat_tui --all-features` → 215 passed. `cargo test --test tui_render_integration --all-features` → 63 passed. Full `cargo test --all-features` all-green.
+- **Display-name `(abc)` suffix shows the last 3 chars of the peer ID, not the first**: new shared `fmt::peer_id_suffix` takes the *tail* (like Git short hashes) so the bracket reads as a distinctive end marker instead of a truncation prefix. Used by `get_peer_display_name` (`src/nickname.rs`) and the mobile `message_to_chat` sender label (`src/mobile_node.rs`); tests added in `tests/fmt.rs` and the mobile-node test now recomputes the suffix through the helper.
 
 ### In Progress
 - (none — feature complete and verified)
@@ -76,7 +77,7 @@
 - `src/tui_render.rs` — `render_peer_info_content`, `render_peers_content` (stateful `Table`/`TableState`, windowed rows, `row_highlight_style` selection, `Connected Peers ({total})` title).
 - `src/tui_render_state.rs` — nickname fields, `peer_table_offset`, `get_tab_content` `Info:` prefix.
 - `src/tui_helpers.rs` — `peer_table_visible_range` (pure scroll-window math), `peer_table_rows_range`/`peer_table_row` (windowed O(page) row building; `peer_table_rows_ordered` is the `0..len` wrapper), `peer_table_column_widths`/`peer_table_header_labels`, `sort_peers_table`/`sort_peers_by_column` (O(n) rebuild).
-- `src/nickname.rs` — `get_peer_display_name` + `DISPLAY_NAME_CACHE` (`LazyLock<Mutex<HashMap>>`), `invalidate_display_name`/`clear_display_names` (`pub(crate)`), `impl_set_peer_field!` macro invalidation.
+- `src/nickname.rs` — `get_peer_display_name` + `DISPLAY_NAME_CACHE` (`LazyLock<Mutex<HashMap>>`), `invalidate_display_name`/`clear_display_names` (`pub(crate)`), `impl_set_peer_field!` macro invalidation. Display name brackets use `fmt::peer_id_suffix` (last 3 chars).
 - `src/peers.rs` — `save_peer` invalidates the affected peer's cached display name.
 - `src/db.rs` — `set_db_url`/`reset_db_url` (all four cfg variants) call `nickname::clear_display_names()`.
 - `src/bin/tui/state.rs` — `terminal_width`, `peer_table_offset`, `peer_names_warmed` fields.

@@ -53,6 +53,15 @@ fn test_short_peer_id_short() {
 }
 
 #[test]
+fn test_peer_id_suffix_last_3_chars() {
+    assert_eq!(p2p_app::fmt::peer_id_suffix("12D3KooWHashABCD1234"), "234");
+    // Shorter IDs are returned whole.
+    assert_eq!(p2p_app::fmt::peer_id_suffix("abc"), "abc");
+    assert_eq!(p2p_app::fmt::peer_id_suffix("ab"), "ab");
+    assert_eq!(p2p_app::fmt::peer_id_suffix(""), "");
+}
+
+#[test]
 fn test_peer_display_name_local_nickname() {
     let mut local = HashMap::new();
     local.insert("peer1".to_string(), "Alice".to_string());

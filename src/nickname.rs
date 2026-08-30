@@ -298,8 +298,7 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     if let Some(cached) = cached {
         return Ok(cached);
     }
-    let short_id = crate::fmt::short_peer_id(peer_id);
-    let suffix = short_id.get(..3.min(short_id.len())).unwrap_or(short_id.as_str());
+    let suffix = crate::fmt::peer_id_suffix(peer_id);
     let display = if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
         format!("{local_nick} ({suffix})")
     } else if let Some(received_nick) = get_peer_received_nickname(peer_id)? {

@@ -345,8 +345,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
     // Falls back to the resolved display name when no nickname was announced.
     let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
         (Some(nick), Some(pid)) => {
-            let short = crate::fmt::short_peer_id(&pid);
-            let suffix = short.get(..3.min(short.len())).unwrap_or("");
+            let suffix = crate::fmt::peer_id_suffix(&pid);
             Some(format!("{nick} ({suffix})"))
         }
         (Some(nick), None) => Some(nick),
@@ -816,8 +815,7 @@ mod tests {
             sender_nickname: Some("Bob".into()),
         };
         let chat = message_to_chat(msg);
-        let short = crate::fmt::short_peer_id("peer-bob");
-        let suffix = short.get(..3.min(short.len())).unwrap_or("");
+        let suffix = crate::fmt::peer_id_suffix("peer-bob");
         assert_eq!(
             chat.sender_nickname.as_deref(),
             Some(format!("Bob ({suffix})").as_str())
