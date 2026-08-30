@@ -417,6 +417,39 @@ async fn test_ctrl_tab_in_direct_tab_opens_peer_info() {
 }
 
 #[tokio::test]
+async fn test_bare_tab_in_direct_tab_still_navigates() {
+    // On modern terminals (kitty keyboard protocol) plain Tab is distinct from
+    // Ctrl+I, so a bare Tab on a Direct tab must keep cycling tabs forward.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 3); // Log tab
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_bare_tab_on_chat_tab_still_navigates() {
+    // The bare Tab byte keeps cycling tabs on non-Direct tabs.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 0; // Chat tab
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 1); // Peers tab
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
 async fn test_i_key_in_direct_tab_types_into_input() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
@@ -436,6 +469,8 @@ async fn test_i_key_in_direct_tab_types_into_input() {
 
 #[tokio::test]
 async fn test_ctrl_tab_is_noop_on_peers_tab() {
+    // `Tab`+CONTROL is the CSI-u encoding of Ctrl+I on some terminals; on a
+    // non-Direct tab it must neither open Peer Info nor cycle tabs.
     let state = Arc::new(Mutex::new(app_state_with_peers(3)));
     state.lock().await.active_tab = 1; // Peers tab
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -445,6 +480,59 @@ async fn test_ctrl_tab_is_noop_on_peers_tab() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
+    assert_eq!(s.active_tab, 1);
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_ctrl_i_is_noop_on_non_direct_tabs() {
+    // On terminals honoring DISAMBIGUATE_ESCAPE_CODES, Ctrl+I arrives as
+    // `Char('i')`+CONTROL, distinguishable from a real Tab. On such terminals
+    // it must do nothing: no Peer Info, no tab switch, no 'i' typed.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 0; // Chat tab (input enabled)
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 0);
+    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_ctrl_tab_is_noop_on_chat_tab() {
+    // `Tab`+CONTROL is the CSI-u encoding of Ctrl+I on some terminals; on an
+    // input-enabled non-Direct tab it must not type, navigate, or open info.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 0; // Chat tab (input enabled)
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 0);
+    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_backtab_in_direct_tab_still_navigates_backward() {
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::BackTab, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 1); // Peers tab
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 

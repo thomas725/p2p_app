@@ -317,14 +317,17 @@ async fn process_key_event(
     }
 
     match key_event.code {
-        // Ctrl+I opens the DM partner's Peer Info on a Direct tab (plain `i` is
-        // reserved for typing). Some terminals report Ctrl+I as `Char('i')`
-        // with CONTROL, others as Tab with CONTROL; accept both encodings.
+        // Ctrl+I opens the DM partner's Peer Info on a Direct tab (plain `i`
+        // is reserved for typing). The kitty keyboard protocol flags pushed at
+        // startup (`DISAMBIGUATE_ESCAPE_CODES` + `REPORT_ALL_KEYS_AS_ESCAPE_CODES`)
+        // make terminals report Ctrl+I as `Char('i')` with CONTROL (or `Tab`
+        // with CONTROL), distinct from a bare Tab, so the CONTROL modifier is
+        // required here and plain Tab keeps cycling tabs on every tab.
         crossterm::event::KeyCode::Char('i') | crossterm::event::KeyCode::Tab
-            if key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname
+            if !s.editing_nickname
+                && key_event
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL)
                 && matches!(
                     s.dynamic_tabs.tab_index_to_content(s.active_tab),
                     p2p_app::tui_tabs::TabContent::Direct(_)
@@ -333,7 +336,17 @@ async fn process_key_event(
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab (Ctrl+I)".to_string());
         }
-        crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
+        crossterm::event::KeyCode::BackTab => {
+            handle_navigation_key(key_event.code, &mut s).await;
+        }
+        // Only the unmodified Tab cycles tabs: `Tab` with CONTROL is the CSI-u
+        // encoding of Ctrl+I on some terminals and must never hop tabs on
+        // non-Direct tabs (where the Ctrl+I arm above does not apply).
+        crossterm::event::KeyCode::Tab
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+        {
             handle_navigation_key(key_event.code, &mut s).await;
         }
         crossterm::event::KeyCode::Up

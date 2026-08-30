@@ -120,6 +120,8 @@ pub async fn run_new_tui(
         stdout,
         PushKeyboardEnhancementFlags(
             crossterm::event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                | crossterm::event::KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+                | crossterm::event::KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
         ),
         EnterAlternateScreen,
     )?;
