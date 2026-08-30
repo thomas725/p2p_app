@@ -14,10 +14,11 @@
 - **Added message click → PeerInfo**: `handle_message_click` (`src/bin/tui/click_handlers.rs`) maps the clicked row to the message via `calc_visible_strings` + `row_to_visible_index` + `count_lines`, then opens the sender's PeerInfo tab. Direct-tab clicks open the partner's PeerInfo.
 - **Added `TabContent::PeerInfo(String)`** (`src/tui_tabs.rs`): `peer_info_tabs` Vec on `DynamicTabs`; `add_peer_info_tab` / `remove_peer_info_tab` (dedup, index computed after Chat/Peers/DMs); wired into `all_titles`, `tab_index_to_content`, `total_tab_count`, and `peer_id()`.
 - **Rendered PeerInfo tab** (`src/tui_render.rs::render_peer_info_content`): ported Flutter fields — display name, peer ID, nickname origin (local/received/generated petname), local + received nickname, first-seen/last-seen, "Press Enter to open direct message". `TuiRenderState` gained `local_nicknames`/`received_nicknames`/`self_nicknames_for_peers` (populated in `app_state_to_render_state`); `get_tab_content` recognizes the `Info: ` title prefix.
-- **Input wiring** (`src/bin/tui/input_processor.rs`): Enter on PeerInfo → opens DM (via extracted `handle_enter_key` branch); `i` key opens PeerInfo for the selected peer (Peers) or DM partner (Direct) via new `open_peer_info_for_active_tab`; Esc is a no-op on PeerInfo (extracted `handle_esc_key`). Scroll handlers (`scroll_handlers.rs`) treat PeerInfo as a no-op.
+- **Input wiring** (`src/bin/tui/input_processor.rs`): Enter on PeerInfo → opens DM (via extracted `handle_enter_key` branch); **plain `i` opens PeerInfo only on the Peers tab** (elsewhere it is typeable input); **Ctrl+I opens the DM partner's PeerInfo on Direct/DM tabs** (accepts both `Char('i')`+CONTROL and `Tab`+CONTROL encodings, see Key Decisions); Esc is a no-op on PeerInfo (extracted `handle_esc_key`). Scroll handlers (`scroll_handlers.rs`) treat PeerInfo as a no-op.
+- **Tab-aware shortcut bar** (`src/bin/tui/render_loop/layout.rs::render_shortcuts`): now takes `&TabContent`; Direct/DM shows `Ctrl+I: Peer Info`, Peers shows `Enter: open DM | i: Peer Info`, other tabs show base hints (no peer-info binding documented where the key is a no-op).
 - **PeerInfo tabs are closeable**: the `(X)` close button in `handle_tab_click` (`src/bin/tui/click_handlers.rs`) now also matches `TabContent::PeerInfo` (via `remove_peer_info_tab`), and Ctrl+W (`handle_close_dm_tab` in `src/bin/tui/input_processor.rs`) closes both DM and PeerInfo tabs.
-- **Tests added** (all passing): `tui_tabs` peer-info add/dedup/remove + `peer_id`; click-handler message-click opens PeerInfo and own-message no-op (fixed a pre-existing failing assertion `tab_titles.len() == 4` in `unit_bin_tui_render_loop_mod.rs`); `i`-key and Enter-on-PeerInfo in `input_processor`.
-- **Verification**: `cargo ct` → exit 0, 0 errors, 0 warnings. `cargo test --bin p2p_chat_tui --all-features` → 193 passed. `cargo test --lib --all-features` → 229 passed.
+- **Tests added** (all passing): `tui_tabs` peer-info add/dedup/remove + `peer_id`; click-handler message-click opens PeerInfo and own-message no-op (fixed a pre-existing failing assertion `tab_titles.len() == 4` in `unit_bin_tui_render_loop_mod.rs`); `i`-key and Enter-on-PeerInfo in `input_processor`; `shortcuts_text` per-tab in `unit_bin_tui_render_loop_layout.rs`.
+- **Verification**: `cargo ct` → exit 0, 0 errors, 0 warnings. `cargo test --bin p2p_chat_tui --all-features` → 207 passed. `cargo test --lib --all-features` → 231 passed.
 
 ### In Progress
 - (none)
@@ -29,6 +30,7 @@
 - PeerInfo is a **transient dynamic tab** (like DM), not a fixed tab: inserted after DMs, before Log/Settings. Dedup by peer ID.
 - Click row→message mapping reuses library helpers; `calc_visible_strings` returns `(visible, start)` where `start` is the first visible message index (for auto-scroll it equals `total - visible`), used to map the relative row back to the absolute message index.
 - `terminal_width` stored on `AppState` (set in render loop via `usize::from(f.area().width)`) so click mapping matches wrapping; default 0 treated as width 1 (only before first render).
+- **PeerInfo binding is tab-specific**: plain `i` opens PeerInfo only on the **Peers** tab (where there is no text input), so `i` stays typeable in the Chat/DM message boxes. On **Direct/DM** tabs the binding is **Ctrl+I** (plain `i` types into the input). Both `KeyCode::Char('i')`+CONTROL (CSI-u terminals) and `KeyCode::Tab`+CONTROL (standard terminal Ctrl+I = byte 0x09) are accepted; if the tab is not Direct, Tab+CONTROL still just navigates. The bottom shortcut bar only documents the binding where it is active.
 
 ## Next Steps
 - (none outstanding — feature complete and verified)
@@ -42,11 +44,12 @@
 ## Relevant Files
 - `src/tui_tabs.rs` — `TabContent::PeerInfo`, `peer_info_tabs`, add/remove/titles/content/count.
 - `src/bin/tui/click_handlers.rs` — `handle_message_click`, fixed peer-click guard.
-- `src/bin/tui/input_processor.rs` — `open_peer_info_for_active_tab`, `handle_esc_key`, PeerInfo Enter branch, `i` key.
+- `src/bin/tui/input_processor.rs` — `open_peer_info_for_active_tab`, `handle_esc_key`, PeerInfo Enter branch, `i` (Peers-only) + Ctrl+I (Direct-only) arms.
 - `src/bin/tui/scroll_handlers.rs` — PeerInfo no-op arms.
-- `src/bin/tui/render_loop/mod.rs` — sets `chat_area_height`/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps.
+- `src/bin/tui/render_loop/layout.rs` — `render_shortcuts` (tab-aware) + `shortcuts_text`.
+- `src/bin/tui/render_loop/mod.rs` — sets `chat_area_height`/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps; passes `&tab_content` to `render_shortcuts`.
 - `src/tui_render.rs` — `render_peer_info_content`.
 - `src/tui_render_state.rs` — nickname fields, `get_tab_content` `Info:` prefix.
 - `src/bin/tui/state.rs` — `terminal_width` field.
-- Tests: `tests/unit/unit_tui_tabs.rs`, `tests/unit/unit_bin_tui_click_handlers.rs`, `tests/unit/unit_bin_tui_input_processor.rs`, `tests/unit/unit_bin_tui_render_loop_mod.rs`.
+- Tests: `tests/unit/unit_tui_tabs.rs`, `tests/unit/unit_bin_tui_click_handlers.rs`, `tests/unit/unit_bin_tui_input_processor.rs`, `tests/unit/unit_bin_tui_render_loop_mod.rs`, `tests/unit/unit_bin_tui_render_loop_layout.rs`.
 - Reference: Flutter `PeerInfoScreen` at `apps/flutter_app/lib/main.dart:1141-1494`.

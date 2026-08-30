@@ -387,6 +387,68 @@ async fn test_i_key_in_peers_tab_opens_peer_info() {
 }
 
 #[tokio::test]
+async fn test_ctrl_i_key_in_direct_tab_opens_peer_info() {
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(matches!(content, TabContent::PeerInfo(_)));
+}
+
+#[tokio::test]
+async fn test_ctrl_tab_in_direct_tab_opens_peer_info() {
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(matches!(content, TabContent::PeerInfo(_)));
+}
+
+#[tokio::test]
+async fn test_i_key_in_direct_tab_types_into_input() {
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 2; // Direct tab for "peer-dm"
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.chat_input.lines().join("").contains('i'));
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_ctrl_tab_is_noop_on_peers_tab() {
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    state.lock().await.active_tab = 1; // Peers tab
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
 async fn test_enter_key_in_peer_info_tab_opens_dm() {
     {
         let _guard = p2p_app::db::shared_db_test_lock()

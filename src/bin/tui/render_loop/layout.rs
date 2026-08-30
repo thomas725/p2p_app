@@ -34,12 +34,23 @@ pub fn render_input_section(
     }
 }
 
+/// Shortcut hint line for the given tab. Peer-Info bindings are documented only
+/// on tabs where they are active: Ctrl+I on a Direct/DM tab, `i` on Peers.
+const fn shortcuts_text(tab_content: &TabContent) -> &'static str {
+    match tab_content {
+        TabContent::Peers => {
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Direct(_) => {
+            "Tab: next | Ctrl+I: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
+        _ => "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
+    }
+}
+
 /// Render the help text shortcuts
-pub fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect) {
-    let shortcuts = Paragraph::new(
-        "Tab: next tab | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
-    );
-    f.render_widget(shortcuts, shortcuts_area);
+pub fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect, tab_content: &TabContent) {
+    f.render_widget(Paragraph::new(shortcuts_text(tab_content)), shortcuts_area);
 }
 
 /// Render the status bar with connection and mouse mode info
@@ -54,3 +65,7 @@ pub fn render_status_bar(f: &mut Frame, status_area: Rect, state: &AppState) {
     let status = Paragraph::new(format!("{conn} [Mouse: {mouse_mode}]"));
     f.render_widget(status, status_area);
 }
+
+#[cfg(test)]
+#[path = "../../../../tests/unit/unit_bin_tui_render_loop_layout.rs"]
+mod tests;

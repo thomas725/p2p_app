@@ -286,6 +286,7 @@ async fn handle_enter_key(
 }
 
 /// Processes keyboard input events, returns true if exit requested
+#[allow(clippy::too_many_lines)]
 async fn process_key_event(
     key_event: crossterm::event::KeyEvent,
     state: &SharedState,
@@ -316,6 +317,22 @@ async fn process_key_event(
     }
 
     match key_event.code {
+        // Ctrl+I opens the DM partner's Peer Info on a Direct tab (plain `i` is
+        // reserved for typing). Some terminals report Ctrl+I as `Char('i')`
+        // with CONTROL, others as Tab with CONTROL; accept both encodings.
+        crossterm::event::KeyCode::Char('i') | crossterm::event::KeyCode::Tab
+            if key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && !s.editing_nickname
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Direct(_)
+                ) =>
+        {
+            open_peer_info_for_active_tab(&mut s);
+            p2plog_debug("Opened Peer Info tab (Ctrl+I)".to_string());
+        }
         crossterm::event::KeyCode::Tab | crossterm::event::KeyCode::BackTab => {
             handle_navigation_key(key_event.code, &mut s).await;
         }
@@ -368,7 +385,11 @@ async fn process_key_event(
             if !key_event
                 .modifiers
                 .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname =>
+                && !s.editing_nickname
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Peers
+                ) =>
         {
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab".to_string());
