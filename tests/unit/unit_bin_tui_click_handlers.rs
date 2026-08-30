@@ -81,7 +81,7 @@ fn test_peer_row_click_opens_dm_tab() {
 
     let mut state = app_state_with_peers(3);
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    handle_peer_row_click(&mut state, 3); // row 3 = first peer (header is at rows 0-2)
+    handle_peer_row_click(&mut state, 3); // row 3 = first peer (data starts after the header at row 2)
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
 
     p2p_app::db::reset_db_url();
@@ -99,7 +99,7 @@ fn test_peer_row_click_selects_correct_peer() {
 
     let mut state = app_state_with_peers(3);
     let peer_id = state.peers[1].peer_id.clone(); // second peer
-    handle_peer_row_click(&mut state, 5); // data starts at row 4 (header at row 3), so row 5 = second peer
+    handle_peer_row_click(&mut state, 4); // data starts at row 3 (header at row 2), so row 4 = second peer
     assert!(state.dm_messages.contains_key(&peer_id));
 
     p2p_app::db::reset_db_url();
@@ -116,12 +116,12 @@ fn test_peer_row_click_respects_scrolled_viewport() {
     let mut state = app_state_with_peers(30);
     state.chat_area_height = 18; // page size = 16 visible data rows
     state.peer_selection = 25;   // near the bottom: viewport starts at row 10
-    handle_peer_row_click(&mut state, 4); // first visible row = absolute peer 10
-    assert_eq!(state.peer_selection, 10);
-    // After the click the selection (10) is inside the first page, so the
-    // viewport re-anchors to rows 0..16 and row 12 now maps to absolute 8.
+    handle_peer_row_click(&mut state, 4); // first visible row = absolute peer 11
+    assert_eq!(state.peer_selection, 11);
+    // After the click the selection (11) is inside the first page, so the
+    // viewport re-anchors to rows 0..16 and row 12 now maps to absolute 9.
     handle_peer_row_click(&mut state, 12);
-    assert_eq!(state.peer_selection, 8);
+    assert_eq!(state.peer_selection, 9);
 }
 
 // ── handle_mouse_left_click ──────────────────────────────────────────────
@@ -139,7 +139,7 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
     state.chat_area_height = 20;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
 
-    handle_mouse_left_click(&mut state, 4, 0, true); // row 4 = first peer data row
+    handle_mouse_left_click(&mut state, 3, 0, true); // row 3 = first peer data row
 
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
 }
@@ -149,14 +149,14 @@ fn test_mouse_left_click_peers_header_toggles_sort() {
     let mut state = app_state_with_peers(3);
     state.terminal_width = 100;
     state.chat_area_height = 20;
-    // Header sits at global row 3; clicking the Name column (x=0) toggles the
+    // Header sits at global row 2; clicking the Name column (x=0) toggles the
     // sort column without opening a DM tab.
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    handle_mouse_left_click(&mut state, 3, 0, true);
+    handle_mouse_left_click(&mut state, 2, 0, true);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
     assert_eq!(state.peer_sort_column, 0);
     // Clicking the same header again toggles the direction.
-    handle_mouse_left_click(&mut state, 3, 0, true);
+    handle_mouse_left_click(&mut state, 2, 0, true);
     assert!(state.peer_sort_ascending);
     p2p_app::db::reset_db_url();
 }
@@ -203,7 +203,7 @@ fn test_peer_header_click_maps_each_column() {
             .split(inner);
         let c = *cols.get(i).unwrap();
         let x = c.x + 1; // one char inside the column
-        handle_mouse_left_click(&mut state, 3, x, true);
+        handle_mouse_left_click(&mut state, 2, x, true);
         assert_eq!(state.peer_sort_column, i, "column {i} click at x={x}");
     }
 }
@@ -236,8 +236,8 @@ fn test_message_click_opens_peer_info_tab() {
         sender_peer_id: Some("peer-abc".to_string()),
     });
 
-    // Row 3 is the first message row; with width 1000 it's a single line.
-    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+    // Row 2 is the first message row; with width 1000 it's a single line.
+    let handled = handle_mouse_left_click(&mut state, 2, 0, false);
 
     assert!(handled);
     let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
@@ -250,7 +250,7 @@ fn test_message_click_opens_peer_info_tab() {
 #[test]
 fn test_message_click_each_message_is_one_row() {
     // The chat renderer shows each message as a single (non-wrapped, clipped)
-    // List item, so message N occupies exactly terminal row 3 + N regardless of
+    // List item, so message N occupies exactly terminal row 2 + N regardless of
     // how long the message text is.
     let mut state = test_app_state();
     state.terminal_width = 20;
@@ -267,8 +267,8 @@ fn test_message_click_each_message_is_one_row() {
         sender_peer_id: Some("peer-xyz".to_string()),
     });
 
-    // Row 4 is the second message (one row per message, no wrapping).
-    let handled = handle_mouse_left_click(&mut state, 4, 0, false);
+    // Row 3 is the second message (one row per message, no wrapping).
+    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
 
     assert!(handled);
     let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
@@ -290,7 +290,7 @@ fn test_message_click_on_own_message_is_noop() {
         sender_peer_id: None,
     });
 
-    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+    let handled = handle_mouse_left_click(&mut state, 2, 0, false);
 
     assert!(!handled);
     assert_eq!(state.dynamic_tabs.peer_info_tab_count(), 0);
@@ -316,8 +316,8 @@ fn test_message_click_autoscroll_maps_to_first_visible_peer() {
         });
     }
 
-    // Row 3 is the first visible (top) message -> index 10 (peer-10).
-    let handled = handle_mouse_left_click(&mut state, 3, 0, false);
+    // Row 2 is the first visible (top) message -> index 10 (peer-10).
+    let handled = handle_mouse_left_click(&mut state, 2, 0, false);
 
     assert!(handled);
     let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);

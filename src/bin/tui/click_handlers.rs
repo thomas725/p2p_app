@@ -110,8 +110,8 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
         return false;
     }
     // Map the clicked screen row to an absolute peer index, honoring the
-    // scrolling viewport: data rows start at global row 4 (tab + peer bar +
-    // block border + table header) and are offset by the first visible row.
+    // scrolling viewport: data rows start at global row 3 (tab + block
+    // border + table header) and are offset by the first visible row.
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
     let selected = state.peer_selection.min(state.peers.len().saturating_sub(1));
     let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
@@ -120,7 +120,7 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
         state.peers.len(),
         page_height,
     );
-    let peer_row = start.saturating_add(usize::from(row).saturating_sub(4));
+    let peer_row = start.saturating_add(usize::from(row).saturating_sub(3));
     if peer_row < state.peers.len()
         && let Some(p) = state.peers.get(peer_row)
     {
@@ -168,7 +168,7 @@ fn handle_message_click(state: &mut AppState, mouse_row: u16, tab_content: &p2p_
             // i.e. the visible window is `visible` one-line rows starting at `start`.
             let line_counts: Vec<usize> = vec![1; visible];
             let click_row = usize::from(mouse_row);
-            if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 3, click_row) {
+            if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 2, click_row) {
                 let actual_idx = start.saturating_add(rel);
                 if let Some(msg) = state.messages.get(actual_idx)
                     && let Some(peer_id) = &msg.sender_peer_id
@@ -197,7 +197,7 @@ pub fn handle_mouse_left_click(
         return handle_tab_click(state, mouse_column, &tab_titles);
     }
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
-    let max_row = state.chat_area_height.saturating_add(2);
+    let max_row = state.chat_area_height.saturating_add(1);
     let clickable = is_peers_tab
         || matches!(
             tab_content,
@@ -205,11 +205,11 @@ pub fn handle_mouse_left_click(
                 | p2p_app::tui_tabs::TabContent::Log
                 | p2p_app::tui_tabs::TabContent::Direct(_)
         );
-    if clickable && mouse_row > 2 && usize::from(mouse_row) <= max_row {
+    if clickable && mouse_row > 1 && usize::from(mouse_row) <= max_row {
         if is_peers_tab {
             // The peers view is a table; the row just inside the border (global
-            // row 3) is the header, which toggles/sets the sort column.
-            if mouse_row == 3 {
+            // row 2) is the header, which toggles/sets the sort column.
+            if mouse_row == 2 {
                 return handle_peer_header_click(state, mouse_column);
             }
             return handle_peer_row_click(state, mouse_row);
@@ -224,18 +224,29 @@ pub fn handle_mouse_left_click(
 fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     // Resolve the column geometry with ratatui's own `Layout` so the sort
     // column matches exactly what the `Table` widget rendered: the columns are
-    // sized to fit their longest header/cell (`peer_table_column_widths`), with
-    // the same block borders and `column_spacing` as the renderer.
+    // sized to fit their longest header/cell (`peer_table_column_widths`) over
+    // the same visible window the renderer materializes, with the same block
+    // borders and `column_spacing`.
     let sender_ids: VecDeque<Option<String>> = state
         .messages
         .iter()
         .map(|m| m.sender_peer_id.clone())
         .collect();
     let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
-    let rows = p2p_app::tui_helpers::peer_table_rows_ordered(
+    let page_height = state.chat_area_height.saturating_sub(2).max(1);
+    let selected = state.peer_selection.min(peers.len().saturating_sub(1));
+    let (start, end) = p2p_app::tui_helpers::peer_table_visible_range(
+        state.peer_table_offset,
+        Some(selected),
+        peers.len(),
+        page_height,
+    );
+    let rows = p2p_app::tui_helpers::peer_table_rows_range(
         &peers,
         &state.dm_messages,
         &sender_ids,
+        start,
+        end,
     );
     let widths = p2p_app::tui_helpers::peer_table_column_widths(
         &rows,

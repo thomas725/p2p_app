@@ -258,3 +258,119 @@ fn peer_table_visible_range_empty_and_clamped() {
     // A page height of zero still shows something, not a hang.
     assert_eq!(peer_table_visible_range(0, Some(9), 10, 0), (9, 10));
 }
+
+#[test]
+fn peer_table_rows_range_builds_only_visible_slice() {
+    use crate::tui_helpers::peer_table_rows_range;
+    use std::collections::HashMap;
+
+    let peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:03".to_string(),
+        },
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:01".to_string(),
+        },
+        PeerRecord {
+            peer_id: "c".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:02".to_string(),
+        },
+        PeerRecord {
+            peer_id: "d".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:04".to_string(),
+        },
+    ])
+    .into_iter()
+    .collect::<Vec<_>>();
+    let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    dm.insert("b".to_string(), VecDeque::from(["x".to_string()])); // 1 dm
+    dm.insert("c".to_string(), VecDeque::from(["y".to_string(), "z".to_string()])); // 2 dms
+    let msgs: VecDeque<Option<String>> =
+        VecDeque::from([Some("b".to_string()), Some("b".to_string()), Some("d".to_string())]);
+
+    // Only rows inside `[1, 3)` are materialized (b and c).
+    let rows = peer_table_rows_range(&peers, &dm, &msgs, 1, 3);
+    let ids: Vec<&str> = rows.iter().map(|r| r.peer_id.as_str()).collect();
+    assert_eq!(ids, vec!["b", "c"]);
+    assert_eq!(rows[0].dm_count, 1);
+    assert_eq!(rows[0].broadcast_count, 2);
+    assert_eq!(rows[1].dm_count, 2);
+    assert_eq!(rows[1].broadcast_count, 0);
+}
+
+#[test]
+fn peer_table_rows_range_clamps_and_empties() {
+    use crate::tui_helpers::peer_table_rows_range;
+    use std::collections::HashMap;
+
+    let peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "t".to_string(),
+        },
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "t".to_string(),
+        },
+    ])
+    .into_iter()
+    .collect::<Vec<_>>();
+    let dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    let empty: VecDeque<Option<String>> = VecDeque::new();
+
+    // An empty window yields no rows.
+    assert!(peer_table_rows_range(&peers, &dm, &empty, 1, 1).is_empty());
+    // `start` past the end yields no rows (no panics on the slice bounds).
+    assert!(peer_table_rows_range(&peers, &dm, &empty, 5, 9).is_empty());
+    // `end` past the end clamps to the list length.
+    assert_eq!(
+        peer_table_rows_range(&peers, &dm, &empty, 1, 99)
+            .iter()
+            .map(|r| r.peer_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["b"]
+    );
+}
+
+#[test]
+fn peer_table_rows_range_matches_full_scan() {
+    use crate::tui_helpers::{peer_table_rows_ordered, peer_table_rows_range};
+    use std::collections::HashMap;
+
+    let peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:03".to_string(),
+        },
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:01".to_string(),
+        },
+        PeerRecord {
+            peer_id: "c".to_string(),
+            first_seen: "t".to_string(),
+            last_seen: "2024-01-01 00:00:02".to_string(),
+        },
+    ])
+    .into_iter()
+    .collect::<Vec<_>>();
+    let dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    let msgs: VecDeque<Option<String>> =
+        VecDeque::from([Some("a".to_string()), Some("c".to_string())]);
+
+    let full = peer_table_rows_ordered(&peers, &dm, &msgs);
+    let windowed = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
+    let ids: Vec<&str> = windowed.iter().map(|r| r.peer_id.as_str()).collect();
+    assert_eq!(ids, vec!["a", "b", "c"]);
+    assert_eq!(full.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), ids);
+}

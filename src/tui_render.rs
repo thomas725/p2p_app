@@ -1,7 +1,6 @@
 //! TUI rendering functions for both binary and tests
 
 use crate::fmt::short_peer_id;
-use crate::tui_helpers::peer_table_rows_ordered;
 use crate::tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, dm_receipt_prefix,
     get_tab_content,
@@ -20,7 +19,6 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1),
-            Constraint::Length(1),
             Constraint::Min(0),
             Constraint::Length(5),
             Constraint::Length(1),
@@ -30,14 +28,12 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
 
     let default_rect = Rect::default();
     let tab_area = chunks.first().unwrap_or(&default_rect);
-    let peer_area = chunks.get(1).unwrap_or(&default_rect);
-    let content_area = chunks.get(2).unwrap_or(&default_rect);
-    let input_area = chunks.get(3).unwrap_or(&default_rect);
-    let shortcut_area = chunks.get(4).unwrap_or(&default_rect);
-    let status_area = chunks.get(5).unwrap_or(&default_rect);
+    let content_area = chunks.get(1).unwrap_or(&default_rect);
+    let input_area = chunks.get(2).unwrap_or(&default_rect);
+    let shortcut_area = chunks.get(3).unwrap_or(&default_rect);
+    let status_area = chunks.get(4).unwrap_or(&default_rect);
 
     render_tabs(f, *tab_area, state);
-    render_peer_info(f, *peer_area, state);
 
     let tab_content = get_tab_content(state);
     render_tab_content(f, *content_area, &tab_content, state);
@@ -63,12 +59,6 @@ pub fn render_tabs(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
         .select(state.active_tab)
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
     f.render_widget(tabs, area);
-}
-
-/// Render peer info
-pub fn render_peer_info(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let peer_info = Paragraph::new(format!("Peers: {}", state.peer_count));
-    f.render_widget(peer_info, area);
 }
 
 /// Render tab content
@@ -265,19 +255,28 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
 
 /// Render peer list with selection support
 pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let rows = peer_table_rows_ordered(&state.peers, &state.dm_messages, &state.message_peer_ids);
-
     // The table body is content_height - 1 (hint) - 2 (borders) - 1 (header)
     // rows tall; a stateful `TableState` scrolls the viewport to keep the
     // selected row visible, so PageUp/PageDown step the selection by a page.
     let page_height = usize::from(area.height.saturating_sub(4)).max(1);
-    let selected = (!rows.is_empty())
-        .then(|| state.peer_selection.min(rows.len().saturating_sub(1)));
-    let (start, _end) = crate::tui_helpers::peer_table_visible_range(
+    let total = state.peers.len();
+    let selected = (total > 0).then(|| state.peer_selection.min(total.saturating_sub(1)));
+    let (start, end) = crate::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         selected,
-        rows.len(),
+        total,
         page_height,
+    );
+
+    // Materialize only the visible window: display-name lookups are the
+    // expensive per-frame cost, so paged rendering stays O(page) no matter how
+    // many peers are known.
+    let rows = crate::tui_helpers::peer_table_rows_range(
+        &state.peers,
+        &state.dm_messages,
+        &state.message_peer_ids,
+        start,
+        end,
     );
 
     let header_cells: Vec<Cell> = crate::tui_helpers::peer_table_header_labels(
@@ -300,7 +299,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
                 Cell::from(r.last_seen.clone()),
             ];
             let row = Row::new(cells);
-            if idx == state.peer_selection {
+            if start.saturating_add(idx) == state.peer_selection {
                 row.style(Style::default().bg(Color::DarkGray))
             } else {
                 row
@@ -320,7 +319,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .header(header)
         .block(
             Block::default()
-                .title(format!("Connected Peers ({})", rows.len()))
+                .title(format!("Connected Peers ({total})"))
                 .borders(Borders::ALL),
         )
         .row_highlight_style(Style::default().bg(Color::DarkGray));
@@ -334,8 +333,8 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     let hint_area = *inner.get(1).unwrap_or(&area);
 
     let mut table_state = TableState::new();
-    table_state.select(selected);
-    *table_state.offset_mut() = start;
+    table_state.select(selected.map(|sel| sel.saturating_sub(start)));
+    *table_state.offset_mut() = 0;
     f.render_stateful_widget(table, table_area, &mut table_state);
 
     let hint = Paragraph::new(

@@ -137,9 +137,7 @@ pub use tui_helpers::{
     sort_peers_by_last_seen, truncate_message, upsert_peer_last_seen, validate_nickname,
 };
 #[cfg(feature = "tui")]
-pub use tui_render::{
-    render_chat_content, render_frame, render_peer_info, render_tab_content, render_tabs,
-};
+pub use tui_render::{render_chat_content, render_frame, render_tab_content, render_tabs};
 #[cfg(feature = "tui")]
 pub use tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, count_lines, dm_receipt_prefix,

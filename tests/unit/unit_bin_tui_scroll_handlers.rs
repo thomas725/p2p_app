@@ -514,7 +514,7 @@ fn test_handle_mouse_scroll_dm_tab_broadcast_section() {
         .dm_broadcast_scroll_state
         .insert("peer-dm-scroll".to_string(), (0, false));
     state.active_tab = state.dynamic_tabs.add_dm_tab("peer-dm-scroll".to_string());
-    state.chat_area_height = 20; // mid_row = 12
+    state.chat_area_height = 20; // mid_row = 11
     state.last_mouse_row = 5; // above mid_row -> broadcast section
 
     handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll"));
@@ -536,7 +536,7 @@ fn test_handle_mouse_scroll_dm_tab_dm_section() {
     state.active_tab = state
         .dynamic_tabs
         .add_dm_tab("peer-dm-scroll-2".to_string());
-    state.chat_area_height = 20; // mid_row = 12
+    state.chat_area_height = 20; // mid_row = 11
     state.last_mouse_row = 15; // below mid_row -> DM section
 
     handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll-2"));

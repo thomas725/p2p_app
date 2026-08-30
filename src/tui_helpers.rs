@@ -324,19 +324,7 @@ pub fn sort_peers_table(
     let broadcast_map = compute_broadcast_counts(messages);
     let mut rows: Vec<PeerTableRow> = peers
         .iter()
-        .map(|p| {
-            let dm_count = dm_messages.dm_count_for(&p.peer_id);
-            let broadcast_count = broadcast_map.get(&p.peer_id).copied().unwrap_or(0);
-            let display_name = crate::get_peer_display_name(&p.peer_id)
-                .unwrap_or_else(|_| crate::fmt::short_peer_id(&p.peer_id));
-            PeerTableRow::new(
-                &p.peer_id,
-                &display_name,
-                dm_count,
-                broadcast_count,
-                &p.last_seen,
-            )
-        })
+        .map(|p| peer_table_row(p, dm_messages, &broadcast_map))
         .collect();
 
     rows.sort_by(|a, b| {
@@ -391,6 +379,47 @@ pub fn sort_peers_by_column(
         .unwrap_or(0)
 }
 
+/// Build a single peers-table row, including the display-name lookup.
+fn peer_table_row(
+    peer: &PeerRecord,
+    dm_messages: &impl PeerMessageMap,
+    broadcast_map: &HashMap<String, usize>,
+) -> PeerTableRow {
+    let dm_count = dm_messages.dm_count_for(&peer.peer_id);
+    let broadcast_count = broadcast_map.get(&peer.peer_id).copied().unwrap_or(0);
+    let display_name = crate::get_peer_display_name(&peer.peer_id)
+        .unwrap_or_else(|_| crate::fmt::short_peer_id(&peer.peer_id));
+    PeerTableRow::new(
+        &peer.peer_id,
+        &display_name,
+        dm_count,
+        broadcast_count,
+        &peer.last_seen,
+    )
+}
+
+/// Build table rows for the contiguous `[start, end)` slice of `peers`.
+///
+/// Only peers inside the visible window get a `PeerTableRow`, so paged
+/// rendering pays for the display-name lookups on the visible page instead of
+/// the whole peer list.
+#[must_use]
+pub fn peer_table_rows_range(
+    peers: &[PeerRecord],
+    dm_messages: &impl PeerMessageMap,
+    messages: &VecDeque<Option<String>>,
+    start: usize,
+    end: usize,
+) -> Vec<PeerTableRow> {
+    let broadcast_map = compute_broadcast_counts(messages);
+    peers
+        .iter()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .map(|p| peer_table_row(p, dm_messages, &broadcast_map))
+        .collect()
+}
+
 /// Build table rows in the order the peers are currently stored (no re-sort).
 #[must_use]
 pub fn peer_table_rows_ordered(
@@ -398,23 +427,7 @@ pub fn peer_table_rows_ordered(
     dm_messages: &impl PeerMessageMap,
     messages: &VecDeque<Option<String>>,
 ) -> Vec<PeerTableRow> {
-    let broadcast_map = compute_broadcast_counts(messages);
-    peers
-        .iter()
-        .map(|p| {
-            let dm_count = dm_messages.dm_count_for(&p.peer_id);
-            let broadcast_count = broadcast_map.get(&p.peer_id).copied().unwrap_or(0);
-            let display_name = crate::get_peer_display_name(&p.peer_id)
-                .unwrap_or_else(|_| crate::fmt::short_peer_id(&p.peer_id));
-            PeerTableRow::new(
-                &p.peer_id,
-                &display_name,
-                dm_count,
-                broadcast_count,
-                &p.last_seen,
-            )
-        })
-        .collect()
+    peer_table_rows_range(peers, dm_messages, messages, 0, peers.len())
 }
 
 /// Visible window `(start, end)` of the peers table for the given cursor model.

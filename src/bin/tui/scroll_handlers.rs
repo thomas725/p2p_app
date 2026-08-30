@@ -113,7 +113,7 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 /// Handle scroll key for Peers tab
 ///
 /// `page_size` is the number of data rows that fit the visible viewport. The
-/// peer table lives in the content area `chat_area_height + 2`: minus 1 for the
+/// peer table lives in the content area `chat_area_height + 1`: minus 1 for the
 /// in-block hint row, 2 for the block borders, and 1 for the header row.
 fn expected_peer_page_size(state: &AppState) -> usize {
     state.chat_area_height.saturating_sub(2).max(1)
@@ -162,7 +162,7 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
             scroll_peers_tab(key_code, state);
         }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(2);
+            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(1);
             let mouse_row = usize::from(state.last_mouse_row);
             if mouse_row < mid_row {
                 scroll_broadcast_section(key_code, state, peer_id);
@@ -243,7 +243,7 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
 
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(pid) => {
-            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(2);
+            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(1);
             let mouse_row = usize::from(state.last_mouse_row);
             let pid = peer_id.unwrap_or(pid);
             if mouse_row < mid_row {

@@ -108,7 +108,6 @@ fn render_frame(f: &mut Frame, state: &AppState) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1), // tabs
-            Constraint::Length(1), // peer info
             Constraint::Min(0),    // messages
             Constraint::Length(5), // input area
             Constraint::Length(1), // shortcuts
@@ -119,33 +118,32 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     let mut render_state = app_state_to_render_state(state);
 
     tui_render::render_tabs(f, chunks.first().copied().unwrap_or_default(), &render_state);
-    tui_render::render_peer_info(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
 
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
         TabContent::Chat => {
-            tui_render::render_chat_content(f, chunks.get(2).copied().unwrap_or_default(), &mut render_state);
+            tui_render::render_chat_content(f, chunks.get(1).copied().unwrap_or_default(), &mut render_state);
         }
         TabContent::Peers => {
-            tui_render::render_peers_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
+            tui_render::render_peers_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
         }
         TabContent::Direct(peer_id) => {
-            tui_render::render_dm_content(f, chunks.get(2).copied().unwrap_or_default(), peer_id, &mut render_state);
+            tui_render::render_dm_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &mut render_state);
         }
         TabContent::Log => {
-            tui_render::render_log_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
+            tui_render::render_log_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
         }
         TabContent::Settings => {
-            tui_render::render_settings_content(f, chunks.get(2).copied().unwrap_or_default(), &render_state);
+            tui_render::render_settings_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
         }
         TabContent::PeerInfo(peer_id) => {
-            tui_render::render_peer_info_content(f, chunks.get(2).copied().unwrap_or_default(), peer_id, &render_state);
+            tui_render::render_peer_info_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &render_state);
         }
     }
 
-    layout::render_input_section(f, chunks.get(3).copied().unwrap_or_default(), state, &tab_content);
-    layout::render_shortcuts(f, chunks.get(4).copied().unwrap_or_default(), &tab_content);
-    layout::render_status_bar(f, chunks.get(5).copied().unwrap_or_default(), state);
+    layout::render_input_section(f, chunks.get(2).copied().unwrap_or_default(), state, &tab_content);
+    layout::render_shortcuts(f, chunks.get(3).copied().unwrap_or_default(), &tab_content);
+    layout::render_status_bar(f, chunks.get(4).copied().unwrap_or_default(), state);
 
     if let Some(ref text) = state.popup {
         render_popup(f, text.clone());
@@ -163,7 +161,7 @@ pub fn spawn_render_loop(
             let mut s = state.lock().await;
             let _ = terminal.draw(|f| {
                 s.terminal_width = usize::from(f.area().width);
-                s.chat_area_height = usize::from(f.area().height.saturating_sub(11));
+                s.chat_area_height = usize::from(f.area().height.saturating_sub(10));
                 render_frame(f, &s);
             });
         }

@@ -8,8 +8,8 @@ mod render_tests {
         TuiRenderState,
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_input_section,
-            render_log_content, render_peer_info, render_peers_content, render_popup,
-            render_settings_content, render_shortcuts, render_status_bar, render_tabs,
+            render_log_content, render_peers_content, render_popup, render_settings_content,
+            render_shortcuts, render_status_bar, render_tabs,
         },
     };
     use ratatui::layout::Rect;
@@ -33,16 +33,6 @@ mod render_tests {
         let state = TuiRenderState::with_sample_data();
 
         terminal.draw(|f| render_tabs(f, f.area(), &state)).unwrap();
-    }
-
-    #[test]
-    fn test_render_peer_info_library() {
-        let mut terminal = create_test_terminal();
-        let state = TuiRenderState::with_sample_data();
-
-        terminal
-            .draw(|f| render_peer_info(f, f.area(), &state))
-            .unwrap();
     }
 
     #[test]
