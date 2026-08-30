@@ -181,3 +181,52 @@ fn transcript_and_tabs_helpers() {
     assert_eq!(next_tab_index(3, 1, 4), 0);
     assert_eq!(next_tab_index(0, 1, 0), 0);
 }
+
+#[test]
+fn peer_table_headers_mark_active_column() {
+    assert_eq!(peer_sort_indicator(true), " ▲");
+    assert_eq!(peer_sort_indicator(false), " ▼");
+    assert_eq!(
+        peer_table_header_labels(3, false),
+        vec!["Name", "DM", "Broadcast", "Last Seen ▼"]
+    );
+    assert_eq!(
+        peer_table_header_labels(3, true),
+        vec!["Name", "DM", "Broadcast", "Last Seen ▲"]
+    );
+    assert_eq!(
+        peer_table_header_labels(0, false),
+        vec!["Name ▼", "DM", "Broadcast", "Last Seen"]
+    );
+}
+
+#[test]
+fn peer_table_column_widths_fit_longest_content() {
+    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
+
+    // No peers: columns are only as wide as their headers.
+    let empty: Vec<PeerTableRow> = Vec::new();
+    assert_eq!(peer_table_column_widths(&empty, 3, false), vec![4, 2, 9, 11]); // "Last Seen ▼"
+    // The sort indicator stays inside the column it marks.
+    assert_eq!(peer_table_column_widths(&empty, 0, false), vec![6, 2, 9, 9]); // "Name ▼"
+
+    // Long cells grow their column; short cells do not.
+    let rows = vec![
+        PeerTableRow::new("p1", "Bob", 12, 3, "2024-01-01 00:00:03"),
+        PeerTableRow::new("p2", "Avery-TestName", 9999, 1000, "2024-01-01 00:00:02"),
+    ];
+    assert_eq!(peer_table_column_widths(&rows, 3, false), vec![14, 4, 9, 19]);
+    // The table spans only its content: every column is far narrower than a
+    // typical terminal width.
+    assert!(peer_table_column_widths(&rows, 3, false).iter().all(|w| *w < 100));
+}
+
+#[test]
+fn peer_table_column_widths_count_wide_chars() {
+    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
+    let rows = vec![PeerTableRow::new("j", "飛鳥龍", 0, 0, "t")];
+    let widths = peer_table_column_widths(&rows, 0, false);
+    // 飛鳥龍 is 3 chars but 6 terminal columns wide (1 wide char + 2 wide chars).
+    assert_eq!(widths[0], 6);
+    assert_ne!(widths[0], 3);
+}

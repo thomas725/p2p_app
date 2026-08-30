@@ -3,6 +3,7 @@
 
 use chrono::NaiveDateTime;
 use std::collections::{HashMap, VecDeque};
+use unicode_width::UnicodeWidthStr;
 
 use crate::PeerRecord;
 
@@ -414,6 +415,67 @@ pub fn peer_table_rows_ordered(
             )
         })
         .collect()
+}
+
+/// Sort-direction indicator shown on the active peers-table column header.
+#[must_use]
+#[allow(clippy::missing_const_for_fn)]
+pub const fn peer_sort_indicator(ascending: bool) -> &'static str {
+    if ascending { " ▲" } else { " ▼" }
+}
+
+/// Header labels for the peers table; the sort indicator marks the active column.
+#[must_use]
+pub fn peer_table_header_labels(sort_column: usize, sort_ascending: bool) -> Vec<String> {
+    const COLUMNS: [&str; 4] = ["Name", "DM", "Broadcast", "Last Seen"];
+    let indicator = peer_sort_indicator(sort_ascending);
+    COLUMNS
+        .iter()
+        .enumerate()
+        .map(|(i, name)| {
+            if i == sort_column {
+                format!("{name}{indicator}")
+            } else {
+                (*name).to_string()
+            }
+        })
+        .collect()
+}
+
+/// Display width of each cell of a peers-table row (CJK/wide chars = 2 cols).
+#[must_use]
+fn peer_cell_widths(row: &PeerTableRow) -> [usize; 4] {
+    let dm = row.dm_count.to_string();
+    let broadcast = row.broadcast_count.to_string();
+    [
+        row.display_name.width(),
+        dm.width(),
+        broadcast.width(),
+        row.last_seen.width(),
+    ]
+}
+
+/// Render widths for the peers-table columns.
+///
+/// Each column is exactly wide enough for its longest header (including the
+/// sort indicator) or cell, so the table only spans its content instead of
+/// filling the whole area.
+#[must_use]
+pub fn peer_table_column_widths(
+    rows: &[PeerTableRow],
+    sort_column: usize,
+    sort_ascending: bool,
+) -> Vec<usize> {
+    let mut widths: Vec<usize> = peer_table_header_labels(sort_column, sort_ascending)
+        .iter()
+        .map(|h| h.width())
+        .collect();
+    for row in rows {
+        for (slot, cell) in widths.iter_mut().zip(peer_cell_widths(row)) {
+            *slot = (*slot).max(cell);
+        }
+    }
+    widths
 }
 
 #[cfg(test)]

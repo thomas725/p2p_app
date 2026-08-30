@@ -156,24 +156,39 @@ fn test_peer_header_click_maps_each_column() {
     let mut state = app_state_with_peers(3);
     state.terminal_width = 100;
     state.chat_area_height = 20;
-    // Resolve the real column geometry exactly as the click handler does, then
-    // click one character inside each column to verify the mapping.
-    let width = state.terminal_width as u16;
-    let area = ratatui::layout::Rect::new(0, 0, width, 1);
-    let inner = ratatui::widgets::Block::default()
-        .borders(ratatui::widgets::Borders::ALL)
-        .inner(area);
-    let cols = ratatui::layout::Layout::default()
-        .direction(ratatui::layout::Direction::Horizontal)
-        .constraints([
-            ratatui::layout::Constraint::Percentage(40),
-            ratatui::layout::Constraint::Percentage(15),
-            ratatui::layout::Constraint::Percentage(15),
-            ratatui::layout::Constraint::Percentage(30),
-        ])
-        .spacing(1)
-        .split(inner);
-    for (i, c) in cols.iter().enumerate() {
+    // Resolve the real column geometry exactly as the click handler does (via
+    // `peer_table_column_widths` + ratatui's Layout), then click one character
+    // inside each column to verify the mapping. The geometry is recomputed for
+    // every column because moving the sort indicator to the clicked column
+    // widens it and shifts the following columns.
+    for i in 0..4 {
+        let sender_ids = std::collections::VecDeque::new();
+        let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
+        let rows = p2p_app::tui_helpers::peer_table_rows_ordered(
+            &peers,
+            &state.dm_messages,
+            &sender_ids,
+        );
+        let widths = p2p_app::tui_helpers::peer_table_column_widths(
+            &rows,
+            state.peer_sort_column,
+            state.peer_sort_ascending,
+        );
+        let constraints: Vec<ratatui::layout::Constraint> = widths
+            .iter()
+            .map(|w| ratatui::layout::Constraint::Length(*w as u16))
+            .collect();
+        let width = state.terminal_width as u16;
+        let area = ratatui::layout::Rect::new(0, 0, width, 1);
+        let inner = ratatui::widgets::Block::default()
+            .borders(ratatui::widgets::Borders::ALL)
+            .inner(area);
+        let cols = ratatui::layout::Layout::default()
+            .direction(ratatui::layout::Direction::Horizontal)
+            .constraints(constraints)
+            .spacing(1)
+            .split(inner);
+        let c = *cols.get(i).unwrap();
         let x = c.x + 1; // one char inside the column
         handle_mouse_left_click(&mut state, 3, x, true);
         assert_eq!(state.peer_sort_column, i, "column {i} click at x={x}");

@@ -257,23 +257,13 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
 pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let rows = peer_table_rows_ordered(&state.peers, &state.dm_messages, &state.message_peer_ids);
 
-    let columns = ["Name", "DM", "Broadcast", "Last Seen"];
-    let indicator = |col: usize| -> &'static str {
-        if state.peer_sort_column == col {
-            if state.peer_sort_ascending {
-                " ▲"
-            } else {
-                " ▼"
-            }
-        } else {
-            ""
-        }
-    };
-    let header_cells: Vec<Cell> = columns
-        .iter()
-        .enumerate()
-        .map(|(i, c)| Cell::from(format!("{c}{}", indicator(i))))
-        .collect();
+    let header_cells: Vec<Cell> = crate::tui_helpers::peer_table_header_labels(
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+    )
+    .into_iter()
+    .map(Cell::from)
+    .collect();
     let header = Row::new(header_cells).style(Style::default().add_modifier(Modifier::BOLD));
 
     let body: Vec<Row> = rows
@@ -295,12 +285,14 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         })
         .collect();
 
-    let widths = [
-        Constraint::Percentage(40),
-        Constraint::Percentage(15),
-        Constraint::Percentage(15),
-        Constraint::Percentage(30),
-    ];
+    let widths: Vec<Constraint> = crate::tui_helpers::peer_table_column_widths(
+        &rows,
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+    )
+    .into_iter()
+    .map(|w| Constraint::Length(u16::try_from(w).unwrap_or(u16::MAX)))
+    .collect();
     let table = Table::new(body, widths)
         .header(header)
         .block(

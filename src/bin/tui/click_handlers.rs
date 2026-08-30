@@ -209,12 +209,31 @@ pub fn handle_mouse_left_click(
 
 /// Handles a click on the peers-table header, mapping the column under the
 /// cursor to a sort column (mirroring Flutter's `_PeerList` header tap).
-#[allow(clippy::arithmetic_side_effects)]
 fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     // Resolve the column geometry with ratatui's own `Layout` so the sort
-    // column matches exactly what the `Table` widget rendered (same percentage
-    // constraints, same `column_spacing` gaps, same block borders). This avoids
-    // any manual replication of ratatui's internal width/rounding math.
+    // column matches exactly what the `Table` widget rendered: the columns are
+    // sized to fit their longest header/cell (`peer_table_column_widths`), with
+    // the same block borders and `column_spacing` as the renderer.
+    let sender_ids: VecDeque<Option<String>> = state
+        .messages
+        .iter()
+        .map(|m| m.sender_peer_id.clone())
+        .collect();
+    let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
+    let rows = p2p_app::tui_helpers::peer_table_rows_ordered(
+        &peers,
+        &state.dm_messages,
+        &sender_ids,
+    );
+    let widths = p2p_app::tui_helpers::peer_table_column_widths(
+        &rows,
+        state.peer_sort_column,
+        state.peer_sort_ascending,
+    );
+    let constraints: Vec<ratatui::layout::Constraint> = widths
+        .into_iter()
+        .map(|w| ratatui::layout::Constraint::Length(u16::try_from(w).unwrap_or(u16::MAX)))
+        .collect();
     let width = u16::try_from(state.terminal_width.max(1)).unwrap_or(u16::MAX);
     let area = ratatui::layout::Rect::new(0, 0, width, 1);
     let inner = ratatui::widgets::Block::default()
@@ -222,12 +241,7 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
         .inner(area);
     let cols = ratatui::layout::Layout::default()
         .direction(ratatui::layout::Direction::Horizontal)
-        .constraints([
-            ratatui::layout::Constraint::Percentage(40),
-            ratatui::layout::Constraint::Percentage(15),
-            ratatui::layout::Constraint::Percentage(15),
-            ratatui::layout::Constraint::Percentage(30),
-        ])
+        .constraints(constraints)
         .spacing(1)
         .split(inner);
     let col = if column < cols.first().map_or(0, |c| c.x) {
@@ -248,11 +262,7 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
         &mut state.peers,
         &state.dm_messages,
-        &state
-            .messages
-            .iter()
-            .map(|m| m.sender_peer_id.clone())
-            .collect::<VecDeque<_>>(),
+        &sender_ids,
         state.peer_sort_column,
         state.peer_sort_ascending,
         state.peer_selection,
