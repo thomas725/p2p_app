@@ -10,7 +10,7 @@ use crate::tui_tabs::TabContent;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, Tabs, Wrap},
+    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, TableState, Tabs, Wrap},
 };
 use std::collections::VecDeque;
 
@@ -267,6 +267,19 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
 pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let rows = peer_table_rows_ordered(&state.peers, &state.dm_messages, &state.message_peer_ids);
 
+    // The table body is content_height - 1 (hint) - 2 (borders) - 1 (header)
+    // rows tall; a stateful `TableState` scrolls the viewport to keep the
+    // selected row visible, so PageUp/PageDown step the selection by a page.
+    let page_height = usize::from(area.height.saturating_sub(4)).max(1);
+    let selected = (!rows.is_empty())
+        .then(|| state.peer_selection.min(rows.len().saturating_sub(1)));
+    let (start, _end) = crate::tui_helpers::peer_table_visible_range(
+        state.peer_table_offset,
+        selected,
+        rows.len(),
+        page_height,
+    );
+
     let header_cells: Vec<Cell> = crate::tui_helpers::peer_table_header_labels(
         state.peer_sort_column,
         state.peer_sort_ascending,
@@ -307,7 +320,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .header(header)
         .block(
             Block::default()
-                .title("Connected Peers")
+                .title(format!("Connected Peers ({})", rows.len()))
                 .borders(Borders::ALL),
         )
         .row_highlight_style(Style::default().bg(Color::DarkGray));
@@ -320,9 +333,15 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     let table_area = *inner.first().unwrap_or(&area);
     let hint_area = *inner.get(1).unwrap_or(&area);
 
-    f.render_widget(table, table_area);
-    let hint = Paragraph::new("1/2/3/4 (or n/m/b/l): sort · o: toggle order · click header")
-        .style(Style::default().add_modifier(Modifier::DIM));
+    let mut table_state = TableState::new();
+    table_state.select(selected);
+    *table_state.offset_mut() = start;
+    f.render_stateful_widget(table, table_area, &mut table_state);
+
+    let hint = Paragraph::new(
+        "1/2/3/4 (or n/m/b/l): sort · o: toggle order · click header · PgUp/PgDn: page",
+    )
+    .style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(hint, hint_area);
 }
 

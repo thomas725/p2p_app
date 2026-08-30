@@ -66,6 +66,60 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_peers_shows_total_count_in_title() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        for i in 0..6 {
+            state.add_peer(
+                format!("12D3KooWpeer{i}"),
+                "2026-08-01 10:00:00",
+                "2026-08-28 15:26:41",
+            );
+        }
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(text.contains("Connected Peers (6)"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peers_scrolls_viewport_but_keeps_selection_visible() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        // 30 peers in a tall terminal: the last row is far past the first page.
+        // Distinct per-peer `last_seen` seconds let us spot which rows are on
+        // screen, since display-name cells are truncated to the column width.
+        for i in 0..30 {
+            state.add_peer(
+                format!("peer-{i:02}"),
+                "2026-08-01 10:00:00",
+                format!("2026-08-28 15:26:{i:02}"),
+            );
+        }
+        state.peer_selection = 29; // the very last row
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        // The selection (peer 29) sits on the last visible data row...
+        assert!(text.contains("15:26:29"), "got: {text:?}");
+        // ...so the first rows scrolled out of the viewport.
+        assert!(!text.contains("15:26:00"), "got: {text:?}");
+        // Only one page of rows is drawn (20 of the 30 peers).
+        let visible_seconds = (10..30)
+            .filter(|s| text.contains(&format!("15:26:{s:02}")))
+            .count();
+        assert_eq!(visible_seconds, 20, "got: {text:?}");
+        // The total is still reported in the title.
+        assert!(text.contains("Connected Peers (30)"), "got: {text:?}");
+    }
+
+    #[test]
     fn test_render_dm_content_library() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::with_sample_data();

@@ -417,6 +417,52 @@ pub fn peer_table_rows_ordered(
         .collect()
 }
 
+/// Visible window `(start, end)` of the peers table for the given cursor model.
+///
+/// This mirrors ratatui's `Table::visible_rows` for single-line rows: the
+/// window begins at `offset` (clamped to the last row, never after the
+/// selection), fills down to `page_height` rows, then scrolls page-by-page
+/// until the selected row is on screen, and finally includes a trailing
+/// partial row if space remains.
+#[must_use]
+pub fn peer_table_visible_range(
+    offset: usize,
+    selected: Option<usize>,
+    total_rows: usize,
+    page_height: usize,
+) -> (usize, usize) {
+    if total_rows == 0 {
+        return (0, 0);
+    }
+    let page_height = page_height.max(1_usize);
+    let last_row = total_rows.saturating_sub(1);
+    let mut start = selected.map_or(offset, |sel| offset.min(sel)).min(last_row);
+    let mut end = start;
+    let mut height: usize = 0;
+    for _ in start..total_rows {
+        if height.saturating_add(1) > page_height {
+            break;
+        }
+        height = height.saturating_add(1);
+        end = end.saturating_add(1);
+    }
+    if let Some(sel) = selected {
+        let sel = sel.min(last_row);
+        while sel >= end {
+            height = height.saturating_add(1);
+            end = end.saturating_add(1);
+            while height > page_height {
+                height = height.saturating_sub(1);
+                start = start.saturating_add(1);
+            }
+        }
+    }
+    if height < page_height && end < total_rows {
+        end = end.saturating_add(1);
+    }
+    (start, end)
+}
+
 /// Sort-direction indicator shown on the active peers-table column header.
 #[must_use]
 #[allow(clippy::missing_const_for_fn)]

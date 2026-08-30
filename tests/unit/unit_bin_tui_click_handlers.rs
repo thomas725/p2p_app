@@ -111,6 +111,19 @@ fn test_peer_row_click_out_of_bounds() {
     handle_peer_row_click(&mut state, 99);
 }
 
+#[test]
+fn test_peer_row_click_respects_scrolled_viewport() {
+    let mut state = app_state_with_peers(30);
+    state.chat_area_height = 18; // page size = 16 visible data rows
+    state.peer_selection = 25;   // near the bottom: viewport starts at row 10
+    handle_peer_row_click(&mut state, 4); // first visible row = absolute peer 10
+    assert_eq!(state.peer_selection, 10);
+    // After the click the selection (10) is inside the first page, so the
+    // viewport re-anchors to rows 0..16 and row 12 now maps to absolute 8.
+    handle_peer_row_click(&mut state, 12);
+    assert_eq!(state.peer_selection, 8);
+}
+
 // ── handle_mouse_left_click ──────────────────────────────────────────────
 
 #[test]

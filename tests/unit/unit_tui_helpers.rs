@@ -230,3 +230,31 @@ fn peer_table_column_widths_count_wide_chars() {
     assert_eq!(widths[0], 6);
     assert_ne!(widths[0], 3);
 }
+
+#[test]
+fn peer_table_visible_range_window_follows_selection() {
+    // One full page from the start: rows 0..5.
+    assert_eq!(peer_table_visible_range(0, Some(2), 10, 5), (0, 5));
+    // Selection on the next page scrolls down exactly one page.
+    assert_eq!(peer_table_visible_range(0, Some(9), 10, 5), (5, 10));
+    // The offset anchors the window when the selection is already visible.
+    assert_eq!(peer_table_visible_range(3, Some(6), 10, 5), (3, 8));
+    // Fill downward from the offset, then scroll until the selection shows.
+    assert_eq!(peer_table_visible_range(0, Some(6), 10, 5), (2, 7));
+    // A page larger than the list shows everything from the start.
+    assert_eq!(peer_table_visible_range(0, Some(9), 10, 20), (0, 10));
+    // PageUp then PageDown (selection -10 then +10) restores a full-page jump.
+    assert_eq!(peer_table_visible_range(0, Some(19), 30, 10), (10, 20));
+}
+
+#[test]
+fn peer_table_visible_range_empty_and_clamped() {
+    // Empty list: an empty window.
+    assert_eq!(peer_table_visible_range(0, Some(0), 0, 5), (0, 0));
+    // Selection beyond the list clamps to the last row.
+    assert_eq!(peer_table_visible_range(0, Some(999), 10, 5), (5, 10));
+    // An offset past the last row clamps to it.
+    assert_eq!(peer_table_visible_range(999, Some(9), 10, 5), (9, 10));
+    // A page height of zero still shows something, not a hang.
+    assert_eq!(peer_table_visible_range(0, Some(9), 10, 0), (9, 10));
+}

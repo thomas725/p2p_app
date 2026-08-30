@@ -98,6 +98,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         local_nicknames: state.local_nicknames.clone(),
         received_nicknames: state.received_nicknames.clone(),
         self_nicknames_for_peers: state.self_nicknames_for_peers.clone(),
+        peer_table_offset: state.peer_table_offset,
     }
 }
 

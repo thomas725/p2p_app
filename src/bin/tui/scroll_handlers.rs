@@ -111,24 +111,47 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 }
 
 /// Handle scroll key for Peers tab
+///
+/// `page_size` is the number of data rows that fit the visible viewport. The
+/// peer table lives in the content area `chat_area_height + 2`: minus 1 for the
+/// in-block hint row, 2 for the block borders, and 1 for the header row.
+fn expected_peer_page_size(state: &AppState) -> usize {
+    state.chat_area_height.saturating_sub(2).max(1)
+}
+
 #[allow(clippy::missing_const_for_fn)]
 fn compute_new_peer_selection(
     key_code: crossterm::event::KeyCode,
     current_selection: usize,
     peer_count: usize,
+    page_size: usize,
 ) -> usize {
+    if peer_count == 0 {
+        return 0;
+    }
+    let last = peer_count.saturating_sub(1);
+    let page_size = page_size.max(1);
     match key_code {
         crossterm::event::KeyCode::Up => current_selection.saturating_sub(1),
-        crossterm::event::KeyCode::Down if current_selection < peer_count.saturating_sub(1) => {
-            current_selection.saturating_add(1)
+        crossterm::event::KeyCode::Down => current_selection.saturating_add(1).min(last),
+        crossterm::event::KeyCode::PageUp => current_selection.saturating_sub(page_size),
+        crossterm::event::KeyCode::PageDown => {
+            current_selection.saturating_add(page_size).min(last)
         }
+        crossterm::event::KeyCode::Home => 0,
+        crossterm::event::KeyCode::End => last,
         _ => current_selection,
     }
 }
 
 fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    state.peer_selection =
-        compute_new_peer_selection(key_code, state.peer_selection, state.peers.len());
+    let page_size = expected_peer_page_size(state);
+    state.peer_selection = compute_new_peer_selection(
+        key_code,
+        state.peer_selection,
+        state.peers.len(),
+        page_size,
+    );
 }
 
 /// Handles scroll keys (arrow keys, Page Up/Down, Home, End) with hover-aware targeting

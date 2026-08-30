@@ -106,9 +106,21 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
 
 /// Handles peer row clicks in the Peers tab
 fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
-    // The peers view is a table: 3 layout lines (tab bar + peer info bar +
-    // block border) plus 1 header row precede the data rows.
-    let peer_row = usize::from(row).saturating_sub(4);
+    if state.peers.is_empty() {
+        return false;
+    }
+    // Map the clicked screen row to an absolute peer index, honoring the
+    // scrolling viewport: data rows start at global row 4 (tab + peer bar +
+    // block border + table header) and are offset by the first visible row.
+    let page_height = state.chat_area_height.saturating_sub(2).max(1);
+    let selected = state.peer_selection.min(state.peers.len().saturating_sub(1));
+    let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
+        state.peer_table_offset,
+        Some(selected),
+        state.peers.len(),
+        page_height,
+    );
+    let peer_row = start.saturating_add(usize::from(row).saturating_sub(4));
     if peer_row < state.peers.len()
         && let Some(p) = state.peers.get(peer_row)
     {

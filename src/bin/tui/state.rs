@@ -64,6 +64,7 @@ pub struct AppState {
     pub peer_selection: usize, // For navigating peer list
     pub peer_sort_column: usize, // Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
     pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
+    pub peer_table_offset: usize,  // First visible row of the peer table (set by render loop)
     pub mouse_capture: bool,
     pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts
 
@@ -145,6 +146,7 @@ impl AppState {
             peer_selection: 0,
             peer_sort_column: 3,
             peer_sort_ascending: false,
+            peer_table_offset: 0,
             concurrent_peers: 0,
             connected: p2p_app::connected::ConnectedTracker::new(),
             mouse_capture: true,

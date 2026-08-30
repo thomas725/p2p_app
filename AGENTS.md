@@ -1,6 +1,7 @@
 ## Goal
 - Fix broken TUI click handlers (peer-click bug + missing message-click) and port the Flutter `PeerInfoScreen` into the TUI as a new PeerInfo tab.
 - Adapt the TUI peer list to mirror Flutter's sortable peer table (columns Name, DM count, Broadcast count, Last seen; each sortable by key or header click).
+- Make the TUI Peers tab scrollable with PageUp/PageDown (plus Home/End), show a total peer count, and use ratatui's stateful `Table` widgets so the viewport scrolls visually while keeping the selected row visible.
 
 ## Constraints & Preferences
 - Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`).
@@ -22,12 +23,18 @@
 - **Tests added** (all passing): `tui_tabs` peer-info add/dedup/remove + `peer_id`; click-handler message-click opens PeerInfo and own-message no-op (fixed a pre-existing failing assertion `tab_titles.len() == 4` in `unit_bin_tui_render_loop_mod.rs`); `i`-key and Enter-on-PeerInfo in `input_processor`; `shortcuts_text` per-tab in `unit_bin_tui_render_loop_layout.rs`.
 - **Verification**: `cargo ct` → exit 0, 0 errors, 0 warnings. `cargo test --bin p2p_chat_tui --all-features` → 208 passed. `cargo test --lib --all-features` → 241 passed.
 - **Settings tab shows only connected peers** (committed at the end of this task): new shared `ConnectedTracker` (`src/connected.rs`, exported as `p2p_app::connected`) replaces the TUI's `AppState.connected_peer_ids: HashSet<String>` and the mobile backend's `CONNECTED_PEERS` static (stays a `LazyLock<Mutex<ConnectedTracker>>` in `src/mobile_node.rs`) — both frontends now track "currently connected" identically, mirroring Flutter's `_connectedPeerIds`/`_connectedCount`. `on_peer_connected` (idempotent insert) / `on_peer_disconnected(peer_id, ts)` (remove + record last via `last_disconnection() -> Option<(&str, f64)>`). `render_settings_content` (`src/tui_render.rs`) now always shows `Connected peers: {count}` listing only `connected_peer_ids`; when zero it shows `  Last connected {ts} to peer {display}` (session's last disconnect else newest known peer's `last_seen`, via new `last_connected_info`), never flushing stale DB peers as connected. On reconnect of a known peer, TUI refreshes in-memory `last_seen` to `save_peer`'s now timestamp (matches Flutter's `_refreshPeers()`), via new `apply_peer_connected_state` (extracted so `process_swarm_event` stays under the 100-line pedantic limit). `TuiRenderState` gained `last_connection_peer` fed by `state.connected.last_disconnection()`; dropped `AppState.last_connection_lost` (tracker is single source of truth). `process_swarm_event` PeerDisconnected now only drives the tracker.
+- **Peers tab paging + total count + stateful Table** (this task): `AppState.peer_table_offset` (`src/bin/tui/state.rs`) + `TuiRenderState.peer_table_offset` act as the persistent scroll anchor; `tui_helpers::peer_table_visible_range(offset, selected, total_rows, page_height)` is a pure reimplementation of ratatui's `Table::visible_rows` windowing (clamps offset/selection, fills a page, scrolls until selection visible, appends partial row). `render_peers_content` (`src/tui_render.rs`) renders a **stateful `Table`** via `f.render_stateful_widget(table, table_area, &mut table_state)` after `select(selected)` + `*offset_mut() = start`, using `row_highlight_style(DarkGray)` for selection (per-row `bg(DarkGray)` removed — it blanked the highlight), and titles the block `Connected Peers ({count})`. `scroll_handlers.rs`: `expected_peer_page_size = chat_area_height - 2`, `compute_new_peer_selection` takes `page_size` and handles Up/Down (clamped), PageUp (`-page`), PageDown (`+page`), Home (0), End (last). `handle_peer_row_click` maps the screen row to the data row through `peer_table_visible_range` with `state.peer_table_offset` (absolute = `start + row - 4`; row < 4 no-op). Hint line documents PgUp/PgDn.
+- **Verification (this task)**: `cargo ct` → exit 0, 0 warnings. `cargo test --lib --all-features` → 243 passed. `cargo test --bin p2p_chat_tui --all-features` → 215 passed. `cargo test --test tui_render_integration --all-features` → 64 passed. Full `cargo test --all-features` all-green.
 
 ### In Progress
-- (none)
+- (none — feature complete and verified)
 
 ### Blocked
 - (none)
+
+## Key Decisions
+- Ratatui's stateful `Table` + `TableState` is the official "widget that allows scrolling visually" — it scrolls to keep the selected row visible. `peer_table_visible_range` reimplements its windowing as a pure function so (a) unit tests run without a widget, (b) the click handler and renderer agree on the visible window, and (c) `AppState.peer_table_offset` serves as the anchor fed into windowing each render. Verified against the ratatui 0.3.2 source: `render_stateful_widget` mutates `TableState.offset` in `render_rows` (`state.offset = start_index`) and reads it in `visible_rows`.
+- **The originally "failing" render test was a bogus assertion, not a scroll bug**: `test_render_peers_scrolls_viewport_but_keeps_selection_visible` failed because display-name cells are **truncated to the name column width** in the buffer (`organic-rockhopper (pee…`), so `text.contains("peer-29")`/`contains("peer-00")` can never hold. The scroll actually worked (verified by mapping petnames→row indexes: rendered rows 10..29). Rewrote the test to give each peer a distinct `last_seen` second (`15:26:{i:02}`) and assert `contains("15:26:29")`, `!contains("15:26:00")`, exactly 20 visible rows, and the `Connected Peers (30)` title.
 
 ## Key Decisions
 - PeerInfo is a **transient dynamic tab** (like DM), not a fixed tab: inserted after DMs, before Log/Settings. Dedup by peer ID.
@@ -39,7 +46,7 @@
 - (none outstanding — feature complete and verified)
 
 ## Critical Context
-- `chat_area_height` = `f.area().height - 11` (1 tab + 1 peer-info + 5 input + 1 shortcut + 1 status = 9, minus 2 border). `terminal_width` = `f.area().width`.
+- `chat_area_height` = `f.area().height - 11` (1 tab + 1 peer-info + 5 input + 1 shortcut + 1 status = 9, minus 2 border). `terminal_width` = `f.area().width`. Page size for peer paging = `chat_area_height - 2` (header + hint rows are outside the clickable area).
 - `render_frame` match (`src/bin/tui/render_loop/mod.rs:120`) now has a `TabContent::PeerInfo(peer_id)` arm calling `render_peer_info_content`.
 - `handle_mouse_left_click(state, mouse_row, mouse_column, is_peers_tab)` keeps its 4-arg signature (tests depend on it); message clicks are gated on the active tab being Chat/Log/Direct.
 - `calc_visible_strings(&VecDeque<String>, auto_scroll, scroll_offset, text_width, usable_height) -> (usize, usize)` and `row_to_visible_index(&[usize], first_content_row, click_row) -> Option<usize>` are the helpers used for hit-testing.
@@ -48,12 +55,13 @@
 - `src/tui_tabs.rs` — `TabContent::PeerInfo`, `peer_info_tabs`, add/remove/titles/content/count.
 - `src/bin/tui/click_handlers.rs` — `handle_message_click`, fixed peer-click guard.
 - `src/bin/tui/input_processor.rs` — `open_peer_info_for_active_tab`, `handle_esc_key`, PeerInfo Enter branch, `i` (Peers-only) + Ctrl+I (Direct-only) arms.
-- `src/bin/tui/scroll_handlers.rs` — PeerInfo no-op arms.
+- `src/bin/tui/scroll_handlers.rs` — PeerInfo no-op arms, `expected_peer_page_size`, paged `compute_new_peer_selection`, `scroll_peers_tab`.
 - `src/bin/tui/render_loop/layout.rs` — `render_shortcuts` (tab-aware) + `shortcuts_text`.
-- `src/bin/tui/render_loop/mod.rs` — sets `chat_area_height`/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps; passes `&tab_content` to `render_shortcuts`.
-- `src/tui_render.rs` — `render_peer_info_content`.
-- `src/tui_render_state.rs` — nickname fields, `get_tab_content` `Info:` prefix.
-- `src/bin/tui/state.rs` — `terminal_width` field.
-- Tests: `tests/unit/unit_tui_tabs.rs`, `tests/unit/unit_tui_helpers.rs`, `tests/unit/unit_bin_tui_click_handlers.rs`, `tests/unit/unit_bin_tui_input_processor.rs`, `tests/unit/unit_bin_tui_render_loop_mod.rs`, `tests/unit/unit_bin_tui_render_loop_layout.rs`.
+- `src/bin/tui/render_loop/mod.rs` — sets `chat_area_height`/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps + `peer_table_offset`; passes `&tab_content` to `render_shortcuts`.
+- `src/tui_render.rs` — `render_peer_info_content`, `render_peers_content` (stateful `Table`/`TableState`, `row_highlight_style` selection).
+- `src/tui_render_state.rs` — nickname fields, `peer_table_offset`, `get_tab_content` `Info:` prefix.
+- `src/tui_helpers.rs` — `peer_table_visible_range` (pure scroll-window math), `peer_table_rows_ordered`/`peer_table_column_widths`/`peer_table_header_labels`.
+- `src/bin/tui/state.rs` — `terminal_width`, `peer_table_offset` fields.
+- Tests: `tests/unit/unit_tui_tabs.rs`, `tests/unit/unit_tui_helpers.rs`, `tests/unit/unit_bin_tui_click_handlers.rs`, `tests/unit/unit_bin_tui_input_processor.rs`, `tests/unit/unit_bin_tui_render_loop_mod.rs`, `tests/unit/unit_bin_tui_render_loop_layout.rs`, `tests/unit/unit_bin_tui_scroll_handlers.rs`, `tests/tui_render_integration.rs`.
 - `Cargo.toml` — `unicode-width` (0.2) dep for display-width measurement of table cells.
-- Reference: Flutter `PeerInfoScreen` at `apps/flutter_app/lib/main.dart:1141-1494`.
+- Reference: Flutter `PeerInfoScreen` at `apps/flutter_app/lib/main.dart:1141-1494`; ratatui table source at `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ratatui-widgets-0.3.2/src/table.rs` (`visible_rows` / `render_rows` / `TableState.offset`).

@@ -68,6 +68,8 @@ pub struct TuiRenderState {
     pub peer_sort_column: usize,
     /// Whether the peer list is sorted ascending on the active column
     pub peer_sort_ascending: bool,
+    /// First visible row of the peer table (scrolling viewport)
+    pub peer_table_offset: usize,
     /// Map of peer ID -> local nickname set for that peer
     pub local_nicknames: HashMap<String, String>,
     /// Map of peer ID -> nickname received/announced by that peer
@@ -134,6 +136,7 @@ impl TuiRenderState {
             peer_selection: 0,
             peer_sort_column: 3,
             peer_sort_ascending: true,
+            peer_table_offset: 0,
             own_nickname: String::new(),
             local_peer_id: String::new(),
             db_url: String::new(),
@@ -210,6 +213,7 @@ impl TuiRenderState {
             peer_selection: 0,
             peer_sort_column: 3,
             peer_sort_ascending: true,
+            peer_table_offset: 0,
             own_nickname: String::new(),
             local_peer_id: String::new(),
             db_url: String::new(),

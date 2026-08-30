@@ -100,6 +100,35 @@ fn test_scroll_peers_no_overflow_above_max() {
 #[test]
 fn test_scroll_peers_noop_on_other_keys() {
     let mut state = app_state_with_peers(3);
+    scroll_peers_tab(KeyCode::Enter, &mut state);
+    assert_eq!(state.peer_selection, 0);
+}
+
+#[test]
+fn test_scroll_peers_page_down() {
+    let mut state = app_state_with_peers(10);
+    state.chat_area_height = 12; // page size = 10 visible data rows
+    scroll_peers_tab(KeyCode::PageDown, &mut state);
+    assert_eq!(state.peer_selection, 9);
+    scroll_peers_tab(KeyCode::PageDown, &mut state);
+    assert_eq!(state.peer_selection, 9); // clamped at last row
+}
+
+#[test]
+fn test_scroll_peers_page_up() {
+    let mut state = app_state_with_peers(10);
+    state.chat_area_height = 12;
+    state.peer_selection = 9;
+    scroll_peers_tab(KeyCode::PageUp, &mut state);
+    assert_eq!(state.peer_selection, 0); // 9 - 10, clamped at 0
+}
+
+#[test]
+fn test_scroll_peers_home_end() {
+    let mut state = app_state_with_peers(10);
+    state.peer_selection = 5;
+    scroll_peers_tab(KeyCode::End, &mut state);
+    assert_eq!(state.peer_selection, 9);
     scroll_peers_tab(KeyCode::Home, &mut state);
     assert_eq!(state.peer_selection, 0);
 }
@@ -115,32 +144,52 @@ fn test_scroll_peers_empty_list() {
 
 #[test]
 fn test_compute_peer_selection_up() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Up, 5, 10), 4);
+    assert_eq!(compute_new_peer_selection(KeyCode::Up, 5, 10, 5), 4);
 }
 
 #[test]
 fn test_compute_peer_selection_up_clamps_at_zero() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Up, 0, 10), 0);
+    assert_eq!(compute_new_peer_selection(KeyCode::Up, 0, 10, 5), 0);
 }
 
 #[test]
 fn test_compute_peer_selection_down() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 10), 1);
+    assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 10, 5), 1);
 }
 
 #[test]
 fn test_compute_peer_selection_down_clamps_at_max() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Down, 9, 10), 9);
+    assert_eq!(compute_new_peer_selection(KeyCode::Down, 9, 10, 5), 9);
 }
 
 #[test]
 fn test_compute_peer_selection_down_on_empty_list() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 0), 0);
+    assert_eq!(compute_new_peer_selection(KeyCode::Down, 0, 0, 5), 0);
+}
+
+#[test]
+fn test_compute_peer_selection_page_down() {
+    // Moves by exactly one page, clamped to the last row.
+    assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 0, 30, 10), 10);
+    assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 25, 30, 10), 29);
+}
+
+#[test]
+fn test_compute_peer_selection_page_up() {
+    // Moves back by exactly one page, clamped at zero.
+    assert_eq!(compute_new_peer_selection(KeyCode::PageUp, 25, 30, 10), 15);
+    assert_eq!(compute_new_peer_selection(KeyCode::PageUp, 3, 30, 10), 0);
+}
+
+#[test]
+fn test_compute_peer_selection_home_end() {
+    assert_eq!(compute_new_peer_selection(KeyCode::Home, 7, 30, 10), 0);
+    assert_eq!(compute_new_peer_selection(KeyCode::End, 7, 30, 10), 29);
 }
 
 #[test]
 fn test_compute_peer_selection_other_key_noop() {
-    assert_eq!(compute_new_peer_selection(KeyCode::Home, 3, 10), 3);
+    assert_eq!(compute_new_peer_selection(KeyCode::Enter, 3, 10, 5), 3);
 }
 
 // ── scroll_chat_tab ─────────────────────────────────────────────────────
