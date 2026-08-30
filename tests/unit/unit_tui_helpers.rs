@@ -81,6 +81,37 @@ fn peer_sort_and_upsert_keep_selection() {
 }
 
 #[test]
+fn sort_peers_by_column_keeps_every_peer_when_deque_wraps() {
+    use crate::tui_helpers::sort_peers_by_column;
+    use std::collections::HashMap;
+
+    let build = |i: usize| PeerRecord {
+        peer_id: format!("peer-{i}"),
+        first_seen: "t".to_string(),
+        last_seen: format!("2024-01-01 00:{i:02}:00"),
+    };
+    // Fill the 8-slot ring buffer, drop one from the front, and push one on the
+    // back so the deque wraps: `peers.as_slices().0` then misses `peer-8`
+    // (this is the exact case the old `as_slices().0` sort dropped peers).
+    let mut peers: VecDeque<PeerRecord> = (0..8).map(build).collect();
+    peers.pop_front();
+    peers.push_back(build(8));
+    assert_eq!(peers.len(), 8);
+    assert!(!peers.as_slices().1.is_empty(), "expected a wrapped deque");
+
+    let dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    let empty: VecDeque<Option<String>> = VecDeque::new();
+    // Last Seen descending: peer-8 (00:08) first, peer-1 (00:01) last.
+    let selected = sort_peers_by_column(&mut peers, &dm, &empty, 3, false, 0);
+    let ids: Vec<String> = peers.iter().map(|p| p.peer_id.clone()).collect();
+    assert_eq!(
+        ids,
+        vec!["peer-8", "peer-7", "peer-6", "peer-5", "peer-4", "peer-3", "peer-2", "peer-1"]
+    );
+    assert_eq!(selected, 7);
+}
+
+#[test]
 fn peer_sort_none_selected_and_upsert_insert_branch() {
     let mut peers: VecDeque<PeerRecord> = VecDeque::new();
     let idx = sort_peers_by_last_seen(&mut peers, 5);

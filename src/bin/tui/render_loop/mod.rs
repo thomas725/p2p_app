@@ -162,6 +162,21 @@ pub fn spawn_render_loop(
             let _ = terminal.draw(|f| {
                 s.terminal_width = usize::from(f.area().width);
                 s.chat_area_height = usize::from(f.area().height.saturating_sub(10));
+                // On the first frame that shows the Peers tab, resolve every
+                // known peer's display name once so the library's name cache
+                // is warm and switching sort columns never pays a per-peer DB
+                // lookup.
+                if !s.peer_names_warmed
+                    && matches!(
+                        s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                        TabContent::Peers
+                    )
+                {
+                    for p in &s.peers {
+                        let _ = p2p_app::get_peer_display_name(&p.peer_id);
+                    }
+                    s.peer_names_warmed = true;
+                }
                 render_frame(f, &s);
             });
         }

@@ -6,6 +6,8 @@ use crate::sqlite_connect;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex, MutexGuard};
 
 diesel::table! {
     peer_name_history (id) {
@@ -21,6 +23,35 @@ diesel::table! {
 #[must_use]
 pub fn generate_self_nickname() -> String {
     petname::petname(2, "-").unwrap_or_else(|| "anonymous-peer".to_string())
+}
+
+/// Cache of fully formatted display names (`"name (abc)"`) keyed by peer id.
+///
+/// Resolving a display name opens a fresh `SQLite` connection and runs up to
+/// three queries, so the Peers tab would otherwise pay one round-trip per peer
+/// on every full-list sort. The cache is populated lazily on first resolution;
+/// any code path that changes a peer's nicknames (the `impl_set_peer_field!`
+/// setters) or upserts or creates a peer row
+/// ([`crate::peers::save_peer`]) invalidates the affected entry so the display
+/// never goes stale.
+static DISPLAY_NAME_CACHE: LazyLock<Mutex<HashMap<String, String>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn display_cache() -> MutexGuard<'static, HashMap<String, String>> {
+    match DISPLAY_NAME_CACHE.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    }
+}
+
+/// Forget a single peer's cached display name after its nicknames changed.
+pub(crate) fn invalidate_display_name(peer_id: &str) {
+    display_cache().remove(peer_id);
+}
+
+/// Forget every cached display name (e.g. when the database URL changes).
+pub(crate) fn clear_display_names() {
+    display_cache().clear();
 }
 
 /// Read this node's own nickname from the database, if one is set.
@@ -92,6 +123,7 @@ macro_rules! impl_set_peer_field {
             )
             .set(crate::generated::schema::peers::$column.eq(nickname))
             .execute(conn)?;
+            crate::nickname::invalidate_display_name(peer_id);
             Ok(())
         }
     };
@@ -262,18 +294,24 @@ fn ensure_generated_nickname(peer_id: &str) -> color_eyre::Result<String> {
 /// # Errors
 /// Returns an error if any database query fails.
 pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
+    let cached = display_cache().get(peer_id).cloned();
+    if let Some(cached) = cached {
+        return Ok(cached);
+    }
     let short_id = crate::fmt::short_peer_id(peer_id);
     let suffix = short_id.get(..3.min(short_id.len())).unwrap_or(short_id.as_str());
-    if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
-        return Ok(format!("{local_nick} ({suffix})"));
-    }
-    if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
-        return Ok(format!("{received_nick} ({suffix})"));
-    }
-    // Silent peer: assign a stable petname on demand (and persist it) so it
-    // shows a name instead of the raw ID across sessions and reloading.
-    let generated = ensure_generated_nickname(peer_id)?;
-    Ok(format!("{generated} ({suffix})"))
+    let display = if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
+        format!("{local_nick} ({suffix})")
+    } else if let Some(received_nick) = get_peer_received_nickname(peer_id)? {
+        format!("{received_nick} ({suffix})")
+    } else {
+        // Silent peer: assign a stable petname on demand (and persist it) so it
+        // shows a name instead of the raw ID across sessions and reloading.
+        let generated = ensure_generated_nickname(peer_id)?;
+        format!("{generated} ({suffix})")
+    };
+    display_cache().insert(peer_id.to_string(), display.clone());
+    Ok(display)
 }
 
 #[cfg(test)]

@@ -86,6 +86,9 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         ))
         .returning(Peer::as_returning())
         .get_result(conn)?;
+    // A save may assign a new petname (brand-new peers) or touch rows that feed
+    // the display-name cache, so drop any memoized name for this peer.
+    crate::nickname::invalidate_display_name(peer_id);
     Ok(peer)
 }
 

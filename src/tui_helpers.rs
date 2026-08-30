@@ -322,23 +322,28 @@ pub fn sort_peers_table(
     ascending: bool,
 ) -> Vec<PeerTableRow> {
     let broadcast_map = compute_broadcast_counts(messages);
-    let mut rows: Vec<PeerTableRow> = peers
+    let mut rows: Vec<(PeerTableRow, String)> = peers
         .iter()
-        .map(|p| peer_table_row(p, dm_messages, &broadcast_map))
+        .map(|p| {
+            let row = peer_table_row(p, dm_messages, &broadcast_map);
+            let name_key = row.display_name.to_lowercase();
+            (row, name_key)
+        })
         .collect();
 
-    rows.sort_by(|a, b| {
+    rows.sort_by(|(a, an), (b, bn)| {
         let ord = match sort_column {
             0 => {
-                let an = a.display_name.to_lowercase();
-                let bn = b.display_name.to_lowercase();
                 if an == bn {
                     a.peer_id.cmp(&b.peer_id)
                 } else {
-                    an.cmp(&bn)
+                    an.cmp(bn)
                 }
             }
-            1 => a.dm_count.cmp(&b.dm_count).then_with(|| a.peer_id.cmp(&b.peer_id)),
+            1 => a
+                .dm_count
+                .cmp(&b.dm_count)
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
             2 => a
                 .broadcast_count
                 .cmp(&b.broadcast_count)
@@ -353,7 +358,7 @@ pub fn sort_peers_table(
             ord.reverse()
         }
     });
-    rows
+    rows.into_iter().map(|(row, _)| row).collect()
 }
 
 /// Reorder `peers` in place according to the active column/order, preserving
@@ -368,11 +373,18 @@ pub fn sort_peers_by_column(
     selection: usize,
 ) -> usize {
     let selected_id = peers.get(selection).map(|p| p.peer_id.clone());
-    let rows = sort_peers_table(peers.as_slices().0, dm_messages, messages, sort_column, ascending);
-    let ordered: VecDeque<PeerRecord> = rows
-        .iter()
-        .filter_map(|r| peers.iter().find(|p| p.peer_id == r.peer_id).cloned())
-        .collect();
+    // Collect the whole list up front: `peers.as_slices().0` would only cover
+    // the first backing slice when the `VecDeque` has wrapped around.
+    let all: Vec<PeerRecord> = peers.iter().cloned().collect();
+    let rows = sort_peers_table(&all, dm_messages, messages, sort_column, ascending);
+    // Index rows by peer id so reordering is O(n) instead of a per-row scan.
+    let ordered = {
+        let by_id: HashMap<&str, PeerRecord> =
+            all.iter().map(|p| (p.peer_id.as_str(), p.clone())).collect();
+        rows.iter()
+            .filter_map(|r| by_id.get(r.peer_id.as_str()).cloned())
+            .collect::<VecDeque<PeerRecord>>()
+    };
     *peers = ordered;
     selected_id
         .and_then(|id| peers.iter().position(|p| p.peer_id == id))

@@ -62,6 +62,7 @@ fn set_primary_db_url(url: String) {
 #[cfg(any(test, feature = "test-utils"))]
 pub fn set_db_url(url: &str) {
     DB_URL.with(|u| *u.borrow_mut() = Some(url.to_string()));
+    crate::nickname::clear_display_names();
 }
 
 /// Production (non-test) override: set both the thread-local and the shared
@@ -76,11 +77,13 @@ pub fn set_db_url(url: &str) {
     let actual = claim_db_url_with_lock(url);
     DB_URL.with(|u| *u.borrow_mut() = Some(actual.clone()));
     set_primary_db_url(actual);
+    crate::nickname::clear_display_names();
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 pub fn reset_db_url() {
     DB_URL.with(|u| *u.borrow_mut() = None);
+    crate::nickname::clear_display_names();
 }
 
 /// Production (non-test) reset: drop the thread-local URL and release the
@@ -91,6 +94,7 @@ pub fn reset_db_url() {
         let _ = std::fs::remove_file(format!("{url}.lock"));
     }
     DB_URL.with(|u| *u.borrow_mut() = None);
+    crate::nickname::clear_display_names();
 }
 
 /// Shared lock for serialising test DB setup/teardown.

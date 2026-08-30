@@ -101,6 +101,24 @@ fn peer_display_name_received_then_fallback() {
     });
 }
 
+#[test]
+#[serial(db)]
+fn peer_display_name_stable_until_setter_invalidates() {
+    with_test_db(|| {
+        // Repeated resolution is stable (memoized), not re-generated per call.
+        let first = get_peer_display_name("peer-cache").expect("display");
+        let second = get_peer_display_name("peer-cache").expect("display");
+        assert_eq!(first, second);
+
+        // Changing a nickname busts the cached name so the next resolution
+        // reflects the new value.
+        set_peer_local_nickname("peer-cache", "renamed").expect("set");
+        let renamed = get_peer_display_name("peer-cache").expect("display");
+        assert!(renamed.starts_with("renamed "));
+        assert_ne!(first, renamed);
+    });
+}
+
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.
 #[test]
 #[serial(db)]
