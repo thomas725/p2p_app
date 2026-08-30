@@ -53,12 +53,25 @@ fn test_app_state_to_render_state_connected_peer_ids() {
         first_seen: "x".to_string(),
         last_seen: "y".to_string(),
     });
-    state.connected_peer_ids.insert("connected-peer".to_string());
+    state.connected.on_peer_connected("connected-peer".to_string());
 
     let rs = app_state_to_render_state(&state);
     assert!(rs.connected_peer_ids.contains("connected-peer"));
     assert!(!rs.connected_peer_ids.contains("disconnected-peer"));
     assert_eq!(rs.peers.len(), 2);
+}
+
+#[test]
+fn test_app_state_to_render_state_last_disconnection() {
+    let mut state = app_state();
+    state.connected.on_peer_connected("p1".to_string());
+    state.connected.on_peer_disconnected("p1", 1234.0);
+
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.peer_count, 0);
+    assert!(rs.connected_peer_ids.is_empty());
+    assert_eq!(rs.last_connection_peer.as_deref(), Some("p1"));
+    assert_eq!(rs.last_connection_lost, Some(1234.0));
 }
 
 #[test]
@@ -97,8 +110,8 @@ fn test_app_state_to_render_state_peers() {
     });
     state.peer_selection = 1;
     state.concurrent_peers = 5;
-    state.connected_peer_ids.insert("p1".into());
-    state.connected_peer_ids.insert("p2".into());
+    state.connected.on_peer_connected("p1".into());
+    state.connected.on_peer_connected("p2".into());
 
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.peers.len(), 2);

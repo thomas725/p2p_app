@@ -102,11 +102,6 @@ fn format_lost_at(ts: Option<f64>) -> String {
 /// Render the Settings tab (mirrors the Flutter `_Settings` screen).
 pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let connected = state.peer_count;
-    let last_lost = if state.peer_count == 0 {
-        format_lost_at(state.last_connection_lost)
-    } else {
-        "—".to_string()
-    };
     let node_status = if state.node_running {
         "Running"
     } else {
@@ -122,24 +117,25 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
     lines.push(format!("Network name: {}", crate::CHAT_TOPIC));
     lines.push(format!("Network size: {}", state.network_size));
     lines.push(format!("Connected peers: {connected}"));
-    let connected_peers: Vec<_> = state
-        .peers
-        .iter()
-        .filter(|p| state.connected_peer_ids.contains(&p.peer_id))
-        .collect();
-    if connected_peers.is_empty() {
-        lines.push("  —".to_string());
+    if state.connected_peer_ids.is_empty() {
+        // Only ever show "currently connected" peers. When none are connected,
+        // say when we last were (this session's record, else the most recently
+        // seen known peer) instead of listing stale peers as connected.
+        match last_connected_info(state) {
+            Some((peer_id, ts)) => {
+                let display = crate::get_peer_display_name(&peer_id)
+                    .unwrap_or_else(|_| crate::fmt::short_peer_id(&peer_id));
+                lines.push(format!("  Last connected {ts} to peer {display}"));
+            }
+            None => lines.push("  —".to_string()),
+        }
     } else {
-        for p in connected_peers {
-            let display = crate::peer_display_name(
-                &p.peer_id,
-                &state.local_nicknames,
-                &state.received_nicknames,
-            );
-            lines.push(format!("  {display}  (last seen: {})", p.last_seen));
+        for peer_id in &state.connected_peer_ids {
+            let display = crate::get_peer_display_name(peer_id)
+                .unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id));
+            lines.push(format!("  {display}"));
         }
     }
-    lines.push(format!("Last connection lost: {last_lost}"));
     lines.push("Listen addresses:".to_string());
     if state.listen_addrs.is_empty() {
         lines.push("  —".to_string());
@@ -153,6 +149,20 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         .block(Block::default().title("Settings").borders(Borders::ALL))
         .wrap(Wrap { trim: false });
     f.render_widget(para, area);
+}
+
+/// The most recent connection we had to report on the Settings tab: this
+/// session's last disconnect if any, otherwise the known peer with the newest
+/// `last_seen`. Returns `(peer_id, formatted_timestamp)`.
+fn last_connected_info(state: &TuiRenderState) -> Option<(String, String)> {
+    if let (Some(peer_id), Some(at)) = (&state.last_connection_peer, state.last_connection_lost) {
+        return Some((peer_id.clone(), format_lost_at(Some(at))));
+    }
+    state
+        .peers
+        .iter()
+        .max_by(|a, b| a.last_seen.cmp(&b.last_seen))
+        .map(|p| (p.peer_id.clone(), p.last_seen.clone()))
 }
 
 /// Render the Peer Info tab (mirrors the Flutter `PeerInfoScreen`).

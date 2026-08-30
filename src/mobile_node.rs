@@ -13,7 +13,6 @@ use crate::{
 };
 use chrono::TimeZone;
 use libp2p::gossipsub;
-use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
@@ -22,9 +21,12 @@ use tokio::sync::mpsc::error::TryRecvError;
 static NODE: OnceLock<Mutex<MobileNode>> = OnceLock::new();
 
 /// Live set of peers currently connected to this node. Used to attribute
-/// broadcasts we send to the peers that were online to receive them.
-static CONNECTED_PEERS: LazyLock<Mutex<HashSet<String>>> =
-    LazyLock::new(|| Mutex::new(HashSet::new()));
+/// broadcasts we send to the peers that were online to receive them, and to
+/// remember the most recent disconnection. Shared with the TUI via
+/// [`crate::connected::ConnectedTracker`] so both frontends agree on what
+/// counts as "currently connected".
+static CONNECTED_PEERS: LazyLock<Mutex<crate::connected::ConnectedTracker>> =
+    LazyLock::new(|| Mutex::new(crate::connected::ConnectedTracker::new()));
 
 struct MobileNode {
     event_rx: Option<mpsc::Receiver<SwarmEvent>>,
@@ -182,7 +184,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
         SwarmEvent::PeerConnected(peer_id) => {
             // Track connected peers for broadcast attribution.
             if let Ok(mut set) = CONNECTED_PEERS.lock() {
-                set.insert(peer_id.clone());
+                set.on_peer_connected(peer_id.clone());
             }
             // Save peer to DB (like TUI does)
             if let Err(e) = save_peer(peer_id, &[]) {
@@ -203,7 +205,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             if let Ok(mut set) = CONNECTED_PEERS.lock() {
-                set.remove(peer_id);
+                set.on_peer_disconnected(peer_id, crate::current_timestamp());
             }
         }
         SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
@@ -443,7 +445,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
     // Attribute this broadcast to every peer that was online to receive it.
     let connected: Vec<String> = CONNECTED_PEERS
         .lock()
-        .map(|set| set.iter().cloned().collect())
+        .map(|t| t.connected_peer_ids().map(str::to_owned).collect())
         .unwrap_or_default();
     if !connected.is_empty() {
         let _ = crate::peers::record_broadcasts_sent(&connected);

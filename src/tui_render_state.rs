@@ -88,6 +88,8 @@ pub struct TuiRenderState {
     pub listen_addrs: Vec<String>,
     /// Epoch seconds of last peer disconnect, if any (for Settings tab)
     pub last_connection_lost: Option<f64>,
+    /// Peer ID we last disconnected from, if any (for Settings tab)
+    pub last_connection_peer: Option<String>,
     /// Whether the node is running (always true in the TUI)
     pub node_running: bool,
 }
@@ -139,6 +141,7 @@ impl TuiRenderState {
             network_size: String::new(),
             listen_addrs: Vec::new(),
             last_connection_lost: None,
+            last_connection_peer: None,
             node_running: true,
             local_nicknames: HashMap::new(),
             received_nicknames: HashMap::new(),
@@ -214,6 +217,7 @@ impl TuiRenderState {
             network_size: String::new(),
             listen_addrs: Vec::new(),
             last_connection_lost: None,
+            last_connection_peer: None,
             node_running: true,
             local_nicknames: HashMap::new(),
             received_nicknames: HashMap::new(),

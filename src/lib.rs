@@ -50,6 +50,7 @@
 #[cfg(feature = "mobile")]
 pub mod api;
 pub mod behavior;
+pub mod connected;
 pub mod db;
 #[cfg(feature = "dioxus")]
 pub mod dioxus_app;

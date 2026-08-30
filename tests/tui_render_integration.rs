@@ -9,7 +9,7 @@ mod render_tests {
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_input_section,
             render_log_content, render_peer_info, render_peers_content, render_popup,
-            render_shortcuts, render_status_bar, render_tabs,
+            render_settings_content, render_shortcuts, render_status_bar, render_tabs,
         },
     };
     use ratatui::layout::Rect;
@@ -149,6 +149,79 @@ mod render_tests {
         // Test Log tab
         state.active_tab = 2;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
+    }
+
+    #[test]
+    fn test_render_settings_content_no_connections_shows_last_connected() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        // No peer currently connected: only the last-seen peer is remembered.
+        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+        assert!(
+            text.contains("Last connected 2026-08-28 15:26:41 to peer"),
+            "got: {text:?}"
+        );
+        assert!(!text.contains("last seen:"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_settings_content_connected_peers_shown() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        state.connected_peer_ids.insert("12D3KooWH123456".to_string());
+        state.peer_count = 1;
+        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(text.contains("Connected peers: 1"), "got: {text:?}");
+        assert!(!text.contains("Last connected"), "got: {text:?}");
+        assert!(!text.contains("last seen:"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_settings_content_known_but_not_connected_is_not_listed() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        // A known peer that is NOT in connected_peer_ids must not appear as a
+        // currently connected peer.
+        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+        assert!(!text.contains("Connected peers: 1"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_settings_content_single_fallback_uses_recent_peer() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        // Try a state actually produced by the render-loop mapping: the
+        // tracker's last disconnection feeds these two fields.
+        state.last_connection_peer = Some("12D3KooWH789012".to_string());
+        state.last_connection_lost = Some(1_756_481_201.0);
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+        assert!(text.contains("Last connected"), "got: {text:?}");
     }
 
     #[test]

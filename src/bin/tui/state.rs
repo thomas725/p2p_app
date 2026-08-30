@@ -49,8 +49,9 @@ pub struct AppState {
     // Peer Management
     pub peers: VecDeque<p2p_app::PeerRecord>,
     pub concurrent_peers: usize,
-    // Peer IDs currently connected (for showing "connected peers" in Settings).
-    pub connected_peer_ids: std::collections::HashSet<String>,
+    // Currently connected peers (shared connected-tracking logic with the
+    // Flutter backend). Mirror of Flutter's "Connected peers" on Settings.
+    pub connected: p2p_app::connected::ConnectedTracker,
     pub local_nicknames: HashMap<String, String>,
     pub received_nicknames: HashMap<String, String>,
     // Per-peer self nickname override: peer_id -> nickname we present to that peer.
@@ -102,7 +103,6 @@ pub struct AppState {
     pub platform: String,
     pub network_size: String,
     pub listen_addrs: Vec<String>,
-    pub last_connection_lost: Option<f64>,
 }
 
 impl AppState {
@@ -146,7 +146,7 @@ impl AppState {
             peer_sort_column: 3,
             peer_sort_ascending: false,
             concurrent_peers: 0,
-            connected_peer_ids: std::collections::HashSet::new(),
+            connected: p2p_app::connected::ConnectedTracker::new(),
             mouse_capture: true,
             last_mouse_row: 0,
             chat_scroll_offset: 0,
@@ -173,7 +173,6 @@ impl AppState {
             platform: String::new(),
             network_size: String::new(),
             listen_addrs: Vec::new(),
-            last_connection_lost: None,
         }
     }
 }

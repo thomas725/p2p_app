@@ -133,6 +133,27 @@ fn apply_peer_connected_count(state: &mut AppState) -> usize {
     state.concurrent_peers
 }
 
+/// State mutation on a peer connection: persist the peer with a fresh last-seen,
+/// add-or-refresh the in-memory list record, and mark it as currently connected.
+///
+/// The last-seen refresh matches Flutter, which reloads peers whenever a peer
+/// connects, so a stale DB timestamp is never shown as "last seen" after a
+/// reconnect to a peer that is already in the in-memory list.
+fn apply_peer_connected_state(state: &mut AppState, peer_id: &str) {
+    let now = chrono::Utc::now().naive_utc();
+    if let Ok(peer) = p2p_app::save_peer(peer_id, &[]) {
+        if state.peers.iter().any(|p| p.peer_id == peer_id) {
+            upsert_peer_last_seen(state, peer_id, now);
+        } else {
+            let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
+            let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
+            add_peer_to_state_list(state, peer_id, &first_seen, &last_seen);
+        }
+        resort_peers_active(state);
+    }
+    state.connected.on_peer_connected(peer_id.to_string());
+}
+
 /// State mutation: add peer to peer list and re-sort
 fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str, last_seen: &str) {
     state.peers.push_back(PeerRecord {
@@ -257,14 +278,7 @@ async fn process_swarm_event(
                 let mut s = state.lock().await;
                 let count = apply_peer_connected_count(&mut s);
                 p2plog_debug(format!("Peer connected: {peer_id} (total: {count})"));
-                if !s.peers.iter().any(|p| p.peer_id == peer_id)
-                    && let Ok(peer) = p2p_app::save_peer(&peer_id, &[])
-                {
-                    let first_seen = p2p_app::format_peer_datetime(peer.first_seen);
-                    let last_seen = p2p_app::format_peer_datetime(peer.last_seen);
-                    add_peer_to_state_list(&mut s, &peer_id, &first_seen, &last_seen);
-                }
-                s.connected_peer_ids.insert(peer_id.clone());
+                apply_peer_connected_state(&mut s, &peer_id);
                 let own_nick = s.own_nickname.clone();
                 drop(s);
                 (own_nick, count)
@@ -284,8 +298,8 @@ async fn process_swarm_event(
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.lock().await;
             let count = apply_peer_disconnected_count(&mut s);
-            s.connected_peer_ids.remove(&peer_id);
-            s.last_connection_lost = Some(p2p_app::current_timestamp());
+            s.connected
+                .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
             p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
             drop(s);
         }
