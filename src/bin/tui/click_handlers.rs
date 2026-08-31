@@ -23,8 +23,11 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
                     _ => None,
                 };
                 if let Some(closed_idx) = closed_idx {
-                    state.active_tab =
-                        if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
+                    state.active_tab = if closed_idx > 0 {
+                        closed_idx.saturating_sub(1)
+                    } else {
+                        0
+                    };
                     p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
                 }
                 return true;
@@ -113,7 +116,9 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     // scrolling viewport: data rows start at global row 3 (tab + block
     // border + table header) and are offset by the first visible row.
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
-    let selected = state.peer_selection.min(state.peers.len().saturating_sub(1));
+    let selected = state
+        .peer_selection
+        .min(state.peers.len().saturating_sub(1));
     let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         Some(selected),
@@ -138,7 +143,11 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
 
 /// Handles message row clicks in the Chat / DM tabs, opening the
 /// sender's Peer Info tab. (Log lines have no sender, so they are a no-op.)
-fn handle_message_click(state: &mut AppState, mouse_row: u16, tab_content: &p2p_app::tui_tabs::TabContent) -> bool {
+fn handle_message_click(
+    state: &mut AppState,
+    mouse_row: u16,
+    tab_content: &p2p_app::tui_tabs::TabContent,
+) -> bool {
     match tab_content {
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
             let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
@@ -282,14 +291,7 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
         state.peer_sort_column = col;
         state.peer_sort_ascending = false;
     }
-    state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
-        &mut state.peers,
-        &state.dm_messages,
-        &sender_ids,
-        state.peer_sort_column,
-        state.peer_sort_ascending,
-        state.peer_selection,
-    );
+    state.resort_peers();
     p2plog_debug(format!(
         "Sorted peers by column {col} ascending={}",
         state.peer_sort_ascending

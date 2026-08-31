@@ -71,7 +71,11 @@ mod render_tests {
             .draw(|f| render_peers_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         assert!(text.contains("Connected Peers (6)"), "got: {text:?}");
     }
 
@@ -95,7 +99,11 @@ mod render_tests {
             .draw(|f| render_peers_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         // The selection (peer 29) sits on the last visible data row...
         assert!(text.contains("15:26:29"), "got: {text:?}");
         // ...so the first rows scrolled out of the viewport.
@@ -200,13 +208,21 @@ mod render_tests {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::new();
         // No peer currently connected: only the last-seen peer is remembered.
-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+        state.add_peer(
+            "12D3KooWH123456",
+            "2026-08-01 10:00:00",
+            "2026-08-28 15:26:41",
+        );
 
         terminal
             .draw(|f| render_settings_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
         assert!(
             text.contains("Last connected 2026-08-28 15:26:41 to peer"),
@@ -219,15 +235,25 @@ mod render_tests {
     fn test_render_settings_content_connected_peers_shown() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::new();
-        state.connected_peer_ids.insert("12D3KooWH123456".to_string());
+        state
+            .connected_peer_ids
+            .insert("12D3KooWH123456".to_string());
         state.peer_count = 1;
-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+        state.add_peer(
+            "12D3KooWH123456",
+            "2026-08-01 10:00:00",
+            "2026-08-28 15:26:41",
+        );
 
         terminal
             .draw(|f| render_settings_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         assert!(text.contains("Connected peers: 1"), "got: {text:?}");
         assert!(!text.contains("Last connected"), "got: {text:?}");
         assert!(!text.contains("last seen:"), "got: {text:?}");
@@ -239,13 +265,21 @@ mod render_tests {
         let mut state = TuiRenderState::new();
         // A known peer that is NOT in connected_peer_ids must not appear as a
         // currently connected peer.
-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
+        state.add_peer(
+            "12D3KooWH123456",
+            "2026-08-01 10:00:00",
+            "2026-08-28 15:26:41",
+        );
 
         terminal
             .draw(|f| render_settings_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
         assert!(!text.contains("Connected peers: 1"), "got: {text:?}");
     }
@@ -263,7 +297,11 @@ mod render_tests {
             .draw(|f| render_settings_content(f, f.area(), &state))
             .unwrap();
         let buf = terminal.backend().buffer();
-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
         assert!(text.contains("Last connected"), "got: {text:?}");
     }

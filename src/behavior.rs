@@ -184,23 +184,18 @@ pub fn build_swarm(
         )?;
 
     #[cfg(feature = "quic")]
-    let swarm = base
-        .with_quic()
-        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
-            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
-                Box::new(std::io::Error::other(e))
-            })
-        })?
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
-        .build();
+    let base = base.with_quic();
 
-    #[cfg(not(feature = "quic"))]
     let swarm = base
-        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
-            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
-                Box::new(std::io::Error::other(e))
-            })
-        })?
+        .with_behaviour(
+            |key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+                build_behaviour(key, network_size).map_err(
+                    |e| -> Box<dyn std::error::Error + Send + Sync> {
+                        Box::new(std::io::Error::other(e))
+                    },
+                )
+            },
+        )?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
         .build();
 

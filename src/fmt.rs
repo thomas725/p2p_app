@@ -79,19 +79,6 @@ pub fn peer_id_suffix(id: &str) -> String {
         .collect()
 }
 
-/// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
-///
-/// Used by Dart/Flutter UI to display message timestamps.
-#[must_use]
-pub fn format_time_hhmm(dt: &str) -> String {
-    if dt.len() >= 16 {
-        dt.get(11..16)
-            .map_or_else(|| dt.to_string(), std::string::ToString::to_string)
-    } else {
-        dt.to_string()
-    }
-}
-
 /// Get display name for a peer - uses local nickname if set, else received nickname, else short ID
 #[must_use]
 #[allow(clippy::implicit_hasher)]

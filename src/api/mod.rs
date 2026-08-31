@@ -2,9 +2,9 @@
 //!
 //! This module defines the functions and types exposed to Dart via FRB.
 
+use crate::messages::PeerMessageStats;
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
-use crate::messages::PeerMessageStats;
 use crate::network::NetworkSize;
 
 /// Initialize the mobile database at the given path and return peer info.

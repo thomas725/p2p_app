@@ -53,7 +53,9 @@ fn test_app_state_to_render_state_connected_peer_ids() {
         first_seen: "x".to_string(),
         last_seen: "y".to_string(),
     });
-    state.connected.on_peer_connected("connected-peer".to_string());
+    state
+        .connected
+        .on_peer_connected("connected-peer".to_string());
 
     let rs = app_state_to_render_state(&state);
     assert!(rs.connected_peer_ids.contains("connected-peer"));

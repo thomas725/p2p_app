@@ -1,4 +1,13 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 #[cfg(feature = "tui")]
 mod tests {
@@ -173,18 +182,6 @@ mod tests {
     fn test_dm_tab_new() {
         let dm = DmTab::new("peer123".to_string());
         assert_eq!(dm.peer_id, "peer123");
-        assert!(dm.messages.is_empty());
-    }
-
-    #[test]
-    fn test_dm_tab_with_messages() {
-        let messages = std::collections::VecDeque::from(vec![
-            String::from("[You] Hello"),
-            String::from("[Peer] Hi there"),
-        ]);
-        let dm = DmTab::with_messages("peer456".to_string(), messages);
-        assert_eq!(dm.peer_id, "peer456");
-        assert_eq!(dm.messages.len(), 2);
     }
 
     #[test]
@@ -201,21 +198,6 @@ mod tests {
         let dm3 = DmTab::new("peer456".to_string());
         assert_eq!(dm1, dm2);
         assert_ne!(dm1, dm3);
-    }
-
-    #[test]
-    fn test_dm_tab_message_persistence() {
-        let messages = vec![
-            "alice [10:00:00] Hello".to_string(),
-            "bob [10:01:00] Hi there".to_string(),
-        ]
-        .into_iter()
-        .collect();
-        let dm = DmTab::with_messages("alice".to_string(), messages);
-
-        assert_eq!(dm.messages.len(), 2);
-        assert_eq!(dm.peer_id, "alice");
-        assert!(dm.messages.front().unwrap().contains("Hello"));
     }
 
     #[test]
@@ -366,18 +348,6 @@ mod tests {
 
         assert!(tabs.get_dm_tab("peer1").is_some());
         assert!(tabs.get_dm_tab("peer2").is_none());
-    }
-
-    #[test]
-    fn test_dynamic_tabs_get_dm_tab_mut() {
-        let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
-        tabs.add_dm_tab("peer1".to_string());
-
-        if let Some(tab) = tabs.get_dm_tab_mut("peer1") {
-            tab.messages.push_back("test".to_string());
-        }
-
-        assert_eq!(tabs.get_dm_tab("peer1").unwrap().messages.len(), 1);
     }
 
     #[test]

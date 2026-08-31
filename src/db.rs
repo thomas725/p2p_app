@@ -322,9 +322,10 @@ fn is_pid_alive(pid: u32) -> bool {
 fn unique_db_variant(url: &str) -> String {
     let path = std::path::Path::new(url);
     let parent = path.parent().map(|p| p.to_string_lossy().into_owned());
-    let stem = path
-        .file_stem()
-        .map_or_else(|| "sqlite".to_string(), |s| s.to_string_lossy().into_owned());
+    let stem = path.file_stem().map_or_else(
+        || "sqlite".to_string(),
+        |s| s.to_string_lossy().into_owned(),
+    );
     let ext = path
         .extension()
         .map_or_else(String::new, |e| format!(".{}", e.to_string_lossy()));
@@ -497,10 +498,14 @@ pub fn release_db_lock() {
 /// Load or generate the libp2p identity keypair.
 ///
 /// Checks the database for an existing identity. If found, deserializes and returns it.
-/// If no valid identity exists, generates a new Ed25519 keypair, stores it, and returns it.
+/// If no valid identity exists, generates a new Ed25519 keypair, persists it, and returns it.
+///
+/// A freshly generated keypair is only returned after it is durably stored, so the
+/// derived peer ID is stable across restarts even if the DB write is slow or fails.
 ///
 /// # Errors
-/// Returns an error if the database connection fails.
+/// Returns an error if the database connection fails or the identity cannot be
+/// generated and persisted.
 pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     let conn = &mut sqlite_connect()?;
     if let Ok(rows) = identities.select(Identity::as_select()).load(conn) {
@@ -519,34 +524,22 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
     #[cfg(feature = "tracing")]
     tracing::warn!("no valid identity found in database, generating and storing new one");
     let keypair = libp2p_identity::Keypair::generate_ed25519();
-    match keypair.to_protobuf_encoding() {
-        Ok(key) => {
-            let i = crate::generated::models_insertable::NewIdentity {
-                key,
-                last_tcp_port: None,
-                last_quic_port: None,
-                self_nickname: None,
-            };
-            match diesel::insert_into(crate::generated::schema::identities::table)
-                .values(&i)
-                .returning(Identity::as_returning())
-                .get_result(conn)
-            {
-                Ok(i) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!("inserted new identity: {i:?}");
-                }
-                Err(e) => {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!("failed to insert identity {i:?}: {e}");
-                }
-            }
-        }
-        Err(e) => {
-            #[cfg(feature = "tracing")]
-            tracing::error!("failed to encode identity: {e}");
-        }
-    }
+    let key = keypair
+        .to_protobuf_encoding()
+        .map_err(|e| color_eyre::eyre::eyre!("failed to encode new identity: {e}"))?;
+    let new_identity = crate::generated::models_insertable::NewIdentity {
+        key,
+        last_tcp_port: None,
+        last_quic_port: None,
+        self_nickname: None,
+    };
+    let identity = diesel::insert_into(crate::generated::schema::identities::table)
+        .values(&new_identity)
+        .returning(Identity::as_returning())
+        .get_result(conn)
+        .map_err(|e| color_eyre::eyre::eyre!("failed to persist new identity: {e}"))?;
+    #[cfg(feature = "tracing")]
+    tracing::info!("inserted new identity: {identity:?}");
     Ok(keypair)
 }
 

@@ -1,4 +1,13 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 use libp2p::{
     Multiaddr,

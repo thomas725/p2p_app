@@ -4,15 +4,6 @@ use super::*;
 fn test_dm_tab_new() {
     let dm = DmTab::new("12D3KooWABCDEFGH".to_string());
     assert_eq!(dm.peer_id, "12D3KooWABCDEFGH");
-    assert!(dm.messages.is_empty());
-}
-
-#[test]
-fn test_dm_tab_with_messages() {
-    let msgs = VecDeque::from(vec!["msg1".to_string(), "msg2".to_string()]);
-    let dm = DmTab::with_messages("peer1".to_string(), msgs);
-    assert_eq!(dm.peer_id, "peer1");
-    assert_eq!(dm.messages.len(), 2);
 }
 
 #[test]
@@ -93,17 +84,6 @@ fn test_tab_content_is_input_enabled() {
 }
 
 #[test]
-fn test_dynamic_tabs_get_dm_tab_mut() {
-    let mut tabs = DynamicTabs::new();
-    tabs.add_dm_tab("peer1".to_string());
-    let dm = tabs.get_dm_tab_mut("peer1");
-    assert!(dm.is_some());
-    dm.unwrap().messages.push_back("Hello".to_string());
-    let dm2 = tabs.get_dm_tab("peer1");
-    assert_eq!(dm2.unwrap().messages.len(), 1);
-}
-
-#[test]
 fn test_dynamic_tabs_total_tab_count() {
     let mut tabs = DynamicTabs::new();
     assert_eq!(tabs.total_tab_count(), 4);
@@ -134,12 +114,6 @@ fn test_remove_dm_tab_nonexistent() {
 fn test_get_dm_tab_nonexistent() {
     let tabs = DynamicTabs::new();
     assert_eq!(tabs.get_dm_tab("nobody"), None);
-}
-
-#[test]
-fn test_get_dm_tab_mut_nonexistent() {
-    let mut tabs = DynamicTabs::new();
-    assert_eq!(tabs.get_dm_tab_mut("nobody"), None);
 }
 
 #[test]

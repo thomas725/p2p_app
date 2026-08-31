@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 #[test]
 fn peer_table_sorts_by_active_column_like_flutter() {
-    use crate::tui_helpers::{sort_peers_table, PeerMessageMap};
+    use crate::tui_helpers::{PeerMessageMap, sort_peers_table};
     use std::collections::HashMap;
 
     let peers = VecDeque::from([
@@ -25,26 +25,41 @@ fn peer_table_sorts_by_active_column_like_flutter() {
         },
     ]);
     let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
-    dm.insert("a".to_string(), VecDeque::from(["x".to_string(), "y".to_string()])); // 2 dms
+    dm.insert(
+        "a".to_string(),
+        VecDeque::from(["x".to_string(), "y".to_string()]),
+    ); // 2 dms
     dm.insert("b".to_string(), VecDeque::from(["z".to_string()])); // 1 dm
-    let msgs: VecDeque<Option<String>> =
-        VecDeque::from([Some("a".to_string()), Some("a".to_string()), Some("c".to_string())]);
+    let msgs: VecDeque<Option<String>> = VecDeque::from([
+        Some("a".to_string()),
+        Some("a".to_string()),
+        Some("c".to_string()),
+    ]);
 
     // Default Flutter sort: Last Seen, descending -> c(02), a(03)? a=03 is latest.
     // last_seen desc: a(03) > c(02) > b(01)
     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 3, false);
-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
+    assert_eq!(
+        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        vec!["a", "c", "b"]
+    );
 
     // DM count ascending: b(1) < a(2) < c(0)
     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 1, true);
-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["c", "b", "a"]);
+    assert_eq!(
+        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        vec!["c", "b", "a"]
+    );
     assert_eq!(rows[0].dm_count, 0);
     assert_eq!(rows[1].dm_count, 1);
     assert_eq!(rows[2].dm_count, 2);
 
     // Broadcast count: a=2, c=1, b=0
     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 2, false);
-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
+    assert_eq!(
+        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        vec!["a", "c", "b"]
+    );
 
     assert_eq!(dm.dm_count_for("a"), 2);
 }
@@ -106,7 +121,9 @@ fn sort_peers_by_column_keeps_every_peer_when_deque_wraps() {
     let ids: Vec<String> = peers.iter().map(|p| p.peer_id.clone()).collect();
     assert_eq!(
         ids,
-        vec!["peer-8", "peer-7", "peer-6", "peer-5", "peer-4", "peer-3", "peer-2", "peer-1"]
+        vec![
+            "peer-8", "peer-7", "peer-6", "peer-5", "peer-4", "peer-3", "peer-2", "peer-1"
+        ]
     );
     assert_eq!(selected, 7);
 }
@@ -233,11 +250,14 @@ fn peer_table_headers_mark_active_column() {
 
 #[test]
 fn peer_table_column_widths_fit_longest_content() {
-    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
+    use crate::tui_helpers::{PeerTableRow, peer_table_column_widths};
 
     // No peers: columns are only as wide as their headers.
     let empty: Vec<PeerTableRow> = Vec::new();
-    assert_eq!(peer_table_column_widths(&empty, 3, false), vec![4, 2, 9, 11]); // "Last Seen ▼"
+    assert_eq!(
+        peer_table_column_widths(&empty, 3, false),
+        vec![4, 2, 9, 11]
+    ); // "Last Seen ▼"
     // The sort indicator stays inside the column it marks.
     assert_eq!(peer_table_column_widths(&empty, 0, false), vec![6, 2, 9, 9]); // "Name ▼"
 
@@ -246,15 +266,22 @@ fn peer_table_column_widths_fit_longest_content() {
         PeerTableRow::new("p1", "Bob", 12, 3, "2024-01-01 00:00:03"),
         PeerTableRow::new("p2", "Avery-TestName", 9999, 1000, "2024-01-01 00:00:02"),
     ];
-    assert_eq!(peer_table_column_widths(&rows, 3, false), vec![14, 4, 9, 19]);
+    assert_eq!(
+        peer_table_column_widths(&rows, 3, false),
+        vec![14, 4, 9, 19]
+    );
     // The table spans only its content: every column is far narrower than a
     // typical terminal width.
-    assert!(peer_table_column_widths(&rows, 3, false).iter().all(|w| *w < 100));
+    assert!(
+        peer_table_column_widths(&rows, 3, false)
+            .iter()
+            .all(|w| *w < 100)
+    );
 }
 
 #[test]
 fn peer_table_column_widths_count_wide_chars() {
-    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
+    use crate::tui_helpers::{PeerTableRow, peer_table_column_widths};
     let rows = vec![PeerTableRow::new("j", "飛鳥龍", 0, 0, "t")];
     let widths = peer_table_column_widths(&rows, 0, false);
     // 飛鳥龍 is 3 chars but 6 terminal columns wide (1 wide char + 2 wide chars).
@@ -321,9 +348,15 @@ fn peer_table_rows_range_builds_only_visible_slice() {
     .collect::<Vec<_>>();
     let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
     dm.insert("b".to_string(), VecDeque::from(["x".to_string()])); // 1 dm
-    dm.insert("c".to_string(), VecDeque::from(["y".to_string(), "z".to_string()])); // 2 dms
-    let msgs: VecDeque<Option<String>> =
-        VecDeque::from([Some("b".to_string()), Some("b".to_string()), Some("d".to_string())]);
+    dm.insert(
+        "c".to_string(),
+        VecDeque::from(["y".to_string(), "z".to_string()]),
+    ); // 2 dms
+    let msgs: VecDeque<Option<String>> = VecDeque::from([
+        Some("b".to_string()),
+        Some("b".to_string()),
+        Some("d".to_string()),
+    ]);
 
     // Only rows inside `[1, 3)` are materialized (b and c).
     let rows = peer_table_rows_range(&peers, &dm, &msgs, 1, 3);
@@ -403,5 +436,8 @@ fn peer_table_rows_range_matches_full_scan() {
     let windowed = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
     let ids: Vec<&str> = windowed.iter().map(|r| r.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["a", "b", "c"]);
-    assert_eq!(full.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), ids);
+    assert_eq!(
+        full.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        ids
+    );
 }

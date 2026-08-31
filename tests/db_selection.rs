@@ -1,6 +1,15 @@
 //! Tests for database selection logic
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 use serial_test::serial;
 use std::fs;

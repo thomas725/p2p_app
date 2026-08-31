@@ -1,5 +1,18 @@
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
-#![allow(clippy::used_underscore_binding, clippy::cast_possible_truncation, clippy::as_conversions)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
+#![allow(
+    clippy::used_underscore_binding,
+    clippy::cast_possible_truncation,
+    clippy::as_conversions
+)]
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
 use std::collections::HashMap;
@@ -115,7 +128,7 @@ fn test_peer_row_click_out_of_bounds() {
 fn test_peer_row_click_respects_scrolled_viewport() {
     let mut state = app_state_with_peers(30);
     state.chat_area_height = 18; // page size = 16 visible data rows
-    state.peer_selection = 25;   // near the bottom: viewport starts at row 10
+    state.peer_selection = 25; // near the bottom: viewport starts at row 10
     handle_peer_row_click(&mut state, 4); // first visible row = absolute peer 11
     assert_eq!(state.peer_selection, 11);
     // After the click the selection (11) is inside the first page, so the
@@ -177,11 +190,8 @@ fn test_peer_header_click_maps_each_column() {
     for i in 0..4 {
         let sender_ids = std::collections::VecDeque::new();
         let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
-        let rows = p2p_app::tui_helpers::peer_table_rows_ordered(
-            &peers,
-            &state.dm_messages,
-            &sender_ids,
-        );
+        let rows =
+            p2p_app::tui_helpers::peer_table_rows_ordered(&peers, &state.dm_messages, &sender_ids);
         let widths = p2p_app::tui_helpers::peer_table_column_widths(
             &rows,
             state.peer_sort_column,

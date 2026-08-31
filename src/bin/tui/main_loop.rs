@@ -140,12 +140,19 @@ pub async fn run_new_tui(
     // reports not supported (and collapses Ctrl+I to 0x09). The flag selects
     // which PeerInfo shortcut is active on a Direct tab: Ctrl+I (kitty) vs
     // Ctrl+? (non-kitty) in `process_key_event`.
-    let keyboard_enhanced =
-        crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
+    let keyboard_enhanced = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
     p2plog_debug(format!(
         "Keyboard enhancement (kitty) protocol: {} — Ctrl+I {} be distinct from Tab",
-        if keyboard_enhanced { "supported" } else { "NOT supported" },
-        if keyboard_enhanced { "will" } else { "will NOT" }
+        if keyboard_enhanced {
+            "supported"
+        } else {
+            "NOT supported"
+        },
+        if keyboard_enhanced {
+            "will"
+        } else {
+            "will NOT"
+        }
     ));
 
     let backend = CrosstermBackend::new(stdout);
@@ -161,8 +168,8 @@ pub async fn run_new_tui(
     p2plog_debug(format!("Loading data for topic: {topic_str}"));
 
     // Load nickname maps from database (used for rendering historical messages and peer display).
-    let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
-        p2p_app::load_peers().map_or_else(
+    let (local_nicknames, received_nicknames, self_nicknames_for_peers) = p2p_app::load_peers()
+        .map_or_else(
             |_| (HashMap::new(), HashMap::new(), HashMap::new()),
             |db_peers| extract_nickname_maps(&db_peers),
         );
@@ -204,19 +211,18 @@ pub async fn run_new_tui(
     initial_peers = peers_vec.into();
 
     // Load receipts from database
-    let (loaded_broadcast_receipts, loaded_dm_receipts) =
-        p2p_app::load_receipts().map_or_else(
-            |_| (HashMap::new(), HashMap::new()),
-            |receipts| {
-                let (br, dr) = organize_receipts(&receipts);
-                p2plog_debug(format!(
-                    "Loaded {} broadcast receipts and {} DM receipts from database",
-                    br.len(),
-                    dr.len()
-                ));
-                (br, dr)
-            },
-        );
+    let (loaded_broadcast_receipts, loaded_dm_receipts) = p2p_app::load_receipts().map_or_else(
+        |_| (HashMap::new(), HashMap::new()),
+        |receipts| {
+            let (br, dr) = organize_receipts(&receipts);
+            p2plog_debug(format!(
+                "Loaded {} broadcast receipts and {} DM receipts from database",
+                br.len(),
+                dr.len()
+            ));
+            (br, dr)
+        },
+    );
 
     let local_peer_id =
         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
@@ -238,8 +244,8 @@ pub async fn run_new_tui(
     app_state.kitty_keyboard_active = keyboard_enhanced;
     app_state.db_url = db_info;
     app_state.platform = format!("Desktop ({})", std::env::consts::OS);
-    app_state.network_size = p2p_app::get_network_size()
-        .map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
+    app_state.network_size =
+        p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
 
     let state = Arc::new(Mutex::new(app_state));
 

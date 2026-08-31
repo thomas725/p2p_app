@@ -108,17 +108,24 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         }
         SwarmEvent::PeerConnected(peer_id) => {
             let mut s = state.write();
+            s.connected = true;
             s.concurrent_peers = s.concurrent_peers.saturating_add(1);
-            if !s.peers.iter().any(|p| p.peer_id == peer_id)
-                && let Ok(peer) = crate::save_peer(&peer_id, &[])
-            {
-                let fs = crate::format_peer_datetime(peer.first_seen);
-                let ls = crate::format_peer_datetime(peer.last_seen);
-                s.peers.push_back(PeerRecord {
-                    peer_id: peer_id.clone(),
-                    first_seen: fs,
-                    last_seen: ls,
-                });
+            // Persist the peer with a fresh last-seen and add-or-refresh the
+            // in-memory record, so a reconnect never shows a stale timestamp
+            // (mirrors Flutter's `_refreshPeers` and the TUI's
+            // `apply_peer_connected_state`).
+            if let Ok(peer) = crate::save_peer(&peer_id, &[]) {
+                if let Some(p) = s.peers.iter_mut().find(|p| p.peer_id == peer_id) {
+                    p.last_seen = crate::format_peer_datetime(peer.last_seen);
+                } else {
+                    let fs = crate::format_peer_datetime(peer.first_seen);
+                    let ls = crate::format_peer_datetime(peer.last_seen);
+                    s.peers.push_back(PeerRecord {
+                        peer_id: peer_id.clone(),
+                        first_seen: fs,
+                        last_seen: ls,
+                    });
+                }
             }
             let nickname = s.own_nickname.clone();
             let msg_id = crate::gen_msg_id();
@@ -132,8 +139,8 @@ pub(crate) fn process_swarm_event(state: &mut Signal<AppState>, event: SwarmEven
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             let mut s = state.write();
-            s.connected = false;
             s.concurrent_peers = s.concurrent_peers.saturating_sub(1);
+            s.connected = s.concurrent_peers > 0;
             s.push_log(format!("Peer disconnected: {peer_id}"));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {

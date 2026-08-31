@@ -1,6 +1,15 @@
 //! Tests for public API modules
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 #[test]
 fn test_tui_test_state_new() {
@@ -33,7 +42,6 @@ fn test_tui_test_state_with_width() {
 fn test_dm_tab_new() {
     let dm = p2p_app::tui_tabs::DmTab::new("peer1".to_string());
     assert_eq!(dm.peer_id, "peer1");
-    assert!(dm.messages.is_empty());
 }
 
 #[test]
@@ -101,19 +109,10 @@ fn test_dm_tab_short_id_long_peer() {
 }
 
 #[test]
-fn test_dm_tab_short_id_short_peer() {
+fn test_dm_tab_short_id() {
     use p2p_app::tui_tabs::DmTab;
     let tab = DmTab::new("tiny".to_string());
     assert_eq!(tab.short_id(), "tiny");
-}
-
-#[test]
-fn test_dm_tab_with_messages() {
-    use p2p_app::tui_tabs::DmTab;
-    use std::collections::VecDeque;
-    let msgs = VecDeque::from(["hello".to_string(), "world".to_string()]);
-    let tab = DmTab::with_messages("peer-x".to_string(), msgs.clone());
-    assert_eq!(tab.messages, msgs);
 }
 
 // ── DynamicTabs ──────────────────────────────────────────────────────────────
@@ -134,23 +133,6 @@ fn test_dynamic_tabs_add_existing_dm_returns_existing_index() {
     let idx = tabs.add_dm_tab("peer-1".to_string()); // same peer
     assert_eq!(idx, 2);
     assert_eq!(tabs.dm_tab_count(), 1); // no duplicate
-}
-
-#[test]
-fn test_dynamic_tabs_get_dm_tab_mut() {
-    use p2p_app::tui_tabs::DynamicTabs;
-    let mut tabs = DynamicTabs::new();
-    tabs.add_dm_tab("peer-m".to_string());
-    let tab = tabs.get_dm_tab_mut("peer-m").unwrap();
-    tab.messages.push_back("hi".to_string());
-    assert_eq!(tabs.get_dm_tab("peer-m").unwrap().messages[0], "hi");
-}
-
-#[test]
-fn test_dynamic_tabs_get_dm_tab_mut_unknown() {
-    use p2p_app::tui_tabs::DynamicTabs;
-    let mut tabs = DynamicTabs::new();
-    assert!(tabs.get_dm_tab_mut("nobody").is_none());
 }
 
 #[test]

@@ -6,11 +6,11 @@ use crate::{
     generated::schema::peers::dsl::peers,
     logging::p2plog_debug,
 };
+use diesel::sql_types::Text;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
     sql_query,
 };
-use diesel::sql_types::Text;
 
 /// Peer row returned by `load_known_peers()`.
 #[derive(Debug, Clone, diesel::QueryableByName)]

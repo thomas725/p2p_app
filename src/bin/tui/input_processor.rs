@@ -2,7 +2,6 @@ use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
 use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
-use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 use crate::tui::click_handlers::{handle_mouse_left_click, load_dm_messages};
@@ -44,20 +43,17 @@ fn prepare_nickname_update(
     if new_nickname.trim().is_empty() {
         return None;
     }
-    let (old_nickname, peer_id) = state
-        .editing_nickname_peer
-        .as_ref()
-        .map_or_else(
-            || (state.own_nickname.clone(), None),
-            |pid| {
-                let old = state
-                    .self_nicknames_for_peers
-                    .get(pid)
-                    .cloned()
-                    .unwrap_or_else(|| state.own_nickname.clone());
-                (old, Some(pid.clone()))
-            },
-        );
+    let (old_nickname, peer_id) = state.editing_nickname_peer.as_ref().map_or_else(
+        || (state.own_nickname.clone(), None),
+        |pid| {
+            let old = state
+                .self_nicknames_for_peers
+                .get(pid)
+                .cloned()
+                .unwrap_or_else(|| state.own_nickname.clone());
+            (old, Some(pid.clone()))
+        },
+    );
     Some((new_nickname, old_nickname, peer_id))
 }
 
@@ -150,26 +146,25 @@ fn handle_close_dm_tab(
     tab_content: &p2p_app::tui_tabs::TabContent,
 ) {
     let closed_idx = match tab_content {
-        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-            state.dynamic_tabs.remove_dm_tab(peer_id)
-        }
+        p2p_app::tui_tabs::TabContent::Direct(peer_id) => state.dynamic_tabs.remove_dm_tab(peer_id),
         p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
             state.dynamic_tabs.remove_peer_info_tab(peer_id)
         }
         _ => None,
     };
     if let Some(closed_idx) = closed_idx {
-        state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
+        state.active_tab = if closed_idx > 0 {
+            closed_idx.saturating_sub(1)
+        } else {
+            0
+        };
         state.peer_selection = 0;
         p2plog_debug(format!("Closed tab: {tab_content:?}"));
     }
 }
 
 /// Handles Esc: dismiss popup / cancel nickname edit / return to broadcast chat.
-async fn handle_esc_key(
-    state: &SharedState,
-    render_tx: &mpsc::Sender<RenderEvent>,
-) {
+async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
     let mut s = state.lock().await;
     dismiss_popup(&mut s);
     if s.editing_nickname {
@@ -191,9 +186,10 @@ async fn handle_esc_key(
 fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let peer = match &tab_content {
-        p2p_app::tui_tabs::TabContent::Peers => {
-            state.peers.get(state.peer_selection).map(|p| p.peer_id.clone())
-        }
+        p2p_app::tui_tabs::TabContent::Peers => state
+            .peers
+            .get(state.peer_selection)
+            .map(|p| p.peer_id.clone()),
         p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
         p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Log => state
             .broadcast_selection
@@ -206,21 +202,6 @@ fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     }
 }
 
-/// Re-sorts the peer list by the currently active column/order, preserving the
-/// selected peer (by id).
-fn resort_peers(state: &mut super::state::AppState) {
-    let sender_ids: VecDeque<Option<String>> =
-        state.messages.iter().map(|m| m.sender_peer_id.clone()).collect();
-    state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
-        &mut state.peers,
-        &state.dm_messages,
-        &sender_ids,
-        state.peer_sort_column,
-        state.peer_sort_ascending,
-        state.peer_selection,
-    );
-}
-
 /// Sets the peers-table sort column, toggling direction if the same column is
 /// chosen again (mirroring Flutter's `_PeerList` header tap behavior), and
 /// re-sorts the peer list while preserving the selected peer.
@@ -231,7 +212,7 @@ fn apply_peer_sort(state: &mut super::state::AppState, column: usize) {
         state.peer_sort_column = column;
         state.peer_sort_ascending = false;
     }
-    resort_peers(state);
+    state.resort_peers();
 }
 
 /// Dispatches a peer-list sort key (`1`-`4`, `n`/`m`/`b`/`l` for columns,
@@ -244,7 +225,7 @@ fn handle_peer_sort_key(state: &mut super::state::AppState, c: char) {
         '4' | 'l' | 'L' => apply_peer_sort(state, 3),
         'o' | 'O' => {
             state.peer_sort_ascending = !state.peer_sort_ascending;
-            resort_peers(state);
+            state.resort_peers();
         }
         _ => {}
     }

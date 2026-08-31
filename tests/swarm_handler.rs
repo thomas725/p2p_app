@@ -1,6 +1,15 @@
 //! Tests for `swarm_handler.rs` module
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 use p2p_app::behavior::BroadcastMessage;
 
@@ -134,9 +143,11 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
         .unwrap()
         .with_quic()
         .with_behaviour(|key| {
-            build_behaviour(key, NetworkSize::Small).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
-                Box::new(std::io::Error::other(e))
-            })
+            build_behaviour(key, NetworkSize::Small).map_err(
+                |e| -> Box<dyn std::error::Error + Send + Sync> {
+                    Box::new(std::io::Error::other(e))
+                },
+            )
         })
         .unwrap()
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
@@ -152,9 +163,11 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
         )
         .unwrap()
         .with_behaviour(|key| {
-            build_behaviour(key, NetworkSize::Small).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
-                Box::new(std::io::Error::other(e))
-            })
+            build_behaviour(key, NetworkSize::Small).map_err(
+                |e| -> Box<dyn std::error::Error + Send + Sync> {
+                    Box::new(std::io::Error::other(e))
+                },
+            )
         })
         .unwrap()
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))

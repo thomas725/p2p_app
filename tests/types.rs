@@ -367,15 +367,6 @@ mod tui_tests {
     fn dm_tab_new() {
         let tab = DmTab::new("12D3KooWABC".into());
         assert_eq!(tab.peer_id, "12D3KooWABC");
-        assert!(tab.messages.is_empty());
-    }
-
-    #[cfg(feature = "test-utils")]
-    #[test]
-    fn dm_tab_with_messages() {
-        let msgs = VecDeque::from(["msg1".into(), "msg2".into()]);
-        let tab = DmTab::with_messages("peer1".into(), msgs);
-        assert_eq!(tab.messages.len(), 2);
     }
 
     #[test]
@@ -425,15 +416,6 @@ mod tui_tests {
         tabs.add_dm_tab("peer1".into());
         assert!(tabs.get_dm_tab("peer1").is_some());
         assert!(tabs.get_dm_tab("nobody").is_none());
-    }
-
-    #[test]
-    fn dynamic_tabs_get_mut() {
-        let mut tabs = DynamicTabs::new();
-        tabs.add_dm_tab("peer1".into());
-        let tab = tabs.get_dm_tab_mut("peer1").unwrap();
-        tab.messages.push_back("new".into());
-        assert_eq!(tabs.get_dm_tab("peer1").unwrap().messages[0], "new");
     }
 
     #[test]

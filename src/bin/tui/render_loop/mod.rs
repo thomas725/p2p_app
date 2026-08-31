@@ -64,7 +64,11 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
                 last_seen: p.last_seen.clone(),
             })
             .collect(),
-        connected_peer_ids: state.connected.connected_peer_ids().map(str::to_owned).collect(),
+        connected_peer_ids: state
+            .connected
+            .connected_peer_ids()
+            .map(str::to_owned)
+            .collect(),
         dm_messages,
         dm_message_ids,
         dm_receipts: state.dm_receipts.clone(),
@@ -93,7 +97,10 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         network_size: state.network_size.clone(),
         listen_addrs: state.listen_addrs.clone(),
         last_connection_lost: state.connected.last_disconnection().map(|(_, at)| at),
-        last_connection_peer: state.connected.last_disconnection().map(|(p, _)| p.to_string()),
+        last_connection_peer: state
+            .connected
+            .last_disconnection()
+            .map(|(p, _)| p.to_string()),
         node_running: true,
         local_nicknames: state.local_nicknames.clone(),
         received_nicknames: state.received_nicknames.clone(),
@@ -117,31 +124,66 @@ fn render_frame(f: &mut Frame, state: &AppState) {
 
     let mut render_state = app_state_to_render_state(state);
 
-    tui_render::render_tabs(f, chunks.first().copied().unwrap_or_default(), &render_state);
+    tui_render::render_tabs(
+        f,
+        chunks.first().copied().unwrap_or_default(),
+        &render_state,
+    );
 
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
         TabContent::Chat => {
-            tui_render::render_chat_content(f, chunks.get(1).copied().unwrap_or_default(), &mut render_state);
+            tui_render::render_chat_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                &mut render_state,
+            );
         }
         TabContent::Peers => {
-            tui_render::render_peers_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
+            tui_render::render_peers_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                &render_state,
+            );
         }
         TabContent::Direct(peer_id) => {
-            tui_render::render_dm_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &mut render_state);
+            tui_render::render_dm_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                peer_id,
+                &mut render_state,
+            );
         }
         TabContent::Log => {
-            tui_render::render_log_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
+            tui_render::render_log_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                &render_state,
+            );
         }
         TabContent::Settings => {
-            tui_render::render_settings_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
+            tui_render::render_settings_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                &render_state,
+            );
         }
         TabContent::PeerInfo(peer_id) => {
-            tui_render::render_peer_info_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &render_state);
+            tui_render::render_peer_info_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                peer_id,
+                &render_state,
+            );
         }
     }
 
-    layout::render_input_section(f, chunks.get(2).copied().unwrap_or_default(), state, &tab_content);
+    layout::render_input_section(
+        f,
+        chunks.get(2).copied().unwrap_or_default(),
+        state,
+        &tab_content,
+    );
     layout::render_shortcuts(
         f,
         chunks.get(3).copied().unwrap_or_default(),

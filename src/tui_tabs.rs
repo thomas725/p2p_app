@@ -1,7 +1,5 @@
 //! TUI tab management and navigation
 
-use std::collections::VecDeque;
-
 /// Flutter-style peer label: nickname (or generated petname) followed by the
 /// first 3 characters of the short peer id, e.g. `"Alice (Ab3)"`. Falls back to
 /// the short id when the database lookup fails (e.g. in tests).
@@ -17,30 +15,21 @@ const SUFFIX_TAB_COUNT: usize = 2;
 const LOG_TITLE: &str = "Log";
 const SETTINGS_TITLE: &str = "Settings";
 
-/// Direct message tab with peer ID and message history
+/// Direct message tab: a marker for an open DM conversation with a peer.
+///
+/// The actual conversation history lives in the app state's per-peer message
+/// map; this type only tracks which DM tabs are open and how to label them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DmTab {
     /// The full peer ID this DM tab is associated with
     pub peer_id: String,
-    /// Scrollback buffer of messages in this conversation
-    pub messages: VecDeque<String>,
 }
 
 impl DmTab {
     /// Create a new DM tab for a peer
     #[must_use]
     pub const fn new(peer_id: String) -> Self {
-        Self {
-            peer_id,
-            messages: VecDeque::new(),
-        }
-    }
-
-    /// Test utility: Create a `DmTab` with initial test messages.
-    #[cfg(any(test, feature = "test-utils"))]
-    #[must_use]
-    pub const fn with_messages(peer_id: String, messages: VecDeque<String>) -> Self {
-        Self { peer_id, messages }
+        Self { peer_id }
     }
 
     /// Get last 8 characters of peer ID for display
@@ -91,11 +80,6 @@ impl DynamicTabs {
         self.dm_tabs.iter().find(|t| t.peer_id == peer_id)
     }
 
-    /// Get DM tab by peer ID (mutable)
-    pub fn get_dm_tab_mut(&mut self, peer_id: &str) -> Option<&mut DmTab> {
-        self.dm_tabs.iter_mut().find(|t| t.peer_id == peer_id)
-    }
-
     /// Count of active DM tabs
     #[must_use]
     #[allow(clippy::missing_const_for_fn)]
@@ -114,11 +98,7 @@ impl DynamicTabs {
 
     /// Add or retrieve index of a peer-info tab for peer
     pub fn add_peer_info_tab(&mut self, peer_id: String) -> usize {
-        if let Some(pos) = self
-            .peer_info_tabs
-            .iter()
-            .position(|p| p == &peer_id)
-        {
+        if let Some(pos) = self.peer_info_tabs.iter().position(|p| p == &peer_id) {
             return pos
                 .saturating_add(FIXED_TAB_COUNT)
                 .saturating_add(self.dm_tabs.len());
@@ -193,14 +173,12 @@ impl DynamicTabs {
             idx if idx == settings_index => TabContent::Settings,
             idx if idx >= FIXED_TAB_COUNT && idx < FIXED_TAB_COUNT.saturating_add(dm_count) => {
                 let dm_idx = idx.saturating_sub(FIXED_TAB_COUNT);
-                self.dm_tabs
-                    .get(dm_idx)
-                    .map_or(TabContent::Chat, |tab| TabContent::Direct(tab.peer_id.clone()))
+                self.dm_tabs.get(dm_idx).map_or(TabContent::Chat, |tab| {
+                    TabContent::Direct(tab.peer_id.clone())
+                })
             }
             idx if idx >= FIXED_TAB_COUNT.saturating_add(dm_count) && idx < log_index => {
-                let info_idx = idx
-                    .saturating_sub(FIXED_TAB_COUNT)
-                    .saturating_sub(dm_count);
+                let info_idx = idx.saturating_sub(FIXED_TAB_COUNT).saturating_sub(dm_count);
                 self.peer_info_tabs
                     .get(info_idx)
                     .map_or(TabContent::Chat, |p| TabContent::PeerInfo(p.clone()))

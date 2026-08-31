@@ -171,7 +171,10 @@ fn test_compute_peer_selection_down_on_empty_list() {
 fn test_compute_peer_selection_page_down() {
     // Moves by exactly one page, clamped to the last row.
     assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 0, 30, 10), 10);
-    assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 25, 30, 10), 29);
+    assert_eq!(
+        compute_new_peer_selection(KeyCode::PageDown, 25, 30, 10),
+        29
+    );
 }
 
 #[test]

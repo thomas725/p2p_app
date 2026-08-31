@@ -5,7 +5,16 @@
 //! (set via [`p2p_app::db::set_db_url`]), so each test gets its own database
 //! without mutating a process-wide env var or global variable.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;

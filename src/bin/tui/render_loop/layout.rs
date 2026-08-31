@@ -48,7 +48,9 @@ const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
         TabContent::Direct(_) => {
             "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
         }
-        _ => "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
+        _ => {
+            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
     }
 }
 
@@ -59,7 +61,10 @@ pub fn render_shortcuts(
     tab_content: &TabContent,
     kitty: bool,
 ) {
-    f.render_widget(Paragraph::new(shortcuts_text(tab_content, kitty)), shortcuts_area);
+    f.render_widget(
+        Paragraph::new(shortcuts_text(tab_content, kitty)),
+        shortcuts_area,
+    );
 }
 
 /// Render the status bar with connection and mouse mode info

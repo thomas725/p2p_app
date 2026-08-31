@@ -77,8 +77,7 @@ mod dioxus {
 
             let mut swarm = p2p_app::build_swarm(network_size).expect("Failed to build swarm");
 
-            let _ = swarm
-                .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
+            let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
             let _ = swarm
                 .behaviour_mut()
                 .gossipsub

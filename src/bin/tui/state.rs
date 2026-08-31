@@ -61,10 +61,10 @@ pub struct AppState {
     pub active_tab: usize,
     pub dynamic_tabs: DynamicTabs,
     pub chat_input: TextArea<'static>,
-    pub peer_selection: usize, // For navigating peer list
+    pub peer_selection: usize,     // For navigating peer list
     pub peer_sort_column: usize, // Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
     pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
-    pub peer_table_offset: usize,  // First visible row of the peer table (set by render loop)
+    pub peer_table_offset: usize, // First visible row of the peer table (set by render loop)
     // One-shot flag: display names have been resolved for every known peer the
     // first time the Peers tab is opened (warms the library's name cache).
     pub peer_names_warmed: bool,
@@ -84,7 +84,7 @@ pub struct AppState {
     pub chat_auto_scroll: bool,
     pub visible_message_count: usize,
     pub chat_area_height: usize, // Height of message area in rows (set by render loop)
-    pub terminal_width: usize,    // Terminal width in columns (set by render loop)
+    pub terminal_width: usize,   // Terminal width in columns (set by render loop)
 
     // Scroll State (Log tab)
     pub log_scroll_offset: usize,
@@ -125,6 +125,24 @@ impl AppState {
         self.editing_nickname = false;
         self.editing_nickname_peer = None;
         self.chat_input = TextArea::default();
+    }
+
+    /// Re-sort the peer list by the currently active column/order, keeping the
+    /// selected peer (by id) selected.
+    pub fn resort_peers(&mut self) {
+        let sender_ids: VecDeque<Option<String>> = self
+            .messages
+            .iter()
+            .map(|m| m.sender_peer_id.clone())
+            .collect();
+        self.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+            &mut self.peers,
+            &self.dm_messages,
+            &sender_ids,
+            self.peer_sort_column,
+            self.peer_sort_ascending,
+            self.peer_selection,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -250,7 +268,12 @@ pub fn load_and_format_messages(
             (VecDeque::new(), VecDeque::new(), HashMap::new())
         },
         |db_messages| {
-            format_messages_from_db(&db_messages, local_nicknames, received_nicknames, own_nickname)
+            format_messages_from_db(
+                &db_messages,
+                local_nicknames,
+                received_nicknames,
+                own_nickname,
+            )
         },
     )
 }

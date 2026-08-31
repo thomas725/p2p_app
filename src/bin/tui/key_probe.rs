@@ -52,7 +52,9 @@ fn byte_label(b: u8) -> String {
 /// Runs the probe until the user presses `q`. Restores the terminal on exit.
 pub fn run() -> color_eyre::Result<()> {
     use crossterm::{
-        event::{KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
+        event::{
+            KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        },
         execute,
         terminal::{disable_raw_mode, enable_raw_mode},
     };

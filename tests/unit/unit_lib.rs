@@ -231,8 +231,7 @@ fn test_format_system_time() {
 
 #[test]
 fn test_format_latency_sub_millisecond() {
-    let received =
-        std::time::UNIX_EPOCH + std::time::Duration::from_millis(0);
+    let received = std::time::UNIX_EPOCH + std::time::Duration::from_millis(0);
     let latency = fmt::format_latency(Some(0.0), received);
     assert_eq!(latency, "<1ms");
 }

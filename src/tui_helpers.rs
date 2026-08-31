@@ -352,11 +352,7 @@ pub fn sort_peers_table(
                 .cmp(&parse_last_seen_ms(&b.last_seen))
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
         };
-        if ascending {
-            ord
-        } else {
-            ord.reverse()
-        }
+        if ascending { ord } else { ord.reverse() }
     });
     rows.into_iter().map(|(row, _)| row).collect()
 }
@@ -379,8 +375,10 @@ pub fn sort_peers_by_column(
     let rows = sort_peers_table(&all, dm_messages, messages, sort_column, ascending);
     // Index rows by peer id so reordering is O(n) instead of a per-row scan.
     let ordered = {
-        let by_id: HashMap<&str, PeerRecord> =
-            all.iter().map(|p| (p.peer_id.as_str(), p.clone())).collect();
+        let by_id: HashMap<&str, PeerRecord> = all
+            .iter()
+            .map(|p| (p.peer_id.as_str(), p.clone()))
+            .collect();
         rows.iter()
             .filter_map(|r| by_id.get(r.peer_id.as_str()).cloned())
             .collect::<VecDeque<PeerRecord>>()

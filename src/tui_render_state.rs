@@ -107,7 +107,12 @@ impl TuiRenderState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into(), "Settings".into()],
+            tab_titles: vec![
+                "Chat".into(),
+                "Peers".into(),
+                "Log".into(),
+                "Settings".into(),
+            ],
             active_tab: 0,
             messages: VecDeque::new(),
             message_peer_ids: VecDeque::new(),
@@ -135,7 +140,7 @@ impl TuiRenderState {
             broadcast_selection: None,
             peer_selection: 0,
             peer_sort_column: 3,
-            peer_sort_ascending: true,
+            peer_sort_ascending: false,
             peer_table_offset: 0,
             own_nickname: String::new(),
             local_peer_id: String::new(),
@@ -185,47 +190,12 @@ impl TuiRenderState {
                 "Log".into(),
                 "DM: Alice".into(),
             ],
-            active_tab: 0,
             messages,
-            message_peer_ids: VecDeque::new(),
-            message_ids: VecDeque::new(),
-            broadcast_receipts: HashMap::new(),
             peers,
-            connected_peer_ids: std::collections::HashSet::new(),
             dm_messages,
             dm_message_ids,
-            dm_receipts: HashMap::new(),
-            input_text: String::new(),
-            log_messages: VecDeque::new(),
-            editing_nickname: false,
-            nickname_peer_id: String::new(),
-            connected: true,
             peer_count: 2,
-            mouse_capture: false,
-            popup: None,
-            chat_scroll_offset: 0,
-            chat_auto_scroll: true,
-            log_scroll_offset: 0,
-            log_auto_scroll: true,
-            dm_scroll_state: BTreeMap::new(),
-            dm_broadcast_scroll_state: BTreeMap::new(),
-            broadcast_selection: None,
-            peer_selection: 0,
-            peer_sort_column: 3,
-            peer_sort_ascending: true,
-            peer_table_offset: 0,
-            own_nickname: String::new(),
-            local_peer_id: String::new(),
-            db_url: String::new(),
-            platform: String::new(),
-            network_size: String::new(),
-            listen_addrs: Vec::new(),
-            last_connection_lost: None,
-            last_connection_peer: None,
-            node_running: true,
-            local_nicknames: HashMap::new(),
-            received_nicknames: HashMap::new(),
-            self_nicknames_for_peers: HashMap::new(),
+            ..Self::new()
         }
     }
 
@@ -272,9 +242,14 @@ pub fn calc_visible_strings(
     })
 }
 
-/// Count wrapped lines of text, accounting for ANSI codes and terminal width
+/// Count wrapped lines of text, accounting for ANSI codes and terminal width.
+///
+/// Uses display width (CJK/wide characters count as two columns) rather than
+/// byte length, so wide-character messages wrap like the terminal does.
 #[must_use]
 pub fn count_lines(text: &str, text_width: usize) -> usize {
+    use unicode_width::UnicodeWidthStr;
+
     if text_width == 0 || text.is_empty() {
         return 1;
     }
@@ -288,7 +263,7 @@ pub fn count_lines(text: &str, text_width: usize) -> usize {
                 total = total.saturating_add(1);
             }
         } else {
-            total = total.saturating_add(line.len().div_ceil(text_width));
+            total = total.saturating_add(line.width().div_ceil(text_width));
         }
     }
     total.max(1)

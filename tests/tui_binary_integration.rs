@@ -2,7 +2,16 @@
 //!
 //! These tests simulate realistic TUI usage patterns without requiring database access
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unreachable,
+    clippy::todo,
+    clippy::unimplemented
+)]
 #![allow(clippy::match_wildcard_for_single_variants)]
 
 #[test]
@@ -189,11 +198,7 @@ fn test_dm_tab_creation() {
 
     let dm = DmTab::new("peer-test".to_string());
     assert_eq!(dm.peer_id, "peer-test");
-    assert!(dm.messages.is_empty());
-
-    let msgs = std::collections::VecDeque::from(vec!["msg1".to_string(), "msg2".to_string()]);
-    let dm2 = DmTab::with_messages("peer2".to_string(), msgs);
-    assert_eq!(dm2.messages.len(), 2);
+    assert_eq!(dm.short_id(), "eer-test");
 }
 
 #[test]

@@ -9,7 +9,9 @@ use crate::tui_tabs::TabContent;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, TableState, Tabs, Wrap},
+    widgets::{
+        Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, TableState, Tabs, Wrap,
+    },
 };
 use std::collections::VecDeque;
 
@@ -82,9 +84,8 @@ pub fn render_tab_content(
 #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 fn format_lost_at(ts: Option<f64>) -> String {
     ts.and_then(|t| {
-        chrono::DateTime::from_timestamp(t as i64, 0).map(|dt| {
-            crate::format_peer_datetime(dt.naive_local())
-        })
+        chrono::DateTime::from_timestamp(t as i64, 0)
+            .map(|dt| crate::format_peer_datetime(dt.naive_local()))
     })
     .unwrap_or_else(|| "—".to_string())
 }
@@ -99,7 +100,10 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
     };
 
     let mut lines: Vec<String> = Vec::new();
-    lines.push(format!("Nickname: {}  (press 'n' to edit)", state.own_nickname));
+    lines.push(format!(
+        "Nickname: {}  (press 'n' to edit)",
+        state.own_nickname
+    ));
     lines.push(format!("Peer ID: {}", state.local_peer_id));
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
@@ -156,17 +160,18 @@ fn last_connected_info(state: &TuiRenderState) -> Option<(String, String)> {
 }
 
 /// Render the Peer Info tab (mirrors the Flutter `PeerInfoScreen`).
-pub fn render_peer_info_content(f: &mut ratatui::Frame, area: Rect, peer_id: &str, state: &TuiRenderState) {
-    let display = crate::get_peer_display_name(peer_id)
-        .unwrap_or_else(|_| short_peer_id(peer_id));
+pub fn render_peer_info_content(
+    f: &mut ratatui::Frame,
+    area: Rect,
+    peer_id: &str,
+    state: &TuiRenderState,
+) {
+    let display = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
     let local = state.self_nicknames_for_peers.get(peer_id);
     let received = state.received_nicknames.get(peer_id);
 
     let (origin, detail) = if local.is_some() {
-        (
-            "Local nickname",
-            "You set this nickname for the peer.",
-        )
+        ("Local nickname", "You set this nickname for the peer.")
     } else if received.is_some() {
         (
             "Received nickname",
@@ -365,8 +370,7 @@ pub fn render_dm_content(
     let broadcast_usable_height = usize::from(broadcast_area.height.saturating_sub(2));
     let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
 
-    let short_id = crate::get_peer_display_name(peer_id)
-        .unwrap_or_else(|_| short_peer_id(peer_id));
+    let short_id = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
 
     let broadcast_messages: VecDeque<String> = state
         .messages
@@ -437,8 +441,8 @@ pub fn render_dm_content(
             .skip(effective_offset)
             .take(visible)
             .enumerate()
-                .map(|(visible_idx, m)| {
-                    let global_idx = effective_offset.saturating_add(visible_idx);
+            .map(|(visible_idx, m)| {
+                let global_idx = effective_offset.saturating_add(visible_idx);
                 let msg_id = state
                     .dm_message_ids
                     .get(peer_id)

@@ -9,7 +9,11 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
     match key_code {
         crossterm::event::KeyCode::Tab => {
             let max_tabs = state.dynamic_tabs.total_tab_count();
-            state.active_tab = state.active_tab.saturating_add(1).checked_rem(max_tabs).unwrap_or(0);
+            state.active_tab = state
+                .active_tab
+                .saturating_add(1)
+                .checked_rem(max_tabs)
+                .unwrap_or(0);
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
@@ -146,12 +150,8 @@ fn compute_new_peer_selection(
 
 fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let page_size = expected_peer_page_size(state);
-    state.peer_selection = compute_new_peer_selection(
-        key_code,
-        state.peer_selection,
-        state.peers.len(),
-        page_size,
-    );
+    state.peer_selection =
+        compute_new_peer_selection(key_code, state.peer_selection, state.peers.len(), page_size);
 }
 
 /// Handles scroll keys (arrow keys, Page Up/Down, Home, End) with hover-aware targeting
@@ -192,7 +192,11 @@ fn apply_mouse_scroll(
     let before = *scroll_offset;
     match scroll_dir {
         "up" => *scroll_offset = scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
-        "down" => *scroll_offset = (*scroll_offset).saturating_add(WHEEL_SCROLL_LINES).min(max_offset),
+        "down" => {
+            *scroll_offset = (*scroll_offset)
+                .saturating_add(WHEEL_SCROLL_LINES)
+                .min(max_offset);
+        }
         _ => {}
     }
     Some(before)
@@ -268,7 +272,9 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
             }
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
-        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => false,
+        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => {
+            false
+        }
         _ => mouse_scroll_chat_tab(state, scroll_dir),
     }
 }

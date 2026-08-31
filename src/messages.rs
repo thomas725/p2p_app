@@ -6,7 +6,10 @@ use crate::{
     generated::schema::messages::dsl::messages,
 };
 use color_eyre::eyre::Context;
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _, dsl::sql, BoolExpressionMethods};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
+    SelectableHelper as _, dsl::sql,
+};
 
 /// Optional metadata for message creation
 #[derive(Default)]
@@ -239,8 +242,8 @@ pub fn save_receipt(
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-pub fn load_receipts() -> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
-{
+pub fn load_receipts()
+-> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>> {
     use crate::generated::models_queryable::MessageReceipt;
     use crate::generated::schema::message_receipts::dsl::message_receipts;
     use diesel::SelectableHelper;
@@ -292,8 +295,11 @@ pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStat
 
     let broadcast_sent: i64 = p::peers
         .filter(p::peer_id.eq(peer_id))
-        .select(sql::<diesel::sql_types::Integer>("COALESCE(broadcasts_sent, 0)"))
+        .select(sql::<diesel::sql_types::Integer>(
+            "COALESCE(broadcasts_sent, 0)",
+        ))
         .first::<i32>(conn)
+        .optional()?
         .unwrap_or(0)
         .into();
 

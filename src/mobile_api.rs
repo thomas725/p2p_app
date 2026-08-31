@@ -6,14 +6,14 @@
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
-/// Used by Dart/Flutter UI to display message timestamps.
+/// Used by Dart/Flutter UI to display message timestamps. Uses a checked
+/// character slice so a string shorter than expected never panics.
 #[must_use]
 #[flutter_rust_bridge::frb(sync)]
 pub fn format_time_hhmm(dt: &str) -> String {
-    if dt.len() >= 16 {
-        dt[11..16].to_string()
-    } else {
-        dt.to_string()
+    match dt.get(11..16) {
+        Some(hhmm) => hhmm.to_string(),
+        None => dt.to_string(),
     }
 }
 
