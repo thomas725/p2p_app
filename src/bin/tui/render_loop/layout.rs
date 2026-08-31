@@ -35,7 +35,7 @@ pub fn render_input_section(
 }
 
 /// Shortcut hint line for the given tab. Peer-Info bindings are documented only
-/// on tabs where they are active: Ctrl+I (kitty) or Ctrl+? (non-kitty) on a
+/// on tabs where they are active: Ctrl+I (kitty) or Ctrl+P (non-kitty) on a
 /// Direct/DM tab, `i` on Peers.
 const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -46,7 +46,7 @@ const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
             "Tab: next | Ctrl+I: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+?: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
         }
         _ => "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
     }

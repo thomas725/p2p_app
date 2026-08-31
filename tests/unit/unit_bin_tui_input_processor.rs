@@ -462,10 +462,11 @@ async fn test_bare_tab_in_direct_tab_navigates_when_kitty_active() {
 }
 
 #[tokio::test]
-async fn test_ctrl_question_in_direct_tab_opens_peer_info_nonkitty() {
-    // On a non-kitty terminal Ctrl+? (Ctrl+Shift+ß on German keyboards) sends
-    // the control byte 0x1F, which crossterm decodes as `Char('7')`+CONTROL.
-    // On a Direct tab it must open the partner's Peer Info.
+async fn test_ctrl_p_in_direct_tab_opens_peer_info_nonkitty() {
+    // On a non-kitty terminal Ctrl+P sends the control byte 0x10 (DLE), which
+    // crossterm decodes as `Char('p')`+CONTROL. On a Direct tab it must open
+    // the partner's Peer Info (Konsole cannot distinguish Ctrl+? from a plain
+    // '?', so Ctrl+P is the non-kitty binding).
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
@@ -475,7 +476,7 @@ async fn test_ctrl_question_in_direct_tab_opens_peer_info_nonkitty() {
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
-    let key = KeyEvent::new(KeyCode::Char('7'), KeyModifiers::CONTROL);
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;

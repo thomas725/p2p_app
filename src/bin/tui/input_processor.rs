@@ -310,15 +310,13 @@ async fn process_key_event(
     let mut s = state.lock().await;
 
     // Diagnostic: log exactly what crossterm parsed for every input key that
-    // touches the Tab/Ctrl+I routing, regardless of the kitty flag, so we can
-    // tell from the TUI log what the app actually received. A working kitty
-    // terminal must deliver Ctrl+I as `Char('i')` with CONTROL (or `Tab` with
-    // CONTROL) distinct from a bare Tab.
+    // touches the Tab/Ctrl+I/Ctrl+P routing, regardless of the kitty flag, so
+    // we can tell from the TUI log what the app actually received.
     if matches!(
         key_event.code,
         crossterm::event::KeyCode::Tab
             | crossterm::event::KeyCode::BackTab
-            | crossterm::event::KeyCode::Char('i' | 'I')
+            | crossterm::event::KeyCode::Char('i' | 'I' | 'p' | 'P')
     ) {
         p2plog_debug(format!(
             "Key: code={:?} mods={:?}",
@@ -336,10 +334,8 @@ async fn process_key_event(
     match key_event.code {
         // Ctrl+I opens the DM partner's Peer Info on a Direct tab. On a kitty
         // terminal (WezTerm) it arrives distinctly as `Char('i')`+CONTROL. On a
-        // non-kitty terminal Ctrl+? (Ctrl+Shift+ß on German keyboards) arrives
-        // as the control byte 0x1F, which crossterm decodes as `Char('7')`+
-        // CONTROL — a distinct, layout-independent binding that never collides
-        // with Tab (0x09). Bare Tab always cycles tabs on every terminal.
+        // non-kitty terminal Ctrl+P (see below) is the distinct binding instead.
+        // Bare Tab always cycles tabs on every terminal.
         crossterm::event::KeyCode::Char('i')
             if !s.editing_nickname
                 && key_event
@@ -353,13 +349,14 @@ async fn process_key_event(
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab (Ctrl+I)".to_string());
         }
-        // Ctrl+? is the Peer Info shortcut on non-kitty terminals: `?` is 0x3F,
-        // so Ctrl+? sends 0x1F (US), a distinct control byte crossterm reports
-        // as `Char('7')`+CONTROL. It works on any layout (Ctrl+Shift+ß on DE)
-        // because the mask is applied to the final `?` character, not the key.
-        // On a Direct tab it opens the partner's Peer Info; anywhere else (and
-        // while editing a nickname) it is a no-op — never typed as literal text.
-        crossterm::event::KeyCode::Char('7')
+        // Ctrl+P is the Peer Info shortcut on non-kitty terminals: `p` is 0x70,
+        // so Ctrl+P sends 0x10 (DLE), a distinct control byte crossterm reports
+        // as `Char('p')`+CONTROL (the `b'\x01'..=b'\x1A'` arm). Unlike Ctrl+?,
+        // Konsole reliably applies the control mask to letters, so this never
+        // arrives as a literal 'p'. On a Direct tab it opens the partner's Peer
+        // Info; anywhere else (and while editing a nickname) it is a no-op —
+        // never typed as literal text.
+        crossterm::event::KeyCode::Char('p')
             if !s.editing_nickname
                 && key_event
                     .modifiers
@@ -371,18 +368,18 @@ async fn process_key_event(
                 ) =>
         {
             open_peer_info_for_active_tab(&mut s);
-            p2plog_debug("Opened Peer Info tab (Ctrl+?)".to_string());
+            p2plog_debug("Opened Peer Info tab (Ctrl+P)".to_string());
         }
-        // Consume Ctrl+? on non-Direct tabs too (it is not literal text and must
-        // never collide with Ctrl+7 typed as an input character).
-        crossterm::event::KeyCode::Char('7')
+        // Consume Ctrl+P on non-Direct tabs too (it is not literal text and must
+        // never be typed as an input character).
+        crossterm::event::KeyCode::Char('p')
             if !s.editing_nickname
                 && key_event
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL)
                 && !s.kitty_keyboard_active =>
         {
-            p2plog_debug("Peer Info Ctrl+? ignored (no Direct tab)".to_string());
+            p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }
         crossterm::event::KeyCode::BackTab => {
             handle_navigation_key(key_event.code, &mut s).await;

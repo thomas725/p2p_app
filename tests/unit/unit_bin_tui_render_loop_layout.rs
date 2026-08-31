@@ -16,13 +16,13 @@ fn test_shortcuts_direct_tab_documents_ctrl_i_on_kitty() {
     let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), true);
     assert!(text.contains("Ctrl+I: Peer Info"));
     assert!(!text.contains("| i: Peer Info"));
-    assert!(!text.contains("Ctrl+?"));
+    assert!(!text.contains("Ctrl+P"));
 }
 
 #[test]
-fn test_shortcuts_direct_tab_documents_ctrl_question_on_nonkitty() {
+fn test_shortcuts_direct_tab_documents_ctrl_p_on_nonkitty() {
     let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), false);
-    assert!(text.contains("Ctrl+?: Peer Info"));
+    assert!(text.contains("Ctrl+P: Peer Info"));
     assert!(!text.contains("Ctrl+I: Peer Info"));
 }
 
