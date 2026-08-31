@@ -68,6 +68,14 @@ pub struct AppState {
     // One-shot flag: display names have been resolved for every known peer the
     // first time the Peers tab is opened (warms the library's name cache).
     pub peer_names_warmed: bool,
+    // Whether the terminal genuinely delivers kitty-keyboard encoding (from
+    // crossterm's `supports_keyboard_enhancement()`). On WezTerm (kitty active)
+    // Ctrl+I arrives as `Char('i')`+CONTROL and opens PeerInfo on a Direct tab.
+    // On collapsed terminals (Konsole) Ctrl+I (and Ctrl+Shift+I) collapse to
+    // the bare `0x09` Tab byte, so the PeerInfo binding there is instead Ctrl+?
+    // (`Char('7')`+CONTROL from 0x1F). Bare Tab always cycles tabs either way.
+    // This flag selects which binding is active on a Direct tab.
+    pub kitty_keyboard_active: bool,
     pub mouse_capture: bool,
     pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts
 
@@ -151,6 +159,7 @@ impl AppState {
             peer_sort_ascending: false,
             peer_table_offset: 0,
             peer_names_warmed: false,
+            kitty_keyboard_active: true,
             concurrent_peers: 0,
             connected: p2p_app::connected::ConnectedTracker::new(),
             mouse_capture: true,

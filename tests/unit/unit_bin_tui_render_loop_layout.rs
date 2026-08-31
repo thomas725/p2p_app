@@ -5,17 +5,25 @@ use p2p_app::tui_tabs::TabContent;
 
 #[test]
 fn test_shortcuts_peers_tab_documents_dm_and_info() {
-    let text = shortcuts_text(&TabContent::Peers);
+    let text = shortcuts_text(&TabContent::Peers, false);
     assert!(text.contains("Enter: open DM"));
     assert!(text.contains("i: Peer Info"));
     assert!(!text.contains("Ctrl+I: Peer Info"));
 }
 
 #[test]
-fn test_shortcuts_direct_tab_documents_ctrl_i() {
-    let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()));
+fn test_shortcuts_direct_tab_documents_ctrl_i_on_kitty() {
+    let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), true);
     assert!(text.contains("Ctrl+I: Peer Info"));
     assert!(!text.contains("| i: Peer Info"));
+    assert!(!text.contains("Ctrl+?"));
+}
+
+#[test]
+fn test_shortcuts_direct_tab_documents_ctrl_question_on_nonkitty() {
+    let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), false);
+    assert!(text.contains("Ctrl+?: Peer Info"));
+    assert!(!text.contains("Ctrl+I: Peer Info"));
 }
 
 #[test]
@@ -26,6 +34,7 @@ fn test_shortcuts_plain_tabs_have_no_peer_info_hint() {
         TabContent::Settings,
         TabContent::PeerInfo("peer-1".to_string()),
     ] {
-        assert!(!shortcuts_text(&tab).contains("Peer Info"));
+        assert!(!shortcuts_text(&tab, false).contains("Peer Info"));
+        assert!(!shortcuts_text(&tab, true).contains("Peer Info"));
     }
 }

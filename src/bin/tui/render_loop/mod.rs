@@ -142,7 +142,12 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     }
 
     layout::render_input_section(f, chunks.get(2).copied().unwrap_or_default(), state, &tab_content);
-    layout::render_shortcuts(f, chunks.get(3).copied().unwrap_or_default(), &tab_content);
+    layout::render_shortcuts(
+        f,
+        chunks.get(3).copied().unwrap_or_default(),
+        &tab_content,
+        state.kitty_keyboard_active,
+    );
     layout::render_status_bar(f, chunks.get(4).copied().unwrap_or_default(), state);
 
     if let Some(ref text) = state.popup {

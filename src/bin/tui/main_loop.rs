@@ -8,6 +8,7 @@ use p2p_app::set_tui_redraw_hook;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
@@ -114,19 +115,38 @@ pub async fn run_new_tui(
         terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
     };
 
-    // Setup terminal
+    // Setup terminal. Only DISAMBIGUATE_ESCAPE_CODES is needed to tell Ctrl+I
+    // apart from bare Tab (Ctrl+letter is then reported as its true key code
+    // plus CONTROL) — the REPORT_ALL_KEYS flag is deliberately NOT pushed: it
+    // makes the terminal report every key (letters, shift presses) as CSI-u
+    // events, which is unnecessary and leaves the shell deluged in CSI-u
+    // garbage if the keyboard encoding is ever left active on exit. The push is
+    // sent AFTER raw mode is enabled (some terminals only apply kitty encoding
+    // to keys read once raw mode is active).
     let mut stdout = std::io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    enable_raw_mode()?;
     execute!(
         stdout,
         PushKeyboardEnhancementFlags(
             crossterm::event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                | crossterm::event::KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
-                | crossterm::event::KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
         ),
-        EnterAlternateScreen,
+        crossterm::event::EnableMouseCapture,
     )?;
-    enable_raw_mode()?;
-    execute!(stdout, crossterm::event::EnableMouseCapture)?;
+
+    // Detect whether the terminal will actually deliver kitty encoding (its
+    // response is read here synchronously, BEFORE the input-handler task starts
+    // reading the tty, so there is no race). WezTerm reports supported; Konsole
+    // reports not supported (and collapses Ctrl+I to 0x09). The flag selects
+    // which PeerInfo shortcut is active on a Direct tab: Ctrl+I (kitty) vs
+    // Ctrl+? (non-kitty) in `process_key_event`.
+    let keyboard_enhanced =
+        crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
+    p2plog_debug(format!(
+        "Keyboard enhancement (kitty) protocol: {} — Ctrl+I {} be distinct from Tab",
+        if keyboard_enhanced { "supported" } else { "NOT supported" },
+        if keyboard_enhanced { "will" } else { "will NOT" }
+    ));
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -215,6 +235,7 @@ pub async fn run_new_tui(
         loaded_broadcast_receipts,
         loaded_dm_receipts,
     );
+    app_state.kitty_keyboard_active = keyboard_enhanced;
     app_state.db_url = db_info;
     app_state.platform = format!("Desktop ({})", std::env::consts::OS);
     app_state.network_size = p2p_app::get_network_size()
@@ -296,10 +317,21 @@ pub async fn run_new_tui(
     // Signal graceful shutdown to remaining tasks
     p2plog_debug(format!("Initiating shutdown: {exit_reason}"));
 
-    // Cleanup terminal state
-    let _ = execute!(std::io::stdout(), LeaveAlternateScreen);
+    // Cleanup terminal state (emitted while raw mode is still on so the escape
+    // sequences transmit cleanly; then restore the termios). We pushed only
+    // DISAMBIGUATE_ESCAPE_CODES at startup; on exit we pop it and also clear
+    // every keyboard-enhancement mode defensively:
+    //   - `CSI < 1u` kitty pop (undo our push)
+    //   - `CSI > 4;0m` xterm modifyOtherKeys off (in case any terminal left it on)
+    // Otherwise the shell keeps receiving CSI-u/modified-key sequences (arrow
+    // keys print as `A`..`D`, or junk like `;1u;5u…`) and is unusable.
+    let mut stdout = std::io::stdout();
+    let _ = execute!(stdout, crossterm::event::PopKeyboardEnhancementFlags);
+    let _ = write!(stdout, "\x1b[>4;0m");
+    let _ = stdout.flush();
+    let _ = execute!(stdout, LeaveAlternateScreen);
+    let _ = execute!(stdout, crossterm::event::DisableMouseCapture);
     let _ = disable_raw_mode();
-    let _ = execute!(std::io::stdout(), crossterm::event::DisableMouseCapture);
 
     // Print cached logs to stdout after restoring the terminal.
     for log in recent_tui_logs(&get_tui_logs(), 100) {

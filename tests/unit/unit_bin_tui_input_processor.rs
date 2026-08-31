@@ -402,7 +402,10 @@ async fn test_ctrl_i_key_in_direct_tab_opens_peer_info() {
 }
 
 #[tokio::test]
-async fn test_ctrl_tab_in_direct_tab_opens_peer_info() {
+async fn test_ctrl_tab_is_noop_on_direct_tab() {
+    // On a kitty-enabled terminal Ctrl+I arrives as `Char('i')`+CONTROL, never
+    // as `Tab`+CONTROL, so `Tab`+CONTROL on a Direct tab (like anywhere else)
+    // must be a no-op: no Peer Info, no tab switch.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -412,14 +415,39 @@ async fn test_ctrl_tab_in_direct_tab_opens_peer_info() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-    assert!(matches!(content, TabContent::PeerInfo(_)));
+    assert_eq!(s.active_tab, 2);
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
 #[tokio::test]
-async fn test_bare_tab_in_direct_tab_still_navigates() {
-    // On modern terminals (kitty keyboard protocol) plain Tab is distinct from
-    // Ctrl+I, so a bare Tab on a Direct tab must keep cycling tabs forward.
+async fn test_bare_tab_in_direct_tab_navigates_on_kitty_and_nonkitty() {
+    // A bare Tab byte must always cycle tabs on a Direct tab — whether the
+    // terminal delivers kitty encoding (WezTerm) or collapses Ctrl+I to 0x09
+    // (Konsole). Peer Info on a Direct tab is opened by Ctrl+I (kitty) or
+    // Ctrl+? (non-kitty), never by sacrificing the Tab key.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.kitty_keyboard_active = false; // collapsed (non-kitty) terminal
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 3); // DMs tab
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_bare_tab_in_direct_tab_navigates_when_kitty_active() {
+    // On a terminal that genuinely delivers kitty encoding (e.g. WezTerm with
+    // `enable_kitty_keyboard`), a bare Tab byte is a REAL Tab and must cycle
+    // tabs — not open Peer Info. This is the default (`kitty_keyboard_active =
+    // true`) state.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -429,8 +457,30 @@ async fn test_bare_tab_in_direct_tab_still_navigates() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 3); // Log tab
+    assert_eq!(s.active_tab, 3); // DMs tab
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_ctrl_question_in_direct_tab_opens_peer_info_nonkitty() {
+    // On a non-kitty terminal Ctrl+? (Ctrl+Shift+ß on German keyboards) sends
+    // the control byte 0x1F, which crossterm decodes as `Char('7')`+CONTROL.
+    // On a Direct tab it must open the partner's Peer Info.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.kitty_keyboard_active = false; // non-kitty terminal
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('7'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(matches!(content, TabContent::PeerInfo(_)));
 }
 
 #[tokio::test]
@@ -533,6 +583,68 @@ async fn test_backtab_in_direct_tab_still_navigates_backward() {
 
     let s = state.lock().await;
     assert_eq!(s.active_tab, 1); // Peers tab
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_legacy_bare_tab_on_chat_tab_still_navigates() {
+    // Without protocol support Ctrl+I on a non-Direct tab is byte-identical to
+    // Tab, so it keeps cycling tabs there.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.kitty_keyboard_active = false;
+        s.active_tab = 0; // Chat tab
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 1); // Peers tab
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_legacy_plain_i_on_direct_tab_still_types() {
+    // Even without protocol support, a bare `i` (no CONTROL) must keep typing
+    // into the DM input box instead of being mistaken for Ctrl+I.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.kitty_keyboard_active = false;
+        s.active_tab = 2; // Direct tab for "peer-dm"
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.chat_input.lines().join("").contains('i'));
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
+async fn test_ctrl_tab_on_peers_tab_is_noop() {
+    // `Tab`+CONTROL is the CSI-u spelling of Ctrl+I. On a non-Direct tab it is
+    // a no-op: it neither opens Peer Info nor cycles tabs.
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 1; // Peers tab
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Tab, KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 1); // still Peers tab
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 

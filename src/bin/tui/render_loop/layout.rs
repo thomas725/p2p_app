@@ -35,22 +35,31 @@ pub fn render_input_section(
 }
 
 /// Shortcut hint line for the given tab. Peer-Info bindings are documented only
-/// on tabs where they are active: Ctrl+I on a Direct/DM tab, `i` on Peers.
-const fn shortcuts_text(tab_content: &TabContent) -> &'static str {
+/// on tabs where they are active: Ctrl+I (kitty) or Ctrl+? (non-kitty) on a
+/// Direct/DM tab, `i` on Peers.
+const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Peers => {
             "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
         }
-        TabContent::Direct(_) => {
+        TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Direct(_) => {
+            "Tab: next | Ctrl+?: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
         }
         _ => "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
     }
 }
 
 /// Render the help text shortcuts
-pub fn render_shortcuts(f: &mut Frame, shortcuts_area: Rect, tab_content: &TabContent) {
-    f.render_widget(Paragraph::new(shortcuts_text(tab_content)), shortcuts_area);
+pub fn render_shortcuts(
+    f: &mut Frame,
+    shortcuts_area: Rect,
+    tab_content: &TabContent,
+    kitty: bool,
+) {
+    f.render_widget(Paragraph::new(shortcuts_text(tab_content, kitty)), shortcuts_area);
 }
 
 /// Render the status bar with connection and mouse mode info

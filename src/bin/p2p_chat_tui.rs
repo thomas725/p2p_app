@@ -71,6 +71,7 @@ mod tui {
     mod command_processor;
     pub mod event_source;
     pub mod input_processor;
+    pub mod key_probe;
     pub mod main_loop;
     pub mod message_handlers;
     pub mod render_loop;
@@ -86,6 +87,12 @@ async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
     p2p_app::logging::register_log_callback(Arc::new(|_| p2p_app::logging::request_tui_redraw()));
+
+    // Diagnostic mode: dump raw terminal key bytes so Tab vs Ctrl+I encoding
+    // can be inspected per terminal. Runs before any database/network setup.
+    if std::env::args().nth(1).as_deref() == Some("key-probe") {
+        return tui::key_probe::run();
+    }
 
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;
