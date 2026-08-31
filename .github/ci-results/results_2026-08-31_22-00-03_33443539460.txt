@@ -1,0 +1,3133 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-08-31 22:00:03 UTC
+Commit: 4a4d2aa38076e47b191e0ee6b9622dcd66e8658a
+Branch: refs/heads/main
+Run ID: 33443539460
+
+============================================================
+Detailed Logs
+============================================================
+
+
+============================================================
+Phase 1 - Code Quality
+============================================================
+
+--- fmt ---
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/p2p_chat_dioxus.rs:77:
+ 
+             let mut swarm = p2p_app::build_swarm(network_size).expect("Failed to build swarm");
+ 
+-            let _ = swarm
+-                .listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
++            let _ = swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse().unwrap());
+             let _ = swarm
+                 .behaviour_mut()
+                 .gossipsub
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_click_handlers.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+-#![allow(clippy::used_underscore_binding, clippy::cast_possible_truncation, clippy::as_conversions)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
++#![allow(
++    clippy::used_underscore_binding,
++    clippy::cast_possible_truncation,
++    clippy::as_conversions
++)]
+ use super::*;
+ use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
+ use std::collections::HashMap;
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_click_handlers.rs:115:
+ fn test_peer_row_click_respects_scrolled_viewport() {
+     let mut state = app_state_with_peers(30);
+     state.chat_area_height = 18; // page size = 16 visible data rows
+-    state.peer_selection = 25;   // near the bottom: viewport starts at row 10
++    state.peer_selection = 25; // near the bottom: viewport starts at row 10
+     handle_peer_row_click(&mut state, 4); // first visible row = absolute peer 11
+     assert_eq!(state.peer_selection, 11);
+     // After the click the selection (11) is inside the first page, so the
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_click_handlers.rs:177:
+     for i in 0..4 {
+         let sender_ids = std::collections::VecDeque::new();
+         let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
+-        let rows = p2p_app::tui_helpers::peer_table_rows_ordered(
+-            &peers,
+-            &state.dm_messages,
+-            &sender_ids,
+-        );
++        let rows =
++            p2p_app::tui_helpers::peer_table_rows_ordered(&peers, &state.dm_messages, &sender_ids);
+         let widths = p2p_app::tui_helpers::peer_table_column_widths(
+             &rows,
+             state.peer_sort_column,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+-#![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening, clippy::match_wildcard_for_single_variants)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
++#![allow(
++    clippy::used_underscore_binding,
++    clippy::significant_drop_tightening,
++    clippy::match_wildcard_for_single_variants
++)]
+ use super::*;
+ use crate::tui::test_helpers::test_app_state;
+ use p2p_app::{MessageEvent, PeerRecord, SwarmEvent};
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_input_processor.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+-#![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening, clippy::match_wildcard_for_single_variants)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
++#![allow(
++    clippy::used_underscore_binding,
++    clippy::significant_drop_tightening,
++    clippy::match_wildcard_for_single_variants
++)]
+ use super::*;
+ use crate::tui::test_helpers::app_state_with_peers;
+ use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_main_loop.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ use super::*;
+ use chrono::NaiveDateTime;
+ use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_message_handlers.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+-#![allow(clippy::used_underscore_binding, clippy::cast_possible_truncation, clippy::cast_precision_loss, clippy::as_conversions, clippy::match_wildcard_for_single_variants)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
++#![allow(
++    clippy::used_underscore_binding,
++    clippy::cast_possible_truncation,
++    clippy::cast_precision_loss,
++    clippy::as_conversions,
++    clippy::match_wildcard_for_single_variants
++)]
+ use super::*;
+ use crate::tui::test_helpers::test_app_state;
+ use tempfile::TempDir;
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_scroll_handlers.rs:171:
+ fn test_compute_peer_selection_page_down() {
+     // Moves by exactly one page, clamped to the last row.
+     assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 0, 30, 10), 10);
+-    assert_eq!(compute_new_peer_selection(KeyCode::PageDown, 25, 30, 10), 29);
++    assert_eq!(
++        compute_new_peer_selection(KeyCode::PageDown, 25, 30, 10),
++        29
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/click_handlers.rs:23:
+                     _ => None,
+                 };
+                 if let Some(closed_idx) = closed_idx {
+-                    state.active_tab =
+-                        if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
++                    state.active_tab = if closed_idx > 0 {
++                        closed_idx.saturating_sub(1)
++                    } else {
++                        0
++                    };
+                     p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
+                 }
+                 return true;
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/click_handlers.rs:113:
+     // scrolling viewport: data rows start at global row 3 (tab + block
+     // border + table header) and are offset by the first visible row.
+     let page_height = state.chat_area_height.saturating_sub(2).max(1);
+-    let selected = state.peer_selection.min(state.peers.len().saturating_sub(1));
++    let selected = state
++        .peer_selection
++        .min(state.peers.len().saturating_sub(1));
+     let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
+         state.peer_table_offset,
+         Some(selected),
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/click_handlers.rs:138:
+ 
+ /// Handles message row clicks in the Chat / DM tabs, opening the
+ /// sender's Peer Info tab. (Log lines have no sender, so they are a no-op.)
+-fn handle_message_click(state: &mut AppState, mouse_row: u16, tab_content: &p2p_app::tui_tabs::TabContent) -> bool {
++fn handle_message_click(
++    state: &mut AppState,
++    mouse_row: u16,
++    tab_content: &p2p_app::tui_tabs::TabContent,
++) -> bool {
+     match tab_content {
+         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+             let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/command_processor.rs:3:
+ use super::main_loop::RenderEvent;
+ use super::state::{AppState, SharedState};
+ use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
+-use std::collections::VecDeque;
+ use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
++use std::collections::VecDeque;
+ use tokio::sync::mpsc;
+ 
+ enum Event {
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/command_processor.rs:21:
+ /// Re-sort the peer list by the currently active column/order, keeping the
+ /// selected peer (by id) selected.
+ fn resort_peers_active(state: &mut AppState) {
+-    let sender_ids: VecDeque<Option<String>> =
+-        state.messages.iter().map(|m| m.sender_peer_id.clone()).collect();
++    let sender_ids: VecDeque<Option<String>> = state
++        .messages
++        .iter()
++        .map(|m| m.sender_peer_id.clone())
++        .collect();
+     state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+         &mut state.peers,
+         &state.dm_messages,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:44:
+     if new_nickname.trim().is_empty() {
+         return None;
+     }
+-    let (old_nickname, peer_id) = state
+-        .editing_nickname_peer
+-        .as_ref()
+-        .map_or_else(
+-            || (state.own_nickname.clone(), None),
+-            |pid| {
+-                let old = state
+-                    .self_nicknames_for_peers
+-                    .get(pid)
+-                    .cloned()
+-                    .unwrap_or_else(|| state.own_nickname.clone());
+-                (old, Some(pid.clone()))
+-            },
+-        );
++    let (old_nickname, peer_id) = state.editing_nickname_peer.as_ref().map_or_else(
++        || (state.own_nickname.clone(), None),
++        |pid| {
++            let old = state
++                .self_nicknames_for_peers
++                .get(pid)
++                .cloned()
++                .unwrap_or_else(|| state.own_nickname.clone());
++            (old, Some(pid.clone()))
++        },
++    );
+     Some((new_nickname, old_nickname, peer_id))
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:150:
+     tab_content: &p2p_app::tui_tabs::TabContent,
+ ) {
+     let closed_idx = match tab_content {
+-        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+-            state.dynamic_tabs.remove_dm_tab(peer_id)
+-        }
++        p2p_app::tui_tabs::TabContent::Direct(peer_id) => state.dynamic_tabs.remove_dm_tab(peer_id),
+         p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
+             state.dynamic_tabs.remove_peer_info_tab(peer_id)
+         }
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:159:
+         _ => None,
+     };
+     if let Some(closed_idx) = closed_idx {
+-        state.active_tab = if closed_idx > 0 { closed_idx.saturating_sub(1) } else { 0 };
++        state.active_tab = if closed_idx > 0 {
++            closed_idx.saturating_sub(1)
++        } else {
++            0
++        };
+         state.peer_selection = 0;
+         p2plog_debug(format!("Closed tab: {tab_content:?}"));
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:166:
+ }
+ 
+ /// Handles Esc: dismiss popup / cancel nickname edit / return to broadcast chat.
+-async fn handle_esc_key(
+-    state: &SharedState,
+-    render_tx: &mpsc::Sender<RenderEvent>,
+-) {
++async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
+     let mut s = state.lock().await;
+     dismiss_popup(&mut s);
+     if s.editing_nickname {
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:191:
+ fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
+     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+     let peer = match &tab_content {
+-        p2p_app::tui_tabs::TabContent::Peers => {
+-            state.peers.get(state.peer_selection).map(|p| p.peer_id.clone())
+-        }
++        p2p_app::tui_tabs::TabContent::Peers => state
++            .peers
++            .get(state.peer_selection)
++            .map(|p| p.peer_id.clone()),
+         p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
+         p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Log => state
+             .broadcast_selection
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:209:
+ /// Re-sorts the peer list by the currently active column/order, preserving the
+ /// selected peer (by id).
+ fn resort_peers(state: &mut super::state::AppState) {
+-    let sender_ids: VecDeque<Option<String>> =
+-        state.messages.iter().map(|m| m.sender_peer_id.clone()).collect();
++    let sender_ids: VecDeque<Option<String>> = state
++        .messages
++        .iter()
++        .map(|m| m.sender_peer_id.clone())
++        .collect();
+     state.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
+         &mut state.peers,
+         &state.dm_messages,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/key_probe.rs:52:
+ /// Runs the probe until the user presses `q`. Restores the terminal on exit.
+ pub fn run() -> color_eyre::Result<()> {
+     use crossterm::{
+-        event::{KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
++        event::{
++            KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
++        },
+         execute,
+         terminal::{disable_raw_mode, enable_raw_mode},
+     };
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/key_probe.rs:158:
+     println!("Key probe finished. Terminal restored.");
+     Ok(())
+ }
++
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/main_loop.rs:140:
+     // reports not supported (and collapses Ctrl+I to 0x09). The flag selects
+     // which PeerInfo shortcut is active on a Direct tab: Ctrl+I (kitty) vs
+     // Ctrl+? (non-kitty) in `process_key_event`.
+-    let keyboard_enhanced =
+-        crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
++    let keyboard_enhanced = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
+     p2plog_debug(format!(
+         "Keyboard enhancement (kitty) protocol: {} — Ctrl+I {} be distinct from Tab",
+-        if keyboard_enhanced { "supported" } else { "NOT supported" },
+-        if keyboard_enhanced { "will" } else { "will NOT" }
++        if keyboard_enhanced {
++            "supported"
++        } else {
++            "NOT supported"
++        },
++        if keyboard_enhanced {
++            "will"
++        } else {
++            "will NOT"
++        }
+     ));
+ 
+     let backend = CrosstermBackend::new(stdout);
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/main_loop.rs:161:
+     p2plog_debug(format!("Loading data for topic: {topic_str}"));
+ 
+     // Load nickname maps from database (used for rendering historical messages and peer display).
+-    let (local_nicknames, received_nicknames, self_nicknames_for_peers) =
+-        p2p_app::load_peers().map_or_else(
++    let (local_nicknames, received_nicknames, self_nicknames_for_peers) = p2p_app::load_peers()
++        .map_or_else(
+             |_| (HashMap::new(), HashMap::new(), HashMap::new()),
+             |db_peers| extract_nickname_maps(&db_peers),
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/main_loop.rs:204:
+     initial_peers = peers_vec.into();
+ 
+     // Load receipts from database
+-    let (loaded_broadcast_receipts, loaded_dm_receipts) =
+-        p2p_app::load_receipts().map_or_else(
+-            |_| (HashMap::new(), HashMap::new()),
+-            |receipts| {
+-                let (br, dr) = organize_receipts(&receipts);
+-                p2plog_debug(format!(
+-                    "Loaded {} broadcast receipts and {} DM receipts from database",
+-                    br.len(),
+-                    dr.len()
+-                ));
+-                (br, dr)
+-            },
+-        );
++    let (loaded_broadcast_receipts, loaded_dm_receipts) = p2p_app::load_receipts().map_or_else(
++        |_| (HashMap::new(), HashMap::new()),
++        |receipts| {
++            let (br, dr) = organize_receipts(&receipts);
++            p2plog_debug(format!(
++                "Loaded {} broadcast receipts and {} DM receipts from database",
++                br.len(),
++                dr.len()
++            ));
++            (br, dr)
++        },
++    );
+ 
+     let local_peer_id =
+         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/main_loop.rs:238:
+     app_state.kitty_keyboard_active = keyboard_enhanced;
+     app_state.db_url = db_info;
+     app_state.platform = format!("Desktop ({})", std::env::consts::OS);
+-    app_state.network_size = p2p_app::get_network_size()
+-        .map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
++    app_state.network_size =
++        p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
+ 
+     let state = Arc::new(Mutex::new(app_state));
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/../../../../tests/unit/unit_bin_tui_render_loop_layout.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
+-#![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening, clippy::match_wildcard_for_single_variants)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
++#![allow(
++    clippy::used_underscore_binding,
++    clippy::significant_drop_tightening,
++    clippy::match_wildcard_for_single_variants
++)]
+ use super::*;
+ use p2p_app::tui_tabs::TabContent;
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/../../../../tests/unit/unit_bin_tui_render_loop_mod.rs:53:
+         first_seen: "x".to_string(),
+         last_seen: "y".to_string(),
+     });
+-    state.connected.on_peer_connected("connected-peer".to_string());
++    state
++        .connected
++        .on_peer_connected("connected-peer".to_string());
+ 
+     let rs = app_state_to_render_state(&state);
+     assert!(rs.connected_peer_ids.contains("connected-peer"));
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/layout.rs:48:
+         TabContent::Direct(_) => {
+             "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+         }
+-        _ => "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit",
++        _ => {
++            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
++        }
+     }
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/layout.rs:59:
+     tab_content: &TabContent,
+     kitty: bool,
+ ) {
+-    f.render_widget(Paragraph::new(shortcuts_text(tab_content, kitty)), shortcuts_area);
++    f.render_widget(
++        Paragraph::new(shortcuts_text(tab_content, kitty)),
++        shortcuts_area,
++    );
+ }
+ 
+ /// Render the status bar with connection and mouse mode info
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/mod.rs:64:
+                 last_seen: p.last_seen.clone(),
+             })
+             .collect(),
+-        connected_peer_ids: state.connected.connected_peer_ids().map(str::to_owned).collect(),
++        connected_peer_ids: state
++            .connected
++            .connected_peer_ids()
++            .map(str::to_owned)
++            .collect(),
+         dm_messages,
+         dm_message_ids,
+         dm_receipts: state.dm_receipts.clone(),
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/mod.rs:93:
+         network_size: state.network_size.clone(),
+         listen_addrs: state.listen_addrs.clone(),
+         last_connection_lost: state.connected.last_disconnection().map(|(_, at)| at),
+-        last_connection_peer: state.connected.last_disconnection().map(|(p, _)| p.to_string()),
++        last_connection_peer: state
++            .connected
++            .last_disconnection()
++            .map(|(p, _)| p.to_string()),
+         node_running: true,
+         local_nicknames: state.local_nicknames.clone(),
+         received_nicknames: state.received_nicknames.clone(),
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/mod.rs:117:
+ 
+     let mut render_state = app_state_to_render_state(state);
+ 
+-    tui_render::render_tabs(f, chunks.first().copied().unwrap_or_default(), &render_state);
++    tui_render::render_tabs(
++        f,
++        chunks.first().copied().unwrap_or_default(),
++        &render_state,
++    );
+ 
+     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+     match &tab_content {
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/mod.rs:124:
+         TabContent::Chat => {
+-            tui_render::render_chat_content(f, chunks.get(1).copied().unwrap_or_default(), &mut render_state);
++            tui_render::render_chat_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                &mut render_state,
++            );
+         }
+         TabContent::Peers => {
+-            tui_render::render_peers_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
++            tui_render::render_peers_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                &render_state,
++            );
+         }
+         TabContent::Direct(peer_id) => {
+-            tui_render::render_dm_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &mut render_state);
++            tui_render::render_dm_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                peer_id,
++                &mut render_state,
++            );
+         }
+         TabContent::Log => {
+-            tui_render::render_log_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
++            tui_render::render_log_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                &render_state,
++            );
+         }
+         TabContent::Settings => {
+-            tui_render::render_settings_content(f, chunks.get(1).copied().unwrap_or_default(), &render_state);
++            tui_render::render_settings_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                &render_state,
++            );
+         }
+         TabContent::PeerInfo(peer_id) => {
+-            tui_render::render_peer_info_content(f, chunks.get(1).copied().unwrap_or_default(), peer_id, &render_state);
++            tui_render::render_peer_info_content(
++                f,
++                chunks.get(1).copied().unwrap_or_default(),
++                peer_id,
++                &render_state,
++            );
+         }
+     }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/mod.rs:144:
+-    layout::render_input_section(f, chunks.get(2).copied().unwrap_or_default(), state, &tab_content);
++    layout::render_input_section(
++        f,
++        chunks.get(2).copied().unwrap_or_default(),
++        state,
++        &tab_content,
++    );
+     layout::render_shortcuts(
+         f,
+         chunks.get(3).copied().unwrap_or_default(),
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/scroll_handlers.rs:9:
+     match key_code {
+         crossterm::event::KeyCode::Tab => {
+             let max_tabs = state.dynamic_tabs.total_tab_count();
+-            state.active_tab = state.active_tab.saturating_add(1).checked_rem(max_tabs).unwrap_or(0);
++            state.active_tab = state
++                .active_tab
++                .saturating_add(1)
++                .checked_rem(max_tabs)
++                .unwrap_or(0);
+             state.chat_scroll_offset = 0;
+             state.cancel_nickname_edit();
+             p2plog_debug(format!("Switched to tab {}", state.active_tab));
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/scroll_handlers.rs:146:
+ 
+ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+     let page_size = expected_peer_page_size(state);
+-    state.peer_selection = compute_new_peer_selection(
+-        key_code,
+-        state.peer_selection,
+-        state.peers.len(),
+-        page_size,
+-    );
++    state.peer_selection =
++        compute_new_peer_selection(key_code, state.peer_selection, state.peers.len(), page_size);
+ }
+ 
+ /// Handles scroll keys (arrow keys, Page Up/Down, Home, End) with hover-aware targeting
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/scroll_handlers.rs:192:
+     let before = *scroll_offset;
+     match scroll_dir {
+         "up" => *scroll_offset = scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
+-        "down" => *scroll_offset = (*scroll_offset).saturating_add(WHEEL_SCROLL_LINES).min(max_offset),
++        "down" => {
++            *scroll_offset = (*scroll_offset)
++                .saturating_add(WHEEL_SCROLL_LINES)
++                .min(max_offset)
++        }
+         _ => {}
+     }
+     Some(before)
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/scroll_handlers.rs:268:
+             }
+         }
+         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
+-        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => false,
++        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => {
++            false
++        }
+         _ => mouse_scroll_chat_tab(state, scroll_dir),
+     }
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/state.rs:61:
+     pub active_tab: usize,
+     pub dynamic_tabs: DynamicTabs,
+     pub chat_input: TextArea<'static>,
+-    pub peer_selection: usize, // For navigating peer list
++    pub peer_selection: usize,     // For navigating peer list
+     pub peer_sort_column: usize, // Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
+     pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
+-    pub peer_table_offset: usize,  // First visible row of the peer table (set by render loop)
++    pub peer_table_offset: usize, // First visible row of the peer table (set by render loop)
+     // One-shot flag: display names have been resolved for every known peer the
+     // first time the Peers tab is opened (warms the library's name cache).
+     pub peer_names_warmed: bool,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/state.rs:84:
+     pub chat_auto_scroll: bool,
+     pub visible_message_count: usize,
+     pub chat_area_height: usize, // Height of message area in rows (set by render loop)
+-    pub terminal_width: usize,    // Terminal width in columns (set by render loop)
++    pub terminal_width: usize,   // Terminal width in columns (set by render loop)
+ 
+     // Scroll State (Log tab)
+     pub log_scroll_offset: usize,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/state.rs:250:
+             (VecDeque::new(), VecDeque::new(), HashMap::new())
+         },
+         |db_messages| {
+-            format_messages_from_db(&db_messages, local_nicknames, received_nicknames, own_nickname)
++            format_messages_from_db(
++                &db_messages,
++                local_nicknames,
++                received_nicknames,
++                own_nickname,
++            )
+         },
+     )
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_connected.rs:74:
+     assert_eq!(t.len(), 0);
+     assert!(t.last_disconnection().is_none());
+ }
++
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_db.rs:189:
+     std::env::set_current_dir(dir.path()).expect("set cwd");
+ 
+     let url = get_database_url();
+-    assert!(std::path::Path::new(&url)
+-        .extension()
+-        .is_some_and(|ext| ext.eq_ignore_ascii_case("db")));
++    assert!(
++        std::path::Path::new(&url)
++            .extension()
++            .is_some_and(|ext| ext.eq_ignore_ascii_case("db"))
++    );
+     assert!(!url.is_empty());
+ 
+     std::env::set_current_dir(old).expect("restore cwd");
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_lib.rs:231:
+ 
+ #[test]
+ fn test_format_latency_sub_millisecond() {
+-    let received =
+-        std::time::UNIX_EPOCH + std::time::Duration::from_millis(0);
++    let received = std::time::UNIX_EPOCH + std::time::Duration::from_millis(0);
+     let latency = fmt::format_latency(Some(0.0), received);
+     assert_eq!(latency, "<1ms");
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:4:
+ 
+ #[test]
+ fn peer_table_sorts_by_active_column_like_flutter() {
+-    use crate::tui_helpers::{sort_peers_table, PeerMessageMap};
++    use crate::tui_helpers::{PeerMessageMap, sort_peers_table};
+     use std::collections::HashMap;
+ 
+     let peers = VecDeque::from([
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:25:
+         },
+     ]);
+     let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
+-    dm.insert("a".to_string(), VecDeque::from(["x".to_string(), "y".to_string()])); // 2 dms
++    dm.insert(
++        "a".to_string(),
++        VecDeque::from(["x".to_string(), "y".to_string()]),
++    ); // 2 dms
+     dm.insert("b".to_string(), VecDeque::from(["z".to_string()])); // 1 dm
+-    let msgs: VecDeque<Option<String>> =
+-        VecDeque::from([Some("a".to_string()), Some("a".to_string()), Some("c".to_string())]);
++    let msgs: VecDeque<Option<String>> = VecDeque::from([
++        Some("a".to_string()),
++        Some("a".to_string()),
++        Some("c".to_string()),
++    ]);
+ 
+     // Default Flutter sort: Last Seen, descending -> c(02), a(03)? a=03 is latest.
+     // last_seen desc: a(03) > c(02) > b(01)
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:35:
+     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 3, false);
+-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
++    assert_eq!(
++        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
++        vec!["a", "c", "b"]
++    );
+ 
+     // DM count ascending: b(1) < a(2) < c(0)
+     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 1, true);
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:40:
+-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["c", "b", "a"]);
++    assert_eq!(
++        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
++        vec!["c", "b", "a"]
++    );
+     assert_eq!(rows[0].dm_count, 0);
+     assert_eq!(rows[1].dm_count, 1);
+     assert_eq!(rows[2].dm_count, 2);
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:44:
+ 
+     // Broadcast count: a=2, c=1, b=0
+     let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 2, false);
+-    assert_eq!(rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), vec!["a", "c", "b"]);
++    assert_eq!(
++        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
++        vec!["a", "c", "b"]
++    );
+ 
+     assert_eq!(dm.dm_count_for("a"), 2);
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:106:
+     let ids: Vec<String> = peers.iter().map(|p| p.peer_id.clone()).collect();
+     assert_eq!(
+         ids,
+-        vec!["peer-8", "peer-7", "peer-6", "peer-5", "peer-4", "peer-3", "peer-2", "peer-1"]
++        vec![
++            "peer-8", "peer-7", "peer-6", "peer-5", "peer-4", "peer-3", "peer-2", "peer-1"
++        ]
+     );
+     assert_eq!(selected, 7);
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:233:
+ 
+ #[test]
+ fn peer_table_column_widths_fit_longest_content() {
+-    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
++    use crate::tui_helpers::{PeerTableRow, peer_table_column_widths};
+ 
+     // No peers: columns are only as wide as their headers.
+     let empty: Vec<PeerTableRow> = Vec::new();
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:240:
+-    assert_eq!(peer_table_column_widths(&empty, 3, false), vec![4, 2, 9, 11]); // "Last Seen ▼"
++    assert_eq!(
++        peer_table_column_widths(&empty, 3, false),
++        vec![4, 2, 9, 11]
++    ); // "Last Seen ▼"
+     // The sort indicator stays inside the column it marks.
+     assert_eq!(peer_table_column_widths(&empty, 0, false), vec![6, 2, 9, 9]); // "Name ▼"
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:246:
+         PeerTableRow::new("p1", "Bob", 12, 3, "2024-01-01 00:00:03"),
+         PeerTableRow::new("p2", "Avery-TestName", 9999, 1000, "2024-01-01 00:00:02"),
+     ];
+-    assert_eq!(peer_table_column_widths(&rows, 3, false), vec![14, 4, 9, 19]);
++    assert_eq!(
++        peer_table_column_widths(&rows, 3, false),
++        vec![14, 4, 9, 19]
++    );
+     // The table spans only its content: every column is far narrower than a
+     // typical terminal width.
+-    assert!(peer_table_column_widths(&rows, 3, false).iter().all(|w| *w < 100));
++    assert!(
++        peer_table_column_widths(&rows, 3, false)
++            .iter()
++            .all(|w| *w < 100)
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:256:
+ fn peer_table_column_widths_count_wide_chars() {
+-    use crate::tui_helpers::{peer_table_column_widths, PeerTableRow};
++    use crate::tui_helpers::{PeerTableRow, peer_table_column_widths};
+     let rows = vec![PeerTableRow::new("j", "飛鳥龍", 0, 0, "t")];
+     let widths = peer_table_column_widths(&rows, 0, false);
+     // 飛鳥龍 is 3 chars but 6 terminal columns wide (1 wide char + 2 wide chars).
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:321:
+     .collect::<Vec<_>>();
+     let mut dm: HashMap<String, VecDeque<String>> = HashMap::new();
+     dm.insert("b".to_string(), VecDeque::from(["x".to_string()])); // 1 dm
+-    dm.insert("c".to_string(), VecDeque::from(["y".to_string(), "z".to_string()])); // 2 dms
+-    let msgs: VecDeque<Option<String>> =
+-        VecDeque::from([Some("b".to_string()), Some("b".to_string()), Some("d".to_string())]);
++    dm.insert(
++        "c".to_string(),
++        VecDeque::from(["y".to_string(), "z".to_string()]),
++    ); // 2 dms
++    let msgs: VecDeque<Option<String>> = VecDeque::from([
++        Some("b".to_string()),
++        Some("b".to_string()),
++        Some("d".to_string()),
++    ]);
+ 
+     // Only rows inside `[1, 3)` are materialized (b and c).
+     let rows = peer_table_rows_range(&peers, &dm, &msgs, 1, 3);
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_tui_helpers.rs:403:
+     let windowed = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
+     let ids: Vec<&str> = windowed.iter().map(|r| r.peer_id.as_str()).collect();
+     assert_eq!(ids, vec!["a", "b", "c"]);
+-    assert_eq!(full.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(), ids);
++    assert_eq!(
++        full.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
++        ids
++    );
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/api/mod.rs:2:
+ //!
+ //! This module defines the functions and types exposed to Dart via FRB.
+ 
++use crate::messages::PeerMessageStats;
+ use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
+ use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
+-use crate::messages::PeerMessageStats;
+ use crate::network::NetworkSize;
+ 
+ /// Initialize the mobile database at the given path and return peer info.
+Diff in /home/runner/work/p2p_app/p2p_app/src/behavior.rs:186:
+     #[cfg(feature = "quic")]
+     let swarm = base
+         .with_quic()
+-        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+-            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+-                Box::new(std::io::Error::other(e))
+-            })
+-        })?
++        .with_behaviour(
++            |key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
++                build_behaviour(key, network_size).map_err(
++                    |e| -> Box<dyn std::error::Error + Send + Sync> {
++                        Box::new(std::io::Error::other(e))
++                    },
++                )
++            },
++        )?
+         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+         .build();
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/behavior.rs:197:
+     #[cfg(not(feature = "quic"))]
+     let swarm = base
+-        .with_behaviour(|key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+-            build_behaviour(key, network_size).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+-                Box::new(std::io::Error::other(e))
+-            })
+-        })?
++        .with_behaviour(
++            |key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
++                build_behaviour(key, network_size).map_err(
++                    |e| -> Box<dyn std::error::Error + Send + Sync> {
++                        Box::new(std::io::Error::other(e))
++                    },
++                )
++            },
++        )?
+         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+         .build();
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/connected.rs:82:
+ #[cfg(test)]
+ #[path = "../tests/unit/unit_connected.rs"]
+ mod tests;
++
+Diff in /home/runner/work/p2p_app/p2p_app/src/db.rs:322:
+ fn unique_db_variant(url: &str) -> String {
+     let path = std::path::Path::new(url);
+     let parent = path.parent().map(|p| p.to_string_lossy().into_owned());
+-    let stem = path
+-        .file_stem()
+-        .map_or_else(|| "sqlite".to_string(), |s| s.to_string_lossy().into_owned());
++    let stem = path.file_stem().map_or_else(
++        || "sqlite".to_string(),
++        |s| s.to_string_lossy().into_owned(),
++    );
+     let ext = path
+         .extension()
+         .map_or_else(String::new, |e| format!(".{}", e.to_string_lossy()));
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:31:
+ // Section: imports
+ 
+ use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+-use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+ use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+ // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:1495:
+     use flutter_rust_bridge::for_generated::byteorder::{
+         NativeEndian, ReadBytesExt, WriteBytesExt,
+     };
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:1519:
+     };
+     use flutter_rust_bridge::for_generated::wasm_bindgen;
+     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:6:
+     generated::schema::messages::dsl::messages,
+ };
+ use color_eyre::eyre::Context;
+-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _, dsl::sql, BoolExpressionMethods};
++use diesel::{
++    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
++    dsl::sql,
++};
+ 
+ /// Optional metadata for message creation
+ #[derive(Default)]
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:239:
+ ///
+ /// # Errors
+ /// Returns an error if the database query fails.
+-pub fn load_receipts() -> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
+-{
++pub fn load_receipts()
++-> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>> {
+     use crate::generated::models_queryable::MessageReceipt;
+     use crate::generated::schema::message_receipts::dsl::message_receipts;
+     use diesel::SelectableHelper;
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:292:
+ 
+     let broadcast_sent: i64 = p::peers
+         .filter(p::peer_id.eq(peer_id))
+-        .select(sql::<diesel::sql_types::Integer>("COALESCE(broadcasts_sent, 0)"))
++        .select(sql::<diesel::sql_types::Integer>(
++            "COALESCE(broadcasts_sent, 0)",
++        ))
+         .first::<i32>(conn)
+         .unwrap_or(0)
+         .into();
+Diff in /home/runner/work/p2p_app/p2p_app/src/peers.rs:6:
+     generated::schema::peers::dsl::peers,
+     logging::p2plog_debug,
+ };
++use diesel::sql_types::Text;
+ use diesel::{
+     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
+     sql_query,
+Diff in /home/runner/work/p2p_app/p2p_app/src/peers.rs:12:
+ };
+-use diesel::sql_types::Text;
+ 
+ /// Peer row returned by `load_known_peers()`.
+ #[derive(Debug, Clone, diesel::QueryableByName)]
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_helpers.rs:352:
+                 .cmp(&parse_last_seen_ms(&b.last_seen))
+                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
+         };
+-        if ascending {
+-            ord
+-        } else {
+-            ord.reverse()
+-        }
++        if ascending { ord } else { ord.reverse() }
+     });
+     rows.into_iter().map(|(row, _)| row).collect()
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_helpers.rs:379:
+     let rows = sort_peers_table(&all, dm_messages, messages, sort_column, ascending);
+     // Index rows by peer id so reordering is O(n) instead of a per-row scan.
+     let ordered = {
+-        let by_id: HashMap<&str, PeerRecord> =
+-            all.iter().map(|p| (p.peer_id.as_str(), p.clone())).collect();
++        let by_id: HashMap<&str, PeerRecord> = all
++            .iter()
++            .map(|p| (p.peer_id.as_str(), p.clone()))
++            .collect();
+         rows.iter()
+             .filter_map(|r| by_id.get(r.peer_id.as_str()).cloned())
+             .collect::<VecDeque<PeerRecord>>()
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:9:
+ use ratatui::{
+     layout::{Alignment, Constraint, Direction, Layout, Rect},
+     style::{Color, Modifier, Style},
+-    widgets::{Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, TableState, Tabs, Wrap},
++    widgets::{
++        Block, Borders, Cell, Clear, List, ListItem, Paragraph, Row, Table, TableState, Tabs, Wrap,
++    },
+ };
+ use std::collections::VecDeque;
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:82:
+ #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+ fn format_lost_at(ts: Option<f64>) -> String {
+     ts.and_then(|t| {
+-        chrono::DateTime::from_timestamp(t as i64, 0).map(|dt| {
+-            crate::format_peer_datetime(dt.naive_local())
+-        })
++        chrono::DateTime::from_timestamp(t as i64, 0)
++            .map(|dt| crate::format_peer_datetime(dt.naive_local()))
+     })
+     .unwrap_or_else(|| "—".to_string())
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:99:
+     };
+ 
+     let mut lines: Vec<String> = Vec::new();
+-    lines.push(format!("Nickname: {}  (press 'n' to edit)", state.own_nickname));
++    lines.push(format!(
++        "Nickname: {}  (press 'n' to edit)",
++        state.own_nickname
++    ));
+     lines.push(format!("Peer ID: {}", state.local_peer_id));
+     lines.push(format!("Database: {}", state.db_url));
+     lines.push(format!("Platform: {}", state.platform));
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:156:
+ }
+ 
+ /// Render the Peer Info tab (mirrors the Flutter `PeerInfoScreen`).
+-pub fn render_peer_info_content(f: &mut ratatui::Frame, area: Rect, peer_id: &str, state: &TuiRenderState) {
+-    let display = crate::get_peer_display_name(peer_id)
+-        .unwrap_or_else(|_| short_peer_id(peer_id));
++pub fn render_peer_info_content(
++    f: &mut ratatui::Frame,
++    area: Rect,
++    peer_id: &str,
++    state: &TuiRenderState,
++) {
++    let display = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
+     let local = state.self_nicknames_for_peers.get(peer_id);
+     let received = state.received_nicknames.get(peer_id);
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:165:
+     let (origin, detail) = if local.is_some() {
+-        (
+-            "Local nickname",
+-            "You set this nickname for the peer.",
+-        )
++        ("Local nickname", "You set this nickname for the peer.")
+     } else if received.is_some() {
+         (
+             "Received nickname",
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:365:
+     let broadcast_usable_height = usize::from(broadcast_area.height.saturating_sub(2));
+     let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
+ 
+-    let short_id = crate::get_peer_display_name(peer_id)
+-        .unwrap_or_else(|_| short_peer_id(peer_id));
++    let short_id = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
+ 
+     let broadcast_messages: VecDeque<String> = state
+         .messages
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render.rs:437:
+             .skip(effective_offset)
+             .take(visible)
+             .enumerate()
+-                .map(|(visible_idx, m)| {
+-                    let global_idx = effective_offset.saturating_add(visible_idx);
++            .map(|(visible_idx, m)| {
++                let global_idx = effective_offset.saturating_add(visible_idx);
+                 let msg_id = state
+                     .dm_message_ids
+                     .get(peer_id)
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_render_state.rs:107:
+     #[must_use]
+     pub fn new() -> Self {
+         Self {
+-            tab_titles: vec!["Chat".into(), "Peers".into(), "Log".into(), "Settings".into()],
++            tab_titles: vec![
++                "Chat".into(),
++                "Peers".into(),
++                "Log".into(),
++                "Settings".into(),
++            ],
+             active_tab: 0,
+             messages: VecDeque::new(),
+             message_peer_ids: VecDeque::new(),
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_tabs.rs:114:
+ 
+     /// Add or retrieve index of a peer-info tab for peer
+     pub fn add_peer_info_tab(&mut self, peer_id: String) -> usize {
+-        if let Some(pos) = self
+-            .peer_info_tabs
+-            .iter()
+-            .position(|p| p == &peer_id)
+-        {
++        if let Some(pos) = self.peer_info_tabs.iter().position(|p| p == &peer_id) {
+             return pos
+                 .saturating_add(FIXED_TAB_COUNT)
+                 .saturating_add(self.dm_tabs.len());
+Diff in /home/runner/work/p2p_app/p2p_app/src/tui_tabs.rs:193:
+             idx if idx == settings_index => TabContent::Settings,
+             idx if idx >= FIXED_TAB_COUNT && idx < FIXED_TAB_COUNT.saturating_add(dm_count) => {
+                 let dm_idx = idx.saturating_sub(FIXED_TAB_COUNT);
+-                self.dm_tabs
+-                    .get(dm_idx)
+-                    .map_or(TabContent::Chat, |tab| TabContent::Direct(tab.peer_id.clone()))
++                self.dm_tabs.get(dm_idx).map_or(TabContent::Chat, |tab| {
++                    TabContent::Direct(tab.peer_id.clone())
++                })
+             }
+             idx if idx >= FIXED_TAB_COUNT.saturating_add(dm_count) && idx < log_index => {
+-                let info_idx = idx
+-                    .saturating_sub(FIXED_TAB_COUNT)
+-                    .saturating_sub(dm_count);
++                let info_idx = idx.saturating_sub(FIXED_TAB_COUNT).saturating_sub(dm_count);
+                 self.peer_info_tabs
+                     .get(info_idx)
+                     .map_or(TabContent::Chat, |p| TabContent::PeerInfo(p.clone()))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/additional_coverage.rs:1:
+ //! Additional unit tests to increase coverage
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ // Test Debug format coverage (no serde needed)
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:1:
+ //! Tests for behavior.rs module via libp2p behavior
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ mod test_utils;
+ use serial_test::serial;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/test_utils.rs:5:
+ //! (set via [`p2p_app::db::set_db_url`]), so each test gets its own database
+ //! without mutating a process-wide env var or global variable.
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use std::sync::{Mutex, OnceLock};
+ use tempfile::TempDir;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/db.rs:1:
+ //! Tests for db.rs module - database URL and identity functions
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use serial_test::serial;
+ use std::sync::{Mutex, OnceLock};
+Diff in /home/runner/work/p2p_app/p2p_app/tests/db.rs:119:
+     p2p_app::db::reset_db_url();
+     let url3 = p2p_app::db::get_database_url();
+     assert_ne!(url3, "/tmp/other.db");
+-    assert!(std::path::Path::new(&url3)
+-        .extension()
+-        .is_some_and(|ext| ext.eq_ignore_ascii_case("db")));
++    assert!(
++        std::path::Path::new(&url3)
++            .extension()
++            .is_some_and(|ext| ext.eq_ignore_ascii_case("db"))
++    );
+ }
+ 
+ // ── Additional database edge cases ─────────────────────────────────────────────
+Diff in /home/runner/work/p2p_app/p2p_app/tests/db_selection.rs:1:
+ //! Tests for database selection logic
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use serial_test::serial;
+ use std::fs;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/fmt.rs:1:
+ //! Tests for fmt.rs module
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use std::collections::HashMap;
+ use std::time::{SystemTime, UNIX_EPOCH};
+Diff in /home/runner/work/p2p_app/p2p_app/tests/messages.rs:1:
+ //! Tests for messages.rs module
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use p2p_app::messages::MessageMeta;
+ use serial_test::serial;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/nickname.rs:1:
+ //! Tests for nickname.rs module
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use diesel::RunQueryDsl as _;
+ use serial_test::serial;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/p2p_integration.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use libp2p::{
+     Multiaddr,
+Diff in /home/runner/work/p2p_app/p2p_app/tests/peers.rs:1:
+ //! Tests for peers.rs module
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ mod test_utils;
+ use serial_test::serial;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/test_utils.rs:5:
+ //! (set via [`p2p_app::db::set_db_url`]), so each test gets its own database
+ //! without mutating a process-wide env var or global variable.
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use std::sync::{Mutex, OnceLock};
+ use tempfile::TempDir;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/swarm_handler.rs:1:
+ //! Tests for `swarm_handler.rs` module
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use p2p_app::behavior::BroadcastMessage;
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/tests/swarm_handler.rs:134:
+         .unwrap()
+         .with_quic()
+         .with_behaviour(|key| {
+-            build_behaviour(key, NetworkSize::Small).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+-                Box::new(std::io::Error::other(e))
+-            })
++            build_behaviour(key, NetworkSize::Small).map_err(
++                |e| -> Box<dyn std::error::Error + Send + Sync> {
++                    Box::new(std::io::Error::other(e))
++                },
++            )
+         })
+         .unwrap()
+         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/swarm_handler.rs:152:
+         )
+         .unwrap()
+         .with_behaviour(|key| {
+-            build_behaviour(key, NetworkSize::Small).map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+-                Box::new(std::io::Error::other(e))
+-            })
++            build_behaviour(key, NetworkSize::Small).map_err(
++                |e| -> Box<dyn std::error::Error + Send + Sync> {
++                    Box::new(std::io::Error::other(e))
++                },
++            )
+         })
+         .unwrap()
+         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/test_utils.rs:5:
+ //! (set via [`p2p_app::db::set_db_url`]), so each test gets its own database
+ //! without mutating a process-wide env var or global variable.
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use std::sync::{Mutex, OnceLock};
+ use tempfile::TempDir;
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_binary_integration.rs:2:
+ //!
+ //! These tests simulate realistic TUI usage patterns without requiring database access
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ #![allow(clippy::match_wildcard_for_single_variants)]
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_chat.rs:1:
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ #[cfg(feature = "tui")]
+ mod tests {
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_integration.rs:7:
+ //! - Mouse capture toggling
+ //! - Duplicate peer prevention
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ use std::collections::{HashMap, VecDeque};
+ use std::sync::{Arc, Mutex};
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:71:
+             .draw(|f| render_peers_content(f, f.area(), &state))
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         assert!(text.contains("Connected Peers (6)"), "got: {text:?}");
+     }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:95:
+             .draw(|f| render_peers_content(f, f.area(), &state))
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         // The selection (peer 29) sits on the last visible data row...
+         assert!(text.contains("15:26:29"), "got: {text:?}");
+         // ...so the first rows scrolled out of the viewport.
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:200:
+         let mut terminal = create_test_terminal();
+         let mut state = TuiRenderState::new();
+         // No peer currently connected: only the last-seen peer is remembered.
+-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
++        state.add_peer(
++            "12D3KooWH123456",
++            "2026-08-01 10:00:00",
++            "2026-08-28 15:26:41",
++        );
+ 
+         terminal
+             .draw(|f| render_settings_content(f, f.area(), &state))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:207:
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+         assert!(
+             text.contains("Last connected 2026-08-28 15:26:41 to peer"),
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:219:
+     fn test_render_settings_content_connected_peers_shown() {
+         let mut terminal = create_test_terminal();
+         let mut state = TuiRenderState::new();
+-        state.connected_peer_ids.insert("12D3KooWH123456".to_string());
++        state
++            .connected_peer_ids
++            .insert("12D3KooWH123456".to_string());
+         state.peer_count = 1;
+-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
++        state.add_peer(
++            "12D3KooWH123456",
++            "2026-08-01 10:00:00",
++            "2026-08-28 15:26:41",
++        );
+ 
+         terminal
+             .draw(|f| render_settings_content(f, f.area(), &state))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:228:
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         assert!(text.contains("Connected peers: 1"), "got: {text:?}");
+         assert!(!text.contains("Last connected"), "got: {text:?}");
+         assert!(!text.contains("last seen:"), "got: {text:?}");
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:239:
+         let mut state = TuiRenderState::new();
+         // A known peer that is NOT in connected_peer_ids must not appear as a
+         // currently connected peer.
+-        state.add_peer("12D3KooWH123456", "2026-08-01 10:00:00", "2026-08-28 15:26:41");
++        state.add_peer(
++            "12D3KooWH123456",
++            "2026-08-01 10:00:00",
++            "2026-08-28 15:26:41",
++        );
+ 
+         terminal
+             .draw(|f| render_settings_content(f, f.area(), &state))
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:246:
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+         assert!(!text.contains("Connected peers: 1"), "got: {text:?}");
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_render_integration.rs:263:
+             .draw(|f| render_settings_content(f, f.area(), &state))
+             .unwrap();
+         let buf = terminal.backend().buffer();
+-        let text: String = buf.content.iter().map(ratatui::buffer::Cell::symbol).collect();
++        let text: String = buf
++            .content
++            .iter()
++            .map(ratatui::buffer::Cell::symbol)
++            .collect();
+         assert!(text.contains("Connected peers: 0"), "got: {text:?}");
+         assert!(text.contains("Last connected"), "got: {text:?}");
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_state.rs:1:
+ //! Tests for public API modules
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ #[test]
+ fn test_tui_test_state_new() {
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_tasks.rs:5:
+ //! - Event handling and propagation
+ //! - Bounds checking on collections
+ 
+-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing, clippy::panic, clippy::panic_in_result_fn, clippy::unreachable, clippy::todo, clippy::unimplemented)]
++#![allow(
++    clippy::unwrap_used,
++    clippy::expect_used,
++    clippy::indexing_slicing,
++    clippy::panic,
++    clippy::panic_in_result_fn,
++    clippy::unreachable,
++    clippy::todo,
++    clippy::unimplemented
++)]
+ 
+ #[cfg(feature = "tui")]
+ mod tui_architecture_tests {
+Exit code: 0
+
+--- clippy ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m libc v0.2.189
+[1m[92m    Checking[0m cfg-if v1.0.4
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[92m   Compiling[0m pkg-config v0.3.34
+[1m[92m    Checking[0m memchr v2.8.3
+[1m[92m   Compiling[0m syn v3.0.4
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m critical-section v1.2.0
+[1m[92m    Checking[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m portable-atomic v1.15.0
+[1m[92m    Checking[0m log v0.4.34
+[1m[92m    Checking[0m once_cell v1.21.4
+[1m[92m   Compiling[0m equivalent v1.0.2
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m winnow v0.5.40
+[1m[92m   Compiling[0m indexmap v2.14.0
+[1m[92m    Checking[0m smallvec v1.15.2
+[1m[92m   Compiling[0m target-lexicon v0.12.16
+[1m[92m   Compiling[0m version-compare v0.2.1
+[1m[92m   Compiling[0m cfg-expr v0.15.8
+[1m[92m    Checking[0m futures-core v0.3.34
+[1m[92m    Checking[0m futures-io v0.3.34
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m    Checking[0m slab v0.4.12
+[1m[92m    Checking[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m futures-macro v0.3.34
+[1m[92m    Checking[0m futures-channel v0.3.34
+[1m[92m   Compiling[0m thiserror v2.0.20
+[1m[92m    Checking[0m futures-task v0.3.34
+[1m[92m   Compiling[0m thiserror-impl v2.0.20
+[1m[92m    Checking[0m bitflags v2.13.1
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m    Checking[0m futures-util v0.3.34
+[1m[92m   Compiling[0m synstructure v0.13.2
+[1m[92m    Checking[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[92m   Compiling[0m anyhow v1.0.104
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[92m    Checking[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m find-msvc-tools v0.1.11
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m    Checking[0m tracing v0.1.44
+[1m[92m   Compiling[0m cc v1.4.4
+[1m[92m   Compiling[0m toml_datetime v0.6.3
+[1m[92m   Compiling[0m serde_spanned v0.6.9
+[1m[92m   Compiling[0m toml_edit v0.20.2
+[1m[92m    Checking[0m futures-executor v0.3.34
+[1m[92m    Checking[0m bytes v1.12.1
+[1m[92m   Compiling[0m zerocopy v0.8.56
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[92m    Checking[0m lock_api v0.4.14
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[92m   Compiling[0m zerocopy-derive v0.8.56
+[1m[92m    Checking[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m zerofrom-derive v0.1.7
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m toml v0.8.2
+[1m[92m   Compiling[0m system-deps v6.2.2
+[1m[92m    Checking[0m zerofrom v0.1.8
+[1m[92m   Compiling[0m yoke-derive v0.8.2
+[1m[92m    Checking[0m subtle v2.6.1
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m glib-sys v0.18.1
+[1m[92m   Compiling[0m gobject-sys v0.18.0
+[1m[92m    Checking[0m yoke v0.8.3
+[1m[92m   Compiling[0m zerovec-derive v0.11.6
+[1m[92m    Checking[0m typenum v1.20.1
+[1m[92m    Checking[0m either v1.18.0
+[1m[92m    Checking[0m zerovec v0.11.8
+[1m[92m   Compiling[0m pin-project-internal v1.1.13
+[1m[92m    Checking[0m getrandom v0.2.17
+[1m[92m    Checking[0m crypto-common v0.1.7
+[1m[92m    Checking[0m block-buffer v0.10.4
+[1m[92m   Compiling[0m gio-sys v0.18.1
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[92m    Checking[0m digest v0.10.7
+[1m[92m    Checking[0m tinystr v0.8.4
+[1m[92m   Compiling[0m zeroize_derive v1.5.0
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m    Checking[0m litemap v0.8.3
+[1m[92m    Checking[0m pin-project v1.1.13
+[1m[92m    Checking[0m writeable v0.6.4
+[1m[92m    Checking[0m zeroize v1.9.0
+[1m[92m    Checking[0m icu_locale_core v2.3.0
+[1m[92m    Checking[0m ppv-lite86 v0.2.21
+[1m[92m    Checking[0m potential_utf v0.1.6
+[1m[92m    Checking[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m icu_properties_data v2.3.0
+[1m[92m    Checking[0m utf8_iter v1.0.4
+[1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+[1m[92m    Checking[0m icu_collections v2.3.0
+[1m[92m    Checking[0m icu_provider v2.3.1
+[1m[92m    Checking[0m mio v1.2.2
+[1m[92m    Checking[0m percent-encoding v2.3.2
+[1m[92m    Checking[0m static_assertions v1.1.0
+[1m[92m    Checking[0m cpufeatures v0.2.17
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m    Checking[0m icu_normalizer v2.3.0
+[1m[92m   Compiling[0m proc-macro-error-attr v1.0.4
+[1m[92m    Checking[0m icu_properties v2.3.0
+[1m[92m   Compiling[0m crossbeam-utils v0.8.22
+[1m[92m    Checking[0m data-encoding v2.11.1
+[1m[92m   Compiling[0m syn v1.0.109
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m   Compiling[0m gdk-sys v0.18.2
+[1m[92m   Compiling[0m proc-macro-error v1.0.4
+[1m[92m    Checking[0m idna_adapter v1.2.2
+[1m[92m    Checking[0m form_urlencoded v1.2.2
+[1m[92m    Checking[0m idna v1.1.0
+[1m[92m    Checking[0m rand_core v0.6.4
+[1m[92m    Checking[0m socket2 v0.6.5
+[1m[92m   Compiling[0m curve25519-dalek v4.1.3
+[1m[92m    Checking[0m url v2.5.8
+[1m[92m    Checking[0m futures v0.3.34
+[1m[92m   Compiling[0m tokio-macros v2.7.2
+[1m[92m    Checking[0m itoa v1.0.18
+[1m[92m    Checking[0m fnv v1.0.7
+[1m[92m   Compiling[0m atk-sys v0.18.2
+[1m[92m   Compiling[0m gdk-pixbuf-sys v0.18.0
+[1m[92m   Compiling[0m cairo-sys-rs v0.18.2
+[1m[92m   Compiling[0m pango-sys v0.18.0
+[1m[92m   Compiling[0m proc-macro-crate v2.0.2
+[1m[92m   Compiling[0m curve25519-dalek-derive v0.1.1
+[1m[92m   Compiling[0m time-core v0.1.9
+[1m[92m    Checking[0m tokio v1.53.1
+[1m[92m   Compiling[0m num-conv v0.2.2
+[1m[92m   Compiling[0m heck v0.4.1
+[1m[92m   Compiling[0m time-macros v0.2.32
+[1m[92m   Compiling[0m glib-macros v0.18.5
+[1m[92m    Checking[0m rand_chacha v0.3.1
+[1m[92m   Compiling[0m itertools v0.14.0
+[1m[92m    Checking[0m deranged v0.5.8
+[1m[92m   Compiling[0m paste v1.0.15
+[1m[92m    Checking[0m powerfmt v0.2.0
+[1m[92m    Checking[0m signature v2.2.0
+[1m[92m    Checking[0m unsigned-varint v0.8.0
+[1m[92m    Checking[0m num_threads v0.1.7
+[1m[92m    Checking[0m glib v0.18.5
+[1m[92m    Checking[0m time v0.3.55
+[1m[92m    Checking[0m ed25519 v2.2.3
+[1m[92m   Compiling[0m data-encoding-macro-internal v0.1.19
+[1m[92m   Compiling[0m prost-derive v0.14.4
+[1m[92m    Checking[0m rand v0.8.7
+[1m[92m    Checking[0m sha2 v0.10.9
+[1m[92m    Checking[0m hmac v0.12.1
+[1m[92m   Compiling[0m match-lookup v0.1.2
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[92m   Compiling[0m unicode-segmentation v1.13.3
+[1m[92m    Checking[0m const-str v0.4.3
+[1m[92m    Checking[0m hkdf v0.12.4
+[1m[92m    Checking[0m prost v0.14.4
+[1m[92m    Checking[0m ed25519-dalek v2.2.0
+[1m[92m    Checking[0m base256emoji v1.0.2
+[1m[92m    Checking[0m data-encoding-macro v0.1.21
+[1m[92m    Checking[0m multihash v0.19.5
+[1m[92m   Compiling[0m gtk-sys v0.18.2
+[1m[92m    Checking[0m simd-adler32 v0.3.10
+[1m[92m    Checking[0m base45 v3.2.0
+[1m[92m    Checking[0m bs58 v0.5.1
+[1m[92m    Checking[0m base-x v0.2.11
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m    Checking[0m multibase v0.9.3
+[1m[92m    Checking[0m libp2p-identity v0.2.14
+[1m[92m    Checking[0m quick-protobuf v0.8.1
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[92m    Checking[0m foldhash v0.2.0
+[1m[92m   Compiling[0m gio v0.18.4
+[1m[92m    Checking[0m arrayref v0.3.9
+[1m[92m    Checking[0m web-time v1.1.0
+[1m[92m   Compiling[0m cfg_aliases v0.2.2
+[1m[92m    Checking[0m futures-timer v3.0.4
+[1m[92m    Checking[0m unsigned-varint v0.7.2
+[1m[92m    Checking[0m multistream-select v0.13.0
+[1m[92m    Checking[0m multiaddr v0.18.2
+[1m[92m    Checking[0m rw-stream-sink v0.4.0
+[1m[92m    Checking[0m num-integer v0.1.47
+[1m[92m   Compiling[0m slotmap v1.1.1
+[1m[92m    Checking[0m konst_macro_rules v0.2.19
+[1m[92m    Checking[0m dioxus-core-types v0.7.10
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m unicode-xid v0.2.6
+[1m[92m    Checking[0m adler2 v2.0.1
+[1m[92m    Checking[0m miniz_oxide v0.8.9
+[1m[92m   Compiling[0m const_format_proc_macros v0.2.34
+[1m[92m    Checking[0m konst v0.2.20
+[1m[92m   Compiling[0m darling_core v0.21.3
+[1m[92m    Checking[0m num-bigint v0.4.8
+[1m[92m    Checking[0m libp2p-core v0.43.2
+[1m[92m    Checking[0m subsecond-types v0.7.10
+[1m[92m    Checking[0m memmap2 v0.9.11
+[1m[92m    Checking[0m libloading v0.8.9
+[1m[92m   Compiling[0m crossbeam-epoch v0.9.20
+[1m[92m    Checking[0m subsecond v0.7.10
+[1m[92m   Compiling[0m darling_macro v0.21.3
+[1m[92m    Checking[0m const_format v0.2.36
+[1m[92m    Checking[0m generational-box v0.7.10
+[1m[92m   Compiling[0m memoffset v0.9.1
+[1m[92m    Checking[0m lazy_static v1.5.0
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m    Checking[0m longest-increasing-subsequence v0.1.0
+[1m[92m    Checking[0m untrusted v0.9.0
+[1m[92m   Compiling[0m crossbeam-deque v0.8.7
+[1m[92m   Compiling[0m rustix v1.1.4
+[1m[92m    Checking[0m dioxus-core v0.7.10
+[1m[92m    Checking[0m rand_core v0.9.5
+[1m[92m   Compiling[0m darling v0.21.3
+[1m[92m   Compiling[0m field-offset v0.3.6
+[1m[92m   Compiling[0m toml_edit v0.19.15
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m    Checking[0m linux-raw-sys v0.12.1
+[1m[92m   Compiling[0m rayon-core v1.13.0
+[1m[92m    Checking[0m regex-syntax v0.8.11
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m proc-macro-crate v1.3.1
+[1m[92m    Checking[0m regex-automata v0.4.18
+[1m[92m    Checking[0m rand_chacha v0.9.0
+[1m[92m    Checking[0m cairo-rs v0.18.5
+[1m[92m   Compiling[0m openssl-sys v0.9.117
+[1m[92m   Compiling[0m equator-macro v0.4.2
+[1m[92m   Compiling[0m warnings-macro v0.2.0
+[1m[92m   Compiling[0m x11 v2.21.0
+[1m[92m    Checking[0m gdk-pixbuf v0.18.5
+[1m[92m    Checking[0m pango v0.18.3
+[1m[92m   Compiling[0m gtk v0.18.2
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m   Compiling[0m crc32fast v1.5.1
+[1m[92m    Checking[0m rand_core v0.10.1
+[1m[92m   Compiling[0m lazy-js-bundle v0.7.10
+[1m[92m    Checking[0m allocator-api2 v0.2.21
+[1m[92m    Checking[0m foldhash v0.1.5
+[1m[92m    Checking[0m hashbrown v0.15.5
+[1m[92m    Checking[0m equator v0.4.2
+[1m[92m    Checking[0m warnings v0.2.1
+[1m[92m    Checking[0m rand v0.9.5
+[1m[92m   Compiling[0m gtk3-macros v0.18.2
+[1m[92m    Checking[0m gdk v0.18.2
+[1m[92m    Checking[0m atk v0.18.2
+[1m[92m   Compiling[0m convert_case v0.8.0
+[1m[92m    Checking[0m rustls-pki-types v1.15.1
+[1m[92m   Compiling[0m const-serialize-macro v0.7.2
+[1m[92m   Compiling[0m async-trait v0.1.92
+[1m[92m    Checking[0m errno v0.3.14
+[1m[92m   Compiling[0m proc-macro2-diagnostics v0.10.1
+[1m[92m   Compiling[0m signal-hook v0.3.18
+[1m[92m    Checking[0m minimal-lexical v0.2.1
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m    Checking[0m nom v7.1.3
+[1m[92m    Checking[0m signal-hook-registry v1.4.8
+[1m[92m    Checking[0m hashlink v0.10.0
+[1m[92m    Checking[0m aligned-vec v0.6.4
+[1m[92m    Checking[0m dioxus-signals v0.7.10
+[1m[92m   Compiling[0m nix v0.30.1
+[1m[92m    Checking[0m keyboard-types v0.7.0
+[1m[92m    Checking[0m netlink-packet-core v0.8.2
+[1m[92m   Compiling[0m darling_core v0.24.1
+[1m[92m   Compiling[0m javascriptcore-rs-sys v1.1.1
+[1m[92m   Compiling[0m soup3-sys v0.5.0
+[1m[92m   Compiling[0m libp2p-swarm-derive v0.35.1
+[1m[92m    Checking[0m bitflags v1.3.2
+[1m[92m    Checking[0m base64 v0.22.1
+[1m[92m   Compiling[0m rustls v0.23.43
+[1m[92m   Compiling[0m winnow v0.7.15
+[1m[92m    Checking[0m arrayvec v0.7.8
+[1m[92m    Checking[0m libp2p-swarm v0.47.1
+[1m[92m    Checking[0m flate2 v1.1.9
+[1m[92m    Checking[0m rusticata-macros v4.1.0
+[1m[92m    Checking[0m v_frame v0.3.9
+[1m[92m    Checking[0m rustls-webpki v0.103.15
+[1m[92m    Checking[0m rayon v1.12.0
+[1m[92m   Compiling[0m darling_macro v0.24.1
+[1m[92m    Checking[0m hashbrown v0.16.1
+[1m[92m    Checking[0m num-rational v0.4.2
+[1m[92m    Checking[0m netlink-sys v0.8.8
+[1m[92m    Checking[0m castaway v0.2.4
+[1m[92m   Compiling[0m webkit2gtk-sys v2.0.1
+[1m[92m    Checking[0m as-slice v0.2.1
+[1m[92m   Compiling[0m asn1-rs-derive v0.6.0
+[1m[92m   Compiling[0m const-serialize-macro v0.8.0-alpha.1
+[1m[92m   Compiling[0m strum_macros v0.28.0
+[1m[92m   Compiling[0m asn1-rs-impl v0.2.0
+[1m[92m   Compiling[0m instability v0.3.13
+[1m[92m   Compiling[0m openssl v0.10.81
+[1m[92m   Compiling[0m built v0.8.1
+[1m[92m   Compiling[0m av-scenechange v0.14.1
+[1m[92m    Checking[0m foreign-types-shared v0.1.1
+[1m[92m    Checking[0m unicode-width v0.2.2
+[1m[92m   Compiling[0m libxdo-sys v0.11.0
+[1m[92m    Checking[0m tinyvec_macros v0.1.1
+[1m[92m    Checking[0m bytemuck v1.25.2
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m cpufeatures v0.3.0
+[1m[92m    Checking[0m dioxus-cli-config v0.7.10
+[1m[92m    Checking[0m chacha20 v0.10.1
+[1m[92m    Checking[0m compact_str v0.9.1
+[1m[92m    Checking[0m tinyvec v1.12.0
+[1m[92m    Checking[0m strum v0.28.0
+[1m[92m   Compiling[0m rav1e v0.8.1
+[1m[92m    Checking[0m unicode-truncate v2.0.1
+[1m[92m    Checking[0m foreign-types v0.3.2
+[1m[92m    Checking[0m asn1-rs v0.7.2
+[1m[92m    Checking[0m aligned v0.4.3
+[1m[92m    Checking[0m netlink-proto v0.12.2
+[1m[92m    Checking[0m lru v0.18.2
+[1m[92m    Checking[0m kasuari v0.4.12
+[1m[92m   Compiling[0m darling v0.24.1
+[1m[92m   Compiling[0m dioxus-rsx v0.7.10
+[1m[92m    Checking[0m netlink-packet-route v0.28.0
+[1m[92m    Checking[0m matchers v0.2.0
+[1m[92m   Compiling[0m enumset_derive v0.15.0
+[1m[92m    Checking[0m sharded-slab v0.1.7
+[1m[92m    Checking[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m convert_case v0.10.0
+[1m[92m    Checking[0m http v1.5.0
+[1m[92m    Checking[0m crossbeam-channel v0.5.16
+[1m[92m    Checking[0m tracing-log v0.2.0
+[1m[92m   Compiling[0m profiling-procmacros v1.0.18
+[1m[92m   Compiling[0m arg_enum_proc_macro v0.3.4
+[1m[92m   Compiling[0m openssl-macros v0.1.1
+[1m[92m    Checking[0m nom v8.0.0
+[1m[92m    Checking[0m no_std_io2 v0.9.4
+[1m[92m   Compiling[0m pulp v0.22.3
+[1m[92m   Compiling[0m ahash v0.8.12
+[1m[92m    Checking[0m thread_local v1.1.10
+[1m[92m    Checking[0m quick-error v2.0.1
+[1m[92m    Checking[0m nu-ansi-term v0.50.3
+[1m[92m    Checking[0m ipnet v2.12.1
+[1m[92m   Compiling[0m indoc v2.0.7
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m native-tls v0.2.18
+[1m[92m   Compiling[0m pastey v0.1.1
+[1m[92m    Checking[0m utf8parse v0.2.2
+[1m[92m    Checking[0m dpi v0.1.2
+[1m[92m    Checking[0m option-ext v0.2.0
+[1m[92m   Compiling[0m object v0.37.3
+[1m[92m   Compiling[0m oid-registry v0.8.1
+[1m[92m    Checking[0m y4m v0.8.0
+[1m[92m    Checking[0m av1-grain v0.2.5
+[1m[92m    Checking[0m dirs-sys v0.5.0
+[1m[92m    Checking[0m anstyle-parse v1.0.0
+[1m[92m    Checking[0m rtnetlink v0.20.0
+[1m[92m    Checking[0m tracing-subscriber v0.3.23
+[1m[92m    Checking[0m bitstream-io v4.10.0
+[1m[92m    Checking[0m profiling v1.0.18
+[1m[92m    Checking[0m enumset v1.1.14
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m dioxus-core-macro v0.7.10
+[1m[92m    Checking[0m ratatui-core v0.1.2
+[1m[92m    Checking[0m rand v0.10.2
+[1m[92m    Checking[0m num-complex v0.4.6
+[1m[92m    Checking[0m maybe-rayon v0.1.1
+[1m[92m    Checking[0m dioxus-hooks v0.7.10
+[1m[92m   Compiling[0m const-serialize v0.7.2
+[1m[92m   Compiling[0m dioxus-html-internal-macro v0.7.10
+[1m[92m   Compiling[0m quinn-udp v0.5.15
+[1m[92m   Compiling[0m libsqlite3-sys v0.36.0
+[1m[92m    Checking[0m half v2.7.1
+[1m[92m    Checking[0m euclid v0.22.14
+[1m[92m   Compiling[0m gdkx11-sys v0.18.2
+[1m[92m    Checking[0m raw-cpuid v11.6.0
+[1m[92m   Compiling[0m num-derive v0.4.2
+[1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m simd_helpers v0.1.0
+[1m[92m   Compiling[0m x11-dl v2.21.0
+[1m[92m   Compiling[0m cookie v0.18.2
+[1m[92m    Checking[0m libloading v0.7.4
+[1m[92m   Compiling[0m litrs v1.0.0
+[1m[92m    Checking[0m imgref v1.12.2
+[1m[92m    Checking[0m raw-window-handle v0.6.2
+[1m[92m    Checking[0m siphasher v1.0.3
+[1m[92m    Checking[0m gimli v0.32.3
+[1m[92m    Checking[0m pulp-wasm-simd-flag v0.1.1
+[1m[92m    Checking[0m parking v2.2.1
+[1m[92m   Compiling[0m winnow v1.0.4
+[1m[92m    Checking[0m uuid v1.25.0
+[1m[92m    Checking[0m weezl v0.1.12
+[1m[92m    Checking[0m zune-core v0.5.3
+[1m[92m    Checking[0m new_debug_unreachable v1.0.6
+[1m[92m    Checking[0m openssl-probe v0.2.1
+[1m[92m    Checking[0m reborrow v0.5.5
+[1m[92m   Compiling[0m noop_proc_macro v0.3.0
+[1m[92m    Checking[0m is_terminal_polyfill v1.70.2
+[1m[92m    Checking[0m anstyle v1.0.14
+[1m[92m    Checking[0m anstyle-query v1.1.5
+[1m[92m    Checking[0m colorchoice v1.0.5
+[1m[92m    Checking[0m anstream v1.0.0
+[1m[92m    Checking[0m zune-jpeg v0.5.15
+[1m[92m   Compiling[0m toml_parser v1.1.3+spec-1.1.0
+[1m[92m    Checking[0m addr2line v0.25.1
+[1m[92m    Checking[0m cfb v0.7.3
+[1m[92m   Compiling[0m document-features v0.2.12
+[1m[92m    Checking[0m event-listener v5.4.2
+[1m[92m    Checking[0m fastbloom v0.17.0
+[1m[92m    Checking[0m loop9 v0.1.5
+[1m[92m    Checking[0m libappindicator-sys v0.9.0
+[1m[92m    Checking[0m dioxus-html v0.7.10
+[1m[92m   Compiling[0m const-serialize v0.8.0-alpha.0
+[1m[92m    Checking[0m libxdo v0.6.0
+[1m[92m    Checking[0m derive_more v2.1.1
+[1m[92m    Checking[0m if-watch v3.2.2
+[1m[92m    Checking[0m dirs v6.0.0
+[1m[92m    Checking[0m soup3 v0.5.0
+[1m[92m    Checking[0m javascriptcore-rs v1.1.2
+[1m[92m    Checking[0m der-parser v10.0.0
+[1m[92m    Checking[0m signal-hook-mio v0.2.5
+[1m[92m    Checking[0m avif-serialize v0.8.9
+[1m[92m    Checking[0m pem v3.0.6
+[1m[92m   Compiling[0m dioxus-interpreter-js v0.7.10
+[1m[92m   Compiling[0m dioxus-document v0.7.10
+[1m[92m    Checking[0m rand_pcg v0.10.2
+[1m[92m    Checking[0m gethostname v1.1.0
+[1m[92m   Compiling[0m quinn v0.11.11
+[1m[92m    Checking[0m zune-inflate v0.2.54
+[1m[92m    Checking[0m yasna v0.5.2
+[1m[92m    Checking[0m sha1 v0.10.7
+[1m[92m   Compiling[0m snow v0.9.6
+[1m[92m    Checking[0m asynchronous-codec v0.7.0
+[1m[92m    Checking[0m line-clipping v0.3.8
+[1m[92m   Compiling[0m sledgehammer_bindgen_macro v0.6.5
+[1m[92m   Compiling[0m dlopen2_derive v0.4.3
+[1m[92m   Compiling[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m   Compiling[0m serde_spanned v1.1.1
+[1m[92m    Checking[0m socket2 v0.5.10
+[1m[92m    Checking[0m rustc-demangle v0.1.28
+[1m[92m   Compiling[0m rfd v0.17.2
+[1m[92m    Checking[0m utf-8 v0.7.6
+[1m[92m    Checking[0m color_quant v1.1.0
+[1m[92m   Compiling[0m wry v0.53.5
+[1m[92m    Checking[0m byteorder-lite v0.1.0
+[1m[92m    Checking[0m lebe v0.5.3
+[1m[92m   Compiling[0m owo-colors v4.3.0
+[1m[92m    Checking[0m bit_field v0.10.3
+[1m[92m   Compiling[0m diesel_derives v2.3.9
+[1m[92m    Checking[0m rustc-hash v1.1.0
+[1m[92m    Checking[0m pxfm v0.1.30
+[1m[92m    Checking[0m x11rb-protocol v0.13.2
+[1m[92m    Checking[0m clap_lex v1.1.0
+[1m[92m    Checking[0m rgb v0.8.53
+[1m[92m    Checking[0m nohash-hasher v0.2.0
+[1m[92m    Checking[0m fax v0.2.7
+[1m[92m    Checking[0m lru-slab v0.1.2
+[1m[92m    Checking[0m quinn-proto v0.11.17
+[1m[92m    Checking[0m moxcms v0.8.1
+[1m[92m    Checking[0m tiff v0.11.3
+[1m[92m    Checking[0m ravif v0.13.0
+[1m[92m    Checking[0m clap_builder v4.6.6
+[1m[92m    Checking[0m x11rb v0.13.2
+[1m[92m    Checking[0m sledgehammer_utils v0.3.1
+[1m[92m    Checking[0m exr v1.74.2
+[1m[92m    Checking[0m sledgehammer_bindgen v0.6.0
+[1m[92m    Checking[0m image-webp v0.2.4
+[1m[92m    Checking[0m gif v0.14.2
+[1m[92m    Checking[0m tungstenite v0.28.0
+[1m[92m    Checking[0m backtrace v0.3.76
+[1m[92m    Checking[0m dlopen2 v0.8.2
+[1m[92m   Compiling[0m toml v0.9.12+spec-1.1.0
+[1m[92m    Checking[0m ratatui-widgets v0.3.2
+[1m[92m    Checking[0m rcgen v0.13.2
+[1m[92m    Checking[0m webkit2gtk v2.0.1
+[1m[92m    Checking[0m crossterm v0.29.0
+[1m[92m    Checking[0m x509-parser v0.17.0
+[1m[92m    Checking[0m hashbrown v0.14.5
+[1m[92m    Checking[0m muda v0.17.2
+[1m[92m   Compiling[0m manganis-core v0.7.10
+[1m[92m    Checking[0m libappindicator v0.9.0
+[1m[92m    Checking[0m event-listener-strategy v0.5.4
+[1m[92m    Checking[0m infer v0.19.0
+[1m[92m    Checking[0m png v0.18.1
+[1m[92m    Checking[0m png v0.17.16
+[1m[92m    Checking[0m futures-rustls v0.26.0
+[1m[92m    Checking[0m qoi v0.4.1
+[1m[92m   Compiling[0m dioxus-desktop v0.7.10
+[1m[92m    Checking[0m dioxus-devtools-types v0.7.10
+[1m[92m   Compiling[0m dsl_auto_type v0.2.0
+[1m[92m    Checking[0m gdkwayland-sys v0.18.2
+[1m[92m    Checking[0m concurrent-queue v2.5.0
+[1m[92m   Compiling[0m dart-sys v4.1.5
+[1m[92m   Compiling[0m eyre v0.6.14
+[1m[92m   Compiling[0m enum-as-inner v0.6.1
+[1m[92m   Compiling[0m clap_derive v4.6.4
+[1m[92m   Compiling[0m diesel_table_macro_syntax v0.3.0
+[1m[92m   Compiling[0m macro-string v0.1.4
+[1m[92m    Checking[0m raw-window-handle v0.5.2
+[1m[92m    Checking[0m xkeysym v0.2.1
+[1m[92m   Compiling[0m build-target v0.4.0
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[92m    Checking[0m iana-time-zone v0.1.65
+[1m[92m   Compiling[0m color-spantrace v0.3.0
+[1m[92m    Checking[0m pollster v0.4.0
+[1m[92m    Checking[0m chrono v0.4.45
+[1m[92m    Checking[0m global-hotkey v0.7.0
+[1m[92m   Compiling[0m flutter_rust_bridge v2.12.0
+[1m[92m   Compiling[0m manganis-macro v0.7.10
+[1m[92m    Checking[0m tao v0.34.8
+[1m[92m    Checking[0m clap v4.6.6
+[1m[92m   Compiling[0m md-5 v0.10.6
+[1m[92m    Checking[0m hickory-proto v0.25.2
+[1m[92m    Checking[0m async-channel v2.5.0
+[1m[92m    Checking[0m dioxus-devtools v0.7.10
+[1m[92m    Checking[0m image v0.25.10
+[1m[92m    Checking[0m libp2p-tls v0.6.2
+[1m[92m    Checking[0m tray-icon v0.21.3
+[1m[92m    Checking[0m dioxus-asset-resolver v0.7.10
+[1m[92m    Checking[0m hashlink v0.9.1
+[1m[92m    Checking[0m ratatui-crossterm v0.1.2
+[1m[92m   Compiling[0m migrations_internals v2.3.0
+[1m[92m    Checking[0m yamux v0.13.10
+[1m[92m    Checking[0m yamux v0.12.1
+[1m[92m    Checking[0m quick-protobuf-codec v0.3.1
+[1m[92m    Checking[0m tracing-error v0.2.1
+[1m[92m   Compiling[0m dioxus-stores-macro v0.7.10
+[1m[92m    Checking[0m regex v1.13.1
+[1m[92m    Checking[0m dioxus-history v0.7.10
+[1m[92m    Checking[0m futures-bounded v0.2.4
+[1m[92m    Checking[0m x25519-dalek v2.0.1
+[1m[92m    Checking[0m webbrowser v1.2.4
+[1m[92m    Checking[0m num_cpus v1.17.0
+[1m[92m    Checking[0m downcast-rs v2.0.2
+[1m[92m    Checking[0m hex_fmt v0.3.0
+[1m[92m    Checking[0m indenter v0.3.4
+[1m[92m    Checking[0m atomic v0.5.3
+[1m[92m   Compiling[0m hex v0.4.3
+[1m[92m    Checking[0m allo-isolate v0.1.27
+[1m[92m    Checking[0m dioxus-stores v0.7.10
+[1m[92m   Compiling[0m flutter_rust_bridge_macros v2.12.0
+[1m[92m    Checking[0m libp2p-gossipsub v0.49.5
+[1m[92m    Checking[0m threadpool v1.8.1
+[1m[92m    Checking[0m libp2p-noise v0.46.1
+[1m[92m    Checking[0m libp2p-request-response v0.29.0
+[1m[92m    Checking[0m libp2p-yamux v0.47.0
+[1m[92m    Checking[0m diesel v2.3.12
+[1m[92m    Checking[0m manganis v0.7.10
+[1m[92m   Compiling[0m migrations_macros v2.3.0
+[1m[92m    Checking[0m libp2p-quic v0.13.1
+[1m[92m    Checking[0m libp2p-mdns v0.48.0
+[1m[92m    Checking[0m clap_complete v4.6.9
+[1m[92m    Checking[0m ratatui-macros v0.7.2
+[1m[92m    Checking[0m libp2p-tcp v0.44.1
+[1m[92m    Checking[0m dioxus-logger v0.7.10
+[1m[92m    Checking[0m libp2p-allow-block-list v0.6.0
+[1m[92m    Checking[0m libp2p-connection-limits v0.6.0
+[1m[92m    Checking[0m libp2p-ping v0.47.0
+[1m[92m   Compiling[0m delegate-attr v0.3.1
+[1m[92m   Compiling[0m petname-macros v3.2.0
+[1m[92m   Compiling[0m dioxus-config-macro v0.7.10
+[1m[92m    Checking[0m dioxus-config-macros v0.7.10
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m dioxus v0.7.10
+[1m[92m    Checking[0m petname v3.2.0
+[1m[92m    Checking[0m libp2p v0.56.0
+[1m[92m    Checking[0m ratatui v0.30.2
+[1m[92m    Checking[0m color-eyre v0.6.5
+[1m[92m    Checking[0m ratatui-textarea v0.9.2
+[1m[92m   Compiling[0m serial_test_derive v3.5.0
+[1m[92m    Checking[0m fastrand v2.5.0
+[1m[92m    Checking[0m tempfile v3.27.0
+[1m[92m    Checking[0m serial_test v3.5.0
+[1m[92m    Checking[0m diesel_migrations v2.3.2
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1m 25s
+Exit code: 0
+
+
+============================================================
+Phase 2 - Build
+============================================================
+
+--- build ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 06s
+Exit code: 0
+
+
+============================================================
+Phase 3 - Security & Documentation
+============================================================
+
+--- audit ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1233 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (853 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+
+[0m[0m[1m[33mCrate:    [0m chacha20
+[0m[0m[1m[33mVersion:  [0m 0.10.1
+[0m[0m[1m[33mWarning:  [0m yanked
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 15 allowed warnings found
+Exit code: 0
+
+--- docs ---
+[1m[92m   Compiling[0m rustix v1.1.4
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m gethostname v1.1.0
+[1m[92m    Checking[0m crossterm v0.29.0
+[1m[92m    Checking[0m x11rb v0.13.2
+[1m[92m    Checking[0m ratatui-crossterm v0.1.2
+[1m[92m    Checking[0m ratatui-textarea v0.9.2
+[1m[92m    Checking[0m ratatui v0.30.2
+[1m[92m    Checking[0m global-hotkey v0.7.0
+[1m[92m    Checking[0m dioxus-desktop v0.7.10
+[1m[92m    Checking[0m dioxus v0.7.10
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/db.rs:84:1
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m pub fn reset_db_url() {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/mobile_api.rs:52:1
+   [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m pub struct MobileInitStatus {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:53:5
+   [1m[94m|[0m
+[1m[94m53[0m [1m[94m|[0m     pub database_url: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:54:5
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m     pub local_peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/mobile_api.rs:58:1
+   [1m[94m|[0m
+[1m[94m58[0m [1m[94m|[0m pub struct MobilePeerStatus {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:59:5
+   [1m[94m|[0m
+[1m[94m59[0m [1m[94m|[0m     pub database_url: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:60:5
+   [1m[94m|[0m
+[1m[94m60[0m [1m[94m|[0m     pub local_peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:61:5
+   [1m[94m|[0m
+[1m[94m61[0m [1m[94m|[0m     pub self_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/mobile_api.rs:64:1
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/mobile_api.rs:76:1
+   [1m[94m|[0m
+[1m[94m76[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:288:1
+    [1m[94m|[0m
+[1m[94m288[0m [1m[94m|[0m pub struct MobilePeerRecord {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:289:5
+    [1m[94m|[0m
+[1m[94m289[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:290:5
+    [1m[94m|[0m
+[1m[94m290[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:291:5
+    [1m[94m|[0m
+[1m[94m291[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:292:5
+    [1m[94m|[0m
+[1m[94m292[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:293:5
+    [1m[94m|[0m
+[1m[94m293[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:294:5
+    [1m[94m|[0m
+[1m[94m294[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:329:1
+    [1m[94m|[0m
+[1m[94m329[0m [1m[94m|[0m pub struct ChatMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:330:5
+    [1m[94m|[0m
+[1m[94m330[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:331:5
+    [1m[94m|[0m
+[1m[94m331[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:332:5
+    [1m[94m|[0m
+[1m[94m332[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:333:5
+    [1m[94m|[0m
+[1m[94m333[0m [1m[94m|[0m     pub is_broadcast: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:334:5
+    [1m[94m|[0m
+[1m[94m334[0m [1m[94m|[0m     pub target_peer: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:335:5
+    [1m[94m|[0m
+[1m[94m335[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:336:5
+    [1m[94m|[0m
+[1m[94m336[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:337:5
+    [1m[94m|[0m
+[1m[94m337[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:338:5
+    [1m[94m|[0m
+[1m[94m338[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:339:5
+    [1m[94m|[0m
+[1m[94m339[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:526:1
+    [1m[94m|[0m
+[1m[94m526[0m [1m[94m|[0m pub struct SwarmEventJson {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:527:5
+    [1m[94m|[0m
+[1m[94m527[0m [1m[94m|[0m     pub event_type: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:528:5
+    [1m[94m|[0m
+[1m[94m528[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:529:5
+    [1m[94m|[0m
+[1m[94m529[0m [1m[94m|[0m     pub content: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:530:5
+    [1m[94m|[0m
+[1m[94m530[0m [1m[94m|[0m     pub latency: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:531:5
+    [1m[94m|[0m
+[1m[94m531[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:532:5
+    [1m[94m|[0m
+[1m[94m532[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:533:5
+    [1m[94m|[0m
+[1m[94m533[0m [1m[94m|[0m     pub address: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a module[0m
+  [1m[94m--> [0msrc/nickname.rs:12:1
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m [1m[33m/[0m diesel::table! {
+[1m[94m13[0m [1m[94m|[0m [1m[33m|[0m     peer_name_history (id) {
+   [1m[94m|[0m [1m[33m|_____________________^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:176:5
+    [1m[94m|[0m
+[1m[94m176[0m [1m[94m|[0m     pub name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:177:5
+    [1m[94m|[0m
+[1m[94m177[0m [1m[94m|[0m     pub name_kind: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:178:5
+    [1m[94m|[0m
+[1m[94m178[0m [1m[94m|[0m     pub set_at: chrono::NaiveDateTime,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:14:9
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m         id -> Integer,
+   [1m[94m|[0m         [1m[33m^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:15:9
+   [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m         peer_id -> Text,
+   [1m[94m|[0m         [1m[33m^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:16:9
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m         name -> Text,
+   [1m[94m|[0m         [1m[33m^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:17:9
+   [1m[94m|[0m
+[1m[94m17[0m [1m[94m|[0m         name_kind -> Text,
+   [1m[94m|[0m         [1m[33m^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:18:9
+   [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m         set_at -> Timestamp,
+   [1m[94m|[0m         [1m[33m^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:263:5
+    [1m[94m|[0m
+[1m[94m263[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:264:5
+    [1m[94m|[0m
+[1m[94m264[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:265:5
+    [1m[94m|[0m
+[1m[94m265[0m [1m[94m|[0m     pub dm_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:266:5
+    [1m[94m|[0m
+[1m[94m266[0m [1m[94m|[0m     pub broadcast_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:267:5
+    [1m[94m|[0m
+[1m[94m267[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for an associated function[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:272:5
+    [1m[94m|[0m
+[1m[94m272[0m [1m[94m|[0m [1m[33m/[0m     pub fn new(
+[1m[94m273[0m [1m[94m|[0m [1m[33m|[0m         peer_id: &str,
+[1m[94m274[0m [1m[94m|[0m [1m[33m|[0m         display_name: &str,
+[1m[94m275[0m [1m[94m|[0m [1m[33m|[0m         dm_count: usize,
+[1m[94m276[0m [1m[94m|[0m [1m[33m|[0m         broadcast_count: usize,
+[1m[94m277[0m [1m[94m|[0m [1m[33m|[0m         last_seen: &str,
+[1m[94m278[0m [1m[94m|[0m [1m[33m|[0m     ) -> Self {
+    [1m[94m|[0m [1m[33m|_____________^[0m
+
+[1m[33mwarning[0m[1m: unclosed HTML tag `peer`[0m
+  [1m[94m--> [0msrc/connected.rs:12:72
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m /// most recent disconnection so frontends can show "last connected to <peer>".
+   [1m[94m|[0m                                                                        [1m[33m^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::invalid_html_tags)]` on by default
+
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 52 warnings
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 11.18s
+[1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 3 other files
+Exit code: 0
+
+
+============================================================
+Phase 4 - Code Coverage & Metrics
+============================================================
+
+--- coverage-install ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m cargo-tarpaulin v0.37.2
+[1m[92m     Ignored[0m package `cargo-tarpaulin v0.37.2` is already installed, use --force to override
+
+--- tarpaulin-output ---
+[2m2026-08-31T21:57:49.919053Z[0m [32m INFO[0m [2mcargo_tarpaulin::config[0m[2m:[0m Creating config
+[2m2026-08-31T21:57:51.165798Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Running Tarpaulin
+[2m2026-08-31T21:57:51.165816Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Building project
+[2m2026-08-31T21:57:51.183526Z[0m [32m INFO[0m [2mcargo_tarpaulin::cargo[0m[2m:[0m Cleaning project
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.4
+   Compiling syn v2.0.119
+   Compiling libc v0.2.189
+   Compiling serde_derive v1.0.229
+   Compiling cfg-if v1.0.4
+   Compiling version_check v0.9.5
+   Compiling heck v0.5.0
+   Compiling pkg-config v0.3.34
+   Compiling memchr v2.8.3
+   Compiling equivalent v1.0.2
+   Compiling serde v1.0.229
+   Compiling critical-section v1.2.0
+   Compiling pin-project-lite v0.2.17
+   Compiling portable-atomic v1.15.0
+   Compiling log v0.4.34
+   Compiling once_cell v1.21.4
+   Compiling hashbrown v0.17.1
+   Compiling toml_datetime v0.6.3
+   Compiling winnow v0.5.40
+   Compiling indexmap v2.14.0
+   Compiling smallvec v1.15.2
+   Compiling serde_spanned v0.6.9
+   Compiling target-lexicon v0.12.16
+   Compiling toml_edit v0.20.2
+   Compiling cfg-expr v0.15.8
+   Compiling version-compare v0.2.1
+   Compiling toml v0.8.2
+   Compiling system-deps v6.2.2
+   Compiling futures-io v0.3.34
+   Compiling slab v0.4.12
+   Compiling futures-core v0.3.34
+   Compiling futures-sink v0.3.34
+   Compiling futures-channel v0.3.34
+   Compiling futures-macro v0.3.34
+   Compiling futures-task v0.3.34
+   Compiling thiserror v2.0.20
+   Compiling thiserror-impl v2.0.20
+   Compiling futures-util v0.3.34
+   Compiling bitflags v2.13.1
+   Compiling autocfg v1.5.1
+   Compiling tracing-core v0.1.36
+   Compiling synstructure v0.13.2
+   Compiling futures-executor v0.3.34
+   Compiling tracing-attributes v0.1.31
+   Compiling stable_deref_trait v1.2.1
+   Compiling anyhow v1.0.104
+   Compiling bytes v1.12.1
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling tracing v0.1.44
+   Compiling parking_lot_core v0.9.12
+   Compiling either v1.18.0
+   Compiling cc v1.4.4
+   Compiling zerocopy v0.8.56
+   Compiling scopeguard v1.2.0
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling lock_api v0.4.14
+   Compiling generic-array v0.14.7
+   Compiling zerocopy-derive v0.8.56
+   Compiling parking_lot v0.12.5
+   Compiling typenum v1.20.1
+   Compiling zerofrom-derive v0.1.7
+   Compiling glib-sys v0.18.1
+   Compiling displaydoc v0.2.7
+   Compiling zerofrom v0.1.8
+   Compiling yoke-derive v0.8.2
+   Compiling subtle v2.6.1
+   Compiling yoke v0.8.3
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling gobject-sys v0.18.0
+   Compiling fnv v1.0.7
+   Compiling num-traits v0.2.19
+   Compiling zerovec-derive v0.11.6
+   Compiling zerovec v0.11.8
+   Compiling itertools v0.14.0
+   Compiling getrandom v0.2.17
+   Compiling pin-project-internal v1.1.13
+   Compiling gio-sys v0.18.1
+   Compiling thiserror v1.0.69
+   Compiling tinystr v0.8.4
+   Compiling digest v0.10.7
+   Compiling ppv-lite86 v0.2.21
+   Compiling pin-project v1.1.13
+   Compiling thiserror-impl v1.0.69
+   Compiling zeroize_derive v1.5.0
+   Compiling strsim v0.11.1
+   Compiling litemap v0.8.3
+   Compiling writeable v0.6.4
+   Compiling icu_locale_core v2.3.0
+   Compiling zeroize v1.9.0
+   Compiling potential_utf v0.1.6
+   Compiling zerotrie v0.2.5
+   Compiling icu_properties_data v2.3.0
+   Compiling icu_normalizer_data v2.3.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_collections v2.3.0
+   Compiling icu_provider v2.3.1
+   Compiling mio v1.2.2
+   Compiling cpufeatures v0.2.17
+   Compiling static_assertions v1.1.0
+   Compiling unicode-segmentation v1.13.3
+   Compiling percent-encoding v2.3.2
+   Compiling rustversion v1.0.23
+   Compiling icu_normalizer v2.3.0
+   Compiling icu_properties v2.3.0
+   Compiling proc-macro-error-attr v1.0.4
+   Compiling syn v1.0.109
+   Compiling byteorder v1.5.0
+   Compiling ident_case v1.0.1
+   Compiling crossbeam-utils v0.8.22
+   Compiling data-encoding v2.11.1
+   Compiling idna_adapter v1.2.2
+   Compiling gdk-sys v0.18.2
+   Compiling proc-macro-error v1.0.4
+   Compiling idna v1.1.0
+   Compiling form_urlencoded v1.2.2
+   Compiling rand_core v0.6.4
+   Compiling socket2 v0.6.5
+   Compiling url v2.5.8
+   Compiling curve25519-dalek v4.1.3
+   Compiling futures v0.3.34
+   Compiling tokio-macros v2.7.2
+   Compiling itoa v1.0.18
+   Compiling pango-sys v0.18.0
+   Compiling gdk-pixbuf-sys v0.18.0
+   Compiling cairo-sys-rs v0.18.2
+   Compiling tokio v1.53.1
+   Compiling atk-sys v0.18.2
+   Compiling proc-macro-crate v2.0.2
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling num-conv v0.2.2
+   Compiling time-core v0.1.9
+   Compiling heck v0.4.1
+   Compiling glib-macros v0.18.5
+   Compiling time-macros v0.2.32
+   Compiling rand_chacha v0.3.1
+   Compiling unsigned-varint v0.8.0
+   Compiling paste v1.0.15
+   Compiling deranged v0.5.8
+   Compiling powerfmt v0.2.0
+   Compiling signature v2.2.0
+   Compiling num_threads v0.1.7
+   Compiling time v0.3.55
+   Compiling ed25519 v2.2.3
+   Compiling data-encoding-macro-internal v0.1.19
+   Compiling rand v0.8.7
+   Compiling glib v0.18.5
+   Compiling sha2 v0.10.9
+   Compiling hmac v0.12.1
+   Compiling prost-derive v0.14.4
+   Compiling match-lookup v0.1.2
+   Compiling const-str v0.4.3
+   Compiling vcpkg v0.2.15
+   Compiling base256emoji v1.0.2
+   Compiling prost v0.14.4
+   Compiling hkdf v0.12.4
+   Compiling ed25519-dalek v2.2.0
+   Compiling data-encoding-macro v0.1.21
+   Compiling multihash v0.19.5
+   Compiling gtk-sys v0.18.2
+   Compiling base-x v0.2.11
+   Compiling base45 v3.2.0
+   Compiling bs58 v0.5.1
+   Compiling rustc-hash v2.1.3
+   Compiling simd-adler32 v0.3.10
+   Compiling libp2p-identity v0.2.14
+   Compiling multibase v0.9.3
+   Compiling quick-protobuf v0.8.1
+   Compiling ring v0.17.14
+   Compiling gio v0.18.4
+   Compiling futures-timer v3.0.4
+   Compiling foldhash v0.2.0
+   Compiling web-time v1.1.0
+   Compiling unsigned-varint v0.7.2
+   Compiling arrayref v0.3.9
+   Compiling cfg_aliases v0.2.2
+   Compiling multiaddr v0.18.2
+   Compiling multistream-select v0.13.0
+   Compiling rw-stream-sink v0.4.0
+   Compiling num-integer v0.1.47
+   Compiling slotmap v1.1.1
+   Compiling adler2 v2.0.1
+   Compiling dioxus-core-types v0.7.10
+   Compiling unicode-xid v0.2.6
+   Compiling getrandom v0.3.4
+   Compiling konst_macro_rules v0.2.19
+   Compiling konst v0.2.20
+   Compiling const_format_proc_macros v0.2.34
+   Compiling miniz_oxide v0.8.9
+   Compiling num-bigint v0.4.8
+   Compiling libp2p-core v0.43.2
+   Compiling darling_core v0.21.3
+   Compiling subsecond-types v0.7.10
+   Compiling libloading v0.8.9
+   Compiling memmap2 v0.9.11
+   Compiling crossbeam-epoch v0.9.20
+   Compiling subsecond v0.7.10
+   Compiling darling_macro v0.21.3
+   Compiling const_format v0.2.36
+   Compiling generational-box v0.7.10
+   Compiling memoffset v0.9.1
+   Compiling rustix v1.1.4
+   Compiling longest-increasing-subsequence v0.1.0
+   Compiling crossbeam-deque v0.8.7
+   Compiling lazy_static v1.5.0
+   Compiling untrusted v0.9.0
+   Compiling libm v0.2.16
+   Compiling dioxus-core v0.7.10
+   Compiling rand_core v0.9.5
+   Compiling darling v0.21.3
+   Compiling field-offset v0.3.6
+   Compiling toml_edit v0.19.15
+   Compiling aho-corasick v1.1.5
+   Compiling zmij v1.0.23
+   Compiling rayon-core v1.13.0
+   Compiling regex-syntax v0.8.11
+   Compiling linux-raw-sys v0.12.1
+   Compiling regex-automata v0.4.18
+   Compiling proc-macro-crate v1.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling pango v0.18.3
+   Compiling gdk-pixbuf v0.18.5
+   Compiling cairo-rs v0.18.5
+   Compiling openssl-sys v0.9.117
+   Compiling gtk v0.18.2
+   Compiling x11 v2.21.0
+   Compiling equator-macro v0.4.2
+   Compiling warnings-macro v0.2.0
+   Compiling lazy-js-bundle v0.7.10
+   Compiling allocator-api2 v0.2.21
+   Compiling serde_json v1.0.151
+   Compiling foldhash v0.1.5
+   Compiling winnow v0.7.15
+   Compiling rand_core v0.10.1
+   Compiling crc32fast v1.5.1
+   Compiling hashbrown v0.15.5
+   Compiling equator v0.4.2
+   Compiling warnings v0.2.1
+   Compiling gdk v0.18.2
+   Compiling rand v0.9.5
+   Compiling gtk3-macros v0.18.2
+   Compiling atk v0.18.2
+   Compiling convert_case v0.8.0
+   Compiling rustls-pki-types v1.15.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling errno v0.3.14
+   Compiling async-trait v0.1.92
+   Compiling getrandom v0.4.3
+   Compiling signal-hook v0.3.18
+   Compiling minimal-lexical v0.2.1
+   Compiling nom v7.1.3
+   Compiling signal-hook-registry v1.4.8
+   Compiling dioxus-signals v0.7.10
+   Compiling aligned-vec v0.6.4
+   Compiling hashlink v0.10.0
+   Compiling nix v0.30.1
+   Compiling netlink-packet-core v0.8.2
+   Compiling darling_core v0.24.1
+   Compiling keyboard-types v0.7.0
+   Compiling soup3-sys v0.5.0
+   Compiling javascriptcore-rs-sys v1.1.1
+   Compiling libp2p-swarm-derive v0.35.1
+   Compiling const-serialize-macro v0.7.2
+   Compiling base64 v0.22.1
+   Compiling rustls v0.23.43
+   Compiling bitflags v1.3.2
+   Compiling arrayvec v0.7.8
+   Compiling const-serialize v0.7.2
+   Compiling libp2p-swarm v0.47.1
+   Compiling darling_macro v0.24.1
+   Compiling flate2 v1.1.9
+   Compiling v_frame v0.3.9
+   Compiling rusticata-macros v4.1.0
+   Compiling rustls-webpki v0.103.15
+   Compiling rayon v1.12.0
+   Compiling hashbrown v0.16.1
+   Compiling num-rational v0.4.2
+   Compiling netlink-sys v0.8.8
+   Compiling castaway v0.2.4
+   Compiling as-slice v0.2.1
+   Compiling asn1-rs-derive v0.6.0
+   Compiling webkit2gtk-sys v2.0.1
+   Compiling strum_macros v0.28.0
+   Compiling asn1-rs-impl v0.2.0
+   Compiling const-serialize-macro v0.8.0-alpha.1
+   Compiling bytemuck v1.25.2
+   Compiling openssl v0.10.81
+   Compiling unicode-width v0.2.2
+   Compiling instability v0.3.13
+   Compiling libxdo-sys v0.11.0
+   Compiling cpufeatures v0.3.0
+   Compiling av-scenechange v0.14.1
+   Compiling tinyvec_macros v0.1.1
+   Compiling dioxus-cli-config v0.7.10
+   Compiling foreign-types-shared v0.1.1
+   Compiling ryu v1.0.23
+   Compiling built v0.8.1
+   Compiling compact_str v0.9.1
+   Compiling rav1e v0.8.1
+   Compiling foreign-types v0.3.2
+   Compiling tinyvec v1.12.0
+   Compiling chacha20 v0.10.1
+   Compiling unicode-truncate v2.0.1
+   Compiling asn1-rs v0.7.2
+   Compiling strum v0.28.0
+   Compiling aligned v0.4.3
+   Compiling netlink-proto v0.12.2
+   Compiling kasuari v0.4.12
+   Compiling lru v0.18.2
+   Compiling dioxus-rsx v0.7.10
+   Compiling darling v0.24.1
+   Compiling netlink-packet-route v0.28.0
+   Compiling matchers v0.2.0
+   Compiling enumset_derive v0.15.0
+   Compiling sharded-slab v0.1.7
+   Compiling fdeflate v0.3.7
+   Compiling http v1.5.0
+   Compiling crossbeam-channel v0.5.16
+   Compiling convert_case v0.10.0
+   Compiling tracing-log v0.2.0
+   Compiling nom v8.0.0
+   Compiling no_std_io2 v0.9.4
+   Compiling pulp v0.22.3
+   Compiling ahash v0.8.12
+   Compiling thread_local v1.1.10
+   Compiling profiling-procmacros v1.0.18
+   Compiling openssl-macros v0.1.1
+   Compiling arg_enum_proc_macro v0.3.4
+   Compiling oid-registry v0.8.1
+   Compiling ipnet v2.12.1
+   Compiling nu-ansi-term v0.50.3
+   Compiling native-tls v0.2.18
+   Compiling option-ext v0.2.0
+   Compiling winnow v1.0.4
+   Compiling y4m v0.8.0
+   Compiling utf8parse v0.2.2
+   Compiling pastey v0.1.1
+   Compiling httparse v1.10.1
+   Compiling dpi v0.1.2
+   Compiling quick-error v2.0.1
+   Compiling indoc v2.0.7
+   Compiling object v0.37.3
+   Compiling anstyle-parse v1.0.0
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling dirs-sys v0.5.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling av1-grain v0.2.5
+   Compiling profiling v1.0.18
+   Compiling bitstream-io v4.10.0
+   Compiling derive_more-impl v2.1.1
+   Compiling rtnetlink v0.20.0
+   Compiling enumset v1.1.14
+   Compiling dioxus-core-macro v0.7.10
+   Compiling ratatui-core v0.1.2
+   Compiling rand v0.10.2
+   Compiling num-complex v0.4.6
+   Compiling maybe-rayon v0.1.1
+   Compiling dioxus-hooks v0.7.10
+   Compiling dioxus-html-internal-macro v0.7.10
+   Compiling quinn-udp v0.5.15
+   Compiling libsqlite3-sys v0.36.0
+   Compiling euclid v0.22.14
+   Compiling half v2.7.1
+   Compiling raw-cpuid v11.6.0
+   Compiling gdkx11-sys v0.18.2
+   Compiling x11-dl v2.21.0
+   Compiling cookie v0.18.2
+   Compiling libloading v0.7.4
+   Compiling num-derive v0.4.2
+   Compiling serde_repr v0.1.21
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.1.1
+   Compiling simd_helpers v0.1.0
+   Compiling noop_proc_macro v0.3.0
+   Compiling reborrow v0.5.5
+   Compiling pulp-wasm-simd-flag v0.1.1
+   Compiling openssl-probe v0.2.1
+   Compiling weezl v0.1.12
+   Compiling new_debug_unreachable v1.0.6
+   Compiling zune-core v0.5.3
+   Compiling parking v2.2.1
+   Compiling anstyle v1.0.14
+   Compiling gimli v0.32.3
+   Compiling uuid v1.25.0
+   Compiling raw-window-handle v0.6.2
+   Compiling siphasher v1.0.3
+   Compiling colorchoice v1.0.5
+   Compiling imgref v1.12.2
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling litrs v1.0.0
+   Compiling document-features v0.2.12
+   Compiling addr2line v0.25.1
+   Compiling anstream v1.0.0
+   Compiling loop9 v0.1.5
+   Compiling fastbloom v0.17.0
+   Compiling cfb v0.7.3
+   Compiling event-listener v5.4.2
+   Compiling zune-jpeg v0.5.15
+error: Broken pipe (os error 32)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `pulp` (lib) due to 10 previous errors
+[2m2026-08-31T21:59:48.189292Z[0m [31mERROR[0m [2mcargo_tarpaulin[0m[2m:[0m Failed to compile tests!
+error[E0080]: evaluation panicked: assertion failed: core::mem::size_of::<T>() == core::mem::size_of::<U>()
+    --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.22.3/src/lib.rs:3291:3
+     |
+3291 |         assert!(core::mem::size_of::<T>() == core::mem::size_of::<U>());
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CheckSameSize::<i8, u16>::VALID` failed here
+
+
+Error: "Failed to compile tests!\nerror[E0080]: evaluation panicked: assertion failed: core::mem::size_of::<T>() == core::mem::size_of::<U>()\n    --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.22.3/src/lib.rs:3291:3\n     |\n3291 |         assert!(core::mem::size_of::<T>() == core::mem::size_of::<U>());\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CheckSameSize::<i8, u16>::VALID` failed here\n\n"
+Exit code: 1
+
