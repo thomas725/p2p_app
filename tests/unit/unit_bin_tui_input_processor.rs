@@ -498,6 +498,49 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_nonkitty() {
 }
 
 #[tokio::test]
+async fn test_ctrl_p_in_direct_tab_opens_peer_info_kitty() {
+    // Ctrl+P is a universal binding: it must also work on kitty terminals
+    // (where Ctrl+I additionally opens Peer Info as `Char('i')`+CONTROL).
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.kitty_keyboard_active = true; // kitty terminal (default)
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(matches!(content, TabContent::PeerInfo(_)));
+}
+
+#[tokio::test]
+async fn test_ctrl_p_is_noop_on_non_direct_tabs() {
+    // Ctrl+P must never be typed as literal 'p' text: on a non-Direct tab (and
+    // even on a kitty terminal) it is consumed as a no-op.
+    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 0; // Chat tab (input enabled)
+        s.kitty_keyboard_active = true; // kitty terminal
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, 0);
+    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+}
+
+#[tokio::test]
 async fn test_bare_tab_on_chat_tab_still_navigates() {
     // The bare Tab byte keeps cycling tabs on non-Direct tabs.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));

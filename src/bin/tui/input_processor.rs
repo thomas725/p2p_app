@@ -331,19 +331,20 @@ async fn process_key_event(
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab (Ctrl+I)".to_string());
         }
-        // Ctrl+P is the Peer Info shortcut on non-kitty terminals: `p` is 0x70,
-        // so Ctrl+P sends 0x10 (DLE), a distinct control byte crossterm reports
-        // as `Char('p')`+CONTROL (the `b'\x01'..=b'\x1A'` arm). Unlike Ctrl+?,
-        // Konsole reliably applies the control mask to letters, so this never
-        // arrives as a literal 'p'. On a Direct tab it opens the partner's Peer
-        // Info; anywhere else (and while editing a nickname) it is a no-op —
-        // never typed as literal text.
+        // Ctrl+P opens the DM partner's Peer Info on a Direct tab on **every**
+        // terminal: `p` is 0x70, so Ctrl+P sends 0x10 (DLE), a distinct control
+        // byte crossterm uniformly reports as `Char('p')`+CONTROL (the
+        // `b'\x01'..=b'\x1A'` arm) whether or not the kitty protocol is active.
+        // It is a reliable cross-terminal fallback (Ctrl+I works only on kitty
+        // terminals, where it arrives as `Char('i')`+CONTROL; on non-kitty
+        // terminals Ctrl+I collapses to the bare Tab byte). On a Direct tab it
+        // opens the partner's Peer Info; anywhere else (and while editing a
+        // nickname) it is consumed as a no-op — never typed as literal text.
         crossterm::event::KeyCode::Char('p')
             if !s.editing_nickname
                 && key_event
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.kitty_keyboard_active
                 && matches!(
                     s.dynamic_tabs.tab_index_to_content(s.active_tab),
                     p2p_app::tui_tabs::TabContent::Direct(_)
@@ -358,8 +359,7 @@ async fn process_key_event(
             if !s.editing_nickname
                 && key_event
                     .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.kitty_keyboard_active =>
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
         {
             p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }

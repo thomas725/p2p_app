@@ -72,9 +72,9 @@ pub struct AppState {
     // crossterm's `supports_keyboard_enhancement()`). On WezTerm (kitty active)
     // Ctrl+I arrives as `Char('i')`+CONTROL and opens PeerInfo on a Direct tab.
     // On collapsed terminals (Konsole) Ctrl+I (and Ctrl+Shift+I) collapse to
-    // the bare `0x09` Tab byte, so the PeerInfo binding there is instead Ctrl+P
-    // (`Char('p')`+CONTROL from 0x10 DLE). Bare Tab always cycles tabs either
-    // way. This flag selects which binding is active on a Direct tab.
+    // the bare `0x09` Tab byte, so Ctrl+I opens PeerInfo only on kitty
+    // terminals. Ctrl+P (`Char('p')`+CONTROL from 0x10 DLE) works on every
+    // terminal as a universal fallback. Bare Tab always cycles tabs either way.
     pub kitty_keyboard_active: bool,
     pub mouse_capture: bool,
     pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts

@@ -45,7 +45,7 @@
 | Key | Action |
 |-----|--------|
 | `Ctrl+I` (kitty terminals, e.g. WezTerm) | Open the DM partner's Peer Info on a Direct tab |
-| `Ctrl+P` (non-kitty terminals) | Open the DM partner's Peer Info on a Direct tab |
+| `Ctrl+P` (all terminals; universal fallback) | Open the DM partner's Peer Info on a Direct tab |
 | `i` | On the **Peers** tab: open the selected peer's Peer Info |
 | `Enter` | Open a DM with that peer |
 | `Esc` | Return to Broadcast Chat |
