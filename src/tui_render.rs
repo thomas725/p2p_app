@@ -256,6 +256,28 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
             .borders(Borders::ALL),
     );
     f.render_widget(messages_list, area);
+
+    if state.chat_unread_count > 0 {
+        let n = state.chat_unread_count;
+        let label = if n == 1 {
+            "▼ 1 new message — End: jump to latest".to_string()
+        } else {
+            format!("▼ {n} new messages — End: jump to latest")
+        };
+        let banner_y = area.y.saturating_add(area.height.saturating_sub(2));
+        let banner_area = Rect::new(
+            area.x.saturating_add(1),
+            banner_y,
+            area.width.saturating_sub(2),
+            1,
+        );
+        let banner = Paragraph::new(label).style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        );
+        f.render_widget(banner, banner_area);
+    }
 }
 
 /// Render peer list with selection support

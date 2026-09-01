@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 /// Channel capacity for inter-task communication (events per task)
 pub const CHANNEL_CAPACITY: usize = 100;
-/// Maximum messages to keep in memory (older messages are dropped)
-pub const MAX_MESSAGE_HISTORY: usize = 1000;
-/// Maximum direct messages to keep per peer conversation
-pub const MAX_DM_HISTORY: usize = 1000;
+/// Maximum direct messages to keep per peer conversation.
+pub use p2p_app::types::MAX_DM_HISTORY;
+/// Maximum messages to keep in memory (older messages are dropped).
+pub use p2p_app::types::MAX_MESSAGE_HISTORY;
 /// Input poll interval in milliseconds
 pub const FRAME_TIME_MS: u64 = 16;
 
@@ -82,6 +82,7 @@ pub struct AppState {
     // Scroll State (Chat tab)
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
+    pub chat_unread_count: usize, // Unread broadcast messages while scrolled up
     pub visible_message_count: usize,
     pub chat_area_height: usize, // Height of message area in rows (set by render loop)
     pub terminal_width: usize,   // Terminal width in columns (set by render loop)
@@ -184,6 +185,7 @@ impl AppState {
             last_mouse_row: 0,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
+            chat_unread_count: 0,
             visible_message_count: 1,
             chat_area_height: 0,
             terminal_width: 0,

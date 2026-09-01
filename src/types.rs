@@ -113,3 +113,8 @@ pub enum SwarmCommand {
         ack_for: Option<String>,
     },
 }
+
+/// Maximum broadcast messages to keep in memory (older messages are dropped).
+pub const MAX_MESSAGE_HISTORY: usize = 1000;
+/// Maximum direct messages to keep per peer conversation.
+pub const MAX_DM_HISTORY: usize = 1000;

@@ -40,8 +40,7 @@ pub struct InitData {
 /// Holds the [`InitData`] snapshot until the UI's startup effect consumes it.
 pub static INIT_DATA: OnceLock<Mutex<Option<InitData>>> = OnceLock::new();
 
-pub(crate) const MAX_MESSAGE_HISTORY: usize = 1000;
-pub(crate) const MAX_DM_HISTORY: usize = 1000;
+pub(crate) use crate::types::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY};
 
 pub(crate) struct AppState {
     pub(crate) messages: VecDeque<DisplayMessage>,

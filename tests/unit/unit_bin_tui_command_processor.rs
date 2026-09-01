@@ -184,6 +184,25 @@ fn test_apply_broadcast_to_state_with_latency() {
     assert!(msg.contains("10ms"));
 }
 
+#[test]
+fn test_apply_broadcast_increments_unread_when_scrolled_up() {
+    let mut state = test_app_state();
+    state.chat_auto_scroll = false;
+    state.chat_unread_count = 0;
+    apply_broadcast_to_state(&mut state, "a", "p1", None, None);
+    apply_broadcast_to_state(&mut state, "b", "p1", None, None);
+    assert_eq!(state.chat_unread_count, 2);
+}
+
+#[test]
+fn test_apply_broadcast_no_unread_when_at_bottom() {
+    let mut state = test_app_state();
+    state.chat_auto_scroll = true;
+    state.chat_unread_count = 0;
+    apply_broadcast_to_state(&mut state, "a", "p1", None, None);
+    assert_eq!(state.chat_unread_count, 0);
+}
+
 // ── apply_dm_to_state ────────────────────────────────────────────────────
 
 #[test]

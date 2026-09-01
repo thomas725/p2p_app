@@ -247,6 +247,26 @@ fn test_scroll_chat_end() {
 }
 
 #[test]
+fn test_scroll_chat_end_clears_unread() {
+    let mut state = app_state_with_chat_messages(20);
+    state.chat_auto_scroll = false;
+    state.chat_unread_count = 3;
+    scroll_chat_tab(KeyCode::End, &mut state);
+    assert!(state.chat_auto_scroll);
+    assert_eq!(state.chat_unread_count, 0);
+}
+
+#[test]
+fn test_scroll_chat_up_keeps_unread() {
+    let mut state = app_state_with_chat_messages(20);
+    state.chat_auto_scroll = false;
+    state.chat_unread_count = 2;
+    scroll_chat_tab(KeyCode::Up, &mut state);
+    assert!(!state.chat_auto_scroll);
+    assert_eq!(state.chat_unread_count, 2);
+}
+
+#[test]
 fn test_scroll_chat_auto_scroll_stays_at_bottom_on_down() {
     let mut state = app_state_with_chat_messages(10);
     assert!(state.chat_auto_scroll);

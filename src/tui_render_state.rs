@@ -52,6 +52,8 @@ pub struct TuiRenderState {
     pub chat_scroll_offset: usize,
     /// Whether chat tab is auto-scrolling to bottom
     pub chat_auto_scroll: bool,
+    /// Number of broadcast messages that arrived while not at the bottom
+    pub chat_unread_count: usize,
     /// Scroll offset for the log tab
     pub log_scroll_offset: usize,
     /// Whether log tab is auto-scrolling to bottom
@@ -133,6 +135,7 @@ impl TuiRenderState {
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
+            chat_unread_count: 0,
             log_scroll_offset: 0,
             log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),

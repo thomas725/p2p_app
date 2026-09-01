@@ -16,6 +16,9 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
                 .unwrap_or(0);
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
+            if state.active_tab == 0 {
+                state.chat_unread_count = 0;
+            }
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
         crossterm::event::KeyCode::BackTab => {
@@ -27,6 +30,9 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
             };
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
+            if state.active_tab == 0 {
+                state.chat_unread_count = 0;
+            }
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
         _ => {}
@@ -94,12 +100,16 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         .messages
         .len()
         .saturating_sub(state.visible_message_count);
+    let was_auto_scroll = state.chat_auto_scroll;
     handle_scroll_key_for_section(
         key_code,
         &mut state.chat_scroll_offset,
         &mut state.chat_auto_scroll,
         max_offset,
     );
+    if state.chat_auto_scroll && !was_auto_scroll {
+        state.chat_unread_count = 0;
+    }
 }
 
 /// Handle scroll key for Log tab

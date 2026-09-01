@@ -46,6 +46,42 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_chat_shows_unread_banner() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.chat_unread_count = 2;
+
+        terminal
+            .draw(|f| render_chat_content(f, f.area(), &mut state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("2 new messages"), "buffer: {text}");
+    }
+
+    #[test]
+    fn test_render_chat_no_unread_banner_when_zero() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.chat_unread_count = 0;
+
+        terminal
+            .draw(|f| render_chat_content(f, f.area(), &mut state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(!text.contains("new message"), "buffer: {text}");
+    }
+
+    #[test]
     fn test_render_peers_content_library() {
         let mut terminal = create_test_terminal();
         let state = TuiRenderState::with_sample_data();
