@@ -190,8 +190,13 @@ fn test_peer_header_click_maps_each_column() {
     for i in 0..4 {
         let sender_ids = std::collections::VecDeque::new();
         let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
-        let rows =
-            p2p_app::tui_helpers::peer_table_rows_ordered(&peers, &state.dm_messages, &sender_ids);
+        let rows = p2p_app::tui_helpers::peer_table_rows_range(
+            &peers,
+            &state.dm_messages,
+            &sender_ids,
+            0,
+            peers.len(),
+        );
         let widths = p2p_app::tui_helpers::peer_table_column_widths(
             &rows,
             state.peer_sort_column,

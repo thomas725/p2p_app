@@ -29,10 +29,9 @@ fn msg(
 
 #[test]
 fn test_format_messages_from_db_empty() {
-    let (msgs, ids, sent_at) = format_messages_from_db(&[], &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids) = format_messages_from_db(&[], &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
-    assert!(sent_at.is_empty());
 }
 
 #[test]
@@ -45,13 +44,11 @@ fn test_format_outgoing_without_sender_nickname() {
         Some(1.0),
         "2024-01-01 12:00:00",
     )];
-    let (msgs, ids, sent_at) =
-        format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 1);
     assert!(msgs[0].text.contains("[Me]"));
     assert!(msgs[0].text.contains("hello"));
     assert_eq!(ids[0], Some("m1".to_string()));
-    assert_eq!(sent_at.get("m1"), Some(&1.0));
 }
 
 #[test]
@@ -64,7 +61,7 @@ fn test_format_outgoing_with_sender_nickname() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[OldNick]"));
     assert!(msgs[0].text.contains("hello"));
 }
@@ -80,7 +77,7 @@ fn test_format_incoming_without_sender_nickname_falls_back_to_display_name() {
         "2024-01-01 12:00:00",
     )];
     let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
-    let (msgs, _, _) = format_messages_from_db(&messages, &local, &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &local, &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[Alice]"));
     assert!(msgs[0].text.contains("hi there"));
 }
@@ -95,7 +92,7 @@ fn test_format_incoming_with_sender_nickname() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[Bob]"));
     assert!(msgs[0].text.contains("hey"));
 }
@@ -113,7 +110,7 @@ fn test_format_messages_reverses_newest_first_to_oldest_first() {
         ),
         msg("first", Some("p1"), None, None, None, "2024-01-01 12:00:00"),
     ];
-    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 2);
     assert!(
         msgs[0].text.contains("first"),
@@ -126,7 +123,7 @@ fn test_format_messages_reverses_newest_first_to_oldest_first() {
 }
 
 #[test]
-fn test_format_messages_sent_at_skipped_when_none() {
+fn test_format_messages_skipped_when_sent_at_none() {
     let messages = [msg(
         "no sent_at",
         None,
@@ -135,9 +132,9 @@ fn test_format_messages_sent_at_skipped_when_none() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (_, _, sent_at) =
-        format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
-    assert!(sent_at.is_empty());
+    let (msgs, ids) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    assert_eq!(msgs.len(), 1);
+    assert_eq!(ids[0], Some("m1".to_string()));
 }
 
 #[test]
@@ -150,7 +147,7 @@ fn test_format_messages_peer_id_maps_correctly() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs[0].sender_peer_id, Some("p1".to_string()));
 }
 
@@ -164,7 +161,7 @@ fn test_format_messages_outgoing_peer_id_is_none() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs[0].sender_peer_id, None);
 }
 
@@ -221,11 +218,9 @@ fn test_load_and_format_messages_db_failure_returns_empty() {
     p2p_app::db::set_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
-    let (msgs, ids, sent_at) =
-        load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids) = load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
-    assert!(sent_at.is_empty());
 
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();

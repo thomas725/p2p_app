@@ -243,7 +243,7 @@ fn test_scroll_chat_home() {
 fn test_scroll_chat_end() {
     let mut state = app_state_with_chat_messages(20);
     scroll_chat_tab(KeyCode::End, &mut state);
-    assert_eq!(state.chat_scroll_offset, 15);
+    assert_eq!(state.chat_scroll_offset, 19);
 }
 
 #[test]
@@ -272,7 +272,7 @@ fn test_scroll_chat_auto_scroll_stays_at_bottom_on_down() {
     assert!(state.chat_auto_scroll);
     scroll_chat_tab(KeyCode::Down, &mut state);
     // auto_scroll = true -> Down: disable_auto sets offset=max, then scroll down keeps at max
-    assert_eq!(state.chat_scroll_offset, 5);
+    assert_eq!(state.chat_scroll_offset, 9);
     assert!(state.chat_auto_scroll);
 }
 
@@ -281,8 +281,8 @@ fn test_scroll_chat_up_disables_auto_scroll() {
     let mut state = app_state_with_chat_messages(10);
     assert!(state.chat_auto_scroll);
     scroll_chat_tab(KeyCode::Up, &mut state);
-    // Up from auto-scrolled: disable_auto sets offset=max=5, auto=false; then scroll_up to 4
-    assert_eq!(state.chat_scroll_offset, 4);
+    // Up from auto-scrolled: disable_auto sets offset=max=9, auto=false; then scroll_up to 8
+    assert_eq!(state.chat_scroll_offset, 8);
     assert!(!state.chat_auto_scroll);
 }
 
@@ -372,9 +372,9 @@ fn test_mouse_scroll_chat_down() {
 fn test_mouse_scroll_chat_down_clamps() {
     let mut state = app_state_with_chat_messages(3);
     state.chat_auto_scroll = false;
-    // max offset = 3 - 5 = 0 (saturating)
+    // max offset = 3 - 1 = 2
     mouse_scroll_chat_tab(&mut state, "down");
-    assert_eq!(state.chat_scroll_offset, 0);
+    assert_eq!(state.chat_scroll_offset, 2);
 }
 
 // (log tests consolidated in test_log_scroll_all above — avoids parallel global state conflicts)

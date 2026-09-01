@@ -76,8 +76,6 @@ pub struct TuiRenderState {
     pub local_nicknames: HashMap<String, String>,
     /// Map of peer ID -> nickname received/announced by that peer
     pub received_nicknames: HashMap<String, String>,
-    /// Map of peer ID -> self nickname presented to that peer
-    pub self_nicknames_for_peers: HashMap<String, String>,
     /// Current local nickname (for Settings tab)
     pub own_nickname: String,
     /// Local peer ID (for Settings tab)
@@ -156,7 +154,6 @@ impl TuiRenderState {
             node_running: true,
             local_nicknames: HashMap::new(),
             received_nicknames: HashMap::new(),
-            self_nicknames_for_peers: HashMap::new(),
         }
     }
 

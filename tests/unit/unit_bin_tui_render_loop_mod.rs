@@ -14,7 +14,6 @@ fn app_state() -> AppState {
         HashMap::new(),
         VecDeque::new(),
         VecDeque::new(),
-        HashMap::new(),
         VecDeque::new(),
         HashMap::new(),
         HashMap::new(),

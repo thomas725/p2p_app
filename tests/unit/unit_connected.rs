@@ -14,13 +14,13 @@ fn records_connections_and_disconnections() {
     t.on_peer_connected("p1".to_string());
     t.on_peer_connected("p2".to_string());
     assert_eq!(t.len(), 2);
-    assert!(t.contains("p1"));
-    assert!(t.contains("p2"));
-    assert!(!t.contains("p3"));
+    assert!(t.connected_peer_ids().any(|id| id == "p1"));
+    assert!(t.connected_peer_ids().any(|id| id == "p2"));
+    assert!(!t.connected_peer_ids().any(|id| id == "p3"));
 
     t.on_peer_disconnected("p1", 123.0);
     assert_eq!(t.len(), 1);
-    assert!(!t.contains("p1"));
+    assert!(!t.connected_peer_ids().any(|id| id == "p1"));
     assert_eq!(t.last_disconnection(), Some(("p1", 123.0)));
 }
 
@@ -62,15 +62,4 @@ fn connected_peer_ids_iterates_current_set() {
     assert_eq!(ids, vec!["a", "b"]);
     t.on_peer_disconnected("a", 1.0);
     assert_eq!(t.connected_peer_ids().count(), 1);
-}
-
-#[test]
-fn clear_forgets_everything() {
-    let mut t = ConnectedTracker::new();
-    t.on_peer_connected("p1".to_string());
-    t.on_peer_disconnected("p1", 5.0);
-    t.clear();
-    assert!(t.is_empty());
-    assert_eq!(t.len(), 0);
-    assert!(t.last_disconnection().is_none());
 }

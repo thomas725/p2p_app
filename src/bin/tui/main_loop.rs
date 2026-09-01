@@ -175,14 +175,13 @@ pub async fn run_new_tui(
         );
 
     // Load initial messages from database
-    let (initial_messages, initial_message_ids, loaded_sent_at) =
-        super::state::load_and_format_messages(
-            &topic_str,
-            super::state::MAX_MESSAGE_HISTORY,
-            &local_nicknames,
-            &received_nicknames,
-            &own_nickname,
-        );
+    let (initial_messages, initial_message_ids) = super::state::load_and_format_messages(
+        &topic_str,
+        super::state::MAX_MESSAGE_HISTORY,
+        &local_nicknames,
+        &received_nicknames,
+        &own_nickname,
+    );
     p2plog_debug(format!(
         "Loaded {} messages from database",
         initial_messages.len()
@@ -236,7 +235,6 @@ pub async fn run_new_tui(
         self_nicknames_for_peers,
         initial_messages,
         initial_message_ids,
-        loaded_sent_at,
         initial_peers,
         loaded_broadcast_receipts,
         loaded_dm_receipts,

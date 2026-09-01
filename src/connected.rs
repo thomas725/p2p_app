@@ -51,12 +51,6 @@ impl ConnectedTracker {
         self.connected.is_empty()
     }
 
-    /// Whether `peer_id` is currently connected.
-    #[must_use]
-    pub fn contains(&self, peer_id: &str) -> bool {
-        self.connected.contains(peer_id)
-    }
-
     /// Iterate over the IDs of the currently connected peers (`HashSet` order).
     pub fn connected_peer_ids(&self) -> impl Iterator<Item = &str> {
         self.connected.iter().map(String::as_str)
@@ -69,13 +63,6 @@ impl ConnectedTracker {
             (Some(peer), Some(at)) => Some((peer.as_str(), at)),
             _ => None,
         }
-    }
-
-    /// Forget every connected peer and the last-disconnection record.
-    pub fn clear(&mut self) {
-        self.connected.clear();
-        self.last_peer = None;
-        self.last_time = None;
     }
 }
 

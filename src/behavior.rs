@@ -87,39 +87,20 @@ pub fn build_behaviour(
     p2plog_debug(format!(
         "Building behavior for network size: {network_size:?}"
     ));
-    // Configure Gossipsub based on network size
-    let gossipsub_config = match network_size {
-        NetworkSize::Small => {
-            // 0-3 peers: aggressive message propagation
-            gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262_144)
-                .history_gossip(3)
-                .history_length(20)
-                .heartbeat_interval(std::time::Duration::from_secs(1))
-                .build()
-                .map_err(|e| format!("invalid gossipsub config: {e}"))?
-        }
-        NetworkSize::Medium => {
-            // 4-15 peers: balanced settings
-            gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262_144)
-                .history_gossip(6)
-                .history_length(30)
-                .heartbeat_interval(std::time::Duration::from_secs(2))
-                .build()
-                .map_err(|e| format!("invalid gossipsub config: {e}"))?
-        }
-        NetworkSize::Large => {
-            // 16+ peers: conservative settings
-            gossipsub::ConfigBuilder::default()
-                .max_transmit_size(262_144)
-                .history_gossip(12)
-                .history_length(50)
-                .heartbeat_interval(std::time::Duration::from_secs(5))
-                .build()
-                .map_err(|e| format!("invalid gossipsub config: {e}"))?
-        }
+    // Configure Gossipsub based on network size: larger networks need a longer
+    // history and a slower heartbeat to avoid redundant re-broadcasts.
+    let (history_gossip, history_length, heartbeat_secs) = match network_size {
+        NetworkSize::Small => (3, 20, 1),
+        NetworkSize::Medium => (6, 30, 2),
+        NetworkSize::Large => (12, 50, 5),
     };
+    let gossipsub_config = gossipsub::ConfigBuilder::default()
+        .max_transmit_size(262_144)
+        .history_gossip(history_gossip)
+        .history_length(history_length)
+        .heartbeat_interval(std::time::Duration::from_secs(heartbeat_secs))
+        .build()
+        .map_err(|e| format!("invalid gossipsub config: {e}"))?;
 
     let gossipsub = gossipsub::Behaviour::new(
         gossipsub::MessageAuthenticity::Signed(key.clone()),

@@ -96,10 +96,7 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
 
 /// Handle scroll key for Chat tab (broadcast)
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let max_offset = state
-        .messages
-        .len()
-        .saturating_sub(state.visible_message_count);
+    let max_offset = state.messages.len().saturating_sub(1);
     let was_auto_scroll = state.chat_auto_scroll;
     handle_scroll_key_for_section(
         key_code,
@@ -115,7 +112,7 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 /// Handle scroll key for Log tab
 fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let log_len = get_tui_logs().len();
-    let max_offset = log_len.saturating_sub(state.visible_log_count);
+    let max_offset = log_len.saturating_sub(1);
     handle_scroll_key_for_section(
         key_code,
         &mut state.log_scroll_offset,
@@ -214,10 +211,7 @@ fn apply_mouse_scroll(
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    let max_offset = state
-        .messages
-        .len()
-        .saturating_sub(state.visible_message_count);
+    let max_offset = state.messages.len().saturating_sub(1);
     apply_mouse_scroll(
         &mut state.chat_scroll_offset,
         state.chat_auto_scroll,
@@ -229,7 +223,7 @@ fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
 
 /// Handle mouse wheel for Log tab
 fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    let max_offset = get_tui_logs().len().saturating_sub(state.visible_log_count);
+    let max_offset = get_tui_logs().len().saturating_sub(1);
     apply_mouse_scroll(
         &mut state.log_scroll_offset,
         state.log_auto_scroll,

@@ -377,7 +377,7 @@ fn peer_table_rows_range_clamps_and_empties() {
 
 #[test]
 fn peer_table_rows_range_matches_full_scan() {
-    use crate::tui_helpers::{peer_table_rows_ordered, peer_table_rows_range};
+    use crate::tui_helpers::peer_table_rows_range;
     use std::collections::HashMap;
 
     let peers = VecDeque::from([
@@ -403,7 +403,7 @@ fn peer_table_rows_range_matches_full_scan() {
     let msgs: VecDeque<Option<String>> =
         VecDeque::from([Some("a".to_string()), Some("c".to_string())]);
 
-    let full = peer_table_rows_ordered(&peers, &dm, &msgs);
+    let full = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
     let windowed = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
     let ids: Vec<&str> = windowed.iter().map(|r| r.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["a", "b", "c"]);

@@ -10,10 +10,8 @@ fn push_outgoing_broadcast_to_state(
     own_nickname: &str,
     content: &str,
     msg_id: String,
-    sent_at: f64,
 ) {
     let msg = format!("{ts} [{own_nickname}] {content}");
-    state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
     state.messages.push_back(DisplayMessage {
         text: msg,
         sender_peer_id: None,
@@ -31,10 +29,8 @@ fn push_outgoing_dm_to_state(
     dm_self_nickname: &str,
     content: &str,
     msg_id: String,
-    sent_at: f64,
 ) {
     let msg = format!("{ts} [{dm_self_nickname}] {content}");
-    state.sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);
     state
@@ -81,12 +77,11 @@ pub async fn send_message(
                 &dm_self_nickname,
                 &text,
                 msg_id.clone(),
-                sent_at,
             );
             p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
         }
     } else {
-        push_outgoing_broadcast_to_state(state, &ts, &own_nickname, &text, msg_id.clone(), sent_at);
+        push_outgoing_broadcast_to_state(state, &ts, &own_nickname, &text, msg_id.clone());
         p2plog_debug(format!("Sent broadcast: {text}"));
     }
 

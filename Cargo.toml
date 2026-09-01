@@ -121,7 +121,6 @@ unicode-width = "0.2"
 [dev-dependencies]
 tempfile = "3"
 serial_test = "3"
-diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 
 [[bin]]
 name = "p2p_chat"

@@ -12,7 +12,6 @@ pub fn test_app_state() -> AppState {
         HashMap::new(),
         VecDeque::new(),
         VecDeque::new(),
-        HashMap::new(),
         VecDeque::new(),
         HashMap::new(),
         HashMap::new(),
@@ -28,7 +27,6 @@ pub fn app_state_with_chat_messages(count: usize) -> AppState {
         });
         state.message_ids.push_back(Some(format!("msg-{i}")));
     }
-    state.visible_message_count = 5;
     state
 }
 

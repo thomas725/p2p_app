@@ -38,8 +38,6 @@ pub struct AppState {
     pub message_ids: VecDeque<Option<String>>,
     // Broadcast receipts: msg_id -> (peer_id -> received_at epoch seconds).
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-    // Outgoing message send times (epoch seconds) for receipt timing.
-    pub sent_at_by_msg_id: HashMap<String, f64>,
     pub dm_messages: HashMap<String, VecDeque<String>>,
     // DM message IDs aligned with dm_messages[peer_id].
     pub dm_message_ids: HashMap<String, VecDeque<Option<String>>>,
@@ -83,14 +81,12 @@ pub struct AppState {
     pub chat_scroll_offset: usize,
     pub chat_auto_scroll: bool,
     pub chat_unread_count: usize, // Unread broadcast messages while scrolled up
-    pub visible_message_count: usize,
-    pub chat_area_height: usize, // Height of message area in rows (set by render loop)
-    pub terminal_width: usize,   // Terminal width in columns (set by render loop)
+    pub chat_area_height: usize,  // Height of message area in rows (set by render loop)
+    pub terminal_width: usize,    // Terminal width in columns (set by render loop)
 
     // Scroll State (Log tab)
     pub log_scroll_offset: usize,
     pub log_auto_scroll: bool,
-    pub visible_log_count: usize,
 
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
@@ -156,7 +152,6 @@ impl AppState {
         self_nicknames_for_peers: HashMap<String, String>,
         initial_messages: VecDeque<p2p_app::DisplayMessage>,
         initial_message_ids: VecDeque<Option<String>>,
-        initial_sent_at: HashMap<String, f64>,
         initial_peers: VecDeque<p2p_app::PeerRecord>,
         initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
         initial_dm_receipts: HashMap<String, (String, f64)>,
@@ -165,7 +160,6 @@ impl AppState {
             messages: initial_messages,
             message_ids: initial_message_ids,
             broadcast_receipts: initial_broadcast_receipts,
-            sent_at_by_msg_id: initial_sent_at,
             dm_messages: HashMap::new(),
             dm_message_ids: HashMap::new(),
             dm_receipts: initial_dm_receipts,
@@ -186,12 +180,10 @@ impl AppState {
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
             chat_unread_count: 0,
-            visible_message_count: 1,
             chat_area_height: 0,
             terminal_width: 0,
             log_scroll_offset: 0,
             log_auto_scroll: true,
-            visible_log_count: 1,
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
             broadcast_selection: None,
@@ -212,11 +204,7 @@ impl AppState {
     }
 }
 
-type FormattedMessages = (
-    VecDeque<p2p_app::DisplayMessage>,
-    VecDeque<Option<String>>,
-    HashMap<String, f64>,
-);
+type FormattedMessages = (VecDeque<p2p_app::DisplayMessage>, VecDeque<Option<String>>);
 
 /// Pure: formats DB messages into display-ready `(text, peer_id)` pairs.
 ///
@@ -231,7 +219,6 @@ fn format_messages_from_db(
 ) -> FormattedMessages {
     let mut messages = VecDeque::new();
     let mut message_ids = VecDeque::new();
-    let mut sent_at_by_msg_id = HashMap::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
         let sender = if let Some(ref nick) = msg.sender_nickname {
@@ -247,13 +234,8 @@ fn format_messages_from_db(
             sender_peer_id: msg.peer_id.clone(),
         });
         message_ids.push_back(msg.msg_id.clone());
-        if let Some(msg_id) = &msg.msg_id
-            && let Some(sent_at) = msg.sent_at
-        {
-            sent_at_by_msg_id.insert(msg_id.clone(), sent_at);
-        }
     }
-    (messages, message_ids, sent_at_by_msg_id)
+    (messages, message_ids)
 }
 
 #[allow(clippy::type_complexity)]
@@ -267,7 +249,7 @@ pub fn load_and_format_messages(
     p2p_app::load_messages(topic_str, max_messages).map_or_else(
         |_| {
             p2p_app::p2plog_debug("Failed to load messages from database");
-            (VecDeque::new(), VecDeque::new(), HashMap::new())
+            (VecDeque::new(), VecDeque::new())
         },
         |db_messages| {
             format_messages_from_db(

@@ -85,7 +85,7 @@ pub fn render_tab_content(
 fn format_lost_at(ts: Option<f64>) -> String {
     ts.and_then(|t| {
         chrono::DateTime::from_timestamp(t as i64, 0)
-            .map(|dt| crate::format_peer_datetime(dt.naive_local()))
+            .map(|dt| crate::format_peer_datetime(dt.with_timezone(&chrono::Local).naive_local()))
     })
     .unwrap_or_else(|| "—".to_string())
 }
@@ -167,7 +167,7 @@ pub fn render_peer_info_content(
     state: &TuiRenderState,
 ) {
     let display = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
-    let local = state.self_nicknames_for_peers.get(peer_id);
+    let local = state.local_nicknames.get(peer_id);
     let received = state.received_nicknames.get(peer_id);
 
     let (origin, detail) = if local.is_some() {
@@ -317,20 +317,14 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
 
     let body: Vec<Row> = rows
         .iter()
-        .enumerate()
-        .map(|(idx, r)| {
+        .map(|r| {
             let cells = [
                 Cell::from(r.display_name.clone()),
                 Cell::from(r.dm_count.to_string()),
                 Cell::from(r.broadcast_count.to_string()),
                 Cell::from(r.last_seen.clone()),
             ];
-            let row = Row::new(cells);
-            if start.saturating_add(idx) == state.peer_selection {
-                row.style(Style::default().bg(Color::DarkGray))
-            } else {
-                row
-            }
+            Row::new(cells)
         })
         .collect();
 
@@ -403,11 +397,8 @@ pub fn render_dm_content(
         .collect();
 
     if broadcast_messages.is_empty() {
-        let broadcast_para = Paragraph::new("No broadcast messages").block(
-            Block::default()
-                .title(format!("Broadcast from {short_id}"))
-                .borders(Borders::ALL),
-        );
+        let broadcast_para = Paragraph::new("No broadcast messages")
+            .block(bordered_block(format!("Broadcast from {short_id}")));
         f.render_widget(broadcast_para, broadcast_area);
     } else {
         let (broadcast_scroll_offset, broadcast_auto_scroll) = {
@@ -433,11 +424,8 @@ pub fn render_dm_content(
             .map(|m| ListItem::new(m.as_str()))
             .collect();
 
-        let broadcast_list = List::new(visible_broadcast).block(
-            Block::default()
-                .title(format!("Broadcast from {short_id}"))
-                .borders(Borders::ALL),
-        );
+        let broadcast_list = List::new(visible_broadcast)
+            .block(bordered_block(format!("Broadcast from {short_id}")));
         f.render_widget(broadcast_list, broadcast_area);
     }
 
@@ -475,20 +463,18 @@ pub fn render_dm_content(
             })
             .collect();
 
-        let dm_list = List::new(visible_msgs).block(
-            Block::default()
-                .title(format!("DM: {short_id}"))
-                .borders(Borders::ALL),
-        );
+        let dm_list = List::new(visible_msgs).block(bordered_block(format!("DM: {short_id}")));
         f.render_widget(dm_list, dm_area);
     } else {
-        let dm_para = Paragraph::new("No direct messages").block(
-            Block::default()
-                .title(format!("DM: {short_id}"))
-                .borders(Borders::ALL),
-        );
+        let dm_para =
+            Paragraph::new("No direct messages").block(bordered_block(format!("DM: {short_id}")));
         f.render_widget(dm_para, dm_area);
     }
+}
+
+/// Shared bordered list/paragraph block with the given title.
+fn bordered_block(title: String) -> Block<'static> {
+    Block::default().title(title).borders(Borders::ALL)
 }
 
 /// Render log content
@@ -544,7 +530,9 @@ pub fn render_input_section(
 
 /// Render shortcuts help
 pub fn render_shortcuts(f: &mut ratatui::Frame, area: Rect) {
-    let shortcuts = Paragraph::new("Tab: next | PgUp/PgDn: scroll | Enter: send | Esc: clear");
+    let shortcuts = Paragraph::new(
+        "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Esc: return to Chat",
+    );
     f.render_widget(shortcuts, area);
 }
 

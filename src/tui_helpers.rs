@@ -359,16 +359,6 @@ pub fn peer_table_rows_range(
         .collect()
 }
 
-/// Build table rows in the order the peers are currently stored (no re-sort).
-#[must_use]
-pub fn peer_table_rows_ordered(
-    peers: &[PeerRecord],
-    dm_messages: &impl PeerMessageMap,
-    messages: &VecDeque<Option<String>>,
-) -> Vec<PeerTableRow> {
-    peer_table_rows_range(peers, dm_messages, messages, 0, peers.len())
-}
-
 /// Visible window `(start, end)` of the peers table for the given cursor model.
 ///
 /// This mirrors ratatui's `Table::visible_rows` for single-line rows: the
