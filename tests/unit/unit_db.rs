@@ -5,6 +5,11 @@ use std::fs;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
+// The lock-file-based selection machinery below is compiled only for non-test
+// builds (`#[cfg(not(any(test, feature = "test-utils")))]` in `src/db.rs`), so
+// these exercises are equally gated out when `test-utils` is enabled.
+
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn is_db_locked_false_when_lock_missing() {
     let dir = TempDir::new().expect("tempdir");
@@ -13,6 +18,7 @@ fn is_db_locked_false_when_lock_missing() {
     assert!(!lock_path.exists());
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn is_db_locked_removes_zero_pid_lock() {
     let dir = TempDir::new().expect("tempdir");
@@ -22,6 +28,7 @@ fn is_db_locked_removes_zero_pid_lock() {
     assert!(!lock_path.exists());
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn is_db_locked_removes_non_numeric_lock() {
     let dir = TempDir::new().expect("tempdir");
@@ -31,7 +38,7 @@ fn is_db_locked_removes_non_numeric_lock() {
     assert!(!lock_path.exists());
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(not(feature = "test-utils"), target_os = "linux"))]
 #[test]
 fn is_db_locked_removes_dead_pid_lock() {
     let dir = TempDir::new().expect("tempdir");
@@ -41,6 +48,7 @@ fn is_db_locked_removes_dead_pid_lock() {
     assert!(!lock_path.exists());
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn try_acquire_lock_success_then_fail() {
     let dir = TempDir::new().expect("tempdir");
@@ -49,6 +57,7 @@ fn try_acquire_lock_success_then_fail() {
     assert!(try_acquire_lock(&lock_path, 1234).is_err());
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn create_new_db_picks_next_index() {
     let dir = TempDir::new().expect("tempdir");
@@ -58,6 +67,7 @@ fn create_new_db_picks_next_index() {
     assert!(dir.path().join("sqlite_10.db.lock").exists());
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 #[serial(db)]
 fn find_or_create_unused_db_uses_existing_unlocked_file() {
@@ -73,6 +83,7 @@ fn find_or_create_unused_db_uses_existing_unlocked_file() {
     std::env::set_current_dir(old).expect("restore cwd");
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 #[serial(db)]
 fn find_or_create_unused_db_creates_new_when_existing_locked() {
@@ -102,6 +113,7 @@ fn get_database_url_prefers_set_url_and_resets() {
     reset_db_url();
 }
 
+#[cfg(not(feature = "test-utils"))]
 #[test]
 fn is_db_locked_unreadable_path_treated_as_stale() {
     let dir = TempDir::new().expect("tempdir");

@@ -208,7 +208,7 @@ fn test_sqlite_connect_fails_with_bad_path() {
 
 #[serial]
 #[test]
-fn test_db_path_determined_once_per_init() {
+fn test_db_path_is_stable_and_isolated_per_thread() {
     let _guard = test_db_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -217,20 +217,21 @@ fn test_db_path_determined_once_per_init() {
     std::env::set_current_dir(dir.path()).unwrap();
     p2p_app::db::reset_db_url();
     p2p_app::logging::clear_tui_logs();
-    // No set URL -> path determination actually runs.
-    let _ = p2p_app::db::init_database();
+    // No set URL -> the per-thread test database is auto-selected.
+    p2p_app::db::init_database().expect("auto-selected init should succeed");
+    let url = p2p_app::db::get_database_url();
     let _ = std::env::set_current_dir(&old_cwd);
-    let logs = p2p_app::logging::get_tui_logs();
-    let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
-    let checking_count = logs.iter().filter(|l| l.contains("[DB] checking")).count();
-    println!("DEBUG cwd_count={cwd_count} checking_count={checking_count}");
-    assert_eq!(
-        cwd_count, 1,
-        "path determination should log [DB] cwd exactly once per init_database call, got {cwd_count}"
-    );
+    // The path is stable across calls on this thread...
+    assert_eq!(url, p2p_app::db::get_database_url());
+    // ...lives in the system temp dir (never the working directory)...
     assert!(
-        checking_count <= 1,
-        "path determination should check dbs at most once per init_database call, got {checking_count}"
+        std::path::Path::new(&url).starts_with(std::env::temp_dir()),
+        "auto-selected DB should live in the temp dir, got {url}"
+    );
+    // ...and embeds this process id so other test processes can never share it.
+    assert!(
+        url.contains(&std::process::id().to_string()),
+        "auto-selected DB should embed the pid, got {url}"
     );
 }
 
@@ -241,37 +242,40 @@ fn test_concurrent_init_uses_isolated_databases() {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = tempfile::tempdir().expect("tempdir");
-    // Pre-existing .db so the "checking" loop actually logs.
-    std::fs::write(dir.path().join("sqlite.db"), b"").expect("seed db");
-    std::fs::write(dir.path().join("sqlite.db.lock"), b"1").expect("seed lock");
     let old_cwd = std::env::current_dir().unwrap();
     std::env::set_current_dir(dir.path()).unwrap();
     p2p_app::db::reset_db_url();
     p2p_app::logging::clear_tui_logs();
 
-    // Each thread has its own thread-local URL, so concurrent init_database
-    // calls independently select a database. The PID-based lock file ensures
-    // threads in the same process never pick the same file, so no migration race.
+    // Each thread auto-selects its own process+thread-keyed temp database, so
+    // concurrent init_database calls never share a SQLite file or lock.
     let mut handles = Vec::new();
     for _ in 0..4 {
-        handles.push(std::thread::spawn(|| p2p_app::db::init_database().is_ok()));
+        handles.push(std::thread::spawn(|| {
+            let ok = p2p_app::db::init_database().is_ok();
+            let url = p2p_app::db::get_database_url();
+            (ok, url)
+        }));
     }
     let mut all_ok = true;
+    let mut urls = Vec::new();
     for h in handles {
-        all_ok &= h.join().unwrap_or(false);
+        let (ok, url) = h.join().unwrap_or((false, String::new()));
+        all_ok &= ok;
+        urls.push(url);
     }
     let _ = std::env::set_current_dir(&old_cwd);
     assert!(all_ok, "all concurrent init_database calls should succeed");
-    let logs = p2p_app::logging::get_tui_logs();
-    let cwd_count = logs.iter().filter(|l| l.contains("[DB] cwd=")).count();
-    let checking_count = logs.iter().filter(|l| l.contains("[DB] checking")).count();
-    println!("DEBUG concurrent cwd_count={cwd_count} checking_count={checking_count}");
-    assert_eq!(
-        cwd_count, 4,
-        "each concurrent thread should determine its own path, got {cwd_count}"
-    );
-    assert!(
-        checking_count >= 1,
-        "path determination should run for concurrent threads, got {checking_count}"
-    );
+    for (i, a) in urls.iter().enumerate() {
+        for b in &urls[..i] {
+            assert_ne!(
+                a, b,
+                "each concurrent thread should get its own database, got {urls:?}"
+            );
+        }
+        assert!(
+            std::path::Path::new(a).starts_with(std::env::temp_dir()),
+            "auto-selected DB should live in the temp dir, got {a}"
+        );
+    }
 }

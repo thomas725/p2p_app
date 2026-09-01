@@ -104,6 +104,39 @@ pub fn shared_db_test_lock() -> &'static std::sync::Mutex<()> {
     LOCK.get_or_init(|| std::sync::Mutex::new(()))
 }
 
+thread_local! {
+    /// Per-thread count of test-DB auto-selections, so each selection (after a
+    /// `reset_db_url`) yields a fresh file rather than reusing stale data.
+    #[cfg(any(test, feature = "test-utils"))]
+    static TEST_DB_SELECTION_COUNTER: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// The auto-selected test database path for the current thread.
+///
+/// Tests never share a database across processes or threads: the name embeds
+/// the process id and this thread's unique id, so the lib, bin, and integration
+/// test targets racing under `cargo test --all-features` — and any test threads
+/// within them — each get their own `SQLite` file in the system temp dir. This
+/// eliminates the old behaviour of scanning the shared working directory for
+/// `.db`/`.lock` files, which let parallel processes delete each other's live
+/// lock files and then select the same database. The per-thread counter keeps
+/// each fresh selection (after `reset_db_url`) on a brand-new file, so no test
+/// ever sees rows left over from an earlier test on the same thread.
+#[cfg(any(test, feature = "test-utils"))]
+fn unique_test_db_path() -> String {
+    let pid = std::process::id();
+    let tid = format!("{:?}", std::thread::current().id());
+    let n = TEST_DB_SELECTION_COUNTER.with(|c| {
+        let current = c.get();
+        c.set(current.saturating_add(1));
+        current
+    });
+    std::env::temp_dir()
+        .join(format!("p2p-chat-test-{pid}-{tid}-{n}.db"))
+        .to_string_lossy()
+        .into_owned()
+}
+
 /// Establish a connection to the `SQLite` database and run pending migrations.
 ///
 /// Uses the per-thread database URL set via [`set_db_url`] (or the default
@@ -216,6 +249,13 @@ fn ensure_columns(conn: &mut SqliteConnection) {
 }
 
 /// Checks if a database file is locked by examining its lock file.
+///
+/// Production selection below scans the working directory for available
+/// `SQLite` files; tests instead auto-select per-thread temp databases. With
+/// `test-utils` enabled the scanner is compiled out entirely (its unit tests
+/// are equally gated); otherwise it stays compiled so the unit tests can
+/// exercise it directly.
+#[cfg(not(feature = "test-utils"))]
 fn is_db_locked(lock_path: &std::path::Path) -> bool {
     use std::fs;
 
@@ -252,6 +292,7 @@ fn is_db_locked(lock_path: &std::path::Path) -> bool {
 }
 
 /// Tries to acquire the lock file for a database. Returns Ok if successful.
+#[cfg(not(feature = "test-utils"))]
 fn try_acquire_lock(lock_path: &std::path::Path, pid: u32) -> Result<(), ()> {
     use std::fs;
     use std::io::Write;
@@ -356,6 +397,7 @@ fn claim_db_url_with_lock(url: &str) -> String {
 
 /// Finds the first unused `SQLite` database in the current working directory using lock files.
 /// If none is available, creates a new database with the next sequential name.
+#[cfg(not(feature = "test-utils"))]
 fn find_or_create_unused_db() -> color_eyre::Result<String> {
     use crate::logging::p2plog_debug;
     use std::fs;
@@ -414,6 +456,7 @@ fn find_or_create_unused_db() -> color_eyre::Result<String> {
     Ok(create_new_db(&db_files, &cwd, pid))
 }
 
+#[cfg(not(feature = "test-utils"))]
 fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String {
     use std::fs;
     use std::io::Write;
@@ -449,21 +492,25 @@ fn create_new_db(db_files: &[String], cwd: &std::path::Path, pid: u32) -> String
 
 /// Get the database URL for the current thread.
 ///
-/// Returns the URL set via [`set_db_url`], or auto-selects an unused database in
-/// the working directory when none has been set. Because the URL is per-thread,
-/// this is isolated across tests and runtime tasks.
+/// Returns the URL set via [`set_db_url`], or auto-selects a unique database
+/// when none has been set. Because the URL is per-thread, this is isolated
+/// across tests and runtime tasks.
 #[must_use]
 pub fn get_database_url() -> String {
     if let Some(url) = DB_URL.with(|u| u.borrow().clone()) {
         return url;
     }
 
-    // Tests intentionally re-run selection on every call so each test gets a
-    // fresh, isolated database. Production reuses the single primary database
-    // shared across all threads (set via `set_db_url` or on first selection).
+    // Tests auto-select a per-thread database in the system temp dir (see
+    // `unique_test_db_path`) and cache it in the thread-local, so repeated calls
+    // within a test resolve to the same file. Test processes never scan the
+    // working directory or race on shared lock files, so the parallel test
+    // targets under `cargo test --all-features` stay independent. Production
+    // reuses the single primary database shared across all threads (set via
+    // `set_db_url` or on first selection).
     #[cfg(any(test, feature = "test-utils"))]
     {
-        let url = find_or_create_unused_db().unwrap_or_else(|_| "sqlite.db".to_owned());
+        let url = unique_test_db_path();
         DB_URL.with(|u| *u.borrow_mut() = Some(url.clone()));
         url
     }
