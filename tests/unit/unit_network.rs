@@ -30,11 +30,8 @@ fn display_outputs_expected_labels() {
 
 #[test]
 #[serial(db)]
-fn get_network_size_uses_average_peer_count() {
+fn get_network_size_defaults_small_when_no_sessions() {
     with_test_db(|| {
-        crate::peers::save_peer_session(1).expect("save");
-        crate::peers::save_peer_session(2).expect("save");
-        crate::peers::save_peer_session(3).expect("save");
         let size = get_network_size().expect("network size");
         assert_eq!(size, NetworkSize::Small);
     });

@@ -140,32 +140,6 @@ fn peer_sort_none_selected_and_upsert_insert_branch() {
 }
 
 #[test]
-fn nickname_and_validation_helpers() {
-    assert!(is_nickname_update("", Some("nick")));
-    assert!(!is_nickname_update("hi", Some("nick")));
-    assert!(validate_nickname("peer-123"));
-    assert!(!validate_nickname(""));
-    assert!(!validate_nickname("bad nick"));
-}
-
-#[test]
-fn range_and_truncate_helpers() {
-    assert_eq!(calculate_visible_range(10, 4, 3), (4, 7));
-    assert_eq!(truncate_message("hello", 10), "hello");
-    assert_eq!(truncate_message("abcdefghij", 6), "abc...");
-}
-
-#[test]
-fn latency_and_bottom_helpers() {
-    assert_eq!(parse_latency("<1ms"), Some(0.5));
-    assert_eq!(parse_latency("12ms"), Some(12.0));
-    assert_eq!(parse_latency("1.5s"), Some(1500.0));
-    assert_eq!(parse_latency("bad"), None);
-    assert!(is_at_bottom(7, 10, 3));
-    assert!(!is_at_bottom(6, 10, 3));
-}
-
-#[test]
 fn peer_item_and_lines_helpers() {
     assert_eq!(crate::count_lines("x", 0), 1);
     assert_eq!(crate::count_lines("abcdefghij", 5), 2);
@@ -221,13 +195,10 @@ fn scroll_helpers() {
 }
 
 #[test]
-fn transcript_and_tabs_helpers() {
+fn transcript_helpers() {
     let mut lines = VecDeque::from(["[old] hello".to_string(), "[other] keep".to_string()]);
     relabel_dm_transcript(&mut lines, "old", "new");
     assert_eq!(lines[0], "[new] hello");
-    assert_eq!(next_tab_index(0, -1, 4), 3);
-    assert_eq!(next_tab_index(3, 1, 4), 0);
-    assert_eq!(next_tab_index(0, 1, 0), 0);
 }
 
 #[test]

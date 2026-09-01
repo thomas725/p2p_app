@@ -44,20 +44,6 @@ fn load_known_peers_includes_message_only_peer() {
 #[test]
 #[allow(clippy::float_cmp)]
 #[serial(db)]
-fn peer_session_aggregates_work() {
-    with_test_db(|| {
-        save_peer_session(2).expect("save session");
-        save_peer_session(4).expect("save session");
-        let avg = get_average_peer_count().expect("avg");
-        let recent = get_recent_peer_count().expect("recent");
-        assert_eq!(avg, 3.0);
-        assert_eq!(recent, 4);
-    });
-}
-
-#[test]
-#[allow(clippy::float_cmp)]
-#[serial(db)]
 fn average_peer_count_is_zero_when_no_sessions() {
     with_test_db(|| {
         let avg = get_average_peer_count().expect("avg");

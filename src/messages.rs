@@ -109,23 +109,6 @@ pub fn save_message_with_meta(
         })
 }
 
-/// Get all unsent broadcast messages for a topic, ordered by creation time.
-///
-/// # Errors
-/// Returns an error if the database query fails.
-pub fn get_unsent_messages(topic: &str) -> color_eyre::Result<Vec<Message>> {
-    let conn = &mut crate::sqlite_connect()?;
-    messages
-        .filter(crate::generated::schema::messages::topic.eq(topic))
-        .filter(crate::generated::schema::messages::sent.eq(0))
-        .filter(crate::generated::schema::messages::is_direct.eq(0))
-        .order_by(crate::generated::schema::messages::created_at.asc())
-        .then_order_by(crate::generated::schema::messages::id.asc())
-        .select(Message::as_select())
-        .load(conn)
-        .wrap_err_with(|| format!("Failed to load unsent messages for topic: {topic}"))
-}
-
 /// Mark a message as sent by ID.
 ///
 /// # Errors
@@ -175,23 +158,6 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
         .select(Message::as_select())
         .load(conn)?;
     Ok(msgs)
-}
-
-/// Get all unsent direct messages to a specific peer, ordered by creation time.
-///
-/// # Errors
-/// Returns an error if the database query fails.
-pub fn get_unsent_direct_messages(target_peer: &str) -> color_eyre::Result<Vec<Message>> {
-    let conn = &mut crate::sqlite_connect()?;
-    messages
-        .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
-        .filter(crate::generated::schema::messages::sent.eq(0))
-        .filter(crate::generated::schema::messages::is_direct.eq(1))
-        .order_by(crate::generated::schema::messages::created_at.asc())
-        .then_order_by(crate::generated::schema::messages::id.asc())
-        .select(Message::as_select())
-        .load(conn)
-        .wrap_err_with(|| format!("Failed to load unsent direct messages for peer: {target_peer}"))
 }
 
 /// Save a message receipt (delivery/read confirmation).

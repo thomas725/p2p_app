@@ -245,70 +245,6 @@ fn test_load_direct_messages_limit() {
     });
 }
 
-// ── get_unsent_messages ───────────────────────────────────────────────────────
-
-#[serial]
-#[test]
-fn test_get_unsent_messages_empty() {
-    with_test_db(|| {
-        let msgs = p2p_app::get_unsent_messages("no-topic").unwrap();
-        assert!(msgs.is_empty());
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_unsent_messages_returns_only_unsent() {
-    with_test_db(|| {
-        let saved = p2p_app::save_message("unsent", None, "unsent-topic", false, None).unwrap();
-        p2p_app::save_message("also-unsent", None, "unsent-topic", false, None).unwrap();
-
-        p2p_app::mark_message_sent(saved.id).unwrap();
-
-        let unsent = p2p_app::get_unsent_messages("unsent-topic").unwrap();
-        assert_eq!(unsent.len(), 1);
-        assert_eq!(unsent[0].content, "also-unsent");
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_unsent_messages_excludes_direct() {
-    with_test_db(|| {
-        p2p_app::save_message("broadcast", None, "topic", false, None).unwrap();
-        p2p_app::save_message("direct", None, "topic", true, Some("peer-x")).unwrap();
-
-        let unsent = p2p_app::get_unsent_messages("topic").unwrap();
-        assert_eq!(unsent.len(), 1);
-        assert_eq!(unsent[0].content, "broadcast");
-    });
-}
-
-// ── get_unsent_direct_messages ────────────────────────────────────────────────
-
-#[serial]
-#[test]
-fn test_get_unsent_direct_messages_empty() {
-    with_test_db(|| {
-        let msgs = p2p_app::get_unsent_direct_messages("nobody").unwrap();
-        assert!(msgs.is_empty());
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_unsent_direct_messages_after_sent() {
-    with_test_db(|| {
-        let sent = p2p_app::save_message("dm-sent", None, "t", true, Some("peer-s")).unwrap();
-        p2p_app::save_message("dm-unsent", None, "t", true, Some("peer-s")).unwrap();
-        p2p_app::mark_message_sent(sent.id).unwrap();
-
-        let unsent = p2p_app::get_unsent_direct_messages("peer-s").unwrap();
-        assert_eq!(unsent.len(), 1);
-        assert_eq!(unsent[0].content, "dm-unsent");
-    });
-}
-
 // ── mark_message_sent ─────────────────────────────────────────────────────────
 
 #[serial]
@@ -320,8 +256,8 @@ fn test_mark_message_sent() {
 
         p2p_app::mark_message_sent(msg.id).unwrap();
 
-        let unsent = p2p_app::get_unsent_messages("t").unwrap();
-        assert!(unsent.is_empty());
+        let msgs = p2p_app::load_messages("t", 100).unwrap();
+        assert_eq!(msgs[0].sent, 1);
     });
 }
 
@@ -417,15 +353,6 @@ fn test_load_direct_messages_limit_zero() {
     with_test_db(|| {
         p2p_app::save_message("dm", Some("peer"), "topic", false, None).unwrap();
         let msgs = p2p_app::load_direct_messages("peer", 0).unwrap();
-        assert!(msgs.is_empty());
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_unsent_direct_messages_unknown_peer() {
-    with_test_db(|| {
-        let msgs = p2p_app::get_unsent_direct_messages("unknown-peer").unwrap();
         assert!(msgs.is_empty());
     });
 }

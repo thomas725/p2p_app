@@ -98,8 +98,8 @@ pub use db::{
     sqlite_connect,
 };
 pub use fmt::{
-    auto_scroll_offset, current_timestamp, format_latency, format_now, format_peer_datetime,
-    format_system_time, gen_msg_id, now_timestamp, peer_display_name, scroll_title, short_peer_id,
+    current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
+    gen_msg_id, now_timestamp, peer_display_name, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use logging::{clear_tui_logs, tracing_filter};
@@ -108,9 +108,8 @@ pub use logging::{
     register_log_callback, request_tui_redraw, set_tui_redraw_hook, strip_ansi_codes,
 };
 pub use messages::{
-    MessageMeta, get_unsent_direct_messages, get_unsent_messages, load_direct_messages,
-    load_messages, load_receipts, mark_message_sent, save_message, save_message_with_meta,
-    save_receipt,
+    MessageMeta, load_direct_messages, load_messages, load_receipts, mark_message_sent,
+    save_message, save_message_with_meta, save_receipt,
 };
 #[cfg(feature = "mobile")]
 pub use mobile_api::{
@@ -125,16 +124,15 @@ pub use nickname::{
     set_peer_received_nickname, set_peer_self_nickname_for_peer, set_self_nickname,
 };
 pub use peers::{
-    get_average_peer_count, get_recent_peer_count, load_known_peers, load_listen_ports, load_peers,
-    save_listen_ports, save_peer, save_peer_session,
+    get_average_peer_count, load_known_peers, load_listen_ports, load_peers, save_listen_ports,
+    save_peer,
 };
 pub use swarm_handler::{build_broadcast_message, spawn_swarm_handler};
 #[cfg(feature = "tui")]
 pub use tui_helpers::{
-    PAGE_SIZE, WHEEL_SCROLL_LINES, calculate_visible_range, disable_auto_scroll_to_max,
-    handle_scroll_key_for_section, is_at_bottom, is_nickname_update, key_code_to_scroll_action,
-    next_tab_index, parse_latency, relabel_dm_transcript, scroll_down_lines, scroll_up_lines,
-    sort_peers_by_last_seen, truncate_message, upsert_peer_last_seen, validate_nickname,
+    PAGE_SIZE, WHEEL_SCROLL_LINES, disable_auto_scroll_to_max, handle_scroll_key_for_section,
+    key_code_to_scroll_action, relabel_dm_transcript, scroll_down_lines, scroll_up_lines,
+    sort_peers_by_last_seen, upsert_peer_last_seen,
 };
 #[cfg(feature = "tui")]
 pub use tui_render::{render_chat_content, render_frame, render_tab_content, render_tabs};

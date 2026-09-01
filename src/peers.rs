@@ -1,10 +1,8 @@
 //! Peer management, session tracking, and port persistence
 
 use crate::{
-    generated::models_insertable::{NewPeer, NewPeerSession},
-    generated::models_queryable::Peer,
-    generated::schema::peers::dsl::peers,
-    logging::p2plog_debug,
+    generated::models_insertable::NewPeer, generated::models_queryable::Peer,
+    generated::schema::peers::dsl::peers, logging::p2plog_debug,
 };
 use diesel::sql_types::Text;
 use diesel::{
@@ -151,22 +149,6 @@ ORDER BY last_seen DESC
     Ok(rows)
 }
 
-/// Record a peer session snapshot with the concurrent peer count.
-///
-/// # Errors
-/// Returns an error if the database insert fails.
-pub fn save_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
-    let conn = &mut crate::sqlite_connect()?;
-    let new_session = NewPeerSession {
-        concurrent_peers,
-        recorded_at: chrono::Utc::now().naive_utc(),
-    };
-    diesel::insert_into(crate::generated::schema::peer_sessions::table)
-        .values(&new_session)
-        .execute(conn)?;
-    Ok(())
-}
-
 /// Save the last used TCP and QUIC ports to the database.
 ///
 /// # Errors
@@ -214,20 +196,6 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
     let avg = sum as f64 / sessions.len() as f64;
     Ok(avg)
-}
-
-/// Get the most recently recorded peer count.
-///
-/// # Errors
-/// Returns an error if the database query fails.
-pub fn get_recent_peer_count() -> color_eyre::Result<i32> {
-    let conn = &mut crate::sqlite_connect()?;
-    let last = crate::generated::schema::peer_sessions::table
-        .select(crate::generated::schema::peer_sessions::concurrent_peers)
-        .order(crate::generated::schema::peer_sessions::recorded_at.desc())
-        .first::<i32>(conn)
-        .optional()?;
-    Ok(last.unwrap_or(0))
 }
 
 /// Increment the `broadcasts_sent` counter for each peer that was connected

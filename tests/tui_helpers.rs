@@ -43,44 +43,6 @@ fn test_upsert_peer_last_seen() {
 }
 
 #[test]
-fn test_is_nickname_update() {
-    use p2p_app::tui_helpers::is_nickname_update;
-
-    assert!(is_nickname_update("", Some("Alice")));
-    assert!(!is_nickname_update("Hello", Some("Alice")));
-    assert!(!is_nickname_update("Hello", None));
-}
-
-#[test]
-fn test_calculate_visible_range() {
-    use p2p_app::tui_helpers::calculate_visible_range;
-
-    let (start, end) = calculate_visible_range(100, 50, 20);
-    assert_eq!(start, 50);
-    assert_eq!(end, 70);
-}
-
-#[test]
-fn test_validate_nickname() {
-    use p2p_app::tui_helpers::validate_nickname;
-
-    assert!(validate_nickname("Alice"));
-    assert!(validate_nickname("Bob-123"));
-    assert!(validate_nickname("TestNick"));
-    assert!(!validate_nickname(""));
-    assert!(!validate_nickname(&"a".repeat(21)));
-    assert!(!validate_nickname("Bob@home"));
-}
-
-#[test]
-fn test_truncate_message() {
-    use p2p_app::tui_helpers::truncate_message;
-
-    assert_eq!(truncate_message("hello", 10), "hello");
-    assert_eq!(truncate_message("hello world!", 8), "hello...");
-}
-
-#[test]
 fn test_message_line_count() {
     use p2p_app::count_lines;
 
@@ -92,24 +54,6 @@ fn test_message_line_count() {
 
 // Skip: conflicts with fmt::short_peer_id
 // Use p2p_app::fmt::short_peer_id instead
-
-#[test]
-fn test_parse_latency() {
-    use p2p_app::tui_helpers::parse_latency;
-
-    assert_eq!(parse_latency("<1ms"), Some(0.5));
-    assert_eq!(parse_latency("100ms"), Some(100.0));
-    assert_eq!(parse_latency("1.5s"), Some(1500.0));
-    assert_eq!(parse_latency("invalid"), None);
-}
-
-#[test]
-fn test_is_at_bottom() {
-    use p2p_app::tui_helpers::is_at_bottom;
-
-    assert!(is_at_bottom(80, 100, 20));
-    assert!(!is_at_bottom(50, 100, 20));
-}
 
 // Scroll handler tests
 #[test]
@@ -194,23 +138,6 @@ fn test_handle_scroll_key_for_section() {
     let (offset, auto) = handle_scroll_key_for_section("Unknown", 50, false, 80);
     assert_eq!(offset, 50);
     assert!(!auto);
-}
-
-#[test]
-fn test_next_tab_index() {
-    use p2p_app::tui_helpers::next_tab_index;
-
-    // Next tab
-    assert_eq!(next_tab_index(0, 1, 3), 1);
-    assert_eq!(next_tab_index(1, 1, 3), 2);
-    assert_eq!(next_tab_index(2, 1, 3), 0); // wraps
-
-    // Previous tab
-    assert_eq!(next_tab_index(0, -1, 3), 2); // wraps back
-    assert_eq!(next_tab_index(1, -1, 3), 0);
-
-    // Zero tabs
-    assert_eq!(next_tab_index(0, 1, 0), 0);
 }
 
 #[test]
@@ -349,84 +276,6 @@ fn test_handle_scroll_page_down_clamps_at_max() {
     assert!(auto); // reached max so auto-scroll re-engages
 }
 
-#[test]
-fn test_next_tab_index_wraps_forward() {
-    use p2p_app::tui_helpers::next_tab_index;
-    assert_eq!(next_tab_index(3, 1, 4), 0); // 3+1=4 wraps to 0
-}
-
-#[test]
-fn test_next_tab_index_wraps_backward() {
-    use p2p_app::tui_helpers::next_tab_index;
-    assert_eq!(next_tab_index(0, -1, 4), 3); // 0-1=-1 wraps to 3
-}
-
-#[test]
-fn test_next_tab_index_zero_tabs() {
-    use p2p_app::tui_helpers::next_tab_index;
-    assert_eq!(next_tab_index(0, 1, 0), 0); // must not panic
-}
-
-// ── validate_nickname edge cases ──────────────────────────────────────────────
-
-#[test]
-fn test_validate_nickname_valid() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(validate_nickname("alice"));
-    assert!(validate_nickname("Alice123"));
-    assert!(validate_nickname("cool-nick"));
-    assert!(validate_nickname("A")); // single char
-}
-
-#[test]
-fn test_validate_nickname_empty_rejected() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(!validate_nickname(""));
-}
-
-#[test]
-fn test_validate_nickname_too_long_rejected() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(!validate_nickname("this-nickname-is-way-too-long-123"));
-}
-
-#[test]
-fn test_validate_nickname_invalid_chars_rejected() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(!validate_nickname("has space"));
-    assert!(!validate_nickname("has@symbol"));
-    assert!(!validate_nickname("has.dot"));
-}
-
-#[test]
-fn test_validate_nickname_exactly_20_chars() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(validate_nickname("abcdefghijklmnopqrst")); // exactly 20
-    assert!(!validate_nickname("abcdefghijklmnopqrstu")); // 21
-}
-
-// ── truncate_message ──────────────────────────────────────────────────────────
-
-#[test]
-fn test_truncate_message_short_unchanged() {
-    use p2p_app::tui_helpers::truncate_message;
-    assert_eq!(truncate_message("hello", 20), "hello");
-}
-
-#[test]
-fn test_truncate_message_exact_length_unchanged() {
-    use p2p_app::tui_helpers::truncate_message;
-    assert_eq!(truncate_message("hello", 5), "hello");
-}
-
-#[test]
-fn test_truncate_message_long_gets_ellipsis() {
-    use p2p_app::tui_helpers::truncate_message;
-    let result = truncate_message("hello world this is a long message", 10);
-    assert!(result.ends_with("..."));
-    assert!(result.len() <= 10);
-}
-
 // ── message_line_count ────────────────────────────────────────────────────────
 
 #[test]
@@ -458,50 +307,6 @@ fn test_message_line_count_wraps_long_line() {
 fn test_message_line_count_multiline_with_empty_line() {
     use p2p_app::count_lines;
     assert_eq!(count_lines("hello\n\nworld", 80), 3);
-}
-
-// ── is_at_bottom ─────────────────────────────────────────────────────────────
-
-#[test]
-fn test_is_at_bottom_when_at_end() {
-    use p2p_app::tui_helpers::is_at_bottom;
-    assert!(is_at_bottom(90, 100, 10)); // 90 >= 100-10=90
-}
-
-#[test]
-fn test_is_at_bottom_when_not_at_end() {
-    use p2p_app::tui_helpers::is_at_bottom;
-    assert!(!is_at_bottom(50, 100, 10)); // 50 < 90
-}
-
-#[test]
-fn test_is_at_bottom_empty_list() {
-    use p2p_app::tui_helpers::is_at_bottom;
-    assert!(is_at_bottom(0, 0, 10)); // 0 >= 0.saturating_sub(10)=0
-}
-
-#[test]
-fn test_calculate_visible_range_normal() {
-    use p2p_app::tui_helpers::calculate_visible_range;
-    let (start, end) = calculate_visible_range(100, 10, 20);
-    assert_eq!(start, 10);
-    assert_eq!(end, 30);
-}
-
-#[test]
-fn test_calculate_visible_range_near_end() {
-    use p2p_app::tui_helpers::calculate_visible_range;
-    let (start, end) = calculate_visible_range(100, 90, 20);
-    assert_eq!(start, 90);
-    assert_eq!(end, 100); // clamped
-}
-
-#[test]
-fn test_calculate_visible_range_empty() {
-    use p2p_app::tui_helpers::calculate_visible_range;
-    let (start, end) = calculate_visible_range(0, 0, 20);
-    assert_eq!(start, 0);
-    assert_eq!(end, 0);
 }
 
 // ── key_code_to_scroll_action ─────────────────────────────────────────────────
@@ -557,39 +362,6 @@ fn test_key_code_to_scroll_action_invalid() {
     use p2p_app::tui_helpers::key_code_to_scroll_action;
     assert_eq!(key_code_to_scroll_action(KeyCode::Enter), None);
     assert_eq!(key_code_to_scroll_action(KeyCode::Backspace), None);
-}
-
-// ── Additional edge case coverage ──────────────────────────────────────────────
-
-#[test]
-fn test_validate_nickname_with_numbers() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(validate_nickname("alice123"));
-    assert!(validate_nickname("123"));
-}
-
-#[test]
-fn test_validate_nickname_with_dashes() {
-    use p2p_app::tui_helpers::validate_nickname;
-    assert!(validate_nickname("alice-bob"));
-    assert!(validate_nickname("a-b-c-d"));
-}
-
-#[test]
-fn test_truncate_message_exact_fit() {
-    use p2p_app::tui_helpers::truncate_message;
-    assert_eq!(truncate_message("12345", 5), "12345");
-    assert_eq!(truncate_message("12345", 6), "12345");
-}
-
-#[test]
-fn test_truncate_message_unicode() {
-    use p2p_app::tui_helpers::truncate_message;
-    let emoji_str = "hello 👋 world";
-    let result = truncate_message(emoji_str, 8);
-    // Should truncate and add ellipsis
-    assert!(result.len() <= 8);
-    assert!(result.ends_with("..."));
 }
 
 #[test]

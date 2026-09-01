@@ -139,34 +139,7 @@ fn test_load_known_peers_deduplicates() {
     });
 }
 
-// ── save_peer_session / get_average_peer_count / get_recent_peer_count ────────
-
-#[serial]
-#[test]
-fn test_save_peer_session() {
-    with_test_db(|| {
-        p2p_app::save_peer_session(5).unwrap();
-        assert_eq!(p2p_app::get_recent_peer_count().unwrap(), 5);
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_recent_peer_count_zero_when_empty() {
-    with_test_db(|| {
-        assert_eq!(p2p_app::get_recent_peer_count().unwrap(), 0);
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_recent_peer_count_returns_latest() {
-    with_test_db(|| {
-        p2p_app::save_peer_session(3).unwrap();
-        p2p_app::save_peer_session(7).unwrap();
-        assert_eq!(p2p_app::get_recent_peer_count().unwrap(), 7);
-    });
-}
+// ── get_average_peer_count ────────────────────────────────────────────────────
 
 #[serial]
 #[test]
@@ -174,17 +147,6 @@ fn test_get_average_peer_count_zero_when_empty() {
     with_test_db(|| {
         let avg = p2p_app::get_average_peer_count().unwrap();
         assert!(avg.abs() < f64::EPSILON);
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_average_peer_count() {
-    with_test_db(|| {
-        p2p_app::save_peer_session(4).unwrap();
-        p2p_app::save_peer_session(8).unwrap();
-        let avg = p2p_app::get_average_peer_count().unwrap();
-        assert!((avg - 6.0).abs() < 0.001);
     });
 }
 
@@ -234,30 +196,6 @@ fn test_get_network_size_small_when_empty() {
     with_test_db(|| {
         let size = p2p_app::get_network_size().unwrap();
         assert_eq!(size, p2p_app::network::NetworkSize::Small);
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_network_size_medium() {
-    with_test_db(|| {
-        for _ in 0..5 {
-            p2p_app::save_peer_session(8).unwrap();
-        }
-        let size = p2p_app::get_network_size().unwrap();
-        assert_eq!(size, p2p_app::network::NetworkSize::Medium);
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_network_size_large() {
-    with_test_db(|| {
-        for _ in 0..5 {
-            p2p_app::save_peer_session(20).unwrap();
-        }
-        let size = p2p_app::get_network_size().unwrap();
-        assert_eq!(size, p2p_app::network::NetworkSize::Large);
     });
 }
 
@@ -315,20 +253,5 @@ fn test_get_network_size_thresholds() {
         }
         let size_small = p2p_app::get_network_size().unwrap();
         assert_eq!(size_small, p2p_app::network::NetworkSize::Small);
-    });
-}
-
-#[serial]
-#[test]
-fn test_save_peer_session_twice() {
-    with_test_db(|| {
-        p2p_app::save_peer_session(5).unwrap();
-        let count1 = p2p_app::get_recent_peer_count().unwrap();
-
-        p2p_app::save_peer_session(10).unwrap();
-        let count2 = p2p_app::get_recent_peer_count().unwrap();
-
-        assert_eq!(count1, 5);
-        assert_eq!(count2, 10);
     });
 }

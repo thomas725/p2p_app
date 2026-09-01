@@ -94,14 +94,6 @@ pub fn peer_display_name(
         .unwrap_or_else(|| short_peer_id(peer_id))
 }
 
-/// Calculate the offset for auto-scrolling text display
-///
-/// Returns the line offset that should be visible when auto-scrolling to show the latest content.
-#[must_use]
-pub const fn auto_scroll_offset(total: usize, visible: usize) -> usize {
-    total.saturating_sub(visible)
-}
-
 /// Calculate the latency in milliseconds between sent and received times
 #[must_use]
 pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
@@ -122,12 +114,4 @@ pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {
             }
         },
     )
-}
-
-/// Generate a title for scrollable content showing current scroll position
-///
-/// Format: "Prefix (offset/total)"
-#[must_use]
-pub fn scroll_title(prefix: &str, scroll_offset: usize, total: usize) -> String {
-    format!("{} ({}/{})", prefix, scroll_offset.min(total), total)
 }

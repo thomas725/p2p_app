@@ -28,24 +28,23 @@ fn with_test_db(f: impl FnOnce()) {
 fn save_and_mark_message_sent() {
     with_test_db(|| {
         let msg = save_message("hello", None, "topic-a", false, None).expect("save");
-        let unsent = get_unsent_messages("topic-a").expect("load unsent");
-        assert!(unsent.iter().any(|m| m.id == msg.id));
+        let loaded = load_messages("topic-a", 100).expect("load");
+        assert!(loaded.iter().any(|m| m.id == msg.id));
         mark_message_sent(msg.id).expect("mark sent");
-        let unsent_after = get_unsent_messages("topic-a").expect("load unsent after");
-        assert!(!unsent_after.iter().any(|m| m.id == msg.id));
+        let after = load_messages("topic-a", 100).expect("load after");
+        assert!(after.iter().any(|m| m.id == msg.id && m.sent == 1));
     });
 }
 
 #[test]
 #[serial(db)]
-fn direct_message_roundtrip_and_unsent_filter() {
+fn direct_message_roundtrip() {
     with_test_db(|| {
         let saved =
             save_message("dm", Some("peer-a"), "topic-a", true, Some("peer-b")).expect("save");
         let dms = load_direct_messages("peer-b", 20).expect("load direct");
-        assert!(dms.iter().any(|m| m.id == saved.id));
-        let unsent = get_unsent_direct_messages("peer-b").expect("load unsent direct");
-        assert!(unsent.iter().any(|m| m.id == saved.id));
+        let found = dms.iter().find(|m| m.id == saved.id).expect("found");
+        assert_eq!(found.sent, 0); // saved unsent
     });
 }
 
@@ -112,30 +111,6 @@ fn save_message_reports_context_on_insert_failure() {
         let rendered = format!("{err:?}");
         assert!(rendered.contains("Failed to save message"));
         assert!(rendered.contains("topic-e"));
-    });
-}
-
-#[test]
-#[serial(db)]
-fn get_unsent_messages_empty_topic() {
-    with_test_db(|| {
-        let unsent = get_unsent_messages("empty-topic").expect("get unsent");
-        assert!(
-            unsent.is_empty(),
-            "Should have no unsent messages for new topic"
-        );
-    });
-}
-
-#[test]
-#[serial(db)]
-fn get_unsent_direct_messages_empty() {
-    with_test_db(|| {
-        let unsent = get_unsent_direct_messages("peer-nobody").expect("get unsent dm");
-        assert!(
-            unsent.is_empty(),
-            "Should have no unsent DMs for unknown peer"
-        );
     });
 }
 

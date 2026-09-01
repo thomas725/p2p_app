@@ -167,19 +167,6 @@ fn test_short_peer_id_short_input() {
 }
 
 #[test]
-fn test_auto_scroll_offset() {
-    assert_eq!(fmt::auto_scroll_offset(10, 5), 5);
-    assert_eq!(fmt::auto_scroll_offset(5, 10), 0);
-}
-
-#[test]
-fn test_scroll_title() {
-    let title = fmt::scroll_title("Messages", 3, 10);
-    assert!(title.contains("Messages"));
-    assert!(title.contains("(3/10)"));
-}
-
-#[test]
 fn test_peer_display_name_local_nickname() {
     use std::collections::HashMap;
     let mut local = HashMap::new();

@@ -101,26 +101,6 @@ fn test_peer_display_name_fallback() {
 }
 
 #[test]
-fn test_auto_scroll_offset() {
-    assert_eq!(p2p_app::fmt::auto_scroll_offset(100, 20), 80);
-    assert_eq!(p2p_app::fmt::auto_scroll_offset(10, 20), 0);
-    assert_eq!(p2p_app::fmt::auto_scroll_offset(0, 10), 0);
-}
-
-#[test]
-fn test_scroll_title() {
-    let title = p2p_app::fmt::scroll_title("Messages", 10, 100);
-    assert!(title.contains("Messages"));
-    assert!(title.contains("(10/100)"));
-}
-
-#[test]
-fn test_scroll_title_capped() {
-    let title = p2p_app::fmt::scroll_title("Messages", 200, 100);
-    assert!(title.contains("(100/100)"));
-}
-
-#[test]
 fn test_format_latency_under_1ms() {
     let sent = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -258,35 +238,6 @@ fn test_peer_display_name_with_nickname() {
     let received = HashMap::new();
     let name = peer_display_name("Alice", &local, &received);
     assert!(!name.is_empty());
-}
-
-#[test]
-fn test_scroll_title_broadcast() {
-    use p2p_app::scroll_title;
-    let title = scroll_title("Broadcast", 0, 100);
-    assert!(title.contains("Broadcast"));
-}
-
-#[test]
-fn test_scroll_title_with_position() {
-    use p2p_app::scroll_title;
-    let title = scroll_title("Test", 50, 100);
-    // Should indicate position
-    assert!(!title.is_empty());
-}
-
-#[test]
-fn test_auto_scroll_offset_start() {
-    use p2p_app::auto_scroll_offset;
-    let offset = auto_scroll_offset(0, 80);
-    assert_eq!(offset, 0);
-}
-
-#[test]
-fn test_auto_scroll_offset_with_messages() {
-    use p2p_app::auto_scroll_offset;
-    let offset = auto_scroll_offset(100, 80);
-    assert!(offset > 0);
 }
 
 #[test]

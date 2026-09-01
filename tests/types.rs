@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 
 use p2p_app::{
-    BroadcastMessage, DirectMessage, NetworkSize, SwarmCommand, SwarmEvent, auto_scroll_offset,
+    BroadcastMessage, DirectMessage, NetworkSize, SwarmCommand, SwarmEvent,
     build_broadcast_message, current_timestamp, format_latency, format_system_time, gen_msg_id,
-    now_timestamp, peer_display_name, scroll_title, short_peer_id,
+    now_timestamp, peer_display_name, short_peer_id,
 };
 
 // ---------------------------------------------------------------------------
@@ -240,25 +240,6 @@ fn peer_display_name_falls_back_to_short_id() {
 }
 
 // ---------------------------------------------------------------------------
-// auto_scroll_offset
-// ---------------------------------------------------------------------------
-
-#[test]
-fn auto_scroll_offset_zero_when_fits() {
-    assert_eq!(auto_scroll_offset(3, 10), 0);
-}
-
-#[test]
-fn auto_scroll_offset_positive_when_exceeds() {
-    assert_eq!(auto_scroll_offset(10, 5), 5);
-}
-
-#[test]
-fn auto_scroll_offset_never_panics() {
-    assert_eq!(auto_scroll_offset(0, 0), 0);
-}
-
-// ---------------------------------------------------------------------------
 // format_latency
 // ---------------------------------------------------------------------------
 
@@ -303,20 +284,6 @@ fn now_timestamp_is_19_chars() {
 fn format_system_time_contains_time_separators() {
     let s = format_system_time(SystemTime::now());
     assert!(s.contains(':'));
-}
-
-// ---------------------------------------------------------------------------
-// scroll_title
-// ---------------------------------------------------------------------------
-
-#[test]
-fn scroll_title_basic() {
-    assert_eq!(scroll_title("Chat", 5, 10), "Chat (5/10)");
-}
-
-#[test]
-fn scroll_title_clamps_offset() {
-    assert_eq!(scroll_title("Log", 99, 10), "Log (10/10)");
 }
 
 // ---------------------------------------------------------------------------
