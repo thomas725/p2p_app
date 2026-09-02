@@ -626,7 +626,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onCopySelected: _copySelected,
         onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
-      _PeerList(
+      PeerList(
         peers: _peers,
         stats: _peerStats,
         onOpenInfo: _openPeerInfo,
@@ -950,13 +950,21 @@ class _MessageBubble extends StatelessWidget {
 
 // --- Peers Tab ---
 
-class _PeerList extends StatefulWidget {
-  const _PeerList({
+/// Test-only seam for [PeerListState]: replaces the FFI-backed `sortPeers`
+/// call so widget tests can exercise sorting without a loaded Rust library.
+@visibleForTesting
+typedef SortPeersOverride =
+    List<PeerSortInput> Function(List<PeerSortInput> rows, int column, bool ascending);
+
+class PeerList extends StatefulWidget {
+  const PeerList({
+    super.key,
     required this.peers,
     required this.stats,
     required this.onOpenInfo,
     required this.onOpenDm,
     required this.serviceRunning,
+    this.sortOverride,
   });
   final List<MobilePeerRecord> peers;
   final Map<String, PeerMessageStats> stats;
@@ -964,11 +972,16 @@ class _PeerList extends StatefulWidget {
   final void Function(MobilePeerRecord) onOpenDm;
   final bool serviceRunning;
 
+  /// Test-only seam: when set, replaces the FFI-backed `sortPeers` call so
+  /// widget tests can exercise sorting without a loaded Rust library.
+  @visibleForTesting
+  final SortPeersOverride? sortOverride;
+
   @override
-  State<_PeerList> createState() => _PeerListState();
+  State<PeerList> createState() => PeerListState();
 }
 
-class _PeerListState extends State<_PeerList> {
+class PeerListState extends State<PeerList> {
   static const int _kLastSeen = 3;
 
   int _sortColumn = _kLastSeen;
@@ -992,13 +1005,21 @@ class _PeerListState extends State<_PeerList> {
           ),
         )
         .toList();
-    final sorted = sortPeers(
+    final sorted = _runSort(rows);
+    final byId = {for (final p in widget.peers) p.peerId: p};
+    return [for (final row in sorted) byId[row.peerId]!];
+  }
+
+  List<PeerSortInput> _runSort(List<PeerSortInput> rows) {
+    final override = widget.sortOverride;
+    if (override != null) {
+      return override(rows, _sortColumn, _ascending);
+    }
+    return sortPeers(
       peers: rows,
       sortColumn: _sortColumn,
       ascending: _ascending,
     );
-    final byId = {for (final p in widget.peers) p.peerId: p};
-    return [for (final row in sorted) byId[row.peerId]!];
   }
 
   void _sort(int column, bool ascending) {
