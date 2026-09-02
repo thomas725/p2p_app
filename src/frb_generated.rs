@@ -1128,12 +1128,14 @@ impl SseDecode for crate::mobile_api::PeerSortInput {
         let mut var_peerId = <String>::sse_decode(deserializer);
         let mut var_displayName = <String>::sse_decode(deserializer);
         let mut var_lastSeen = <String>::sse_decode(deserializer);
+        let mut var_firstSeen = <String>::sse_decode(deserializer);
         let mut var_dmCount = <u32>::sse_decode(deserializer);
         let mut var_broadcastCount = <u32>::sse_decode(deserializer);
         return crate::mobile_api::PeerSortInput {
             peer_id: var_peerId,
             display_name: var_displayName,
             last_seen: var_lastSeen,
+            first_seen: var_firstSeen,
             dm_count: var_dmCount,
             broadcast_count: var_broadcastCount,
         };
@@ -1387,6 +1389,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_api::PeerSortInput {
             self.peer_id.into_into_dart().into_dart(),
             self.display_name.into_into_dart().into_dart(),
             self.last_seen.into_into_dart().into_dart(),
+            self.first_seen.into_into_dart().into_dart(),
             self.dm_count.into_into_dart().into_dart(),
             self.broadcast_count.into_into_dart().into_dart(),
         ]
@@ -1617,6 +1620,7 @@ impl SseEncode for crate::mobile_api::PeerSortInput {
         <String>::sse_encode(self.peer_id, serializer);
         <String>::sse_encode(self.display_name, serializer);
         <String>::sse_encode(self.last_seen, serializer);
+        <String>::sse_encode(self.first_seen, serializer);
         <u32>::sse_encode(self.dm_count, serializer);
         <u32>::sse_encode(self.broadcast_count, serializer);
     }

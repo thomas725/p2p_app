@@ -64,6 +64,7 @@ pub struct PeerSortInput {
     pub peer_id: String,
     pub display_name: String,
     pub last_seen: String,
+    pub first_seen: String,
     pub dm_count: u32,
     pub broadcast_count: u32,
 }
@@ -113,9 +114,9 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
 }
 
 /// Sort known peers by the given column and order, mirroring the TUI peers
-/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
-/// (any other value falls back to name). Ordering always ties on `peer_id`,
-/// so the result is total and stable for a given dataset.
+/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
+/// `4` first seen (any other value falls back to name). Ordering always ties
+/// on `peer_id`, so the result is total and stable for a given dataset.
 #[must_use]
 #[flutter_rust_bridge::frb(sync)]
 pub fn sort_peers(
@@ -142,6 +143,9 @@ pub fn sort_peers(
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
             3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
                 .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            4 => crate::fmt::parse_last_seen_ms(&a.first_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
             _ => an.cmp(bn).then_with(|| a.peer_id.cmp(&b.peer_id)),
         };
@@ -332,11 +336,19 @@ mod tests {
         assert!(!validate_nickname("nick%dollar"));
     }
 
-    fn sample_peer(id: &str, name: &str, last_seen: &str, dm: u32, br: u32) -> PeerSortInput {
+    fn sample_peer(
+        id: &str,
+        name: &str,
+        last_seen: &str,
+        first_seen: &str,
+        dm: u32,
+        br: u32,
+    ) -> PeerSortInput {
         PeerSortInput {
             peer_id: id.to_string(),
             display_name: name.to_string(),
             last_seen: last_seen.to_string(),
+            first_seen: first_seen.to_string(),
             dm_count: dm,
             broadcast_count: br,
         }
@@ -358,20 +370,94 @@ mod tests {
     #[test]
     fn sort_peers_last_seen_desc_with_id_tiebreak() {
         let peers = vec![
-            sample_peer("aaa", "alpha", "2024-01-01 09:00:00", 1, 2),
-            sample_peer("bbb", "beta", "2024-01-01 10:00:00", 1, 1),
-            sample_peer("ccc", "gamma", "2024-01-01 09:00:00", 3, 0),
+            sample_peer(
+                "aaa",
+                "alpha",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                2,
+            ),
+            sample_peer(
+                "bbb",
+                "beta",
+                "2024-01-01 10:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                1,
+            ),
+            sample_peer(
+                "ccc",
+                "gamma",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                3,
+                0,
+            ),
         ];
         let sorted = sort_peers(peers, 3, false);
         assert_eq!(ids(&sorted), vec!["bbb", "ccc", "aaa"]);
     }
 
     #[test]
+    fn sort_peers_first_seen_desc_with_id_tiebreak() {
+        let peers = vec![
+            sample_peer(
+                "aaa",
+                "alpha",
+                "2024-01-01 08:00:00",
+                "2024-01-01 09:00:00",
+                1,
+                2,
+            ),
+            sample_peer(
+                "bbb",
+                "beta",
+                "2024-01-01 08:00:00",
+                "2024-01-01 10:00:00",
+                1,
+                1,
+            ),
+            sample_peer(
+                "ccc",
+                "gamma",
+                "2024-01-01 08:00:00",
+                "2024-01-01 09:00:00",
+                3,
+                0,
+            ),
+        ];
+        let sorted = sort_peers(peers, 4, false);
+        assert_eq!(ids(&sorted), vec!["bbb", "ccc", "aaa"]);
+    }
+
+    #[test]
     fn sort_peers_name_asc_is_case_insensitive() {
         let peers = vec![
-            sample_peer("bbb", "Zulu", "2024-01-01 09:00:00", 0, 0),
-            sample_peer("aaa", "alpha", "2024-01-01 09:00:00", 0, 0),
-            sample_peer("ccc", "Bravo", "2024-01-01 09:00:00", 0, 0),
+            sample_peer(
+                "bbb",
+                "Zulu",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
+            sample_peer(
+                "aaa",
+                "alpha",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
+            sample_peer(
+                "ccc",
+                "Bravo",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
         ];
         let sorted = sort_peers(peers, 0, true);
         assert_eq!(ids(&sorted), vec!["aaa", "ccc", "bbb"]);
@@ -380,9 +466,30 @@ mod tests {
     #[test]
     fn sort_peers_count_columns_not_affected_by_columns() {
         let peers = vec![
-            sample_peer("aaa", "A", "2024-01-01 09:00:00", 3, 5),
-            sample_peer("bbb", "B", "2024-01-01 09:00:00", 1, 9),
-            sample_peer("ccc", "C", "2024-01-01 09:00:00", 2, 1),
+            sample_peer(
+                "aaa",
+                "A",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                3,
+                5,
+            ),
+            sample_peer(
+                "bbb",
+                "B",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                9,
+            ),
+            sample_peer(
+                "ccc",
+                "C",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                2,
+                1,
+            ),
         ];
         let by_dm = sort_peers(peers.clone(), 1, true);
         assert_eq!(ids(&by_dm), vec!["bbb", "ccc", "aaa"]);

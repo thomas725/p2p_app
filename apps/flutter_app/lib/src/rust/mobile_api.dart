@@ -67,9 +67,9 @@ Future<List<PeerWithStats>> getPeersWithStats() =>
     RustLib.instance.api.crateMobileApiGetPeersWithStats();
 
 /// Sort known peers by the given column and order, mirroring the TUI peers
-/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
-/// (any other value falls back to name). Ordering always ties on `peer_id`,
-/// so the result is total and stable for a given dataset.
+/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
+/// `4` first seen (any other value falls back to name). Ordering always ties
+/// on `peer_id`, so the result is total and stable for a given dataset.
 List<PeerSortInput> sortPeers({
   required List<PeerSortInput> peers,
   required int sortColumn,
@@ -131,6 +131,7 @@ class PeerSortInput {
   final String peerId;
   final String displayName;
   final String lastSeen;
+  final String firstSeen;
   final int dmCount;
   final int broadcastCount;
 
@@ -138,6 +139,7 @@ class PeerSortInput {
     required this.peerId,
     required this.displayName,
     required this.lastSeen,
+    required this.firstSeen,
     required this.dmCount,
     required this.broadcastCount,
   });
@@ -147,6 +149,7 @@ class PeerSortInput {
       peerId.hashCode ^
       displayName.hashCode ^
       lastSeen.hashCode ^
+      firstSeen.hashCode ^
       dmCount.hashCode ^
       broadcastCount.hashCode;
 
@@ -158,6 +161,7 @@ class PeerSortInput {
           peerId == other.peerId &&
           displayName == other.displayName &&
           lastSeen == other.lastSeen &&
+          firstSeen == other.firstSeen &&
           dmCount == other.dmCount &&
           broadcastCount == other.broadcastCount;
 }

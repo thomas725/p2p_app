@@ -1101,14 +1101,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PeerSortInput dco_decode_peer_sort_input(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return PeerSortInput(
       peerId: dco_decode_String(arr[0]),
       displayName: dco_decode_String(arr[1]),
       lastSeen: dco_decode_String(arr[2]),
-      dmCount: dco_decode_u_32(arr[3]),
-      broadcastCount: dco_decode_u_32(arr[4]),
+      firstSeen: dco_decode_String(arr[3]),
+      dmCount: dco_decode_u_32(arr[4]),
+      broadcastCount: dco_decode_u_32(arr[5]),
     );
   }
 
@@ -1407,12 +1408,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_peerId = sse_decode_String(deserializer);
     var var_displayName = sse_decode_String(deserializer);
     var var_lastSeen = sse_decode_String(deserializer);
+    var var_firstSeen = sse_decode_String(deserializer);
     var var_dmCount = sse_decode_u_32(deserializer);
     var var_broadcastCount = sse_decode_u_32(deserializer);
     return PeerSortInput(
       peerId: var_peerId,
       displayName: var_displayName,
       lastSeen: var_lastSeen,
+      firstSeen: var_firstSeen,
       dmCount: var_dmCount,
       broadcastCount: var_broadcastCount,
     );
@@ -1693,6 +1696,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.peerId, serializer);
     sse_encode_String(self.displayName, serializer);
     sse_encode_String(self.lastSeen, serializer);
+    sse_encode_String(self.firstSeen, serializer);
     sse_encode_u_32(self.dmCount, serializer);
     sse_encode_u_32(self.broadcastCount, serializer);
   }

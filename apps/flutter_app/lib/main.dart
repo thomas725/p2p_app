@@ -986,6 +986,7 @@ class _PeerListState extends State<_PeerList> {
             peerId: p.peerId,
             displayName: p.displayName,
             lastSeen: p.lastSeen,
+            firstSeen: p.firstSeen,
             dmCount: _dmCount(p),
             broadcastCount: _broadcastCount(p),
           ),
@@ -1066,6 +1067,10 @@ class _PeerListState extends State<_PeerList> {
                         label: const Text('Last seen'),
                         onSort: _sort,
                       ),
+                      DataColumn(
+                        label: const Text('First seen'),
+                        onSort: _sort,
+                      ),
                       const DataColumn(label: Text('')),
                     ],
                     rows: [
@@ -1077,6 +1082,9 @@ class _PeerListState extends State<_PeerList> {
                             DataCell(Text('${_broadcastCount(p)}')),
                             DataCell(
                               Text(_fmtLastSeen(p.lastSeen)),
+                            ),
+                            DataCell(
+                              Text(_fmtLastSeen(p.firstSeen)),
                             ),
                             DataCell(
                               Row(
