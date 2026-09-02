@@ -56,12 +56,13 @@ int parseLastSeenMs({required String lastSeen}) =>
 
 /// Load all known peers and their message statistics in a single round trip.
 ///
-/// Combines the peer list (`get_known_peers`) with per-peer stats
-/// (`get_peer_stats`), mirroring what Flutter's `_refreshPeers` does with
-/// N+1 calls, so the UI needs only one FFI call.
+/// Combines the peer list (`get_known_peers`) with per-peer stats via the
+/// bulk [`crate::messages::get_all_peer_stats`] (one grouped query), mirroring
+/// what Flutter's `_refreshPeers` does with N+1 calls, so the UI needs only
+/// one FFI call regardless of peer count.
 ///
 /// # Errors
-/// Returns an error if the peers cannot be loaded.
+/// Returns an error if the peers or their stats cannot be loaded.
 Future<List<PeerWithStats>> getPeersWithStats() =>
     RustLib.instance.api.crateMobileApiGetPeersWithStats();
 

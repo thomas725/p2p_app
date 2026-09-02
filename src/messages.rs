@@ -10,6 +10,7 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
     SelectableHelper as _, dsl::sql,
 };
+use std::collections::HashMap;
 
 /// Optional metadata for message creation
 #[derive(Default)]
@@ -274,6 +275,81 @@ pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStat
         broadcast_received,
         broadcast_sent,
     })
+}
+
+/// One grouped row from [`get_all_peer_stats`]: the DM and broadcast-received
+/// counts for a single peer, produced by a single `GROUP BY` query.
+#[derive(Debug, Clone, PartialEq, Eq, diesel::QueryableByName)]
+struct PeerMessageAggregate {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    peer_id: String,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    dm_count: i64,
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    broadcast_received: i64,
+}
+
+/// Compute message statistics for **all** peers in one pass.
+///
+/// This is the bulk sibling of [`get_peer_stats`]: it runs a single grouped
+/// query (un-nesting each DM against both its sender and recipient) plus one
+/// read of the persisted `broadcasts_sent` counters, instead of the N×3
+/// queries the per-peer path needs. `broadcast_sent` lacks an aggregate
+/// column, so it is loaded from the `peers` table separately.
+///
+/// # Errors
+/// Returns an error if the database queries fail.
+pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMessageStats>> {
+    use crate::generated::schema::peers::dsl as p;
+    use crate::generated::schema::peers::table as peers_table;
+
+    let conn = &mut crate::sqlite_connect()?;
+
+    let sql = "
+        SELECT peer_id,
+               COALESCE(SUM(dm), 0) AS dm_count,
+               COALESCE(SUM(br), 0) AS broadcast_received
+        FROM (
+            SELECT peer_id, 1 AS dm, 0 AS br FROM messages
+                WHERE is_direct = 1 AND peer_id IS NOT NULL
+            UNION ALL
+            SELECT target_peer, 1 AS dm, 0 AS br FROM messages
+                WHERE is_direct = 1 AND target_peer IS NOT NULL
+            UNION ALL
+            SELECT peer_id, 0 AS dm, 1 AS br FROM messages
+                WHERE is_direct = 0 AND peer_id IS NOT NULL
+        )
+        GROUP BY peer_id";
+    let aggregates = diesel::sql_query(sql).load::<PeerMessageAggregate>(conn)?;
+
+    let mut result: HashMap<String, PeerMessageStats> = HashMap::with_capacity(aggregates.len());
+    for a in aggregates {
+        result.insert(
+            a.peer_id,
+            PeerMessageStats {
+                dm_count: a.dm_count,
+                broadcast_received: a.broadcast_received,
+                broadcast_sent: 0,
+            },
+        );
+    }
+
+    let counters: Vec<(String, i32)> = peers_table
+        .select((p::peer_id, p::broadcasts_sent))
+        .load(conn)?;
+    for (id, sent) in counters {
+        let sent = i64::from(sent);
+        result
+            .entry(id)
+            .and_modify(|stats| stats.broadcast_sent = sent)
+            .or_insert(PeerMessageStats {
+                dm_count: 0,
+                broadcast_received: 0,
+                broadcast_sent: sent,
+            });
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]

@@ -21,12 +21,6 @@ void main() {
       });
     });
 
-    group('getKnownPeers', () {
-      test('should be defined in generated API', () {
-        expect(true, isTrue);
-      });
-    });
-
     group('sendBroadcast', () {
       test('should be defined in generated API', () {
         expect(true, isTrue);

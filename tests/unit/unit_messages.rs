@@ -161,3 +161,40 @@ fn load_messages_respects_limit() {
         assert!(limited.len() <= 3, "Should respect limit parameter");
     });
 }
+
+#[test]
+#[serial(db)]
+fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
+    with_test_db(|| {
+        // peer-a: sends 2 DMs (to peer-b and to peer-c), receives 1 DM from peer-b,
+        // receives 1 broadcast, and has a persisted broadcast_sent counter.
+        crate::save_peer("peer-a", &[]).expect("save a");
+        crate::save_peer("peer-b", &[]).expect("save b");
+        crate::save_peer("peer-c", &[]).expect("save c");
+
+        let _ = save_message("dm-a-to-b", Some("peer-a"), "t", true, Some("peer-b")).expect("ab");
+        let _ = save_message("dm-a-to-c", Some("peer-a"), "t", true, Some("peer-c")).expect("ac");
+        let _ = save_message("dm-b-to-a", Some("peer-b"), "t", true, Some("peer-a")).expect("ba");
+        let _ =
+            save_message("bcast-from-a", Some("peer-a"), "t", false, None).expect("bcast from a");
+        crate::peers::record_broadcasts_sent(&["peer-a".to_string()]).expect("bump counter");
+
+        let all = get_all_peer_stats().expect("all stats");
+
+        // peer-a: 2 sent DMs + 1 received DM = 3; 1 broadcast received; 1 broadcast sent.
+        let a = all.get("peer-a").expect("peer-a present");
+        assert_eq!(a.dm_count, 3);
+        assert_eq!(a.broadcast_received, 1);
+        assert_eq!(a.broadcast_sent, 1);
+
+        // peer-b: 1 DM sent to a + 1 DM received from a = 2; no broadcasts.
+        let b = all.get("peer-b").expect("peer-b present");
+        assert_eq!(b.dm_count, 2);
+        assert_eq!(b.broadcast_received, 0);
+
+        // peer-c: 1 received DM from a = 1.
+        let c = all.get("peer-c").expect("peer-c present");
+        assert_eq!(c.dm_count, 1);
+        assert_eq!(c.broadcast_received, 0);
+    });
+}

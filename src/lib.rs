@@ -113,8 +113,8 @@ pub use logging::{
     register_log_callback, request_tui_redraw, set_tui_redraw_hook, strip_ansi_codes,
 };
 pub use messages::{
-    MessageMeta, load_direct_messages, load_messages, load_receipts, mark_message_sent,
-    save_message, save_message_with_meta, save_receipt,
+    MessageMeta, get_all_peer_stats, load_direct_messages, load_messages, load_receipts,
+    mark_message_sent, save_message, save_message_with_meta, save_receipt,
 };
 #[cfg(feature = "mobile")]
 pub use mobile_api::{

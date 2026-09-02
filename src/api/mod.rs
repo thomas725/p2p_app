@@ -2,7 +2,6 @@
 //!
 //! This module defines the functions and types exposed to Dart via FRB.
 
-use crate::messages::PeerMessageStats;
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
 use crate::network::NetworkSize;
@@ -80,6 +79,10 @@ pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
 
 /// Get all known peers with nicknames.
 ///
+/// This is retained as the home of the generated [`MobilePeerRecord`] Dart
+/// type; Flutter's peer table prefers the single round trip
+/// [`crate::mobile_api::get_peers_with_stats`].
+///
 /// # Errors
 /// Returns an error if the peers cannot be loaded.
 pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
@@ -140,15 +143,6 @@ pub fn save_incoming_message(
 #[allow(clippy::needless_pass_by_value)]
 pub fn set_self_nickname(nickname: String) -> Result<(), String> {
     crate::set_self_nickname(&nickname).map_err(|e| e.to_string())
-}
-
-/// Per-peer message statistics (DMs exchanged, broadcasts received/sent).
-///
-/// # Errors
-/// Returns an error if the statistics cannot be computed.
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_peer_stats(peer_id: String) -> Result<PeerMessageStats, String> {
-    crate::messages::get_peer_stats(&peer_id).map_err(|e| e.to_string())
 }
 
 /// Validate a nickname before persisting it.

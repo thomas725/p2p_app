@@ -10,7 +10,6 @@ import 'api.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
-import 'messages.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
@@ -79,9 +78,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
-
-  @protected
-  PeerMessageStats dco_decode_peer_message_stats(dynamic raw);
 
   @protected
   PeerSortInput dco_decode_peer_sort_input(dynamic raw);
@@ -176,9 +172,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   );
-
-  @protected
-  PeerMessageStats sse_decode_peer_message_stats(SseDeserializer deserializer);
 
   @protected
   PeerSortInput sse_decode_peer_sort_input(SseDeserializer deserializer);
@@ -291,12 +284,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_swarm_event_json(
     SwarmEventJson? self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_peer_message_stats(
-    PeerMessageStats self,
     SseSerializer serializer,
   );
 

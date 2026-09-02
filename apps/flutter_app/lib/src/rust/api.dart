@@ -4,7 +4,6 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import 'frb_generated.dart';
-import 'messages.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
@@ -67,6 +66,10 @@ Future<void> sendDm({required String peerId, required String content}) =>
     RustLib.instance.api.crateApiSendDm(peerId: peerId, content: content);
 
 /// Get all known peers with nicknames.
+///
+/// This is retained as the home of the generated [`MobilePeerRecord`] Dart
+/// type; Flutter's peer table prefers the single round trip
+/// [`crate::mobile_api::get_peers_with_stats`].
 ///
 /// # Errors
 /// Returns an error if the peers cannot be loaded.
@@ -131,13 +134,6 @@ Future<ChatMessage> saveIncomingMessage({
 /// Returns an error if the nickname cannot be persisted.
 Future<void> setSelfNickname({required String nickname}) =>
     RustLib.instance.api.crateApiSetSelfNickname(nickname: nickname);
-
-/// Per-peer message statistics (DMs exchanged, broadcasts received/sent).
-///
-/// # Errors
-/// Returns an error if the statistics cannot be computed.
-Future<PeerMessageStats> getPeerStats({required String peerId}) =>
-    RustLib.instance.api.crateApiGetPeerStats(peerId: peerId);
 
 /// Validate a nickname before persisting it.
 ///

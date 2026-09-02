@@ -86,17 +86,19 @@ pub struct PeerWithStats {
 
 /// Load all known peers and their message statistics in a single round trip.
 ///
-/// Combines the peer list (`get_known_peers`) with per-peer stats
-/// (`get_peer_stats`), mirroring what Flutter's `_refreshPeers` does with
-/// N+1 calls, so the UI needs only one FFI call.
+/// Combines the peer list (`get_known_peers`) with per-peer stats via the
+/// bulk [`crate::messages::get_all_peer_stats`] (one grouped query), mirroring
+/// what Flutter's `_refreshPeers` does with N+1 calls, so the UI needs only
+/// one FFI call regardless of peer count.
 ///
 /// # Errors
-/// Returns an error if the peers cannot be loaded.
+/// Returns an error if the peers or their stats cannot be loaded.
 pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
     let peers = crate::mobile_node::get_known_peers()?;
+    let stats = crate::messages::get_all_peer_stats().map_err(|e| e.to_string())?;
     let mut rows = Vec::with_capacity(peers.len());
     for p in peers {
-        let stats = crate::messages::get_peer_stats(&p.peer_id).map_err(|e| e.to_string())?;
+        let stats = stats.get(&p.peer_id);
         rows.push(PeerWithStats {
             peer_id: p.peer_id,
             display_name: p.display_name,
@@ -104,9 +106,9 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
             last_seen: p.last_seen,
             nickname: p.nickname,
             local_nickname: p.local_nickname,
-            dm_count: stats.dm_count,
-            broadcast_received: stats.broadcast_received,
-            broadcast_sent: stats.broadcast_sent,
+            dm_count: stats.map_or(0, |s| s.dm_count),
+            broadcast_received: stats.map_or(0, |s| s.broadcast_received),
+            broadcast_sent: stats.map_or(0, |s| s.broadcast_sent),
         });
     }
     Ok(rows)
