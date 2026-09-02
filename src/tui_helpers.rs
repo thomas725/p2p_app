@@ -193,16 +193,19 @@ pub struct PeerTableRow {
     pub dm_count: usize,
     pub broadcast_count: usize,
     pub last_seen: String,
+    pub first_seen: String,
 }
 
 impl PeerTableRow {
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peer_id: &str,
         display_name: &str,
         dm_count: usize,
         broadcast_count: usize,
         last_seen: &str,
+        first_seen: &str,
     ) -> Self {
         Self {
             peer_id: peer_id.to_string(),
@@ -210,6 +213,7 @@ impl PeerTableRow {
             dm_count,
             broadcast_count,
             last_seen: last_seen.to_string(),
+            first_seen: first_seen.to_string(),
         }
     }
 }
@@ -229,8 +233,8 @@ pub fn compute_broadcast_counts(messages: &VecDeque<Option<String>>) -> HashMap<
 /// Build and sort the peers table according to the active column and order.
 ///
 /// Mirrors Flutter's peer-list sort. Columns: name (0), DM count (1),
-/// broadcast count (2), last seen (3). The tie-breaker is always the peer id
-/// to keep the ordering stable.
+/// broadcast count (2), last seen (3), first seen (4). The tie-breaker is
+/// always the peer id to keep the ordering stable.
 #[must_use]
 pub fn sort_peers_table(
     peers: &[PeerRecord],
@@ -266,8 +270,11 @@ pub fn sort_peers_table(
                 .broadcast_count
                 .cmp(&b.broadcast_count)
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            _ => crate::fmt::parse_last_seen_ms(&a.last_seen)
+            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
                 .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            _ => crate::fmt::parse_last_seen_ms(&a.first_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
         };
         if ascending { ord } else { ord.reverse() }
@@ -323,6 +330,7 @@ fn peer_table_row(
         dm_count,
         broadcast_count,
         &peer.last_seen,
+        &peer.first_seen,
     )
 }
 
@@ -404,7 +412,7 @@ pub const fn peer_sort_indicator(ascending: bool) -> &'static str {
 /// Header labels for the peers table; the sort indicator marks the active column.
 #[must_use]
 pub fn peer_table_header_labels(sort_column: usize, sort_ascending: bool) -> Vec<String> {
-    const COLUMNS: [&str; 4] = ["Name", "DM", "Broadcast", "Last Seen"];
+    const COLUMNS: [&str; 5] = ["Name", "DM", "Broadcast", "Last Seen", "First Seen"];
     let indicator = peer_sort_indicator(sort_ascending);
     COLUMNS
         .iter()
@@ -421,7 +429,7 @@ pub fn peer_table_header_labels(sort_column: usize, sort_ascending: bool) -> Vec
 
 /// Display width of each cell of a peers-table row (CJK/wide chars = 2 cols).
 #[must_use]
-fn peer_cell_widths(row: &PeerTableRow) -> [usize; 4] {
+fn peer_cell_widths(row: &PeerTableRow) -> [usize; 5] {
     let dm = row.dm_count.to_string();
     let broadcast = row.broadcast_count.to_string();
     [
@@ -429,6 +437,7 @@ fn peer_cell_widths(row: &PeerTableRow) -> [usize; 4] {
         dm.width(),
         broadcast.width(),
         row.last_seen.width(),
+        row.first_seen.width(),
     ]
 }
 

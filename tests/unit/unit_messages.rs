@@ -167,7 +167,7 @@ fn load_messages_respects_limit() {
 fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
     with_test_db(|| {
         // peer-a: sends 2 DMs (to peer-b and to peer-c), receives 1 DM from peer-b,
-        // receives 1 broadcast, and has a persisted broadcast_sent counter.
+        // receives 1 broadcast.
         crate::save_peer("peer-a", &[]).expect("save a");
         crate::save_peer("peer-b", &[]).expect("save b");
         crate::save_peer("peer-c", &[]).expect("save c");
@@ -177,15 +177,13 @@ fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
         let _ = save_message("dm-b-to-a", Some("peer-b"), "t", true, Some("peer-a")).expect("ba");
         let _ =
             save_message("bcast-from-a", Some("peer-a"), "t", false, None).expect("bcast from a");
-        crate::peers::record_broadcasts_sent(&["peer-a".to_string()]).expect("bump counter");
 
         let all = get_all_peer_stats().expect("all stats");
 
-        // peer-a: 2 sent DMs + 1 received DM = 3; 1 broadcast received; 1 broadcast sent.
+        // peer-a: 2 sent DMs + 1 received DM = 3; 1 broadcast received.
         let a = all.get("peer-a").expect("peer-a present");
         assert_eq!(a.dm_count, 3);
         assert_eq!(a.broadcast_received, 1);
-        assert_eq!(a.broadcast_sent, 1);
 
         // peer-b: 1 DM sent to a + 1 DM received from a = 2; no broadcasts.
         let b = all.get("peer-b").expect("peer-b present");

@@ -283,7 +283,7 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
         // 1-char gap between columns resolves to the column that follows it.
         cols.iter()
             .position(|c| column < c.x.saturating_add(c.width))
-            .unwrap_or(3)
+            .unwrap_or(4)
     };
     if state.peer_sort_column == col {
         state.peer_sort_ascending = !state.peer_sort_ascending;

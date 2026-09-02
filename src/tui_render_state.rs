@@ -66,7 +66,7 @@ pub struct TuiRenderState {
     pub broadcast_selection: Option<usize>,
     /// Index of selected peer in peer list
     pub peer_selection: usize,
-    /// Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
+    /// Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen,4=First Seen)
     pub peer_sort_column: usize,
     /// Whether the peer list is sorted ascending on the active column
     pub peer_sort_ascending: bool,

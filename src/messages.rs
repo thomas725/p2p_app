@@ -7,8 +7,7 @@ use crate::{
 };
 use color_eyre::eyre::Context;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
-    SelectableHelper as _, dsl::sql,
+    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
 use std::collections::HashMap;
 
@@ -229,8 +228,6 @@ pub struct PeerMessageStats {
     pub dm_count: i64,
     /// Broadcast messages received from this peer (peer was the sender).
     pub broadcast_received: i64,
-    /// Broadcasts we sent while this peer was connected.
-    pub broadcast_sent: i64,
 }
 
 /// Compute message statistics for a single peer.
@@ -238,14 +235,11 @@ pub struct PeerMessageStats {
 /// * `dm_count` counts direct messages where the peer is either sender or
 ///   recipient (received + sent).
 /// * `broadcast_received` counts broadcast messages whose sender is this peer.
-/// * `broadcast_sent` is the persisted counter incremented whenever we
-///   broadcast while this peer was connected.
 ///
 /// # Errors
 /// Returns an error if the database queries fail.
 pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStats> {
     use crate::generated::schema::messages::dsl as m;
-    use crate::generated::schema::peers::dsl as p;
     let conn = &mut crate::sqlite_connect()?;
 
     let dm_count: i64 = m::messages
@@ -260,20 +254,9 @@ pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStat
         .count()
         .get_result(conn)?;
 
-    let broadcast_sent: i64 = p::peers
-        .filter(p::peer_id.eq(peer_id))
-        .select(sql::<diesel::sql_types::Integer>(
-            "COALESCE(broadcasts_sent, 0)",
-        ))
-        .first::<i32>(conn)
-        .optional()?
-        .unwrap_or(0)
-        .into();
-
     Ok(PeerMessageStats {
         dm_count,
         broadcast_received,
-        broadcast_sent,
     })
 }
 
@@ -292,17 +275,12 @@ struct PeerMessageAggregate {
 /// Compute message statistics for **all** peers in one pass.
 ///
 /// This is the bulk sibling of [`get_peer_stats`]: it runs a single grouped
-/// query (un-nesting each DM against both its sender and recipient) plus one
-/// read of the persisted `broadcasts_sent` counters, instead of the N×3
-/// queries the per-peer path needs. `broadcast_sent` lacks an aggregate
-/// column, so it is loaded from the `peers` table separately.
+/// query (un-nesting each DM against both its sender and recipient) rather
+/// than the N×2 queries the per-peer path needs.
 ///
 /// # Errors
-/// Returns an error if the database queries fail.
+/// Returns an error if the database query fails.
 pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMessageStats>> {
-    use crate::generated::schema::peers::dsl as p;
-    use crate::generated::schema::peers::table as peers_table;
-
     let conn = &mut crate::sqlite_connect()?;
 
     let sql = "
@@ -329,24 +307,8 @@ pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMess
             PeerMessageStats {
                 dm_count: a.dm_count,
                 broadcast_received: a.broadcast_received,
-                broadcast_sent: 0,
             },
         );
-    }
-
-    let counters: Vec<(String, i32)> = peers_table
-        .select((p::peer_id, p::broadcasts_sent))
-        .load(conn)?;
-    for (id, sent) in counters {
-        let sent = i64::from(sent);
-        result
-            .entry(id)
-            .and_modify(|stats| stats.broadcast_sent = sent)
-            .or_insert(PeerMessageStats {
-                dm_count: 0,
-                broadcast_received: 0,
-                broadcast_sent: sent,
-            });
     }
 
     Ok(result)

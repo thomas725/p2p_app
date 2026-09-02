@@ -14,18 +14,13 @@ class PeerMessageStats {
   /// Broadcast messages received from this peer (peer was the sender).
   final PlatformInt64 broadcastReceived;
 
-  /// Broadcasts we sent while this peer was connected.
-  final PlatformInt64 broadcastSent;
-
   const PeerMessageStats({
     required this.dmCount,
     required this.broadcastReceived,
-    required this.broadcastSent,
   });
 
   @override
-  int get hashCode =>
-      dmCount.hashCode ^ broadcastReceived.hashCode ^ broadcastSent.hashCode;
+  int get hashCode => dmCount.hashCode ^ broadcastReceived.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -33,6 +28,5 @@ class PeerMessageStats {
       other is PeerMessageStats &&
           runtimeType == other.runtimeType &&
           dmCount == other.dmCount &&
-          broadcastReceived == other.broadcastReceived &&
-          broadcastSent == other.broadcastSent;
+          broadcastReceived == other.broadcastReceived;
 }

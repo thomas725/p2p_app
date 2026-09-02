@@ -81,7 +81,6 @@ pub struct PeerWithStats {
     pub local_nickname: Option<String>,
     pub dm_count: i64,
     pub broadcast_received: i64,
-    pub broadcast_sent: i64,
 }
 
 /// Load all known peers and their message statistics in a single round trip.
@@ -108,7 +107,6 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
             local_nickname: p.local_nickname,
             dm_count: stats.map_or(0, |s| s.dm_count),
             broadcast_received: stats.map_or(0, |s| s.broadcast_received),
-            broadcast_sent: stats.map_or(0, |s| s.broadcast_sent),
         });
     }
     Ok(rows)

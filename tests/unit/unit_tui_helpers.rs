@@ -65,6 +65,47 @@ fn peer_table_sorts_by_active_column_like_flutter() {
 }
 
 #[test]
+fn peer_table_sorts_by_first_seen_column() {
+    use crate::tui_helpers::sort_peers_table;
+    use std::collections::HashMap;
+
+    let peers = VecDeque::from([
+        PeerRecord {
+            peer_id: "b".to_string(),
+            first_seen: "2024-01-01 00:00:03".to_string(),
+            last_seen: "t".to_string(),
+        },
+        PeerRecord {
+            peer_id: "a".to_string(),
+            first_seen: "2024-01-01 00:00:01".to_string(),
+            last_seen: "t".to_string(),
+        },
+        PeerRecord {
+            peer_id: "c".to_string(),
+            first_seen: "2024-01-01 00:00:02".to_string(),
+            last_seen: "t".to_string(),
+        },
+    ])
+    .into_iter()
+    .collect::<Vec<_>>();
+    let dm: HashMap<String, VecDeque<String>> = HashMap::new();
+    let msgs: VecDeque<Option<String>> = VecDeque::new();
+
+    // First Seen descending: b(03) > c(02) > a(01).
+    let rows = sort_peers_table(&peers, &dm, &msgs, 4, false);
+    assert_eq!(
+        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        vec!["b", "c", "a"]
+    );
+    // Ascending reverses.
+    let rows = sort_peers_table(&peers, &dm, &msgs, 4, true);
+    assert_eq!(
+        rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
+        vec!["a", "c", "b"]
+    );
+}
+
+#[test]
 fn parse_last_seen_ms_parses_flutter_format() {
     use crate::fmt::parse_last_seen_ms;
     let ms = parse_last_seen_ms("2024-01-01 00:00:01");
@@ -207,15 +248,20 @@ fn peer_table_headers_mark_active_column() {
     assert_eq!(peer_sort_indicator(false), " ▼");
     assert_eq!(
         peer_table_header_labels(3, false),
-        vec!["Name", "DM", "Broadcast", "Last Seen ▼"]
+        vec!["Name", "DM", "Broadcast", "Last Seen ▼", "First Seen"]
     );
     assert_eq!(
         peer_table_header_labels(3, true),
-        vec!["Name", "DM", "Broadcast", "Last Seen ▲"]
+        vec!["Name", "DM", "Broadcast", "Last Seen ▲", "First Seen"]
     );
     assert_eq!(
         peer_table_header_labels(0, false),
-        vec!["Name ▼", "DM", "Broadcast", "Last Seen"]
+        vec!["Name ▼", "DM", "Broadcast", "Last Seen", "First Seen"]
+    );
+    // First Seen can be the active sort column too.
+    assert_eq!(
+        peer_table_header_labels(4, false),
+        vec!["Name", "DM", "Broadcast", "Last Seen", "First Seen ▼"]
     );
 }
 
@@ -227,19 +273,40 @@ fn peer_table_column_widths_fit_longest_content() {
     let empty: Vec<PeerTableRow> = Vec::new();
     assert_eq!(
         peer_table_column_widths(&empty, 3, false),
-        vec![4, 2, 9, 11]
-    ); // "Last Seen ▼"
+        vec![4, 2, 9, 11, 10]
+    ); // "Last Seen ▼", "First Seen"
     // The sort indicator stays inside the column it marks.
-    assert_eq!(peer_table_column_widths(&empty, 0, false), vec![6, 2, 9, 9]); // "Name ▼"
+    assert_eq!(
+        peer_table_column_widths(&empty, 0, false),
+        vec![6, 2, 9, 9, 10]
+    ); // "Name ▼"
+    assert_eq!(
+        peer_table_column_widths(&empty, 4, false),
+        vec![4, 2, 9, 9, 12]
+    ); // "First Seen ▼"
 
     // Long cells grow their column; short cells do not.
     let rows = vec![
-        PeerTableRow::new("p1", "Bob", 12, 3, "2024-01-01 00:00:03"),
-        PeerTableRow::new("p2", "Avery-TestName", 9999, 1000, "2024-01-01 00:00:02"),
+        PeerTableRow::new(
+            "p1",
+            "Bob",
+            12,
+            3,
+            "2024-01-01 00:00:03",
+            "2023-01-01 00:00:00",
+        ),
+        PeerTableRow::new(
+            "p2",
+            "Avery-TestName",
+            9999,
+            1000,
+            "2024-01-01 00:00:02",
+            "2023-01-01 00:00:00",
+        ),
     ];
     assert_eq!(
         peer_table_column_widths(&rows, 3, false),
-        vec![14, 4, 9, 19]
+        vec![14, 4, 9, 19, 19]
     );
     // The table spans only its content: every column is far narrower than a
     // typical terminal width.
@@ -253,7 +320,7 @@ fn peer_table_column_widths_fit_longest_content() {
 #[test]
 fn peer_table_column_widths_count_wide_chars() {
     use crate::tui_helpers::{PeerTableRow, peer_table_column_widths};
-    let rows = vec![PeerTableRow::new("j", "飛鳥龍", 0, 0, "t")];
+    let rows = vec![PeerTableRow::new("j", "飛鳥龍", 0, 0, "t", "t")];
     let widths = peer_table_column_widths(&rows, 0, false);
     // 飛鳥龍 is 3 chars but 6 terminal columns wide (1 wide char + 2 wide chars).
     assert_eq!(widths[0], 6);

@@ -1151,7 +1151,6 @@ impl SseDecode for crate::mobile_api::PeerWithStats {
         let mut var_localNickname = <Option<String>>::sse_decode(deserializer);
         let mut var_dmCount = <i64>::sse_decode(deserializer);
         let mut var_broadcastReceived = <i64>::sse_decode(deserializer);
-        let mut var_broadcastSent = <i64>::sse_decode(deserializer);
         return crate::mobile_api::PeerWithStats {
             peer_id: var_peerId,
             display_name: var_displayName,
@@ -1161,7 +1160,6 @@ impl SseDecode for crate::mobile_api::PeerWithStats {
             local_nickname: var_localNickname,
             dm_count: var_dmCount,
             broadcast_received: var_broadcastReceived,
-            broadcast_sent: var_broadcastSent,
         };
     }
 }
@@ -1418,7 +1416,6 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_api::PeerWithStats {
             self.local_nickname.into_into_dart().into_dart(),
             self.dm_count.into_into_dart().into_dart(),
             self.broadcast_received.into_into_dart().into_dart(),
-            self.broadcast_sent.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1636,7 +1633,6 @@ impl SseEncode for crate::mobile_api::PeerWithStats {
         <Option<String>>::sse_encode(self.local_nickname, serializer);
         <i64>::sse_encode(self.dm_count, serializer);
         <i64>::sse_encode(self.broadcast_received, serializer);
-        <i64>::sse_encode(self.broadcast_sent, serializer);
     }
 }
 

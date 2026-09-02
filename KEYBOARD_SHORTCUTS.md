@@ -60,7 +60,7 @@
 
 ## Peers Tab
 
-The peer list is a sortable table (columns: Name, DM count, Broadcast count, Last seen).
+The peer list is a sortable table (columns: Name, DM count, Broadcast count, Last seen, First seen).
 
 | Key/Action | Behavior |
 |------------|----------|
@@ -75,6 +75,7 @@ The peer list is a sortable table (columns: Name, DM count, Broadcast count, Las
 | `2` / `m` | Sort by DM count |
 | `3` / `b` | Sort by Broadcast count |
 | `4` / `l` | Sort by Last seen |
+| `5` / `f` | Sort by First seen |
 | `o` | Toggle ascending / descending order |
 
 ## UI Control

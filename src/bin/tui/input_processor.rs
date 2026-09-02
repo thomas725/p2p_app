@@ -216,7 +216,7 @@ fn apply_peer_sort(state: &mut super::state::AppState, column: usize) {
     state.resort_peers();
 }
 
-/// Dispatches a peer-list sort key (`1`-`4`, `n`/`m`/`b`/`l` for columns,
+/// Dispatches a peer-list sort key (`1`-`5`, `n`/`m`/`b`/`l`/`f` for columns,
 /// `o` to toggle direction) when the Peers tab is active.
 fn handle_peer_sort_key(state: &mut super::state::AppState, c: char) {
     match c {
@@ -224,6 +224,7 @@ fn handle_peer_sort_key(state: &mut super::state::AppState, c: char) {
         '2' | 'm' | 'M' => apply_peer_sort(state, 1),
         '3' | 'b' | 'B' => apply_peer_sort(state, 2),
         '4' | 'l' | 'L' => apply_peer_sort(state, 3),
+        '5' | 'f' | 'F' => apply_peer_sort(state, 4),
         'o' | 'O' => {
             state.peer_sort_ascending = !state.peer_sort_ascending;
             state.resort_peers();

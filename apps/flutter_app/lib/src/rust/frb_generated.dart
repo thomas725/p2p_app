@@ -1116,8 +1116,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PeerWithStats dco_decode_peer_with_stats(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 9)
-      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return PeerWithStats(
       peerId: dco_decode_String(arr[0]),
       displayName: dco_decode_String(arr[1]),
@@ -1127,7 +1127,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       localNickname: dco_decode_opt_String(arr[5]),
       dmCount: dco_decode_i_64(arr[6]),
       broadcastReceived: dco_decode_i_64(arr[7]),
-      broadcastSent: dco_decode_i_64(arr[8]),
     );
   }
 
@@ -1430,7 +1429,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_localNickname = sse_decode_opt_String(deserializer);
     var var_dmCount = sse_decode_i_64(deserializer);
     var var_broadcastReceived = sse_decode_i_64(deserializer);
-    var var_broadcastSent = sse_decode_i_64(deserializer);
     return PeerWithStats(
       peerId: var_peerId,
       displayName: var_displayName,
@@ -1440,7 +1438,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       localNickname: var_localNickname,
       dmCount: var_dmCount,
       broadcastReceived: var_broadcastReceived,
-      broadcastSent: var_broadcastSent,
     );
   }
 
@@ -1714,7 +1711,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.localNickname, serializer);
     sse_encode_i_64(self.dmCount, serializer);
     sse_encode_i_64(self.broadcastReceived, serializer);
-    sse_encode_i_64(self.broadcastSent, serializer);
   }
 
   @protected

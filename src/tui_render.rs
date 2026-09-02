@@ -323,6 +323,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
                 Cell::from(r.dm_count.to_string()),
                 Cell::from(r.broadcast_count.to_string()),
                 Cell::from(r.last_seen.clone()),
+                Cell::from(r.first_seen.clone()),
             ];
             Row::new(cells)
         })
@@ -359,7 +360,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     f.render_stateful_widget(table, table_area, &mut table_state);
 
     let hint = Paragraph::new(
-        "1/2/3/4 (or n/m/b/l): sort · o: toggle order · click header · PgUp/PgDn: page",
+        "1-5 (or n/m/b/l/f): sort · o: toggle order · click header · PgUp/PgDn: page",
     )
     .style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(hint, hint_area);

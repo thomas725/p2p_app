@@ -174,7 +174,6 @@ class PeerWithStats {
   final String? localNickname;
   final PlatformInt64 dmCount;
   final PlatformInt64 broadcastReceived;
-  final PlatformInt64 broadcastSent;
 
   const PeerWithStats({
     required this.peerId,
@@ -185,7 +184,6 @@ class PeerWithStats {
     this.localNickname,
     required this.dmCount,
     required this.broadcastReceived,
-    required this.broadcastSent,
   });
 
   @override
@@ -197,8 +195,7 @@ class PeerWithStats {
       nickname.hashCode ^
       localNickname.hashCode ^
       dmCount.hashCode ^
-      broadcastReceived.hashCode ^
-      broadcastSent.hashCode;
+      broadcastReceived.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -212,6 +209,5 @@ class PeerWithStats {
           nickname == other.nickname &&
           localNickname == other.localNickname &&
           dmCount == other.dmCount &&
-          broadcastReceived == other.broadcastReceived &&
-          broadcastSent == other.broadcastSent;
+          broadcastReceived == other.broadcastReceived;
 }

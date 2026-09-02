@@ -60,7 +60,7 @@ pub struct AppState {
     pub dynamic_tabs: DynamicTabs,
     pub chat_input: TextArea<'static>,
     pub peer_selection: usize,     // For navigating peer list
-    pub peer_sort_column: usize, // Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen)
+    pub peer_sort_column: usize, // Active sort column (0=Name,1=DM,2=Broadcast,3=Last Seen,4=First Seen)
     pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
     pub peer_table_offset: usize, // First visible row of the peer table (set by render loop)
     // One-shot flag: display names have been resolved for every known peer the
