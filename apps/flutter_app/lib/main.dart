@@ -326,19 +326,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshPeers() async {
     try {
-      final peers = await getKnownPeers();
+      final rows = await getPeersWithStats();
+      final peers = <MobilePeerRecord>[];
       final stats = <String, PeerMessageStats>{};
-      await Future.wait(peers.map((p) async {
-        try {
-          stats[p.peerId] = await getPeerStats(peerId: p.peerId);
-        } catch (_) {
-          stats[p.peerId] = PeerMessageStats(
-            dmCount: 0,
-            broadcastReceived: 0,
-            broadcastSent: 0,
-          );
-        }
-      }));
+      for (final row in rows) {
+        peers.add(MobilePeerRecord(
+          peerId: row.peerId,
+          firstSeen: row.firstSeen,
+          lastSeen: row.lastSeen,
+          nickname: null,
+          localNickname: null,
+          displayName: row.displayName,
+        ));
+        stats[row.peerId] = PeerMessageStats(
+          dmCount: row.dmCount,
+          broadcastReceived: row.broadcastReceived,
+          broadcastSent: row.broadcastSent,
+        );
+      }
       setState(() {
         _peers = peers;
         _peerStats = stats;

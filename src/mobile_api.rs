@@ -68,6 +68,46 @@ pub struct PeerSortInput {
     pub broadcast_count: u32,
 }
 
+/// A known peer joined with its message counts, fetched in a single call so
+/// Flutter can populate both the peer list and the peer table's count columns
+/// without an N+1 round trip over `get_peer_stats`.
+#[derive(Debug, Clone)]
+pub struct PeerWithStats {
+    pub peer_id: String,
+    pub display_name: String,
+    pub first_seen: String,
+    pub last_seen: String,
+    pub dm_count: i64,
+    pub broadcast_received: i64,
+    pub broadcast_sent: i64,
+}
+
+/// Load all known peers and their message statistics in a single round trip.
+///
+/// Combines the peer list (`get_known_peers`) with per-peer stats
+/// (`get_peer_stats`), mirroring what Flutter's `_refreshPeers` does with
+/// N+1 calls, so the UI needs only one FFI call.
+///
+/// # Errors
+/// Returns an error if the peers cannot be loaded.
+pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
+    let peers = crate::mobile_node::get_known_peers()?;
+    let mut rows = Vec::with_capacity(peers.len());
+    for p in peers {
+        let stats = crate::messages::get_peer_stats(&p.peer_id).map_err(|e| e.to_string())?;
+        rows.push(PeerWithStats {
+            peer_id: p.peer_id,
+            display_name: p.display_name,
+            first_seen: p.first_seen,
+            last_seen: p.last_seen,
+            dm_count: stats.dm_count,
+            broadcast_received: stats.broadcast_received,
+            broadcast_sent: stats.broadcast_sent,
+        });
+    }
+    Ok(rows)
+}
+
 /// Sort known peers by the given column and order, mirroring the TUI peers
 /// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
 /// (any other value falls back to name). Ordering always ties on `peer_id`,
@@ -346,5 +386,29 @@ mod tests {
         assert_eq!(ids(&by_br), vec!["bbb", "aaa", "ccc"]);
         let unknown = sort_peers(peers, 99, true);
         assert_eq!(ids(&unknown), vec!["aaa", "bbb", "ccc"]);
+    }
+
+    #[test]
+    #[serial(db)]
+    fn get_peers_with_stats_returns_peers_and_counts() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("peers_stats.sqlite");
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
+        crate::init_database().expect("init db");
+
+        let peer_id = "peerA";
+        crate::save_peer(peer_id, &[]).expect("save peer");
+        crate::save_message("hello", Some(peer_id), crate::CHAT_TOPIC, false, None)
+            .expect("save broadcast");
+        crate::save_message("dm", Some(peer_id), "dm-topic", true, Some("me")).expect("save dm");
+
+        let rows = get_peers_with_stats().expect("peers with stats");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].peer_id, peer_id);
+        assert_eq!(rows[0].broadcast_received, 1);
+        assert_eq!(rows[0].dm_count, 1);
+        assert!(!rows[0].display_name.is_empty());
     }
 }

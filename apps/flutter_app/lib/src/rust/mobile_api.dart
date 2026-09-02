@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_mobile_peer_status`, `init_mobile_database`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
@@ -53,6 +53,17 @@ Future<bool> validateNickname({required String nick}) =>
 /// Delegates to the canonical [`crate::fmt::parse_last_seen_ms`].
 int parseLastSeenMs({required String lastSeen}) =>
     RustLib.instance.api.crateMobileApiParseLastSeenMs(lastSeen: lastSeen);
+
+/// Load all known peers and their message statistics in a single round trip.
+///
+/// Combines the peer list (`get_known_peers`) with per-peer stats
+/// (`get_peer_stats`), mirroring what Flutter's `_refreshPeers` does with
+/// N+1 calls, so the UI needs only one FFI call.
+///
+/// # Errors
+/// Returns an error if the peers cannot be loaded.
+Future<List<PeerWithStats>> getPeersWithStats() =>
+    RustLib.instance.api.crateMobileApiGetPeersWithStats();
 
 /// Sort known peers by the given column and order, mirroring the TUI peers
 /// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
@@ -148,4 +159,50 @@ class PeerSortInput {
           lastSeen == other.lastSeen &&
           dmCount == other.dmCount &&
           broadcastCount == other.broadcastCount;
+}
+
+/// A known peer joined with its message counts, fetched in a single call so
+/// Flutter can populate both the peer list and the peer table's count columns
+/// without an N+1 round trip over `get_peer_stats`.
+class PeerWithStats {
+  final String peerId;
+  final String displayName;
+  final String firstSeen;
+  final String lastSeen;
+  final PlatformInt64 dmCount;
+  final PlatformInt64 broadcastReceived;
+  final PlatformInt64 broadcastSent;
+
+  const PeerWithStats({
+    required this.peerId,
+    required this.displayName,
+    required this.firstSeen,
+    required this.lastSeen,
+    required this.dmCount,
+    required this.broadcastReceived,
+    required this.broadcastSent,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      displayName.hashCode ^
+      firstSeen.hashCode ^
+      lastSeen.hashCode ^
+      dmCount.hashCode ^
+      broadcastReceived.hashCode ^
+      broadcastSent.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PeerWithStats &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          displayName == other.displayName &&
+          firstSeen == other.firstSeen &&
+          lastSeen == other.lastSeen &&
+          dmCount == other.dmCount &&
+          broadcastReceived == other.broadcastReceived &&
+          broadcastSent == other.broadcastSent;
 }
