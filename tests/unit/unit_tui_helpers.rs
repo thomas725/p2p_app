@@ -66,7 +66,7 @@ fn peer_table_sorts_by_active_column_like_flutter() {
 
 #[test]
 fn parse_last_seen_ms_parses_flutter_format() {
-    use crate::tui_helpers::parse_last_seen_ms;
+    use crate::fmt::parse_last_seen_ms;
     let ms = parse_last_seen_ms("2024-01-01 00:00:01");
     let direct = parse_last_seen_ms("2024-01-01T00:00:01");
     assert_eq!(ms, direct);

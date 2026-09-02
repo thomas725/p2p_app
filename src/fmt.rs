@@ -24,6 +24,18 @@ pub fn current_timestamp() -> f64 {
         .as_secs_f64()
 }
 
+/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds since epoch.
+///
+/// Returns 0 for unparseable input, so callers can treat it as "never seen".
+#[must_use]
+pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
+    let norm = last_seen.replace(' ', "T");
+    chrono::NaiveDateTime::parse_from_str(&norm, "%Y-%m-%dT%H:%M:%S").map_or(0, |dt| {
+        let millis = dt.and_utc().timestamp_millis().max(0);
+        u64::try_from(millis).unwrap_or(0)
+    })
+}
+
 /// Format `SystemTime` into "HH:MM:SS.mmm" format (hours:minutes:seconds.milliseconds)
 #[must_use]
 pub fn format_system_time(time: SystemTime) -> String {

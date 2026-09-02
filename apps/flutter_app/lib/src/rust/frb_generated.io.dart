@@ -22,6 +22,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   @protected
+  int dco_decode_CastedPrimitive_u_64(dynamic raw);
+
+  @protected
   int dco_decode_CastedPrimitive_usize(dynamic raw);
 
   @protected
@@ -52,6 +55,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw);
 
   @protected
+  List<PeerSortInput> dco_decode_list_peer_sort_input(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
@@ -73,10 +79,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PeerMessageStats dco_decode_peer_message_stats(dynamic raw);
 
   @protected
+  PeerSortInput dco_decode_peer_sort_input(dynamic raw);
+
+  @protected
   (BigInt, BigInt) dco_decode_record_usize_usize(dynamic raw);
 
   @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
+
+  @protected
+  int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -86,6 +101,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  int sse_decode_CastedPrimitive_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_CastedPrimitive_usize(SseDeserializer deserializer);
@@ -122,6 +140,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<PeerSortInput> sse_decode_list_peer_sort_input(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
@@ -145,10 +168,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PeerMessageStats sse_decode_peer_message_stats(SseDeserializer deserializer);
 
   @protected
+  PeerSortInput sse_decode_peer_sort_input(SseDeserializer deserializer);
+
+  @protected
   (BigInt, BigInt) sse_decode_record_usize_usize(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -158,6 +190,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  void sse_encode_CastedPrimitive_u_64(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_CastedPrimitive_usize(int self, SseSerializer serializer);
@@ -195,6 +230,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_mobile_peer_record(
     List<MobilePeerRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_peer_sort_input(
+    List<PeerSortInput> self,
     SseSerializer serializer,
   );
 
@@ -238,6 +279,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_peer_sort_input(PeerSortInput self, SseSerializer serializer);
+
+  @protected
   void sse_encode_record_usize_usize(
     (BigInt, BigInt) self,
     SseSerializer serializer,
@@ -248,6 +292,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     SwarmEventJson self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);

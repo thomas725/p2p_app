@@ -1,7 +1,6 @@
 //! Pure helper functions for TUI modules that can be unit tested.
 //! These functions avoid async state, channels, and external I/O.
 
-use chrono::NaiveDateTime;
 use std::collections::{HashMap, VecDeque};
 use unicode_width::UnicodeWidthStr;
 
@@ -215,16 +214,6 @@ impl PeerTableRow {
     }
 }
 
-/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds since epoch.
-#[must_use]
-pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
-    let norm = last_seen.replace(' ', "T");
-    NaiveDateTime::parse_from_str(&norm, "%Y-%m-%dT%H:%M:%S").map_or(0, |dt| {
-        let millis = dt.and_utc().timestamp_millis().max(0);
-        u64::try_from(millis).unwrap_or(0)
-    })
-}
-
 /// Count how many broadcast messages each peer has sent, given the list of
 /// sender peer ids (`None` entries are ignored).
 #[allow(clippy::arithmetic_side_effects)]
@@ -277,8 +266,8 @@ pub fn sort_peers_table(
                 .broadcast_count
                 .cmp(&b.broadcast_count)
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
-            _ => parse_last_seen_ms(&a.last_seen)
-                .cmp(&parse_last_seen_ms(&b.last_seen))
+            _ => crate::fmt::parse_last_seen_ms(&a.last_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
                 .then_with(|| a.peer_id.cmp(&b.peer_id)),
         };
         if ascending { ord } else { ord.reverse() }

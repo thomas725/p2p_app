@@ -104,7 +104,7 @@ pub use db::{
 };
 pub use fmt::{
     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
-    gen_msg_id, now_timestamp, peer_display_name, short_peer_id,
+    gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use logging::{clear_tui_logs, tracing_filter};

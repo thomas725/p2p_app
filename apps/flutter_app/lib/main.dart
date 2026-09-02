@@ -965,9 +965,6 @@ class _PeerList extends StatefulWidget {
 }
 
 class _PeerListState extends State<_PeerList> {
-  static const int _kName = 0;
-  static const int _kDm = 1;
-  static const int _kBroadcast = 2;
   static const int _kLastSeen = 3;
 
   int _sortColumn = _kLastSeen;
@@ -978,31 +975,25 @@ class _PeerListState extends State<_PeerList> {
   int _broadcastCount(MobilePeerRecord p) =>
       (widget.stats[p.peerId]?.broadcastSent ?? 0).toInt();
 
-  int _lastSeenMs(MobilePeerRecord p) {
-    final normalized = p.lastSeen.replaceAll(' ', 'T');
-    final dt = DateTime.tryParse(normalized);
-    return dt?.millisecondsSinceEpoch ?? 0;
-  }
-
   List<MobilePeerRecord> get _sorted {
-    final list = List<MobilePeerRecord>.from(widget.peers);
-    list.sort((a, b) {
-      late final int cmp;
-      switch (_sortColumn) {
-        case _kName:
-          cmp = a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
-        case _kDm:
-          cmp = _dmCount(a).compareTo(_dmCount(b));
-        case _kBroadcast:
-          cmp = _broadcastCount(a).compareTo(_broadcastCount(b));
-        case _kLastSeen:
-          cmp = _lastSeenMs(a).compareTo(_lastSeenMs(b));
-        default:
-          cmp = 0;
-      }
-      return _ascending ? cmp : -cmp;
-    });
-    return list;
+    final rows = widget.peers
+        .map(
+          (p) => PeerSortInput(
+            peerId: p.peerId,
+            displayName: p.displayName,
+            lastSeen: p.lastSeen,
+            dmCount: _dmCount(p),
+            broadcastCount: _broadcastCount(p),
+          ),
+        )
+        .toList();
+    final sorted = sortPeers(
+      peers: rows,
+      sortColumn: _sortColumn,
+      ascending: _ascending,
+    );
+    final byId = {for (final p in widget.peers) p.peerId: p};
+    return [for (final row in sorted) byId[row.peerId]!];
   }
 
   void _sort(int column, bool ascending) {

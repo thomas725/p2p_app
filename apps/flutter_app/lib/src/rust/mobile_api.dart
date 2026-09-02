@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_mobile_peer_status`, `init_mobile_database`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
@@ -46,6 +46,27 @@ Future<(BigInt, BigInt)> calculateVisibleRange({
 /// Delegates to the canonical [`crate::nickname::validate_nickname`].
 Future<bool> validateNickname({required String nick}) =>
     RustLib.instance.api.crateMobileApiValidateNickname(nick: nick);
+
+/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds
+/// since epoch; 0 for any unparseable input.
+///
+/// Delegates to the canonical [`crate::fmt::parse_last_seen_ms`].
+int parseLastSeenMs({required String lastSeen}) =>
+    RustLib.instance.api.crateMobileApiParseLastSeenMs(lastSeen: lastSeen);
+
+/// Sort known peers by the given column and order, mirroring the TUI peers
+/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
+/// (any other value falls back to name). Ordering always ties on `peer_id`,
+/// so the result is total and stable for a given dataset.
+List<PeerSortInput> sortPeers({
+  required List<PeerSortInput> peers,
+  required int sortColumn,
+  required bool ascending,
+}) => RustLib.instance.api.crateMobileApiSortPeers(
+  peers: peers,
+  sortColumn: sortColumn,
+  ascending: ascending,
+);
 
 class MobileInitStatus {
   final String databaseUrl;
@@ -91,4 +112,40 @@ class MobilePeerStatus {
           databaseUrl == other.databaseUrl &&
           localPeerId == other.localPeerId &&
           selfNickname == other.selfNickname;
+}
+
+/// One row of the peers table, as fed to [`sort_peers`].
+class PeerSortInput {
+  final String peerId;
+  final String displayName;
+  final String lastSeen;
+  final int dmCount;
+  final int broadcastCount;
+
+  const PeerSortInput({
+    required this.peerId,
+    required this.displayName,
+    required this.lastSeen,
+    required this.dmCount,
+    required this.broadcastCount,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      displayName.hashCode ^
+      lastSeen.hashCode ^
+      dmCount.hashCode ^
+      broadcastCount.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PeerSortInput &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          displayName == other.displayName &&
+          lastSeen == other.lastSeen &&
+          dmCount == other.dmCount &&
+          broadcastCount == other.broadcastCount;
 }

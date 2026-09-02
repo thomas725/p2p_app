@@ -48,6 +48,64 @@ pub fn validate_nickname(nick: &str) -> bool {
     crate::nickname::validate_nickname(nick)
 }
 
+/// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds
+/// since epoch; 0 for any unparseable input.
+///
+/// Delegates to the canonical [`crate::fmt::parse_last_seen_ms`].
+#[must_use]
+#[flutter_rust_bridge::frb(sync, type_64bit_int)]
+pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
+    crate::fmt::parse_last_seen_ms(last_seen)
+}
+
+/// One row of the peers table, as fed to [`sort_peers`].
+#[derive(Debug, Clone)]
+pub struct PeerSortInput {
+    pub peer_id: String,
+    pub display_name: String,
+    pub last_seen: String,
+    pub dm_count: u32,
+    pub broadcast_count: u32,
+}
+
+/// Sort known peers by the given column and order, mirroring the TUI peers
+/// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen
+/// (any other value falls back to name). Ordering always ties on `peer_id`,
+/// so the result is total and stable for a given dataset.
+#[must_use]
+#[flutter_rust_bridge::frb(sync)]
+pub fn sort_peers(
+    peers: Vec<PeerSortInput>,
+    sort_column: u32,
+    ascending: bool,
+) -> Vec<PeerSortInput> {
+    let mut keyed: Vec<(PeerSortInput, String)> = peers
+        .into_iter()
+        .map(|p| {
+            let name_key = p.display_name.to_lowercase();
+            (p, name_key)
+        })
+        .collect();
+    keyed.sort_by(|(a, an), (b, bn)| {
+        let ord = match sort_column {
+            1 => a
+                .dm_count
+                .cmp(&b.dm_count)
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            2 => a
+                .broadcast_count
+                .cmp(&b.broadcast_count)
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
+                .then_with(|| a.peer_id.cmp(&b.peer_id)),
+            _ => an.cmp(bn).then_with(|| a.peer_id.cmp(&b.peer_id)),
+        };
+        if ascending { ord } else { ord.reverse() }
+    });
+    keyed.into_iter().map(|(p, _)| p).collect()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MobileInitStatus {
     pub database_url: String,
@@ -228,5 +286,65 @@ mod tests {
         assert!(!validate_nickname("nick with spaces"));
         assert!(!validate_nickname("nick@special"));
         assert!(!validate_nickname("nick%dollar"));
+    }
+
+    fn sample_peer(id: &str, name: &str, last_seen: &str, dm: u32, br: u32) -> PeerSortInput {
+        PeerSortInput {
+            peer_id: id.to_string(),
+            display_name: name.to_string(),
+            last_seen: last_seen.to_string(),
+            dm_count: dm,
+            broadcast_count: br,
+        }
+    }
+
+    fn ids(peers: &[PeerSortInput]) -> Vec<&str> {
+        peers.iter().map(|p| p.peer_id.as_str()).collect()
+    }
+
+    #[test]
+    fn parse_last_seen_ms_delegates_to_canonical() {
+        let ms = parse_last_seen_ms("2024-01-01 00:00:01");
+        let direct = parse_last_seen_ms("2024-01-01T00:00:01");
+        assert_eq!(ms, direct);
+        assert!(ms > 0);
+        assert_eq!(parse_last_seen_ms("not-a-date"), 0);
+    }
+
+    #[test]
+    fn sort_peers_last_seen_desc_with_id_tiebreak() {
+        let peers = vec![
+            sample_peer("aaa", "alpha", "2024-01-01 09:00:00", 1, 2),
+            sample_peer("bbb", "beta", "2024-01-01 10:00:00", 1, 1),
+            sample_peer("ccc", "gamma", "2024-01-01 09:00:00", 3, 0),
+        ];
+        let sorted = sort_peers(peers, 3, false);
+        assert_eq!(ids(&sorted), vec!["bbb", "ccc", "aaa"]);
+    }
+
+    #[test]
+    fn sort_peers_name_asc_is_case_insensitive() {
+        let peers = vec![
+            sample_peer("bbb", "Zulu", "2024-01-01 09:00:00", 0, 0),
+            sample_peer("aaa", "alpha", "2024-01-01 09:00:00", 0, 0),
+            sample_peer("ccc", "Bravo", "2024-01-01 09:00:00", 0, 0),
+        ];
+        let sorted = sort_peers(peers, 0, true);
+        assert_eq!(ids(&sorted), vec!["aaa", "ccc", "bbb"]);
+    }
+
+    #[test]
+    fn sort_peers_count_columns_not_affected_by_columns() {
+        let peers = vec![
+            sample_peer("aaa", "A", "2024-01-01 09:00:00", 3, 5),
+            sample_peer("bbb", "B", "2024-01-01 09:00:00", 1, 9),
+            sample_peer("ccc", "C", "2024-01-01 09:00:00", 2, 1),
+        ];
+        let by_dm = sort_peers(peers.clone(), 1, true);
+        assert_eq!(ids(&by_dm), vec!["bbb", "ccc", "aaa"]);
+        let by_br = sort_peers(peers.clone(), 2, false);
+        assert_eq!(ids(&by_br), vec!["bbb", "aaa", "ccc"]);
+        let unknown = sort_peers(peers, 99, true);
+        assert_eq!(ids(&unknown), vec!["aaa", "bbb", "ccc"]);
     }
 }
