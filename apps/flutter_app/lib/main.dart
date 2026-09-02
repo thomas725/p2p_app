@@ -334,8 +334,8 @@ class _HomeScreenState extends State<HomeScreen> {
           peerId: row.peerId,
           firstSeen: row.firstSeen,
           lastSeen: row.lastSeen,
-          nickname: null,
-          localNickname: null,
+          nickname: row.nickname,
+          localNickname: row.localNickname,
           displayName: row.displayName,
         ));
         stats[row.peerId] = PeerMessageStats(

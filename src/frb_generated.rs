@@ -1194,6 +1194,8 @@ impl SseDecode for crate::mobile_api::PeerWithStats {
         let mut var_displayName = <String>::sse_decode(deserializer);
         let mut var_firstSeen = <String>::sse_decode(deserializer);
         let mut var_lastSeen = <String>::sse_decode(deserializer);
+        let mut var_nickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_localNickname = <Option<String>>::sse_decode(deserializer);
         let mut var_dmCount = <i64>::sse_decode(deserializer);
         let mut var_broadcastReceived = <i64>::sse_decode(deserializer);
         let mut var_broadcastSent = <i64>::sse_decode(deserializer);
@@ -1202,6 +1204,8 @@ impl SseDecode for crate::mobile_api::PeerWithStats {
             display_name: var_displayName,
             first_seen: var_firstSeen,
             last_seen: var_lastSeen,
+            nickname: var_nickname,
+            local_nickname: var_localNickname,
             dm_count: var_dmCount,
             broadcast_received: var_broadcastReceived,
             broadcast_sent: var_broadcastSent,
@@ -1480,6 +1484,8 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_api::PeerWithStats {
             self.display_name.into_into_dart().into_dart(),
             self.first_seen.into_into_dart().into_dart(),
             self.last_seen.into_into_dart().into_dart(),
+            self.nickname.into_into_dart().into_dart(),
+            self.local_nickname.into_into_dart().into_dart(),
             self.dm_count.into_into_dart().into_dart(),
             self.broadcast_received.into_into_dart().into_dart(),
             self.broadcast_sent.into_into_dart().into_dart(),
@@ -1705,6 +1711,8 @@ impl SseEncode for crate::mobile_api::PeerWithStats {
         <String>::sse_encode(self.display_name, serializer);
         <String>::sse_encode(self.first_seen, serializer);
         <String>::sse_encode(self.last_seen, serializer);
+        <Option<String>>::sse_encode(self.nickname, serializer);
+        <Option<String>>::sse_encode(self.local_nickname, serializer);
         <i64>::sse_encode(self.dm_count, serializer);
         <i64>::sse_encode(self.broadcast_received, serializer);
         <i64>::sse_encode(self.broadcast_sent, serializer);

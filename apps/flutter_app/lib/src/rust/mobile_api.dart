@@ -169,6 +169,8 @@ class PeerWithStats {
   final String displayName;
   final String firstSeen;
   final String lastSeen;
+  final String? nickname;
+  final String? localNickname;
   final PlatformInt64 dmCount;
   final PlatformInt64 broadcastReceived;
   final PlatformInt64 broadcastSent;
@@ -178,6 +180,8 @@ class PeerWithStats {
     required this.displayName,
     required this.firstSeen,
     required this.lastSeen,
+    this.nickname,
+    this.localNickname,
     required this.dmCount,
     required this.broadcastReceived,
     required this.broadcastSent,
@@ -189,6 +193,8 @@ class PeerWithStats {
       displayName.hashCode ^
       firstSeen.hashCode ^
       lastSeen.hashCode ^
+      nickname.hashCode ^
+      localNickname.hashCode ^
       dmCount.hashCode ^
       broadcastReceived.hashCode ^
       broadcastSent.hashCode;
@@ -202,6 +208,8 @@ class PeerWithStats {
           displayName == other.displayName &&
           firstSeen == other.firstSeen &&
           lastSeen == other.lastSeen &&
+          nickname == other.nickname &&
+          localNickname == other.localNickname &&
           dmCount == other.dmCount &&
           broadcastReceived == other.broadcastReceived &&
           broadcastSent == other.broadcastSent;
