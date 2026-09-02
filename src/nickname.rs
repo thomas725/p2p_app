@@ -9,15 +9,7 @@ use diesel::{
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
-diesel::table! {
-    peer_name_history (id) {
-        id -> Integer,
-        peer_id -> Text,
-        name -> Text,
-        name_kind -> Text,
-        set_at -> Timestamp,
-    }
-}
+use crate::generated::schema::peer_name_history;
 
 /// Generate a random two-word nickname (e.g. `"brave-otter"`).
 #[must_use]

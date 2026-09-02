@@ -72,6 +72,11 @@ pub mod swarm_handler;
 pub mod tui_tabs;
 pub mod types;
 
+/// Diesel schema/models for local SQLite storage.
+///
+/// Its `table!` macros expand to unit structs that `flutter_rust_bridge`
+/// cannot parse, so FRB skips this module during codegen.
+/// flutter_rust_bridge:ignore
 pub mod generated;
 
 #[cfg(any(test, feature = "test-utils"))]

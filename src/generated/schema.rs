@@ -64,10 +64,25 @@ diesel::table! {
     }
 }
 
+// Hand-maintained (not produced by Diesel CLI): keeps a timestamped record of
+// every name a peer has used. Lives here so that `flutter_rust_bridge` can
+// ignore this whole module (its `table!` macros expand to unit structs that
+// the FRB parser rejects).
+diesel::table! {
+    peer_name_history (id) {
+        id -> Integer,
+        peer_id -> Text,
+        name -> Text,
+        name_kind -> Text,
+        set_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     identities,
     message_receipts,
     messages,
+    peer_name_history,
     peer_sessions,
     peers,
 );
