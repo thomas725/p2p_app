@@ -1,1 +1,0 @@
-Testing timestamped-only results
