@@ -1,10 +1,15 @@
 # Dual Frontend Architecture
 
+> **Superseded (2026-09-02):** The Dioxus GUI frontend has been **removed** in favor of the
+> Flutter app (`apps/flutter_app`, via `flutter_rust_bridge`). The TUI + shared-core design
+> below remains accurate; the Dioxus-specific parts are kept as historical record only. See
+> `AGENTS.md` and `README.md` for the current frontend set.
+
 ## Goal
 
 Support both TUI and GUI frontends from the same codebase:
 - **TUI** (Terminal User Interface) - Small binaries, SSH-friendly, low resource
-- **Dioxus GUI** - Rich UI, cross-platform native apps, web deployment
+- **Dioxus GUI** - Rich UI, cross-platform native apps, web deployment *(removed; see note)*
 
 ## Architecture Overview
 

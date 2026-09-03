@@ -75,11 +75,11 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     if let Some(path) = db_path {
         crate::mobile_api::init_mobile_database(path)?;
     } else {
-        // No path: use lock-based DB selection (same as TUI/Dioxus)
+        // No path: use lock-based DB selection (same as TUI)
         crate::init_database().map_err(|e| e.to_string())?;
     }
 
-    // Generate and persist a random nickname on first start (same as TUI/Dioxus)
+    // Generate and persist a random nickname on first start (same as TUI)
     if let Err(e) = ensure_self_nickname() {
         p2plog_debug(format!("Failed to ensure self nickname: {e}"));
     }

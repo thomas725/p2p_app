@@ -2,14 +2,14 @@
 
 A multi-purpose P2P application. The first feature set is **chat**, built on
 [libp2p](https://libp2p.io) with SQLite (via Diesel) for persistence. The
-networking and persistence core is written in Rust and shared across three
+networking and persistence core is written in Rust and shared across two
 frontends:
 
 * **TUI** (`ratatui`) — the most complete frontend, runs in a terminal.
 * **Headless CLI** — minimal interactive mode with the smallest footprint
   (reads stdin, prints to stderr).
-* **Flutter / Dioxus** — cross-platform GUI. The Flutter app talks to Rust
-  through a `flutter_rust_bridge` (FRB) FFI layer; Dioxus is a desktop/web stub.
+* **Flutter** — cross-platform GUI that talks to Rust through a
+  `flutter_rust_bridge` (FRB) FFI layer.
 
 ## Features
 
@@ -49,9 +49,6 @@ cargo run                   # run the TUI
 
 # Headless mode (no TUI; reads stdin, prints to stderr)
 cargo run --no-default-features --bin p2p_chat
-
-# Dioxus desktop GUI
-cargo run --features dioxus-desktop --bin p2p_chat_dioxus
 
 # Custom database location
 #
@@ -106,13 +103,11 @@ src/
 ├── fmt.rs / types.rs       # formatting + shared event/command types
 ├── logging.rs              # logging + TUI log buffer
 ├── mobile_api.rs / mobile_node.rs  # FRB facade + node lifecycle
-├── dioxus_app.rs / dioxus_styles.rs / dioxus_swarm.rs  # Dioxus GUI
 ├── tui_*.rs / tui_tabs.rs  # TUI rendering, state, input, scroll, clicks
 └── generated/              # Diesel schema/models (codegen from migrations)
 src/bin/
 ├── p2p_chat.rs             # headless CLI
 ├── p2p_chat_tui.rs         # TUI entry point
-├── p2p_chat_dioxus.rs      # Dioxus entry point
 └── tui/                    # TUI submodules (main_loop, handlers, render_loop)
 ```
 

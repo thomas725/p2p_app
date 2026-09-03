@@ -55,8 +55,6 @@ sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subscriber/env-filter" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
-dioxus = [ "dep:dioxus" ]
-dioxus-desktop = [ "dioxus", "dep:dioxus-desktop", "dioxus/desktop", "dep:futures-channel" ]
 mobile = [ "basic", "sqlite_bundled", "quic", "flutter_rust_bridge" ]
 test-utils = []
 
@@ -66,9 +64,6 @@ tracing-subscriber = { version = "=0.3.23", optional = true }
 ratatui = { version = "=0.30.2", optional = true }
 ratatui-textarea = { version = "0.9", optional = true, default-features = false, features = ["crossterm"] }
 crossterm = { version = "=0.29", optional = true }
-dioxus = { version = "=0.7.10", optional = true }
-dioxus-desktop = { version = "=0.7.10", optional = true }
-futures-channel = { version = "0.3", optional = true }
 # ORM mapper we use to access our SQLite database
 diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }
 # feature "chrono" used for TIMESTAMP columns
@@ -130,11 +125,6 @@ path = "src/bin/p2p_chat.rs"
 name = "p2p_chat_tui"
 path = "src/bin/p2p_chat_tui.rs"
 required-features = ["tui"]
-
-[[bin]]
-name = "p2p_chat_dioxus"
-path = "src/bin/p2p_chat_dioxus.rs"
-required-features = ["dioxus-desktop"]
 
 # [patch.crates-io]
 # rustls-webpki = { version = ">=0.103.13" }

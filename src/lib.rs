@@ -1,13 +1,13 @@
 //! # `p2p_app`
 //!
-//! Decentralized peer-to-peer chat on libp2p with TUI, CLI, and Dioxus desktop frontends.
+//! Decentralized peer-to-peer chat on libp2p with a TUI frontend (and a Flutter
+//! mobile app via the `mobile` feature).
 //!
 //! ## Architecture
 //!
 //! ```text
 //! ┌──────────────────────────────────────────────────────┐
-//! │  frontends (bin/)                                    │
-//! │  p2p_chat (CLI)  p2p_chat_tui (TUI)  p2p_chat_dioxus │
+//! │  frontends (bin/:)  p2p_chat (CLI)  p2p_chat_tui     │
 //! └────────────────────────┬─────────────────────────────┘
 //!                          │ uses
 //! ┌────────────────────────▼─────────────────────────────┐
@@ -31,7 +31,7 @@
 //! | `mdns` | mDNS peer discovery (default) |
 //! | `tracing` | structured logging (default) |
 //! | `quic` | QUIC transport (default) |
-//! | `dioxus-desktop` | Dioxus desktop GUI |
+//! | `mobile` | Flutter/Rust bridge (not in default) |
 //! | `test-utils` | test helpers (not in default) |
 //!
 //! ## Core modules
@@ -52,12 +52,6 @@ pub mod api;
 pub mod behavior;
 pub mod connected;
 pub mod db;
-#[cfg(feature = "dioxus")]
-pub mod dioxus_app;
-#[cfg(feature = "dioxus")]
-pub mod dioxus_styles;
-#[cfg(feature = "dioxus")]
-pub mod dioxus_swarm;
 pub mod fmt;
 pub mod logging;
 pub mod messages;

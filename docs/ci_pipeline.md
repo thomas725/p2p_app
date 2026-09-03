@@ -3,8 +3,8 @@
 ## Workflows (`.github/workflows/`)
 
 - **`main.yml`** — runs on every push to `main`/`develop`. A single job that:
-  checks out the repo, installs the Rust toolchain and system deps (SQLite,
-  GTK/WebKit for the Dioxus desktop build), runs `cargo fmt --check`,
+  checks out the repo, installs the Rust toolchain and system deps (SQLite),
+  runs `cargo fmt --check`,
   `cargo clippy`, `cargo build`, `cargo audit`, builds the docs, and runs
   `cargo tarpaulin` for coverage. It then writes one timestamped results file
   to `.github/ci-results/results_<timestamp>_<run_id>.txt` (containing all

@@ -2,21 +2,20 @@
 
 ## Project Summary
 
-`p2p_app` is a peer-to-peer chat application built primarily in Rust (edition 2024). It uses libp2p for networking, SQLite (via Diesel ORM) for persistence, and currently has three frontend targets: CLI, TUI, and Dioxus desktop.
+`p2p_app` is a peer-to-peer chat application built primarily in Rust (edition 2024). It uses libp2p for networking, SQLite (via Diesel ORM) for persistence, and currently has three frontend targets: CLI, TUI, and a Flutter mobile/desktop app (via flutter_rust_bridge). The earlier Dioxus desktop frontend was removed in favor of Flutter.
 
-**Status:** Functional TUI and CLI apps. Dioxus desktop GUI exists but is less polished. Android is the next major target. No Android code exists yet.
+**Status:** Functional TUI and CLI apps. Flutter mobile app talks to Rust via FRB. Android is a major target. No Dioxus code remains.
 
 ---
 
 ## Crate Structure
 
-Single crate (not a workspace). Three binary targets:
+Single crate (not a workspace). Two binary targets (plus the Flutter app in `apps/flutter_app`):
 
 | Binary | Entry | Feature Gate | Description |
 |--------|-------|-------------|-------------|
 | `p2p_chat` | `src/bin/p2p_chat.rs` | none | Headless CLI, stdin/stderr |
 | `p2p_chat_tui` (default) | `src/bin/p2p_chat_tui.rs` | `tui` | Full ratatui UI |
-| `p2p_chat_dioxus` | `src/bin/p2p_chat_dioxus.rs` | `dioxus-desktop` | WebView-based GUI |
 
 Library root is `src/lib.rs` which exports all shared modules.
 
@@ -41,9 +40,8 @@ src/
 ├── tui_render.rs          # ratatui rendering functions
 ├── tui_render_state.rs    # TuiRenderState abstraction (testable rendering)
 ├── tui_helpers.rs         # Pure helper functions (scroll, nicknames, validation)
-├── dioxus_app.rs          # Dioxus component tree, state management
-├── dioxus_styles.rs       # CSS stylesheet constant
-├── dioxus_swarm.rs        # Swarm event processing for Dioxus
+├── connected.rs           # ConnectedPeerTracker shared with the Flutter backend
+├── mobile_api.rs          # FRB facade (mobile feature)
 └── generated/             # Auto-generated Diesel code (schema, models, columns)
 ```
 
@@ -170,8 +168,7 @@ Already supports: x86_64, aarch64, armv7, mipsel (with `sqlite_bundled` for embe
 | `tracing` | Structured logging (default) |
 | `quic` | QUIC transport (default) |
 | `tui` | ratatui terminal UI (default) |
-| `dioxus` | GUI framework base |
-| `dioxus-desktop` | Desktop WebView app |
+| `mobile` | Flutter/Rust bridge (FRB), not in default |
 | `basic` | Minimal P2P, no optional features |
 | `sqlite_bundled` | Static SQLite linking |
 | `test-utils` | Test helpers (gated) |

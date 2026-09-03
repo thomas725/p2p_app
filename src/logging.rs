@@ -2,7 +2,7 @@
 //!
 //! This module provides a unified logging solution that:
 //! - Uses `tracing` (Rust's most popular structured logging library)
-//! - Supports a single callback registry for all frontends (TUI, Flutter, Dioxus)
+//! - Supports a single callback registry for all frontends (TUI, Flutter)
 //! - Writes to both terminal (if no callback) and a persistent log file
 //! - Integrates with libp2p's existing tracing usage
 
@@ -68,7 +68,7 @@ const MAX_LOGS: usize = 1000;
 /// In-memory log storage for UI access and replay when callbacks attach later
 static LOG_BUFFER: OnceLock<Mutex<VecDeque<String>>> = OnceLock::new();
 
-/// Unified callback registry: all frontends (Flutter FRB, TUI, Dioxus)
+/// Unified callback registry: all frontends (Flutter FRB, TUI)
 /// register here to receive log messages. One entry per registration.
 static LOG_CALLBACKS: Mutex<Vec<LogCallback>> = Mutex::new(vec![]);
 
@@ -293,7 +293,7 @@ pub fn push_log(message: impl Into<String>) {
 
 /// Register a callback that will receive all log messages.
 ///
-/// External frontends (Flutter FRB, TUI, Dioxus) can use this to add their
+/// External frontends (Flutter FRB, TUI) can use this to add their
 /// own log display. When registered, all previously accumulated logs in the
 /// buffer are immediately replayed to the callback.
 pub fn register_log_callback(callback: LogCallback) {
