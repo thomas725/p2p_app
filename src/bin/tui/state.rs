@@ -47,6 +47,10 @@ pub struct AppState {
     // Peer Management
     pub peers: VecDeque<p2p_app::PeerRecord>,
     pub concurrent_peers: usize,
+    // How many broadcasts *we* sent to each peer (bulk-loaded from the
+    // `broadcast_recipients` table via `messages::get_all_peer_stats`, refreshed
+    // whenever peers change). Drives the peers-table "Broadcast" column.
+    pub broadcast_sent_to_peer: HashMap<String, usize>,
     // Currently connected peers (shared connected-tracking logic with the
     // Flutter backend). Mirror of Flutter's "Connected peers" on Settings.
     pub connected: p2p_app::connected::ConnectedTracker,
@@ -125,17 +129,22 @@ impl AppState {
     }
 
     /// Re-sort the peer list by the currently active column/order, keeping the
-    /// selected peer (by id) selected.
+    /// selected peer (by id) selected. Also refreshes the per-peer
+    /// `broadcast_sent_to_peer` counts (a bulk DB call) so the sort and the
+    /// rendered "Broadcast" column never show stale sent-to-peer numbers.
     pub fn resort_peers(&mut self) {
-        let sender_ids: VecDeque<Option<String>> = self
-            .messages
-            .iter()
-            .map(|m| m.sender_peer_id.clone())
-            .collect();
+        self.broadcast_sent_to_peer = p2p_app::messages::get_all_peer_stats()
+            .map(|stats| {
+                stats
+                    .into_iter()
+                    .map(|(pid, s)| (pid, usize::try_from(s.broadcast_sent_to_peer).unwrap_or(0)))
+                    .collect()
+            })
+            .unwrap_or_default();
         self.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
             &mut self.peers,
             &self.dm_messages,
-            &sender_ids,
+            &self.broadcast_sent_to_peer,
             self.peer_sort_column,
             self.peer_sort_ascending,
             self.peer_selection,
@@ -164,6 +173,7 @@ impl AppState {
             dm_message_ids: HashMap::new(),
             dm_receipts: initial_dm_receipts,
             peers: initial_peers,
+            broadcast_sent_to_peer: HashMap::new(),
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
             chat_input: TextArea::default(),

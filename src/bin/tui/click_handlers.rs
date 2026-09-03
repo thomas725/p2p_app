@@ -236,11 +236,6 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     // sized to fit their longest header/cell (`peer_table_column_widths`) over
     // the same visible window the renderer materializes, with the same block
     // borders and `column_spacing`.
-    let sender_ids: VecDeque<Option<String>> = state
-        .messages
-        .iter()
-        .map(|m| m.sender_peer_id.clone())
-        .collect();
     let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
     let selected = state.peer_selection.min(peers.len().saturating_sub(1));
@@ -253,7 +248,7 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     let rows = p2p_app::tui_helpers::peer_table_rows_range(
         &peers,
         &state.dm_messages,
-        &sender_ids,
+        &state.broadcast_sent_to_peer,
         start,
         end,
     );

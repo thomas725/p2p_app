@@ -4,6 +4,11 @@
 
 #[doc(hidden)]
 pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
+    ("broadcast_recipients", "confirmed_at", "DOUBLE"),
+    ("broadcast_recipients", "id", "INTEGER"),
+    ("broadcast_recipients", "msg_id", "TEXT"),
+    ("broadcast_recipients", "peer_id", "TEXT"),
+    ("broadcast_recipients", "sent_at", "DOUBLE"),
     ("identities", "created_at", "TIMESTAMP"),
     ("identities", "id", "INTEGER"),
     ("identities", "key", "BLOB"),
@@ -36,7 +41,6 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("peer_sessions", "id", "INTEGER"),
     ("peer_sessions", "recorded_at", "TIMESTAMP"),
     ("peers", "addresses", "TEXT"),
-    ("peers", "broadcasts_sent", "INTEGER"),
     ("peers", "created_at", "TIMESTAMP"),
     ("peers", "first_seen", "TIMESTAMP"),
     ("peers", "generated_nickname", "TEXT"),

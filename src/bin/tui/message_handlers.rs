@@ -113,7 +113,7 @@ pub async fn send_message(
     let db_sender_peer_id = if is_direct { None } else { peer_ref };
     let meta = p2p_app::MessageMeta {
         sender_nickname: Some(own_nickname),
-        msg_id: Some(msg_id_for_db),
+        msg_id: Some(msg_id_for_db.clone()),
         sent_at: Some(sent_at),
     };
     if let Err(e) = p2p_app::save_message_with_meta(
@@ -125,6 +125,19 @@ pub async fn send_message(
         meta,
     ) {
         p2plog_debug(format!("Failed to save message: {e}"));
+    }
+
+    // Attribute outgoing broadcasts to every peer that was online to receive
+    // them, so the peers table can show how many broadcasts we sent each peer.
+    if !is_direct {
+        let recipients: Vec<String> = state
+            .connected
+            .connected_peer_ids()
+            .map(str::to_owned)
+            .collect();
+        if !recipients.is_empty() {
+            let _ = p2p_app::peers::record_broadcast_recipients(&msg_id_for_db, &recipients);
+        }
     }
 }
 

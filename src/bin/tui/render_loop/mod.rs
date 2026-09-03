@@ -64,6 +64,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
                 last_seen: p.last_seen.clone(),
             })
             .collect(),
+        broadcast_sent_to_peer: state.broadcast_sent_to_peer.clone(),
         connected_peer_ids: state
             .connected
             .connected_peer_ids()

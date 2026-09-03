@@ -166,8 +166,8 @@ fn load_messages_respects_limit() {
 #[serial(db)]
 fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
     with_test_db(|| {
-        // peer-a: sends 2 DMs (to peer-b and to peer-c), receives 1 DM from peer-b,
-        // receives 1 broadcast.
+        // peer-a sends 2 DMs and receives 1 DM; peer-a also sent broadcasts to
+        // peer-b (×1) and peer-c (×2), each recorded in `broadcast_recipients`.
         crate::save_peer("peer-a", &[]).expect("save a");
         crate::save_peer("peer-b", &[]).expect("save b");
         crate::save_peer("peer-c", &[]).expect("save c");
@@ -177,22 +177,28 @@ fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
         let _ = save_message("dm-b-to-a", Some("peer-b"), "t", true, Some("peer-a")).expect("ba");
         let _ =
             save_message("bcast-from-a", Some("peer-a"), "t", false, None).expect("bcast from a");
+        crate::peers::record_broadcast_recipients("m1", &["peer-b".to_string()]).expect("rec b");
+        crate::peers::record_broadcast_recipients("m2", &["peer-c".to_string()]).expect("rec c");
+        crate::peers::record_broadcast_recipients("m3", &["peer-c".to_string()]).expect("rec c2");
 
         let all = get_all_peer_stats().expect("all stats");
 
-        // peer-a: 2 sent DMs + 1 received DM = 3; 1 broadcast received.
+        // peer-a: 2 sent DMs + 1 received DM = 3; no broadcasts *sent to* a.
         let a = all.get("peer-a").expect("peer-a present");
         assert_eq!(a.dm_count, 3);
-        assert_eq!(a.broadcast_received, 1);
+        assert_eq!(a.broadcast_sent_to_peer, 0);
 
-        // peer-b: 1 DM sent to a + 1 DM received from a = 2; no broadcasts.
+        // peer-b: 1 DM sent to a + 1 DM received from a = 2; 1 broadcast we sent b.
         let b = all.get("peer-b").expect("peer-b present");
         assert_eq!(b.dm_count, 2);
-        assert_eq!(b.broadcast_received, 0);
+        assert_eq!(b.broadcast_sent_to_peer, 1);
 
-        // peer-c: 1 received DM from a = 1.
+        // peer-c: 1 received DM from a = 1; 2 broadcasts we sent c.
         let c = all.get("peer-c").expect("peer-c present");
         assert_eq!(c.dm_count, 1);
-        assert_eq!(c.broadcast_received, 0);
+        assert_eq!(c.broadcast_sent_to_peer, 2);
+
+        // The inbound broadcast from peer-a never attributes a *sent-to* count.
+        assert!(!all.contains_key("peer-a") || all["peer-a"].broadcast_sent_to_peer == 0);
     });
 }

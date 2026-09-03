@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ));
         stats[row.peerId] = PeerMessageStats(
           dmCount: row.dmCount,
-          broadcastReceived: row.broadcastReceived,
+          broadcastSentToPeer: row.broadcastSentToPeer,
         );
       }
       setState(() {
@@ -990,7 +990,7 @@ class PeerListState extends State<PeerList> {
   int _dmCount(MobilePeerRecord p) =>
       (widget.stats[p.peerId]?.dmCount ?? 0).toInt();
   int _broadcastCount(MobilePeerRecord p) =>
-      (widget.stats[p.peerId]?.broadcastReceived ?? 0).toInt();
+      (widget.stats[p.peerId]?.broadcastSentToPeer ?? 0).toInt();
 
   List<MobilePeerRecord> get _sorted {
     final rows = widget.peers

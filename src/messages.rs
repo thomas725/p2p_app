@@ -196,6 +196,22 @@ pub fn save_receipt(
         .do_update()
         .set(crate::generated::schema::message_receipts::confirmed_at.eq(confirmed_at))
         .execute(conn)?;
+
+    // A kind-0 (delivered/ack) receipt for a broadcast we sent confirms that the
+    // giver of the receipt received it — back-fill `broadcast_recipients.confirmed_at`
+    // so we can attribute confirmed (not just transmitted) broadcasts to the peer.
+    if kind == 0 {
+        use crate::generated::schema::broadcast_recipients;
+        diesel::update(
+            crate::generated::schema::broadcast_recipients::table.filter(
+                broadcast_recipients::msg_id
+                    .eq(msg_id)
+                    .and(broadcast_recipients::peer_id.eq(peer_id)),
+            ),
+        )
+        .set(broadcast_recipients::confirmed_at.eq(confirmed_at))
+        .execute(conn)?;
+    }
     Ok(())
 }
 
@@ -226,19 +242,21 @@ pub fn load_receipts()
 pub struct PeerMessageStats {
     /// Direct messages exchanged with this peer (sent + received).
     pub dm_count: i64,
-    /// Broadcast messages received from this peer (peer was the sender).
-    pub broadcast_received: i64,
+    /// Broadcast messages we sent that this peer was a recipient of.
+    pub broadcast_sent_to_peer: i64,
 }
 
 /// Compute message statistics for a single peer.
 ///
 /// * `dm_count` counts direct messages where the peer is either sender or
 ///   recipient (received + sent).
-/// * `broadcast_received` counts broadcast messages whose sender is this peer.
+/// * `broadcast_sent_to_peer` counts broadcasts *we* sent that this peer
+///   received (from the `broadcast_recipients` table).
 ///
 /// # Errors
 /// Returns an error if the database queries fail.
 pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStats> {
+    use crate::generated::schema::broadcast_recipients::dsl as br;
     use crate::generated::schema::messages::dsl as m;
     let conn = &mut crate::sqlite_connect()?;
 
@@ -248,67 +266,81 @@ pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStat
         .count()
         .get_result(conn)?;
 
-    let broadcast_received: i64 = m::messages
-        .filter(m::is_direct.eq(0))
-        .filter(m::peer_id.eq(peer_id))
+    let broadcast_sent_to_peer: i64 = br::broadcast_recipients
+        .filter(br::peer_id.eq(peer_id))
         .count()
         .get_result(conn)?;
 
     Ok(PeerMessageStats {
         dm_count,
-        broadcast_received,
+        broadcast_sent_to_peer,
     })
 }
 
-/// One grouped row from [`get_all_peer_stats`]: the DM and broadcast-received
-/// counts for a single peer, produced by a single `GROUP BY` query.
+/// One grouped row from [`get_all_peer_stats`]: the DM broadcast counts for a
+/// single peer, produced by a single `GROUP BY` query over `messages`.
 #[derive(Debug, Clone, PartialEq, Eq, diesel::QueryableByName)]
 struct PeerMessageAggregate {
     #[diesel(sql_type = diesel::sql_types::Text)]
     peer_id: String,
     #[diesel(sql_type = diesel::sql_types::BigInt)]
     dm_count: i64,
-    #[diesel(sql_type = diesel::sql_types::BigInt)]
-    broadcast_received: i64,
 }
 
-/// Compute message statistics for **all** peers in one pass.
+/// Compute message statistics for **all** peers in two passes.
 ///
 /// This is the bulk sibling of [`get_peer_stats`]: it runs a single grouped
-/// query (un-nesting each DM against both its sender and recipient) rather
-/// than the N×2 queries the per-peer path needs.
+/// query over `messages` (un-nesting each DM against both its sender and
+/// recipient) plus one grouped query over `broadcast_recipients`, rather than
+/// the N×2 queries the per-peer path needs.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
 pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMessageStats>> {
+    use crate::generated::schema::broadcast_recipients::dsl as br;
     let conn = &mut crate::sqlite_connect()?;
 
-    let sql = "
-        SELECT peer_id,
-               COALESCE(SUM(dm), 0) AS dm_count,
-               COALESCE(SUM(br), 0) AS broadcast_received
+    let dm_sql = "
+        SELECT peer_id, COALESCE(SUM(dm), 0) AS dm_count
         FROM (
-            SELECT peer_id, 1 AS dm, 0 AS br FROM messages
+            SELECT peer_id, 1 AS dm FROM messages
                 WHERE is_direct = 1 AND peer_id IS NOT NULL
             UNION ALL
-            SELECT target_peer, 1 AS dm, 0 AS br FROM messages
+            SELECT target_peer, 1 AS dm FROM messages
                 WHERE is_direct = 1 AND target_peer IS NOT NULL
-            UNION ALL
-            SELECT peer_id, 0 AS dm, 1 AS br FROM messages
-                WHERE is_direct = 0 AND peer_id IS NOT NULL
         )
         GROUP BY peer_id";
-    let aggregates = diesel::sql_query(sql).load::<PeerMessageAggregate>(conn)?;
+    let dm_aggregates = diesel::sql_query(dm_sql).load::<PeerMessageAggregate>(conn)?;
 
-    let mut result: HashMap<String, PeerMessageStats> = HashMap::with_capacity(aggregates.len());
-    for a in aggregates {
+    let recip_count: i64 = br::broadcast_recipients.count().get_result(conn)?;
+    let recip_vec: Vec<(String, i64)> = if recip_count > 0 {
+        use diesel::dsl::count;
+        br::broadcast_recipients
+            .group_by(br::peer_id)
+            .select((br::peer_id, count(br::peer_id)))
+            .load::<(String, i64)>(conn)?
+    } else {
+        Vec::new()
+    };
+
+    let mut result: HashMap<String, PeerMessageStats> = HashMap::with_capacity(dm_aggregates.len());
+    for a in dm_aggregates {
         result.insert(
             a.peer_id,
             PeerMessageStats {
                 dm_count: a.dm_count,
-                broadcast_received: a.broadcast_received,
+                broadcast_sent_to_peer: 0,
             },
         );
+    }
+    for (pid, count) in recip_vec {
+        result
+            .entry(pid)
+            .or_insert_with(|| PeerMessageStats {
+                dm_count: 0,
+                broadcast_sent_to_peer: 0,
+            })
+            .broadcast_sent_to_peer = count;
     }
 
     Ok(result)

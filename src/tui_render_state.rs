@@ -24,6 +24,9 @@ pub struct TuiRenderState {
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
     /// Known peers
     pub peers: Vec<PeerRecord>,
+    /// How many broadcasts *we* sent to each peer (bulk-loaded from
+    /// `broadcast_recipients`), driving the peers-table "Broadcast" column.
+    pub broadcast_sent_to_peer: HashMap<String, usize>,
     /// Peer IDs currently connected (subset of `peers`)
     pub connected_peer_ids: std::collections::HashSet<String>,
     /// Direct messages per peer
@@ -119,6 +122,7 @@ impl TuiRenderState {
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
+            broadcast_sent_to_peer: HashMap::new(),
             connected_peer_ids: std::collections::HashSet::new(),
             dm_messages: BTreeMap::new(),
             dm_message_ids: BTreeMap::new(),

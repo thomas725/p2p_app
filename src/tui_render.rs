@@ -301,7 +301,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     let rows = crate::tui_helpers::peer_table_rows_range(
         &state.peers,
         &state.dm_messages,
-        &state.message_peer_ids,
+        &state.broadcast_sent_to_peer,
         start,
         end,
     );

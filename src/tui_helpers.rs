@@ -218,36 +218,27 @@ impl PeerTableRow {
     }
 }
 
-/// Count how many broadcast messages each peer has sent, given the list of
-/// sender peer ids (`None` entries are ignored).
-#[allow(clippy::arithmetic_side_effects)]
-#[must_use]
-pub fn compute_broadcast_counts(messages: &VecDeque<Option<String>>) -> HashMap<String, usize> {
-    let mut map: HashMap<String, usize> = HashMap::new();
-    for id in messages.iter().flatten() {
-        *map.entry(id.clone()).or_insert(0) += 1;
-    }
-    map
-}
-
 /// Build and sort the peers table according to the active column and order.
 ///
 /// Mirrors Flutter's peer-list sort. Columns: name (0), DM count (1),
 /// broadcast count (2), last seen (3), first seen (4). The tie-breaker is
 /// always the peer id to keep the ordering stable.
+///
+/// `broadcast_sent_to_peer` maps a peer id to how many broadcasts *we* sent that
+/// peer (from the `broadcast_recipients` table via `messages::get_all_peer_stats`).
+#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn sort_peers_table(
     peers: &[PeerRecord],
     dm_messages: &impl PeerMessageMap,
-    messages: &VecDeque<Option<String>>,
+    broadcast_sent_to_peer: &HashMap<String, usize>,
     sort_column: usize,
     ascending: bool,
 ) -> Vec<PeerTableRow> {
-    let broadcast_map = compute_broadcast_counts(messages);
     let mut rows: Vec<(PeerTableRow, String)> = peers
         .iter()
         .map(|p| {
-            let row = peer_table_row(p, dm_messages, &broadcast_map);
+            let row = peer_table_row(p, dm_messages, broadcast_sent_to_peer);
             let name_key = row.display_name.to_lowercase();
             (row, name_key)
         })
@@ -284,11 +275,12 @@ pub fn sort_peers_table(
 
 /// Reorder `peers` in place according to the active column/order, preserving
 /// the currently selected peer (by id) and returning its new index.
+#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn sort_peers_by_column(
     peers: &mut VecDeque<PeerRecord>,
     dm_messages: &impl PeerMessageMap,
-    messages: &VecDeque<Option<String>>,
+    broadcast_sent_to_peer: &HashMap<String, usize>,
     sort_column: usize,
     ascending: bool,
     selection: usize,
@@ -297,7 +289,13 @@ pub fn sort_peers_by_column(
     // Collect the whole list up front: `peers.as_slices().0` would only cover
     // the first backing slice when the `VecDeque` has wrapped around.
     let all: Vec<PeerRecord> = peers.iter().cloned().collect();
-    let rows = sort_peers_table(&all, dm_messages, messages, sort_column, ascending);
+    let rows = sort_peers_table(
+        &all,
+        dm_messages,
+        broadcast_sent_to_peer,
+        sort_column,
+        ascending,
+    );
     // Index rows by peer id so reordering is O(n) instead of a per-row scan.
     let ordered = {
         let by_id: HashMap<&str, PeerRecord> = all
@@ -318,10 +316,13 @@ pub fn sort_peers_by_column(
 fn peer_table_row(
     peer: &PeerRecord,
     dm_messages: &impl PeerMessageMap,
-    broadcast_map: &HashMap<String, usize>,
+    broadcast_sent_to_peer: &HashMap<String, usize>,
 ) -> PeerTableRow {
     let dm_count = dm_messages.dm_count_for(&peer.peer_id);
-    let broadcast_count = broadcast_map.get(&peer.peer_id).copied().unwrap_or(0);
+    let broadcast_count = broadcast_sent_to_peer
+        .get(&peer.peer_id)
+        .copied()
+        .unwrap_or(0);
     let display_name = crate::get_peer_display_name(&peer.peer_id)
         .unwrap_or_else(|_| crate::fmt::short_peer_id(&peer.peer_id));
     PeerTableRow::new(
@@ -339,20 +340,20 @@ fn peer_table_row(
 /// Only peers inside the visible window get a `PeerTableRow`, so paged
 /// rendering pays for the display-name lookups on the visible page instead of
 /// the whole peer list.
+#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn peer_table_rows_range(
     peers: &[PeerRecord],
     dm_messages: &impl PeerMessageMap,
-    messages: &VecDeque<Option<String>>,
+    broadcast_sent_to_peer: &HashMap<String, usize>,
     start: usize,
     end: usize,
 ) -> Vec<PeerTableRow> {
-    let broadcast_map = compute_broadcast_counts(messages);
     peers
         .iter()
         .skip(start)
         .take(end.saturating_sub(start))
-        .map(|p| peer_table_row(p, dm_messages, &broadcast_map))
+        .map(|p| peer_table_row(p, dm_messages, broadcast_sent_to_peer))
         .collect()
 }
 

@@ -89,15 +89,15 @@ List<String?> _displayNames(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('Broadcast column shows broadcastReceived (inbound) values',
+  testWidgets('Broadcast column shows sent-to-peer (broadcastSentToPeer) values',
       (tester) async {
     final peers = [
       peer(id: 'aaa', name: 'Alpha'),
       peer(id: 'bbb', name: 'Beta', broadcast: 5),
     ];
     final stats = {
-      'aaa': const PeerMessageStats(dmCount: 1, broadcastReceived: 0),
-      'bbb': const PeerMessageStats(dmCount: 2, broadcastReceived: 5),
+      'aaa': const PeerMessageStats(dmCount: 1, broadcastSentToPeer: 0),
+      'bbb': const PeerMessageStats(dmCount: 2, broadcastSentToPeer: 5),
     };
     await tester.pumpWidget(
       _app(peers: peers, stats: stats, sortOverride: _sortLikeRust),
@@ -106,8 +106,7 @@ void main() {
 
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    // The Broadcast column reflects broadcastReceived (5), not a removed
-    // broadcastSent.
+    // The Broadcast column reflects broadcastSentToPeer (5), not inbound.
     expect(find.text('5'), findsWidgets);
   });
 

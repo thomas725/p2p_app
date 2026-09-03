@@ -4,10 +4,8 @@ use crate::{
     generated::models_insertable::NewPeer, generated::models_queryable::Peer,
     generated::schema::peers::dsl::peers, logging::p2plog_debug,
 };
-use diesel::sql_types::Text;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
-    sql_query,
 };
 
 /// Peer row returned by `load_known_peers()`.
@@ -198,34 +196,35 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     Ok(avg)
 }
 
-/// Increment the `broadcasts_sent` counter for each peer that was connected
-/// when a broadcast was transmitted. This records, per peer, how many
-/// broadcasts we sent while that peer was online.
+/// Record that a broadcast we sent was transmitted to each of `peer_ids`.
 ///
-/// Peers that connected are always saved (via `save_peer`) before this is
-/// called, but guard with `INSERT OR IGNORE` in case a peer is only known from
-/// message history.
+/// This replaces the dormant `peers.broadcasts_sent` aggregate counter with a
+/// per-message, per-peer record (`broadcast_recipients`), so the peers table can
+/// show, for each peer, how many broadcasts *we* sent to it. `sent_at` is the
+/// transmit time; `confirmed_at` stays `NULL` until that peer acknowledges the
+/// broadcast (back-filled by `messages::save_receipt` on a kind-0 receipt).
+/// Insert is idempotent per `(msg_id, peer_id)` (a retransmit must not double
+/// count).
 ///
 /// # Errors
 /// Returns an error if the database operation fails.
-pub fn record_broadcasts_sent(peer_ids: &[String]) -> color_eyre::Result<()> {
+pub fn record_broadcast_recipients(msg_id: &str, peer_ids: &[String]) -> color_eyre::Result<()> {
+    use crate::generated::schema::broadcast_recipients;
+    use diesel::insert_into;
+    use diesel::prelude::*;
+
     let conn = &mut crate::sqlite_connect()?;
+    let timestamp = crate::current_timestamp();
     for pid in peer_ids {
-        let updated = sql_query(
-            "UPDATE peers SET broadcasts_sent = COALESCE(broadcasts_sent, 0) + 1 \
-             WHERE peer_id = ?",
-        )
-        .bind::<Text, _>(pid)
-        .execute(conn)?;
-        if updated == 0 {
-            let _ = sql_query(
-                "INSERT OR IGNORE INTO peers \
-                 (peer_id, addresses, first_seen, last_seen, broadcasts_sent) \
-                 VALUES (?, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
-            )
-            .bind::<Text, _>(pid)
-            .execute(conn);
-        }
+        insert_into(broadcast_recipients::table)
+            .values((
+                broadcast_recipients::msg_id.eq(msg_id),
+                broadcast_recipients::peer_id.eq(pid),
+                broadcast_recipients::sent_at.eq(timestamp),
+            ))
+            .on_conflict((broadcast_recipients::msg_id, broadcast_recipients::peer_id))
+            .do_nothing()
+            .execute(conn)?;
     }
     Ok(())
 }

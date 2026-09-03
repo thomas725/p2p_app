@@ -1127,7 +1127,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: dco_decode_opt_String(arr[4]),
       localNickname: dco_decode_opt_String(arr[5]),
       dmCount: dco_decode_i_64(arr[6]),
-      broadcastReceived: dco_decode_i_64(arr[7]),
+      broadcastSentToPeer: dco_decode_i_64(arr[7]),
     );
   }
 
@@ -1431,7 +1431,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_nickname = sse_decode_opt_String(deserializer);
     var var_localNickname = sse_decode_opt_String(deserializer);
     var var_dmCount = sse_decode_i_64(deserializer);
-    var var_broadcastReceived = sse_decode_i_64(deserializer);
+    var var_broadcastSentToPeer = sse_decode_i_64(deserializer);
     return PeerWithStats(
       peerId: var_peerId,
       displayName: var_displayName,
@@ -1440,7 +1440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: var_nickname,
       localNickname: var_localNickname,
       dmCount: var_dmCount,
-      broadcastReceived: var_broadcastReceived,
+      broadcastSentToPeer: var_broadcastSentToPeer,
     );
   }
 
@@ -1714,7 +1714,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.nickname, serializer);
     sse_encode_opt_String(self.localNickname, serializer);
     sse_encode_i_64(self.dmCount, serializer);
-    sse_encode_i_64(self.broadcastReceived, serializer);
+    sse_encode_i_64(self.broadcastSentToPeer, serializer);
   }
 
   @protected

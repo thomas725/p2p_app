@@ -81,7 +81,7 @@ pub struct PeerWithStats {
     pub nickname: Option<String>,
     pub local_nickname: Option<String>,
     pub dm_count: i64,
-    pub broadcast_received: i64,
+    pub broadcast_sent_to_peer: i64,
 }
 
 /// Load all known peers and their message statistics in a single round trip.
@@ -107,7 +107,7 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
             nickname: p.nickname,
             local_nickname: p.local_nickname,
             dm_count: stats.map_or(0, |s| s.dm_count),
-            broadcast_received: stats.map_or(0, |s| s.broadcast_received),
+            broadcast_sent_to_peer: stats.map_or(0, |s| s.broadcast_sent_to_peer),
         });
     }
     Ok(rows)
@@ -513,14 +513,14 @@ mod tests {
         crate::save_peer(peer_id, &[]).expect("save peer");
         crate::set_peer_received_nickname(peer_id, "Announced").expect("set received nick");
         crate::set_peer_local_nickname(peer_id, "Local").expect("set local nick");
-        crate::save_message("hello", Some(peer_id), crate::CHAT_TOPIC, false, None)
-            .expect("save broadcast");
         crate::save_message("dm", Some(peer_id), "dm-topic", true, Some("me")).expect("save dm");
+        crate::peers::record_broadcast_recipients("b1", &[peer_id.to_string()])
+            .expect("record recipient");
 
         let rows = get_peers_with_stats().expect("peers with stats");
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].peer_id, peer_id);
-        assert_eq!(rows[0].broadcast_received, 1);
+        assert_eq!(rows[0].broadcast_sent_to_peer, 1);
         assert_eq!(rows[0].dm_count, 1);
         assert_eq!(rows[0].nickname.as_deref(), Some("Announced"));
         assert_eq!(rows[0].local_nickname.as_deref(), Some("Local"));

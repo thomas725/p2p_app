@@ -50,17 +50,17 @@ void main() {
       '${Directory.current.path}/lib/src/rust/messages.dart',
     ).readAsStringSync();
 
-    test('field set matches the Rust struct (no broadcastSent, no rename)', () {
-      // The Rust struct is `dm_count` (Dart `dmCount`) + `broadcast_received`
-      // (Dart `broadcastReceived`). Assert the Dart mirror declares exactly
-      // those two data fields and never regains the removed outbound
-      // `broadcastSent`.
+    test('field set matches the Rust struct (dmCount + broadcastSentToPeer)', () {
+      // The Rust struct is `dm_count` (Dart `dmCount`) + `broadcast_sent_to_peer`
+      // (Dart `broadcastSentToPeer`). Assert the Dart mirror declares exactly
+      // those two data fields (no old `broadcastReceived` name, no drift).
       final declared = RegExp(r'final\s+\w+\s+(\w+);')
           .allMatches(orphanSource)
           .map((m) => m.group(1)!)
           .toSet();
-      expect(declared, {'dmCount', 'broadcastReceived'});
-      expect(orphanSource.contains('broadcastSent'), isFalse);
+      expect(declared, {'dmCount', 'broadcastSentToPeer'});
+      expect(orphanSource.contains('broadcastReceived'), isFalse);
+      expect(orphanSource.contains('broadcastSent;'), isFalse);
     });
   });
 }

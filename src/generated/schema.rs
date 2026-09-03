@@ -60,7 +60,6 @@ diesel::table! {
         self_nickname_for_peer -> Nullable<Text>,
         received_nickname -> Nullable<Text>,
         generated_nickname -> Nullable<Text>,
-        broadcasts_sent -> Integer,
     }
 }
 
@@ -78,7 +77,23 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: records, per broadcast *we* sent, which peers we transmitted
+// it to and (once they acknowledge) when they confirmed receipt. Drives the
+// "Broadcast" (broadcasts sent-to-peer) counter in both frontends' peer tables,
+// replacing the dormant `peers.broadcasts_sent` aggregate. Lives here (not the
+// migrations-only model) so diesel can query it and FRB ignores this module.
+diesel::table! {
+    broadcast_recipients (id) {
+        id -> Integer,
+        msg_id -> Text,
+        peer_id -> Text,
+        sent_at -> Double,
+        confirmed_at -> Nullable<Double>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
+    broadcast_recipients,
     identities,
     message_receipts,
     messages,

@@ -30,22 +30,20 @@ fn peer_table_sorts_by_active_column_like_flutter() {
         VecDeque::from(["x".to_string(), "y".to_string()]),
     ); // 2 dms
     dm.insert("b".to_string(), VecDeque::from(["z".to_string()])); // 1 dm
-    let msgs: VecDeque<Option<String>> = VecDeque::from([
-        Some("a".to_string()),
-        Some("a".to_string()),
-        Some("c".to_string()),
-    ]);
+    // Broadcasts *we sent to* each peer: a=2, c=1.
+    let broadcast_sent: HashMap<String, usize> =
+        HashMap::from([("a".to_string(), 2), ("c".to_string(), 1)]);
 
     // Default Flutter sort: Last Seen, descending -> c(02), a(03)? a=03 is latest.
     // last_seen desc: a(03) > c(02) > b(01)
-    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 3, false);
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &broadcast_sent, 3, false);
     assert_eq!(
         rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
         vec!["a", "c", "b"]
     );
 
     // DM count ascending: b(1) < a(2) < c(0)
-    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 1, true);
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &broadcast_sent, 1, true);
     assert_eq!(
         rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
         vec!["c", "b", "a"]
@@ -54,8 +52,8 @@ fn peer_table_sorts_by_active_column_like_flutter() {
     assert_eq!(rows[1].dm_count, 1);
     assert_eq!(rows[2].dm_count, 2);
 
-    // Broadcast count: a=2, c=1, b=0
-    let rows = sort_peers_table(peers.as_slices().0, &dm, &msgs, 2, false);
+    // Broadcast count sent-to: a=2, c=1, b=0
+    let rows = sort_peers_table(peers.as_slices().0, &dm, &broadcast_sent, 2, false);
     assert_eq!(
         rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
         vec!["a", "c", "b"]
@@ -89,16 +87,16 @@ fn peer_table_sorts_by_first_seen_column() {
     .into_iter()
     .collect::<Vec<_>>();
     let dm: HashMap<String, VecDeque<String>> = HashMap::new();
-    let msgs: VecDeque<Option<String>> = VecDeque::new();
+    let broadcast_sent: HashMap<String, usize> = HashMap::new();
 
     // First Seen descending: b(03) > c(02) > a(01).
-    let rows = sort_peers_table(&peers, &dm, &msgs, 4, false);
+    let rows = sort_peers_table(&peers, &dm, &broadcast_sent, 4, false);
     assert_eq!(
         rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
         vec!["b", "c", "a"]
     );
     // Ascending reverses.
-    let rows = sort_peers_table(&peers, &dm, &msgs, 4, true);
+    let rows = sort_peers_table(&peers, &dm, &broadcast_sent, 4, true);
     assert_eq!(
         rows.iter().map(|r| r.peer_id.as_str()).collect::<Vec<_>>(),
         vec!["a", "c", "b"]
@@ -156,9 +154,9 @@ fn sort_peers_by_column_keeps_every_peer_when_deque_wraps() {
     assert!(!peers.as_slices().1.is_empty(), "expected a wrapped deque");
 
     let dm: HashMap<String, VecDeque<String>> = HashMap::new();
-    let empty: VecDeque<Option<String>> = VecDeque::new();
+    let broadcast_sent: HashMap<String, usize> = HashMap::new();
     // Last Seen descending: peer-8 (00:08) first, peer-1 (00:01) last.
-    let selected = sort_peers_by_column(&mut peers, &dm, &empty, 3, false, 0);
+    let selected = sort_peers_by_column(&mut peers, &dm, &broadcast_sent, 3, false, 0);
     let ids: Vec<String> = peers.iter().map(|p| p.peer_id.clone()).collect();
     assert_eq!(
         ids,
@@ -390,14 +388,12 @@ fn peer_table_rows_range_builds_only_visible_slice() {
         "c".to_string(),
         VecDeque::from(["y".to_string(), "z".to_string()]),
     ); // 2 dms
-    let msgs: VecDeque<Option<String>> = VecDeque::from([
-        Some("b".to_string()),
-        Some("b".to_string()),
-        Some("d".to_string()),
-    ]);
+    // Broadcasts *we sent*: b received 2, d received 1.
+    let broadcast_sent: HashMap<String, usize> =
+        HashMap::from([("b".to_string(), 2), ("d".to_string(), 1)]);
 
     // Only rows inside `[1, 3)` are materialized (b and c).
-    let rows = peer_table_rows_range(&peers, &dm, &msgs, 1, 3);
+    let rows = peer_table_rows_range(&peers, &dm, &broadcast_sent, 1, 3);
     let ids: Vec<&str> = rows.iter().map(|r| r.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["b", "c"]);
     assert_eq!(rows[0].dm_count, 1);
@@ -426,15 +422,15 @@ fn peer_table_rows_range_clamps_and_empties() {
     .into_iter()
     .collect::<Vec<_>>();
     let dm: HashMap<String, VecDeque<String>> = HashMap::new();
-    let empty: VecDeque<Option<String>> = VecDeque::new();
+    let broadcast_sent: HashMap<String, usize> = HashMap::new();
 
     // An empty window yields no rows.
-    assert!(peer_table_rows_range(&peers, &dm, &empty, 1, 1).is_empty());
+    assert!(peer_table_rows_range(&peers, &dm, &broadcast_sent, 1, 1).is_empty());
     // `start` past the end yields no rows (no panics on the slice bounds).
-    assert!(peer_table_rows_range(&peers, &dm, &empty, 5, 9).is_empty());
+    assert!(peer_table_rows_range(&peers, &dm, &broadcast_sent, 5, 9).is_empty());
     // `end` past the end clamps to the list length.
     assert_eq!(
-        peer_table_rows_range(&peers, &dm, &empty, 1, 99)
+        peer_table_rows_range(&peers, &dm, &broadcast_sent, 1, 99)
             .iter()
             .map(|r| r.peer_id.as_str())
             .collect::<Vec<_>>(),
@@ -467,11 +463,11 @@ fn peer_table_rows_range_matches_full_scan() {
     .into_iter()
     .collect::<Vec<_>>();
     let dm: HashMap<String, VecDeque<String>> = HashMap::new();
-    let msgs: VecDeque<Option<String>> =
-        VecDeque::from([Some("a".to_string()), Some("c".to_string())]);
+    let broadcast_sent: HashMap<String, usize> =
+        HashMap::from([("a".to_string(), 1), ("c".to_string(), 1)]);
 
-    let full = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
-    let windowed = peer_table_rows_range(&peers, &dm, &msgs, 0, peers.len());
+    let full = peer_table_rows_range(&peers, &dm, &broadcast_sent, 0, peers.len());
+    let windowed = peer_table_rows_range(&peers, &dm, &broadcast_sent, 0, peers.len());
     let ids: Vec<&str> = windowed.iter().map(|r| r.peer_id.as_str()).collect();
     assert_eq!(ids, vec!["a", "b", "c"]);
     assert_eq!(

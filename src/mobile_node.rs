@@ -432,7 +432,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
             let _ = tx.blocking_send(SwarmCommand::Publish {
                 content,
                 nickname,
-                msg_id: Some(msg_id),
+                msg_id: Some(msg_id.clone()),
             });
         }
     }
@@ -447,7 +447,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
         .map(|t| t.connected_peer_ids().map(str::to_owned).collect())
         .unwrap_or_default();
     if !connected.is_empty() {
-        let _ = crate::peers::record_broadcasts_sent(&connected);
+        let _ = crate::peers::record_broadcast_recipients(&msg_id, &connected);
     }
 
     Ok(chat)

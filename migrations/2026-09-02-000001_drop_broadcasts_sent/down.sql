@@ -1,0 +1,1 @@
+ALTER TABLE peers ADD COLUMN broadcasts_sent INTEGER NOT NULL DEFAULT 0;

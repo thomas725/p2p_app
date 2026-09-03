@@ -188,7 +188,7 @@ fn test_peer_header_click_maps_each_column() {
     // every column because moving the sort indicator to the clicked column
     // widens it and shifts the following columns.
     for i in 0..4 {
-        let sender_ids = std::collections::VecDeque::new();
+        let sender_ids = std::collections::HashMap::new();
         let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
         let rows = p2p_app::tui_helpers::peer_table_rows_range(
             &peers,
