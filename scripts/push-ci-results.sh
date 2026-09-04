@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
 # Push `.github/ci-results/` to a dedicated results branch (default: ci-results).
 #
-# Called from `.github/workflows/dependencies.yml`. Never touches `main`: CI findings
-# are written to this auto-generated branch as a rolling "latest run" record
-# (overwritten, not appended). Safe to force-push because the branch is
-# machine-generated; nobody should branch work off it.
+# Called from `.github/workflows/dependencies.yml` and `.github/workflows/main.yml`.
+# Never touches `main`: CI findings are written to this auto-generated branch as a
+# rolling "latest run" record (overwritten, not appended). Safe to force-push because
+# the branch is machine-generated; nobody should branch work off it.
+#
+# GitHub Actions runners have no git identity configured, so every commit passes an
+# explicit `-c user.name/-c user.email` on the command line; this works even when the
+# runner's git config has no global identity.
 #
 # Usage: push-ci-results.sh [branch]
 set -euo pipefail
 
 BRANCH="${1:-ci-results}"
 RESULTS_DIR=".github/ci-results"
+
+# Inline identity for every git commit (runner has no default identity).
+IDENT=( -c user.name="CI Pipeline" -c user.email="ci-pipeline@users.noreply.github.com" )
 
 # Nothing produced on this run? Nothing to push. Logs still surface in the Actions
 # UI, so a missing dir is not an error.
@@ -31,7 +38,8 @@ if git ls-remote --heads "origin" "$BRANCH" | grep -q "$BRANCH"; then
 else
   # Branch does not exist yet: seed it empty so the results are the first commit.
   git worktree add --detach "$WORKTREE" HEAD
-  git -C "$WORKTREE" read-tree --empty && git -C "$WORKTREE" commit --allow-empty -m "init ci-results branch" >/dev/null
+  git "${IDENT[@]}" -C "$WORKTREE" read-tree --empty \
+    && git "${IDENT[@]}" -C "$WORKTREE" commit --allow-empty -m "init ci-results branch" >/dev/null
 fi
 cd "$WORKTREE"
 
@@ -40,12 +48,9 @@ rm -rf "$RESULTS_DIR"
 mkdir -p "$RESULTS_DIR"
 cp -R "$OLDPWD/$RESULTS_DIR/." "$RESULTS_DIR/"
 
-git config user.email "ci-pipeline@users.noreply.github.com"
-git config user.name "CI Pipeline"
-
 git add "$RESULTS_DIR"
 if ! git diff --cached --quiet; then
-  git commit -q -m "ci: dependency check results (${GITHUB_RUN_ID:-unknown run})"
+  git "${IDENT[@]}" commit -q -m "ci: dependency check results (${GITHUB_RUN_ID:-unknown run})"
 else
   echo "No changes to commit on $BRANCH."
   exit 0

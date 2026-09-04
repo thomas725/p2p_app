@@ -191,4 +191,3 @@ jobs:
         run: |
           set -e
           ./scripts/push-ci-results.sh
-        continue-on-error: true
