@@ -9,6 +9,10 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  # Needed to push the dedicated ci-results results branch (never main).
+  contents: write
+
 jobs:
   check-dependencies:
     name: Check Dependency Updates
@@ -43,11 +47,12 @@ jobs:
           cargo install cargo-audit --locked 2>&1 | tee .github/ci-results/audit-install.log || true
           cargo audit 2>&1 | tee .github/ci-results/audit.log
 
-      # Upload results as an artifact tied to this run (never commit logs into main).
-      - name: Upload dependency check results
+      # Push results to a dedicated `ci-results` branch (never `main`). Force-push makes it a
+      # rolling "latest run" record; this branch is auto-generated, so overwriting it is safe.
+      # Auth comes from actions/checkout's persisted credentials on the `origin` remote.
+      - name: Push dependency check results to ci-results branch
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-check-results
-          path: .github/ci-results/
-          if-no-files-found: ignore
+        run: |
+          set -e
+          BRANCH=ci-results
+          ./scripts/push-ci-results.sh "$BRANCH"
