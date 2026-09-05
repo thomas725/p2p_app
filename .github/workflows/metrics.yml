@@ -22,15 +22,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Skip the heavy tasks (tarpaulin + Flutter + Kotlin coverage, ~13 min) when
+      # nothing new landed on the default branch since this workflow last succeeded.
+      # Commits authored by the CI pipeline itself are ignored, so our own metrics
+      # push to main does not count as new work. Manual workflow_dispatch always
+      # forces a full run.
+      - name: Check for new human commits since last run
+        id: skip-check
+        run: scripts/ci-skip-no-new-commits.sh metrics.yml
+
       - name: Install Rust toolchain
+        if: steps.skip-check.outputs.skip != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
 
       - name: Setup Rust cache
+        if: steps.skip-check.outputs.skip != 'true'
         uses: Swatinem/rust-cache@v2
 
       - name: Install system dependencies
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -42,17 +54,20 @@ jobs:
       # ============================================================
 
       - name: Install cargo-tarpaulin
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           cargo install cargo-tarpaulin 2>&1 | tee .github/ci-logs/coverage-install.log || true
         continue-on-error: true
 
       - name: Setup Flutter
+        if: steps.skip-check.outputs.skip != 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
         continue-on-error: true
 
       - name: Run Rust code coverage analysis
+        if: steps.skip-check.outputs.skip != 'true'
         env:
           CARGO_BUILD_JOBS: 2
         run: |
@@ -68,6 +83,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Dart tests with coverage
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           set +e
           flutter test --coverage 2>&1 | tee .github/ci-logs/dart-coverage.log
@@ -79,6 +95,7 @@ jobs:
         continue-on-error: true
 
       - name: Run Kotlin tests with coverage
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           set +e
           ./gradlew :app:testDebugUnitTest :app:testDebugUnitTestJacocoReport \
@@ -91,6 +108,7 @@ jobs:
         continue-on-error: true
 
       - name: Generate codebase metrics
+        if: steps.skip-check.outputs.skip != 'true'
         run: |
           set +e
           COVERAGE_FLAGS=""
@@ -114,7 +132,7 @@ jobs:
       # ============================================================
 
       - name: Commit coverage and metrics to main
-        if: always()
+        if: always() && steps.skip-check.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
