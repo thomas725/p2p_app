@@ -1,2 +1,0 @@
--- is_direct and target_peer columns are already present in messages table
--- This migration is a no-op

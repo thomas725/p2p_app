@@ -1,2 +1,0 @@
--- Column already added via ensure_columns() in db.rs for fresh installs.
--- Migration kept for reference but is now a no-op.

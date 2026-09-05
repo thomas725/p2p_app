@@ -1,7 +1,0 @@
-=== CI WORKFLOW FAILURE REPORT ===
-Run ID: 24748332307
-Commit: 2698e0e3f2f43b4c6fa9cedc0db772354849c0ad
-Event: push
-
-=== PREVIOUS TEST OUTPUT (last 50 lines) ===
-No test output captured
