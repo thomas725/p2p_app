@@ -1,0 +1,395 @@
+============================================================
+Dependency Check Results
+============================================================
+
+Timestamp: 2026-08-30 07:57:00 UTC
+Commit: f587198bd7f5a705ea2cd44fe5e6f492d2446092
+Branch: refs/heads/main
+Run ID: 33300373878
+
+============================================================
+Outdated Dependencies (cargo outdated)
+============================================================
+
+Name                                             Project                        Compat   Latest   Kind         Platform
+----                                             -------                        ------   ------   ----         --------
+base256emoji->match-lookup                       0.1.2                          0.1.3    0.1.3    Normal       ---
+block-buffer->generic-array                      0.14.7                         ---      Removed  Normal       ---
+bs58->tinyvec                                    1.12.0                         ---      Removed  Normal       ---
+bytes->serde                                     1.0.229                        ---      Removed  Normal       ---
+cfb->uuid                                        1.25.0                         1.26.0   1.26.0   Normal       ---
+chacha20->cpufeatures                            0.3.0                          0.3.1    0.3.1    Normal       cfg(any(target_arch = "x86_64", target_arch = "x86"))
+color-eyre->owo-colors                           4.3.0                          4.4.0    4.4.0    Normal       ---
+color-spantrace->owo-colors                      4.3.0                          4.4.0    4.4.0    Normal       ---
+const-serialize->const-serialize                 0.7.2                          Removed  Removed  Normal       ---
+const-serialize->const-serialize-macro           0.7.2                          Removed  Removed  Normal       ---
+const-serialize->const-serialize-macro           0.8.0-alpha.1                  0.7.2    0.7.2    Normal       ---
+const-serialize->serde                           1.0.229                        Removed  Removed  Normal       ---
+const-serialize-macro->proc-macro2               1.0.107                        Removed  Removed  Normal       ---
+const-serialize-macro->quote                     1.0.47                         Removed  Removed  Normal       ---
+const-serialize-macro->syn                       2.0.119                        Removed  Removed  Normal       ---
+cpufeatures->libc                                0.2.189                        ---      Removed  Normal       aarch64-linux-android
+crypto-common->generic-array                     0.14.7                         ---      Removed  Normal       ---
+crypto-common->rand_core                         0.6.4                          ---      Removed  Normal       ---
+crypto-common->typenum                           1.20.1                         ---      Removed  Normal       ---
+curve25519-dalek->cfg-if                         1.0.4                          ---      Removed  Normal       ---
+curve25519-dalek->cpufeatures                    0.2.17                         ---      Removed  Normal       cfg(target_arch = "x86_64")
+curve25519-dalek->curve25519-dalek-derive        0.1.1                          ---      Removed  Normal       cfg(all(not(curve25519_dalek_backend = "fiat"), not(curve25519_dalek_backend = "serial"), target_arch = "x86_64"))
+curve25519-dalek->digest                         0.10.7                         ---      Removed  Normal       ---
+curve25519-dalek->fiat-crypto                    0.2.9                          ---      Removed  Normal       cfg(curve25519_dalek_backend = "fiat")
+curve25519-dalek->rustc_version                  0.4.1                          ---      Removed  Build        ---
+curve25519-dalek->subtle                         2.6.1                          ---      Removed  Normal       ---
+curve25519-dalek->zeroize                        1.9.0                          ---      Removed  Normal       ---
+curve25519-dalek-derive->proc-macro2             1.0.107                        ---      Removed  Normal       ---
+curve25519-dalek-derive->quote                   1.0.47                         ---      Removed  Normal       ---
+curve25519-dalek-derive->syn                     2.0.119                        ---      Removed  Normal       ---
+der->const-oid                                   0.9.6                          ---      Removed  Normal       ---
+der->zeroize                                     1.9.0                          ---      Removed  Normal       ---
+diesel->libsqlite3-sys                           0.36.0                         ---      0.38.2   Normal       cfg(not(all(target_family = "wasm", target_os = "unknown")))
+digest->block-buffer                             0.10.4                         ---      Removed  Normal       ---
+digest->crypto-common                            0.1.7                          ---      Removed  Normal       ---
+digest->subtle                                   2.6.1                          ---      Removed  Normal       ---
+ed25519->pkcs8                                   0.10.2                         ---      Removed  Normal       ---
+ed25519->signature                               2.2.0                          ---      Removed  Normal       ---
+ed25519-dalek->curve25519-dalek                  4.1.3                          ---      Removed  Normal       ---
+ed25519-dalek->ed25519                           2.2.3                          ---      Removed  Normal       ---
+ed25519-dalek->serde                             1.0.229                        ---      Removed  Normal       ---
+ed25519-dalek->sha2                              0.10.9                         ---      Removed  Normal       ---
+ed25519-dalek->subtle                            2.6.1                          ---      Removed  Normal       ---
+ed25519-dalek->zeroize                           1.9.0                          ---      Removed  Normal       ---
+flate2->miniz_oxide                              0.8.9                          0.9.1    0.9.1    Normal       ---
+flutter_rust_bridge                              2.12.0                         ---      2.13.0   Normal       ---
+flutter_rust_bridge->flutter_rust_bridge_macros  2.12.0                         ---      2.13.0   Normal       ---
+futures-channel->futures-core                    0.3.34                         ---      Removed  Normal       ---
+futures-channel->futures-core                    0.3.34                         Removed  Removed  Normal       ---
+futures-channel->futures-sink                    0.3.34                         ---      Removed  Normal       ---
+futures-channel->futures-sink                    0.3.34                         Removed  Removed  Normal       ---
+futures-macro->proc-macro2                       1.0.107                        ---      Removed  Normal       ---
+futures-macro->proc-macro2                       1.0.107                        Removed  Removed  Normal       ---
+futures-macro->quote                             1.0.47                         ---      Removed  Normal       ---
+futures-macro->quote                             1.0.47                         Removed  Removed  Normal       ---
+futures-macro->syn                               3.0.4                          ---      Removed  Normal       ---
+futures-macro->syn                               3.0.4                          Removed  Removed  Normal       ---
+futures-util->futures-channel                    0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-channel                    0.3.34                         Removed  Removed  Normal       ---
+futures-util->futures-core                       0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-core                       0.3.34                         Removed  Removed  Normal       ---
+futures-util->futures-io                         0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-io                         0.3.34                         Removed  Removed  Normal       ---
+futures-util->futures-macro                      0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-macro                      0.3.34                         Removed  Removed  Normal       ---
+futures-util->futures-sink                       0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-sink                       0.3.34                         Removed  Removed  Normal       ---
+futures-util->futures-task                       0.3.34                         ---      Removed  Normal       ---
+futures-util->futures-task                       0.3.34                         Removed  Removed  Normal       ---
+futures-util->memchr                             2.8.3                          ---      Removed  Normal       ---
+futures-util->memchr                             2.8.3                          Removed  Removed  Normal       ---
+futures-util->pin-project-lite                   0.2.17                         ---      Removed  Normal       ---
+futures-util->pin-project-lite                   0.2.17                         Removed  Removed  Normal       ---
+futures-util->slab                               0.4.12                         ---      Removed  Normal       ---
+futures-util->slab                               0.4.12                         Removed  Removed  Normal       ---
+generic-array->typenum                           1.20.1                         ---      Removed  Normal       ---
+generic-array->version_check                     0.9.5                          ---      Removed  Build        ---
+getrandom->cfg-if                                1.0.4                          ---      Removed  Normal       ---
+getrandom->js-sys                                0.3.104                        ---      Removed  Normal       cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))
+getrandom->js-sys                                0.3.104                        Removed  Removed  Normal       cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))
+getrandom->libc                                  0.2.189                        ---      Removed  Normal       cfg(unix)
+getrandom->wasi                                  0.11.1+wasi-snapshot-preview1  ---      Removed  Normal       cfg(target_os = "wasi")
+getrandom->wasi                                  0.11.1+wasi-snapshot-preview1  Removed  Removed  Normal       cfg(target_os = "wasi")
+getrandom->wasm-bindgen                          0.2.127                        ---      Removed  Normal       cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))
+getrandom->wasm-bindgen                          0.2.127                        Removed  Removed  Normal       cfg(all(any(target_arch = "wasm32", target_arch = "wasm64"), target_os = "unknown"))
+h2->indexmap                                     2.14.0                         2.14.1   2.14.1   Normal       ---
+hkdf->hmac                                       0.12.1                         ---      Removed  Normal       ---
+hmac->digest                                     0.10.7                         ---      Removed  Normal       ---
+hyper-util->hyper                                1.11.0                         1.11.1   1.11.1   Normal       ---
+igd-next->hyper                                  1.11.0                         1.11.1   1.11.1   Normal       ---
+itertools->either                                1.18.0                         ---      Removed  Normal       ---
+jni->combine                                     4.6.7                          4.6.8    4.6.8    Normal       ---
+js-sys->cfg-if                                   1.0.4                          ---      Removed  Normal       ---
+js-sys->cfg-if                                   1.0.4                          Removed  Removed  Normal       ---
+js-sys->futures-util                             0.3.34                         ---      Removed  Normal       ---
+js-sys->futures-util                             0.3.34                         Removed  Removed  Normal       ---
+js-sys->wasm-bindgen                             0.2.127                        ---      Removed  Normal       ---
+js-sys->wasm-bindgen                             0.2.127                        Removed  Removed  Normal       ---
+kuchikiki->indexmap                              2.14.0                         2.14.1   2.14.1   Normal       ---
+libp2p-core->rand                                0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-gossipsub->rand                           0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-identity                                  0.2.14                         ---      0.3.0    Normal       ---
+libp2p-identity->bs58                            0.5.1                          ---      Removed  Normal       ---
+libp2p-identity->ed25519-dalek                   2.2.0                          ---      Removed  Normal       ---
+libp2p-identity->hkdf                            0.12.4                         ---      Removed  Normal       ---
+libp2p-identity->multihash                       0.19.5                         ---      Removed  Normal       ---
+libp2p-identity->prost                           0.14.4                         ---      Removed  Normal       ---
+libp2p-identity->rand                            0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-identity->rand                            0.8.7                          0.8.8    Removed  Normal       ---
+libp2p-identity->serde                           1.0.229                        ---      Removed  Normal       ---
+libp2p-identity->sha2                            0.10.9                         ---      Removed  Normal       ---
+libp2p-identity->thiserror                       2.0.20                         ---      Removed  Normal       ---
+libp2p-identity->zeroize                         1.9.0                          ---      Removed  Normal       ---
+libp2p-kad->rand                                 0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-mdns->rand                                0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-noise->rand                               0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-ping->rand                                0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-quic->rand                                0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-request-response->rand                    0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-swarm->rand                               0.8.7                          0.8.8    0.8.8    Normal       ---
+libp2p-yamux->yamux                              0.12.1                         0.13.10  0.13.10  Normal       ---
+libsqlite3-sys                                   0.36.0                         ---      0.38.2   Normal       ---
+loop9->imgref                                    1.12.2                         1.12.3   1.12.3   Normal       ---
+manganis->const-serialize                        0.8.0-alpha.0                  0.7.2    0.7.2    Normal       ---
+manganis-core->const-serialize                   0.8.0-alpha.0                  0.7.2    0.7.2    Normal       ---
+moka->uuid                                       1.25.0                         1.26.0   1.26.0   Normal       ---
+multihash->serde                                 1.0.229                        ---      Removed  Normal       ---
+multihash->unsigned-varint                       0.8.0                          ---      Removed  Normal       ---
+once_cell->critical-section                      1.2.0                          ---      Removed  Normal       ---
+once_cell->critical-section                      1.2.0                          Removed  Removed  Normal       ---
+once_cell->portable-atomic                       1.15.0                         ---      Removed  Normal       ---
+once_cell->portable-atomic                       1.15.0                         Removed  Removed  Normal       ---
+phf_generator->rand                              0.8.7                          0.8.8    0.8.8    Normal       ---
+pkcs8->der                                       0.7.10                         ---      Removed  Normal       ---
+pkcs8->spki                                      0.7.3                          ---      Removed  Normal       ---
+png->flate2                                      1.1.9                          1.1.10   1.1.10   Normal       ---
+ppv-lite86->zerocopy                             0.8.56                         ---      Removed  Normal       ---
+proc-macro2->unicode-ident                       1.0.24                         ---      Removed  Normal       ---
+proc-macro2->unicode-ident                       1.0.24                         Removed  Removed  Normal       ---
+prost->bytes                                     1.12.1                         ---      Removed  Normal       ---
+prost->prost-derive                              0.14.4                         ---      Removed  Normal       ---
+prost-derive->anyhow                             1.0.104                        ---      Removed  Normal       ---
+prost-derive->itertools                          0.14.0                         ---      Removed  Normal       ---
+prost-derive->proc-macro2                        1.0.107                        ---      Removed  Normal       ---
+prost-derive->quote                              1.0.47                         ---      Removed  Normal       ---
+prost-derive->syn                                2.0.119                        ---      Removed  Normal       ---
+quote->proc-macro2                               1.0.107                        ---      Removed  Normal       ---
+quote->proc-macro2                               1.0.107                        Removed  Removed  Normal       ---
+rand->chacha20                                   0.10.1                         0.10.2   0.10.2   Normal       ---
+rand->libc                                       0.2.189                        ---      Removed  Normal       cfg(unix)
+rand->libc                                       0.2.189                        Removed  Removed  Normal       cfg(unix)
+rand->rand_chacha                                0.3.1                          ---      Removed  Normal       ---
+rand->rand_chacha                                0.3.1                          0.9.0    0.9.0    Normal       ---
+rand->rand_core                                  0.6.4                          ---      Removed  Normal       ---
+rand->rand_core                                  0.6.4                          0.9.5    0.9.5    Normal       ---
+rand_chacha->ppv-lite86                          0.2.21                         ---      Removed  Normal       ---
+rand_chacha->rand_core                           0.6.4                          ---      Removed  Normal       ---
+rand_chacha->rand_core                           0.6.4                          0.9.5    0.9.5    Normal       ---
+rand_core->getrandom                             0.2.17                         ---      Removed  Normal       ---
+rand_core->getrandom                             0.2.17                         0.3.4    0.3.4    Normal       ---
+ratatui-core->lru                                0.18.2                         0.18.3   0.18.3   Normal       ---
+ravif->imgref                                    1.12.2                         1.12.3   1.12.3   Normal       ---
+redox_users->libredox                            0.1.20                         0.1.21   0.1.21   Normal       ---
+rustc_version->semver                            1.0.28                         ---      Removed  Normal       ---
+serde->serde_core                                1.0.229                        ---      Removed  Normal       ---
+serde->serde_core                                1.0.229                        Removed  Removed  Normal       ---
+serde->serde_derive                              1.0.229                        ---      Removed  Normal       ---
+serde->serde_derive                              1.0.229                        Removed  Removed  Normal       ---
+serde_core->serde_derive                         1.0.229                        ---      Removed  Development  ---
+serde_core->serde_derive                         1.0.229                        Removed  Removed  Development  ---
+serde_derive->proc-macro2                        1.0.107                        ---      Removed  Normal       ---
+serde_derive->proc-macro2                        1.0.107                        Removed  Removed  Normal       ---
+serde_derive->quote                              1.0.47                         ---      Removed  Normal       ---
+serde_derive->quote                              1.0.47                         Removed  Removed  Normal       ---
+serde_derive->syn                                3.0.4                          ---      Removed  Normal       ---
+serde_derive->syn                                3.0.4                          Removed  Removed  Normal       ---
+serial_test                                      3.5.0                          ---      4.0.1    Development  ---
+serial_test->serial_test_derive                  3.5.0                          ---      4.0.1    Normal       ---
+serial_test_derive->syn                          2.0.119                        ---      3.0.4    Normal       ---
+sha2->cfg-if                                     1.0.4                          ---      Removed  Normal       ---
+sha2->cpufeatures                                0.2.17                         ---      Removed  Normal       cfg(any(target_arch = "aarch64", target_arch = "x86_64", target_arch = "x86"))
+sha2->digest                                     0.10.7                         ---      Removed  Normal       ---
+signature->rand_core                             0.6.4                          ---      Removed  Normal       ---
+spki->base64ct                                   1.8.3                          ---      Removed  Normal       ---
+spki->der                                        0.7.10                         ---      Removed  Normal       ---
+syn->proc-macro2                                 1.0.107                        ---      Removed  Normal       ---
+syn->proc-macro2                                 1.0.107                        Removed  Removed  Normal       ---
+syn->quote                                       1.0.47                         ---      Removed  Normal       ---
+syn->quote                                       1.0.47                         Removed  Removed  Normal       ---
+syn->unicode-ident                               1.0.24                         ---      Removed  Normal       ---
+syn->unicode-ident                               1.0.24                         Removed  Removed  Normal       ---
+tao->raw-window-handle                           0.6.2                          0.5.2    0.5.2    Normal       ---
+thiserror->thiserror-impl                        2.0.20                         ---      Removed  Normal       ---
+thiserror-impl->proc-macro2                      1.0.107                        ---      Removed  Normal       ---
+thiserror-impl->quote                            1.0.47                         ---      Removed  Normal       ---
+thiserror-impl->syn                              3.0.4                          ---      Removed  Normal       ---
+tiff->flate2                                     1.1.9                          1.1.10   1.1.10   Normal       ---
+tinyvec->tinyvec_macros                          0.1.1                          ---      Removed  Normal       ---
+toml_edit->indexmap                              2.14.0                         2.14.1   2.14.1   Normal       ---
+wasm-bindgen->cfg-if                             1.0.4                          ---      Removed  Normal       ---
+wasm-bindgen->cfg-if                             1.0.4                          Removed  Removed  Normal       ---
+wasm-bindgen->once_cell                          1.21.4                         ---      Removed  Normal       ---
+wasm-bindgen->once_cell                          1.21.4                         Removed  Removed  Normal       ---
+wasm-bindgen->rustversion                        1.0.23                         ---      Removed  Build        ---
+wasm-bindgen->rustversion                        1.0.23                         Removed  Removed  Build        ---
+wasm-bindgen->wasm-bindgen-macro                 0.2.127                        ---      Removed  Normal       ---
+wasm-bindgen->wasm-bindgen-macro                 0.2.127                        Removed  Removed  Normal       ---
+wasm-bindgen->wasm-bindgen-shared                0.2.127                        ---      Removed  Normal       ---
+wasm-bindgen->wasm-bindgen-shared                0.2.127                        Removed  Removed  Normal       ---
+wasm-bindgen-macro->quote                        1.0.47                         ---      Removed  Normal       ---
+wasm-bindgen-macro->quote                        1.0.47                         Removed  Removed  Normal       ---
+wasm-bindgen-macro->wasm-bindgen-macro-support   0.2.127                        ---      Removed  Normal       ---
+wasm-bindgen-macro->wasm-bindgen-macro-support   0.2.127                        Removed  Removed  Normal       ---
+wasm-bindgen-macro-support->bumpalo              3.20.3                         ---      Removed  Normal       ---
+wasm-bindgen-macro-support->bumpalo              3.20.3                         Removed  Removed  Normal       ---
+wasm-bindgen-macro-support->proc-macro2          1.0.107                        ---      Removed  Normal       ---
+wasm-bindgen-macro-support->proc-macro2          1.0.107                        Removed  Removed  Normal       ---
+wasm-bindgen-macro-support->quote                1.0.47                         ---      Removed  Normal       ---
+wasm-bindgen-macro-support->quote                1.0.47                         Removed  Removed  Normal       ---
+wasm-bindgen-macro-support->syn                  2.0.119                        ---      Removed  Normal       ---
+wasm-bindgen-macro-support->syn                  2.0.119                        Removed  Removed  Normal       ---
+wasm-bindgen-macro-support->wasm-bindgen-shared  0.2.127                        ---      Removed  Normal       ---
+wasm-bindgen-macro-support->wasm-bindgen-shared  0.2.127                        Removed  Removed  Normal       ---
+wasm-bindgen-shared->unicode-ident               1.0.24                         ---      Removed  Normal       ---
+wasm-bindgen-shared->unicode-ident               1.0.24                         Removed  Removed  Normal       ---
+wezterm-blob-leases->uuid                        1.25.0                         1.26.0   1.26.0   Normal       ---
+yamux->rand                                      0.8.7                          0.9.5    0.9.5    Normal       ---
+zerocopy->zerocopy-derive                        0.8.56                         ---      Removed  Normal       ---
+zerocopy-derive->proc-macro2                     1.0.107                        ---      Removed  Normal       ---
+zerocopy-derive->quote                           1.0.47                         ---      Removed  Normal       ---
+zerocopy-derive->syn                             2.0.119                        ---      Removed  Normal       ---
+zeroize->zeroize_derive                          1.5.0                          ---      Removed  Normal       ---
+zeroize_derive->proc-macro2                      1.0.107                        ---      Removed  Normal       ---
+zeroize_derive->quote                            1.0.47                         ---      Removed  Normal       ---
+zeroize_derive->syn                              2.0.119                        ---      Removed  Normal       ---
+Exit code: 0
+
+============================================================
+Security Vulnerabilities (cargo audit)
+============================================================
+
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1226 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (853 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+
+[0m[0m[1m[33mCrate:    [0m chacha20
+[0m[0m[1m[33mVersion:  [0m 0.10.1
+[0m[0m[1m[33mWarning:  [0m yanked
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 15 allowed warnings found
+Exit code: 0

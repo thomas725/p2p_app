@@ -1,0 +1,17 @@
+============================================================
+Dependency Check Results
+============================================================
+
+Timestamp: 2026-05-04 05:35:37 UTC
+Commit: 7efc633eef9eef04d97bed3a62876673c7088db7
+Branch: refs/heads/main
+Run ID: 25302843635
+
+============================================================
+Check Summary
+============================================================
+
+This workflow checks for:
+- Outdated dependencies (cargo outdated)
+- Security vulnerabilities (cargo audit)
+

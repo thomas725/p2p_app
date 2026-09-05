@@ -1,0 +1,10 @@
+Build Matrix Results
+====================
+
+Platforms Tested:
+- Linux x86_64 (GNU)
+- macOS x86_64
+- macOS ARM64 (Apple Silicon)
+- Minimal Feature Set (embedded)
+
+Build Status:

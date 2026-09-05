@@ -1,0 +1,494 @@
+============================================================
+Dependency Check Results
+============================================================
+
+Timestamp: 2026-06-05 06:23:44 UTC
+Commit: c37b5d3c1aef51a54b2959d6d1a9534ffcbb06c2
+Branch: refs/heads/main
+Run ID: 26999158525
+
+============================================================
+Outdated Dependencies (cargo outdated)
+============================================================
+
+error: failed to select a version for `libsqlite3-sys`.
+    ... required by package `diesel v2.3.9`
+    ... which satisfies dependency `diesel = "^2.3.9"` of package `p2p_app v0.1.0 (/tmp/cargo-outdatedk770nh)`
+versions that meet the requirements `>=0.17.2, <0.38.0` are: 0.37.0, 0.36.0, 0.35.0, 0.34.0, 0.33.0, 0.32.0, 0.31.0, 0.30.1, 0.30.0, 0.29.0, 0.28.0, 0.27.0, 0.26.0, 0.25.2, 0.25.1, 0.25.0, 0.24.2, 0.24.1, 0.24.0, 0.23.2, 0.23.1, 0.23.0, 0.22.2, 0.22.1, 0.22.0, 0.20.1, 0.20.0, 0.18.0, 0.17.3, 0.17.2
+
+package `libsqlite3-sys` links to the native library `sqlite3`, but it conflicts with a previous package which links to `sqlite3` as well:
+package `libsqlite3-sys v0.38.0`
+    ... which satisfies dependency `libsqlite3-sys = "^0.38.0"` of package `p2p_app v0.1.0 (/tmp/cargo-outdatedk770nh)`
+Only one package in the dependency graph may specify the same links value. This helps ensure that only one copy of a native library is linked in the final binary. Try to adjust your dependencies so that only one package uses the `links = "sqlite3"` value. For more information, see https://doc.rust-lang.org/cargo/reference/resolver.html#links.
+
+failed to select a version for `libsqlite3-sys` which could resolve this conflict
+Exit code: 0
+
+============================================================
+Security Vulnerabilities (cargo audit)
+============================================================
+
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1119 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (832 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+[0m[0m[1m[31mDependency tree:
+[0mhickory-proto 0.25.2
+├── libp2p-mdns 0.48.0
+│   └── libp2p 0.56.0
+│       └── p2p_app 0.1.0
+└── hickory-resolver 0.25.2
+    └── libp2p-dns 0.44.0
+        └── libp2p 0.56.0
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+[0m[0m[1m[33mDependency tree:
+[0matk 0.18.2
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    │   └── dioxus-desktop 0.7.9
+    │       ├── p2p_app 0.1.0
+    │       └── dioxus 0.7.9
+    │           └── p2p_app 0.1.0
+    ├── webkit2gtk 2.0.1
+    │   └── wry 0.53.5
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.9
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.9
+    │   └── dioxus-desktop 0.7.9
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+[0m[0m[1m[33mDependency tree:
+[0matk-sys 0.18.2
+├── gtk-sys 0.18.2
+│   ├── webkit2gtk-sys 2.0.1
+│   │   ├── wry 0.53.5
+│   │   │   └── dioxus-desktop 0.7.9
+│   │   │       ├── p2p_app 0.1.0
+│   │   │       └── dioxus 0.7.9
+│   │   │           └── p2p_app 0.1.0
+│   │   └── webkit2gtk 2.0.1
+│   │       └── wry 0.53.5
+│   ├── webkit2gtk 2.0.1
+│   ├── libappindicator-sys 0.9.0
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   │           └── dioxus-desktop 0.7.9
+│   ├── libappindicator 0.9.0
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       ├── webkit2gtk 2.0.1
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.9
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   └── dioxus-desktop 0.7.9
+│       └── libappindicator 0.9.0
+└── atk 0.18.2
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+[0m[0m[1m[33mDependency tree:
+[0mfxhash 0.2.1
+└── selectors 0.24.0
+    └── kuchikiki 0.8.8-speedreader
+        └── wry 0.53.5
+            └── dioxus-desktop 0.7.9
+                ├── p2p_app 0.1.0
+                └── dioxus 0.7.9
+                    └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+[0m[0m[1m[33mDependency tree:
+[0mgdk 0.18.2
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+│       └── dioxus-desktop 0.7.9
+│           ├── p2p_app 0.1.0
+│           └── dioxus 0.7.9
+│               └── p2p_app 0.1.0
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    ├── webkit2gtk 2.0.1
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.9
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.9
+    │   └── dioxus-desktop 0.7.9
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+[0m[0m[1m[33mDependency tree:
+[0mgdk-sys 0.18.2
+├── webkit2gtk-sys 2.0.1
+│   ├── wry 0.53.5
+│   │   └── dioxus-desktop 0.7.9
+│   │       ├── p2p_app 0.1.0
+│   │       └── dioxus 0.7.9
+│   │           └── p2p_app 0.1.0
+│   └── webkit2gtk 2.0.1
+│       └── wry 0.53.5
+├── webkit2gtk 2.0.1
+├── gtk-sys 0.18.2
+│   ├── webkit2gtk-sys 2.0.1
+│   ├── webkit2gtk 2.0.1
+│   ├── libappindicator-sys 0.9.0
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   │           └── dioxus-desktop 0.7.9
+│   ├── libappindicator 0.9.0
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       ├── webkit2gtk 2.0.1
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.9
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   └── dioxus-desktop 0.7.9
+│       └── libappindicator 0.9.0
+├── gdkx11-sys 0.18.2
+│   └── tao 0.34.8
+├── gdkwayland-sys 0.18.2
+│   └── tao 0.34.8
+└── gdk 0.18.2
+    ├── webkit2gtk 2.0.1
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+[0m[0m[1m[33mDependency tree:
+[0mgdkwayland-sys 0.18.2
+└── tao 0.34.8
+    └── dioxus-desktop 0.7.9
+        ├── p2p_app 0.1.0
+        └── dioxus 0.7.9
+            └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+[0m[0m[1m[33mDependency tree:
+[0mgdkx11-sys 0.18.2
+└── tao 0.34.8
+    └── dioxus-desktop 0.7.9
+        ├── p2p_app 0.1.0
+        └── dioxus 0.7.9
+            └── p2p_app 0.1.0
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+[0m[0m[1m[33mDependency tree:
+[0mgtk 0.18.2
+├── wry 0.53.5
+│   └── dioxus-desktop 0.7.9
+│       ├── p2p_app 0.1.0
+│       └── dioxus 0.7.9
+│           └── p2p_app 0.1.0
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+├── tao 0.34.8
+│   └── dioxus-desktop 0.7.9
+├── muda 0.17.2
+│   ├── tray-icon 0.21.3
+│   │   └── dioxus-desktop 0.7.9
+│   └── dioxus-desktop 0.7.9
+└── libappindicator 0.9.0
+    └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+[0m[0m[1m[33mDependency tree:
+[0mgtk-sys 0.18.2
+├── webkit2gtk-sys 2.0.1
+│   ├── wry 0.53.5
+│   │   └── dioxus-desktop 0.7.9
+│   │       ├── p2p_app 0.1.0
+│   │       └── dioxus 0.7.9
+│   │           └── p2p_app 0.1.0
+│   └── webkit2gtk 2.0.1
+│       └── wry 0.53.5
+├── webkit2gtk 2.0.1
+├── libappindicator-sys 0.9.0
+│   └── libappindicator 0.9.0
+│       └── tray-icon 0.21.3
+│           └── dioxus-desktop 0.7.9
+├── libappindicator 0.9.0
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    ├── webkit2gtk 2.0.1
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.9
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   └── dioxus-desktop 0.7.9
+    └── libappindicator 0.9.0
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+[0m[0m[1m[33mDependency tree:
+[0mgtk3-macros 0.18.2
+└── gtk 0.18.2
+    ├── wry 0.53.5
+    │   └── dioxus-desktop 0.7.9
+    │       ├── p2p_app 0.1.0
+    │       └── dioxus 0.7.9
+    │           └── p2p_app 0.1.0
+    ├── webkit2gtk 2.0.1
+    │   └── wry 0.53.5
+    ├── tao 0.34.8
+    │   └── dioxus-desktop 0.7.9
+    ├── muda 0.17.2
+    │   ├── tray-icon 0.21.3
+    │   │   └── dioxus-desktop 0.7.9
+    │   └── dioxus-desktop 0.7.9
+    └── libappindicator 0.9.0
+        └── tray-icon 0.21.3
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+[0m[0m[1m[33mDependency tree:
+[0mpaste 1.0.15
+├── rav1e 0.8.1
+│   └── ravif 0.13.0
+│       └── image 0.25.10
+│           └── dioxus-desktop 0.7.9
+│               ├── p2p_app 0.1.0
+│               └── dioxus 0.7.9
+│                   └── p2p_app 0.1.0
+└── netlink-packet-core 0.8.1
+    ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    │       ├── libp2p-tcp 0.44.1
+    │       │   └── libp2p 0.56.0
+    │       │       └── p2p_app 0.1.0
+    │       ├── libp2p-quic 0.13.0
+    │       │   ├── p2p_app 0.1.0
+    │       │   └── libp2p 0.56.0
+    │       └── libp2p-mdns 0.48.0
+    │           └── libp2p 0.56.0
+    ├── netlink-proto 0.12.0
+    │   ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    ├── netlink-packet-route 0.28.0
+    │   ├── rtnetlink 0.20.0
+    │   └── if-watch 3.2.2
+    └── if-watch 3.2.2
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+[0m[0m[1m[33mDependency tree:
+[0mproc-macro-error 1.0.4
+├── gtk3-macros 0.18.2
+│   └── gtk 0.18.2
+│       ├── wry 0.53.5
+│       │   └── dioxus-desktop 0.7.9
+│       │       ├── p2p_app 0.1.0
+│       │       └── dioxus 0.7.9
+│       │           └── p2p_app 0.1.0
+│       ├── webkit2gtk 2.0.1
+│       │   └── wry 0.53.5
+│       ├── tao 0.34.8
+│       │   └── dioxus-desktop 0.7.9
+│       ├── muda 0.17.2
+│       │   ├── tray-icon 0.21.3
+│       │   │   └── dioxus-desktop 0.7.9
+│       │   └── dioxus-desktop 0.7.9
+│       └── libappindicator 0.9.0
+│           └── tray-icon 0.21.3
+└── glib-macros 0.18.5
+    └── glib 0.18.5
+        ├── webkit2gtk 2.0.1
+        ├── soup3 0.5.0
+        │   ├── wry 0.53.5
+        │   └── webkit2gtk 2.0.1
+        ├── pango 0.18.3
+        │   ├── gtk 0.18.2
+        │   └── gdk 0.18.2
+        │       ├── webkit2gtk 2.0.1
+        │       └── gtk 0.18.2
+        ├── libappindicator 0.9.0
+        ├── javascriptcore-rs 1.1.2
+        │   ├── wry 0.53.5
+        │   └── webkit2gtk 2.0.1
+        ├── gtk 0.18.2
+        ├── gio 0.18.4
+        │   ├── webkit2gtk 2.0.1
+        │   ├── soup3 0.5.0
+        │   ├── pango 0.18.3
+        │   ├── gtk 0.18.2
+        │   ├── gdk-pixbuf 0.18.5
+        │   │   ├── gtk 0.18.2
+        │   │   └── gdk 0.18.2
+        │   └── gdk 0.18.2
+        ├── gdk-pixbuf 0.18.5
+        ├── gdk 0.18.2
+        ├── cairo-rs 0.18.5
+        │   ├── webkit2gtk 2.0.1
+        │   ├── gtk 0.18.2
+        │   └── gdk 0.18.2
+        └── atk 0.18.2
+            └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+[0m[0m[1m[33mDependency tree:
+[0mglib 0.18.5
+├── webkit2gtk 2.0.1
+│   └── wry 0.53.5
+│       └── dioxus-desktop 0.7.9
+│           ├── p2p_app 0.1.0
+│           └── dioxus 0.7.9
+│               └── p2p_app 0.1.0
+├── soup3 0.5.0
+│   ├── wry 0.53.5
+│   └── webkit2gtk 2.0.1
+├── pango 0.18.3
+│   ├── gtk 0.18.2
+│   │   ├── wry 0.53.5
+│   │   ├── webkit2gtk 2.0.1
+│   │   ├── tao 0.34.8
+│   │   │   └── dioxus-desktop 0.7.9
+│   │   ├── muda 0.17.2
+│   │   │   ├── tray-icon 0.21.3
+│   │   │   │   └── dioxus-desktop 0.7.9
+│   │   │   └── dioxus-desktop 0.7.9
+│   │   └── libappindicator 0.9.0
+│   │       └── tray-icon 0.21.3
+│   └── gdk 0.18.2
+│       ├── webkit2gtk 2.0.1
+│       └── gtk 0.18.2
+├── libappindicator 0.9.0
+├── javascriptcore-rs 1.1.2
+│   ├── wry 0.53.5
+│   └── webkit2gtk 2.0.1
+├── gtk 0.18.2
+├── gio 0.18.4
+│   ├── webkit2gtk 2.0.1
+│   ├── soup3 0.5.0
+│   ├── pango 0.18.3
+│   ├── gtk 0.18.2
+│   ├── gdk-pixbuf 0.18.5
+│   │   ├── gtk 0.18.2
+│   │   └── gdk 0.18.2
+│   └── gdk 0.18.2
+├── gdk-pixbuf 0.18.5
+├── gdk 0.18.2
+├── cairo-rs 0.18.5
+│   ├── webkit2gtk 2.0.1
+│   ├── gtk 0.18.2
+│   └── gdk 0.18.2
+└── atk 0.18.2
+    └── gtk 0.18.2
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+[0m[0m[1m[33mDependency tree:
+[0mrand 0.7.3
+└── phf_generator 0.8.0
+    └── phf_codegen 0.8.0
+        └── selectors 0.24.0
+            └── kuchikiki 0.8.8-speedreader
+                └── wry 0.53.5
+                    └── dioxus-desktop 0.7.9
+                        ├── p2p_app 0.1.0
+                        └── dioxus 0.7.9
+                            └── p2p_app 0.1.0
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 14 allowed warnings found
+Exit code: 0

@@ -1,0 +1,1590 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-08-25 21:55:53 UTC
+Commit: 11b056b0ee88b35adc91f2e65efb80f291cd5198
+Branch: refs/heads/main
+Run ID: 32902936710
+
+============================================================
+Detailed Logs
+============================================================
+
+
+============================================================
+Phase 1 - Code Quality
+============================================================
+
+--- fmt ---
+Diff in /home/runner/work/p2p_app/p2p_app/src/api/mod.rs:2:
+ //!
+ //! This module defines the functions and types exposed to Dart via FRB.
+ 
++use crate::messages::PeerMessageStats;
+ use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
+ use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
+-use crate::messages::PeerMessageStats;
+ use crate::network::NetworkSize;
+ 
+ /// Initialize the mobile database at the given path and return peer info.
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:27:
+ // Section: imports
+ 
+ use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+-use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+ use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+ // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:1491:
+     use flutter_rust_bridge::for_generated::byteorder::{
+         NativeEndian, ReadBytesExt, WriteBytesExt,
+     };
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:1515:
+     };
+     use flutter_rust_bridge::for_generated::wasm_bindgen;
+     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:6:
+     generated::schema::messages::dsl::messages,
+ };
+ use color_eyre::eyre::Context;
+-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _, dsl::sql, BoolExpressionMethods};
++use diesel::{
++    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
++    dsl::sql,
++};
+ 
+ /// Optional metadata for message creation
+ #[derive(Default)]
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:210:
+ ///
+ /// # Returns
+ /// Vector of all message receipts
+-pub fn load_receipts() -> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>>
+-{
++pub fn load_receipts()
++-> color_eyre::eyre::Result<Vec<crate::generated::models_queryable::MessageReceipt>> {
+     let conn = &mut crate::sqlite_connect()?;
+     use crate::generated::models_queryable::MessageReceipt;
+     use crate::generated::schema::message_receipts::dsl::message_receipts;
+Diff in /home/runner/work/p2p_app/p2p_app/src/messages.rs:259:
+ 
+     let broadcast_sent: i64 = p::peers
+         .filter(p::peer_id.eq(peer_id))
+-        .select(sql::<diesel::sql_types::Integer>("COALESCE(broadcasts_sent, 0)"))
++        .select(sql::<diesel::sql_types::Integer>(
++            "COALESCE(broadcasts_sent, 0)",
++        ))
+         .first::<i32>(conn)
+         .unwrap_or(0)
+         .into();
+Diff in /home/runner/work/p2p_app/p2p_app/src/peers.rs:6:
+     generated::schema::peers::dsl::peers,
+     logging::p2plog_debug,
+ };
++use diesel::sql_types::Text;
+ use diesel::{
+     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
+     sql_query,
+Diff in /home/runner/work/p2p_app/p2p_app/src/peers.rs:12:
+ };
+-use diesel::sql_types::Text;
+ 
+ /// Peer row returned by `load_known_peers()`.
+ #[derive(Debug, Clone, diesel::QueryableByName)]
+Exit code: 0
+
+--- clippy ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m libp2p-ping v0.47.0
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m libc v0.2.189
+[1m[92m    Checking[0m cfg-if v1.0.4
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[92m   Compiling[0m pkg-config v0.3.34
+[1m[92m    Checking[0m memchr v2.8.3
+[1m[92m   Compiling[0m syn v3.0.4
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m pin-project-lite v0.2.17
+[1m[92m    Checking[0m critical-section v1.2.0
+[1m[92m   Compiling[0m portable-atomic v1.15.0
+[1m[92m    Checking[0m log v0.4.34
+[1m[92m    Checking[0m once_cell v1.21.4
+[1m[92m   Compiling[0m equivalent v1.0.2
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m winnow v0.5.40
+[1m[92m   Compiling[0m indexmap v2.14.0
+[1m[92m    Checking[0m smallvec v1.15.2
+[1m[92m   Compiling[0m target-lexicon v0.12.16
+[1m[92m   Compiling[0m cfg-expr v0.15.8
+[1m[92m   Compiling[0m version-compare v0.2.1
+[1m[92m    Checking[0m futures-core v0.3.34
+[1m[92m    Checking[0m slab v0.4.12
+[1m[92m    Checking[0m futures-io v0.3.34
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m    Checking[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m futures-macro v0.3.34
+[1m[92m    Checking[0m futures-channel v0.3.34
+[1m[92m    Checking[0m futures-task v0.3.34
+[1m[92m   Compiling[0m thiserror v2.0.20
+[1m[92m   Compiling[0m thiserror-impl v2.0.20
+[1m[92m    Checking[0m bitflags v2.13.1
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m    Checking[0m futures-util v0.3.34
+[1m[92m   Compiling[0m synstructure v0.13.2
+[1m[92m    Checking[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[92m   Compiling[0m anyhow v1.0.104
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[92m    Checking[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m find-msvc-tools v0.1.11
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m cc v1.4.4
+[1m[92m    Checking[0m tracing v0.1.44
+[1m[92m    Checking[0m futures-executor v0.3.34
+[1m[92m   Compiling[0m zerocopy v0.8.56
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[92m    Checking[0m bytes v1.12.1
+[1m[92m   Compiling[0m toml_datetime v0.6.3
+[1m[92m   Compiling[0m serde_spanned v0.6.9
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m    Checking[0m lock_api v0.4.14
+[1m[92m   Compiling[0m toml_edit v0.20.2
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[92m   Compiling[0m zerocopy-derive v0.8.56
+[1m[92m    Checking[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m zerofrom-derive v0.1.7
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m yoke-derive v0.8.2
+[1m[92m    Checking[0m zerofrom v0.1.8
+[1m[92m    Checking[0m subtle v2.6.1
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m toml v0.8.2
+[1m[92m    Checking[0m yoke v0.8.3
+[1m[92m   Compiling[0m system-deps v6.2.2
+[1m[92m   Compiling[0m zerovec-derive v0.11.6
+[1m[92m    Checking[0m typenum v1.20.1
+[1m[92m   Compiling[0m glib-sys v0.18.1
+[1m[92m   Compiling[0m gobject-sys v0.18.0
+[1m[92m    Checking[0m zerovec v0.11.8
+[1m[92m    Checking[0m either v1.18.0
+[1m[92m   Compiling[0m pin-project-internal v1.1.13
+[1m[92m    Checking[0m getrandom v0.2.17
+[1m[92m    Checking[0m block-buffer v0.10.4
+[1m[92m    Checking[0m crypto-common v0.1.7
+[1m[92m   Compiling[0m gio-sys v0.18.1
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[92m    Checking[0m digest v0.10.7
+[1m[92m    Checking[0m tinystr v0.8.4
+[1m[92m   Compiling[0m zeroize_derive v1.5.0
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m    Checking[0m pin-project v1.1.13
+[1m[92m    Checking[0m writeable v0.6.4
+[1m[92m    Checking[0m litemap v0.8.3
+[1m[92m    Checking[0m zeroize v1.9.0
+[1m[92m    Checking[0m icu_locale_core v2.3.0
+[1m[92m    Checking[0m ppv-lite86 v0.2.21
+[1m[92m    Checking[0m potential_utf v0.1.6
+[1m[92m    Checking[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+[1m[92m   Compiling[0m icu_properties_data v2.3.0
+[1m[92m    Checking[0m utf8_iter v1.0.4
+[1m[92m    Checking[0m icu_collections v2.3.0
+[1m[92m    Checking[0m mio v1.2.2
+[1m[92m    Checking[0m static_assertions v1.1.0
+[1m[92m    Checking[0m percent-encoding v2.3.2
+[1m[92m    Checking[0m icu_provider v2.3.1
+[1m[92m    Checking[0m cpufeatures v0.2.17
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m   Compiling[0m proc-macro-error-attr v1.0.4
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[92m    Checking[0m icu_normalizer v2.3.0
+[1m[92m    Checking[0m icu_properties v2.3.0
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[92m    Checking[0m data-encoding v2.11.1
+[1m[92m   Compiling[0m crossbeam-utils v0.8.22
+[1m[92m   Compiling[0m syn v1.0.109
+[1m[92m    Checking[0m byteorder v1.5.0
+[1m[92m   Compiling[0m gdk-sys v0.18.2
+[1m[92m   Compiling[0m proc-macro-error v1.0.4
+[1m[92m    Checking[0m form_urlencoded v1.2.2
+[1m[92m    Checking[0m rand_core v0.6.4
+[1m[92m    Checking[0m idna_adapter v1.2.2
+[1m[92m    Checking[0m socket2 v0.6.5
+[1m[92m    Checking[0m idna v1.1.0
+[1m[92m   Compiling[0m curve25519-dalek v4.1.3
+[1m[92m    Checking[0m url v2.5.8
+[1m[92m    Checking[0m futures v0.3.34
+[1m[92m   Compiling[0m tokio-macros v2.7.2
+[1m[92m    Checking[0m fnv v1.0.7
+[1m[92m    Checking[0m itoa v1.0.18
+[1m[92m   Compiling[0m gdk-pixbuf-sys v0.18.0
+[1m[92m   Compiling[0m cairo-sys-rs v0.18.2
+[1m[92m   Compiling[0m atk-sys v0.18.2
+[1m[92m   Compiling[0m pango-sys v0.18.0
+[1m[92m   Compiling[0m proc-macro-crate v2.0.2
+[1m[92m   Compiling[0m curve25519-dalek-derive v0.1.1
+[1m[92m   Compiling[0m num-conv v0.2.2
+[1m[92m    Checking[0m tokio v1.53.1
+[1m[92m   Compiling[0m time-core v0.1.9
+[1m[92m   Compiling[0m heck v0.4.1
+[1m[92m   Compiling[0m time-macros v0.2.32
+[1m[92m   Compiling[0m glib-macros v0.18.5
+[1m[92m    Checking[0m rand_chacha v0.3.1
+[1m[92m   Compiling[0m itertools v0.14.0
+[1m[92m    Checking[0m powerfmt v0.2.0
+[1m[92m    Checking[0m deranged v0.5.8
+[1m[92m    Checking[0m signature v2.2.0
+[1m[92m    Checking[0m unsigned-varint v0.8.0
+[1m[92m    Checking[0m num_threads v0.1.7
+[1m[92m   Compiling[0m paste v1.0.15
+[1m[92m    Checking[0m time v0.3.55
+[1m[92m    Checking[0m ed25519 v2.2.3
+[1m[92m    Checking[0m glib v0.18.5
+[1m[92m   Compiling[0m prost-derive v0.14.4
+[1m[92m   Compiling[0m data-encoding-macro-internal v0.1.19
+[1m[92m    Checking[0m rand v0.8.7
+[1m[92m    Checking[0m sha2 v0.10.9
+[1m[92m    Checking[0m hmac v0.12.1
+[1m[92m   Compiling[0m match-lookup v0.1.2
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[92m   Compiling[0m unicode-segmentation v1.13.3
+[1m[92m    Checking[0m const-str v0.4.3
+[1m[92m    Checking[0m base256emoji v1.0.2
+[1m[92m    Checking[0m ed25519-dalek v2.2.0
+[1m[92m    Checking[0m hkdf v0.12.4
+[1m[92m    Checking[0m prost v0.14.4
+[1m[92m    Checking[0m data-encoding-macro v0.1.21
+[1m[92m    Checking[0m multihash v0.19.5
+[1m[92m   Compiling[0m gtk-sys v0.18.2
+[1m[92m    Checking[0m rustc-hash v2.1.3
+[1m[92m    Checking[0m base45 v3.2.0
+[1m[92m    Checking[0m bs58 v0.5.1
+[1m[92m    Checking[0m base-x v0.2.11
+[1m[92m    Checking[0m simd-adler32 v0.3.10
+[1m[92m    Checking[0m libp2p-identity v0.2.14
+[1m[92m    Checking[0m multibase v0.9.3
+[1m[92m    Checking[0m quick-protobuf v0.8.1
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[92m    Checking[0m arrayref v0.3.9
+[1m[92m   Compiling[0m cfg_aliases v0.2.2
+[1m[92m    Checking[0m futures-timer v3.0.4
+[1m[92m   Compiling[0m gio v0.18.4
+[1m[92m    Checking[0m foldhash v0.2.0
+[1m[92m    Checking[0m unsigned-varint v0.7.2
+[1m[92m    Checking[0m web-time v1.1.0
+[1m[92m    Checking[0m multistream-select v0.13.0
+[1m[92m    Checking[0m multiaddr v0.18.2
+[1m[92m    Checking[0m rw-stream-sink v0.4.0
+[1m[92m    Checking[0m num-integer v0.1.47
+[1m[92m   Compiling[0m slotmap v1.1.1
+[1m[92m    Checking[0m konst_macro_rules v0.2.19
+[1m[92m    Checking[0m adler2 v2.0.1
+[1m[92m    Checking[0m dioxus-core-types v0.7.10
+[1m[92m   Compiling[0m unicode-xid v0.2.6
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[92m   Compiling[0m const_format_proc_macros v0.2.34
+[1m[92m   Compiling[0m darling_core v0.21.3
+[1m[92m    Checking[0m miniz_oxide v0.8.9
+[1m[92m    Checking[0m konst v0.2.20
+[1m[92m    Checking[0m num-bigint v0.4.8
+[1m[92m    Checking[0m libp2p-core v0.43.2
+[1m[92m    Checking[0m subsecond-types v0.7.10
+[1m[92m    Checking[0m memmap2 v0.9.11
+[1m[92m    Checking[0m libloading v0.8.9
+[1m[92m   Compiling[0m crossbeam-epoch v0.9.20
+[1m[92m    Checking[0m subsecond v0.7.10
+[1m[92m   Compiling[0m darling_macro v0.21.3
+[1m[92m    Checking[0m const_format v0.2.36
+[1m[92m    Checking[0m generational-box v0.7.10
+[1m[92m   Compiling[0m memoffset v0.9.1
+[1m[92m    Checking[0m longest-increasing-subsequence v0.1.0
+[1m[92m    Checking[0m untrusted v0.9.0
+[1m[92m   Compiling[0m crossbeam-deque v0.8.7
+[1m[92m    Checking[0m lazy_static v1.5.0
+[1m[92m   Compiling[0m libm v0.2.16
+[1m[92m   Compiling[0m rustix v1.1.4
+[1m[92m    Checking[0m dioxus-core v0.7.10
+[1m[92m    Checking[0m rand_core v0.9.5
+[1m[92m   Compiling[0m darling v0.21.3
+[1m[92m   Compiling[0m field-offset v0.3.6
+[1m[92m   Compiling[0m toml_edit v0.19.15
+[1m[92m    Checking[0m aho-corasick v1.1.5
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m    Checking[0m regex-syntax v0.8.11
+[1m[92m   Compiling[0m rayon-core v1.13.0
+[1m[92m    Checking[0m linux-raw-sys v0.12.1
+[1m[92m    Checking[0m regex-automata v0.4.18
+[1m[92m    Checking[0m pango v0.18.3
+[1m[92m    Checking[0m gdk-pixbuf v0.18.5
+[1m[92m   Compiling[0m proc-macro-crate v1.3.1
+[1m[92m    Checking[0m rand_chacha v0.9.0
+[1m[92m    Checking[0m cairo-rs v0.18.5
+[1m[92m   Compiling[0m openssl-sys v0.9.117
+[1m[92m   Compiling[0m warnings-macro v0.2.0
+[1m[92m   Compiling[0m equator-macro v0.4.2
+[1m[92m   Compiling[0m x11 v2.21.0
+[1m[92m   Compiling[0m gtk v0.18.2
+[1m[92m   Compiling[0m lazy-js-bundle v0.7.10
+[1m[92m   Compiling[0m crc32fast v1.5.1
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m    Checking[0m rand_core v0.10.1
+[1m[92m    Checking[0m allocator-api2 v0.2.21
+[1m[92m    Checking[0m foldhash v0.1.5
+[1m[92m    Checking[0m hashbrown v0.15.5
+[1m[92m    Checking[0m warnings v0.2.1
+[1m[92m    Checking[0m equator v0.4.2
+[1m[92m    Checking[0m gdk v0.18.2
+[1m[92m    Checking[0m rand v0.9.5
+[1m[92m   Compiling[0m gtk3-macros v0.18.2
+[1m[92m    Checking[0m atk v0.18.2
+[1m[92m   Compiling[0m convert_case v0.8.0
+[1m[92m    Checking[0m rustls-pki-types v1.15.1
+[1m[92m   Compiling[0m const-serialize-macro v0.7.2
+[1m[92m   Compiling[0m async-trait v0.1.92
+[1m[92m    Checking[0m errno v0.3.14
+[1m[92m   Compiling[0m proc-macro2-diagnostics v0.10.1
+[1m[92m    Checking[0m minimal-lexical v0.2.1
+[1m[92m   Compiling[0m signal-hook v0.3.18
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m    Checking[0m nom v7.1.3
+[1m[92m    Checking[0m signal-hook-registry v1.4.8
+[1m[92m    Checking[0m hashlink v0.10.0
+[1m[92m    Checking[0m aligned-vec v0.6.4
+[1m[92m    Checking[0m dioxus-signals v0.7.10
+[1m[92m   Compiling[0m nix v0.30.1
+[1m[92m    Checking[0m keyboard-types v0.7.0
+[1m[92m    Checking[0m netlink-packet-core v0.8.2
+[1m[92m   Compiling[0m darling_core v0.24.1
+[1m[92m   Compiling[0m soup3-sys v0.5.0
+[1m[92m   Compiling[0m javascriptcore-rs-sys v1.1.1
+[1m[92m   Compiling[0m libp2p-swarm-derive v0.35.1
+[1m[92m   Compiling[0m rustls v0.23.43
+[1m[92m    Checking[0m bitflags v1.3.2
+[1m[92m    Checking[0m arrayvec v0.7.8
+[1m[92m   Compiling[0m winnow v0.7.15
+[1m[92m    Checking[0m base64 v0.22.1
+[1m[92m    Checking[0m libp2p-swarm v0.47.1
+[1m[92m    Checking[0m rusticata-macros v4.1.0
+[1m[92m    Checking[0m flate2 v1.1.9
+[1m[92m    Checking[0m v_frame v0.3.9
+[1m[92m    Checking[0m rustls-webpki v0.103.15
+[1m[92m    Checking[0m rayon v1.12.0
+[1m[92m   Compiling[0m darling_macro v0.24.1
+[1m[92m    Checking[0m hashbrown v0.16.1
+[1m[92m    Checking[0m num-rational v0.4.2
+[1m[92m    Checking[0m netlink-sys v0.8.8
+[1m[92m    Checking[0m castaway v0.2.4
+[1m[92m   Compiling[0m webkit2gtk-sys v2.0.1
+[1m[92m    Checking[0m as-slice v0.2.1
+[1m[92m   Compiling[0m asn1-rs-derive v0.6.0
+[1m[92m   Compiling[0m const-serialize-macro v0.8.0-alpha.1
+[1m[92m   Compiling[0m asn1-rs-impl v0.2.0
+[1m[92m   Compiling[0m strum_macros v0.28.0
+[1m[92m   Compiling[0m av-scenechange v0.14.1
+[1m[92m    Checking[0m foreign-types-shared v0.1.1
+[1m[92m    Checking[0m bytemuck v1.25.2
+[1m[92m    Checking[0m unicode-width v0.2.2
+[1m[92m    Checking[0m dioxus-cli-config v0.7.10
+[1m[92m   Compiling[0m built v0.8.1
+[1m[92m    Checking[0m cpufeatures v0.3.0
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m   Compiling[0m instability v0.3.13
+[1m[92m   Compiling[0m libxdo-sys v0.11.0
+[1m[92m   Compiling[0m openssl v0.10.81
+[1m[92m    Checking[0m tinyvec_macros v0.1.1
+[1m[92m    Checking[0m tinyvec v1.12.0
+[1m[92m   Compiling[0m rav1e v0.8.1
+[1m[92m    Checking[0m compact_str v0.9.1
+[1m[92m    Checking[0m chacha20 v0.10.1
+[1m[92m    Checking[0m unicode-truncate v2.0.1
+[1m[92m    Checking[0m foreign-types v0.3.2
+[1m[92m    Checking[0m strum v0.28.0
+[1m[92m    Checking[0m asn1-rs v0.7.2
+[1m[92m    Checking[0m aligned v0.4.3
+[1m[92m    Checking[0m netlink-proto v0.12.2
+[1m[92m    Checking[0m kasuari v0.4.12
+[1m[92m    Checking[0m lru v0.18.2
+[1m[92m   Compiling[0m darling v0.24.1
+[1m[92m   Compiling[0m dioxus-rsx v0.7.10
+[1m[92m    Checking[0m netlink-packet-route v0.28.0
+[1m[92m    Checking[0m matchers v0.2.0
+[1m[92m   Compiling[0m enumset_derive v0.15.0
+[1m[92m    Checking[0m sharded-slab v0.1.7
+[1m[92m    Checking[0m fdeflate v0.3.7
+[1m[92m   Compiling[0m convert_case v0.10.0
+[1m[92m    Checking[0m http v1.5.0
+[1m[92m    Checking[0m crossbeam-channel v0.5.16
+[1m[92m    Checking[0m tracing-log v0.2.0
+[1m[92m   Compiling[0m arg_enum_proc_macro v0.3.4
+[1m[92m   Compiling[0m profiling-procmacros v1.0.18
+[1m[92m   Compiling[0m openssl-macros v0.1.1
+[1m[92m    Checking[0m no_std_io2 v0.9.4
+[1m[92m    Checking[0m nom v8.0.0
+[1m[92m   Compiling[0m pulp v0.22.3
+[1m[92m   Compiling[0m ahash v0.8.12
+[1m[92m    Checking[0m thread_local v1.1.10
+[1m[92m   Compiling[0m pastey v0.1.1
+[1m[92m    Checking[0m utf8parse v0.2.2
+[1m[92m    Checking[0m y4m v0.8.0
+[1m[92m    Checking[0m quick-error v2.0.1
+[1m[92m   Compiling[0m oid-registry v0.8.1
+[1m[92m   Compiling[0m indoc v2.0.7
+[1m[92m    Checking[0m option-ext v0.2.0
+[1m[92m    Checking[0m dpi v0.1.2
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m    Checking[0m nu-ansi-term v0.50.3
+[1m[92m    Checking[0m ipnet v2.12.1
+[1m[92m   Compiling[0m native-tls v0.2.18
+[1m[92m   Compiling[0m object v0.37.3
+[1m[92m    Checking[0m tracing-subscriber v0.3.23
+[1m[92m    Checking[0m av1-grain v0.2.5
+[1m[92m    Checking[0m dirs-sys v0.5.0
+[1m[92m    Checking[0m anstyle-parse v1.0.0
+[1m[92m    Checking[0m rtnetlink v0.20.0
+[1m[92m    Checking[0m bitstream-io v4.10.0
+[1m[92m    Checking[0m profiling v1.0.18
+[1m[92m    Checking[0m enumset v1.1.14
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m dioxus-core-macro v0.7.10
+[1m[92m    Checking[0m ratatui-core v0.1.2
+[1m[92m    Checking[0m rand v0.10.2
+[1m[92m    Checking[0m num-complex v0.4.6
+[1m[92m    Checking[0m maybe-rayon v0.1.1
+[1m[92m    Checking[0m dioxus-hooks v0.7.10
+[1m[92m   Compiling[0m const-serialize v0.7.2
+[1m[92m   Compiling[0m dioxus-html-internal-macro v0.7.10
+[1m[92m   Compiling[0m quinn-udp v0.5.15
+[1m[92m   Compiling[0m libsqlite3-sys v0.36.0
+[1m[92m    Checking[0m half v2.7.1
+[1m[92m    Checking[0m euclid v0.22.14
+[1m[92m   Compiling[0m gdkx11-sys v0.18.2
+[1m[92m    Checking[0m raw-cpuid v11.6.0
+[1m[92m   Compiling[0m num-derive v0.4.2
+[1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m simd_helpers v0.1.0
+[1m[92m   Compiling[0m x11-dl v2.21.0
+[1m[92m   Compiling[0m cookie v0.18.2
+[1m[92m    Checking[0m libloading v0.7.4
+[1m[92m    Checking[0m zune-core v0.5.3
+[1m[92m    Checking[0m uuid v1.25.0
+[1m[92m    Checking[0m raw-window-handle v0.6.2
+[1m[92m   Compiling[0m noop_proc_macro v0.3.0
+[1m[92m    Checking[0m weezl v0.1.12
+[1m[92m    Checking[0m siphasher v1.0.3
+[1m[92m    Checking[0m anstyle-query v1.1.5
+[1m[92m   Compiling[0m litrs v1.0.0
+[1m[92m    Checking[0m is_terminal_polyfill v1.70.2
+[1m[92m    Checking[0m pulp-wasm-simd-flag v0.1.1
+[1m[92m    Checking[0m imgref v1.12.2
+[1m[92m    Checking[0m parking v2.2.1
+[1m[92m    Checking[0m colorchoice v1.0.5
+[1m[92m    Checking[0m anstyle v1.0.14
+[1m[92m    Checking[0m gimli v0.32.3
+[1m[92m   Compiling[0m winnow v1.0.4
+[1m[92m    Checking[0m new_debug_unreachable v1.0.6
+[1m[92m    Checking[0m reborrow v0.5.5
+[1m[92m    Checking[0m openssl-probe v0.2.1
+[1m[92m   Compiling[0m toml_parser v1.1.3+spec-1.1.0
+[1m[92m   Compiling[0m document-features v0.2.12
+[1m[92m    Checking[0m anstream v1.0.0
+[1m[92m    Checking[0m loop9 v0.1.5
+[1m[92m    Checking[0m event-listener v5.4.2
+[1m[92m    Checking[0m fastbloom v0.17.0
+[1m[92m    Checking[0m cfb v0.7.3
+[1m[92m    Checking[0m addr2line v0.25.1
+[1m[92m    Checking[0m zune-jpeg v0.5.15
+[1m[92m    Checking[0m libappindicator-sys v0.9.0
+[1m[92m    Checking[0m dioxus-html v0.7.10
+[1m[92m   Compiling[0m const-serialize v0.8.0-alpha.0
+[1m[92m    Checking[0m libxdo v0.6.0
+[1m[92m    Checking[0m derive_more v2.1.1
+[1m[92m    Checking[0m if-watch v3.2.2
+[1m[92m    Checking[0m dirs v6.0.0
+[1m[92m    Checking[0m javascriptcore-rs v1.1.2
+[1m[92m    Checking[0m soup3 v0.5.0
+[1m[92m    Checking[0m der-parser v10.0.0
+[1m[92m    Checking[0m signal-hook-mio v0.2.5
+[1m[92m    Checking[0m pem v3.0.6
+[1m[92m    Checking[0m avif-serialize v0.8.9
+[1m[92m    Checking[0m rand_pcg v0.10.2
+[1m[92m   Compiling[0m dioxus-document v0.7.10
+[1m[92m   Compiling[0m dioxus-interpreter-js v0.7.10
+[1m[92m    Checking[0m gethostname v1.1.0
+[1m[92m   Compiling[0m quinn v0.11.11
+[1m[92m    Checking[0m zune-inflate v0.2.54
+[1m[92m    Checking[0m yasna v0.5.2
+[1m[92m    Checking[0m sha1 v0.10.7
+[1m[92m   Compiling[0m snow v0.9.6
+[1m[92m    Checking[0m asynchronous-codec v0.7.0
+[1m[92m    Checking[0m line-clipping v0.3.8
+[1m[92m   Compiling[0m sledgehammer_bindgen_macro v0.6.5
+[1m[92m   Compiling[0m dlopen2_derive v0.4.3
+[1m[92m   Compiling[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[92m   Compiling[0m serde_spanned v1.1.1
+[1m[92m    Checking[0m socket2 v0.5.10
+[1m[92m    Checking[0m fax v0.2.7
+[1m[92m    Checking[0m rustc-hash v1.1.0
+[1m[92m    Checking[0m clap_lex v1.1.0
+[1m[92m   Compiling[0m diesel_derives v2.3.9
+[1m[92m    Checking[0m bit_field v0.10.3
+[1m[92m    Checking[0m byteorder-lite v0.1.0
+[1m[92m    Checking[0m rustc-demangle v0.1.28
+[1m[92m    Checking[0m pxfm v0.1.30
+[1m[92m   Compiling[0m owo-colors v4.3.0
+[1m[92m    Checking[0m x11rb-protocol v0.13.2
+[1m[92m   Compiling[0m wry v0.53.5
+[1m[92m    Checking[0m utf-8 v0.7.6
+[1m[92m   Compiling[0m rfd v0.17.2
+[1m[92m    Checking[0m lru-slab v0.1.2
+[1m[92m    Checking[0m lebe v0.5.3
+[1m[92m    Checking[0m rgb v0.8.53
+[1m[92m    Checking[0m color_quant v1.1.0
+[1m[92m    Checking[0m nohash-hasher v0.2.0
+[1m[92m    Checking[0m gif v0.14.2
+[1m[92m    Checking[0m ravif v0.13.0
+[1m[92m    Checking[0m exr v1.74.2
+[1m[92m    Checking[0m moxcms v0.8.1
+[1m[92m    Checking[0m x11rb v0.13.2
+[1m[92m    Checking[0m quinn-proto v0.11.17
+[1m[92m    Checking[0m tungstenite v0.28.0
+[1m[92m    Checking[0m sledgehammer_bindgen v0.6.0
+[1m[92m    Checking[0m backtrace v0.3.76
+[1m[92m    Checking[0m image-webp v0.2.4
+[1m[92m    Checking[0m clap_builder v4.6.6
+[1m[92m    Checking[0m sledgehammer_utils v0.3.1
+[1m[92m    Checking[0m tiff v0.11.3
+[1m[92m   Compiling[0m toml v0.9.12+spec-1.1.0
+[1m[92m    Checking[0m dlopen2 v0.8.2
+[1m[92m    Checking[0m ratatui-widgets v0.3.2
+[1m[92m    Checking[0m rcgen v0.13.2
+[1m[92m    Checking[0m webkit2gtk v2.0.1
+[1m[92m    Checking[0m crossterm v0.29.0
+[1m[92m    Checking[0m x509-parser v0.17.0
+[1m[92m    Checking[0m hashbrown v0.14.5
+[1m[92m    Checking[0m muda v0.17.2
+[1m[92m   Compiling[0m manganis-core v0.7.10
+[1m[92m    Checking[0m libappindicator v0.9.0
+[1m[92m    Checking[0m infer v0.19.0
+[1m[92m    Checking[0m event-listener-strategy v0.5.4
+[1m[92m    Checking[0m png v0.18.1
+[1m[92m    Checking[0m png v0.17.16
+[1m[92m    Checking[0m futures-rustls v0.26.0
+[1m[92m    Checking[0m qoi v0.4.1
+[1m[92m   Compiling[0m dioxus-desktop v0.7.10
+[1m[92m    Checking[0m dioxus-devtools-types v0.7.10
+[1m[92m   Compiling[0m dsl_auto_type v0.2.0
+[1m[92m    Checking[0m gdkwayland-sys v0.18.2
+[1m[92m    Checking[0m concurrent-queue v2.5.0
+[1m[92m   Compiling[0m dart-sys v4.1.5
+[1m[92m   Compiling[0m eyre v0.6.14
+[1m[92m   Compiling[0m enum-as-inner v0.6.1
+[1m[92m   Compiling[0m clap_derive v4.6.4
+[1m[92m   Compiling[0m macro-string v0.1.4
+[1m[92m   Compiling[0m diesel_table_macro_syntax v0.3.0
+[1m[92m   Compiling[0m color-spantrace v0.3.0
+[1m[92m    Checking[0m iana-time-zone v0.1.65
+[1m[92m    Checking[0m xkeysym v0.2.1
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[92m    Checking[0m raw-window-handle v0.5.2
+[1m[92m   Compiling[0m build-target v0.4.0
+[1m[92m    Checking[0m pollster v0.4.0
+[1m[92m   Compiling[0m flutter_rust_bridge v2.12.0
+[1m[92m    Checking[0m tao v0.34.8
+[1m[92m   Compiling[0m manganis-macro v0.7.10
+[1m[92m    Checking[0m global-hotkey v0.7.0
+[1m[92m   Compiling[0m md-5 v0.10.6
+[1m[92m    Checking[0m chrono v0.4.45
+[1m[92m    Checking[0m clap v4.6.6
+[1m[92m    Checking[0m hickory-proto v0.25.2
+[1m[92m    Checking[0m async-channel v2.5.0
+[1m[92m    Checking[0m dioxus-devtools v0.7.10
+[1m[92m    Checking[0m image v0.25.10
+[1m[92m    Checking[0m tray-icon v0.21.3
+[1m[92m    Checking[0m libp2p-tls v0.6.2
+[1m[92m    Checking[0m dioxus-asset-resolver v0.7.10
+[1m[92m    Checking[0m hashlink v0.9.1
+[1m[92m    Checking[0m ratatui-crossterm v0.1.2
+[1m[92m   Compiling[0m migrations_internals v2.3.0
+[1m[92m    Checking[0m yamux v0.12.1
+[1m[92m    Checking[0m yamux v0.13.10
+[1m[92m    Checking[0m quick-protobuf-codec v0.3.1
+[1m[92m    Checking[0m tracing-error v0.2.1
+[1m[92m   Compiling[0m dioxus-stores-macro v0.7.10
+[1m[92m    Checking[0m regex v1.13.1
+[1m[92m    Checking[0m dioxus-history v0.7.10
+[1m[92m    Checking[0m futures-bounded v0.2.4
+[1m[92m    Checking[0m x25519-dalek v2.0.1
+[1m[92m    Checking[0m webbrowser v1.2.4
+[1m[92m    Checking[0m num_cpus v1.17.0
+[1m[92m    Checking[0m indenter v0.3.4
+[1m[92m   Compiling[0m hex v0.4.3
+[1m[92m    Checking[0m hex_fmt v0.3.0
+[1m[92m    Checking[0m downcast-rs v2.0.2
+[1m[92m    Checking[0m atomic v0.5.3
+[1m[92m   Compiling[0m flutter_rust_bridge_macros v2.12.0
+[1m[92m    Checking[0m allo-isolate v0.1.27
+[1m[92m    Checking[0m dioxus-stores v0.7.10
+[1m[92m    Checking[0m libp2p-gossipsub v0.49.5
+[1m[92m    Checking[0m threadpool v1.8.1
+[1m[92m    Checking[0m libp2p-noise v0.46.1
+[1m[92m    Checking[0m libp2p-request-response v0.29.0
+[1m[92m    Checking[0m libp2p-yamux v0.47.0
+[1m[92m   Compiling[0m migrations_macros v2.3.0
+[1m[92m    Checking[0m manganis v0.7.10
+[1m[92m    Checking[0m libp2p-mdns v0.48.0
+[1m[92m    Checking[0m diesel v2.3.12
+[1m[92m    Checking[0m libp2p-quic v0.13.1
+[1m[92m    Checking[0m clap_complete v4.6.9
+[1m[92m    Checking[0m ratatui-macros v0.7.2
+[1m[92m    Checking[0m libp2p-tcp v0.44.1
+[1m[92m    Checking[0m dioxus-logger v0.7.10
+[1m[92m    Checking[0m libp2p-allow-block-list v0.6.0
+[1m[92m    Checking[0m libp2p-connection-limits v0.6.0
+[1m[92m    Checking[0m libp2p-ping v0.47.0
+[1m[92m   Compiling[0m petname-macros v3.2.0
+[1m[92m   Compiling[0m delegate-attr v0.3.1
+[1m[92m   Compiling[0m dioxus-config-macro v0.7.10
+[1m[92m    Checking[0m dioxus-config-macros v0.7.10
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m petname v3.2.0
+[1m[92m    Checking[0m dioxus v0.7.10
+[1m[92m    Checking[0m libp2p v0.56.0
+[1m[92m    Checking[0m ratatui v0.30.2
+[1m[92m    Checking[0m color-eyre v0.6.5
+[1m[92m    Checking[0m ratatui-textarea v0.9.2
+[1m[92m   Compiling[0m serial_test_derive v3.5.0
+[1m[92m    Checking[0m fastrand v2.5.0
+[1m[92m    Checking[0m tempfile v3.27.0
+[1m[92m    Checking[0m serial_test v3.5.0
+[1m[92m    Checking[0m diesel_migrations v2.3.2
+[1m[33mwarning[0m[1m: unneeded `return` statement[0m
+   [1m[94m--> [0msrc/db.rs:363:9
+    [1m[94m|[0m
+[1m[94m363[0m [1m[94m|[0m         return url;
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mhelp[0m: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+    [1m[94m= [0m[1mnote[0m: `#[warn(clippy::needless_return)]` on by default
+[1m[96mhelp[0m: remove `return`
+    [1m[94m|[0m
+[1m[94m363[0m [91m- [0m        [91mreturn url;[0m
+[1m[94m363[0m [92m+ [0m        [92murl[0m
+    [1m[94m|[0m
+
+[1m[33mwarning[0m: `p2p_app` (lib) generated 1 warning (run `cargo clippy --fix --lib -p p2p_app -- ` to apply 1 suggestion)
+[1m[33mwarning[0m: `p2p_app` (lib test) generated 1 warning (1 duplicate)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1m 37s
+Exit code: 0
+
+
+============================================================
+Phase 2 - Build
+============================================================
+
+--- build ---
+[1m[92m   Compiling[0m libp2p-ping v0.47.0
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m   Compiling[0m libp2p v0.56.0
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 13s
+Exit code: 0
+
+
+============================================================
+Phase 3 - Security & Documentation
+============================================================
+
+--- audit ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1226 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (853 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m CPU exhaustion during message encoding due to O(n²) name compression
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0119
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-q2qq-hmj6-3wpp
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.26.1
+
+[0m[0m[1m[31mCrate:    [0m hickory-proto
+[0m[0m[1m[31mVersion:  [0m 0.25.2
+[0m[0m[1m[31mTitle:    [0m NSEC3 closest-encloser proof validation enters unbounded loop on cross-zone responses
+[0m[0m[1m[31mDate:     [0m 2026-05-01
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0118
+[0m[0m[1m[31mURL:      [0m https://github.com/hickory-dns/hickory-dns/security/advisories/GHSA-3v94-mw7p-v465
+[0m[0m[1m[31mSolution: [0m No fixed upgrade is available!
+
+[0m[0m[1m[33mCrate:    [0m atk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0413
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0413
+
+[0m[0m[1m[33mCrate:    [0m atk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0416
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0416
+
+[0m[0m[1m[33mCrate:    [0m fxhash
+[0m[0m[1m[33mVersion:  [0m 0.2.1
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m fxhash - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2025-09-05
+[0m[0m[1m[33mID:       [0m RUSTSEC-2025-0057
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2025-0057
+
+[0m[0m[1m[33mCrate:    [0m gdk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0412
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0412
+
+[0m[0m[1m[33mCrate:    [0m gdk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0418
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0418
+
+[0m[0m[1m[33mCrate:    [0m gdkwayland-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0411
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0411
+
+[0m[0m[1m[33mCrate:    [0m gdkx11-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0414
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0414
+
+[0m[0m[1m[33mCrate:    [0m gtk
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0415
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0415
+
+[0m[0m[1m[33mCrate:    [0m gtk-sys
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0420
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0420
+
+[0m[0m[1m[33mCrate:    [0m gtk3-macros
+[0m[0m[1m[33mVersion:  [0m 0.18.2
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m gtk-rs GTK3 bindings - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-03-04
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0419
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0419
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m proc-macro-error
+[0m[0m[1m[33mVersion:  [0m 1.0.4
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m proc-macro-error is unmaintained
+[0m[0m[1m[33mDate:     [0m 2024-09-01
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0370
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0370
+
+[0m[0m[1m[33mCrate:    [0m glib
+[0m[0m[1m[33mVersion:  [0m 0.18.5
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Unsoundness in `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`
+[0m[0m[1m[33mDate:     [0m 2024-03-30
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0429
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0429
+
+[0m[0m[1m[33mCrate:    [0m rand
+[0m[0m[1m[33mVersion:  [0m 0.7.3
+[0m[0m[1m[33mWarning:  [0m unsound
+[0m[0m[1m[33mTitle:    [0m Rand is unsound with a custom logger using `rand::rng()`
+[0m[0m[1m[33mDate:     [0m 2026-04-09
+[0m[0m[1m[33mID:       [0m RUSTSEC-2026-0097
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0097
+
+[0m[0m[1m[31merror:[0m 2 vulnerabilities found!
+[0m[0m[1m[33mwarning:[0m 14 allowed warnings found
+Exit code: 0
+
+--- docs ---
+[1m[92m   Compiling[0m rustix v1.1.4
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m gethostname v1.1.0
+[1m[92m    Checking[0m crossterm v0.29.0
+[1m[92m    Checking[0m x11rb v0.13.2
+[1m[92m    Checking[0m ratatui-crossterm v0.1.2
+[1m[92m    Checking[0m ratatui-textarea v0.9.2
+[1m[92m    Checking[0m ratatui v0.30.2
+[1m[92m    Checking[0m global-hotkey v0.7.0
+[1m[92m    Checking[0m dioxus-desktop v0.7.10
+[1m[92m    Checking[0m dioxus v0.7.10
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/db.rs:77:1
+   [1m[94m|[0m
+[1m[94m77[0m [1m[94m|[0m pub fn reset_db_url() {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/mobile_api.rs:52:1
+   [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m pub struct MobileInitStatus {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:53:5
+   [1m[94m|[0m
+[1m[94m53[0m [1m[94m|[0m     pub database_url: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:54:5
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m     pub local_peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/mobile_api.rs:58:1
+   [1m[94m|[0m
+[1m[94m58[0m [1m[94m|[0m pub struct MobilePeerStatus {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:59:5
+   [1m[94m|[0m
+[1m[94m59[0m [1m[94m|[0m     pub database_url: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:60:5
+   [1m[94m|[0m
+[1m[94m60[0m [1m[94m|[0m     pub local_peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:61:5
+   [1m[94m|[0m
+[1m[94m61[0m [1m[94m|[0m     pub self_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/mobile_api.rs:64:1
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/mobile_api.rs:76:1
+   [1m[94m|[0m
+[1m[94m76[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:267:1
+    [1m[94m|[0m
+[1m[94m267[0m [1m[94m|[0m pub struct MobilePeerRecord {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:268:5
+    [1m[94m|[0m
+[1m[94m268[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:269:5
+    [1m[94m|[0m
+[1m[94m269[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:270:5
+    [1m[94m|[0m
+[1m[94m270[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:271:5
+    [1m[94m|[0m
+[1m[94m271[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:272:5
+    [1m[94m|[0m
+[1m[94m272[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:273:5
+    [1m[94m|[0m
+[1m[94m273[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:308:1
+    [1m[94m|[0m
+[1m[94m308[0m [1m[94m|[0m pub struct ChatMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:309:5
+    [1m[94m|[0m
+[1m[94m309[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:310:5
+    [1m[94m|[0m
+[1m[94m310[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:311:5
+    [1m[94m|[0m
+[1m[94m311[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:312:5
+    [1m[94m|[0m
+[1m[94m312[0m [1m[94m|[0m     pub is_broadcast: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:313:5
+    [1m[94m|[0m
+[1m[94m313[0m [1m[94m|[0m     pub target_peer: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:314:5
+    [1m[94m|[0m
+[1m[94m314[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:315:5
+    [1m[94m|[0m
+[1m[94m315[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:316:5
+    [1m[94m|[0m
+[1m[94m316[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:317:5
+    [1m[94m|[0m
+[1m[94m317[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:318:5
+    [1m[94m|[0m
+[1m[94m318[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:486:1
+    [1m[94m|[0m
+[1m[94m486[0m [1m[94m|[0m pub struct SwarmEventJson {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:487:5
+    [1m[94m|[0m
+[1m[94m487[0m [1m[94m|[0m     pub event_type: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:488:5
+    [1m[94m|[0m
+[1m[94m488[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:489:5
+    [1m[94m|[0m
+[1m[94m489[0m [1m[94m|[0m     pub content: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:490:5
+    [1m[94m|[0m
+[1m[94m490[0m [1m[94m|[0m     pub latency: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:491:5
+    [1m[94m|[0m
+[1m[94m491[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:492:5
+    [1m[94m|[0m
+[1m[94m492[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:493:5
+    [1m[94m|[0m
+[1m[94m493[0m [1m[94m|[0m     pub address: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a module[0m
+  [1m[94m--> [0msrc/nickname.rs:10:1
+   [1m[94m|[0m
+[1m[94m10[0m [1m[94m|[0m [1m[33m/[0m diesel::table! {
+[1m[94m11[0m [1m[94m|[0m [1m[33m|[0m     peer_name_history (id) {
+   [1m[94m|[0m [1m[33m|_____________________^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:126:5
+    [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m     pub name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:127:5
+    [1m[94m|[0m
+[1m[94m127[0m [1m[94m|[0m     pub name_kind: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:128:5
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m     pub set_at: chrono::NaiveDateTime,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:12:9
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m         id -> Integer,
+   [1m[94m|[0m         [1m[33m^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:13:9
+   [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m         peer_id -> Text,
+   [1m[94m|[0m         [1m[33m^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:14:9
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m         name -> Text,
+   [1m[94m|[0m         [1m[33m^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:15:9
+   [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m         name_kind -> Text,
+   [1m[94m|[0m         [1m[33m^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+  [1m[94m--> [0msrc/nickname.rs:16:9
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m         set_at -> Timestamp,
+   [1m[94m|[0m         [1m[33m^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this warning originates in the macro `diesel::table` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 45 warnings
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 10.77s
+[1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 3 other files
+Exit code: 0
+
+
+============================================================
+Phase 4 - Code Coverage & Metrics
+============================================================
+
+--- coverage-install ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m cargo-tarpaulin v0.37.2
+[1m[92m     Ignored[0m package `cargo-tarpaulin v0.37.2` is already installed, use --force to override
+
+--- tarpaulin-output ---
+[2m2026-08-25T21:53:24.431305Z[0m [32m INFO[0m [2mcargo_tarpaulin::config[0m[2m:[0m Creating config
+[2m2026-08-25T21:53:25.531144Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Running Tarpaulin
+[2m2026-08-25T21:53:25.531159Z[0m [32m INFO[0m [2mcargo_tarpaulin[0m[2m:[0m Building project
+[2m2026-08-25T21:53:25.543697Z[0m [32m INFO[0m [2mcargo_tarpaulin::cargo[0m[2m:[0m Cleaning project
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.4
+   Compiling syn v2.0.119
+   Compiling libc v0.2.189
+   Compiling serde_derive v1.0.229
+   Compiling cfg-if v1.0.4
+   Compiling version_check v0.9.5
+   Compiling heck v0.5.0
+   Compiling pkg-config v0.3.34
+   Compiling memchr v2.8.3
+   Compiling serde v1.0.229
+   Compiling equivalent v1.0.2
+   Compiling critical-section v1.2.0
+   Compiling pin-project-lite v0.2.17
+   Compiling portable-atomic v1.15.0
+   Compiling log v0.4.34
+   Compiling once_cell v1.21.4
+   Compiling hashbrown v0.17.1
+   Compiling toml_datetime v0.6.3
+   Compiling winnow v0.5.40
+   Compiling indexmap v2.14.0
+   Compiling smallvec v1.15.2
+   Compiling serde_spanned v0.6.9
+   Compiling target-lexicon v0.12.16
+   Compiling toml_edit v0.20.2
+   Compiling cfg-expr v0.15.8
+   Compiling version-compare v0.2.1
+   Compiling futures-io v0.3.34
+   Compiling futures-core v0.3.34
+   Compiling slab v0.4.12
+   Compiling toml v0.8.2
+   Compiling system-deps v6.2.2
+   Compiling futures-sink v0.3.34
+   Compiling futures-channel v0.3.34
+   Compiling futures-macro v0.3.34
+   Compiling futures-task v0.3.34
+   Compiling thiserror v2.0.20
+   Compiling futures-util v0.3.34
+   Compiling thiserror-impl v2.0.20
+   Compiling bitflags v2.13.1
+   Compiling autocfg v1.5.1
+   Compiling tracing-core v0.1.36
+   Compiling synstructure v0.13.2
+   Compiling futures-executor v0.3.34
+   Compiling tracing-attributes v0.1.31
+   Compiling stable_deref_trait v1.2.1
+   Compiling anyhow v1.0.104
+   Compiling bytes v1.12.1
+   Compiling find-msvc-tools v0.1.11
+   Compiling tracing v0.1.44
+   Compiling parking_lot_core v0.9.12
+   Compiling shlex v2.0.1
+   Compiling either v1.18.0
+   Compiling cc v1.4.4
+   Compiling zerocopy v0.8.56
+   Compiling scopeguard v1.2.0
+   Compiling semver v1.0.28
+   Compiling rustc_version v0.4.1
+   Compiling lock_api v0.4.14
+   Compiling generic-array v0.14.7
+   Compiling zerocopy-derive v0.8.56
+   Compiling parking_lot v0.12.5
+   Compiling typenum v1.20.1
+   Compiling zerofrom-derive v0.1.7
+   Compiling glib-sys v0.18.1
+   Compiling displaydoc v0.2.7
+   Compiling zerofrom v0.1.8
+   Compiling yoke-derive v0.8.2
+   Compiling subtle v2.6.1
+   Compiling yoke v0.8.3
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling gobject-sys v0.18.0
+   Compiling fnv v1.0.7
+   Compiling num-traits v0.2.19
+   Compiling zerovec-derive v0.11.6
+   Compiling zerovec v0.11.8
+   Compiling itertools v0.14.0
+   Compiling getrandom v0.2.17
+   Compiling pin-project-internal v1.1.13
+   Compiling gio-sys v0.18.1
+   Compiling thiserror v1.0.69
+   Compiling tinystr v0.8.4
+   Compiling digest v0.10.7
+   Compiling ppv-lite86 v0.2.21
+   Compiling pin-project v1.1.13
+   Compiling thiserror-impl v1.0.69
+   Compiling zeroize_derive v1.5.0
+   Compiling writeable v0.6.4
+   Compiling strsim v0.11.1
+   Compiling litemap v0.8.3
+   Compiling icu_locale_core v2.3.0
+   Compiling zeroize v1.9.0
+   Compiling potential_utf v0.1.6
+   Compiling zerotrie v0.2.5
+   Compiling icu_normalizer_data v2.3.0
+   Compiling icu_properties_data v2.3.0
+   Compiling utf8_iter v1.0.4
+   Compiling icu_provider v2.3.1
+   Compiling icu_collections v2.3.0
+   Compiling mio v1.2.2
+   Compiling cpufeatures v0.2.17
+   Compiling unicode-segmentation v1.13.3
+   Compiling static_assertions v1.1.0
+   Compiling percent-encoding v2.3.2
+   Compiling rustversion v1.0.23
+   Compiling icu_properties v2.3.0
+   Compiling icu_normalizer v2.3.0
+   Compiling proc-macro-error-attr v1.0.4
+   Compiling crossbeam-utils v0.8.22
+   Compiling syn v1.0.109
+   Compiling ident_case v1.0.1
+   Compiling byteorder v1.5.0
+   Compiling data-encoding v2.11.1
+   Compiling idna_adapter v1.2.2
+   Compiling gdk-sys v0.18.2
+   Compiling proc-macro-error v1.0.4
+   Compiling idna v1.1.0
+   Compiling form_urlencoded v1.2.2
+   Compiling rand_core v0.6.4
+   Compiling socket2 v0.6.5
+   Compiling url v2.5.8
+   Compiling curve25519-dalek v4.1.3
+   Compiling futures v0.3.34
+   Compiling tokio-macros v2.7.2
+   Compiling itoa v1.0.18
+   Compiling pango-sys v0.18.0
+   Compiling cairo-sys-rs v0.18.2
+   Compiling gdk-pixbuf-sys v0.18.0
+   Compiling tokio v1.53.1
+   Compiling atk-sys v0.18.2
+   Compiling proc-macro-crate v2.0.2
+   Compiling curve25519-dalek-derive v0.1.1
+   Compiling time-core v0.1.9
+   Compiling heck v0.4.1
+   Compiling num-conv v0.2.2
+   Compiling time-macros v0.2.32
+   Compiling glib-macros v0.18.5
+   Compiling rand_chacha v0.3.1
+   Compiling paste v1.0.15
+   Compiling signature v2.2.0
+   Compiling unsigned-varint v0.8.0
+   Compiling deranged v0.5.8
+   Compiling num_threads v0.1.7
+   Compiling powerfmt v0.2.0
+   Compiling time v0.3.55
+   Compiling data-encoding-macro-internal v0.1.19
+   Compiling ed25519 v2.2.3
+   Compiling rand v0.8.7
+   Compiling glib v0.18.5
+   Compiling sha2 v0.10.9
+   Compiling hmac v0.12.1
+   Compiling prost-derive v0.14.4
+   Compiling match-lookup v0.1.2
+   Compiling const-str v0.4.3
+   Compiling vcpkg v0.2.15
+   Compiling base256emoji v1.0.2
+   Compiling prost v0.14.4
+   Compiling hkdf v0.12.4
+   Compiling ed25519-dalek v2.2.0
+   Compiling data-encoding-macro v0.1.21
+   Compiling multihash v0.19.5
+   Compiling gtk-sys v0.18.2
+   Compiling base45 v3.2.0
+   Compiling simd-adler32 v0.3.10
+   Compiling rustc-hash v2.1.3
+   Compiling bs58 v0.5.1
+   Compiling base-x v0.2.11
+   Compiling multibase v0.9.3
+   Compiling libp2p-identity v0.2.14
+   Compiling quick-protobuf v0.8.1
+   Compiling ring v0.17.14
+   Compiling unsigned-varint v0.7.2
+   Compiling arrayref v0.3.9
+   Compiling cfg_aliases v0.2.2
+   Compiling foldhash v0.2.0
+   Compiling web-time v1.1.0
+   Compiling gio v0.18.4
+   Compiling futures-timer v3.0.4
+   Compiling multiaddr v0.18.2
+   Compiling multistream-select v0.13.0
+   Compiling rw-stream-sink v0.4.0
+   Compiling num-integer v0.1.47
+   Compiling slotmap v1.1.1
+   Compiling unicode-xid v0.2.6
+   Compiling dioxus-core-types v0.7.10
+   Compiling adler2 v2.0.1
+   Compiling konst_macro_rules v0.2.19
+   Compiling getrandom v0.3.4
+   Compiling konst v0.2.20
+   Compiling miniz_oxide v0.8.9
+   Compiling const_format_proc_macros v0.2.34
+   Compiling num-bigint v0.4.8
+   Compiling libp2p-core v0.43.2
+   Compiling darling_core v0.21.3
+   Compiling subsecond-types v0.7.10
+   Compiling libloading v0.8.9
+   Compiling memmap2 v0.9.11
+   Compiling crossbeam-epoch v0.9.20
+   Compiling subsecond v0.7.10
+   Compiling darling_macro v0.21.3
+   Compiling const_format v0.2.36
+   Compiling generational-box v0.7.10
+   Compiling memoffset v0.9.1
+   Compiling crossbeam-deque v0.8.7
+   Compiling untrusted v0.9.0
+   Compiling longest-increasing-subsequence v0.1.0
+   Compiling rustix v1.1.4
+   Compiling lazy_static v1.5.0
+   Compiling libm v0.2.16
+   Compiling dioxus-core v0.7.10
+   Compiling rand_core v0.9.5
+   Compiling darling v0.21.3
+   Compiling field-offset v0.3.6
+   Compiling toml_edit v0.19.15
+   Compiling aho-corasick v1.1.5
+   Compiling linux-raw-sys v0.12.1
+   Compiling regex-syntax v0.8.11
+   Compiling rayon-core v1.13.0
+   Compiling zmij v1.0.23
+   Compiling regex-automata v0.4.18
+   Compiling proc-macro-crate v1.3.1
+   Compiling rand_chacha v0.9.0
+   Compiling pango v0.18.3
+   Compiling gdk-pixbuf v0.18.5
+   Compiling cairo-rs v0.18.5
+   Compiling openssl-sys v0.9.117
+   Compiling gtk v0.18.2
+   Compiling x11 v2.21.0
+   Compiling equator-macro v0.4.2
+   Compiling warnings-macro v0.2.0
+   Compiling serde_json v1.0.151
+   Compiling allocator-api2 v0.2.21
+   Compiling rand_core v0.10.1
+   Compiling lazy-js-bundle v0.7.10
+   Compiling winnow v0.7.15
+   Compiling foldhash v0.1.5
+   Compiling crc32fast v1.5.1
+   Compiling hashbrown v0.15.5
+   Compiling equator v0.4.2
+   Compiling warnings v0.2.1
+   Compiling gdk v0.18.2
+   Compiling rand v0.9.5
+   Compiling gtk3-macros v0.18.2
+   Compiling atk v0.18.2
+   Compiling convert_case v0.8.0
+   Compiling rustls-pki-types v1.15.1
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling errno v0.3.14
+   Compiling async-trait v0.1.92
+   Compiling signal-hook v0.3.18
+   Compiling minimal-lexical v0.2.1
+   Compiling getrandom v0.4.3
+   Compiling nom v7.1.3
+   Compiling signal-hook-registry v1.4.8
+   Compiling dioxus-signals v0.7.10
+   Compiling aligned-vec v0.6.4
+   Compiling hashlink v0.10.0
+   Compiling nix v0.30.1
+   Compiling netlink-packet-core v0.8.2
+   Compiling darling_core v0.24.1
+   Compiling keyboard-types v0.7.0
+   Compiling soup3-sys v0.5.0
+   Compiling javascriptcore-rs-sys v1.1.1
+   Compiling libp2p-swarm-derive v0.35.1
+   Compiling const-serialize-macro v0.7.2
+   Compiling arrayvec v0.7.8
+   Compiling bitflags v1.3.2
+   Compiling base64 v0.22.1
+   Compiling rustls v0.23.43
+   Compiling const-serialize v0.7.2
+   Compiling libp2p-swarm v0.47.1
+   Compiling darling_macro v0.24.1
+   Compiling flate2 v1.1.9
+   Compiling v_frame v0.3.9
+   Compiling rusticata-macros v4.1.0
+   Compiling rustls-webpki v0.103.15
+   Compiling rayon v1.12.0
+   Compiling hashbrown v0.16.1
+   Compiling num-rational v0.4.2
+   Compiling netlink-sys v0.8.8
+   Compiling castaway v0.2.4
+   Compiling as-slice v0.2.1
+   Compiling asn1-rs-derive v0.6.0
+   Compiling webkit2gtk-sys v2.0.1
+   Compiling strum_macros v0.28.0
+   Compiling asn1-rs-impl v0.2.0
+   Compiling const-serialize-macro v0.8.0-alpha.1
+   Compiling unicode-width v0.2.2
+   Compiling foreign-types-shared v0.1.1
+   Compiling bytemuck v1.25.2
+   Compiling ryu v1.0.23
+   Compiling av-scenechange v0.14.1
+   Compiling openssl v0.10.81
+   Compiling tinyvec_macros v0.1.1
+   Compiling instability v0.3.13
+   Compiling cpufeatures v0.3.0
+   Compiling libxdo-sys v0.11.0
+   Compiling dioxus-cli-config v0.7.10
+   Compiling built v0.8.1
+   Compiling chacha20 v0.10.1
+   Compiling tinyvec v1.12.0
+   Compiling rav1e v0.8.1
+   Compiling compact_str v0.9.1
+   Compiling foreign-types v0.3.2
+   Compiling unicode-truncate v2.0.1
+   Compiling asn1-rs v0.7.2
+   Compiling strum v0.28.0
+   Compiling aligned v0.4.3
+   Compiling netlink-proto v0.12.2
+   Compiling kasuari v0.4.12
+   Compiling lru v0.18.2
+   Compiling dioxus-rsx v0.7.10
+   Compiling darling v0.24.1
+   Compiling netlink-packet-route v0.28.0
+   Compiling matchers v0.2.0
+   Compiling enumset_derive v0.15.0
+   Compiling sharded-slab v0.1.7
+   Compiling fdeflate v0.3.7
+   Compiling http v1.5.0
+   Compiling crossbeam-channel v0.5.16
+   Compiling convert_case v0.10.0
+   Compiling tracing-log v0.2.0
+   Compiling no_std_io2 v0.9.4
+   Compiling nom v8.0.0
+   Compiling ahash v0.8.12
+   Compiling pulp v0.22.3
+   Compiling thread_local v1.1.10
+   Compiling profiling-procmacros v1.0.18
+   Compiling openssl-macros v0.1.1
+   Compiling arg_enum_proc_macro v0.3.4
+   Compiling y4m v0.8.0
+   Compiling quick-error v2.0.1
+   Compiling nu-ansi-term v0.50.3
+   Compiling native-tls v0.2.18
+   Compiling dpi v0.1.2
+   Compiling object v0.37.3
+   Compiling pastey v0.1.1
+   Compiling httparse v1.10.1
+   Compiling utf8parse v0.2.2
+   Compiling ipnet v2.12.1
+   Compiling oid-registry v0.8.1
+   Compiling winnow v1.0.4
+   Compiling option-ext v0.2.0
+   Compiling indoc v2.0.7
+   Compiling dirs-sys v0.5.0
+   Compiling toml_parser v1.1.3+spec-1.1.0
+   Compiling anstyle-parse v1.0.0
+   Compiling tracing-subscriber v0.3.23
+   Compiling av1-grain v0.2.5
+   Compiling profiling v1.0.18
+   Compiling bitstream-io v4.10.0
+   Compiling derive_more-impl v2.1.1
+   Compiling rtnetlink v0.20.0
+   Compiling enumset v1.1.14
+   Compiling dioxus-core-macro v0.7.10
+   Compiling ratatui-core v0.1.2
+   Compiling rand v0.10.2
+   Compiling num-complex v0.4.6
+   Compiling maybe-rayon v0.1.1
+   Compiling dioxus-hooks v0.7.10
+   Compiling dioxus-html-internal-macro v0.7.10
+   Compiling quinn-udp v0.5.15
+   Compiling libsqlite3-sys v0.36.0
+   Compiling euclid v0.22.14
+   Compiling half v2.7.1
+   Compiling raw-cpuid v11.6.0
+   Compiling gdkx11-sys v0.18.2
+   Compiling x11-dl v2.21.0
+   Compiling cookie v0.18.2
+   Compiling libloading v0.7.4
+   Compiling num-derive v0.4.2
+   Compiling serde_repr v0.1.21
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling simd_helpers v0.1.0
+   Compiling imgref v1.12.2
+   Compiling new_debug_unreachable v1.0.6
+   Compiling zune-core v0.5.3
+   Compiling anstyle-query v1.1.5
+   Compiling gimli v0.32.3
+   Compiling parking v2.2.1
+   Compiling anstyle v1.0.14
+   Compiling colorchoice v1.0.5
+   Compiling noop_proc_macro v0.3.0
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling uuid v1.25.0
+   Compiling pulp-wasm-simd-flag v0.1.1
+   Compiling raw-window-handle v0.6.2
+   Compiling openssl-probe v0.2.1
+   Compiling litrs v1.0.0
+   Compiling reborrow v0.5.5
+   Compiling weezl v0.1.12
+   Compiling siphasher v1.0.3
+   Compiling fastbloom v0.17.0
+   Compiling addr2line v0.25.1
+   Compiling document-features v0.2.12
+   Compiling cfb v0.7.3
+   Compiling anstream v1.0.0
+error: Broken pipe (os error 32)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `pulp` (lib) due to 10 previous errors
+[2m2026-08-25T21:55:37.735481Z[0m [31mERROR[0m [2mcargo_tarpaulin[0m[2m:[0m Failed to compile tests!
+error[E0080]: evaluation panicked: assertion failed: core::mem::size_of::<T>() == core::mem::size_of::<U>()
+    --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.22.3/src/lib.rs:3291:3
+     |
+3291 |         assert!(core::mem::size_of::<T>() == core::mem::size_of::<U>());
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CheckSameSize::<i8, u16>::VALID` failed here
+
+
+Error: "Failed to compile tests!\nerror[E0080]: evaluation panicked: assertion failed: core::mem::size_of::<T>() == core::mem::size_of::<U>()\n    --> /home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pulp-0.22.3/src/lib.rs:3291:3\n     |\n3291 |         assert!(core::mem::size_of::<T>() == core::mem::size_of::<U>());\n     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `CheckSameSize::<i8, u16>::VALID` failed here\n\n"
+Exit code: 1
+
