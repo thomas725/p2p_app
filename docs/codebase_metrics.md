@@ -9,7 +9,7 @@
 | Total Rust Chars      |             417,879 |
 | Avg Lines/Rust File   |                 297 |
 | Avg Chars/Rust File   |              10,714 |
-| Covered Rust Lines    | 2,374 / 3,811 (62%) |
+| Covered Rust Lines    | 2,373 / 3,811 (62%) |
 | Total Dart Files      |                   8 |
 | Total Dart Lines      |               5,047 |
 | Total Dart Chars      |             153,959 |
@@ -35,7 +35,7 @@
 | src                     | fmt.rs               |     4 |  3906 |   129 |       43 |  97.67% | Formatting & display utilities      |
 | src                     | frb_generated.rs     |     6 | 70223 |  1743 |      767 |   0.00% | flutter_rust_bridge codegen         |
 | src                     | lib.rs               |     1 |  5939 |   156 |        1 | 100.00% | Module declarations & re-exports    |
-| src                     | logging.rs           |     4 | 11635 |   359 |      109 |  98.17% | Logging utilities & setup           |
+| src                     | logging.rs           |     4 | 11635 |   359 |      109 |  97.25% | Logging utilities & setup           |
 | src                     | messages.rs          |     5 | 12171 |   351 |      101 |  90.10% | Message persistence & retrieval     |
 | src                     | mobile_api.rs        |     4 | 17585 |   529 |       42 | 100.00% | Mobile FRB API surface              |
 | src                     | mobile_node.rs       |     5 | 36038 |  1051 |      195 |  48.72% | Mobile node lifecycle & swarm       |
@@ -68,7 +68,7 @@
 | src/generated           | models_queryable.rs  |     1 |  4022 |   112 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  2702 |   103 |       53 |  88.68% | Database schema (Diesel)            |
 
-**Total:** 39 files, 11,607 lines, 417,879 characters (2374/3811 testable lines covered, 62%)
+**Total:** 39 files, 11,607 lines, 417,879 characters (2373/3811 testable lines covered, 62%)
 
 ## Rust Test Files
 
