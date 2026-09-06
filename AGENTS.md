@@ -10,6 +10,7 @@
 - Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`).
 - All code must be clippy-clean with the project's strict pedantic config: `cargo ct` (alias for `cargo clippy --all-targets --all-features`) must exit 0 with no warnings.
 - User decisions: peer click in Peers tab **keeps opening the DM tab**; message click in Chat/Log/DM **opens the sender's/partner's PeerInfo**.
+- **Committing**: commit when a logical block of work is done and it makes sense; only **pushing** is reserved for the user.
 
 ## Progress
 ### Done
