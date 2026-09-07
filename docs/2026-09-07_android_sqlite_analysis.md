@@ -137,9 +137,9 @@ because those functions don't touch the DB — only their inputs now arrive from
   Kotlin over MethodChannel and returns — so existing call signatures can stay synchronous. Rows
   travel as JSON (or generated serializers), adding per-call marshalling cost on top of the
   double-FFI hop (Rust→Dart→Kotlin and back).
-- **Divergence risk.** The desktop/TUI path keeps diesel; only Android runs the Kotlin backend, so
-  the two paths can drift (sort, stats, nickname logic duplicated on both sides of the bridge) and
-  need an `androidTest` suite to cover what desktop unit tests can't.
+- **Divergence (behavior-drift) risk.** The desktop/TUI path keeps diesel; only Android runs the
+  Kotlin backend, so the two paths can drift (sort, stats, nickname logic duplicated on both sides
+  of the bridge) and need an `androidTest` suite to cover what desktop unit tests can't.
 - **Diesel stays compiled on Android** unless the SQLite backend is excluded per-target — a
   dependency restructure on its own. Pragmatically it stays; only the runtime dispatch changes.
 
