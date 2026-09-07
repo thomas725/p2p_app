@@ -79,16 +79,89 @@ in `build.rs` or `build_rust_android.sh` `RUSTFLAGS`.
 Keep diesel+embedded for the shared Rust core and mirror to framework `SQLiteDatabase` for anything
 the UI reads. Adds a read-path + sync layer for zero correctness gain. Not recommended.
 
+## Deeper: "Android-provided SQLite ⇒ Kotlin does the persistence" — generation feasibility and what it does to Rust
+
+### Confirming the shift
+Yes. The only Android-provided SQLite is the `android.database.sqlite.SQLiteDatabase` framework
+class (with Room as its typed wrapper). Both are Kotlin/Java-side. So Path A is precisely: **persistence
+moves out of the Rust crate and into Kotlin** — Rust stops calling `sqlite_connect()` on Android and
+instead makes requests that end in Kotlin `SQLiteDatabase` calls. Rust keeps only what's pure
+computation on already-fetched rows (display-name memoization, peer-table sort, message stats),
+because those functions don't touch the DB — only their inputs now arrive from the Kotlin backend.
+
+### Can the Kotlin layer be generated from the Rust/diesel code instead of hand-duplicated?
+
+**What's already single-source and reusable as-is:**
+- **The DDL.** `migrations/*/up.sql` is the canonical schema (diesel embeds it at compile time).
+  `SQLiteOpenHelper.onCreate` can run that same SQL verbatim (`execSQL` per statement), or use
+  Room against a migrated database. Zero schema duplication.
+- **Column names/types.** `build.rs` already parses `src/generated/schema.rs` and emits
+  `src/generated/columns.rs` at build time. The same parser is the raw material for generated
+  Kotlin entity classes.
+
+**Realistically generatable at build time:**
+- **Entities + DAO skeletons.** Extend the existing `build.rs` schema parser to also stamp out Kotlin
+  `data class` row types (and/or Room `@Entity`).
+  `@Dao` interface skeletons per table (INSERT-by-pk / SELECT-by-pk / DELETE-by-pk) are mechanical
+  from the schema. If we use Room, its annotation processor then **generates the interface
+  implementations itself** — so the "generate DAO code" ask is largely Room's own job once the
+  `@Entity`/`@Dao` stubs exist. Generation would be an extra emit into the Android module
+  (`apps/flutter_app/android/app/src/main/kotlin/...`) before the Gradle compile, wired into
+  `build_rust_android.sh`.
+- **The FRB surface as a checklist.** `src/mobile_api.rs` enumerates exactly which persistence RPCs
+  the UI needs; a generator could emit Kotlin method signatures/stubs from it, but the **bodies**
+  still need real query logic.
+- **Dart↔Kotlin channel.** Pigeon can generate the MethodChannel bridge (Dart + Kotlin) from a small
+  interface file — an orthogonal, well-trodden generator.
+
+**What cannot be generated:**
+- **The diesel query bodies.** Queries are written as the type-checked diesel DSL *inside function
+  bodies* (`src/peers.rs`, `src/messages.rs`, `src/nickname.rs`, `src/db.rs`). There is no runtime IR
+  of a query to transpile — diesel produces the SQL at codegen time, but the *intent* (e.g. the
+  two-pass `GROUP BY`/`UNION ALL` in `get_all_peer_stats`, or `record_broadcast_recipients`'s
+  idempotent upsert) lives only in hand-written Rust code. Nearly all of the ~40 `sqlite_connect()`
+  call sites must be **hand-ported to Kotlin**. The schema is not the duplication problem; the
+  query logic is.
+
+### "Android mode" in the Rust crate — the cost you flagged
+- **Mode detection: runtime backend enum, not `cfg` fork.** Add a `PersistenceBackend { Embedded, Kotlin }`
+  latched in `start_node_impl` (which already branches on whether a `db_path` was passed). A
+  `cfg(target_os = "android")` fork would duplicate whole modules and wouldn't be unit-testable on
+  the desktop host; dispatch instead of fork keeps one artifact and lets each backend be tested.
+- **Every DB function becomes a dispatch.** Each `sqlite_connect()`-rooted persistence function grows
+  a `match` on the backend; the Kotlin arm turns the call into a request over the Dart/FRB bridge.
+  Reads that Rust needs for its pure logic (peer rows, message history, nickname data) come back to
+  Rust across that bridge.
+- **Sync↔async bridge.** Diesel call sites are synchronous, but a Rust→Dart call is inherently async.
+  FRB's synchronous callback variant lets Rust block on a Dart-side call, which then proxies to
+  Kotlin over MethodChannel and returns — so existing call signatures can stay synchronous. Rows
+  travel as JSON (or generated serializers), adding per-call marshalling cost on top of the
+  double-FFI hop (Rust→Dart→Kotlin and back).
+- **Divergence risk.** The desktop/TUI path keeps diesel; only Android runs the Kotlin backend, so
+  the two paths can drift (sort, stats, nickname logic duplicated on both sides of the bridge) and
+  need an `androidTest` suite to cover what desktop unit tests can't.
+- **Diesel stays compiled on Android** unless the SQLite backend is excluded per-target — a
+  dependency restructure on its own. Pragmatically it stays; only the runtime dispatch changes.
+
+### Verdict on this angle
+Partial generation is genuinely available: reuse `migrations/*/up.sql` for DDL and extend `build.rs`
+to emit Kotlin entities/`@Dao` skeletons (Room finishes the implementations). But the diesel query
+logic cannot be generated away — it must be mirrored by hand in Kotlin — and the Rust side gains a
+backend-dispatch + synchronous FRB bridge on every persistence call. That hand-ported logic + the
+dispatch plumbing, not the embedding itself, is the real price of using Android's SQLite.
+
 ## Conclusion
 Android provides no linkable native SQLite — the embedding is not an arbitrary choice but a hard
 platform constraint (the framework class is the only Android-provided SQLite). Therefore:
 
-- "Use Android-provided SQLite" realistically means **Path A** (abandon diesel for Kotlin storage), a
-  large rewrite that drops the single shared persistence layer; or
+- "Use Android-provided SQLite" realistically means **Path A** (abandon diesel for Kotlin storage).
+  Schema/entity code can be partially generated from the Rust sources (see the section above), but the
+  diesel query logic must be hand-ported to Kotlin and the Rust side gains a backend-dispatch +
+  synchronous FRB bridge — a large rewrite that drops the single shared persistence layer; or
 - accept the current embedded bundle (recommended), or
 - **Path C** if the goal is only to move the SQLite compile out of Cargo into a packaged prebuilt `.so`
   while keeping diesel — this de-embeds but still self-supplies the engine.
 
-Considered and rejected for now: Path A (too invasive, kills shared Rust persistence) and Path B
-(impossible on modern Android). Path C is the fallback if the per-ABI amalgamation compile ever
-becomes a build-time pain.
+Considered and rejected for now: Path A (too invasive — Kotlin persistence mirror + Rust backend
+dispatch, see previous section) and Path B (impossible on modern Android). Path C is the fallback if
+the per-ABI amalgamation compile ever becomes a build-time pain.
