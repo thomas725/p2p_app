@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
 import 'src/rust/messages.dart';
-import 'src/rust/mobile_api.dart';
+import 'src/rust/mobile_api.dart' hide validateNickname;
 import 'src/rust/mobile_node.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
@@ -24,15 +24,12 @@ String _formatTimestamp(DateTime? dt) {
   return '${d.year}-${pad2(d.month)}-${pad2(d.day)} ${pad2(d.hour)}:${pad2(d.minute)}:${pad2(d.second)}';
 }
 
-/// Adaptive network-size class, mirroring the Rust core's `NetworkSize`
-/// thresholds (0-3 Small, 4-15 Medium, 16+ Large). Derived from the current
-/// connected count because the Flutter side only observes live connection
-/// events (the Rust historical average isn't exposed without regenerating
-/// the Rust<->Flutter bindings).
-String _networkSizeLabel(int connectedCount) {
-  if (connectedCount <= 3) return 'Small';
-  if (connectedCount <= 15) return 'Medium';
-  return 'Large';
+/// Format a "YYYY-MM-DDTHH:MM:SS..." last/first-seen string from Rust into a
+/// display form: truncate to the second, T→space, drop a trailing Z.
+String _formatSeenTimestamp(String value) {
+  if (value.isEmpty) return 'unknown';
+  final trimmed = value.length >= 19 ? value.substring(0, 19) : value;
+  return trimmed.replaceAll('T', ' ').replaceAll('Z', '').trim();
 }
 
 String get _defaultDbPath => _isAndroid
@@ -156,12 +153,14 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _lastConnectionAt;
 
   /// Live connection snapshot, broadcast to the Settings page.
-  final ValueNotifier<_LiveStatus> _liveStatus = ValueNotifier(const _LiveStatus(
-    connectedCount: 0,
-    connectedPeerIds: [],
-    listenAddresses: [],
-    lastConnectionAt: null,
-  ));
+  final ValueNotifier<_LiveStatus> _liveStatus = ValueNotifier(
+    const _LiveStatus(
+      connectedCount: 0,
+      connectedPeerIds: [],
+      listenAddresses: [],
+      lastConnectionAt: null,
+    ),
+  );
 
   /// Live node status (peer id, nickname, db url), broadcast to the Settings page.
   final ValueNotifier<MobilePeerStatus?> _statusNotifier =
@@ -206,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _onEvent = null;
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -261,9 +261,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final peerName = isOwn
           ? 'Me'
           : (msg.senderNickname ??
-              (msg.peerId!.length >= 12
-                  ? msg.peerId!.substring(0, 12)
-                  : msg.peerId!));
+                (msg.peerId!.length >= 12
+                    ? msg.peerId!.substring(0, 12)
+                    : msg.peerId!));
       final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
@@ -273,19 +273,22 @@ class _HomeScreenState extends State<HomeScreen> {
     Clipboard.setData(ClipboardData(text: buf.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied'),
+        content: Text(
+          '${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied',
+        ),
         duration: const Duration(seconds: 2),
       ),
     );
     _cancelSelection();
   }
 
-
   Future<void> _init() async {
     try {
       bool running = false;
       if (_isAndroid) {
-        running = await _serviceChannel.invokeMethod<bool>('isServiceRunning') ?? false;
+        running =
+            await _serviceChannel.invokeMethod<bool>('isServiceRunning') ??
+            false;
       }
       if (_isAndroid) {
         await initMobileDatabase(dbPath: _defaultDbPath);
@@ -330,14 +333,16 @@ class _HomeScreenState extends State<HomeScreen> {
       final peers = <MobilePeerRecord>[];
       final stats = <String, PeerMessageStats>{};
       for (final row in rows) {
-        peers.add(MobilePeerRecord(
-          peerId: row.peerId,
-          firstSeen: row.firstSeen,
-          lastSeen: row.lastSeen,
-          nickname: row.nickname,
-          localNickname: row.localNickname,
-          displayName: row.displayName,
-        ));
+        peers.add(
+          MobilePeerRecord(
+            peerId: row.peerId,
+            firstSeen: row.firstSeen,
+            lastSeen: row.lastSeen,
+            nickname: row.nickname,
+            localNickname: row.localNickname,
+            displayName: row.displayName,
+          ),
+        );
         stats[row.peerId] = PeerMessageStats(
           dmCount: row.dmCount,
           broadcastSentToPeer: row.broadcastSentToPeer,
@@ -356,8 +361,12 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'broadcast':
       case 'dm':
         if (event.content != null && event.peerId != null) {
-          _saveIncoming(event.content!, event.peerId!,
-              event.eventType == 'dm', event.nickname);
+          _saveIncoming(
+            event.content!,
+            event.peerId!,
+            event.eventType == 'dm',
+            event.nickname,
+          );
         }
         // A nickname in the event means we just learned or updated this peer's
         // name. Refresh the peer list so the info page (and peer list) reflect
@@ -390,7 +399,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _refreshPeers();
         break;
       case 'listen_addr':
-        if (event.address != null && !_listenAddresses.contains(event.address)) {
+        if (event.address != null &&
+            !_listenAddresses.contains(event.address)) {
           setState(() => _listenAddresses.add(event.address!));
         }
         break;
@@ -398,11 +408,19 @@ class _HomeScreenState extends State<HomeScreen> {
     _syncLiveStatus();
   }
 
-  Future<void> _saveIncoming(String content, String peerId, bool isDirect,
-      String? nickname) async {
+  Future<void> _saveIncoming(
+    String content,
+    String peerId,
+    bool isDirect,
+    String? nickname,
+  ) async {
     try {
       final msg = await saveIncomingMessage(
-          content: content, peerId: peerId, isDirect: isDirect, nickname: nickname);
+        content: content,
+        peerId: peerId,
+        isDirect: isDirect,
+        nickname: nickname,
+      );
       if (mounted) {
         setState(() {
           _messages.add(msg);
@@ -456,8 +474,9 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_scrollController.hasClients) {
           final firstUnreadIndex = lastViewed.clamp(0, _messages.length - 1);
           final targetOffset = (firstUnreadIndex * 70.0) - 20.0;
-          _scrollController.jumpTo(targetOffset.clamp(
-            0.0, _scrollController.position.maxScrollExtent));
+          _scrollController.jumpTo(
+            targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+          );
         }
       });
     } else {
@@ -493,7 +512,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _syncLiveStatus();
       } else {
         if (_isAndroid) {
-          await _serviceChannel.invokeMethod('startService', {'dbPath': _defaultDbPath});
+          await _serviceChannel.invokeMethod('startService', {
+            'dbPath': _defaultDbPath,
+          });
         }
         if (_isAndroid) {
           await startNode(dbPath: _defaultDbPath);
@@ -568,7 +589,8 @@ class _HomeScreenState extends State<HomeScreen> {
   // isn't in the discovered list yet, synthesize a record from what we know.
   void _openPeerInfoForPeerId(String peerId) {
     final known = _peers.where((p) => p.peerId == peerId).firstOrNull;
-    final record = known ??
+    final record =
+        known ??
         MobilePeerRecord(
           peerId: peerId,
           firstSeen: '',
@@ -733,12 +755,15 @@ class _BroadcastChatState extends State<_BroadcastChat> {
               Text(
                 'Broadcast',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
               const Spacer(),
               if (!widget.serviceRunning)
-                const Text('Offline', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                const Text(
+                  'Offline',
+                  style: TextStyle(fontSize: 12, color: Colors.orange),
+                ),
             ],
           ),
         ),
@@ -758,7 +783,10 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                   : SelectionArea(
                       child: SingleChildScrollView(
                         controller: widget.scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         child: Column(
                           children: [
                             for (int i = 0; i < widget.messages.length; i++)
@@ -796,7 +824,9 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                           ),
                         ),
                         IconButton(
-                          onPressed: widget.selectedIndices.isEmpty ? null : widget.onCopySelected,
+                          onPressed: widget.selectedIndices.isEmpty
+                              ? null
+                              : widget.onCopySelected,
                           icon: const Icon(Icons.copy),
                           tooltip: 'Copy',
                         ),
@@ -815,7 +845,10 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                       style: const TextStyle(fontSize: 12),
                     ),
                     style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       visualDensity: VisualDensity.compact,
                     ),
                   ),
@@ -832,7 +865,9 @@ class _BroadcastChatState extends State<_BroadcastChat> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: widget.serviceRunning ? 'Broadcast...' : 'Offline',
+                      hintText: widget.serviceRunning
+                          ? 'Broadcast...'
+                          : 'Offline',
                       border: const OutlineInputBorder(),
                       isDense: true,
                       enabled: widget.serviceRunning,
@@ -883,13 +918,14 @@ class _MessageBubble extends StatelessWidget {
     final senderName = isOwn
         ? 'Me'
         : (message.senderNickname ??
-            (message.peerId != null
-                ? (message.peerId!.length >= 12
-                    ? message.peerId!.substring(0, 12)
-                    : message.peerId!)
-                : 'Unknown'));
+              (message.peerId != null
+                  ? (message.peerId!.length >= 12
+                        ? message.peerId!.substring(0, 12)
+                        : message.peerId!)
+                  : 'Unknown'));
     // Tapping the sender name opens the peer info page (unless selecting).
-    final onOpenPeerInfo = (!isOwn && !selectionMode && this.onOpenPeerInfo != null)
+    final onOpenPeerInfo =
+        (!isOwn && !selectionMode && this.onOpenPeerInfo != null)
         ? () => this.onOpenPeerInfo!(message.peerId!)
         : null;
 
@@ -900,7 +936,9 @@ class _MessageBubble extends StatelessWidget {
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 3),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? cs.primary.withAlpha(40) : bg,
@@ -920,7 +958,9 @@ class _MessageBubble extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: onOpenPeerInfo != null ? cs.primary : fg.withAlpha(180),
+                        color: onOpenPeerInfo != null
+                            ? cs.primary
+                            : fg.withAlpha(180),
                         decoration: onOpenPeerInfo != null
                             ? TextDecoration.underline
                             : TextDecoration.none,
@@ -928,10 +968,7 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              Text(
-                message.content,
-                style: TextStyle(fontSize: 14, color: fg),
-              ),
+              Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
@@ -945,7 +982,6 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
   }
-
 }
 
 // --- Peers Tab ---
@@ -954,7 +990,11 @@ class _MessageBubble extends StatelessWidget {
 /// call so widget tests can exercise sorting without a loaded Rust library.
 @visibleForTesting
 typedef SortPeersOverride =
-    List<PeerSortInput> Function(List<PeerSortInput> rows, int column, bool ascending);
+    List<PeerSortInput> Function(
+      List<PeerSortInput> rows,
+      int column,
+      bool ascending,
+    );
 
 class PeerList extends StatefulWidget {
   const PeerList({
@@ -1029,12 +1069,6 @@ class PeerListState extends State<PeerList> {
     });
   }
 
-  String _fmtLastSeen(String value) {
-    final trimmed =
-        value.length >= 19 ? value.substring(0, 19) : value;
-    return trimmed.replaceAll('T', ' ');
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -1051,9 +1085,9 @@ class PeerListState extends State<PeerList> {
               const SizedBox(width: 8),
               Text(
                 'Peers (${widget.peers.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: cs.onPrimaryContainer,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: cs.onPrimaryContainer),
               ),
             ],
           ),
@@ -1072,22 +1106,13 @@ class PeerListState extends State<PeerList> {
                     sortColumnIndex: _sortColumn,
                     sortAscending: _ascending,
                     columns: [
-                      DataColumn(
-                        label: const Text('Name'),
-                        onSort: _sort,
-                      ),
-                      DataColumn(
-                        label: const Text('DMs'),
-                        onSort: _sort,
-                      ),
+                      DataColumn(label: const Text('Name'), onSort: _sort),
+                      DataColumn(label: const Text('DMs'), onSort: _sort),
                       DataColumn(
                         label: const Text('Broadcasts'),
                         onSort: _sort,
                       ),
-                      DataColumn(
-                        label: const Text('Last seen'),
-                        onSort: _sort,
-                      ),
+                      DataColumn(label: const Text('Last seen'), onSort: _sort),
                       DataColumn(
                         label: const Text('First seen'),
                         onSort: _sort,
@@ -1101,12 +1126,8 @@ class PeerListState extends State<PeerList> {
                             DataCell(Text(p.displayName)),
                             DataCell(Text('${_dmCount(p)}')),
                             DataCell(Text('${_broadcastCount(p)}')),
-                            DataCell(
-                              Text(_fmtLastSeen(p.lastSeen)),
-                            ),
-                            DataCell(
-                              Text(_fmtLastSeen(p.firstSeen)),
-                            ),
+                            DataCell(Text(_formatSeenTimestamp(p.lastSeen))),
+                            DataCell(Text(_formatSeenTimestamp(p.firstSeen))),
                             DataCell(
                               Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1140,10 +1161,7 @@ class PeerListState extends State<PeerList> {
 // Bottom navigation shown on full-screen routes (peer info, DM chat) so the
 // user can jump back to any main tab without using the back button.
 class _MainTabNavBar extends StatelessWidget {
-  const _MainTabNavBar({
-    required this.currentIndex,
-    required this.onSelect,
-  });
+  const _MainTabNavBar({required this.currentIndex, required this.onSelect});
   final int currentIndex;
   final void Function(int) onSelect;
 
@@ -1175,18 +1193,10 @@ class PeerInfoScreen extends StatelessWidget {
   final void Function(int)? onNavigate;
   final int currentTab;
 
-  static String _fmt(String s) {
-    if (s.isEmpty) return 'unknown';
-    return s.replaceAll('T', ' ').replaceAll('Z', '').trim();
-  }
-
   // Where the displayed name came from: local nickname > received > generated.
   static (String, String) _origin(MobilePeerRecord peer) {
     if (peer.localNickname != null) {
-      return (
-        'Local nickname',
-        'You set this nickname for the peer.',
-      );
+      return ('Local nickname', 'You set this nickname for the peer.');
     }
     if (peer.nickname != null) {
       return (
@@ -1221,17 +1231,27 @@ class PeerInfoScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Display name',
-                      style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'Display name',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                   const SizedBox(height: 4),
-                  Text(peer.displayName,
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    peer.displayName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 12),
-                  Text('Peer ID', style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'Peer ID',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                   const SizedBox(height: 4),
                   SelectableText(
                     peer.peerId,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -1248,8 +1268,10 @@ class PeerInfoScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(origin, style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
-                  Text(originDetail,
-                      style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    originDetail,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 12),
                   if (peer.localNickname != null) ...[
                     _infoRow('Local nickname', peer.localNickname!),
@@ -1270,11 +1292,14 @@ class PeerInfoScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Activity', style: Theme.of(context).textTheme.labelSmall),
+                  Text(
+                    'Activity',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                   const SizedBox(height: 4),
-                  _infoRow('First seen', _fmt(peer.firstSeen)),
+                  _infoRow('First seen', _formatSeenTimestamp(peer.firstSeen)),
                   const SizedBox(height: 8),
-                  _infoRow('Last seen', _fmt(peer.lastSeen)),
+                  _infoRow('Last seen', _formatSeenTimestamp(peer.lastSeen)),
                 ],
               ),
             ),
@@ -1306,8 +1331,10 @@ class PeerInfoScreen extends StatelessWidget {
       children: [
         SizedBox(
           width: 110,
-          child: Text(label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
         ),
         Expanded(
           child: SelectableText(value, style: const TextStyle(fontSize: 13)),
@@ -1347,7 +1374,8 @@ class _DmChatScreenState extends State<DmChatScreen> {
   final Set<int> _selectedIndices = {};
 
   String get _peerId => widget.peer.peerId;
-  String get _label => _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
+  String get _label =>
+      _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
 
   @override
   void initState() {
@@ -1453,9 +1481,9 @@ class _DmChatScreenState extends State<DmChatScreen> {
       final peerName = isOwn
           ? 'Me'
           : (msg.senderNickname ??
-              (msg.peerId!.length >= 12
-                  ? msg.peerId!.substring(0, 12)
-                  : msg.peerId!));
+                (msg.peerId!.length >= 12
+                    ? msg.peerId!.substring(0, 12)
+                    : msg.peerId!));
       final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
       buf.writeln(peerName);
       buf.writeln(msg.content);
@@ -1466,7 +1494,9 @@ class _DmChatScreenState extends State<DmChatScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied'),
+          content: Text(
+            '${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied',
+          ),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -1474,22 +1504,29 @@ class _DmChatScreenState extends State<DmChatScreen> {
     _cancelSelection();
   }
 
-
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted || event.eventType != 'dm') return;
     if (event.peerId == _peerId && event.content != null) {
-      saveIncomingMessage(
+      unawaited(_persistIncomingDm(event));
+    }
+  }
+
+  Future<void> _persistIncomingDm(SwarmEventJson event) async {
+    try {
+      final msg = await saveIncomingMessage(
         content: event.content!,
         peerId: event.peerId!,
         isDirect: true,
         nickname: event.nickname,
-      ).then((msg) {
-        setState(() {
-          _messages.add(msg);
-          if (!_atBottom) _unreadCount++;
-        });
-        _scrollToBottom();
+      );
+      if (!mounted) return;
+      setState(() {
+        _messages.add(msg);
+        if (!_atBottom) _unreadCount++;
       });
+      _scrollToBottom();
+    } catch (e) {
+      debugPrint('Failed to persist incoming DM: $e');
     }
   }
 
@@ -1554,30 +1591,33 @@ class _DmChatScreenState extends State<DmChatScreen> {
                 _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _messages.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No messages with this peer.',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          )
-                        : SelectionArea(
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: Column(
-                                children: [
-                                  for (int i = 0; i < _messages.length; i++)
-                                    _MessageBubble(
-                                      message: _messages[i],
-                                      isOwn: _messages[i].peerId == null,
-                                      selected: _selectedIndices.contains(i),
-                                      onDoubleTap: () => _onBubbleDoubleTap(i),
-                                      onTap: () => _onBubbleTap(i),
-                                    ),
-                                ],
-                              ),
-                            ),
+                    ? Center(
+                        child: Text(
+                          'No messages with this peer.',
+                          style: TextStyle(color: Colors.grey[500]),
+                        ),
+                      )
+                    : SelectionArea(
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
+                          child: Column(
+                            children: [
+                              for (int i = 0; i < _messages.length; i++)
+                                _MessageBubble(
+                                  message: _messages[i],
+                                  isOwn: _messages[i].peerId == null,
+                                  selected: _selectedIndices.contains(i),
+                                  onDoubleTap: () => _onBubbleDoubleTap(i),
+                                  onTap: () => _onBubbleTap(i),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                 if (_selectionMode)
                   Positioned(
                     bottom: 8,
@@ -1599,7 +1639,9 @@ class _DmChatScreenState extends State<DmChatScreen> {
                             ),
                           ),
                           IconButton(
-                            onPressed: _selectedIndices.isEmpty ? null : _copySelected,
+                            onPressed: _selectedIndices.isEmpty
+                                ? null
+                                : _copySelected,
                             icon: const Icon(Icons.copy),
                             tooltip: 'Copy',
                           ),
@@ -1618,7 +1660,10 @@ class _DmChatScreenState extends State<DmChatScreen> {
                         style: const TextStyle(fontSize: 12),
                       ),
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         visualDensity: VisualDensity.compact,
                       ),
                     ),
@@ -1693,6 +1738,7 @@ class _SettingsState extends State<_Settings> {
   String? _nickname;
   late _LiveStatus _live;
   MobilePeerStatus? _statusData;
+  String _networkSize = '';
 
   @override
   void initState() {
@@ -1702,6 +1748,7 @@ class _SettingsState extends State<_Settings> {
     _nickname = _statusData?.selfNickname;
     widget.liveStatus.addListener(_onLive);
     widget.status.addListener(_onStatus);
+    _refreshNetworkSize();
   }
 
   @override
@@ -1711,11 +1758,28 @@ class _SettingsState extends State<_Settings> {
     super.dispose();
   }
 
-  void _onLive() => setState(() => _live = widget.liveStatus.value);
+  void _onLive() {
+    setState(() => _live = widget.liveStatus.value);
+    _refreshNetworkSize();
+  }
+
   void _onStatus() => setState(() {
-        _statusData = widget.status.value;
-        _nickname = _statusData?.selfNickname;
-      });
+    _statusData = widget.status.value;
+    _nickname = _statusData?.selfNickname;
+  });
+
+  /// Resolve the network-size label through the Rust binding so the Dart UI
+  /// never re-derives the thresholds.
+  Future<void> _refreshNetworkSize() async {
+    try {
+      final label = await networkSizeLabel(peerCount: _live.connectedCount);
+      if (mounted && label != _networkSize) {
+        setState(() => _networkSize = label);
+      }
+    } catch (e) {
+      debugPrint('Failed to resolve network size: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1772,7 +1836,9 @@ class _SettingsState extends State<_Settings> {
         // Platform
         Card(
           child: ListTile(
-            leading: Icon(widget.isAndroid ? Icons.phone_android : Icons.computer),
+            leading: Icon(
+              widget.isAndroid ? Icons.phone_android : Icons.computer,
+            ),
             title: const Text('Platform'),
             subtitle: Text(platformLabel),
           ),
@@ -1802,12 +1868,16 @@ class _SettingsState extends State<_Settings> {
                 Row(
                   children: [
                     FilledButton(
-                      onPressed: widget.serviceRunning ? null : widget.onToggleService,
+                      onPressed: widget.serviceRunning
+                          ? null
+                          : widget.onToggleService,
                       child: const Text('Start'),
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton(
-                      onPressed: widget.serviceRunning ? widget.onToggleService : null,
+                      onPressed: widget.serviceRunning
+                          ? widget.onToggleService
+                          : null,
                       child: const Text('Stop'),
                     ),
                   ],
@@ -1824,11 +1894,16 @@ class _SettingsState extends State<_Settings> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Node & Network',
-                    style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Node & Network',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 12),
-                _statusRow(Icons.link, 'Connected peers',
-                    _live.connectedCount.toString()),
+                _statusRow(
+                  Icons.link,
+                  'Connected peers',
+                  _live.connectedCount.toString(),
+                ),
                 if (_live.connectedPeerIds.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
@@ -1837,15 +1912,22 @@ class _SettingsState extends State<_Settings> {
                 else
                   ..._connectedPeerRows(),
                 if (_live.connectedCount == 0)
-                  _statusRow(Icons.history, 'Last connection lost',
-                      _formatTimestamp(_live.lastConnectionAt)),
+                  _statusRow(
+                    Icons.history,
+                    'Last connection lost',
+                    _formatTimestamp(_live.lastConnectionAt),
+                  ),
                 _statusRow(
-                    Icons.network_cell, 'Network name', widget.networkName),
-                _statusRow(Icons.hub, 'Network size',
-                    _networkSizeLabel(_live.connectedCount)),
+                  Icons.network_cell,
+                  'Network name',
+                  widget.networkName,
+                ),
+                _statusRow(Icons.hub, 'Network size', _networkSize),
                 const SizedBox(height: 8),
-                Text('Listen addresses',
-                    style: Theme.of(context).textTheme.labelSmall),
+                Text(
+                  'Listen addresses',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
                 if (_live.listenAddresses.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 4),
@@ -1889,10 +1971,9 @@ class _SettingsState extends State<_Settings> {
           ),
           Text(
             value,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -1911,9 +1992,7 @@ class _SettingsState extends State<_Settings> {
               children: [
                 const Icon(Icons.person, size: 16),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(byId[id]?.displayName ?? id),
-                ),
+                Expanded(child: Text(byId[id]?.displayName ?? id)),
                 const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
               ],
             ),
@@ -1922,40 +2001,63 @@ class _SettingsState extends State<_Settings> {
     ];
   }
 
+  String? _nicknameError;
+
   void _editNickname() {
     final ctrl = TextEditingController(text: _nickname ?? '');
+    _nicknameError = null;
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Nickname'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter nickname',
-            border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Edit Nickname'),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            onSubmitted: (_) => _saveNickname(ctx, ctrl, setDialogState),
+            decoration: InputDecoration(
+              hintText: 'Enter nickname',
+              border: const OutlineInputBorder(),
+              errorText: _nicknameError,
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => _saveNickname(ctx, ctrl, setDialogState),
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final nick = ctrl.text.trim();
-              if (nick.isNotEmpty) {
-                try {
-                  await setSelfNickname(nickname: nick);
-                  setState(() => _nickname = nick);
-                } catch (e) {
-                  debugPrint('Failed to set nickname: $e');
-                }
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
+  }
+
+  Future<void> _saveNickname(
+    BuildContext ctx,
+    TextEditingController ctrl,
+    StateSetter setDialogState,
+  ) async {
+    final nick = ctrl.text.trim();
+    if (nick.isEmpty) return;
+    // Reject via the Rust single source of truth: alphanumeric + dash, max 20.
+    if (!await validateNickname(nickname: nick)) {
+      setDialogState(() {
+        _nicknameError = 'Use letters, numbers or dashes (max 20 characters)';
+      });
+      return;
+    }
+    try {
+      await setSelfNickname(nickname: nick);
+      if (!ctx.mounted) return;
+      if (mounted) setState(() => _nickname = nick);
+      Navigator.pop(ctx);
+    } catch (e) {
+      debugPrint('Failed to set nickname: $e');
+    }
   }
 }
 
@@ -1983,8 +2085,9 @@ class _LogTabState extends State<_LogTab> {
         // Auto-scroll to bottom after new logs are displayed
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController
-                .jumpTo(_scrollController.position.maxScrollExtent);
+            _scrollController.jumpTo(
+              _scrollController.position.maxScrollExtent,
+            );
           }
         });
       } catch (e) {
@@ -1996,8 +2099,8 @@ class _LogTabState extends State<_LogTab> {
   @override
   void dispose() {
     _pollTimer.cancel();
-    super.dispose();
     _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -2042,8 +2145,8 @@ class _LogTabState extends State<_LogTab> {
   void _copyAll() {
     final text = _logs.join('\n');
     Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logs copied to clipboard')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Logs copied to clipboard')));
   }
 }

@@ -20,13 +20,12 @@ MobilePeerRecord peer({
   String name = '',
   int dm = 0,
   int broadcast = 0,
-}) =>
-    MobilePeerRecord(
-      peerId: id,
-      displayName: name.isEmpty ? id : name,
-      firstSeen: '',
-      lastSeen: '',
-    );
+}) => MobilePeerRecord(
+  peerId: id,
+  displayName: name.isEmpty ? id : name,
+  firstSeen: '',
+  lastSeen: '',
+);
 
 // Deterministic fake of the Rust `sortPeers`: sort ascending or descending on a
 // key column, and always tie-break on `peer_id` (ascending on the tie).
@@ -55,19 +54,18 @@ Widget _app({
   required List<MobilePeerRecord> peers,
   Map<String, PeerMessageStats> stats = const {},
   SortPeersOverride? sortOverride,
-}) =>
-    MaterialApp(
-      home: Scaffold(
-        body: PeerList(
-          peers: peers,
-          stats: stats,
-          serviceRunning: true,
-          onOpenInfo: (_) {},
-          onOpenDm: (_) {},
-          sortOverride: sortOverride,
-        ),
-      ),
-    );
+}) => MaterialApp(
+  home: Scaffold(
+    body: PeerList(
+      peers: peers,
+      stats: stats,
+      serviceRunning: true,
+      onOpenInfo: (_) {},
+      onOpenDm: (_) {},
+      sortOverride: sortOverride,
+    ),
+  ),
+);
 
 // Read the display-name text per row in top-to-bottom order. `DataTable`
 // renders cells as `TableCell`s (not `DataCell` elements), so we locate the name
@@ -89,29 +87,32 @@ List<String?> _displayNames(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('Broadcast column shows sent-to-peer (broadcastSentToPeer) values',
-      (tester) async {
-    final peers = [
-      peer(id: 'aaa', name: 'Alpha'),
-      peer(id: 'bbb', name: 'Beta', broadcast: 5),
-    ];
-    final stats = {
-      'aaa': const PeerMessageStats(dmCount: 1, broadcastSentToPeer: 0),
-      'bbb': const PeerMessageStats(dmCount: 2, broadcastSentToPeer: 5),
-    };
-    await tester.pumpWidget(
-      _app(peers: peers, stats: stats, sortOverride: _sortLikeRust),
-    );
-    await tester.pump();
+  testWidgets(
+    'Broadcast column shows sent-to-peer (broadcastSentToPeer) values',
+    (tester) async {
+      final peers = [
+        peer(id: 'aaa', name: 'Alpha'),
+        peer(id: 'bbb', name: 'Beta', broadcast: 5),
+      ];
+      final stats = {
+        'aaa': const PeerMessageStats(dmCount: 1, broadcastSentToPeer: 0),
+        'bbb': const PeerMessageStats(dmCount: 2, broadcastSentToPeer: 5),
+      };
+      await tester.pumpWidget(
+        _app(peers: peers, stats: stats, sortOverride: _sortLikeRust),
+      );
+      await tester.pump();
 
-    expect(find.text('Alpha'), findsOneWidget);
-    expect(find.text('Beta'), findsOneWidget);
-    // The Broadcast column reflects broadcastSentToPeer (5), not inbound.
-    expect(find.text('5'), findsWidgets);
-  });
+      expect(find.text('Alpha'), findsOneWidget);
+      expect(find.text('Beta'), findsOneWidget);
+      // The Broadcast column reflects broadcastSentToPeer (5), not inbound.
+      expect(find.text('5'), findsWidgets);
+    },
+  );
 
-  testWidgets('clicking Name header sorts ascending then toggles descending',
-      (tester) async {
+  testWidgets('clicking Name header sorts ascending then toggles descending', (
+    tester,
+  ) async {
     final peers = [
       peer(id: 'beta', name: 'Zulu'),
       peer(id: 'alpha', name: 'Alpha'),
@@ -135,8 +136,9 @@ void main() {
     expect(_displayNames(tester), ['Zulu', 'Alpha']);
   });
 
-  testWidgets('equal names tie-break by peer_id and header click toggles order',
-      (tester) async {
+  testWidgets('equal names tie-break by peer_id and header click toggles order', (
+    tester,
+  ) async {
     // Record every sort invocation the widget makes, so we can assert both the
     // column/ascending wiring on header clicks and that peer_id deterministically
     // breaks ties among equal-name rows (mirroring Rust `sortPeers`).
@@ -156,9 +158,7 @@ void main() {
       peer(id: 'aaa', name: 'Same'),
       peer(id: 'bbb', name: 'Same'),
     ];
-    await tester.pumpWidget(
-      _app(peers: peers, sortOverride: recordingSort),
-    );
+    await tester.pumpWidget(_app(peers: peers, sortOverride: recordingSort));
     await tester.pump();
 
     // First click on Name sorts ascending (column 0, ascending true); all names
@@ -178,5 +178,35 @@ void main() {
 
     // All three same-named peers still render (no rows dropped by the sort).
     expect(find.text('Same'), findsNWidgets(3));
+  });
+
+  testWidgets(
+    'last/first-seen timestamps render T→space, truncated to seconds',
+    (tester) async {
+      final peers = [
+        MobilePeerRecord(
+          peerId: 'alpha',
+          displayName: 'Alpha',
+          firstSeen: '2026-08-01T10:00:00.000Z',
+          lastSeen: '2026-08-28T15:26:41.123Z',
+        ),
+      ];
+      await tester.pumpWidget(_app(peers: peers, sortOverride: _sortLikeRust));
+      await tester.pump();
+
+      // Truncated to the second, T replaced by a space, trailing Z dropped.
+      expect(find.text('2026-08-28 15:26:41'), findsOneWidget);
+      expect(find.text('2026-08-01 10:00:00'), findsOneWidget);
+      expect(find.textContaining('T15'), findsNothing);
+      expect(find.textContaining('.123Z'), findsNothing);
+    },
+  );
+
+  testWidgets('empty last-seen renders as unknown', (tester) async {
+    final peers = [peer(id: 'alpha', name: 'Alpha')];
+    await tester.pumpWidget(_app(peers: peers, sortOverride: _sortLikeRust));
+    await tester.pump();
+
+    expect(find.text('unknown'), findsNWidgets(2)); // first + last seen
   });
 }
