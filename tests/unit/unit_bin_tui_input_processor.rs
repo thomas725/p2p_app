@@ -113,7 +113,7 @@ fn test_flip_mouse_capture_returns_new_state() {
 }
 
 #[tokio::test]
-async fn test_mouse_move_is_ignored() {
+async fn test_mouse_move_is_ignored_for_layout_but_tracks_hover_row() {
     let state = Arc::new(Mutex::new(test_app_state()));
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, mut render_rx) = mpsc::channel(1);
@@ -135,11 +135,11 @@ async fn test_mouse_move_is_ignored() {
 
     assert!(!exited);
     assert!(render_rx.try_recv().is_err());
-    assert_eq!(state.lock().await.last_mouse_row, 0);
+    assert_eq!(state.lock().await.last_mouse_row, 7);
 }
 
 #[tokio::test]
-async fn test_mouse_drag_is_ignored() {
+async fn test_mouse_drag_is_ignored_for_layout_but_tracks_hover_row() {
     let state = Arc::new(Mutex::new(test_app_state()));
     let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, mut render_rx) = mpsc::channel(1);
@@ -161,7 +161,7 @@ async fn test_mouse_drag_is_ignored() {
 
     assert!(!exited);
     assert!(render_rx.try_recv().is_err());
-    assert_eq!(state.lock().await.last_mouse_row, 0);
+    assert_eq!(state.lock().await.last_mouse_row, 7);
 }
 
 #[tokio::test]

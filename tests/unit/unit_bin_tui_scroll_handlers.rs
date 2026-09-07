@@ -400,7 +400,8 @@ fn test_scroll_broadcast_section_down() {
     state
         .dm_broadcast_scroll_state
         .insert("peer-b".to_string(), (0, false));
-    // dm_visible_counts removed — visible count is now 1
+    // Default height (chat_area_height = 0) clamps the pane to a single
+    // visible line, so Down advances exactly one step.
     scroll_broadcast_section(KeyCode::Down, &mut state, "peer-b");
     let (offset, auto) = state.dm_broadcast_scroll_state.get("peer-b").unwrap();
     assert_eq!(*offset, 1);
@@ -417,6 +418,36 @@ fn test_scroll_dm_section_down() {
     let (offset, auto) = state.dm_scroll_state.get("peer-dm").unwrap();
     assert_eq!(*offset, 1);
     assert!(!auto);
+}
+
+// ── DM pane geometry ────────────────────────────────────────────────────────
+
+#[test]
+fn test_dm_pane_visible_lines_matches_dm_split() {
+    // A 30-row terminal: chat_area_height = 30 - 10 = 20 inner chat lines; the
+    // DM pane is half of (20 + 2) = 11 rows, minus its 2 border rows = 9.
+    let mut state = test_app_state();
+    state.chat_area_height = 20;
+    assert_eq!(dm_pane_visible_lines(&state), 9);
+
+    // Smallest non-empty terminal (chat_area_height = 0) yields one line.
+    state.chat_area_height = 0;
+    assert_eq!(dm_pane_visible_lines(&state), 1);
+}
+
+#[test]
+fn test_scroll_dm_section_end_clamps_at_last_visible_line() {
+    // 10 messages in a pane that shows 9 lines: End lands the offset at 1
+    // (10 - 9), the last scrollable position, not 9 (which would drop messages).
+    let mut state = app_state_with_dm_messages("peer-dm", 10);
+    state.chat_area_height = 20;
+    state
+        .dm_scroll_state
+        .insert("peer-dm".to_string(), (0, false));
+    scroll_dm_section(KeyCode::End, &mut state, "peer-dm");
+    let (offset, auto) = state.dm_scroll_state.get("peer-dm").unwrap();
+    assert_eq!(*offset, 1);
+    assert!(auto);
 }
 
 #[test]

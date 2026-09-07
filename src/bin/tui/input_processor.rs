@@ -464,6 +464,10 @@ async fn process_mouse_event(
         mouse_event.kind,
         crossterm::event::MouseEventKind::Moved | crossterm::event::MouseEventKind::Drag(_)
     ) {
+        // Track the live hover row so wheel-scroll and click routing on split
+        // DM tabs target the pane the pointer is actually over. No frame change
+        // results from a move alone, so nothing needs re-rendering.
+        state.lock().await.last_mouse_row = mouse_event.row;
         return;
     }
 
