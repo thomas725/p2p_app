@@ -77,6 +77,16 @@ This document captures user stories and acceptance criteria for the P2P Chat app
   - **I want to** jump to the notification tab
   - **So that** I can quickly see new messages
 
+- [x] **US-070**: Page a DM tab's Broadcast/DM panes by their on-screen height
+  - **As a** user
+  - **I want to** PageDown/Home/End in a DM-tab pane to page by the lines actually visible in that pane
+  - **So that** I never jump past messages that the pane can't fit (previously a pane showed only the last line's worth of scrolling)
+
+- [x] **US-071**: Scroll the DM-tab pane under the mouse cursor
+  - **As a** user
+  - **I want to** rest the mouse over the Broadcast or DM half of a DM tab and have wheel-scrolling scroll that half
+  - **So that** I don't have to click inside a pane before scrolling it (hover targeting tracks live mouse moves, not the last click)
+
 ### Nickname System
 
 - [x] **US-030**: Set my display name with /nick command
