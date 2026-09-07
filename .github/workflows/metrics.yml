@@ -7,7 +7,16 @@ on:
   workflow_dispatch:
 
 permissions:
+  # contents: needed to push the coverage/metrics commit to main.
+  # actions: read lets the skip-check query this workflow's own run history
+  # (scripts/ci-skip-no-new-commits.sh); without it the token gets a 403 and the
+  # check would otherwise silently run on every schedule.
   contents: write
+  actions: read
+
+concurrency:
+  group: metrics
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -160,6 +169,26 @@ jobs:
 
           git config user.email "ci-pipeline@users.noreply.github.com"
           git config user.name "CI Pipeline"
+
+          # Redundancy guard: if origin/main already ends with a CI metrics commit
+          # and no human commits landed since the SHA this run measured, a
+          # duplicate/re-delivered schedule event is about to push a second
+          # "ci: refresh" commit with no new work behind it. Skip the push (and
+          # the run ends success); the artifacts have already been produced.
+          # The skip-check normally catches this earlier; this is defense in depth.
+          # --no-walk is required so the author/grep match applies to origin/main
+          # itself, not to the latest matching ancestor.
+          if git log -1 --no-walk origin/main --format=%H \
+               --author="ci-pipeline@users.noreply.github.com" \
+               --grep="ci: refresh coverage and codebase metrics" | grep -q .; then
+            new_human="$(git rev-list "$GITHUB_SHA"..origin/main 2>/dev/null \
+              | while read -r c; do git show -s --format=%ae "$c"; done \
+              | grep -vc '^ci-pipeline@users.noreply.github.com$' || true)"
+            if [ "${new_human:-0}" -eq 0 ]; then
+              echo "origin/main already ends in a CI metrics commit with no new human commits; skipping duplicate push."
+              exit 0
+            fi
+          fi
 
           git add docs/codebase_metrics.md 2>/dev/null || true
           [ -f tarpaulin-report.json ] && git add tarpaulin-report.json 2>/dev/null || true

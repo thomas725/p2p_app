@@ -12,6 +12,14 @@ env:
 permissions:
   # Needed to push the dedicated ci-results results branch (never main).
   contents: write
+  # actions: read lets the skip-check query this workflow's own run history
+  # (scripts/ci-skip-no-new-commits.sh); without it the token gets a 403 and the
+  # check would otherwise silently run on every schedule.
+  actions: read
+
+concurrency:
+  group: dependencies
+  cancel-in-progress: true
 
 jobs:
   check-dependencies:
