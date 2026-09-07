@@ -23,14 +23,12 @@ class MainActivityTest {
             "stopService",
             "isServiceRunning",
             "shareApk",
-            "getApkPath",
         )
         // Verify all expected method names are present
         assertTrue(expectedMethods.contains("startService"))
         assertTrue(expectedMethods.contains("stopService"))
         assertTrue(expectedMethods.contains("isServiceRunning"))
         assertTrue(expectedMethods.contains("shareApk"))
-        assertTrue(expectedMethods.contains("getApkPath"))
     }
 
     @Test

@@ -40,9 +40,6 @@ class MainActivity : FlutterActivity() {
                     shareApk()
                     result.success(true)
                 }
-                "getApkPath" -> {
-                    result.success(packageCodePath)
-                }
                 else -> result.notImplemented()
             }
         }
