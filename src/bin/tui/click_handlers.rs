@@ -13,16 +13,7 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
             let close_start = tab_end.saturating_sub(4);
             if usize::from(mouse_column) >= close_start && title.contains("[X]") {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
-                let closed_idx = match &tab_content {
-                    p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-                        state.dynamic_tabs.remove_dm_tab(peer_id)
-                    }
-                    p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
-                        state.dynamic_tabs.remove_peer_info_tab(peer_id)
-                    }
-                    _ => None,
-                };
-                if let Some(closed_idx) = closed_idx {
+                if let Some(closed_idx) = state.dynamic_tabs.remove_tab(&tab_content) {
                     state.active_tab = if closed_idx > 0 {
                         closed_idx.saturating_sub(1)
                     } else {

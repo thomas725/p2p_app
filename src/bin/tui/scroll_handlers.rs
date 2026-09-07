@@ -59,6 +59,18 @@ fn handle_scroll_key_for_section(
     *auto_scroll = new_auto;
 }
 
+/// Number of visible message lines in one pane of a DM tab.
+///
+/// The DM tab splits the message area (an `f.area().height - 8` chunk, i.e.
+/// `chat_area_height + 2`) into two equal halves, each wrapped in its own
+/// 2-line block border. `chat_area_height` is the *inner* height of the
+/// broadcast chat's message block, so a DM pane is half of
+/// `chat_area_height + 2` minus its two borders.
+fn dm_pane_visible_lines(state: &AppState) -> usize {
+    let pane_height = state.chat_area_height.saturating_add(2).saturating_div(2);
+    pane_height.saturating_sub(2).max(1)
+}
+
 /// Handle scroll key for broadcast section of DM tab
 fn scroll_broadcast_section(
     key_code: crossterm::event::KeyCode,
@@ -75,9 +87,9 @@ fn scroll_broadcast_section(
     if broadcast_messages.is_empty() {
         return;
     }
+    let visible_count = dm_pane_visible_lines(state);
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        let visible_count = 1; // dm_visible_counts was never populated
         let max_offset = broadcast_messages.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
@@ -85,12 +97,14 @@ fn scroll_broadcast_section(
 
 /// Handle scroll key for DM section of DM tab
 fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
-    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id)
+    if let Some(msgs) = state.dm_messages.get(peer_id)
+        && !msgs.is_empty()
     {
-        let visible_count = 1; // dm_visible_counts was never populated
+        let visible_count = dm_pane_visible_lines(state);
         let max_offset = msgs.len().saturating_sub(visible_count);
-        handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+        if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
+            handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+        }
     }
 }
 

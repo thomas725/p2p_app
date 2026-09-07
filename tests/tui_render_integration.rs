@@ -9,8 +9,9 @@ mod render_tests {
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_input_section,
             render_log_content, render_peers_content, render_popup, render_settings_content,
-            render_shortcuts, render_status_bar, render_tabs,
+            render_shortcuts, render_status_bar, render_tabs, shortcuts_text,
         },
+        tui_tabs::TabContent,
     };
     use ratatui::layout::Rect;
     use ratatui::{Terminal, backend::TestBackend};
@@ -198,8 +199,49 @@ mod render_tests {
     #[test]
     fn test_render_shortcuts_library() {
         let mut terminal = create_test_terminal();
+        let state = TuiRenderState::with_sample_data();
+        let tab = get_tab_content(&state);
 
-        terminal.draw(|f| render_shortcuts(f, f.area())).unwrap();
+        terminal
+            .draw(|f| render_shortcuts(f, f.area(), &tab, false))
+            .unwrap();
+    }
+
+    #[test]
+    fn test_shortcuts_peers_tab_documents_dm_and_info() {
+        let text = shortcuts_text(&TabContent::Peers, false);
+        assert!(text.contains("Enter: open DM"));
+        assert!(text.contains("i: Peer Info"));
+        assert!(!text.contains("Ctrl+I: Peer Info"));
+    }
+
+    #[test]
+    fn test_shortcuts_direct_tab_documents_ctrl_i_and_ctrl_p_on_kitty() {
+        let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), true);
+        assert!(text.contains("Ctrl+I/Ctrl+P: Peer Info"));
+        assert!(!text.contains("| i: Peer Info"));
+        assert!(text.contains("Ctrl+I"));
+        assert!(text.contains("Ctrl+P"));
+    }
+
+    #[test]
+    fn test_shortcuts_direct_tab_documents_ctrl_p_on_nonkitty() {
+        let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), false);
+        assert!(text.contains("Ctrl+P: Peer Info"));
+        assert!(!text.contains("Ctrl+I: Peer Info"));
+    }
+
+    #[test]
+    fn test_shortcuts_plain_tabs_have_no_peer_info_hint() {
+        for tab in [
+            TabContent::Chat,
+            TabContent::Log,
+            TabContent::Settings,
+            TabContent::PeerInfo("peer-1".to_string()),
+        ] {
+            assert!(!shortcuts_text(&tab, false).contains("Peer Info"));
+            assert!(!shortcuts_text(&tab, true).contains("Peer Info"));
+        }
     }
 
     #[test]

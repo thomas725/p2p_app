@@ -124,6 +124,16 @@ impl DynamicTabs {
         None
     }
 
+    /// Remove the tab matching `content` (Direct or `PeerInfo`), returning its
+    /// previous index. Other tab kinds are never removable.
+    pub fn remove_tab(&mut self, content: &TabContent) -> Option<usize> {
+        match content {
+            TabContent::Direct(peer_id) => self.remove_dm_tab(peer_id),
+            TabContent::PeerInfo(peer_id) => self.remove_peer_info_tab(peer_id),
+            _ => None,
+        }
+    }
+
     /// Get peer-info tab by peer ID (read-only)
     #[must_use]
     pub fn get_peer_info_tab(&self, peer_id: &str) -> Option<&String> {

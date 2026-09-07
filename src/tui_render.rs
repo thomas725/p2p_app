@@ -41,7 +41,7 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
     render_tab_content(f, *content_area, &tab_content, state);
 
     render_input_section(f, *input_area, state, &tab_content);
-    render_shortcuts(f, *shortcut_area);
+    render_shortcuts(f, *shortcut_area, &tab_content, state.kitty_keyboard_active);
     render_status_bar(f, *status_area, state);
 
     if let Some(ref text) = state.popup {
@@ -529,11 +529,30 @@ pub fn render_input_section(
     }
 }
 
-/// Render shortcuts help
-pub fn render_shortcuts(f: &mut ratatui::Frame, area: Rect) {
-    let shortcuts = Paragraph::new(
-        "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Esc: return to Chat",
-    );
+/// Shortcut hint line for the given tab. Peer-Info bindings are documented only
+/// on tabs where they are active: Ctrl+I (kitty) and Ctrl+P (universal) on a
+/// Direct/DM tab, `i` on Peers.
+#[must_use]
+pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
+    match tab_content {
+        TabContent::Peers => {
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Direct(_) if kitty => {
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Direct(_) => {
+            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
+        _ => {
+            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+        }
+    }
+}
+
+/// Render shortcuts help, tailored to the active tab
+pub fn render_shortcuts(f: &mut ratatui::Frame, area: Rect, tab_content: &TabContent, kitty: bool) {
+    let shortcuts = Paragraph::new(shortcuts_text(tab_content, kitty));
     f.render_widget(shortcuts, area);
 }
 

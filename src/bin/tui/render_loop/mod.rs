@@ -80,6 +80,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         connected: true,
         peer_count: state.connected.len(),
         mouse_capture: state.mouse_capture,
+        kitty_keyboard_active: state.kitty_keyboard_active,
         popup: state.popup.clone(),
         chat_scroll_offset: state.chat_scroll_offset,
         chat_auto_scroll: state.chat_auto_scroll,
@@ -185,7 +186,7 @@ fn render_frame(f: &mut Frame, state: &AppState) {
         state,
         &tab_content,
     );
-    layout::render_shortcuts(
+    tui_render::render_shortcuts(
         f,
         chunks.get(3).copied().unwrap_or_default(),
         &tab_content,

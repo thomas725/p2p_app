@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 /// Input event type for terminal I/O
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum InputEvent {
     Key(KeyEvent),
     Mouse(MouseEvent),

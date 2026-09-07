@@ -49,6 +49,9 @@ pub struct TuiRenderState {
     pub peer_count: usize,
     /// Whether mouse is captured (for text input)
     pub mouse_capture: bool,
+    /// Whether the terminal delivers kitty-keyboard encoding (selects the
+    /// Peer-Info shortcut hint: Ctrl+I vs Ctrl+P on a Direct tab)
+    pub kitty_keyboard_active: bool,
     /// Optional popup message to display
     pub popup: Option<String>,
     /// Scroll offset for chat tab
@@ -134,6 +137,7 @@ impl TuiRenderState {
             connected: true,
             peer_count: 0,
             mouse_capture: false,
+            kitty_keyboard_active: false,
             popup: None,
             chat_scroll_offset: 0,
             chat_auto_scroll: true,
