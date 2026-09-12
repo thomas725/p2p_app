@@ -86,9 +86,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   PeerWithStats dco_decode_peer_with_stats(dynamic raw);
 
   @protected
-  (BigInt, BigInt) dco_decode_record_usize_usize(dynamic raw);
-
-  @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
 
   @protected
@@ -178,9 +175,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerWithStats sse_decode_peer_with_stats(SseDeserializer deserializer);
-
-  @protected
-  (BigInt, BigInt) sse_decode_record_usize_usize(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
@@ -292,12 +286,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_peer_with_stats(PeerWithStats self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_record_usize_usize(
-    (BigInt, BigInt) self,
-    SseSerializer serializer,
-  );
 
   @protected
   void sse_encode_swarm_event_json(

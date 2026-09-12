@@ -256,44 +256,6 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
     }
 }
 
-/// Send a broadcast message to all connected peers.
-#[flutter_rust_bridge::frb(ignore)]
-pub fn send_broadcast(content: String) -> Result<(), String> {
-    let m = NODE.get().ok_or("Node not started")?;
-    let tx = {
-        let node = lock_node_mutex(m);
-        node.cmd_tx.as_ref().ok_or("Node stopped")?.clone()
-    };
-    let msg_id = Some(crate::gen_msg_id());
-    let nickname = crate::get_self_nickname().ok().flatten();
-    tx.blocking_send(SwarmCommand::Publish {
-        content,
-        nickname,
-        msg_id,
-    })
-    .map_err(|e| format!("Send failed: {e}"))
-}
-
-/// Send a direct message to a specific peer.
-#[flutter_rust_bridge::frb(ignore)]
-pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
-    let m = NODE.get().ok_or("Node not started")?;
-    let tx = {
-        let node = lock_node_mutex(m);
-        node.cmd_tx.as_ref().ok_or("Node stopped")?.clone()
-    };
-    let msg_id = Some(crate::gen_msg_id());
-    let nickname = crate::get_self_nickname().ok().flatten();
-    tx.blocking_send(SwarmCommand::SendDm {
-        peer_id,
-        content,
-        nickname,
-        msg_id,
-        ack_for: None,
-    })
-    .map_err(|e| format!("Send failed: {e}"))
-}
-
 /// Get the local peer ID.
 ///
 /// # Errors
@@ -1078,18 +1040,6 @@ mod tests {
     #[test]
     fn test_poll_event_without_start_fails() {
         let result = poll_event();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_send_broadcast_without_start_fails() {
-        let result = send_broadcast("hello".into());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_send_dm_without_start_fails() {
-        let result = send_dm("peer1".into(), "hi".into());
         assert!(result.is_err());
     }
 

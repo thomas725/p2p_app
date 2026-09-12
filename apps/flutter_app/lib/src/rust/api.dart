@@ -51,20 +51,6 @@ Future<List<String>> getLogs() => RustLib.instance.api.crateApiGetLogs();
 /// Returns an error if polling the swarm event fails.
 Future<SwarmEventJson?> pollEvent() => RustLib.instance.api.crateApiPollEvent();
 
-/// Send a broadcast message.
-///
-/// # Errors
-/// Returns an error if the message fails to send.
-Future<void> sendBroadcast({required String content}) =>
-    RustLib.instance.api.crateApiSendBroadcast(content: content);
-
-/// Send a direct message to a peer.
-///
-/// # Errors
-/// Returns an error if the message fails to send.
-Future<void> sendDm({required String peerId, required String content}) =>
-    RustLib.instance.api.crateApiSendDm(peerId: peerId, content: content);
-
 /// Get all known peers with nicknames.
 ///
 /// This is retained as the home of the generated [`MobilePeerRecord`] Dart

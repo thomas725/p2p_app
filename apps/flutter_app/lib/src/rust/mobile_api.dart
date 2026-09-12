@@ -30,17 +30,6 @@ bool isAtBottom({
   visible: visible,
 );
 
-/// Calculate first visible message index accounting for scroll
-Future<(BigInt, BigInt)> calculateVisibleRange({
-  required BigInt totalMessages,
-  required BigInt scrollOffset,
-  required BigInt visibleCount,
-}) => RustLib.instance.api.crateMobileApiCalculateVisibleRange(
-  totalMessages: totalMessages,
-  scrollOffset: scrollOffset,
-  visibleCount: visibleCount,
-);
-
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.
 ///
 /// Delegates to the canonical [`crate::nickname::validate_nickname`].

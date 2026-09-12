@@ -6,10 +6,10 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `default_event`, `event_to_json`, `lock_node_mutex`, `message_to_chat`, `process_event_for_mobile`, `start_node_impl`
+// These functions are ignored because they are not marked as `pub`: `default_event`, `event_to_json`, `is_nickname_only_dm`, `lock_node_mutex`, `message_to_chat`, `process_event_for_mobile`, `start_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_known_peers`, `load_broadcast_messages`, `load_dm_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `send_broadcast`, `send_dm`, `start_node_auto`, `start_node`, `stop_node`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_known_peers`, `load_broadcast_messages`, `load_dm_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `start_node_auto`, `start_node`, `stop_node`
 
 /// Get the local peer ID.
 ///

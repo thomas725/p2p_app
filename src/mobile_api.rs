@@ -28,18 +28,6 @@ pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool 
     scroll_offset >= total.saturating_sub(visible)
 }
 
-/// Calculate first visible message index accounting for scroll
-#[must_use]
-pub fn calculate_visible_range(
-    total_messages: usize,
-    scroll_offset: usize,
-    visible_count: usize,
-) -> (usize, usize) {
-    let start = scroll_offset.min(total_messages.saturating_sub(1));
-    let end = start.saturating_add(visible_count).min(total_messages);
-    (start, end)
-}
-
 /// Validate a nickname: alphanumeric and dash only, max 20 chars.
 ///
 /// Delegates to the canonical [`crate::nickname::validate_nickname`].
@@ -294,29 +282,6 @@ mod tests {
         // Edge cases
         assert!(is_at_bottom(5, 5, 10)); // 5 >= 0 => true (total <= visible)
         assert!(is_at_bottom(0, 0, 0)); // 0 >= 0 => true (empty)
-    }
-
-    #[test]
-    fn test_calculate_visible_range() {
-        // Basic case: 10 messages, offset 3, visible 5 => items 3-7 (4 items shown)
-        let (start, end) = calculate_visible_range(10, 3, 5);
-        assert_eq!(start, 3);
-        assert_eq!(end, 8); // exclusive end, so items 3,4,5,6,7
-
-        // Offset beyond total => clamp to total-1
-        let (start, end) = calculate_visible_range(10, 15, 5);
-        assert_eq!(start, 9);
-        assert_eq!(end, 10);
-
-        // Offset 0, visible all
-        let (start, end) = calculate_visible_range(10, 0, 100);
-        assert_eq!(start, 0);
-        assert_eq!(end, 10);
-
-        // Empty case
-        let (start, end) = calculate_visible_range(0, 0, 10);
-        assert_eq!(start, 0);
-        assert_eq!(end, 0);
     }
 
     #[test]

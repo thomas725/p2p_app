@@ -61,22 +61,6 @@ pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     crate::mobile_node::poll_event()
 }
 
-/// Send a broadcast message.
-///
-/// # Errors
-/// Returns an error if the message fails to send.
-pub fn send_broadcast(content: String) -> Result<(), String> {
-    crate::mobile_node::send_broadcast(content)
-}
-
-/// Send a direct message to a peer.
-///
-/// # Errors
-/// Returns an error if the message fails to send.
-pub fn send_dm(peer_id: String, content: String) -> Result<(), String> {
-    crate::mobile_node::send_dm(peer_id, content)
-}
-
 /// Get all known peers with nicknames.
 ///
 /// This is retained as the home of the generated [`MobilePeerRecord`] Dart

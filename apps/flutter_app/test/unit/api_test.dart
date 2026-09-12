@@ -22,18 +22,6 @@ void main() {
         expect(true, isTrue);
       });
     });
-
-    group('sendBroadcast', () {
-      test('should be defined in generated API', () {
-        expect(true, isTrue);
-      });
-    });
-
-    group('sendDm', () {
-      test('should be defined in generated API', () {
-        expect(true, isTrue);
-      });
-    });
   });
 
   group('FRB orphan PeerMessageStats drift guard', () {
