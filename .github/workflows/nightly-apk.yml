@@ -3,8 +3,11 @@ name: Nightly APK
 # Build a Flutter Android APK and publish it as a rolling "nightly" GitHub
 # release so it can be downloaded directly from the repo.
 #
-# Scheduled runs skip the build when HEAD has not moved since the last
-# nightly was published (i.e. nothing new to ship today). Manual runs via
+# Scheduled runs skip the build when no new human-authored commits have landed
+# on the default branch since this workflow last succeeded (nothing new to ship
+# today). The check goes through scripts/ci-skip-no-new-commits.sh, which
+# ignores CI-authored commits (e.g. the metrics/coverage push to main) and is
+# FAIL-CLOSED when the GitHub API cannot be queried. Manual runs via
 # "Run workflow" always build.
 on:
   schedule:
@@ -13,7 +16,18 @@ on:
   workflow_dispatch:
 
 permissions:
+  # contents: needed to publish the GitHub release + tag.
+  # actions: read lets the skip-check query this workflow's own run history
+  # (scripts/ci-skip-no-new-commits.sh); without it the token gets a 403 and
+  # the check would otherwise run on every schedule.
   contents: write
+  actions: read
+
+concurrency:
+  # Never build two nightlies from the same commit (e.g. a manual dispatch racing
+  # the cron): a later run cancels the earlier one.
+  group: nightly-apk
+  cancel-in-progress: true
 
 env:
   NDK_VERSION: "29.0.14206865"
@@ -28,38 +42,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Skip if no new commits since last nightly
+      # Skip the ~25 min build when nothing new landed on the default branch
+      # since this workflow last succeeded. Commits authored by the CI pipeline
+      # itself are ignored, so the metrics/coverage push to main does not count
+      # as new work. Manual workflow_dispatch always forces a full run. The
+      # script is FAIL-CLOSED: any API error results in skip=true.
+      #
+      # Note: the previous inline check compared HEAD against
+      # `gh release view nightly-latest --json targetCommitish`, which GitHub
+      # stores as the branch NAME ("main"), not the commit SHA — so it could
+      # never match a 40-char HEAD and the build ran every night, piling up
+      # nightly tags on the latest commit.
+      - name: Check for new human commits since last run
         id: skip-check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Manual runs always build: the trigger is explicit human intent.
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch: forcing build."
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          HEAD=$(git rev-parse HEAD)
-          echo "HEAD: $HEAD"
-
-          # The "nightly-latest" pointer release always exists after the first
-          # build; it is overwritten to point at the newest nightly commit.
-          LAST=$(gh release view nightly-latest --json targetCommitish --jq '.targetCommitish' 2>/dev/null) || true
-          if [ -z "$LAST" ]; then
-            echo "No prior nightly found; will build."
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "LAST: $LAST"
-
-          if [ "$HEAD" = "$LAST" ]; then
-            echo "No commits since last nightly ($LAST); skipping build."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "New commits since last nightly; building."
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+        run: scripts/ci-skip-no-new-commits.sh nightly-apk.yml
 
       - name: Set up JDK 17
         if: steps.skip-check.outputs.skip != 'true'
