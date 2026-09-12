@@ -137,8 +137,8 @@ pub use tui_helpers::{
 pub use tui_render::{render_chat_content, render_frame, render_tab_content, render_tabs};
 #[cfg(feature = "tui")]
 pub use tui_render_state::{
-    TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, count_lines, dm_receipt_prefix,
-    get_tab_content, row_to_visible_index,
+    TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, calc_visible_strings,
+    count_lines, dm_receipt_prefix, get_tab_content, list_item_lines, row_to_visible_index,
 };
 #[cfg(feature = "tui")]
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent};

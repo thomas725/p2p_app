@@ -360,11 +360,24 @@ async fn process_key_event(
         crossterm::event::KeyCode::BackTab => {
             handle_navigation_key(key_event.code, &mut s).await;
         }
+        // `Tab`+CONTROL is the CSI-u spelling of Ctrl+I on terminals that send
+        // the key as an explicitly-modified Tab (kitty works off the base `i`
+        // key, so there `Ctrl+I` arrives as `Char('i')`+CONTROL and is handled
+        // above). It is consumed here as a no-op on every tab — it must never
+        // type a literal tab and must never cycle tabs (that job belongs to the
+        // bare Tab below, including on non-kitty terminals where Ctrl+I
+        // collapses to a bare 0x09).
+        crossterm::event::KeyCode::Tab
+            if key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+        {
+            p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
+        }
         // Tab cycles tabs on every tab and terminal (a bare `0x09` — Ctrl+I
         // collapses to the same byte on non-kitty terminals, but there Ctrl+?
         // is the distinct Peer Info binding instead, so Tab is always free to
-        // cycle). `Tab`+CONTROL (the CSI-u spelling of Ctrl+I) never reaches
-        // here: it is consumed as a no-op below.
+        // cycle).
         crossterm::event::KeyCode::Tab
             if !key_event
                 .modifiers

@@ -147,7 +147,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 #[flutter_rust_bridge::frb(ignore)]
 pub fn stop_node() -> Result<(), String> {
     if let Some(m) = NODE.get() {
-        let mut node = m.lock().unwrap();
+        let mut node = lock_node_mutex(m);
         node.cmd_tx.take();
         node.event_rx.take();
         p2plog_debug("Mobile node stopped".to_string());
@@ -165,17 +165,43 @@ pub fn stop_node() -> Result<(), String> {
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
     let mut node = lock_node_mutex(m);
+    // Clone the sender so the loop body never re-borrows `node` while `rx`
+    // (a mutable borrow of `node.event_rx`) is live across iterations.
+    let cmd_tx = node.cmd_tx.clone();
     let rx = node.event_rx.as_mut().ok_or("Node stopped")?;
 
-    match rx.try_recv() {
-        Ok(ev) => {
-            // Process events like the TUI does (save peers, exchange nicknames)
-            process_event_for_mobile(&ev, node.cmd_tx.as_ref());
-            Ok(Some(event_to_json(ev)))
+    loop {
+        match rx.try_recv() {
+            Ok(ev) => {
+                // Process events like the TUI does (save peers, exchange nicknames)
+                process_event_for_mobile(&ev, cmd_tx.as_ref());
+                // A nickname-only DM is the name-exchange side channel, not a
+                // message: its side effects (storing the announced nickname)
+                // were already applied above, so skip it before it can reach
+                // Dart — whose `content != null` guard would happily persist an
+                // empty-content DM. Keep draining so a run of pure name
+                // exchanges cannot stall the queue.
+                if is_nickname_only_dm(&ev) {
+                    continue;
+                }
+                return Ok(Some(event_to_json(ev)));
+            }
+            Err(TryRecvError::Empty) => return Ok(None),
+            Err(TryRecvError::Disconnected) => return Err("Swarm task ended".into()),
         }
-        Err(TryRecvError::Empty) => Ok(None),
-        Err(TryRecvError::Disconnected) => Err("Swarm task ended".into()),
     }
+}
+
+/// True for `DirectMessage` events whose empty content carries only a
+/// nickname. These are the outgoing nickname-exchange DM we send on connect
+/// (echoed back by the peer) and similar name-only messages: the nickname is
+/// a peer-record update (handled by [`process_event_for_mobile`]), never a
+/// chat message to persist or surface in the UI.
+const fn is_nickname_only_dm(ev: &SwarmEvent) -> bool {
+    matches!(
+        ev,
+        SwarmEvent::DirectMessage(m) if m.content.is_empty() && m.nickname.is_some()
+    )
 }
 
 /// Process a swarm event for side effects: save peers, send nickname, store received nicknames.
@@ -215,13 +241,9 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             {
                 let _ = record_peer_received_name_change(&m.peer_id, nick);
             }
-            // If DM is empty with a nickname, it's a nickname-only exchange — don't persist as message
-            if matches!(ev, SwarmEvent::DirectMessage(_))
-                && m.content.is_empty()
-                && m.nickname.is_some()
-            {
-                // Nickname-only DM, already stored above
-            }
+            // Nickname-only DMs are fully handled here (nickname stored above)
+            // and are filtered out of the event stream by `poll_event`
+            // (`is_nickname_only_dm`) so they never reach Dart or the DB.
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
@@ -427,7 +449,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
 
     // Send via swarm
     if let Some(m) = NODE.get() {
-        let node = m.lock().unwrap();
+        let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {
             let _ = tx.blocking_send(SwarmCommand::Publish {
                 content,
@@ -471,7 +493,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
 
     // Send via swarm
     if let Some(m) = NODE.get() {
-        let node = m.lock().unwrap();
+        let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {
             let _ = tx.blocking_send(SwarmCommand::SendDm {
                 peer_id,
@@ -940,6 +962,56 @@ mod tests {
             addresses: vec![addr],
         };
         process_event_for_mobile(&ev, None);
+    }
+
+    // ── is_nickname_only_dm ───────────────────────────────────────────
+
+    #[test]
+    fn test_is_nickname_only_dm_empty_content_with_nickname() {
+        let ev = SwarmEvent::DirectMessage(MessageEvent {
+            content: String::new(),
+            peer_id: "p1".into(),
+            latency: None,
+            nickname: Some("Alice".into()),
+            msg_id: None,
+        });
+        assert!(is_nickname_only_dm(&ev));
+    }
+
+    #[test]
+    fn test_is_nickname_only_dm_empty_without_nickname_is_regular_dm() {
+        let ev = SwarmEvent::DirectMessage(MessageEvent {
+            content: String::new(),
+            peer_id: "p1".into(),
+            latency: None,
+            nickname: None,
+            msg_id: None,
+        });
+        assert!(!is_nickname_only_dm(&ev));
+    }
+
+    #[test]
+    fn test_is_nickname_only_dm_real_content_with_nickname_is_regular_dm() {
+        let ev = SwarmEvent::DirectMessage(MessageEvent {
+            content: "hello".into(),
+            peer_id: "p1".into(),
+            latency: None,
+            nickname: Some("Alice".into()),
+            msg_id: None,
+        });
+        assert!(!is_nickname_only_dm(&ev));
+    }
+
+    #[test]
+    fn test_is_nickname_only_dm_ignores_empty_broadcasts() {
+        let ev = SwarmEvent::BroadcastMessage(MessageEvent {
+            content: String::new(),
+            peer_id: "p1".into(),
+            latency: None,
+            nickname: Some("Alice".into()),
+            msg_id: None,
+        });
+        assert!(!is_nickname_only_dm(&ev));
     }
 
     // ── SwarmEventJson / ChatMessage / MobilePeerRecord ────────────────

@@ -151,22 +151,26 @@ fn handle_message_click(
             if strings.is_empty() {
                 return false;
             }
-            // Match render_chat_content: text wraps at `width - 4`, usable height is
-            // `chat_area_height` (content block height minus its 2-line border).
-            let text_width = state.terminal_width.saturating_sub(4).max(1);
+            // Match render_chat_content: usable height is `chat_area_height`
+            // (content block height minus its 2-line border).
             let usable_height = state.chat_area_height;
-            let (visible, start) = p2p_app::calc_visible_strings(
+            let (visible, start) = p2p_app::calc_visible_list_items(
                 &strings,
                 state.chat_auto_scroll,
                 state.chat_scroll_offset,
-                text_width,
                 usable_height,
             );
-            // The chat renderer shows each message as a single (clipped, non-wrapped)
-            // List item, so every message occupies exactly one terminal row. The
-            // click mapping must match that layout rather than assuming word-wrap,
-            // i.e. the visible window is `visible` one-line rows starting at `start`.
-            let line_counts: Vec<usize> = vec![1; visible];
+            // The chat renderer shows one `ListItem` per message, and ratatui's
+            // `List` lays each item out over `list_item_lines` rows (one per
+            // newline-segment; long lines are clipped, never width-wrapped).
+            // The click mapping uses the same counts so hits land on the exact
+            // row a message occupies.
+            let line_counts: Vec<usize> = strings
+                .iter()
+                .skip(start)
+                .take(visible)
+                .map(|m| p2p_app::list_item_lines(m))
+                .collect();
             let click_row = usize::from(mouse_row);
             if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 2, click_row) {
                 let actual_idx = start.saturating_add(rel);

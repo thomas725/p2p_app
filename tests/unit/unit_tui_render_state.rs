@@ -148,6 +148,74 @@ fn test_calc_visible_strings_manual_scroll() {
 }
 
 #[test]
+fn test_list_item_lines() {
+    assert_eq!(list_item_lines("hello"), 1);
+    assert_eq!(list_item_lines(""), 1);
+    assert_eq!(list_item_lines("line1\nline2\nline3"), 3);
+    // A long single line is still one List row (clipped, not width-wrapped).
+    assert_eq!(list_item_lines("a".repeat(200).as_str()), 1);
+}
+
+#[test]
+fn test_list_item_lines_differentiates_from_wrapped_count() {
+    // `list_item_lines` counts newline segments only, while `count_lines`
+    // also estimates width-wrapping — the two must diverge for a long line.
+    let long = "hello world foo bar baz quux";
+    assert_eq!(count_lines(long, 10), 3);
+    assert_eq!(list_item_lines(long), 1);
+}
+
+#[test]
+fn test_calc_visible_list_items_empty() {
+    let msgs: VecDeque<String> = VecDeque::new();
+    let (visible, offset) = calc_visible_list_items(&msgs, true, 0, 10);
+    assert_eq!(visible, 0);
+    assert_eq!(offset, 0);
+}
+
+#[test]
+fn test_calc_visible_list_items_auto_scroll_shows_all() {
+    let msgs = VecDeque::from(vec!["a".to_string(), "b".to_string()]);
+    let (visible, offset) = calc_visible_list_items(&msgs, true, 0, 10);
+    assert_eq!(visible, 2);
+    assert_eq!(offset, 0);
+}
+
+#[test]
+fn test_calc_visible_list_items_manual_scroll() {
+    let msgs = VecDeque::from(vec!["a".to_string(), "b".to_string(), "c".to_string()]);
+    let (visible, offset) = calc_visible_list_items(&msgs, false, 1, 10);
+    assert_eq!(visible, 2);
+    assert_eq!(offset, 1);
+}
+
+#[test]
+fn test_calc_visible_list_items_multiline_item_uses_row_count() {
+    // A message spanning two newline segments occupies two List rows, so a
+    // 3-row pane fits it plus one more single-row message.
+    let msgs = VecDeque::from(vec![
+        "top\nbottom".to_string(),
+        "single".to_string(),
+        "overflow".to_string(),
+    ]);
+    let (visible, offset) = calc_visible_list_items(&msgs, true, 0, 3);
+    assert_eq!(visible, 2);
+    // Auto-scroll from the bottom: the last two items fit.
+    assert_eq!(offset, 1);
+}
+
+#[test]
+fn test_calc_visible_list_items_long_line_is_one_row() {
+    // Unlike calc_visible_strings (which width-wraps), a very long single-line
+    // message occupies one List row, so all three fit in a 3-row pane.
+    let long = "x".repeat(500);
+    let msgs = VecDeque::from(vec![long, "y".to_string(), "z".to_string()]);
+    let (visible, offset) = calc_visible_list_items(&msgs, true, 0, 3);
+    assert_eq!(visible, 3);
+    assert_eq!(offset, 0);
+}
+
+#[test]
 fn test_broadcast_receipt_prefix_no_receipts() {
     let receipts = HashMap::new();
     assert_eq!(broadcast_receipt_prefix(Some("msg-1"), &receipts), "  ");

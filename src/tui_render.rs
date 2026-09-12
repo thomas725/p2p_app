@@ -2,7 +2,7 @@
 
 use crate::fmt::short_peer_id;
 use crate::tui_render_state::{
-    TuiRenderState, broadcast_receipt_prefix, calc_visible_strings, dm_receipt_prefix,
+    TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, dm_receipt_prefix,
     get_tab_content,
 };
 use crate::tui_tabs::TabContent;
@@ -216,14 +216,12 @@ pub fn render_peer_info_content(
 
 /// Render chat messages with scroll support and receipt markers
 pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRenderState) {
-    let text_width = usize::from(area.width.saturating_sub(4));
     let usable_height = usize::from(area.height.saturating_sub(2));
 
-    let (visible, effective_offset) = calc_visible_strings(
+    let (visible, effective_offset) = calc_visible_list_items(
         &state.messages,
         state.chat_auto_scroll,
         state.chat_scroll_offset,
-        text_width,
         usable_height,
     );
 
@@ -373,8 +371,6 @@ pub fn render_dm_content(
     peer_id: &str,
     state: &mut TuiRenderState,
 ) {
-    let text_width = usize::from(area.width.saturating_sub(4));
-
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -410,11 +406,10 @@ pub fn render_dm_content(
             (*offset, *auto_scroll)
         };
 
-        let (visible, effective_offset) = calc_visible_strings(
+        let (visible, effective_offset) = calc_visible_list_items(
             &broadcast_messages,
             broadcast_auto_scroll,
             broadcast_scroll_offset,
-            text_width,
             broadcast_usable_height,
         );
 
@@ -439,13 +434,8 @@ pub fn render_dm_content(
     };
 
     if let Some(msgs) = state.dm_messages.get(peer_id) {
-        let (visible, effective_offset) = calc_visible_strings(
-            msgs,
-            auto_scroll_val,
-            scroll_offset_val,
-            text_width,
-            dm_usable_height,
-        );
+        let (visible, effective_offset) =
+            calc_visible_list_items(msgs, auto_scroll_val, scroll_offset_val, dm_usable_height);
 
         let visible_msgs: Vec<ListItem> = msgs
             .iter()
@@ -480,14 +470,12 @@ fn bordered_block(title: String) -> Block<'static> {
 
 /// Render log content
 pub fn render_log_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
-    let text_width = usize::from(area.width.saturating_sub(4));
     let usable_height = usize::from(area.height.saturating_sub(2));
 
-    let (visible, effective_offset) = calc_visible_strings(
+    let (visible, effective_offset) = calc_visible_list_items(
         &state.log_messages,
         state.log_auto_scroll,
         state.log_scroll_offset,
-        text_width,
         usable_height,
     );
 

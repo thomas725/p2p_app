@@ -279,6 +279,41 @@ pub fn count_lines(text: &str, text_width: usize) -> usize {
 
 const MIN_VISIBLE: usize = 1;
 
+/// Number of terminal rows a `ListItem` occupies in a ratatui `List`.
+///
+/// `List` renders each newline-separated segment as one row and clips lines
+/// that are longer than the pane (it never width-wraps), so the row count is
+/// the number of newline-delimited segments, not `count_lines`' wrapped
+/// estimate. Chat, DM, broadcast, and log panes all render their messages via
+/// `List`, so the scroll math, the renderer, and the click hit-testing must
+/// all agree on this count.
+#[must_use]
+pub fn list_item_lines(text: &str) -> usize {
+    text.split('\n').count()
+}
+
+/// Compute the visible window for `List`-rendered panes (chat, DM, log).
+///
+/// Same `(visible, effective_offset)` contract as [`calc_visible_strings`],
+/// but rows-per-item uses [`list_item_lines`] so it matches how ratatui's
+/// `List` actually lays out items (no width wrapping).
+#[must_use]
+pub fn calc_visible_list_items(
+    messages: &VecDeque<String>,
+    auto_scroll: bool,
+    scroll_offset: usize,
+    usable_height: usize,
+) -> (usize, usize) {
+    let msgs: Vec<String> = messages.iter().cloned().collect();
+    calc_visible_impl(
+        &msgs,
+        auto_scroll,
+        scroll_offset,
+        usable_height,
+        list_item_lines,
+    )
+}
+
 fn calc_visible_impl<F>(
     messages: &[String],
     auto_scroll: bool,
