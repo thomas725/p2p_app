@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1978035508;
+  int get rustContentHash => 332983863;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -142,8 +142,6 @@ abstract class RustLibApi extends BaseApi {
   Future<void> crateApiStopNode();
 
   Future<bool> crateApiValidateNickname({required String nickname});
-
-  Future<bool> crateMobileApiValidateNickname({required String nick});
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -801,34 +799,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     debugName: "validate_nickname",
     argNames: ["nickname"],
   );
-
-  @override
-  Future<bool> crateMobileApiValidateNickname({required String nick}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(nick, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 23,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_bool,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateMobileApiValidateNicknameConstMeta,
-        argValues: [nick],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateMobileApiValidateNicknameConstMeta =>
-      const TaskConstMeta(debugName: "validate_nickname", argNames: ["nick"]);
 
   @protected
   int dco_decode_CastedPrimitive_u_64(dynamic raw) {

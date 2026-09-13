@@ -28,14 +28,6 @@ pub fn is_at_bottom(scroll_offset: usize, total: usize, visible: usize) -> bool 
     scroll_offset >= total.saturating_sub(visible)
 }
 
-/// Validate a nickname: alphanumeric and dash only, max 20 chars.
-///
-/// Delegates to the canonical [`crate::nickname::validate_nickname`].
-#[must_use]
-pub fn validate_nickname(nick: &str) -> bool {
-    crate::nickname::validate_nickname(nick)
-}
-
 /// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds
 /// since epoch; 0 for any unparseable input.
 ///
@@ -282,23 +274,6 @@ mod tests {
         // Edge cases
         assert!(is_at_bottom(5, 5, 10)); // 5 >= 0 => true (total <= visible)
         assert!(is_at_bottom(0, 0, 0)); // 0 >= 0 => true (empty)
-    }
-
-    #[test]
-    fn test_validate_nickname() {
-        // Valid nicknames
-        assert!(validate_nickname("valid-nick"));
-        assert!(validate_nickname("abc123"));
-        assert!(validate_nickname("a"));
-
-        // Invalid nicknames
-        assert!(!validate_nickname(""));
-        assert!(!validate_nickname(
-            "this-nickname-is-way-too-long-exceeds-twenty-chars"
-        ));
-        assert!(!validate_nickname("nick with spaces"));
-        assert!(!validate_nickname("nick@special"));
-        assert!(!validate_nickname("nick%dollar"));
     }
 
     fn sample_peer(

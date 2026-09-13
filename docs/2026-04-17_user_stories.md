@@ -128,6 +128,20 @@ This document captures user stories and acceptance criteria for the P2P Chat app
   - **I want to** store messages, peers, and identity in a database
   - **So that** data persists across restarts
 
+- [x] **US-105**: Sort peers canonically in Rust for both frontends
+  - **As a** developer
+  - **I want to** expose one sort (`mobile_api::sort_peers`, mirroring the TUI's
+    `sort_peers_table`) to Flutter instead of a Dart re-implementation
+  - **So that** the TUI and Flutter peer tables always agree (column order,
+    `peer_id` tie-break, and whole-ordering reversal on descending)
+
+- [x] **US-106**: Single last-seen parser for TUI and mobile
+  - **As a** developer
+  - **I want to** route all last/first-seen sorting through
+    `fmt::parse_last_seen_ms` (0-on-failure, space-or-T `%Y-%m-%dT%H:%M:%S`)
+  - **So that** neither frontend string-compares timestamps or rolls its own
+    parse; the widget-test fake mirrors the exact comparator semantics
+
 ## Future User Stories (Not Yet Implemented)
 
 ### Chat Enhancements

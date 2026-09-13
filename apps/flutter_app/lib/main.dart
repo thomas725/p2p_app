@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/rust/api.dart';
 import 'src/rust/messages.dart';
-import 'src/rust/mobile_api.dart' hide validateNickname;
+import 'src/rust/mobile_api.dart';
 import 'src/rust/mobile_node.dart';
 
 const _serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');

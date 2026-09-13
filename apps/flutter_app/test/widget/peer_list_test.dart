@@ -27,26 +27,41 @@ MobilePeerRecord peer({
   lastSeen: '',
 );
 
-// Deterministic fake of the Rust `sortPeers`: sort ascending or descending on a
-// key column, and always tie-break on `peer_id` (ascending on the tie).
+// Deterministic fake of the Rust `sortPeers` (mobile_api.rs). Mirrors the real
+// comparator exactly: column `0`/unknown = lowercase display name, `1` DM count,
+// `2` broadcast count, `3` last-seen, `4` first-seen (via strict
+// `%Y-%m-%dT%H:%M:%S`-or-space parse with 0 on failure), each with an ascending
+// `peer_id` tie-break. A descending sort reverses the WHOLE ordering — the
+// tie-break included — matching Rust `ord.reverse()`.
+int _parseSeenMs(String s) {
+  final m = RegExp(
+    r'^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})$',
+  ).firstMatch(s);
+  if (m == null) return 0;
+  final p = [for (var i = 1; i <= 6; i++) int.parse(m.group(i)!)];
+  return DateTime.utc(p[0], p[1], p[2], p[3], p[4], p[5])
+      .millisecondsSinceEpoch;
+}
+
 List<PeerSortInput> _sortLikeRust(
   List<PeerSortInput> rows,
   int column,
   bool ascending,
 ) {
   int tie(PeerSortInput a, PeerSortInput b) => a.peerId.compareTo(b.peerId);
-  int keyCompare(PeerSortInput a, PeerSortInput b) {
+  int cmp(PeerSortInput a, PeerSortInput b) {
     final v = switch (column) {
-      0 => a.displayName.compareTo(b.displayName),
-      1 => a.dmCount - b.dmCount,
-      2 => a.broadcastCount - b.broadcastCount,
-      _ => a.peerId.compareTo(b.peerId),
+      1 => a.dmCount.compareTo(b.dmCount),
+      2 => a.broadcastCount.compareTo(b.broadcastCount),
+      3 => _parseSeenMs(a.lastSeen).compareTo(_parseSeenMs(b.lastSeen)),
+      4 => _parseSeenMs(a.firstSeen).compareTo(_parseSeenMs(b.firstSeen)),
+      _ => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
     };
-    if (v != 0) return ascending ? v : -v;
-    return tie(a, b);
+    final combined = v != 0 ? v : tie(a, b);
+    return ascending ? combined : -combined;
   }
 
-  final out = [...rows]..sort(keyCompare);
+  final out = [...rows]..sort(cmp);
   return out;
 }
 
@@ -175,9 +190,65 @@ void main() {
     await tester.pump();
     expect(calls.last.$1, 0);
     expect(calls.last.$2, isFalse);
+    // Descending reverses the WHOLE ordering (tie-break included), mirroring
+    // Rust `ord.reverse()`: equal-name ties now sort peer_id descending.
+    expect(calls.last.$3, ['ccc', 'bbb', 'aaa']);
 
     // All three same-named peers still render (no rows dropped by the sort).
     expect(find.text('Same'), findsNWidgets(3));
+  });
+
+  testWidgets('Last-seen column sorts by parsed timestamp with 0-on-failure', (
+    tester,
+  ) async {
+    final peers = [
+      MobilePeerRecord(
+        peerId: 'zulu',
+        displayName: 'Zulu',
+        firstSeen: '',
+        lastSeen: '2026-08-03T10:00:00',
+      ),
+      MobilePeerRecord(
+        peerId: 'alpha',
+        displayName: 'Alpha',
+        firstSeen: '',
+        lastSeen: '2026-08-01T10:00:00',
+      ),
+      MobilePeerRecord(
+        peerId: 'same',
+        displayName: 'Same',
+        firstSeen: '',
+        lastSeen: 'junk', // unparseable -> 0, mirroring parse_last_seen_ms
+      ),
+    ];
+    final calls = <(int, bool, List<String>)>[];
+    List<PeerSortInput> recordingSort(
+      List<PeerSortInput> rows,
+      int column,
+      bool ascending,
+    ) {
+      final out = _sortLikeRust(rows, column, ascending);
+      calls.add((column, ascending, [for (final r in out) r.peerId]));
+      return out;
+    }
+
+    await tester.pumpWidget(_app(peers: peers, sortOverride: recordingSort));
+    await tester.pump();
+
+    // Default state: Last seen, descending. 2026-08-03 > 08-01 > 0 (junk).
+    expect(calls.first.$3, ['zulu', 'alpha', 'same']);
+
+    await tester.tap(find.text('Last seen'));
+    await tester.pump();
+    expect(calls.last.$1, 3);
+    expect(calls.last.$2, isTrue);
+    expect(calls.last.$3, ['same', 'alpha', 'zulu']);
+
+    await tester.tap(find.text('Last seen'));
+    await tester.pump();
+    expect(calls.last.$1, 3);
+    expect(calls.last.$2, isFalse);
+    expect(calls.last.$3, ['zulu', 'alpha', 'same']);
   });
 
   testWidgets(

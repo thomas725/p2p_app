@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1978035508;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 332983863;
 
 // Section: executor
 
@@ -779,39 +779,6 @@ fn wire__crate__api__validate_nickname_impl(
         },
     )
 }
-fn wire__crate__mobile_api__validate_nickname_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "validate_nickname",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_nick = <String>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Ok::<_, ()>(crate::mobile_api::validate_nickname(&api_nick))?;
-                    std::result::Result::Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 
 // Section: dart2rust
 
@@ -1142,7 +1109,6 @@ fn pde_ffi_dispatcher_primary_impl(
         20 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
         21 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
         22 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__mobile_api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

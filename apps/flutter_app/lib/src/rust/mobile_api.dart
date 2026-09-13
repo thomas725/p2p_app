@@ -30,12 +30,6 @@ bool isAtBottom({
   visible: visible,
 );
 
-/// Validate a nickname: alphanumeric and dash only, max 20 chars.
-///
-/// Delegates to the canonical [`crate::nickname::validate_nickname`].
-Future<bool> validateNickname({required String nick}) =>
-    RustLib.instance.api.crateMobileApiValidateNickname(nick: nick);
-
 /// Parse a `YYYY-MM-DD HH:MM:SS` (or `...T...`) timestamp into milliseconds
 /// since epoch; 0 for any unparseable input.
 ///
