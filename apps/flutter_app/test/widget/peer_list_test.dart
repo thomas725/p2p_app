@@ -10,10 +10,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:p2p_app_flutter/main.dart';
 import 'package:p2p_app_flutter/src/rust/messages.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/screens/peer_list.dart';
 
 MobilePeerRecord peer({
   required String id,
@@ -39,8 +39,14 @@ int _parseSeenMs(String s) {
   ).firstMatch(s);
   if (m == null) return 0;
   final p = [for (var i = 1; i <= 6; i++) int.parse(m.group(i)!)];
-  return DateTime.utc(p[0], p[1], p[2], p[3], p[4], p[5])
-      .millisecondsSinceEpoch;
+  return DateTime.utc(
+    p[0],
+    p[1],
+    p[2],
+    p[3],
+    p[4],
+    p[5],
+  ).millisecondsSinceEpoch;
 }
 
 List<PeerSortInput> _sortLikeRust(
