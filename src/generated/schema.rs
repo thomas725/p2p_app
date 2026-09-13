@@ -92,8 +92,49 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: group-chat tables (`groups`, `group_members`,
+// `group_messages`) for public/private group chats transported over per-group
+// gossipsub topics. `group_id` is a stable hash of the canonical group name
+// (public groups identify by name); `is_private` reserves the private-group
+// switch. Lives here so diesel can query it and FRB ignores this module.
+diesel::table! {
+    groups (id) {
+        id -> Integer,
+        group_id -> Text,
+        display_name -> Text,
+        is_private -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    group_members (id) {
+        id -> Integer,
+        group_id -> Text,
+        peer_id -> Text,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    group_messages (id) {
+        id -> Integer,
+        created_at -> Timestamp,
+        group_id -> Text,
+        content -> Text,
+        peer_id -> Nullable<Text>,
+        sent -> Integer,
+        msg_id -> Nullable<Text>,
+        sent_at -> Nullable<Double>,
+        sender_nickname -> Nullable<Text>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     broadcast_recipients,
+    group_members,
+    group_messages,
+    groups,
     identities,
     message_receipts,
     messages,

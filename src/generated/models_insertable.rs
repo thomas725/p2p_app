@@ -5,7 +5,10 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 
-use crate::generated::schema::{identities, message_receipts, messages, peer_sessions, peers};
+use crate::generated::schema::{
+    group_members, group_messages, groups, identities, message_receipts, messages,
+    peer_sessions, peers,
+};
 use diesel::Insertable;
 
 use chrono::NaiveDateTime;
@@ -69,6 +72,48 @@ pub struct NewPeerSession {
     pub concurrent_peers: i32,
     /// Timestamp when this record was recorded
     pub recorded_at: NaiveDateTime,
+}
+
+/// Insertable struct for the `groups` table
+#[derive(Insertable, Debug)]
+#[diesel(table_name = groups)]
+pub struct NewGroup {
+    /// Stable identifier (hash of the canonical name for public groups)
+    pub group_id: String,
+    /// Human-readable name shown in the UI
+    pub display_name: String,
+    /// Whether this is a private (invite-only) group (0 = public, 1 = private)
+    pub is_private: i32,
+}
+
+/// Insertable struct for the `group_members` table
+#[derive(Insertable, Debug)]
+#[diesel(table_name = group_members)]
+pub struct NewGroupMember {
+    /// Group the member participates in
+    pub group_id: String,
+    /// Peer ID of the participant
+    pub peer_id: String,
+}
+
+/// Insertable struct for the `group_messages` table
+#[derive(Insertable, Debug)]
+#[diesel(table_name = group_messages)]
+pub struct NewGroupMessage {
+    /// Group this message belongs to
+    pub group_id: String,
+    /// Message text
+    pub content: String,
+    /// Peer ID of the remote party (None = local/sent by us)
+    pub peer_id: Option<String>,
+    /// Whether this message has been sent (0 = no, 1 = yes)
+    pub sent: i32,
+    /// Application-level unique message identifier
+    pub msg_id: Option<String>,
+    /// Unix timestamp (seconds) when the message was sent
+    pub sent_at: Option<f64>,
+    /// Nickname of the sender at the time of sending
+    pub sender_nickname: Option<String>,
 }
 
 /// Insertable struct for the `peers` table

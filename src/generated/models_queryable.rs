@@ -5,7 +5,10 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 
-use crate::generated::schema::{identities, message_receipts, messages, peer_sessions, peers};
+use crate::generated::schema::{
+    group_members, group_messages, groups, identities, message_receipts, messages,
+    peer_sessions, peers,
+};
 
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -65,6 +68,60 @@ pub struct Message {
     pub is_direct: i32,
     /// Recipient peer ID for direct messages
     pub target_peer: Option<String>,
+    /// Application-level unique message identifier
+    pub msg_id: Option<String>,
+    /// Unix timestamp (seconds) when the message was sent
+    pub sent_at: Option<f64>,
+    /// Nickname of the sender at the time of sending
+    pub sender_nickname: Option<String>,
+}
+
+/// Queryable struct for the `groups` table
+#[derive(Queryable, Selectable, Debug, Clone, PartialEq, Eq)]
+#[diesel(table_name = groups)]
+pub struct Group {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Stable identifier (hash of the canonical name for public groups)
+    pub group_id: String,
+    /// Human-readable name shown in the UI
+    pub display_name: String,
+    /// Whether this is a private (invite-only) group (0 = public, 1 = private)
+    pub is_private: i32,
+    /// Timestamp when this record was created
+    pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `group_members` table
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = group_members)]
+pub struct GroupMember {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Group the member participates in
+    pub group_id: String,
+    /// Peer ID of the participant
+    pub peer_id: String,
+    /// Timestamp when this record was created
+    pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `group_messages` table
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = group_messages)]
+pub struct GroupMessage {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Timestamp when this record was created
+    pub created_at: NaiveDateTime,
+    /// Group this message belongs to
+    pub group_id: String,
+    /// Message text
+    pub content: String,
+    /// Peer ID of the remote party (None = local/sent by us)
+    pub peer_id: Option<String>,
+    /// Whether this message has been sent (0 = no, 1 = yes)
+    pub sent: i32,
     /// Application-level unique message identifier
     pub msg_id: Option<String>,
     /// Unix timestamp (seconds) when the message was sent
