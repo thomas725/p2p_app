@@ -112,6 +112,23 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 
         let (_handle, event_rx, cmd_tx) = spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
 
+        // Re-join every group persisted in the local database: the swarm only
+        // receives group traffic for topics it is subscribed to, so saved groups
+        // must be re-subscribed on every startup.
+        for summary in crate::groups::list_groups_with_member_counts()
+            .map_err(|e| format!("Failed to list saved groups: {e}"))?
+        {
+            p2plog_debug(format!(
+                "Subscribing to saved group {} ({})",
+                summary.group.display_name, summary.group.group_id
+            ));
+            let _ = cmd_tx
+                .send(SwarmCommand::SubscribeGroup {
+                    group_id: summary.group.group_id.clone(),
+                })
+                .await;
+        }
+
         let pid = get_local_peer_id().map_err(|e| e.to_string())?.to_string();
 
         Ok::<_, String>((event_rx, cmd_tx, pid))
