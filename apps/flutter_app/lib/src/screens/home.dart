@@ -7,15 +7,18 @@ import 'package:p2p_app_flutter/src/rust/messages.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
+import 'package:p2p_app_flutter/src/screens/group_chat.dart';
+import 'package:p2p_app_flutter/src/screens/group_list.dart';
 import 'package:p2p_app_flutter/src/screens/log_tab.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
+import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/peer_list.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/env.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
-/// Root tabbed screen: Broadcast chat, Peers, Log, and Settings.
+/// Root tabbed screen: Broadcast chat, Peers, Groups, Log, and Settings.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -37,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
   Map<String, PeerMessageStats> _peerStats = {};
+  List<MobileGroup> _groups = [];
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
@@ -193,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _syncLiveStatus();
       await _loadHistory();
       await _refreshPeers();
+      await _refreshGroups();
       await _scrollToFirstUnread();
       // Auto-start the node (on Android this also starts the foreground service)
       if (!_serviceRunning) {
@@ -245,6 +250,18 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
+  Future<void> _refreshGroups() async {
+    try {
+      final groups = await listGroups();
+      setState(() => _groups = groups);
+    } catch (_) {}
+  }
+
+  Future<void> _createGroup(String name) async {
+    await createGroup(name: name);
+    await _refreshGroups();
+  }
+
   void _handleSwarmEvent(SwarmEventJson event) {
     if (!mounted) return;
     switch (event.eventType) {
@@ -264,6 +281,12 @@ class _HomeScreenState extends State<HomeScreen> {
         if (event.nickname != null) {
           _refreshPeers();
         }
+        break;
+      case 'group_message':
+        // Incoming group messages are persisted by the Rust swarm handler; a
+        // new message means the group's member set may have changed, so refresh
+        // the list (counts stay in sync even when no group chat is open).
+        _refreshGroups();
         break;
       case 'peer_connected':
         setState(() {
@@ -398,6 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _connectedCount = 0;
           _connectedPeerIds.clear();
           _listenAddresses.clear();
+          _groups = [];
         });
         _syncLiveStatus();
       } else {
@@ -425,6 +449,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _syncLiveStatus();
         await _loadHistory();
         await _refreshPeers();
+        await _refreshGroups();
       }
     } catch (e) {
       setState(() => _error = e.toString());
@@ -440,11 +465,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Switch the main tab from a full-screen route (peer info / DM chat) so the
-  // user can navigate without the back button.
+  // Switch the main tab from a full-screen route (peer info / DM / group chat)
+  // so the user can navigate without the back button.
   void _navigateToTab(int i) {
     setState(() => _tabIndex = i);
-    if (i == 3) _refreshSettingsOnOpen();
+    if (i == 4) _refreshSettingsOnOpen();
   }
 
   void _openPeerInfo(MobilePeerRecord peer) {
@@ -461,8 +486,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openDmChat(MobilePeerRecord peer) {
-    Navigator.push(
+  Future<void> _openDmChat(MobilePeerRecord peer) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DmChatScreen(
@@ -473,6 +498,30 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    // The DM chat screen takes over the event sink while open; hand it back so
+    // home keeps receiving broadcast/DM events after we return.
+    if (mounted) setEventSink(_handleSwarmEvent);
+  }
+
+  void _openGroupChat(MobileGroup group) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupChatScreen(
+          group: group,
+          serviceRunning: _serviceRunning,
+          onNavigate: _navigateToTab,
+          currentTab: 2,
+        ),
+      ),
+    ).then((_) {
+      // The group chat screen hands the event sink back on pop; also refresh
+      // the group list so member counts reflect what was seen while open.
+      if (mounted) {
+        setEventSink(_handleSwarmEvent);
+        _refreshGroups();
+      }
+    });
   }
 
   // Open the info page for the sender of a broadcast message. If the peer
@@ -545,6 +594,11 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenDm: _openDmChat,
         serviceRunning: _serviceRunning,
       ),
+      GroupList(
+        groups: _groups,
+        onOpenGroup: _openGroupChat,
+        onCreateGroup: _createGroup,
+      ),
       const LogTab(),
       Settings(
         liveStatus: _liveStatus,
@@ -565,14 +619,9 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _tabIndex,
         onDestinationSelected: (i) {
           setState(() => _tabIndex = i);
-          if (i == 3) _refreshSettingsOnOpen();
+          if (i == 4) _refreshSettingsOnOpen();
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.chat), label: 'Chat'),
-          NavigationDestination(icon: Icon(Icons.people), label: 'Peers'),
-          NavigationDestination(icon: Icon(Icons.list), label: 'Log'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
+        destinations: kMainTabDestinations,
       ),
     );
   }
