@@ -54,7 +54,10 @@ fn push_outgoing_group_message_to_state(
     msg_id: String,
 ) {
     let msg = format!("{ts} [{own_nickname}] {content}");
-    let msgs = state.group_messages.entry(group_id.to_string()).or_default();
+    let msgs = state
+        .group_messages
+        .entry(group_id.to_string())
+        .or_default();
     msgs.push_back(msg);
     state
         .group_message_ids
@@ -186,9 +189,7 @@ pub async fn send_message(
                 msg_id: Some(msg_id_for_db.clone()),
                 sent_at: Some(sent_at),
             };
-            if let Err(e) =
-                p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta)
-            {
+            if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
                 p2plog_debug(format!("Failed to save group message: {e}"));
             }
         }

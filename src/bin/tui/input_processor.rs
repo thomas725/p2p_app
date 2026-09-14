@@ -169,9 +169,7 @@ async fn create_or_join_group(
             super::click_handlers::open_group_chat(state, &group_id, &display_name);
             state.creating_group = false;
             state.chat_input = super::TextArea::default();
-            p2plog_debug(format!(
-                "Created/joined group: {display_name} ({group_id})"
-            ));
+            p2plog_debug(format!("Created/joined group: {display_name} ({group_id})"));
         }
         Err(e) => p2plog_debug(format!("Failed to create/join group: {e}")),
     }

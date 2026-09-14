@@ -133,7 +133,10 @@ fn apply_group_message_to_state(
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
     let msg = format!("{ts} [{sender_display}] {content}");
-    let group_msgs = state.group_messages.entry(group_id.to_string()).or_default();
+    let group_msgs = state
+        .group_messages
+        .entry(group_id.to_string())
+        .or_default();
     group_msgs.push_back(msg);
     trim_history(group_msgs, MAX_MESSAGE_HISTORY);
     state
@@ -310,7 +313,10 @@ async fn process_swarm_event(
                 msg.msg_id,
             );
             s.reload_group_summaries();
-            p2plog_debug(format!("Group message from {sender_display}: {}", msg.content));
+            p2plog_debug(format!(
+                "Group message from {sender_display}: {}",
+                msg.content
+            ));
             drop(s);
         }
         SwarmEvent::Receipt {

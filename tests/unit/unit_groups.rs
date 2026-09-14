@@ -25,7 +25,10 @@ fn with_test_db(f: impl FnOnce()) {
 
 #[test]
 fn canonical_group_name_collapses_and_lowercases() {
-    assert_eq!(canonical_group_name("  Rust  Enthusiasts "), "rust enthusiasts");
+    assert_eq!(
+        canonical_group_name("  Rust  Enthusiasts "),
+        "rust enthusiasts"
+    );
     assert_eq!(canonical_group_name("Single"), "single");
 }
 
@@ -59,7 +62,10 @@ fn create_public_group_is_idempotent_across_spelling() {
         assert_eq!(first.display_name, "Rust Enthusiasts");
         let second = create_public_group("rust enthusiasts").expect("create again");
         assert_eq!(first.id, second.id, "same canonical name reuses the group");
-        assert_eq!(find_group(&first.group_id).expect("find").unwrap().id, first.id);
+        assert_eq!(
+            find_group(&first.group_id).expect("find").unwrap().id,
+            first.id
+        );
     });
 }
 
@@ -116,18 +122,25 @@ fn list_groups_with_member_counts_reports_members() {
 fn outgoing_group_message_has_no_peer_and_is_sent() {
     with_test_db(|| {
         let group = create_public_group("lobby").expect("create");
-        let saved = save_outgoing_group_message(&group.group_id, "hello", GroupMessageMeta {
-            sender_nickname: Some("me".to_string()),
-            msg_id: Some("out-1".to_string()),
-            sent_at: Some(123.0),
-        })
+        let saved = save_outgoing_group_message(
+            &group.group_id,
+            "hello",
+            GroupMessageMeta {
+                sender_nickname: Some("me".to_string()),
+                msg_id: Some("out-1".to_string()),
+                sent_at: Some(123.0),
+            },
+        )
         .expect("save outgoing");
         assert_eq!(saved.peer_id, None);
         assert_eq!(saved.sent, 1);
         assert_eq!(saved.msg_id.as_deref(), Some("out-1"));
 
-        let loaded =
-            load_group_messages(&group.group_id, 100).expect("load").first().cloned().unwrap();
+        let loaded = load_group_messages(&group.group_id, 100)
+            .expect("load")
+            .first()
+            .cloned()
+            .unwrap();
         assert_eq!(loaded.content, "hello");
         assert_eq!(loaded.sender_nickname.as_deref(), Some("me"));
     });
@@ -152,7 +165,10 @@ fn incoming_group_message_dedupes_on_msg_id() {
 
         let dup =
             save_incoming_group_message(&group.group_id, "peer-a", "hey", meta).expect("dup query");
-        assert!(dup.is_none(), "identical (group_id, msg_id) must be dropped");
+        assert!(
+            dup.is_none(),
+            "identical (group_id, msg_id) must be dropped"
+        );
 
         let loaded = load_group_messages(&group.group_id, 100).expect("load");
         assert_eq!(loaded.len(), 1);
@@ -196,7 +212,9 @@ fn delete_group_removes_messages_and_members() {
         assert!(find_group(&group.group_id).expect("find").is_none());
         assert_eq!(get_group_member_count(&group.group_id).expect("count"), 0);
         assert!(
-            load_group_messages(&group.group_id, 100).expect("load").is_empty(),
+            load_group_messages(&group.group_id, 100)
+                .expect("load")
+                .is_empty(),
             "messages cascade with the group"
         );
     });

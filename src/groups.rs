@@ -12,10 +12,10 @@ use crate::generated::models_insertable::{NewGroup, NewGroupMember, NewGroupMess
 use crate::generated::models_queryable::{Group, GroupMessage};
 use crate::generated::schema::{group_members, group_messages, groups};
 use color_eyre::eyre::Context;
+use diesel::dsl::count;
 use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
 };
-use diesel::dsl::count;
 
 /// Optional metadata for a group message (mirrors [`crate::messages::MessageMeta`]).
 #[derive(Default, Clone)]

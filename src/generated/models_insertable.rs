@@ -6,8 +6,8 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    group_members, group_messages, groups, identities, message_receipts, messages,
-    peer_sessions, peers,
+    group_members, group_messages, groups, identities, message_receipts, messages, peer_sessions,
+    peers,
 };
 use diesel::Insertable;
 

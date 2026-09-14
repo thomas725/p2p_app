@@ -86,11 +86,7 @@ impl DynamicTabs {
     /// Deduplicates on `group_id` (a group has a single chat window, regardless
     /// of separate creaters using different spelling of its name).
     pub fn add_group_tab(&mut self, group_id: String, display_name: String) -> usize {
-        if let Some(pos) = self
-            .group_tabs
-            .iter()
-            .position(|t| t.group_id == group_id)
-        {
+        if let Some(pos) = self.group_tabs.iter().position(|t| t.group_id == group_id) {
             return pos.saturating_add(FIXED_TAB_COUNT);
         }
         let idx = self.group_tabs.len().saturating_add(FIXED_TAB_COUNT);
@@ -275,9 +271,11 @@ impl DynamicTabs {
             idx if idx == settings_index => TabContent::Settings,
             idx if idx >= FIXED_TAB_COUNT && idx < dm_start => {
                 let group_idx = idx.saturating_sub(FIXED_TAB_COUNT);
-                self.group_tabs.get(group_idx).map_or(TabContent::Chat, |t| {
-                    TabContent::GroupChat(t.group_id.clone())
-                })
+                self.group_tabs
+                    .get(group_idx)
+                    .map_or(TabContent::Chat, |t| {
+                        TabContent::GroupChat(t.group_id.clone())
+                    })
             }
             idx if idx >= dm_start && idx < info_start => {
                 let dm_idx = idx.saturating_sub(dm_start);

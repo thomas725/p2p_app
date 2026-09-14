@@ -23,9 +23,8 @@ pub fn render_groups_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
         .skip(start)
         .take(end.saturating_sub(start))
         .map(|g| {
-            ListItem::from(format!("{} ({})", g.group.display_name, g.member_count)).style(
-                Style::default().add_modifier(Modifier::BOLD),
-            )
+            ListItem::from(format!("{} ({})", g.group.display_name, g.member_count))
+                .style(Style::default().add_modifier(Modifier::BOLD))
         })
         .collect();
 
@@ -83,12 +82,8 @@ pub fn render_group_chat_content(
             .get(group_id)
             .copied()
             .unwrap_or((0, true));
-        let (visible, effective_offset) = calc_visible_list_items(
-            msgs,
-            auto_scroll,
-            scroll_offset,
-            usable_height,
-        );
+        let (visible, effective_offset) =
+            calc_visible_list_items(msgs, auto_scroll, scroll_offset, usable_height);
 
         let items: Vec<ListItem> = msgs
             .iter()

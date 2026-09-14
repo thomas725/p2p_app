@@ -144,9 +144,7 @@ fn format_group_messages_from_db(
 /// map from the DB; live messages are then appended on top while the tab stays
 /// open. Replacing on every open avoids duplicate re-deliveries.
 pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
-    if let Ok(db_messages) =
-        p2p_app::groups::load_group_messages(group_id, MAX_DM_HISTORY)
-    {
+    if let Ok(db_messages) = p2p_app::groups::load_group_messages(group_id, MAX_DM_HISTORY) {
         let (messages, message_ids, peer_ids) = format_group_messages_from_db(
             &db_messages,
             &state.local_nicknames,
@@ -265,12 +263,8 @@ fn handle_message_click(
                 .get(group_id)
                 .copied()
                 .unwrap_or((0, true));
-            let (visible, start) = p2p_app::calc_visible_list_items(
-                strings,
-                auto_scroll,
-                offset,
-                usable_height,
-            );
+            let (visible, start) =
+                p2p_app::calc_visible_list_items(strings, auto_scroll, offset, usable_height);
             let line_counts: Vec<usize> = strings
                 .iter()
                 .skip(start)
@@ -355,10 +349,7 @@ pub fn handle_mouse_left_click(
         return handle_tab_click(state, mouse_column, &tab_titles);
     }
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
-    let is_groups_tab = matches!(
-        tab_content,
-        p2p_app::tui_tabs::TabContent::Groups
-    );
+    let is_groups_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups);
     let max_row = state.chat_area_height.saturating_add(1);
     let clickable = is_peers_tab
         || is_groups_tab

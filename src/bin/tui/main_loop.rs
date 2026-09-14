@@ -1,11 +1,11 @@
 use super::state::CHANNEL_CAPACITY;
+use p2p_app::SwarmCommand;
 use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
 use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
 use p2p_app::peers::KnownPeer;
 use p2p_app::release_db_lock;
 use p2p_app::set_tui_redraw_hook;
-use p2p_app::SwarmCommand;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::{HashMap, HashSet, VecDeque};
