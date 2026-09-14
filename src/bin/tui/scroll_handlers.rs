@@ -175,12 +175,47 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         compute_new_peer_selection(key_code, state.peer_selection, state.peers.len(), page_size);
 }
 
+/// Move the Groups list selection; the list uses the same visible-window math
+/// as the Peers table.
+fn scroll_groups_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
+    let page_size = expected_peer_page_size(state);
+    state.group_selection = compute_new_peer_selection(
+        key_code,
+        state.group_selection,
+        state.group_summaries.len(),
+        page_size,
+    );
+}
+
+/// Handle scroll key for a group chat tab
+fn scroll_group_chat_tab(
+    key_code: crossterm::event::KeyCode,
+    state: &mut AppState,
+    group_id: &str,
+) {
+    let Some(msgs) = state.group_messages.get(group_id) else {
+        return;
+    };
+    if !msgs.is_empty()
+        && let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id)
+    {
+        let max_offset = msgs.len().saturating_sub(1);
+        handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+    }
+}
+
 /// Handles scroll keys (arrow keys, Page Up/Down, Home, End) with hover-aware targeting
 pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Peers => {
             scroll_peers_tab(key_code, state);
+        }
+        p2p_app::tui_tabs::TabContent::Groups => {
+            scroll_groups_tab(key_code, state);
+        }
+        p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
+            scroll_group_chat_tab(key_code, state, group_id);
         }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
             let mid_row = state.chat_area_height.saturating_div(2).saturating_add(1);
@@ -290,9 +325,21 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
             }
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
-        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => {
-            false
+        p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
+            if let Some(msgs) = state.group_messages.get(group_id)
+                && let Some((scroll_offset, auto_scroll)) =
+                    state.group_scroll_state.get_mut(group_id)
+            {
+                let max_offset = msgs.len().saturating_sub(1);
+                apply_mouse_scroll(scroll_offset, *auto_scroll, scroll_dir, max_offset)
+                    .is_some_and(|before| *scroll_offset != before)
+            } else {
+                false
+            }
         }
+        p2p_app::tui_tabs::TabContent::PeerInfo(_)
+        | p2p_app::tui_tabs::TabContent::Groups
+        | p2p_app::tui_tabs::TabContent::Settings => false,
         _ => mouse_scroll_chat_tab(state, scroll_dir),
     }
 }

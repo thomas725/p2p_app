@@ -113,6 +113,51 @@ fn apply_receipt_to_state(
         .insert(peer_id.to_string(), at);
 }
 
+/// Pure state mutation for incoming group messages.
+///
+/// Group messages are persisted centrally by the swarm handler before the
+/// event is sent, so the DB is the source of truth for history. Live messages
+/// are appended on top only while the group's chat tab is open; a closed chat
+/// re-loads from the DB when it is opened (no duplicate re-deliveries).
+fn apply_group_message_to_state(
+    state: &mut AppState,
+    group_id: &str,
+    content: &str,
+    peer_id: &str,
+    msg_id: Option<String>,
+) {
+    if state.dynamic_tabs.get_group_tab(group_id).is_none() {
+        return;
+    }
+    let ts = p2p_app::format_now();
+    let sender_display =
+        p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
+    let msg = format!("{ts} [{sender_display}] {content}");
+    let group_msgs = state.group_messages.entry(group_id.to_string()).or_default();
+    group_msgs.push_back(msg);
+    trim_history(group_msgs, MAX_MESSAGE_HISTORY);
+    state
+        .group_message_ids
+        .entry(group_id.to_string())
+        .or_default()
+        .push_back(msg_id);
+    state
+        .group_message_peer_ids
+        .entry(group_id.to_string())
+        .or_default()
+        .push_back(Some(peer_id.to_string()));
+    if let Some(ids) = state.group_message_ids.get_mut(group_id) {
+        trim_history(ids, MAX_MESSAGE_HISTORY);
+    }
+    if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {
+        trim_history(ids, MAX_MESSAGE_HISTORY);
+    }
+    state.group_scroll_state.insert(group_id.to_string(), {
+        let len = group_msgs.len();
+        (len, true)
+    });
+}
+
 /// State mutation: increment connected peer count. Returns new count.
 #[allow(clippy::missing_const_for_fn)]
 fn apply_peer_connected_count(state: &mut AppState) -> usize {
@@ -214,6 +259,7 @@ async fn handle_incoming_message(
 }
 
 /// Processes network (swarm) events and updates application state
+#[allow(clippy::too_many_lines)]
 async fn process_swarm_event(
     swarm_event: SwarmEvent,
     state: &SharedState,
@@ -246,6 +292,25 @@ async fn process_swarm_event(
                 true,
             )
             .await;
+            drop(s);
+        }
+        SwarmEvent::GroupMessage(msg) => {
+            let mut s = state.lock().await;
+            if let Some(n) = msg.nickname.as_ref() {
+                s.received_nicknames.insert(msg.peer_id.clone(), n.clone());
+                let _ = p2p_app::set_peer_received_nickname(&msg.peer_id, n);
+            }
+            let sender_display =
+                p2p_app::peer_display_name(&msg.peer_id, &s.local_nicknames, &s.received_nicknames);
+            apply_group_message_to_state(
+                &mut s,
+                &msg.group_id,
+                &msg.content,
+                &msg.peer_id,
+                msg.msg_id,
+            );
+            s.reload_group_summaries();
+            p2plog_debug(format!("Group message from {sender_display}: {}", msg.content));
             drop(s);
         }
         SwarmEvent::Receipt {

@@ -170,17 +170,17 @@ fn test_dynamic_tabs_operations() {
 
     let mut tabs = DynamicTabs::new();
 
-    assert_eq!(tabs.total_tab_count(), 4); // Chat, Peers, Log, Settings
+    assert_eq!(tabs.total_tab_count(), 5); // Chat, Peers, Groups, Log, Settings
     assert_eq!(tabs.dm_tab_count(), 0);
 
     // Add DM tab
     let idx1 = tabs.add_dm_tab("peer1".to_string());
-    assert_eq!(idx1, 2);
+    assert_eq!(idx1, 3);
     assert_eq!(tabs.dm_tab_count(), 1);
 
     // Add another
     let idx2 = tabs.add_dm_tab("peer2".to_string());
-    assert_eq!(idx2, 3);
+    assert_eq!(idx2, 4);
     assert_eq!(tabs.dm_tab_count(), 2);
 
     // Remove one
@@ -188,8 +188,8 @@ fn test_dynamic_tabs_operations() {
     assert!(removed.is_some());
     assert_eq!(tabs.dm_tab_count(), 1);
 
-    // Total should be 5 (Chat, Peers, Log, Settings, + 1 DM)
-    assert_eq!(tabs.total_tab_count(), 5);
+    // Total should be 6 (Chat, Peers, Groups, Log, Settings, + 1 DM)
+    assert_eq!(tabs.total_tab_count(), 6);
 }
 
 #[test]

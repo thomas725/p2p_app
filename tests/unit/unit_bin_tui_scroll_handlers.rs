@@ -327,7 +327,7 @@ async fn test_log_scroll_all() {
     let mut state3 = test_app_state();
     p2p_app::push_log("log entry".to_string());
     state3.log_auto_scroll = false;
-    state3.active_tab = 2;
+    state3.active_tab = 3; // Log tab (after Chat, Peers, Groups)
     handle_scroll_key(KeyCode::Down, &mut state3).await;
     assert_eq!(state3.log_scroll_offset, 1);
 
@@ -336,7 +336,7 @@ async fn test_log_scroll_all() {
     for i in 0..10 {
         p2p_app::push_log(format!("log {i}"));
     }
-    state4.active_tab = 2;
+    state4.active_tab = 3; // Log tab
     state4.log_auto_scroll = false;
     handle_mouse_scroll(&mut state4, "down", None);
     assert_eq!(state4.log_scroll_offset, 3);

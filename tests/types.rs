@@ -356,11 +356,11 @@ mod tui_tests {
     fn dynamic_tabs_add_and_remove() {
         let mut tabs = DynamicTabs::new();
         let idx = tabs.add_dm_tab("peer1".into());
-        assert_eq!(idx, 2);
+        assert_eq!(idx, 3);
         assert_eq!(tabs.dm_tab_count(), 1);
 
         let removed = tabs.remove_dm_tab("peer1");
-        assert_eq!(removed, Some(2));
+        assert_eq!(removed, Some(3));
         assert_eq!(tabs.dm_tab_count(), 0);
     }
 
@@ -368,7 +368,7 @@ mod tui_tests {
     fn dynamic_tabs_add_duplicate_returns_same() {
         let mut tabs = DynamicTabs::new();
         tabs.add_dm_tab("peer1".into());
-        assert_eq!(tabs.add_dm_tab("peer1".into()), 2);
+        assert_eq!(tabs.add_dm_tab("peer1".into()), 3);
     }
 
     #[test]
@@ -389,7 +389,7 @@ mod tui_tests {
     fn dynamic_tabs_titles_without_dms() {
         assert_eq!(
             DynamicTabs::new().all_titles(),
-            vec!["Chat", "Peers", "Log", "Settings"]
+            vec!["Chat", "Peers", "Groups", "Log", "Settings"]
         );
     }
 
@@ -398,20 +398,20 @@ mod tui_tests {
         let mut tabs = DynamicTabs::new();
         tabs.add_dm_tab("peerXYZ".into());
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 5);
+        assert_eq!(titles.len(), 6);
         let expected_label = p2p_app::get_peer_display_name("peerXYZ")
             .unwrap_or_else(|_| p2p_app::fmt::short_peer_id("peerXYZ"));
-        assert_eq!(titles[2], format!("{expected_label} [X]"));
+        assert_eq!(titles[3], format!("{expected_label} [X]"));
     }
 
     #[test]
     fn dynamic_tabs_total_tab_count() {
         let mut tabs = DynamicTabs::new();
-        assert_eq!(tabs.total_tab_count(), 4);
-        tabs.add_dm_tab("p1".into());
         assert_eq!(tabs.total_tab_count(), 5);
-        tabs.add_dm_tab("p2".into());
+        tabs.add_dm_tab("p1".into());
         assert_eq!(tabs.total_tab_count(), 6);
+        tabs.add_dm_tab("p2".into());
+        assert_eq!(tabs.total_tab_count(), 7);
     }
 
     #[test]
@@ -419,14 +419,14 @@ mod tui_tests {
         let mut tabs = DynamicTabs::new();
         assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
         assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
-        assert_eq!(tabs.tab_index_to_content(2), TabContent::Log);
+        assert_eq!(tabs.tab_index_to_content(2), TabContent::Groups);
 
         tabs.add_dm_tab("peer_dm".into());
         assert_eq!(
-            tabs.tab_index_to_content(2),
+            tabs.tab_index_to_content(3),
             TabContent::Direct("peer_dm".into())
         );
-        assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
+        assert_eq!(tabs.tab_index_to_content(4), TabContent::Log);
     }
 
     // -----------------------------------------------------------------------

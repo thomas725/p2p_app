@@ -29,6 +29,13 @@ async fn handle_swarm_event(
         })) => {
             let peer_id_str = peer_id.to_string();
 
+            // Route per-group topics (group:<group_id>) to the group-chat path
+            // before the broadcast path below.
+            if crate::groups::is_group_topic(&message.topic.to_string()) {
+                handle_group_message(message, peer_id, event_tx).await;
+                return;
+            }
+
             if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
                 let latency = Some(crate::format_latency(bcast.sent_at, SystemTime::now()));
 
@@ -94,6 +101,60 @@ async fn handle_swarm_event(
                 .await;
         }
         _ => {}
+    }
+}
+
+async fn handle_group_message(
+    message: gossipsub::Message,
+    peer_id: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    let peer_id_str = peer_id.to_string();
+    let topic = message.topic.to_string();
+    let Some(group_id) = crate::groups::group_id_from_topic(&topic) else {
+        p2plog_debug(format!("Ignoring malformed group topic: {topic:?}"));
+        return;
+    };
+
+    match serde_json::from_slice::<crate::GroupMessage>(&message.data) {
+        Ok(group_msg) => {
+            // Public groups discover membership from traffic; recording is
+            // idempotent per (group_id, peer_id).
+            if let Err(e) = crate::groups::record_group_member(group_id, &peer_id_str) {
+                p2plog_debug(format!("Failed to record group member: {e:?}"));
+            }
+            match crate::groups::save_incoming_group_message(
+                group_id,
+                &peer_id_str,
+                &group_msg.content,
+                crate::groups::GroupMessageMeta {
+                    sender_nickname: group_msg.nickname.clone(),
+                    msg_id: group_msg.msg_id.clone(),
+                    sent_at: group_msg.sent_at,
+                },
+            ) {
+                Ok(Some(_)) => {}
+                Ok(None) => p2plog_debug(format!(
+                    "Dropped duplicate group message {} in {group_id}",
+                    group_msg.msg_id.clone().unwrap_or_default()
+                )),
+                Err(e) => p2plog_debug(format!("Failed to save group message: {e:?}")),
+            }
+            let _ = event_tx
+                .send(SwarmEvent::GroupMessage(crate::GroupMessageEvent {
+                    group_id: group_id.to_string(),
+                    content: group_msg.content,
+                    peer_id: peer_id_str,
+                    nickname: group_msg.nickname,
+                    msg_id: group_msg.msg_id,
+                }))
+                .await;
+        }
+        Err(e) => {
+            p2plog_debug(format!(
+                "Failed to parse group message from peer {peer_id_str} on {topic:?}: {e}"
+            ));
+        }
     }
 }
 
@@ -179,6 +240,23 @@ pub fn build_broadcast_message(
     }
 }
 
+/// Build a `GroupMessage` from component parts
+#[must_use]
+pub fn build_group_message(
+    group_id: String,
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+) -> crate::GroupMessage {
+    crate::GroupMessage {
+        group_id,
+        content,
+        sent_at: Some(current_timestamp()),
+        nickname,
+        msg_id,
+    }
+}
+
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
     use libp2p::PeerId;
     match cmd {
@@ -227,6 +305,48 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                     .behaviour_mut()
                     .request_response
                     .send_request(&peer, msg);
+            }
+        }
+        SwarmCommand::PublishGroup {
+            group_id,
+            content,
+            nickname,
+            msg_id,
+        } => {
+            let msg = build_group_message(group_id.clone(), content, nickname, msg_id);
+            if let Ok(json) = serde_json::to_string(&msg) {
+                let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
+                match swarm
+                    .behaviour_mut()
+                    .gossipsub
+                    .publish(topic, json.as_bytes())
+                {
+                    Ok(gossipsub::MessageId(id)) => {
+                        p2plog_debug(format!(
+                            "Published group message: {}",
+                            String::from_utf8_lossy(&id)
+                        ));
+                    }
+                    Err(e) => {
+                        p2plog_error(format!("Failed to publish group message: {e:?}"));
+                    }
+                }
+            }
+        }
+        SwarmCommand::SubscribeGroup { group_id } => {
+            let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
+            match swarm.behaviour_mut().gossipsub.subscribe(&topic) {
+                Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
+                Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
+                Err(e) => p2plog_error(format!("Failed to subscribe to group {group_id}: {e:?}")),
+            }
+        }
+        SwarmCommand::UnsubscribeGroup { group_id } => {
+            let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
+            if swarm.behaviour_mut().gossipsub.unsubscribe(&topic) {
+                p2plog_debug(format!("Unsubscribed from group {group_id}"));
+            } else {
+                p2plog_debug(format!("Was not subscribed to group {group_id}"));
             }
         }
     }

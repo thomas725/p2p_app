@@ -50,6 +50,22 @@ pub struct BroadcastMessage {
     pub msg_id: Option<String>,
 }
 
+/// Group message content traveling over a per-group gossipsub topic
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct GroupMessage {
+    /// The group this message belongs to (must match the topic's group id)
+    pub group_id: String,
+    /// The message content/text
+    pub content: String,
+    /// Optional timestamp of when the message was sent
+    pub sent_at: Option<f64>,
+    /// Optional nickname of the sender
+    pub nickname: Option<String>,
+    /// Optional unique identifier for this message
+    pub msg_id: Option<String>,
+}
+
 /// JSON codec for direct message protocol
 pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 

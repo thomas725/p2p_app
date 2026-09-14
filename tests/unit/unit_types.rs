@@ -101,7 +101,10 @@ fn test_swarm_command_publish() {
             assert_eq!(content, "hello");
             assert_eq!(nickname, Some("Alice".to_string()));
         }
-        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
     }
 }
 
@@ -125,7 +128,10 @@ fn test_swarm_command_send_dm() {
             assert_eq!(content, "hi");
             assert_eq!(ack_for, Some("orig-msg".to_string()));
         }
-        SwarmCommand::Publish { .. } => panic!("expected SendDm"),
+        SwarmCommand::Publish { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -180,7 +186,71 @@ fn test_swarm_command_clone() {
     let cloned = cmd.clone();
     match cloned {
         SwarmCommand::Publish { content, .. } => assert_eq!(content, "test"),
-        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
+    }
+}
+
+#[test]
+fn test_swarm_group_command_variants() {
+    let publish = SwarmCommand::PublishGroup {
+        group_id: "g1".to_string(),
+        content: "hello group".to_string(),
+        nickname: Some("Alice".to_string()),
+        msg_id: Some("gm-1".to_string()),
+    };
+    match publish {
+        SwarmCommand::PublishGroup {
+            group_id,
+            content,
+            nickname,
+            msg_id,
+        } => {
+            assert_eq!(group_id, "g1");
+            assert_eq!(content, "hello group");
+            assert_eq!(nickname, Some("Alice".to_string()));
+            assert_eq!(msg_id, Some("gm-1".to_string()));
+        }
+        _ => panic!("expected PublishGroup"),
+    }
+
+    let subscribe = SwarmCommand::SubscribeGroup {
+        group_id: "g1".to_string(),
+    };
+    match subscribe {
+        SwarmCommand::SubscribeGroup { group_id } => assert_eq!(group_id, "g1"),
+        _ => panic!("expected SubscribeGroup"),
+    }
+
+    let unsubscribe = SwarmCommand::UnsubscribeGroup {
+        group_id: "g1".to_string(),
+    };
+    match unsubscribe {
+        SwarmCommand::UnsubscribeGroup { group_id } => assert_eq!(group_id, "g1"),
+        _ => panic!("expected UnsubscribeGroup"),
+    }
+}
+
+#[test]
+fn test_swarm_event_group_message() {
+    let event = SwarmEvent::GroupMessage(GroupMessageEvent {
+        group_id: "g1".to_string(),
+        content: "hi".to_string(),
+        peer_id: "peer1".to_string(),
+        nickname: Some("Bob".to_string()),
+        msg_id: Some("gm-2".to_string()),
+    });
+    match event {
+        SwarmEvent::GroupMessage(m) => {
+            assert_eq!(m.group_id, "g1");
+            assert_eq!(m.content, "hi");
+            assert_eq!(m.peer_id, "peer1");
+            assert_eq!(m.nickname, Some("Bob".to_string()));
+            assert_eq!(m.msg_id, Some("gm-2".to_string()));
+        }
+        _ => panic!("expected GroupMessage"),
     }
 }
 

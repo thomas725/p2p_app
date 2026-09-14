@@ -49,6 +49,21 @@ pub struct MessageEvent {
     pub msg_id: Option<String>,
 }
 
+/// A group message received from a peer over a per-group gossipsub topic
+#[derive(Debug, Clone)]
+pub struct GroupMessageEvent {
+    /// The group this message belongs to
+    pub group_id: String,
+    /// The message text
+    pub content: String,
+    /// Sender's peer ID
+    pub peer_id: String,
+    /// Sender's nickname, if provided
+    pub nickname: Option<String>,
+    /// Unique message ID, if present
+    pub msg_id: Option<String>,
+}
+
 /// High-level application events from the swarm
 #[derive(Debug, Clone)]
 pub enum SwarmEvent {
@@ -56,6 +71,8 @@ pub enum SwarmEvent {
     BroadcastMessage(MessageEvent),
     /// Direct message received from peer
     DirectMessage(MessageEvent),
+    /// Group message received from a peer
+    GroupMessage(GroupMessageEvent),
     /// Receipt confirmation received from a peer (for either broadcast or direct messages).
     Receipt {
         /// Peer ID of the sender who acknowledged the message
@@ -111,6 +128,27 @@ pub enum SwarmCommand {
         msg_id: Option<String>,
         /// Optional ID of the message this is acknowledging
         ack_for: Option<String>,
+    },
+    /// Publish a message to a group's per-group gossipsub topic
+    PublishGroup {
+        /// The group to send to
+        group_id: String,
+        /// The message text
+        content: String,
+        /// Optional sender nickname
+        nickname: Option<String>,
+        /// Optional unique message ID
+        msg_id: Option<String>,
+    },
+    /// Subscribe to a group's per-group gossipsub topic
+    SubscribeGroup {
+        /// The group to join
+        group_id: String,
+    },
+    /// Unsubscribe from a group's per-group gossipsub topic
+    UnsubscribeGroup {
+        /// The group to leave
+        group_id: String,
     },
 }
 

@@ -54,6 +54,20 @@ pub struct TuiRenderState {
     pub kitty_keyboard_active: bool,
     /// Optional popup message to display
     pub popup: Option<String>,
+    /// Known groups with member counts (for the Groups list tab)
+    pub group_summaries: Vec<crate::groups::GroupSummary>,
+    /// Group messages per group: formatted display strings
+    pub group_messages: BTreeMap<String, VecDeque<String>>,
+    /// Message IDs for group messages per group
+    pub group_message_ids: BTreeMap<String, VecDeque<Option<String>>>,
+    /// Sender peer ID for each group message (None = sent by local user)
+    pub group_message_peer_ids: BTreeMap<String, VecDeque<Option<String>>>,
+    /// Scroll state per group chat: (offset, `auto_scroll`)
+    pub group_scroll_state: BTreeMap<String, (usize, bool)>,
+    /// Index of selected group in the Groups list tab
+    pub group_selection: usize,
+    /// Whether the Groups tab is capturing a group name to create/join
+    pub creating_group: bool,
     /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
     /// Whether chat tab is auto-scrolling to bottom
@@ -116,6 +130,7 @@ impl TuiRenderState {
             tab_titles: vec![
                 "Chat".into(),
                 "Peers".into(),
+                "Groups".into(),
                 "Log".into(),
                 "Settings".into(),
             ],
@@ -130,6 +145,13 @@ impl TuiRenderState {
             dm_messages: BTreeMap::new(),
             dm_message_ids: BTreeMap::new(),
             dm_receipts: HashMap::new(),
+            group_summaries: Vec::new(),
+            group_messages: BTreeMap::new(),
+            group_message_ids: BTreeMap::new(),
+            group_message_peer_ids: BTreeMap::new(),
+            group_scroll_state: BTreeMap::new(),
+            group_selection: 0,
+            creating_group: false,
             input_text: String::new(),
             log_messages: VecDeque::new(),
             editing_nickname: false,
@@ -449,11 +471,16 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
     if tab_title.starts_with("DM: ") {
         let peer = tab_title.trim_start_matches("DM: ").to_string();
         crate::tui_tabs::TabContent::Direct(peer)
+    } else if tab_title.starts_with("Group: ") {
+        let group_id = tab_title.trim_start_matches("Group: ").to_string();
+        crate::tui_tabs::TabContent::GroupChat(group_id)
     } else if tab_title.starts_with("Info: ") {
         let peer = tab_title.trim_start_matches("Info: ").to_string();
         crate::tui_tabs::TabContent::PeerInfo(peer)
     } else if tab_title == "Peers" {
         crate::tui_tabs::TabContent::Peers
+    } else if tab_title == "Groups" {
+        crate::tui_tabs::TabContent::Groups
     } else if tab_title == "Log" {
         crate::tui_tabs::TabContent::Log
     } else if tab_title == "Settings" {

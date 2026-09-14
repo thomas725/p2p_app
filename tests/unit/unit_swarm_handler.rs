@@ -67,7 +67,10 @@ fn test_swarm_command_variants_all() {
         SwarmCommand::Publish { content, .. } => {
             assert_eq!(content, "msg");
         }
-        SwarmCommand::SendDm { .. } => panic!("expected Publish"),
+        SwarmCommand::SendDm { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -93,6 +96,9 @@ fn test_swarm_command_variants_all() {
             assert_eq!(msg_id, Some("msg-1".to_string()));
             assert_eq!(ack_for, Some("prev-msg".to_string()));
         }
-        SwarmCommand::Publish { .. } => panic!("expected SendDm"),
+        SwarmCommand::Publish { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected SendDm"),
     }
 }

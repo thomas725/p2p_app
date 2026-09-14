@@ -15,6 +15,7 @@ use std::io::Stdout;
 use tokio::sync::mpsc;
 
 /// Convert `AppState` to `TuiRenderState` for library rendering
+#[allow(clippy::too_many_lines)]
 fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
     use std::collections::{BTreeMap, VecDeque};
 
@@ -40,6 +41,30 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
 
     let dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)> = state
         .dm_broadcast_scroll_state
+        .iter()
+        .map(|(k, v)| (k.clone(), *v))
+        .collect();
+
+    let group_messages: BTreeMap<String, VecDeque<String>> = state
+        .group_messages
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let group_message_ids: BTreeMap<String, VecDeque<Option<String>>> = state
+        .group_message_ids
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let group_message_peer_ids: BTreeMap<String, VecDeque<Option<String>>> = state
+        .group_message_peer_ids
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let group_scroll_state: BTreeMap<String, (usize, bool)> = state
+        .group_scroll_state
         .iter()
         .map(|(k, v)| (k.clone(), *v))
         .collect();
@@ -89,6 +114,13 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         log_auto_scroll: state.log_auto_scroll,
         dm_scroll_state,
         dm_broadcast_scroll_state,
+        group_summaries: state.group_summaries.clone(),
+        group_messages,
+        group_message_ids,
+        group_message_peer_ids,
+        group_scroll_state,
+        group_selection: state.group_selection,
+        creating_group: state.creating_group,
         broadcast_selection: state.broadcast_selection,
         peer_selection: state.peer_selection,
         peer_sort_column: state.peer_sort_column,
@@ -175,6 +207,21 @@ fn render_frame(f: &mut Frame, state: &AppState) {
                 f,
                 chunks.get(1).copied().unwrap_or_default(),
                 peer_id,
+                &render_state,
+            );
+        }
+        TabContent::Groups => {
+            tui_render::render_groups_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                &render_state,
+            );
+        }
+        TabContent::GroupChat(group_id) => {
+            tui_render::render_group_chat_content(
+                f,
+                chunks.get(1).copied().unwrap_or_default(),
+                group_id,
                 &render_state,
             );
         }

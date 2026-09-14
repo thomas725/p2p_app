@@ -89,7 +89,7 @@ pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
-    build_behaviour, build_swarm,
+    GroupMessage, build_behaviour, build_swarm,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url;
@@ -127,7 +127,7 @@ pub use peers::{
     get_average_peer_count, load_known_peers, load_listen_ports, load_peers, save_listen_ports,
     save_peer,
 };
-pub use swarm_handler::{build_broadcast_message, spawn_swarm_handler};
+pub use swarm_handler::{build_broadcast_message, build_group_message, spawn_swarm_handler};
 #[cfg(feature = "tui")]
 pub use tui_helpers::{
     PAGE_SIZE, WHEEL_SCROLL_LINES, disable_auto_scroll_to_max, handle_scroll_key_for_section,
@@ -145,7 +145,7 @@ pub use tui_render_state::{
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
-pub use types::{DisplayMessage, MessageEvent, PeerRecord, SwarmCommand, SwarmEvent};
+pub use types::{DisplayMessage, GroupMessageEvent, MessageEvent, PeerRecord, SwarmCommand, SwarmEvent};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 

@@ -67,6 +67,11 @@ fn test_tui_tab_navigation() {
     let content = state.tab_index_to_content(active_tab);
     assert_eq!(content, p2p_app::tui_tabs::TabContent::Peers);
 
+    // Press Tab -> should go to Groups (no DM tabs yet)
+    active_tab = (active_tab + 1) % max_tabs;
+    let content = state.tab_index_to_content(active_tab);
+    assert_eq!(content, p2p_app::tui_tabs::TabContent::Groups);
+
     // Press Tab -> should go to Log (no DM tabs yet)
     active_tab = (active_tab + 1) % max_tabs;
     let content = state.tab_index_to_content(active_tab);
@@ -109,6 +114,15 @@ fn test_tui_tab_navigation_backward() {
     let content = state.tab_index_to_content(active_tab);
     assert_eq!(content, p2p_app::tui_tabs::TabContent::Log);
 
+    // Press Shift+Tab -> should go to Groups
+    active_tab = if active_tab == 0 {
+        max_tabs - 1
+    } else {
+        active_tab - 1
+    };
+    let content = state.tab_index_to_content(active_tab);
+    assert_eq!(content, p2p_app::tui_tabs::TabContent::Groups);
+
     // Press Shift+Tab -> should go to Peers
     active_tab = if active_tab == 0 {
         max_tabs - 1
@@ -132,15 +146,15 @@ fn test_tui_tab_navigation_backward() {
 fn test_tui_dm_tab_creation_on_peer_connection() {
     let mut state = p2p_app::tui_tabs::DynamicTabs::new();
 
-    // Initially 4 tabs (Chat, Peers, Log, Settings)
-    assert_eq!(state.total_tab_count(), 4);
+    // Initially 5 tabs (Chat, Peers, Groups, Log, Settings)
+    assert_eq!(state.total_tab_count(), 5);
 
     // Add DM tab for peer
     let peer_id = "QmPeerId123".to_string();
     let tab_idx = state.add_dm_tab(peer_id.clone());
 
-    // Should now have 5 tabs
-    assert_eq!(state.total_tab_count(), 5);
+    // Should now have 6 tabs
+    assert_eq!(state.total_tab_count(), 6);
 
     // Tab index should point to the DM tab
     let content = state.tab_index_to_content(tab_idx);
@@ -152,7 +166,7 @@ fn test_tui_dm_tab_creation_on_peer_connection() {
     // Adding same peer again should return existing tab index
     let tab_idx_2 = state.add_dm_tab(peer_id);
     assert_eq!(tab_idx, tab_idx_2);
-    assert_eq!(state.total_tab_count(), 5); // Still 5 tabs
+    assert_eq!(state.total_tab_count(), 6); // Still 6 tabs
 }
 
 #[test]

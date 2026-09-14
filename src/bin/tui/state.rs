@@ -59,6 +59,20 @@ pub struct AppState {
     // Per-peer self nickname override: peer_id -> nickname we present to that peer.
     pub self_nicknames_for_peers: HashMap<String, String>,
 
+    // Groups
+    pub group_summaries: Vec<p2p_app::groups::GroupSummary>,
+    pub group_messages: HashMap<String, VecDeque<String>>,
+    // Group message IDs aligned with group_messages[group_id].
+    pub group_message_ids: HashMap<String, VecDeque<Option<String>>>,
+    // Sender peer ID for each group message (None = sent by local user).
+    pub group_message_peer_ids: HashMap<String, VecDeque<Option<String>>>,
+    // Scroll state per group chat: group_id -> (scroll_offset, auto_scroll).
+    pub group_scroll_state: HashMap<String, (usize, bool)>,
+    // Selected group in the Groups list tab.
+    pub group_selection: usize,
+    // Creating/joining a group: the input box captures a group name.
+    pub creating_group: bool,
+
     // UI State (TUI-specific)
     pub active_tab: usize,
     pub dynamic_tabs: DynamicTabs,
@@ -128,6 +142,23 @@ impl AppState {
         self.chat_input = TextArea::default();
     }
 
+    /// Cancel an in-progress "create/join group" name entry.
+    pub fn cancel_group_create(&mut self) {
+        if !self.creating_group {
+            return;
+        }
+        self.creating_group = false;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Refresh the group list from the database (used after create/join and on
+    /// incoming group messages so member counts stay current).
+    pub fn reload_group_summaries(&mut self) {
+        if let Ok(summaries) = p2p_app::groups::list_groups_with_member_counts() {
+            self.group_summaries = summaries;
+        }
+    }
+
     /// Re-sort the peer list by the currently active column/order, keeping the
     /// selected peer (by id) selected. Also refreshes the per-peer
     /// `broadcast_sent_to_peer` counts (a bulk DB call) so the sort and the
@@ -164,6 +195,7 @@ impl AppState {
         initial_peers: VecDeque<p2p_app::PeerRecord>,
         initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
         initial_dm_receipts: HashMap<String, (String, f64)>,
+        initial_groups: Vec<p2p_app::groups::GroupSummary>,
     ) -> Self {
         Self {
             messages: initial_messages,
@@ -174,6 +206,13 @@ impl AppState {
             dm_receipts: initial_dm_receipts,
             peers: initial_peers,
             broadcast_sent_to_peer: HashMap::new(),
+            group_summaries: initial_groups,
+            group_messages: HashMap::new(),
+            group_message_ids: HashMap::new(),
+            group_message_peer_ids: HashMap::new(),
+            group_scroll_state: HashMap::new(),
+            group_selection: 0,
+            creating_group: false,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
             chat_input: TextArea::default(),

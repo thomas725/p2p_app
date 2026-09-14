@@ -5,6 +5,7 @@ use p2p_app::p2plog_debug;
 use p2p_app::peers::KnownPeer;
 use p2p_app::release_db_lock;
 use p2p_app::set_tui_redraw_hook;
+use p2p_app::SwarmCommand;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -226,7 +227,9 @@ pub async fn run_new_tui(
     let local_peer_id =
         p2p_app::get_local_peer_id().map_or_else(|_| "unknown".to_string(), |id| id.to_string());
 
-    let mut app_state = super::state::AppState::new(
+    // Load group list (known groups + member counts) from the database.
+    let initial_groups = p2p_app::groups::list_groups_with_member_counts().unwrap_or_default();
+    let mut state = super::state::AppState::new(
         topic_str.clone(),
         own_nickname.clone(),
         local_peer_id.clone(),
@@ -238,14 +241,15 @@ pub async fn run_new_tui(
         initial_peers,
         loaded_broadcast_receipts,
         loaded_dm_receipts,
+        initial_groups.clone(),
     );
-    app_state.kitty_keyboard_active = keyboard_enhanced;
-    app_state.db_url = db_info;
-    app_state.platform = format!("Desktop ({})", std::env::consts::OS);
-    app_state.network_size =
+    state.kitty_keyboard_active = keyboard_enhanced;
+    state.db_url = db_info;
+    state.platform = format!("Desktop ({})", std::env::consts::OS);
+    state.network_size =
         p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
 
-    let state = Arc::new(Mutex::new(app_state));
+    let state = Arc::new(Mutex::new(state));
 
     // Setup channels
     let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
@@ -260,6 +264,21 @@ pub async fn run_new_tui(
     // SwarmHandler returns handle, event receiver, and command sender
     let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
         p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
+
+    // Re-join every group persisted in the local database: the swarm only
+    // receives group traffic for topics it is subscribed to, so saved groups
+    // must be re-subscribed on every startup.
+    for summary in &initial_groups {
+        p2plog_debug(format!(
+            "Subscribing to saved group {} ({})",
+            summary.group.display_name, summary.group.group_id
+        ));
+        let _ = swarm_cmd_tx
+            .send(SwarmCommand::SubscribeGroup {
+                group_id: summary.group.group_id.clone(),
+            })
+            .await;
+    }
 
     // EventSource sends InputEvent to this channel
     let event_source = super::event_source::spawn_input_handler(input_tx);

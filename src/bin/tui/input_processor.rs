@@ -140,6 +140,43 @@ async fn handle_nickname_submission(
     state.cancel_nickname_edit();
 }
 
+/// Creates or joins a public group by name: persists it, subscribes to its
+/// topic, and opens its chat tab.
+async fn create_or_join_group(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    name: &str,
+) {
+    if name.trim().is_empty() {
+        state.cancel_group_create();
+        return;
+    }
+    match p2p_app::groups::create_public_group(name.trim()) {
+        Ok(group) => {
+            let group_id = group.group_id.clone();
+            let display_name = group.display_name.clone();
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::SubscribeGroup {
+                    group_id: group_id.clone(),
+                })
+                .await;
+            state.reload_group_summaries();
+            state.group_selection = state
+                .group_summaries
+                .iter()
+                .position(|g| g.group.group_id == group_id)
+                .unwrap_or(0);
+            super::click_handlers::open_group_chat(state, &group_id, &display_name);
+            state.creating_group = false;
+            state.chat_input = super::TextArea::default();
+            p2plog_debug(format!(
+                "Created/joined group: {display_name} ({group_id})"
+            ));
+        }
+        Err(e) => p2plog_debug(format!("Failed to create/join group: {e}")),
+    }
+}
+
 /// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
@@ -156,13 +193,17 @@ fn handle_close_dm_tab(
     }
 }
 
-/// Handles Esc: dismiss popup / cancel nickname edit / return to broadcast chat.
+/// Handles Esc: dismiss popup / cancel nickname edit / cancel group create /
+/// return to broadcast chat.
 async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
     let mut s = state.lock().await;
     dismiss_popup(&mut s);
     if s.editing_nickname {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
+    } else if s.creating_group {
+        s.cancel_group_create();
+        p2plog_debug("Cancelled group create/join".to_string());
     } else {
         s.active_tab = 0;
         s.broadcast_selection = None;
@@ -247,6 +288,16 @@ async fn handle_enter_key(
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
             state.active_tab = tab_idx;
             p2plog_debug(format!("Opened DM with peer: {peer_id}"));
+        }
+    } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups) {
+        if state.creating_group {
+            let name = state.chat_input.lines().join("\n");
+            create_or_join_group(state, swarm_cmd_tx, &name).await;
+        } else if let Some(group) = state.group_summaries.get(state.group_selection) {
+            let group_id = group.group.group_id.clone();
+            let display_name = group.group.display_name.clone();
+            super::click_handlers::open_group_chat(state, &group_id, &display_name);
+            p2plog_debug(format!("Opened group: {display_name}"));
         }
     } else if let p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) = &tab_content {
         load_dm_messages(state, peer_id);
@@ -455,9 +506,24 @@ async fn process_key_event(
         {
             handle_peer_sort_key(&mut s, c);
         }
+        crossterm::event::KeyCode::Char('g')
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && !s.editing_nickname
+                && !s.creating_group
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Groups
+                ) =>
+        {
+            s.creating_group = true;
+            s.chat_input = super::TextArea::default();
+            p2plog_debug("Started group create/join".to_string());
+        }
         _ => {
             let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            if tab_content.is_input_enabled() || s.editing_nickname {
+            if tab_content.is_input_enabled() || s.editing_nickname || s.creating_group {
                 s.chat_input.input(key_event);
             }
         }
@@ -495,6 +561,7 @@ async fn process_mouse_event(
         tab_content,
         p2p_app::tui_tabs::TabContent::Chat
             | p2p_app::tui_tabs::TabContent::Direct(_)
+            | p2p_app::tui_tabs::TabContent::GroupChat(_)
             | p2p_app::tui_tabs::TabContent::Log
     );
     let peer_id = if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {

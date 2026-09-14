@@ -15,6 +15,7 @@ pub fn test_app_state() -> AppState {
         VecDeque::new(),
         HashMap::new(),
         HashMap::new(),
+        Vec::new(),
     )
 }
 

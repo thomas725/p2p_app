@@ -98,6 +98,76 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
     }
 }
 
+/// Pure: formats DB messages into display-ready strings for a group chat.
+///
+/// The database returns newest-first; we reverse to chronological order.
+fn format_group_messages_from_db(
+    db_messages: &[p2p_app::generated::models_queryable::GroupMessage],
+    local_nicknames: &HashMap<String, String>,
+    received_nicknames: &HashMap<String, String>,
+    own_nickname: &str,
+) -> (
+    VecDeque<String>,
+    VecDeque<Option<String>>,
+    VecDeque<Option<String>>,
+) {
+    let mut messages = VecDeque::new();
+    let mut message_ids = VecDeque::new();
+    let mut peer_ids = VecDeque::new();
+    for msg in db_messages.iter().rev() {
+        let ts = p2p_app::format_peer_datetime(msg.created_at);
+        let sender = msg.sender_nickname.as_ref().map_or_else(
+            || {
+                msg.peer_id.as_ref().map_or_else(
+                    || format!("[{own_nickname}]"),
+                    |pid| {
+                        format!(
+                            "[{}]",
+                            p2p_app::peer_display_name(pid, local_nicknames, received_nicknames)
+                        )
+                    },
+                )
+            },
+            |nick| format!("[{nick}]"),
+        );
+        messages.push_back(format!("{ts} {sender} {}", msg.content));
+        message_ids.push_back(msg.msg_id.clone());
+        peer_ids.push_back(msg.peer_id.clone());
+    }
+    (messages, message_ids, peer_ids)
+}
+
+/// Load a group's message history from the database into state.
+///
+/// The database is the single source of truth for incoming group messages (the
+/// swarm handler persists them centrally), so opening a chat always reloads the
+/// map from the DB; live messages are then appended on top while the tab stays
+/// open. Replacing on every open avoids duplicate re-deliveries.
+pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
+    if let Ok(db_messages) =
+        p2p_app::groups::load_group_messages(group_id, MAX_DM_HISTORY)
+    {
+        let (messages, message_ids, peer_ids) = format_group_messages_from_db(
+            &db_messages,
+            &state.local_nicknames,
+            &state.received_nicknames,
+            &state.own_nickname,
+        );
+        state.group_messages.insert(group_id.to_string(), messages);
+        state
+            .group_message_ids
+            .insert(group_id.to_string(), message_ids);
+        state
+            .group_message_peer_ids
+            .insert(group_id.to_string(), peer_ids);
+        let msg_count = db_messages.len();
+        state
+            .group_scroll_state
+            .insert(group_id.to_string(), (msg_count, true));
+        p2plog_debug(format!("Loaded {msg_count} messages for group {group_id}"));
+    }
+}
+
 /// Handles peer row clicks in the Peers tab
 fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     if state.peers.is_empty() {
@@ -132,6 +202,48 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     false
 }
 
+/// Open a group chat: load its history, add (or focus) its tab.
+pub fn open_group_chat(state: &mut AppState, group_id: &str, display_name: &str) {
+    load_group_messages_for(state, group_id);
+    let tab_idx = state
+        .dynamic_tabs
+        .add_group_tab(group_id.to_string(), display_name.to_string());
+    state.active_tab = tab_idx;
+    state.cancel_nickname_edit();
+}
+
+/// Handles group row clicks in the Groups tab
+fn handle_group_row_click(state: &mut AppState, row: u16) -> bool {
+    if state.group_summaries.is_empty() {
+        return false;
+    }
+    // Data rows start at global row 2 (tab bar + block border). The viewport
+    // matches render_groups_content: `area.height - 3` (2 borders + 1 hint)
+    // where the content chunk is `chat_area_height + 2`.
+    let page_height = state.chat_area_height.saturating_sub(1).max(1);
+    let selected = state
+        .group_selection
+        .min(state.group_summaries.len().saturating_sub(1));
+    let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
+        0,
+        Some(selected),
+        state.group_summaries.len(),
+        page_height,
+    );
+    let group_row = start.saturating_add(usize::from(row).saturating_sub(2));
+    if group_row < state.group_summaries.len()
+        && let Some(g) = state.group_summaries.get(group_row)
+    {
+        let group_id = g.group.group_id.clone();
+        let display_name = g.group.display_name.clone();
+        state.group_selection = group_row;
+        open_group_chat(state, &group_id, &display_name);
+        p2plog_debug(format!("Opened group via mouse: {display_name}"));
+        return true;
+    }
+    false
+}
+
 /// Handles message row clicks in the Chat / DM tabs, opening the
 /// sender's Peer Info tab. (Log lines have no sender, so they are a no-op.)
 fn handle_message_click(
@@ -140,6 +252,48 @@ fn handle_message_click(
     tab_content: &p2p_app::tui_tabs::TabContent,
 ) -> bool {
     match tab_content {
+        p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
+            let Some(strings) = state.group_messages.get(group_id) else {
+                return false;
+            };
+            if strings.is_empty() {
+                return false;
+            }
+            let usable_height = state.chat_area_height;
+            let (offset, auto_scroll) = state
+                .group_scroll_state
+                .get(group_id)
+                .copied()
+                .unwrap_or((0, true));
+            let (visible, start) = p2p_app::calc_visible_list_items(
+                strings,
+                auto_scroll,
+                offset,
+                usable_height,
+            );
+            let line_counts: Vec<usize> = strings
+                .iter()
+                .skip(start)
+                .take(visible)
+                .map(|m| p2p_app::list_item_lines(m))
+                .collect();
+            let click_row = usize::from(mouse_row);
+            if let Some(rel) = p2p_app::row_to_visible_index(&line_counts, 2, click_row) {
+                let actual_idx = start.saturating_add(rel);
+                if let Some(peer_id) = state
+                    .group_message_peer_ids
+                    .get(group_id)
+                    .and_then(|ids| ids.get(actual_idx))
+                    .and_then(Clone::clone)
+                {
+                    let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+                    state.active_tab = idx;
+                    p2plog_debug(format!("Opened Peer Info for group sender: {peer_id}"));
+                    return true;
+                }
+            }
+            false
+        }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
             let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
             state.active_tab = idx;
@@ -201,13 +355,19 @@ pub fn handle_mouse_left_click(
         return handle_tab_click(state, mouse_column, &tab_titles);
     }
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    let is_groups_tab = matches!(
+        tab_content,
+        p2p_app::tui_tabs::TabContent::Groups
+    );
     let max_row = state.chat_area_height.saturating_add(1);
     let clickable = is_peers_tab
+        || is_groups_tab
         || matches!(
             tab_content,
             p2p_app::tui_tabs::TabContent::Chat
                 | p2p_app::tui_tabs::TabContent::Log
                 | p2p_app::tui_tabs::TabContent::Direct(_)
+                | p2p_app::tui_tabs::TabContent::GroupChat(_)
         );
     if clickable && mouse_row > 1 && usize::from(mouse_row) <= max_row {
         if is_peers_tab {
@@ -217,6 +377,9 @@ pub fn handle_mouse_left_click(
                 return handle_peer_header_click(state, mouse_column);
             }
             return handle_peer_row_click(state, mouse_row);
+        }
+        if is_groups_tab {
+            return handle_group_row_click(state, mouse_row);
         }
         return handle_message_click(state, mouse_row, &tab_content);
     }

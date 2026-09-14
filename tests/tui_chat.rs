@@ -235,15 +235,15 @@ mod tests {
         assert_eq!(tabs.dm_tab_count(), 0);
 
         let idx = tabs.add_dm_tab("peer1".to_string());
-        assert_eq!(idx, 2);
+        assert_eq!(idx, 3);
         assert_eq!(tabs.dm_tab_count(), 1);
 
         let idx2 = tabs.add_dm_tab("peer2".to_string());
-        assert_eq!(idx2, 3);
+        assert_eq!(idx2, 4);
         assert_eq!(tabs.dm_tab_count(), 2);
 
         let idx3 = tabs.add_dm_tab("peer1".to_string());
-        assert_eq!(idx3, 2);
+        assert_eq!(idx3, 3);
 
         let removed = tabs.remove_dm_tab("peer1");
         assert!(removed.is_some());
@@ -260,13 +260,14 @@ mod tests {
         tabs.add_dm_tab("12D3KooWGDyE67".to_string());
 
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 6);
+        assert_eq!(titles.len(), 7);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
-        assert!(titles[2].contains("[X]"));
+        assert_eq!(titles[2], "Groups");
         assert!(titles[3].contains("[X]"));
-        assert_eq!(titles[4], "Log");
-        assert_eq!(titles[5], "Settings");
+        assert!(titles[4].contains("[X]"));
+        assert_eq!(titles[5], "Log");
+        assert_eq!(titles[6], "Settings");
     }
 
     #[test]
@@ -294,14 +295,18 @@ mod tests {
         );
         assert_eq!(
             tabs.tab_index_to_content(2),
-            p2p_app::tui_tabs::TabContent::Direct("peerA".to_string())
+            p2p_app::tui_tabs::TabContent::Groups
         );
         assert_eq!(
             tabs.tab_index_to_content(3),
-            p2p_app::tui_tabs::TabContent::Direct("peerB".to_string())
+            p2p_app::tui_tabs::TabContent::Direct("peerA".to_string())
         );
         assert_eq!(
             tabs.tab_index_to_content(4),
+            p2p_app::tui_tabs::TabContent::Direct("peerB".to_string())
+        );
+        assert_eq!(
+            tabs.tab_index_to_content(5),
             p2p_app::tui_tabs::TabContent::Log
         );
     }
@@ -332,13 +337,13 @@ mod tests {
     #[test]
     fn test_dynamic_tabs_total_tab_count() {
         let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
-        assert_eq!(tabs.total_tab_count(), 4);
-
-        tabs.add_dm_tab("peer1".to_string());
         assert_eq!(tabs.total_tab_count(), 5);
 
-        tabs.add_dm_tab("peer2".to_string());
+        tabs.add_dm_tab("peer1".to_string());
         assert_eq!(tabs.total_tab_count(), 6);
+
+        tabs.add_dm_tab("peer2".to_string());
+        assert_eq!(tabs.total_tab_count(), 7);
     }
 
     #[test]
@@ -505,11 +510,12 @@ mod tests {
     fn test_dynamic_tabs_all_titles_empty() {
         let tabs = p2p_app::tui_tabs::DynamicTabs::new();
         let titles = tabs.all_titles();
-        assert_eq!(titles.len(), 4);
+        assert_eq!(titles.len(), 5);
         assert_eq!(titles[0], "Chat");
         assert_eq!(titles[1], "Peers");
-        assert_eq!(titles[2], "Log");
-        assert_eq!(titles[3], "Settings");
+        assert_eq!(titles[2], "Groups");
+        assert_eq!(titles[3], "Log");
+        assert_eq!(titles[4], "Settings");
     }
 }
 

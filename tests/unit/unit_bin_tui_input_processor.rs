@@ -402,7 +402,7 @@ async fn test_i_key_in_peers_tab_opens_peer_info() {
 #[tokio::test]
 async fn test_ctrl_i_key_in_direct_tab_opens_peer_info() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
-    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    state.lock().await.active_tab = 3; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
@@ -420,7 +420,7 @@ async fn test_ctrl_tab_is_noop_on_direct_tab() {
     // as `Tab`+CONTROL, so `Tab`+CONTROL on a Direct tab (like anywhere else)
     // must be a no-op: no Peer Info, no tab switch.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
-    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    state.lock().await.active_tab = 3; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
@@ -428,7 +428,7 @@ async fn test_ctrl_tab_is_noop_on_direct_tab() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 2);
+    assert_eq!(s.active_tab, 3);
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -441,7 +441,7 @@ async fn test_bare_tab_in_direct_tab_navigates_on_kitty_and_nonkitty() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.active_tab = 3; // Direct tab for "peer-dm"
         s.kitty_keyboard_active = false; // collapsed (non-kitty) terminal
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -451,7 +451,7 @@ async fn test_bare_tab_in_direct_tab_navigates_on_kitty_and_nonkitty() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 3); // DMs tab
+    assert_eq!(s.active_tab, 4); // Log tab (after Chat, Peers, Groups, DM)
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -462,7 +462,7 @@ async fn test_bare_tab_in_direct_tab_navigates_when_kitty_active() {
     // tabs — not open Peer Info. This is the default (`kitty_keyboard_active =
     // true`) state.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
-    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    state.lock().await.active_tab = 3; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
@@ -470,7 +470,7 @@ async fn test_bare_tab_in_direct_tab_navigates_when_kitty_active() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 3); // DMs tab
+    assert_eq!(s.active_tab, 4); // Log tab (after Chat, Peers, Groups, DM)
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -483,7 +483,7 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_nonkitty() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.active_tab = 3; // Direct tab for "peer-dm"
         s.kitty_keyboard_active = false; // non-kitty terminal
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -504,7 +504,7 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_kitty() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.active_tab = 3; // Direct tab for "peer-dm"
         s.kitty_keyboard_active = true; // kitty terminal (default)
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -561,7 +561,7 @@ async fn test_i_key_in_direct_tab_types_into_input() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.active_tab = 3; // Direct tab for "peer-dm"
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
@@ -631,7 +631,7 @@ async fn test_ctrl_tab_is_noop_on_chat_tab() {
 #[tokio::test]
 async fn test_backtab_in_direct_tab_still_navigates_backward() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
-    state.lock().await.active_tab = 2; // Direct tab for "peer-dm"
+    state.lock().await.active_tab = 3; // Direct tab for "peer-dm"
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
@@ -639,7 +639,7 @@ async fn test_backtab_in_direct_tab_still_navigates_backward() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 1); // Peers tab
+    assert_eq!(s.active_tab, 2); // Groups tab (DM tabs sit after the fixed tabs)
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -672,7 +672,7 @@ async fn test_legacy_plain_i_on_direct_tab_still_types() {
     {
         let mut s = state.lock().await;
         s.kitty_keyboard_active = false;
-        s.active_tab = 2; // Direct tab for "peer-dm"
+        s.active_tab = 3; // Direct tab for "peer-dm"
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);

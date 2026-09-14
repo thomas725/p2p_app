@@ -7,13 +7,37 @@ fn peer_display_label(peer_id: &str) -> String {
     crate::get_peer_display_name(peer_id).unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id))
 }
 
-/// Number of fixed tabs before DM tabs (Chat, Peers)
-pub(crate) const FIXED_TAB_COUNT: usize = 2;
+/// Number of fixed tabs before dynamic tabs (Chat, Peers, Groups)
+pub(crate) const FIXED_TAB_COUNT: usize = 3;
 
-/// Fixed tabs that always appear after any DM tabs (Log, Settings)
+/// Fixed tabs that always appear after any dynamic tabs (Log, Settings)
 const SUFFIX_TAB_COUNT: usize = 2;
 const LOG_TITLE: &str = "Log";
 const SETTINGS_TITLE: &str = "Settings";
+const GROUPS_TITLE: &str = "Groups";
+
+/// Group chat tab: a marker for an open group conversation.
+///
+/// The conversation history lives in the app state's per-group message map;
+/// this type only tracks which group chats are open and how to label them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GroupTab {
+    /// The stable group ID this chat tab is associated with
+    pub group_id: String,
+    /// Human-readable group name shown in the tab title
+    pub display_name: String,
+}
+
+impl GroupTab {
+    /// Create a new group chat tab for a group
+    #[must_use]
+    pub const fn new(group_id: String, display_name: String) -> Self {
+        Self {
+            group_id,
+            display_name,
+        }
+    }
+}
 
 /// Direct message tab: a marker for an open DM conversation with a peer.
 ///
@@ -42,6 +66,8 @@ impl DmTab {
 /// Dynamic tab management for direct message conversations
 #[derive(Clone, Debug, Default)]
 pub struct DynamicTabs {
+    /// Active group-chat tabs, one per open conversation
+    pub group_tabs: Vec<GroupTab>,
     /// Active DM tabs, one per open conversation
     pub dm_tabs: Vec<DmTab>,
     /// Active peer-info tabs, one per inspected peer
@@ -55,12 +81,66 @@ impl DynamicTabs {
         Self::default()
     }
 
+    /// Add or retrieve index of a group-chat tab for a group.
+    ///
+    /// Deduplicates on `group_id` (a group has a single chat window, regardless
+    /// of separate creaters using different spelling of its name).
+    pub fn add_group_tab(&mut self, group_id: String, display_name: String) -> usize {
+        if let Some(pos) = self
+            .group_tabs
+            .iter()
+            .position(|t| t.group_id == group_id)
+        {
+            return pos.saturating_add(FIXED_TAB_COUNT);
+        }
+        let idx = self.group_tabs.len().saturating_add(FIXED_TAB_COUNT);
+        self.group_tabs.push(GroupTab::new(group_id, display_name));
+        idx
+    }
+
+    /// Remove a group-chat tab, return its previous index
+    pub fn remove_group_tab(&mut self, group_id: &str) -> Option<usize> {
+        if let Some(pos) = self.group_tabs.iter().position(|t| t.group_id == group_id) {
+            self.group_tabs.remove(pos);
+            return Some(pos.saturating_add(FIXED_TAB_COUNT));
+        }
+        None
+    }
+
+    /// Get a group-chat tab by group ID (read-only)
+    #[must_use]
+    pub fn get_group_tab(&self, group_id: &str) -> Option<&GroupTab> {
+        self.group_tabs.iter().find(|t| t.group_id == group_id)
+    }
+
+    /// Count of active group-chat tabs
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
+    pub fn group_tab_count(&self) -> usize {
+        self.group_tabs.len()
+    }
+
+    /// Get display titles for all group-chat tabs
+    #[must_use]
+    pub fn group_tab_titles(&self) -> Vec<String> {
+        self.group_tabs
+            .iter()
+            .map(|t| format!("Group: {} [X]", t.display_name))
+            .collect()
+    }
+
     /// Add or retrieve index of DM tab for peer
     pub fn add_dm_tab(&mut self, peer_id: String) -> usize {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
-            return pos.saturating_add(FIXED_TAB_COUNT);
+            return pos
+                .saturating_add(FIXED_TAB_COUNT)
+                .saturating_add(self.group_tabs.len());
         }
-        let idx = self.dm_tabs.len().saturating_add(FIXED_TAB_COUNT);
+        let idx = self
+            .dm_tabs
+            .len()
+            .saturating_add(FIXED_TAB_COUNT)
+            .saturating_add(self.group_tabs.len());
         self.dm_tabs.push(DmTab::new(peer_id));
         idx
     }
@@ -69,7 +149,10 @@ impl DynamicTabs {
     pub fn remove_dm_tab(&mut self, peer_id: &str) -> Option<usize> {
         if let Some(pos) = self.dm_tabs.iter().position(|t| t.peer_id == peer_id) {
             self.dm_tabs.remove(pos);
-            return Some(pos.saturating_add(FIXED_TAB_COUNT));
+            return Some(
+                pos.saturating_add(FIXED_TAB_COUNT)
+                    .saturating_add(self.group_tabs.len()),
+            );
         }
         None
     }
@@ -98,38 +181,36 @@ impl DynamicTabs {
 
     /// Add or retrieve index of a peer-info tab for peer
     pub fn add_peer_info_tab(&mut self, peer_id: String) -> usize {
-        if let Some(pos) = self.peer_info_tabs.iter().position(|p| p == &peer_id) {
-            return pos
-                .saturating_add(FIXED_TAB_COUNT)
-                .saturating_add(self.dm_tabs.len());
-        }
-        let idx = self
-            .peer_info_tabs
-            .len()
-            .saturating_add(FIXED_TAB_COUNT)
+        let prefix = FIXED_TAB_COUNT
+            .saturating_add(self.group_tabs.len())
             .saturating_add(self.dm_tabs.len());
+        if let Some(pos) = self.peer_info_tabs.iter().position(|p| p == &peer_id) {
+            return pos.saturating_add(prefix);
+        }
+        let idx = self.peer_info_tabs.len().saturating_add(prefix);
         self.peer_info_tabs.push(peer_id);
         idx
     }
 
     /// Remove peer-info tab for peer, return its previous index
     pub fn remove_peer_info_tab(&mut self, peer_id: &str) -> Option<usize> {
+        let prefix = FIXED_TAB_COUNT
+            .saturating_add(self.group_tabs.len())
+            .saturating_add(self.dm_tabs.len());
         if let Some(pos) = self.peer_info_tabs.iter().position(|p| p == peer_id) {
             self.peer_info_tabs.remove(pos);
-            return Some(
-                pos.saturating_add(FIXED_TAB_COUNT)
-                    .saturating_add(self.dm_tabs.len()),
-            );
+            return Some(pos.saturating_add(prefix));
         }
         None
     }
 
-    /// Remove the tab matching `content` (Direct or `PeerInfo`), returning its
-    /// previous index. Other tab kinds are never removable.
+    /// Remove the tab matching `content` (`Direct`, `PeerInfo`, or `GroupChat`),
+    /// returning its previous index. Other tab kinds are never removable.
     pub fn remove_tab(&mut self, content: &TabContent) -> Option<usize> {
         match content {
             TabContent::Direct(peer_id) => self.remove_dm_tab(peer_id),
             TabContent::PeerInfo(peer_id) => self.remove_peer_info_tab(peer_id),
+            TabContent::GroupChat(group_id) => self.remove_group_tab(group_id),
             _ => None,
         }
     }
@@ -156,10 +237,16 @@ impl DynamicTabs {
             .collect()
     }
 
-    /// Get display titles for all tabs (Chat, Peers, DMs..., Info..., Log, Settings)
+    /// Get display titles for all tabs (Chat, Peers, Groups, Group chats,
+    /// DMs..., Info..., Log, Settings)
     #[must_use]
     pub fn all_titles(&self) -> Vec<String> {
-        let mut titles = vec!["Chat".to_string(), "Peers".to_string()];
+        let mut titles = vec![
+            "Chat".to_string(),
+            "Peers".to_string(),
+            GROUPS_TITLE.to_string(),
+        ];
+        titles.extend(self.group_tab_titles());
         titles.extend(self.dm_tab_titles());
         titles.extend(self.peer_info_tab_titles());
         titles.push(LOG_TITLE.to_string());
@@ -170,25 +257,36 @@ impl DynamicTabs {
     /// Convert tab index to content type
     #[must_use]
     pub fn tab_index_to_content(&self, tab_idx: usize) -> TabContent {
+        let group_count = self.group_tabs.len();
         let dm_count = self.dm_tabs.len();
         let info_count = self.peer_info_tabs.len();
         let log_index = FIXED_TAB_COUNT
+            .saturating_add(group_count)
             .saturating_add(dm_count)
             .saturating_add(info_count);
         let settings_index = log_index.saturating_add(1);
+        let dm_start = FIXED_TAB_COUNT.saturating_add(group_count);
+        let info_start = dm_start.saturating_add(dm_count);
         match tab_idx {
             0 => TabContent::Chat,
             1 => TabContent::Peers,
+            2 => TabContent::Groups,
             idx if idx == log_index => TabContent::Log,
             idx if idx == settings_index => TabContent::Settings,
-            idx if idx >= FIXED_TAB_COUNT && idx < FIXED_TAB_COUNT.saturating_add(dm_count) => {
-                let dm_idx = idx.saturating_sub(FIXED_TAB_COUNT);
+            idx if idx >= FIXED_TAB_COUNT && idx < dm_start => {
+                let group_idx = idx.saturating_sub(FIXED_TAB_COUNT);
+                self.group_tabs.get(group_idx).map_or(TabContent::Chat, |t| {
+                    TabContent::GroupChat(t.group_id.clone())
+                })
+            }
+            idx if idx >= dm_start && idx < info_start => {
+                let dm_idx = idx.saturating_sub(dm_start);
                 self.dm_tabs.get(dm_idx).map_or(TabContent::Chat, |tab| {
                     TabContent::Direct(tab.peer_id.clone())
                 })
             }
-            idx if idx >= FIXED_TAB_COUNT.saturating_add(dm_count) && idx < log_index => {
-                let info_idx = idx.saturating_sub(FIXED_TAB_COUNT).saturating_sub(dm_count);
+            idx if idx >= info_start && idx < log_index => {
+                let info_idx = idx.saturating_sub(info_start);
                 self.peer_info_tabs
                     .get(info_idx)
                     .map_or(TabContent::Chat, |p| TabContent::PeerInfo(p.clone()))
@@ -197,12 +295,14 @@ impl DynamicTabs {
         }
     }
 
-    /// Total count of tabs including Chat, Peers, DMs, Info, Log, and Settings
+    /// Total count of tabs including Chat, Peers, Groups, group chats, DMs,
+    /// Info, Log, and Settings
     #[must_use]
     #[allow(clippy::missing_const_for_fn)]
     pub fn total_tab_count(&self) -> usize {
-        self.dm_tabs
+        self.group_tabs
             .len()
+            .saturating_add(self.dm_tabs.len())
             .saturating_add(self.peer_info_tabs.len())
             .saturating_add(FIXED_TAB_COUNT)
             .saturating_add(SUFFIX_TAB_COUNT)
@@ -216,6 +316,10 @@ pub enum TabContent {
     Chat,
     /// Peer list view
     Peers,
+    /// Group list and create/join view
+    Groups,
+    /// Group chat view for the given group ID
+    GroupChat(String),
     /// Direct message view for the given peer ID
     Direct(String),
     /// Debug/log view
@@ -240,7 +344,7 @@ impl TabContent {
     #[must_use]
     #[allow(clippy::missing_const_for_fn)]
     pub fn is_input_enabled(&self) -> bool {
-        matches!(self, Self::Chat | Self::Direct(_))
+        matches!(self, Self::Chat | Self::Direct(_) | Self::GroupChat(_))
     }
 }
 

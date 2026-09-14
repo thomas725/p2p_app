@@ -5,7 +5,7 @@ use crate::tui_tabs::TabContent;
 fn test_tui_render_state_default() {
     let state = TuiRenderState::default();
     assert_eq!(state.active_tab, 0);
-    assert_eq!(state.tab_titles.len(), 4);
+    assert_eq!(state.tab_titles.len(), 5);
     assert!(state.messages.is_empty());
     assert!(state.peers.is_empty());
     assert!(state.log_messages.is_empty());
@@ -71,8 +71,15 @@ fn test_get_tab_content_peers() {
 #[test]
 fn test_get_tab_content_log() {
     let mut state = TuiRenderState::new();
-    state.active_tab = 2;
+    state.active_tab = 3;
     assert_eq!(get_tab_content(&state), TabContent::Log);
+}
+
+#[test]
+fn test_get_tab_content_groups() {
+    let mut state = TuiRenderState::new();
+    state.active_tab = 2;
+    assert_eq!(get_tab_content(&state), TabContent::Groups);
 }
 
 #[test]

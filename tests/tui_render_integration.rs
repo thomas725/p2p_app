@@ -475,7 +475,9 @@ fn test_get_tab_content_log() {
     use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
     use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
-    state.active_tab = 2; // "Log"
+    state.active_tab = 2; // "Groups"
+    assert!(matches!(get_tab_content(&state), TabContent::Groups));
+    state.active_tab = 3; // "Log"
     assert!(matches!(get_tab_content(&state), TabContent::Log));
 }
 

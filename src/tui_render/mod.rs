@@ -1,12 +1,14 @@
 //! TUI rendering functions for both binary and tests.
 
 mod chat;
+mod groups;
 mod log;
 mod peer_info;
 mod peers;
 mod settings;
 
 pub use chat::{render_chat_content, render_dm_content};
+pub use groups::{render_group_chat_content, render_groups_content};
 pub use log::render_log_content;
 pub use peer_info::render_peer_info_content;
 pub use peers::render_peers_content;
@@ -79,6 +81,8 @@ pub fn render_tab_content(
     match tab_content {
         TabContent::Chat => render_chat_content(f, area, state),
         TabContent::Peers => render_peers_content(f, area, state),
+        TabContent::Groups => render_groups_content(f, area, state),
+        TabContent::GroupChat(group_id) => render_group_chat_content(f, area, group_id, state),
         TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
         TabContent::Log => render_log_content(f, area, state),
         TabContent::Settings => render_settings_content(f, area, state),
@@ -124,6 +128,9 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
     match tab_content {
         TabContent::Peers => {
             "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Groups => {
+            "Tab: next | Up/Down: select | Enter: open chat | g: create/join | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"

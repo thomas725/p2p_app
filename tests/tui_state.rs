@@ -47,7 +47,7 @@ fn test_dm_tab_new() {
 #[test]
 fn test_dynamic_tabs_new() {
     let tabs = p2p_app::tui_tabs::DynamicTabs::new();
-    assert_eq!(tabs.total_tab_count(), 4);
+    assert_eq!(tabs.total_tab_count(), 5);
     assert_eq!(tabs.dm_tab_count(), 0);
 }
 
@@ -55,7 +55,7 @@ fn test_dynamic_tabs_new() {
 fn test_dynamic_tabs_add_dm() {
     let mut tabs = p2p_app::tui_tabs::DynamicTabs::new();
     let idx = tabs.add_dm_tab("peer1".to_string());
-    assert_eq!(idx, 2);
+    assert_eq!(idx, 3);
     assert_eq!(tabs.dm_tab_count(), 1);
 }
 
@@ -122,7 +122,7 @@ fn test_dynamic_tabs_add_dm_returns_index() {
     use p2p_app::tui_tabs::DynamicTabs;
     let mut tabs = DynamicTabs::new();
     let idx = tabs.add_dm_tab("peer-1".to_string());
-    assert_eq!(idx, 2); // first DM tab is at global index 2
+    assert_eq!(idx, 3); // first DM tab is at global index 3 (after Chat, Peers, Groups)
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn test_dynamic_tabs_add_existing_dm_returns_existing_index() {
     let mut tabs = DynamicTabs::new();
     tabs.add_dm_tab("peer-1".to_string());
     let idx = tabs.add_dm_tab("peer-1".to_string()); // same peer
-    assert_eq!(idx, 2);
+    assert_eq!(idx, 3);
     assert_eq!(tabs.dm_tab_count(), 1); // no duplicate
 }
 
@@ -157,16 +157,16 @@ fn test_dynamic_tabs_all_titles() {
     assert_eq!(titles[0], "Chat");
     assert_eq!(titles[1], "Peers");
     assert_eq!(*titles.last().unwrap(), "Settings");
-    assert_eq!(titles.len(), 5); // Chat, Peers, 1 DM, Log, Settings
+    assert_eq!(titles.len(), 6); // Chat, Peers, Groups, 1 DM, Log, Settings
 }
 
 #[test]
 fn test_dynamic_tabs_total_tab_count() {
     use p2p_app::tui_tabs::DynamicTabs;
     let mut tabs = DynamicTabs::new();
-    assert_eq!(tabs.total_tab_count(), 4); // Chat, Peers, Log, Settings
+    assert_eq!(tabs.total_tab_count(), 5); // Chat, Peers, Groups, Log, Settings
     tabs.add_dm_tab("p".to_string());
-    assert_eq!(tabs.total_tab_count(), 5);
+    assert_eq!(tabs.total_tab_count(), 6);
 }
 
 #[test]
@@ -176,11 +176,12 @@ fn test_dynamic_tabs_tab_index_to_content() {
     tabs.add_dm_tab("peer-c".to_string());
     assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
     assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
+    assert_eq!(tabs.tab_index_to_content(2), TabContent::Groups);
     assert_eq!(
-        tabs.tab_index_to_content(2),
+        tabs.tab_index_to_content(3),
         TabContent::Direct("peer-c".to_string())
     );
-    assert_eq!(tabs.tab_index_to_content(3), TabContent::Log);
+    assert_eq!(tabs.tab_index_to_content(4), TabContent::Log);
     assert_eq!(tabs.tab_index_to_content(99), TabContent::Chat); // out of range
 }
 
