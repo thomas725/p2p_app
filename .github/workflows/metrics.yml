@@ -32,13 +32,17 @@ jobs:
           fetch-depth: 0
 
       # Skip the heavy tasks (tarpaulin + Flutter + Kotlin coverage, ~13 min) when
-      # nothing new landed on the default branch since this workflow last succeeded.
+      # nothing new landed on the default branch since the last metrics commit.
+      # Baseline is the newest CI-authored "ci: refresh coverage and codebase
+      # metrics" commit on the branch (commit-baseline mode: local git, no API),
+      # NOT the last workflow run — a skipped run would otherwise become the
+      # baseline and reseed the "no commits at all" skip loop forever.
       # Commits authored by the CI pipeline itself are ignored, so our own metrics
       # push to main does not count as new work. Manual workflow_dispatch always
       # forces a full run.
       - name: Check for new human commits since last run
         id: skip-check
-        run: scripts/ci-skip-no-new-commits.sh metrics.yml
+        run: 'scripts/ci-skip-no-new-commits.sh metrics.yml --commit-baseline="ci: refresh coverage and codebase metrics"'
 
       - name: Install Rust toolchain
         if: steps.skip-check.outputs.skip != 'true'
