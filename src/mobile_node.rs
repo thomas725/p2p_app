@@ -245,6 +245,15 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             // and are filtered out of the event stream by `poll_event`
             // (`is_nickname_only_dm`) so they never reach Dart or the DB.
         }
+        SwarmEvent::GroupMessage(m) => {
+            // Store the sender's announced nickname (the group message itself is
+            // persisted by the swarm handler).
+            if let Some(nick) = &m.nickname
+                && !nick.is_empty()
+            {
+                let _ = record_peer_received_name_change(&m.peer_id, nick);
+            }
+        }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
             let addrs: Vec<String> = addresses.iter().map(ToString::to_string).collect();
@@ -504,6 +513,158 @@ pub fn save_incoming_message(
     Ok(message_to_chat(msg))
 }
 
+// --- Group chat types and functions ---
+
+#[derive(Debug, Clone)]
+pub struct MobileGroup {
+    pub group_id: String,
+    pub display_name: String,
+    pub member_count: i64,
+    pub is_private: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct MobileGroupMessage {
+    pub id: i32,
+    pub content: String,
+    pub peer_id: Option<String>,
+    pub sent: bool,
+    pub msg_id: Option<String>,
+    pub sent_at: Option<String>,
+    pub created_at: String,
+    pub sender_nickname: Option<String>,
+}
+
+fn group_to_mobile(
+    group: crate::generated::models_queryable::Group,
+    member_count: i64,
+) -> MobileGroup {
+    MobileGroup {
+        group_id: group.group_id,
+        display_name: group.display_name,
+        member_count,
+        is_private: group.is_private == 1,
+    }
+}
+
+fn group_message_to_mobile(
+    msg: crate::generated::models_queryable::GroupMessage,
+) -> MobileGroupMessage {
+    let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
+        (Some(nick), Some(pid)) => {
+            let suffix = crate::fmt::peer_id_suffix(&pid);
+            Some(format!("{nick} ({suffix})"))
+        }
+        (Some(nick), None) => Some(nick),
+        (None, Some(pid)) => crate::get_peer_display_name(&pid).ok(),
+        (None, None) => None,
+    };
+    MobileGroupMessage {
+        id: msg.id,
+        content: msg.content,
+        peer_id: msg.peer_id,
+        sent: msg.sent == 1,
+        msg_id: msg.msg_id,
+        sent_at: msg.sent_at.map(|t| {
+            // SAFETY: `sent_at` is a Unix timestamp in seconds and is well within
+            // i64 range; the fractional part is intentionally truncated.
+            #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
+            let secs = t as i64;
+            let dt = chrono::DateTime::from_timestamp(secs, 0)
+                .unwrap_or_default()
+                .with_timezone(&chrono::Local);
+            dt.format("%H:%M").to_string()
+        }),
+        created_at: chrono::Utc
+            .from_utc_datetime(&msg.created_at)
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+        sender_nickname,
+    }
+}
+
+/// Create (or join) a public group by name and subscribe to its topic.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn create_group(name: String) -> Result<MobileGroup, String> {
+    let group = crate::groups::create_public_group(&name).map_err(|e| e.to_string())?;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::SubscribeGroup {
+                group_id: group.group_id.clone(),
+            });
+        }
+    }
+    let member_count = crate::groups::get_group_member_count(&group.group_id)
+        .unwrap_or_default()
+        .max(0);
+    Ok(group_to_mobile(group, member_count))
+}
+
+/// List all known groups with their member counts.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn list_groups() -> Result<Vec<MobileGroup>, String> {
+    let summaries = crate::groups::list_groups_with_member_counts().map_err(|e| e.to_string())?;
+    Ok(summaries
+        .into_iter()
+        .map(|s| group_to_mobile(s.group, s.member_count.max(0)))
+        .collect())
+}
+
+/// Load a group's message history (newest-first from DB, reversed to chronological).
+#[flutter_rust_bridge::frb(ignore)]
+pub fn load_group_messages(
+    group_id: String,
+    limit: i64,
+) -> Result<Vec<MobileGroupMessage>, String> {
+    // SAFETY: `limit` is a non-negative message count; converting to usize is
+    // lossless in practice and a negative/wrapping value never occurs.
+    #[allow(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
+    let limit_usize = limit as usize;
+    let msgs =
+        crate::groups::load_group_messages(&group_id, limit_usize).map_err(|e| e.to_string())?;
+    Ok(msgs
+        .into_iter()
+        .rev()
+        .map(group_message_to_mobile)
+        .collect())
+}
+
+/// Save an outgoing group message, persist to DB, and publish via the swarm.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn save_outgoing_group(
+    group_id: String,
+    content: String,
+) -> Result<MobileGroupMessage, String> {
+    let msg_id = gen_msg_id();
+    let sent_at = current_timestamp();
+    let nickname = crate::get_self_nickname().ok().flatten();
+    let meta = crate::groups::GroupMessageMeta {
+        sender_nickname: nickname.clone(),
+        msg_id: Some(msg_id.clone()),
+        sent_at: Some(sent_at),
+    };
+    let msg = crate::groups::save_outgoing_group_message(&group_id, &content, meta)
+        .map_err(|e| e.to_string())?;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::PublishGroup {
+                group_id,
+                content,
+                nickname,
+                msg_id: Some(msg_id),
+            });
+        }
+    }
+    Ok(group_message_to_mobile(msg))
+}
+
 // --- JSON types for FRB ---
 
 #[derive(Debug, Clone)]
@@ -515,10 +676,21 @@ pub struct SwarmEventJson {
     pub nickname: Option<String>,
     pub msg_id: Option<String>,
     pub address: Option<String>,
+    pub group_id: Option<String>,
 }
 
 fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
     match ev {
+        SwarmEvent::GroupMessage(m) => SwarmEventJson {
+            event_type: "group_message".into(),
+            peer_id: Some(m.peer_id),
+            content: Some(m.content),
+            latency: None,
+            nickname: m.nickname,
+            msg_id: m.msg_id,
+            address: None,
+            group_id: Some(m.group_id),
+        },
         SwarmEvent::BroadcastMessage(m) => SwarmEventJson {
             event_type: "broadcast".into(),
             peer_id: Some(m.peer_id),
@@ -527,6 +699,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             nickname: m.nickname,
             msg_id: m.msg_id,
             address: None,
+            group_id: None,
         },
         SwarmEvent::DirectMessage(m) => SwarmEventJson {
             event_type: "dm".into(),
@@ -536,6 +709,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             nickname: m.nickname,
             msg_id: m.msg_id,
             address: None,
+            group_id: None,
         },
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
             event_type: "peer_connected".into(),
@@ -586,6 +760,7 @@ fn default_event() -> SwarmEventJson {
         nickname: None,
         msg_id: None,
         address: None,
+        group_id: None,
     }
 }
 

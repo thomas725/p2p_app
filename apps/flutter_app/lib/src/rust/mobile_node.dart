@@ -6,10 +6,10 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `default_event`, `event_to_json`, `is_nickname_only_dm`, `lock_node_mutex`, `message_to_chat`, `process_event_for_mobile`, `start_node_impl`
+// These functions are ignored because they are not marked as `pub`: `default_event`, `event_to_json`, `group_message_to_mobile`, `group_to_mobile`, `is_nickname_only_dm`, `lock_node_mutex`, `message_to_chat`, `process_event_for_mobile`, `start_node_impl`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_known_peers`, `load_broadcast_messages`, `load_dm_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `start_node_auto`, `start_node`, `stop_node`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `create_group`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `start_node_auto`, `start_node`, `stop_node`
 
 /// Get the local peer ID.
 ///
@@ -73,6 +73,84 @@ class ChatMessage {
           senderNickname == other.senderNickname;
 }
 
+class MobileGroup {
+  final String groupId;
+  final String displayName;
+  final PlatformInt64 memberCount;
+  final bool isPrivate;
+
+  const MobileGroup({
+    required this.groupId,
+    required this.displayName,
+    required this.memberCount,
+    required this.isPrivate,
+  });
+
+  @override
+  int get hashCode =>
+      groupId.hashCode ^
+      displayName.hashCode ^
+      memberCount.hashCode ^
+      isPrivate.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileGroup &&
+          runtimeType == other.runtimeType &&
+          groupId == other.groupId &&
+          displayName == other.displayName &&
+          memberCount == other.memberCount &&
+          isPrivate == other.isPrivate;
+}
+
+class MobileGroupMessage {
+  final int id;
+  final String content;
+  final String? peerId;
+  final bool sent;
+  final String? msgId;
+  final String? sentAt;
+  final String createdAt;
+  final String? senderNickname;
+
+  const MobileGroupMessage({
+    required this.id,
+    required this.content,
+    this.peerId,
+    required this.sent,
+    this.msgId,
+    this.sentAt,
+    required this.createdAt,
+    this.senderNickname,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      content.hashCode ^
+      peerId.hashCode ^
+      sent.hashCode ^
+      msgId.hashCode ^
+      sentAt.hashCode ^
+      createdAt.hashCode ^
+      senderNickname.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileGroupMessage &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          content == other.content &&
+          peerId == other.peerId &&
+          sent == other.sent &&
+          msgId == other.msgId &&
+          sentAt == other.sentAt &&
+          createdAt == other.createdAt &&
+          senderNickname == other.senderNickname;
+}
+
 class MobilePeerRecord {
   final String peerId;
   final String firstSeen;
@@ -120,6 +198,7 @@ class SwarmEventJson {
   final String? nickname;
   final String? msgId;
   final String? address;
+  final String? groupId;
 
   const SwarmEventJson({
     required this.eventType,
@@ -129,6 +208,7 @@ class SwarmEventJson {
     this.nickname,
     this.msgId,
     this.address,
+    this.groupId,
   });
 
   @override
@@ -139,7 +219,8 @@ class SwarmEventJson {
       latency.hashCode ^
       nickname.hashCode ^
       msgId.hashCode ^
-      address.hashCode;
+      address.hashCode ^
+      groupId.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -152,5 +233,6 @@ class SwarmEventJson {
           latency == other.latency &&
           nickname == other.nickname &&
           msgId == other.msgId &&
-          address == other.address;
+          address == other.address &&
+          groupId == other.groupId;
 }

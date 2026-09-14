@@ -53,6 +53,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ChatMessage> dco_decode_list_chat_message(dynamic raw);
 
   @protected
+  List<MobileGroup> dco_decode_list_mobile_group(dynamic raw);
+
+  @protected
+  List<MobileGroupMessage> dco_decode_list_mobile_group_message(dynamic raw);
+
+  @protected
   List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw);
 
   @protected
@@ -63,6 +69,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  MobileGroup dco_decode_mobile_group(dynamic raw);
+
+  @protected
+  MobileGroupMessage dco_decode_mobile_group_message(dynamic raw);
 
   @protected
   MobileInitStatus dco_decode_mobile_init_status(dynamic raw);
@@ -136,6 +148,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ChatMessage> sse_decode_list_chat_message(SseDeserializer deserializer);
 
   @protected
+  List<MobileGroup> sse_decode_list_mobile_group(SseDeserializer deserializer);
+
+  @protected
+  List<MobileGroupMessage> sse_decode_list_mobile_group_message(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<MobilePeerRecord> sse_decode_list_mobile_peer_record(
     SseDeserializer deserializer,
   );
@@ -152,6 +172,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  MobileGroup sse_decode_mobile_group(SseDeserializer deserializer);
+
+  @protected
+  MobileGroupMessage sse_decode_mobile_group_message(
+    SseDeserializer deserializer,
+  );
 
   @protected
   MobileInitStatus sse_decode_mobile_init_status(SseDeserializer deserializer);
@@ -231,6 +259,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_mobile_group(
+    List<MobileGroup> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_mobile_group_message(
+    List<MobileGroupMessage> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_mobile_peer_record(
     List<MobilePeerRecord> self,
     SseSerializer serializer,
@@ -251,6 +291,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_mobile_group(MobileGroup self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mobile_group_message(
+    MobileGroupMessage self,
     SseSerializer serializer,
   );
 

@@ -114,6 +114,44 @@ Future<ChatMessage> saveIncomingMessage({
   nickname: nickname,
 );
 
+/// Create (or join) a public group by name and subscribe to its topic.
+///
+/// # Errors
+/// Returns an error if the group cannot be created.
+Future<MobileGroup> createGroup({required String name}) =>
+    RustLib.instance.api.crateApiCreateGroup(name: name);
+
+/// List all known groups with their member counts.
+///
+/// # Errors
+/// Returns an error if the groups cannot be loaded.
+Future<List<MobileGroup>> listGroups() =>
+    RustLib.instance.api.crateApiListGroups();
+
+/// Load a group's message history (chronological order).
+///
+/// # Errors
+/// Returns an error if the messages cannot be loaded.
+Future<List<MobileGroupMessage>> loadGroupMessages({
+  required String groupId,
+  required PlatformInt64 limit,
+}) => RustLib.instance.api.crateApiLoadGroupMessages(
+  groupId: groupId,
+  limit: limit,
+);
+
+/// Save an outgoing group message to DB and publish via swarm.
+///
+/// # Errors
+/// Returns an error if the message cannot be saved or sent.
+Future<MobileGroupMessage> saveOutgoingGroup({
+  required String groupId,
+  required String content,
+}) => RustLib.instance.api.crateApiSaveOutgoingGroup(
+  groupId: groupId,
+  content: content,
+);
+
 /// Set the local user's nickname.
 ///
 /// # Errors

@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 332983863;
+  int get rustContentHash => -2069146553;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,6 +78,8 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<MobileGroup> crateApiCreateGroup({required String name});
+
   String crateMobileApiFormatTimeHhmm({required String dt});
 
   Future<List<MobilePeerRecord>> crateApiGetKnownPeers();
@@ -98,12 +100,19 @@ abstract class RustLibApi extends BaseApi {
     required int visible,
   });
 
+  Future<List<MobileGroup>> crateApiListGroups();
+
   Future<List<ChatMessage>> crateApiLoadBroadcastMessages({
     required PlatformInt64 limit,
   });
 
   Future<List<ChatMessage>> crateApiLoadDmMessages({
     required String peerId,
+    required PlatformInt64 limit,
+  });
+
+  Future<List<MobileGroupMessage>> crateApiLoadGroupMessages({
+    required String groupId,
     required PlatformInt64 limit,
   });
 
@@ -124,6 +133,11 @@ abstract class RustLibApi extends BaseApi {
 
   Future<ChatMessage> crateApiSaveOutgoingDm({
     required String peerId,
+    required String content,
+  });
+
+  Future<MobileGroupMessage> crateApiSaveOutgoingGroup({
+    required String groupId,
     required String content,
   });
 
@@ -153,13 +167,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<MobileGroup> crateApiCreateGroup({required String name}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(name, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mobile_group,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiCreateGroupConstMeta,
+        argValues: [name],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCreateGroupConstMeta =>
+      const TaskConstMeta(debugName: "create_group", argNames: ["name"]);
+
+  @override
   String crateMobileApiFormatTimeHhmm({required String dt}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(dt, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -184,7 +226,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -211,7 +253,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -238,7 +280,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -265,7 +307,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -292,7 +334,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -322,7 +364,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -355,7 +397,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_CastedPrimitive_usize(scrollOffset, serializer);
           sse_encode_CastedPrimitive_usize(total, serializer);
           sse_encode_CastedPrimitive_usize(visible, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -374,6 +416,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<List<MobileGroup>> crateApiListGroups() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mobile_group,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiListGroupsConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiListGroupsConstMeta =>
+      const TaskConstMeta(debugName: "list_groups", argNames: []);
+
+  @override
   Future<List<ChatMessage>> crateApiLoadBroadcastMessages({
     required PlatformInt64 limit,
   }) {
@@ -385,7 +454,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -420,7 +489,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -441,6 +510,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<List<MobileGroupMessage>> crateApiLoadGroupMessages({
+    required String groupId,
+    required PlatformInt64 limit,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(groupId, serializer);
+          sse_encode_i_64(limit, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mobile_group_message,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLoadGroupMessagesConstMeta,
+        argValues: [groupId, limit],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLoadGroupMessagesConstMeta => const TaskConstMeta(
+    debugName: "load_group_messages",
+    argNames: ["groupId", "limit"],
+  );
+
+  @override
   Future<String> crateApiNetworkSizeLabel({required PlatformInt64 peerCount}) {
     return handler.executeNormal(
       NormalTask(
@@ -450,7 +553,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 14,
             port: port_,
           );
         },
@@ -477,7 +580,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(lastSeen, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_CastedPrimitive_u_64,
@@ -505,7 +608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 16,
             port: port_,
           );
         },
@@ -541,7 +644,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -572,7 +675,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
@@ -607,7 +710,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -628,6 +731,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<MobileGroupMessage> crateApiSaveOutgoingGroup({
+    required String groupId,
+    required String content,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(groupId, serializer);
+          sse_encode_String(content, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mobile_group_message,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSaveOutgoingGroupConstMeta,
+        argValues: [groupId, content],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSaveOutgoingGroupConstMeta => const TaskConstMeta(
+    debugName: "save_outgoing_group",
+    argNames: ["groupId", "content"],
+  );
+
+  @override
   Future<void> crateApiSetSelfNickname({required String nickname}) {
     return handler.executeNormal(
       NormalTask(
@@ -637,7 +774,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 21,
             port: port_,
           );
         },
@@ -670,7 +807,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_peer_sort_input(peers, serializer);
           sse_encode_u_32(sortColumn, serializer);
           sse_encode_bool(ascending, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_peer_sort_input,
@@ -698,7 +835,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 23,
             port: port_,
           );
         },
@@ -725,7 +862,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 24,
             port: port_,
           );
         },
@@ -752,7 +889,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 25,
             port: port_,
           );
         },
@@ -780,7 +917,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 26,
             port: port_,
           );
         },
@@ -879,6 +1016,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MobileGroup> dco_decode_list_mobile_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mobile_group).toList();
+  }
+
+  @protected
+  List<MobileGroupMessage> dco_decode_list_mobile_group_message(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mobile_group_message).toList();
+  }
+
+  @protected
   List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_mobile_peer_record).toList();
@@ -900,6 +1049,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  MobileGroup dco_decode_mobile_group(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return MobileGroup(
+      groupId: dco_decode_String(arr[0]),
+      displayName: dco_decode_String(arr[1]),
+      memberCount: dco_decode_i_64(arr[2]),
+      isPrivate: dco_decode_bool(arr[3]),
+    );
+  }
+
+  @protected
+  MobileGroupMessage dco_decode_mobile_group_message(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return MobileGroupMessage(
+      id: dco_decode_i_32(arr[0]),
+      content: dco_decode_String(arr[1]),
+      peerId: dco_decode_opt_String(arr[2]),
+      sent: dco_decode_bool(arr[3]),
+      msgId: dco_decode_opt_String(arr[4]),
+      sentAt: dco_decode_opt_String(arr[5]),
+      createdAt: dco_decode_String(arr[6]),
+      senderNickname: dco_decode_opt_String(arr[7]),
+    );
   }
 
   @protected
@@ -993,8 +1174,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
     return SwarmEventJson(
       eventType: dco_decode_String(arr[0]),
       peerId: dco_decode_opt_String(arr[1]),
@@ -1003,6 +1184,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: dco_decode_opt_String(arr[4]),
       msgId: dco_decode_opt_String(arr[5]),
       address: dco_decode_opt_String(arr[6]),
+      groupId: dco_decode_opt_String(arr[7]),
     );
   }
 
@@ -1135,6 +1317,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MobileGroup> sse_decode_list_mobile_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MobileGroup>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mobile_group(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MobileGroupMessage> sse_decode_list_mobile_group_message(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MobileGroupMessage>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mobile_group_message(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<MobilePeerRecord> sse_decode_list_mobile_peer_record(
     SseDeserializer deserializer,
   ) {
@@ -1181,6 +1389,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  MobileGroup sse_decode_mobile_group(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_groupId = sse_decode_String(deserializer);
+    var var_displayName = sse_decode_String(deserializer);
+    var var_memberCount = sse_decode_i_64(deserializer);
+    var var_isPrivate = sse_decode_bool(deserializer);
+    return MobileGroup(
+      groupId: var_groupId,
+      displayName: var_displayName,
+      memberCount: var_memberCount,
+      isPrivate: var_isPrivate,
+    );
+  }
+
+  @protected
+  MobileGroupMessage sse_decode_mobile_group_message(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_i_32(deserializer);
+    var var_content = sse_decode_String(deserializer);
+    var var_peerId = sse_decode_opt_String(deserializer);
+    var var_sent = sse_decode_bool(deserializer);
+    var var_msgId = sse_decode_opt_String(deserializer);
+    var var_sentAt = sse_decode_opt_String(deserializer);
+    var var_createdAt = sse_decode_String(deserializer);
+    var var_senderNickname = sse_decode_opt_String(deserializer);
+    return MobileGroupMessage(
+      id: var_id,
+      content: var_content,
+      peerId: var_peerId,
+      sent: var_sent,
+      msgId: var_msgId,
+      sentAt: var_sentAt,
+      createdAt: var_createdAt,
+      senderNickname: var_senderNickname,
+    );
   }
 
   @protected
@@ -1302,6 +1550,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_nickname = sse_decode_opt_String(deserializer);
     var var_msgId = sse_decode_opt_String(deserializer);
     var var_address = sse_decode_opt_String(deserializer);
+    var var_groupId = sse_decode_opt_String(deserializer);
     return SwarmEventJson(
       eventType: var_eventType,
       peerId: var_peerId,
@@ -1310,6 +1559,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: var_nickname,
       msgId: var_msgId,
       address: var_address,
+      groupId: var_groupId,
     );
   }
 
@@ -1424,6 +1674,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_mobile_group(
+    List<MobileGroup> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mobile_group(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_mobile_group_message(
+    List<MobileGroupMessage> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mobile_group_message(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_mobile_peer_record(
     List<MobilePeerRecord> self,
     SseSerializer serializer,
@@ -1467,6 +1741,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_mobile_group(MobileGroup self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.groupId, serializer);
+    sse_encode_String(self.displayName, serializer);
+    sse_encode_i_64(self.memberCount, serializer);
+    sse_encode_bool(self.isPrivate, serializer);
+  }
+
+  @protected
+  void sse_encode_mobile_group_message(
+    MobileGroupMessage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.id, serializer);
+    sse_encode_String(self.content, serializer);
+    sse_encode_opt_String(self.peerId, serializer);
+    sse_encode_bool(self.sent, serializer);
+    sse_encode_opt_String(self.msgId, serializer);
+    sse_encode_opt_String(self.sentAt, serializer);
+    sse_encode_String(self.createdAt, serializer);
+    sse_encode_opt_String(self.senderNickname, serializer);
   }
 
   @protected
@@ -1570,6 +1869,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.nickname, serializer);
     sse_encode_opt_String(self.msgId, serializer);
     sse_encode_opt_String(self.address, serializer);
+    sse_encode_opt_String(self.groupId, serializer);
   }
 
   @protected

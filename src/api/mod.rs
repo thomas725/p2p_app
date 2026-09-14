@@ -3,7 +3,9 @@
 //! This module defines the functions and types exposed to Dart via FRB.
 
 use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
-use crate::mobile_node::{ChatMessage, MobilePeerRecord, SwarmEventJson};
+use crate::mobile_node::{
+    ChatMessage, MobileGroup, MobileGroupMessage, MobilePeerRecord, SwarmEventJson,
+};
 use crate::network::NetworkSize;
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -118,6 +120,46 @@ pub fn save_incoming_message(
     nickname: Option<String>,
 ) -> Result<ChatMessage, String> {
     crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname)
+}
+
+// --- Groups ---
+
+/// Create (or join) a public group by name and subscribe to its topic.
+///
+/// # Errors
+/// Returns an error if the group cannot be created.
+pub fn create_group(name: String) -> Result<MobileGroup, String> {
+    crate::mobile_node::create_group(name)
+}
+
+/// List all known groups with their member counts.
+///
+/// # Errors
+/// Returns an error if the groups cannot be loaded.
+pub fn list_groups() -> Result<Vec<MobileGroup>, String> {
+    crate::mobile_node::list_groups()
+}
+
+/// Load a group's message history (chronological order).
+///
+/// # Errors
+/// Returns an error if the messages cannot be loaded.
+pub fn load_group_messages(
+    group_id: String,
+    limit: i64,
+) -> Result<Vec<MobileGroupMessage>, String> {
+    crate::mobile_node::load_group_messages(group_id, limit)
+}
+
+/// Save an outgoing group message to DB and publish via swarm.
+///
+/// # Errors
+/// Returns an error if the message cannot be saved or sent.
+pub fn save_outgoing_group(
+    group_id: String,
+    content: String,
+) -> Result<MobileGroupMessage, String> {
+    crate::mobile_node::save_outgoing_group(group_id, content)
 }
 
 /// Set the local user's nickname.
