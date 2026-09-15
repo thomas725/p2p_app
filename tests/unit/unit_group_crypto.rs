@@ -123,3 +123,24 @@ fn control_signed_by_wrong_key_fails_verification() {
         "signature from another key must be rejected"
     );
 }
+
+#[test]
+fn group_id_is_shared_across_members_and_distinct_per_group() {
+    let group_keypair = libp2p_identity::Keypair::generate_ed25519();
+    let other_group_keypair = libp2p_identity::Keypair::generate_ed25519();
+
+    let shared = group_peer_id(&group_keypair.public());
+    let shared_again = group_peer_id(&group_keypair.public());
+
+    assert_eq!(shared, shared_again, "the same shared group public key must mint the same group PeerId, no matter which pair derives it");
+    assert_eq!(
+        shared,
+        group_peer_id(&group_keypair.public()),
+        "group wide attribution is stable across pairs"
+    );
+    assert_ne!(
+        shared,
+        group_peer_id(&other_group_keypair.public()),
+        "a different group's shared key must mint a different group PeerId"
+    );
+}
