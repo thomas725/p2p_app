@@ -9,7 +9,7 @@
 | Total Rust Chars      |             486,708 |
 | Avg Lines/Rust File   |                 291 |
 | Avg Chars/Rust File   |              10,580 |
-| Covered Rust Lines    | 2,592 / 4,516 (57%) |
+| Covered Rust Lines    | 2,574 / 4,482 (57%) |
 | Total Dart Files      |                  21 |
 | Total Dart Lines      |               6,141 |
 | Total Dart Chars      |             188,602 |
@@ -39,7 +39,7 @@
 | src                     | groups.rs            |     4 |  3824 |   102 |       52 |   0.00% | Source file                         |
 | src                     | lib.rs               |     1 |  6058 |   159 |        1 | 100.00% | Module declarations & re-exports    |
 | src                     | log.rs               |     2 |   907 |    31 |       10 | 100.00% | Source file                         |
-| src                     | logging.rs           |     4 | 11635 |   359 |      110 |  91.82% | Logging utilities & setup           |
+| src                     | logging.rs           |     4 | 11635 |   359 |      109 |  98.17% | Logging utilities & setup           |
 | src                     | messages.rs          |     5 | 12171 |   351 |      101 |  90.10% | Message persistence & retrieval     |
 | src                     | mobile_api.rs        |     4 | 15629 |   469 |       37 | 100.00% | Mobile FRB API surface              |
 | src                     | mobile_node.rs       |     5 | 43881 |  1265 |      242 |  38.43% | Mobile node lifecycle & swarm       |
@@ -61,11 +61,11 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 18021 |   448 |      238 |  61.76% | Click handlers & index mapping      |
 | src/bin/tui             | command_processor.rs |     6 | 14559 |   423 |      215 |  82.79% | Event routing & state updates       |
 | src/bin/tui             | event_source.rs      |     4 |  1258 |    41 |       12 |  41.67% | Terminal event polling (60 FPS)     |
-| src/bin/tui             | input_processor.rs   |     5 | 23642 |   619 |      306 |  68.63% | Input event routing & processing    |
+| src/bin/tui             | input_processor.rs   |     5 | 23642 |   619 |      275 |  68.36% | Input event routing & processing    |
 | src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |       73 |   0.00% | Source file                         |
 | src/bin/tui             | main_loop.rs         |     4 | 14040 |   372 |      169 |  23.67% | Task orchestration & async          |
 | src/bin/tui             | message_handlers.rs  |     5 |  7717 |   229 |      121 |  63.64% | Message sending logic               |
-| src/bin/tui             | scroll_handlers.rs   |     5 | 12692 |   349 |      160 |  82.50% | Scroll & hover-aware navigation     |
+| src/bin/tui             | scroll_handlers.rs   |     5 | 12692 |   349 |      158 |  82.28% | Scroll & hover-aware navigation     |
 | src/bin/tui             | state.rs             |     5 | 12930 |   316 |       74 |  86.49% | Shared application state            |
 | src/bin/tui/render_loop | layout.rs            |     3 |  1724 |    50 |       23 |   0.00% | UI layout component rendering       |
 | src/bin/tui/render_loop | mod.rs               |     6 |  9593 |   284 |      104 |  53.85% | Render loop orchestration (60 FPS)  |
@@ -75,7 +75,7 @@
 | src/generated           | models_queryable.rs  |     1 |  5928 |   169 |        0 |       - | Queryable data models               |
 | src/generated           | schema.rs            |     2 |  3804 |   144 |       74 |  87.84% | Database schema (Diesel)            |
 
-**Total:** 46 files, 13,426 lines, 486,708 characters (2592/4516 testable lines covered, 57%)
+**Total:** 46 files, 13,426 lines, 486,708 characters (2574/4482 testable lines covered, 57%)
 
 ## Rust Test Files
 
