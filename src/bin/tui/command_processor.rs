@@ -323,8 +323,10 @@ async fn process_swarm_event(
             let mut s = state.lock().await;
             let sender_display =
                 p2p_app::peer_display_name(&inviter_peer, &s.local_nicknames, &s.received_nicknames);
+            let local_peer_id = s.local_peer_id.clone();
+            let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
             p2plog_debug(format!(
-                "Group invite from {sender_display} to join {group_id}",
+                "Accepted join {group_id} invited by {sender_display}",
             ));
             drop(s);
         }
