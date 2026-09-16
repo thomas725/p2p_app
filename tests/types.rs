@@ -148,6 +148,7 @@ fn direct_message_fields() {
         msg_id: Some("id2".into()),
         ack_for: Some("orig_id".into()),
         received_at: Some(2000.0),
+        group_id: None,
     };
     assert_eq!(msg.content, "hi");
     assert_eq!(msg.timestamp, 12345);

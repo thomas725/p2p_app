@@ -34,6 +34,8 @@ pub struct DirectMessage {
     pub ack_for: Option<String>,
     /// Optional timestamp of when this message was received
     pub received_at: Option<f64>,
+    /// Stable `group_id` a private-group DM is attributed to; `None` = plain DM
+    pub group_id: Option<String>,
 }
 
 /// Broadcast message content with timestamp and sender info

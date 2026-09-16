@@ -118,6 +118,7 @@ fn test_direct_message_serialization() {
         msg_id: None,
         ack_for: None,
         received_at: None,
+        group_id: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     assert!(json.contains("Hello"));

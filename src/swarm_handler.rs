@@ -222,6 +222,7 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
         msg_id: None,
         ack_for,
         received_at: Some(current_timestamp()),
+        group_id: None,
     }
 }
 
@@ -300,6 +301,7 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                     msg_id,
                     ack_for,
                     received_at: None,
+                    group_id: None,
                 };
                 swarm
                     .behaviour_mut()

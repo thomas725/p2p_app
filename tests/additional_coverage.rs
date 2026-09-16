@@ -24,6 +24,7 @@ fn test_direct_message_debug() {
         msg_id: Some("msg-1".to_string()),
         ack_for: None,
         received_at: None,
+        group_id: None,
     };
 
     let debug = format!("{dm:?}");

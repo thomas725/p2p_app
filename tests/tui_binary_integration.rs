@@ -259,6 +259,7 @@ fn test_direct_message_struct() {
         msg_id: Some("dm-msg-1".to_string()),
         ack_for: Some("original-msg".to_string()),
         received_at: Some(1_234_567_891.0),
+        group_id: None,
     };
 
     // Test Debug format
