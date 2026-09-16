@@ -601,10 +601,39 @@ fn group_message_to_mobile(
     }
 }
 
-/// Create (or join) a public group by name and subscribe to its topic.
+/// Accept a pending group invite: once the local peer records itself as a group
+/// member (idempotent — safe to re-accept), the Block-D inbound classifier flips
+/// this peer from `GroupInvite`-routing to real `GroupMessage`-routing for that
+/// group, and the returned `MobileGroup` hugs the exact same `group_to_mobile`
+/// tail a fresh `create_group` returns (List parity in Flutter Groups tab).
+///
+/// # Errors
+/// Returns an error if the group has no local row (an invite naming a group this
+/// peer never materialized — FK-safe: we hug a real local row, never FK-suicide
+/// an idempotent `record_group_member` against a missing `groups` row).
 #[flutter_rust_bridge::frb(ignore)]
-pub fn create_group(name: String) -> Result<MobileGroup, String> {
-    let group = crate::groups::create_public_group(&name).map_err(|e| e.to_string())?;
+pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
+    let group = crate::groups::find_group(&group_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("no local group row for invite {group_id}"))?;
+    let local_peer_id = crate::get_local_peer_id().map_err(|e| e.to_string())?.to_string();
+    let _ = crate::groups::record_group_member(&group_id, &local_peer_id);
+    let member_count = crate::groups::get_group_member_count(&group_id)
+        .unwrap_or_default()
+        .max(0);
+    Ok(group_to_mobile(group, member_count))
+}
+
+/// Create a group using the standard `create_public_group` seam, then route
+/// the group's local genesis `SubscribeGroup` and return the group's
+/// `MobileGroup` shape with its current member count.
+///
+/// # Errors
+///
+/// Returns an error if the group name is empty, a group with this name already
+/// exists, or the group membership count cannot be resolved.
+pub fn create_group(name: &str) -> Result<MobileGroup, String> {
+    let group = crate::groups::create_public_group(name).map_err(|e| e.to_string())?;
     if let Some(m) = NODE.get() {
         let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {

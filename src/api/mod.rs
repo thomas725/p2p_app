@@ -128,8 +128,9 @@ pub fn save_incoming_message(
 ///
 /// # Errors
 /// Returns an error if the group cannot be created.
+#[allow(clippy::needless_pass_by_value)]
 pub fn create_group(name: String) -> Result<MobileGroup, String> {
-    crate::mobile_node::create_group(name)
+    crate::mobile_node::create_group(&name)
 }
 
 /// List all known groups with their member counts.
