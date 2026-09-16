@@ -215,6 +215,20 @@ pub fn get_group_member_count(group_id: &str) -> color_eyre::Result<i64> {
         .wrap_err("failed to count group members")
 }
 
+/// Whether the local peer is a member of the given group.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn is_group_member(group_id: &str, peer_id: &str) -> color_eyre::Result<bool> {
+    let conn = &mut crate::sqlite_connect()?;
+    let count: i64 = group_members::table
+        .filter(group_members::group_id.eq(group_id))
+        .filter(group_members::peer_id.eq(peer_id))
+        .count()
+        .get_result(conn).wrap_err("failed to check group membership")?;
+    Ok(count > 0)
+}
+
 /// Member counts for every group (for list views).
 ///
 /// # Errors

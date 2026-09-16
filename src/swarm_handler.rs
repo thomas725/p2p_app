@@ -182,15 +182,38 @@ async fn handle_request_response(
             } else {
                 let msg_id = request.msg_id.clone();
                 let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
-                let _ = event_tx
-                    .send(SwarmEvent::DirectMessage(crate::MessageEvent {
-                        content: request.content,
-                        peer_id: peer_id_str,
-                        latency,
-                        nickname: request.nickname,
-                        msg_id,
-                    }))
-                    .await;
+                if let Some(group_id) = request.group_id.clone() {
+                    let local_peer = swarm.local_peer_id().to_string();
+                    if crate::groups::is_group_member(&group_id, &local_peer).unwrap_or(false) {
+                        let _ = event_tx
+                            .send(SwarmEvent::GroupMessage(crate::GroupMessageEvent {
+                                group_id,
+                                content: request.content,
+                                peer_id: peer_id_str,
+                                nickname: request.nickname,
+                                msg_id,
+                            }))
+                            .await;
+                    } else {
+                        let inviter_peer = peer_id_str;
+                        let _ = event_tx
+                            .send(SwarmEvent::GroupInvite {
+                                group_id,
+                                inviter_peer,
+                            })
+                            .await;
+                    }
+                } else {
+                    let _ = event_tx
+                        .send(SwarmEvent::DirectMessage(crate::MessageEvent {
+                            content: request.content,
+                            peer_id: peer_id_str,
+                            latency,
+                            nickname: request.nickname,
+                            msg_id,
+                        }))
+                        .await;
+                }
             }
 
             let response = make_ack_dm("ok".to_string(), request.msg_id);

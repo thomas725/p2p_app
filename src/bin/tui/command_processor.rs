@@ -319,6 +319,15 @@ async fn process_swarm_event(
             ));
             drop(s);
         }
+        SwarmEvent::GroupInvite { group_id, inviter_peer } => {
+            let mut s = state.lock().await;
+            let sender_display =
+                p2p_app::peer_display_name(&inviter_peer, &s.local_nicknames, &s.received_nicknames);
+            p2plog_debug(format!(
+                "Group invite from {sender_display} to join {group_id}",
+            ));
+            drop(s);
+        }
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
         } => {

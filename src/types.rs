@@ -73,6 +73,13 @@ pub enum SwarmEvent {
     DirectMessage(MessageEvent),
     /// Group message received from a peer
     GroupMessage(GroupMessageEvent),
+    /// Invitation to join a private group the local peer does not yet belong to
+    GroupInvite {
+        /// The group we are being invited to
+        group_id: String,
+        /// Peer ID of the peer extending the invitation
+        inviter_peer: String,
+    },
     /// Receipt confirmation received from a peer (for either broadcast or direct messages).
     Receipt {
         /// Peer ID of the sender who acknowledged the message

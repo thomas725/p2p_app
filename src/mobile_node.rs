@@ -708,6 +708,16 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             address: None,
             group_id: Some(m.group_id),
         },
+        SwarmEvent::GroupInvite { group_id, inviter_peer } => SwarmEventJson {
+            event_type: "group_invite".into(),
+            peer_id: Some(inviter_peer),
+            content: None,
+            latency: None,
+            nickname: None,
+            msg_id: None,
+            address: None,
+            group_id: Some(group_id),
+        },
         SwarmEvent::BroadcastMessage(m) => SwarmEventJson {
             event_type: "broadcast".into(),
             peer_id: Some(m.peer_id),
