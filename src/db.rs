@@ -536,12 +536,33 @@ pub fn get_database_url() -> String {
 /// Release the database lock file by deleting the .lock file.
 /// Called on normal exit to clean up the lock file.
 pub fn release_db_lock() {
-    if let Some(db_path) = DB_URL.with(|u| u.borrow().clone()) {
+    // The URL is thread-local, but shutdown may run on a different thread than
+    // the one that selected/set it (e.g. an FRB stop call on a thread-pool
+    // worker). Fall back to the process-wide primary URL so the lock for the
+    // real database is released wherever the release happens.
+    let db_path = DB_URL
+        .with(|u| u.borrow().clone())
+        .or_else(primary_db_url_unlocked);
+    if let Some(db_path) = db_path {
         let lock_path = format!("{db_path}.lock");
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
             crate::logging::p2plog_debug(format!("[DB] released lock on exit: {lock_path}"));
         }
     }
+}
+
+/// The process-wide primary database URL, if one has been selected.
+#[cfg(not(any(test, feature = "test-utils")))]
+fn primary_db_url_unlocked() -> Option<String> {
+    PRIMARY_DB_URL
+        .get()
+        .and_then(|m| m.lock().ok().and_then(|g| g.clone()))
+}
+
+/// The process-wide primary database URL is not tracked in test builds.
+#[cfg(any(test, feature = "test-utils"))]
+const fn primary_db_url_unlocked() -> Option<String> {
+    None
 }
 
 /// Load or generate the libp2p identity keypair.

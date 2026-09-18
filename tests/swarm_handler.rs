@@ -350,6 +350,48 @@ async fn test_spawn_handler_direct_message() {
     assert_eq!(received.msg_id, Some("dm-msg-1".to_string()));
 }
 
+/// A nickname-only DM (empty content + nickname, no `ack_for`) — the greeting
+/// every frontend sends on peer connect — must surface as an (empty) Direct
+/// message so the receiver records the announced nickname, rather than being
+/// silently dropped.
+#[tokio::test]
+async fn test_spawn_handler_nickname_only_dm_surfaces() {
+    let (mut swarm_a, peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm();
+
+    connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
+
+    let (_handle_a, _event_rx_a, cmd_tx_a) = spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, _cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::SendDm {
+            peer_id: peer_b.to_string(),
+            content: String::new(),
+            nickname: Some("nobby".to_string()),
+            msg_id: None,
+            ack_for: None,
+        })
+        .await
+        .unwrap();
+
+    let received = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::DirectMessage(msg)) = event_rx_b.recv().await {
+                break msg;
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for nickname-only DM");
+
+    assert_eq!(received.content, "");
+    assert_eq!(received.nickname, Some("nobby".to_string()));
+    assert_eq!(received.peer_id, peer_a.to_string());
+    assert_eq!(received.msg_id, None);
+}
+
 /// A direct message ack ("ok" response with `ack_for` set) should surface as
 /// a `Receipt` event on the sender's side.
 #[tokio::test]

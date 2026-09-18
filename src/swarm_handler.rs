@@ -188,6 +188,26 @@ async fn handle_request_response(
                             received_at: request.received_at,
                         })
                         .await;
+                } else if request.nickname.is_some() {
+                    // Nickname-only DM: the empty-content exchange we send on
+                    // connect (and that the peer echoes). Deliver it as an empty
+                    // `DirectMessage` so the receiving frontend records the
+                    // announced nickname (and touches the peer's last-seen)
+                    // without persisting a chat message.
+                    let _ = event_tx
+                        .send(SwarmEvent::DirectMessage(crate::MessageEvent {
+                            content: String::new(),
+                            peer_id: peer_id_str,
+                            latency: Some(crate::format_latency(
+                                request.sent_at,
+                                SystemTime::now(),
+                            )),
+                            nickname: request.nickname,
+                            msg_id: None,
+                        }))
+                        .await;
+                } else {
+                    p2plog_debug("Dropped empty DM with no ack_for or nickname".to_string());
                 }
             } else {
                 let msg_id = request.msg_id.clone();

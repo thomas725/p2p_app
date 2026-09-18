@@ -32,7 +32,7 @@ struct MobileNode {
     event_rx: Option<mpsc::Receiver<SwarmEvent>>,
     cmd_tx: Option<mpsc::Sender<SwarmCommand>>,
     peer_id: String,
-    _runtime: tokio::runtime::Runtime,
+    runtime: Option<tokio::runtime::Runtime>,
 }
 
 /// Start the p2p node with an explicit DB path.
@@ -138,7 +138,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         event_rx: Some(event_rx),
         cmd_tx: Some(cmd_tx),
         peer_id: peer_id.clone(),
-        _runtime: runtime,
+        runtime: Some(runtime),
     };
 
     // NODE is an OnceLock, so it can only be initialized once. On the first
@@ -167,6 +167,18 @@ pub fn stop_node() -> Result<(), String> {
         let mut node = lock_node_mutex(m);
         node.cmd_tx.take();
         node.event_rx.take();
+        // The swarm-handler task (and the swarm itself) lives on our runtime.
+        // Shut it down so the old swarm stops listening and no longer keeps
+        // routing/responding to traffic while the node is stopped; a fresh
+        // runtime is created on the next start.
+        if let Some(rt) = node.runtime.take() {
+            rt.shutdown_background();
+        }
+        // Drop the connected-peer snapshot so a later restart doesn't attribute
+        // broadcast sends to peers that only connected to the previous session.
+        if let Ok(mut set) = CONNECTED_PEERS.lock() {
+            *set = crate::connected::ConnectedTracker::new();
+        }
         p2plog_debug("Mobile node stopped".to_string());
     }
     // Release DB lock so subsequent starts can acquire the same database
@@ -436,20 +448,27 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
         .map_err(|e| e.to_string())?;
 
     // Send via swarm
+    let mut queued = false;
     if let Some(m) = NODE.get() {
         let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::Publish {
-                content,
-                nickname,
-                msg_id: Some(msg_id.clone()),
-            });
+            queued = tx
+                .blocking_send(SwarmCommand::Publish {
+                    content,
+                    nickname,
+                    msg_id: Some(msg_id.clone()),
+                })
+                .is_ok();
         }
     }
 
     let chat = message_to_chat(msg);
-    // Mark sent in DB (best-effort)
-    let _ = mark_message_sent(chat.id);
+    // Only claim transmission if the swarm actually accepted the command; a
+    // stopped node (closed channel) leaves the message unsent instead of
+    // showing a false "sent" checkmark.
+    if queued {
+        let _ = mark_message_sent(chat.id);
+    }
 
     // Attribute this broadcast to every peer that was online to receive it.
     let connected: Vec<String> = CONNECTED_PEERS
@@ -480,21 +499,26 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
         .map_err(|e| e.to_string())?;
 
     // Send via swarm
+    let mut queued = false;
     if let Some(m) = NODE.get() {
         let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::SendDm {
-                peer_id,
-                content,
-                nickname,
-                msg_id: Some(msg_id),
-                ack_for: None,
-            });
+            queued = tx
+                .blocking_send(SwarmCommand::SendDm {
+                    peer_id,
+                    content,
+                    nickname,
+                    msg_id: Some(msg_id),
+                    ack_for: None,
+                })
+                .is_ok();
         }
     }
 
     let chat = message_to_chat(msg);
-    let _ = mark_message_sent(chat.id);
+    if queued {
+        let _ = mark_message_sent(chat.id);
+    }
     Ok(chat)
 }
 
@@ -620,6 +644,17 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
         .map_err(|e| e.to_string())?
         .to_string();
     let _ = crate::groups::record_group_member(&group_id, &local_peer_id);
+    // The swarm only receives traffic for subscribed topics, so (like
+    // `create_group`) re-subscribe now or the accepted group stays silent
+    // until the next restart re-joins saved groups.
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::SubscribeGroup {
+                group_id: group_id.clone(),
+            });
+        }
+    }
     let member_count = crate::groups::get_group_member_count(&group_id)
         .unwrap_or_default()
         .max(0);
