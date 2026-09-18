@@ -59,16 +59,49 @@ fn handle_scroll_key_for_section(
     *auto_scroll = new_auto;
 }
 
-/// Number of visible message lines in one pane of a DM tab.
+/// Line counts per rendered `List` item for string messages.
+fn string_line_counts<'a>(messages: impl Iterator<Item = &'a String>) -> Vec<usize> {
+    messages.map(|m| p2p_app::list_item_lines(m)).collect()
+}
+
+/// Line counts per rendered `List` item for broadcast messages.
+fn display_line_counts<'a>(messages: impl Iterator<Item = &'a DisplayMessage>) -> Vec<usize> {
+    messages
+        .map(|m| p2p_app::list_item_lines(&m.text))
+        .collect()
+}
+
+/// Number of visible message lines in the DM (bottom) pane of a DM tab.
 ///
 /// The DM tab splits the message area (an `f.area().height - 8` chunk, i.e.
-/// `chat_area_height + 2`) into two equal halves, each wrapped in its own
-/// 2-line block border. `chat_area_height` is the *inner* height of the
-/// broadcast chat's message block, so a DM pane is half of
-/// `chat_area_height + 2` minus its two borders.
+/// `chat_area_height + 2`) into two halves, each wrapped in its own 2-line
+/// block border. With ratatui's default `Flex::Start`, an odd split gives the
+/// extra row to the *top* pane, so the bottom pane is exactly
+/// `floor((chat_area_height + 2) / 2)` rows.
 fn dm_pane_visible_lines(state: &AppState) -> usize {
     let pane_height = state.chat_area_height.saturating_add(2).saturating_div(2);
     pane_height.saturating_sub(2).max(1)
+}
+
+/// Number of visible message lines in the broadcast (top) pane of a DM tab.
+///
+/// Mirror of [`dm_pane_visible_lines`]: the top pane receives the odd row, so
+/// it is `ceil((chat_area_height + 2) / 2)` rows.
+fn broadcast_pane_visible_lines(state: &AppState) -> usize {
+    let pane_height = state.chat_area_height.saturating_add(3).saturating_div(2);
+    pane_height.saturating_sub(2).max(1)
+}
+
+/// First global row of the DM (bottom) pane, used to route hovered scroll input.
+///
+/// The top pane starts at row 1 and is `ceil((chat_area_height + 2) / 2)` rows
+/// tall, so the bottom pane begins on the following row.
+const fn dm_pane_first_row(state: &AppState) -> usize {
+    state
+        .chat_area_height
+        .saturating_add(3)
+        .saturating_div(2)
+        .saturating_add(1)
 }
 
 /// Handle scroll key for broadcast section of DM tab
@@ -87,30 +120,34 @@ fn scroll_broadcast_section(
     if broadcast_messages.is_empty() {
         return;
     }
-    let visible_count = dm_pane_visible_lines(state);
+    let line_counts = display_line_counts(broadcast_messages.iter());
+    let max_offset =
+        p2p_app::max_list_scroll_offset(&line_counts, broadcast_pane_visible_lines(state));
 
     if let Some((scroll_offset, auto_scroll)) = state.dm_broadcast_scroll_state.get_mut(peer_id) {
-        let max_offset = broadcast_messages.len().saturating_sub(visible_count);
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
 }
 
 /// Handle scroll key for DM section of DM tab
 fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, peer_id: &str) {
-    if let Some(msgs) = state.dm_messages.get(peer_id)
-        && !msgs.is_empty()
-    {
-        let visible_count = dm_pane_visible_lines(state);
-        let max_offset = msgs.len().saturating_sub(visible_count);
-        if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
-            handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
-        }
+    let Some(msgs) = state.dm_messages.get(peer_id) else {
+        return;
+    };
+    if msgs.is_empty() {
+        return;
+    }
+    let line_counts = string_line_counts(msgs.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state));
+    if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
+        handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
 }
 
 /// Handle scroll key for Chat tab (broadcast)
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let max_offset = state.messages.len().saturating_sub(1);
+    let line_counts = display_line_counts(state.messages.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
     let was_auto_scroll = state.chat_auto_scroll;
     handle_scroll_key_for_section(
         key_code,
@@ -125,8 +162,9 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 
 /// Handle scroll key for Log tab
 fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let log_len = get_tui_logs().len();
-    let max_offset = log_len.saturating_sub(1);
+    let logs = get_tui_logs();
+    let line_counts = string_line_counts(logs.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
     handle_scroll_key_for_section(
         key_code,
         &mut state.log_scroll_offset,
@@ -142,6 +180,15 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 /// in-block hint row, 2 for the block borders, and 1 for the header row.
 fn expected_peer_page_size(state: &AppState) -> usize {
     state.chat_area_height.saturating_sub(2).max(1)
+}
+
+/// Number of data rows that fit the Groups list viewport.
+///
+/// The list needs the content chunk (`chat_area_height + 2`) minus the two
+/// block borders and the hint row, i.e. `chat_area_height - 1`. Using the peer
+/// page size here made `PageDown` step one row short.
+fn expected_group_page_size(state: &AppState) -> usize {
+    state.chat_area_height.saturating_sub(1).max(1)
 }
 
 #[allow(clippy::missing_const_for_fn)]
@@ -178,7 +225,7 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 /// Move the Groups list selection; the list uses the same visible-window math
 /// as the Peers table.
 fn scroll_groups_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
-    let page_size = expected_peer_page_size(state);
+    let page_size = expected_group_page_size(state);
     state.group_selection = compute_new_peer_selection(
         key_code,
         state.group_selection,
@@ -196,10 +243,12 @@ fn scroll_group_chat_tab(
     let Some(msgs) = state.group_messages.get(group_id) else {
         return;
     };
-    if !msgs.is_empty()
-        && let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id)
-    {
-        let max_offset = msgs.len().saturating_sub(1);
+    if msgs.is_empty() {
+        return;
+    }
+    let line_counts = string_line_counts(msgs.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
+    if let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) {
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
     }
 }
@@ -218,7 +267,7 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
             scroll_group_chat_tab(key_code, state, group_id);
         }
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(1);
+            let mid_row = dm_pane_first_row(state);
             let mouse_row = usize::from(state.last_mouse_row);
             if mouse_row < mid_row {
                 scroll_broadcast_section(key_code, state, peer_id);
@@ -238,60 +287,71 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
 
 fn apply_mouse_scroll(
     scroll_offset: &mut usize,
-    auto_scroll: bool,
+    auto_scroll: &mut bool,
     scroll_dir: &str,
     max_offset: usize,
-) -> Option<usize> {
-    if auto_scroll {
-        return None;
+) -> bool {
+    // Nothing can scroll: don't flip auto-scroll or request a redraw.
+    if max_offset == 0 {
+        return false;
     }
-    let before = *scroll_offset;
+    let before_offset = *scroll_offset;
+    let before_auto = *auto_scroll;
     match scroll_dir {
-        "up" => *scroll_offset = scroll_offset.saturating_sub(WHEEL_SCROLL_LINES),
+        // Wheel up leaves auto-scroll anchored at the current bottom, then
+        // steps up; wheel down steps toward the bottom and re-engages
+        // auto-scroll once the newest item is reached. This mirrors the
+        // keyboard handlers so the wheel can always return to auto-scroll.
+        "up" => {
+            p2p_app::disable_auto_scroll_to_max(auto_scroll, scroll_offset, max_offset);
+            p2p_app::scroll_up_lines(scroll_offset, WHEEL_SCROLL_LINES);
+        }
         "down" => {
-            *scroll_offset = (*scroll_offset)
-                .saturating_add(WHEEL_SCROLL_LINES)
-                .min(max_offset);
+            p2p_app::scroll_down_lines(scroll_offset, auto_scroll, WHEEL_SCROLL_LINES, max_offset);
         }
         _ => {}
     }
-    Some(before)
+    *scroll_offset != before_offset || *auto_scroll != before_auto
 }
 
 /// Handle mouse wheel for Chat tab (broadcast)
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    let max_offset = state.messages.len().saturating_sub(1);
-    apply_mouse_scroll(
+    let line_counts = display_line_counts(state.messages.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
+    let was_auto_scroll = state.chat_auto_scroll;
+    let changed = apply_mouse_scroll(
         &mut state.chat_scroll_offset,
-        state.chat_auto_scroll,
+        &mut state.chat_auto_scroll,
         scroll_dir,
         max_offset,
-    )
-    .is_some_and(|before| state.chat_scroll_offset != before)
+    );
+    if state.chat_auto_scroll && !was_auto_scroll {
+        state.chat_unread_count = 0;
+    }
+    changed
 }
 
 /// Handle mouse wheel for Log tab
 fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) -> bool {
-    let max_offset = get_tui_logs().len().saturating_sub(1);
+    let logs = get_tui_logs();
+    let line_counts = string_line_counts(logs.iter());
+    let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
     apply_mouse_scroll(
         &mut state.log_scroll_offset,
-        state.log_auto_scroll,
+        &mut state.log_auto_scroll,
         scroll_dir,
         max_offset,
     )
-    .is_some_and(|before| state.log_scroll_offset != before)
 }
 
 /// Handle mouse wheel for a DM section (broadcast or DM side)
 fn mouse_scroll_dm_section(
     scroll_offset: &mut usize,
-    auto_scroll: bool,
-    len: usize,
+    auto_scroll: &mut bool,
     scroll_dir: &str,
+    max_offset: usize,
 ) -> bool {
-    let max_offset = len.saturating_sub(1);
     apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
-        .is_some_and(|before| *scroll_offset != before)
 }
 
 /// Handles mouse wheel scrolling with hover-based section targeting for split DM tabs
@@ -300,39 +360,49 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
 
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(pid) => {
-            let mid_row = state.chat_area_height.saturating_div(2).saturating_add(1);
+            let mid_row = dm_pane_first_row(state);
             let mouse_row = usize::from(state.last_mouse_row);
             let pid = peer_id.unwrap_or(pid);
             if mouse_row < mid_row {
-                let msg_count = state
+                let broadcast_messages: Vec<DisplayMessage> = state
                     .messages
                     .iter()
                     .filter(|dm| dm.sender_peer_id.as_ref().is_some_and(|id| id == pid))
-                    .count();
+                    .cloned()
+                    .collect();
+                let line_counts = display_line_counts(broadcast_messages.iter());
+                let max_offset = p2p_app::max_list_scroll_offset(
+                    &line_counts,
+                    broadcast_pane_visible_lines(state),
+                );
                 if let Some((scroll_offset, auto_scroll)) =
                     state.dm_broadcast_scroll_state.get_mut(pid)
                 {
-                    mouse_scroll_dm_section(scroll_offset, *auto_scroll, msg_count, scroll_dir)
+                    mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset)
                 } else {
                     false
                 }
-            } else if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(pid)
-                && let Some(msgs) = state.dm_messages.get(pid)
-            {
-                mouse_scroll_dm_section(scroll_offset, *auto_scroll, msgs.len(), scroll_dir)
             } else {
-                false
+                let max_offset = state.dm_messages.get(pid).map_or(0, |msgs| {
+                    let line_counts = string_line_counts(msgs.iter());
+                    p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state))
+                });
+                if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(pid) {
+                    mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset)
+                } else {
+                    false
+                }
             }
         }
         p2p_app::tui_tabs::TabContent::Log => mouse_scroll_log_tab(state, scroll_dir),
         p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
-            if let Some(msgs) = state.group_messages.get(group_id)
-                && let Some((scroll_offset, auto_scroll)) =
-                    state.group_scroll_state.get_mut(group_id)
-            {
-                let max_offset = msgs.len().saturating_sub(1);
-                apply_mouse_scroll(scroll_offset, *auto_scroll, scroll_dir, max_offset)
-                    .is_some_and(|before| *scroll_offset != before)
+            let Some(msgs) = state.group_messages.get(group_id) else {
+                return false;
+            };
+            let line_counts = string_line_counts(msgs.iter());
+            let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
+            if let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) {
+                apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
             } else {
                 false
             }

@@ -3,26 +3,41 @@ use super::state::MAX_DM_HISTORY;
 use p2p_app::p2plog_debug;
 use std::collections::{HashMap, VecDeque};
 
-/// Handles tab bar clicks and close button
+/// Handles tab bar clicks and close button.
+///
+/// Mirrors how ratatui's `Tabs` widget lays a bar out: every tab renders as
+/// `" " + title + " "`, and a `"|"` divider is drawn *between* tabs only. The
+/// close button `[X]` occupies the last three display columns of a removable
+/// title. Widths are measured in terminal columns (not UTF-8 bytes) so wide
+/// glyphs in a title don't shift the hitboxes.
 fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[String]) -> bool {
+    use unicode_width::UnicodeWidthStr;
+
+    let click_col = usize::from(mouse_column);
     let mut col_pos: usize = 0;
     for (idx, title) in tab_titles.iter().enumerate() {
-        let tab_width = title.len().saturating_add(3);
-        let tab_end = col_pos.saturating_add(tab_width);
-        if usize::from(mouse_column) >= col_pos && usize::from(mouse_column) < tab_end {
-            let close_start = tab_end.saturating_sub(4);
-            if usize::from(mouse_column) >= close_start && title.contains("[X]") {
+        // " " + title + " "; the divider column after it is owned by neither tab.
+        let title_end = col_pos
+            .saturating_add(1)
+            .saturating_add(title.as_str().width());
+        let tab_end = title_end.saturating_add(1);
+        if click_col >= col_pos && click_col < tab_end {
+            let close_start = title_end.saturating_sub(3);
+            if title.contains("[X]") && click_col >= close_start && click_col < title_end {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
                 if let Some(closed_idx) = state.dynamic_tabs.remove_tab(&tab_content) {
-                    state.active_tab = if closed_idx > 0 {
-                        closed_idx.saturating_sub(1)
-                    } else {
-                        0
-                    };
+                    // Keep focus put unless it pointed at (or after) the tab
+                    // that just closed, in which case shift it down by one.
+                    if state.active_tab == closed_idx {
+                        state.active_tab = closed_idx.saturating_sub(1);
+                    } else if state.active_tab > closed_idx {
+                        state.active_tab = state.active_tab.saturating_sub(1);
+                    }
                     p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
                 }
                 return true;
-            } else if idx != state.active_tab {
+            }
+            if idx != state.active_tab {
                 state.active_tab = idx;
                 state.chat_scroll_offset = 0;
                 state.cancel_nickname_edit();
@@ -32,9 +47,9 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
                 ));
                 return true;
             }
-            break;
+            return false;
         }
-        col_pos = tab_end;
+        col_pos = tab_end.saturating_add(1);
     }
     false
 }
@@ -350,7 +365,15 @@ pub fn handle_mouse_left_click(
     }
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let is_groups_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups);
-    let max_row = state.chat_area_height.saturating_add(1);
+    // The peers table and groups list reserve the bottom row of the content
+    // chunk for a hint, so their block's bottom border sits one row higher than
+    // the full-height message panes'. Clicks on that border must not land on a
+    // phantom trailing row.
+    let max_row = if is_peers_tab || is_groups_tab {
+        state.chat_area_height
+    } else {
+        state.chat_area_height.saturating_add(1)
+    };
     let clickable = is_peers_tab
         || is_groups_tab
         || matches!(

@@ -119,10 +119,11 @@ pub use mobile_api::{
 };
 pub use network::{NetworkSize, get_network_size};
 pub use nickname::{
-    ensure_self_nickname, generate_self_nickname, get_peer_display_name, get_peer_local_nickname,
-    get_peer_name_history, get_peer_received_nickname, get_peer_self_nickname_for_peer,
-    get_self_nickname, record_peer_received_name_change, set_peer_local_nickname,
-    set_peer_received_nickname, set_peer_self_nickname_for_peer, set_self_nickname,
+    ensure_self_nickname, generate_self_nickname, get_peer_display_name,
+    get_peer_display_name_or_short, get_peer_local_nickname, get_peer_name_history,
+    get_peer_received_nickname, get_peer_self_nickname_for_peer, get_self_nickname,
+    record_peer_received_name_change, set_peer_local_nickname, set_peer_received_nickname,
+    set_peer_self_nickname_for_peer, set_self_nickname,
 };
 pub use peers::{
     get_average_peer_count, load_known_peers, load_listen_ports, load_peers, save_listen_ports,
@@ -140,7 +141,8 @@ pub use tui_render::{render_chat_content, render_frame, render_tab_content, rend
 #[cfg(feature = "tui")]
 pub use tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, calc_visible_strings,
-    count_lines, dm_receipt_prefix, get_tab_content, list_item_lines, row_to_visible_index,
+    count_lines, dm_receipt_prefix, get_tab_content, list_item_lines, max_list_scroll_offset,
+    row_to_visible_index,
 };
 #[cfg(feature = "tui")]
 pub use tui_tabs::{DmTab, DynamicTabs, TabContent};

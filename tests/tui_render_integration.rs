@@ -851,14 +851,6 @@ fn test_state_peer_selection() {
 }
 
 #[test]
-fn test_state_broadcast_selection() {
-    let mut state = p2p_app::tui_render_state::TuiRenderState::new();
-    assert!(state.broadcast_selection.is_none());
-    state.broadcast_selection = Some(1);
-    assert_eq!(state.broadcast_selection, Some(1));
-}
-
-#[test]
 fn test_state_with_sample_data_extra() {
     let state = p2p_app::tui_render_state::TuiRenderState::with_sample_data();
     assert_eq!(state.tab_titles.len(), 4);

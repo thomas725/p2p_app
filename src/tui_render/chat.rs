@@ -1,6 +1,5 @@
 //! Broadcast-chat and direct-message pane rendering.
 
-use crate::fmt::short_peer_id;
 use crate::tui_render::bordered_block;
 use crate::tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, dm_receipt_prefix,
@@ -31,18 +30,12 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
         .take(visible)
         .map(|(visible_idx, msg)| {
             let global_idx = effective_offset.saturating_add(visible_idx);
-            let is_selected = state.broadcast_selection == Some(global_idx);
             let msg_id = state
                 .message_ids
                 .get(global_idx)
                 .and_then(|id| id.as_deref());
             let prefix = broadcast_receipt_prefix(msg_id, &state.broadcast_receipts);
-            let display = format!("{prefix}{msg}");
-            if is_selected {
-                ListItem::new(display).style(Style::default().bg(Color::DarkGray))
-            } else {
-                ListItem::new(display)
-            }
+            ListItem::new(format!("{prefix}{msg}"))
         })
         .collect();
 
@@ -95,7 +88,7 @@ pub fn render_dm_content(
     let broadcast_usable_height = usize::from(broadcast_area.height.saturating_sub(2));
     let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
 
-    let short_id = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
+    let short_id = crate::get_peer_display_name_or_short(peer_id);
 
     let broadcast_messages: VecDeque<String> = state
         .messages

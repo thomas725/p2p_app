@@ -110,8 +110,6 @@ pub struct AppState {
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
     // Per-DM broadcast scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_broadcast_scroll_state: HashMap<String, (usize, bool)>,
-    // Selected broadcast message in broadcast chat tab
-    pub broadcast_selection: Option<usize>,
 
     // Runtime Context
     pub own_nickname: String,
@@ -235,7 +233,6 @@ impl AppState {
             log_auto_scroll: true,
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
-            broadcast_selection: None,
             own_nickname,
             local_peer_id,
             local_nicknames,

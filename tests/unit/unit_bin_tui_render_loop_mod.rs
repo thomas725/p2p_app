@@ -184,13 +184,11 @@ fn test_app_state_to_render_state_scroll_and_selection() {
     let mut state = app_state();
     state.chat_scroll_offset = 10;
     state.chat_auto_scroll = false;
-    state.broadcast_selection = Some(3);
     state.mouse_capture = false;
 
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.chat_scroll_offset, 10);
     assert!(!rs.chat_auto_scroll);
-    assert_eq!(rs.broadcast_selection, Some(3));
     assert!(!rs.mouse_capture);
 }
 

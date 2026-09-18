@@ -121,7 +121,6 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         group_scroll_state,
         group_selection: state.group_selection,
         creating_group: state.creating_group,
-        broadcast_selection: state.broadcast_selection,
         peer_selection: state.peer_selection,
         peer_sort_column: state.peer_sort_column,
         peer_sort_ascending: state.peer_sort_ascending,

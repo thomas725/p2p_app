@@ -204,7 +204,6 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled group create/join".to_string());
     } else {
         s.active_tab = 0;
-        s.broadcast_selection = None;
         s.chat_scroll_offset = 0;
         s.chat_auto_scroll = true;
         s.chat_unread_count = 0;
@@ -214,8 +213,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     let _ = render_tx.send(RenderEvent).await;
 }
 
-/// Opens the Peer Info tab for the selected peer (Peers tab), DM partner,
-/// or the sender of the selected chat/log message.
+/// Opens the Peer Info tab for the selected peer (Peers tab) or the active
+/// DM partner (Direct tab).
 fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let peer = match &tab_content {
@@ -224,10 +223,6 @@ fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
             .get(state.peer_selection)
             .map(|p| p.peer_id.clone()),
         p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
-        p2p_app::tui_tabs::TabContent::Chat | p2p_app::tui_tabs::TabContent::Log => state
-            .broadcast_selection
-            .and_then(|idx| state.messages.get(idx))
-            .and_then(|m| m.sender_peer_id.clone()),
         _ => None,
     };
     if let Some(peer_id) = peer {

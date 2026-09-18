@@ -140,6 +140,25 @@ fn test_scroll_peers_empty_list() {
     assert_eq!(state.peer_selection, 0);
 }
 
+// ── expected_group_page_size ───────────────────────────────────────────────
+
+#[test]
+fn test_group_page_size_is_one_larger_than_peer_page() {
+    let mut state = test_app_state();
+    state.chat_area_height = 12;
+    // Peers reserve a hint row inside the block; the Groups list does not, so a
+    // full-page step must cover the extra row.
+    assert_eq!(expected_peer_page_size(&state), 10);
+    assert_eq!(expected_group_page_size(&state), 11);
+}
+
+#[test]
+fn test_group_page_size_never_zero() {
+    let mut state = test_app_state();
+    state.chat_area_height = 0;
+    assert_eq!(expected_group_page_size(&state), 1);
+}
+
 // ── compute_new_peer_selection ─────────────────────────────────────────────
 
 #[test]
@@ -309,17 +328,20 @@ async fn test_log_scroll_all() {
     scroll_log_tab(KeyCode::Up, &mut state);
     assert_eq!(state.log_scroll_offset, 0);
 
-    // mouse_scroll_log: auto_scroll blocks, then manual down
+    // Wheel up from auto-scroll disables auto-scroll (the exact offset depends
+    // on the global log length); wheel down from a manual position steps by
+    // WHEEL_SCROLL_LINES.
     let mut state2 = test_app_state();
     p2p_app::push_log("log".to_string());
     state2.log_auto_scroll = true;
     mouse_scroll_log_tab(&mut state2, "up");
-    assert_eq!(state2.log_scroll_offset, 0);
+    assert!(!state2.log_auto_scroll);
 
     for i in 0..10 {
         p2p_app::push_log(format!("log {i}"));
     }
     state2.log_auto_scroll = false;
+    state2.log_scroll_offset = 0;
     mouse_scroll_log_tab(&mut state2, "down");
     assert_eq!(state2.log_scroll_offset, 3);
 
@@ -353,11 +375,26 @@ fn test_mouse_scroll_chat_up_disables_auto_scroll() {
 }
 
 #[test]
-fn test_mouse_scroll_chat_auto_scroll_blocks() {
+fn test_mouse_scroll_chat_up_from_auto_anchors_at_bottom() {
+    // Wheel up while auto-scrolled anchors at the bottom (max offset 9 for a
+    // zero-height, single-line list) and then steps up by WHEEL_SCROLL_LINES.
     let mut state = app_state_with_chat_messages(10);
     state.chat_auto_scroll = true;
     mouse_scroll_chat_tab(&mut state, "up");
-    assert_eq!(state.chat_scroll_offset, 0);
+    assert!(!state.chat_auto_scroll);
+    assert_eq!(state.chat_scroll_offset, 6);
+}
+
+#[test]
+fn test_mouse_scroll_chat_down_to_bottom_reenables_auto_and_clears_unread() {
+    let mut state = app_state_with_chat_messages(10);
+    state.chat_auto_scroll = false;
+    state.chat_scroll_offset = 8;
+    state.chat_unread_count = 4;
+    mouse_scroll_chat_tab(&mut state, "down");
+    assert!(state.chat_auto_scroll);
+    assert_eq!(state.chat_scroll_offset, 9);
+    assert_eq!(state.chat_unread_count, 0);
 }
 
 #[test]
@@ -470,28 +507,44 @@ fn test_scroll_dm_section_noop_when_no_state() {
 #[test]
 fn test_mouse_scroll_dm_section_scrolls_up() {
     let mut offset = 5usize;
-    mouse_scroll_dm_section(&mut offset, false, 100, "up");
+    let mut auto = false;
+    mouse_scroll_dm_section(&mut offset, &mut auto, "up", 100);
     assert_eq!(offset, 2);
+    assert!(!auto);
 }
 
 #[test]
-fn test_mouse_scroll_dm_section_auto_scroll_blocks() {
+fn test_mouse_scroll_dm_section_up_disables_auto_scroll() {
+    // Wheel up while auto-scrolled anchors at the bottom, then steps up.
     let mut offset = 5usize;
-    mouse_scroll_dm_section(&mut offset, true, 100, "up");
-    assert_eq!(offset, 5);
+    let mut auto = true;
+    mouse_scroll_dm_section(&mut offset, &mut auto, "up", 100);
+    assert!(!auto);
+    assert_eq!(offset, 97);
+}
+
+#[test]
+fn test_mouse_scroll_dm_section_down_to_bottom_reenables_auto_scroll() {
+    let mut offset = 98usize;
+    let mut auto = false;
+    mouse_scroll_dm_section(&mut offset, &mut auto, "down", 100);
+    assert!(auto);
+    assert_eq!(offset, 100);
 }
 
 #[test]
 fn test_mouse_scroll_dm_section_clamps_at_zero() {
     let mut offset = 1usize;
-    mouse_scroll_dm_section(&mut offset, false, 100, "up");
+    let mut auto = false;
+    mouse_scroll_dm_section(&mut offset, &mut auto, "up", 100);
     assert_eq!(offset, 0);
 }
 
 #[test]
 fn test_mouse_scroll_dm_section_empty_list() {
     let mut offset = 0usize;
-    mouse_scroll_dm_section(&mut offset, false, 0, "up");
+    let mut auto = false;
+    mouse_scroll_dm_section(&mut offset, &mut auto, "up", 0);
     assert_eq!(offset, 0);
 }
 
@@ -568,16 +621,18 @@ fn test_handle_mouse_scroll_dm_tab_broadcast_section() {
         .dm_broadcast_scroll_state
         .insert("peer-dm-scroll".to_string(), (0, false));
     state.active_tab = state.dynamic_tabs.add_dm_tab("peer-dm-scroll".to_string());
-    state.chat_area_height = 20; // mid_row = 11
-    state.last_mouse_row = 5; // above mid_row -> broadcast section
+    state.chat_area_height = 20; // DM pane starts at row 12
+    state.last_mouse_row = 5; // above the split -> broadcast section
 
     handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll"));
 
+    // The 11-row top pane shows 9 messages, so a 10-message list can only
+    // scroll one row before bottom-aligning.
     let (offset, _) = state
         .dm_broadcast_scroll_state
         .get("peer-dm-scroll")
         .unwrap();
-    assert_eq!(*offset, 3);
+    assert_eq!(*offset, 1);
 }
 
 #[test]
@@ -590,11 +645,13 @@ fn test_handle_mouse_scroll_dm_tab_dm_section() {
     state.active_tab = state
         .dynamic_tabs
         .add_dm_tab("peer-dm-scroll-2".to_string());
-    state.chat_area_height = 20; // mid_row = 11
-    state.last_mouse_row = 15; // below mid_row -> DM section
+    state.chat_area_height = 20; // DM pane starts at row 12
+    state.last_mouse_row = 15; // below the split -> DM section
 
     handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll-2"));
 
+    // The 11-row bottom pane shows 9 messages, so the 10-message list clamps at
+    // offset 1 (bottom-aligned) rather than stepping a full wheel page.
     let (offset, _) = state.dm_scroll_state.get("peer-dm-scroll-2").unwrap();
-    assert_eq!(*offset, 3);
+    assert_eq!(*offset, 1);
 }

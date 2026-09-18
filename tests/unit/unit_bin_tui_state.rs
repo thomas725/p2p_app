@@ -204,7 +204,6 @@ fn test_app_state_new_defaults() {
     assert_eq!(state.own_nickname, "TestUser");
     assert!(!state.editing_nickname);
     assert_eq!(state.popup, None);
-    assert_eq!(state.broadcast_selection, None);
 }
 
 // ── load_and_format_messages ───────────────────────────────────────────

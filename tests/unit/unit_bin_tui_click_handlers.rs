@@ -11,7 +11,8 @@
 #![allow(
     clippy::used_underscore_binding,
     clippy::cast_possible_truncation,
-    clippy::as_conversions
+    clippy::as_conversions,
+    clippy::arithmetic_side_effects
 )]
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
@@ -20,14 +21,29 @@ use tempfile::TempDir;
 
 // ── handle_tab_click ──────────────────────────────────────────────────
 
+/// Mirrors `handle_tab_click`'s ratatui layout: every tab is `" "+title+" "`,
+/// with a one-column `"|"` divider between tabs that belongs to neither.
+/// Returns `(tab_start, title_end, tab_end)` in display columns. The test titles
+/// are all ASCII, so byte length equals display width here.
+fn tab_span(titles: &[String], idx: usize) -> (usize, usize, usize) {
+    let mut col = 0;
+    for (i, title) in titles.iter().enumerate() {
+        let title_end = col + 1 + title.len();
+        let tab_end = title_end + 1;
+        if i == idx {
+            return (col, title_end, tab_end);
+        }
+        col = tab_end + 1;
+    }
+    (col, col, col)
+}
+
 #[test]
 fn test_tab_click_switches_tab() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
-    // titles[0] = "Chat", titles[1] = "Peers", titles[2] = "Log"
-    // tab_width = len + 3, so "Chat" is at cols 0..7, "Peers" at 7..15, etc.
-    let peers_tab_col = titles[0].len() + 3; // column just past the first tab
-    let handled = handle_tab_click(&mut state, peers_tab_col as u16, &titles);
+    let (_, title_end, _) = tab_span(&titles, 1); // "Peers"
+    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
     assert!(handled);
     assert_eq!(state.active_tab, 1);
 }
@@ -36,7 +52,19 @@ fn test_tab_click_switches_tab() {
 fn test_tab_click_same_tab_noop() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
-    let handled = handle_tab_click(&mut state, 0, &titles);
+    let (_, title_end, _) = tab_span(&titles, 0); // active tab "Chat"
+    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
+    assert!(!handled);
+    assert_eq!(state.active_tab, 0);
+}
+
+#[test]
+fn test_tab_click_divider_between_tabs_does_nothing() {
+    let mut state = test_app_state();
+    let titles = state.dynamic_tabs.all_titles();
+    let (_, _, chat_tab_end) = tab_span(&titles, 0);
+    // `chat_tab_end` is the `|` divider column drawn between Chat and Peers.
+    let handled = handle_tab_click(&mut state, chat_tab_end as u16, &titles);
     assert!(!handled);
     assert_eq!(state.active_tab, 0);
 }
@@ -54,15 +82,16 @@ fn test_tab_click_close_button_on_dm_tab() {
     // Use a short peer ID so short_id() doesn't truncate
     let mut state = app_state_with_dm_messages("p1", 3);
     let titles = state.dynamic_tabs.all_titles();
-    // DM tab title format: "p1 [X]" — total width = "p1 [X]".len() + 3 = 9
     let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
-    let col_pos: usize = titles.iter().take(dm_idx).map(|t| t.len() + 3).sum();
-    let tab_end = col_pos + titles[dm_idx].len() + 3;
-    let close_col = tab_end.saturating_sub(4);
+    let (_, title_end, _) = tab_span(&titles, dm_idx);
+    // The close button occupies the last three title columns: `[X]`.
+    let close_col = title_end - 1;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
     let handled = handle_tab_click(&mut state, close_col as u16, &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
+    // Closing a tab *after* the active one must not steal focus.
+    assert_eq!(state.active_tab, 0);
 }
 
 #[test]
@@ -71,13 +100,39 @@ fn test_tab_click_close_button_on_peer_info_tab() {
     state.dynamic_tabs.add_peer_info_tab("p1".to_string());
     let titles = state.dynamic_tabs.all_titles();
     let info_idx = titles.iter().position(|t| t.starts_with("Info:")).unwrap();
-    let col_pos: usize = titles.iter().take(info_idx).map(|t| t.len() + 3).sum();
-    let tab_end = col_pos + titles[info_idx].len() + 3;
-    let close_col = tab_end.saturating_sub(4);
+    let (_, title_end, _) = tab_span(&titles, info_idx);
+    let close_col = title_end - 1;
     let count_before = state.dynamic_tabs.peer_info_tab_count();
     let handled = handle_tab_click(&mut state, close_col as u16, &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.peer_info_tab_count(), count_before - 1);
+}
+
+#[test]
+fn test_tab_click_just_past_close_button_switches_instead() {
+    // The trailing space after `[X]` is inside the tab but outside the close
+    // hitbox, so it switches to the tab rather than closing it.
+    let mut state = app_state_with_dm_messages("p1", 3);
+    let titles = state.dynamic_tabs.all_titles();
+    let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
+    let (_, title_end, _) = tab_span(&titles, dm_idx);
+    let dm_count_before = state.dynamic_tabs.dm_tab_count();
+    let handled = handle_tab_click(&mut state, title_end as u16, &titles);
+    assert!(handled);
+    assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
+    assert_eq!(state.active_tab, dm_idx);
+}
+
+#[test]
+fn test_tab_click_close_active_tab_moves_focus_left() {
+    let mut state = app_state_with_dm_messages("p1", 3);
+    let titles = state.dynamic_tabs.all_titles();
+    let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
+    let (_, title_end, _) = tab_span(&titles, dm_idx);
+    state.active_tab = dm_idx;
+    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
+    assert!(handled);
+    assert_eq!(state.active_tab, dm_idx - 1);
 }
 
 // ── handle_peer_row_click ─────────────────────────────────────────────
@@ -237,6 +292,31 @@ fn test_mouse_left_click_below_max_row_is_noop() {
     state.chat_area_height = 20;
     handle_mouse_left_click(&mut state, 99, 0, false);
     assert_eq!(state.popup, None);
+}
+
+#[test]
+fn test_peers_bottom_border_click_does_not_open_phantom_row() {
+    let mut state = app_state_with_peers(3);
+    state.chat_area_height = 20;
+    let before = state.dynamic_tabs.dm_tab_count();
+    // Rows 21 and 22 are the peers block's bottom border / the content chunk's
+    // final row, not a peer data row.
+    for row in 21..=22 {
+        let handled = handle_mouse_left_click(&mut state, row, 0, true);
+        assert!(!handled, "row {row} should be a no-op");
+        assert_eq!(state.dynamic_tabs.dm_tab_count(), before);
+    }
+}
+
+#[test]
+fn test_groups_bottom_border_click_does_not_open_phantom_row() {
+    let mut state = test_app_state();
+    state.chat_area_height = 20;
+    state.active_tab = 2; // Groups (no group tabs in the fresh state)
+    for row in 21..=22 {
+        let handled = handle_mouse_left_click(&mut state, row, 0, false);
+        assert!(!handled, "row {row} should be a no-op");
+    }
 }
 
 #[test]

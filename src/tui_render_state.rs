@@ -82,8 +82,6 @@ pub struct TuiRenderState {
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Scroll state for DM+broadcast view per peer
     pub dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)>,
-    /// Index of selected broadcast message (for receipt popup)
-    pub broadcast_selection: Option<usize>,
     /// Index of selected peer in peer list
     pub peer_selection: usize,
     /// Active sort column for the peer list (0=Name,1=DM,2=Broadcast,3=Last Seen,4=First Seen)
@@ -168,7 +166,6 @@ impl TuiRenderState {
             log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
-            broadcast_selection: None,
             peer_selection: 0,
             peer_sort_column: 3,
             peer_sort_ascending: false,
@@ -312,6 +309,30 @@ const MIN_VISIBLE: usize = 1;
 #[must_use]
 pub fn list_item_lines(text: &str) -> usize {
     text.split('\n').count()
+}
+
+/// Maximum top-item index for a `List`-rendered pane.
+///
+/// Scrolling is bottom-aligned: the newest item can sit at most level with the
+/// bottom of the pane, so the offset never exceeds `len - visible`, where
+/// `visible` is how many leading items fit. A larger offset would only reveal
+/// empty space below the newest message and would stop auto-scroll from
+/// re-engaging when the user scrolls back down to the bottom.
+#[must_use]
+pub fn max_list_scroll_offset(line_counts: &[usize], usable_height: usize) -> usize {
+    if line_counts.is_empty() {
+        return 0;
+    }
+    let mut used: usize = 0;
+    let mut visible: usize = 0;
+    for &lines in line_counts {
+        if used > 0 && used.saturating_add(lines) > usable_height {
+            break;
+        }
+        used = used.saturating_add(lines);
+        visible = visible.saturating_add(1);
+    }
+    line_counts.len().saturating_sub(visible.max(MIN_VISIBLE))
 }
 
 /// Compute the visible window for `List`-rendered panes (chat, DM, log).

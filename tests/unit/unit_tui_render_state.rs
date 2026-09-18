@@ -329,3 +329,37 @@ fn test_row_to_visible_index_first_content_row_nonzero() {
     assert_eq!(row_to_visible_index(&line_counts, 3, 10), Some(1));
     assert_eq!(row_to_visible_index(&line_counts, 3, 11), None);
 }
+
+// ── max_list_scroll_offset ────────────────────────────────────────────────────
+
+#[test]
+fn test_max_list_scroll_offset_empty() {
+    assert_eq!(max_list_scroll_offset(&[], 5), 0);
+}
+
+#[test]
+fn test_max_list_scroll_offset_content_shorter_than_pane() {
+    assert_eq!(max_list_scroll_offset(&[1, 1, 1], 5), 0);
+}
+
+#[test]
+fn test_max_list_scroll_offset_content_exactly_fills_pane() {
+    assert_eq!(max_list_scroll_offset(&[2, 2, 1], 5), 0);
+}
+
+#[test]
+fn test_max_list_scroll_offset_content_exceeds_pane() {
+    // 10 one-line messages in a 9-line pane: bottom is one row down.
+    assert_eq!(max_list_scroll_offset(&[1; 10], 9), 1);
+    // The offset counts whole items, not display lines: two 3-line messages
+    // fill a 6-line pane, so the remaining two messages can be scrolled to.
+    assert_eq!(max_list_scroll_offset(&[3, 3, 3, 3], 6), 2);
+    // A message taller than the pane still counts as one visible item.
+    assert_eq!(max_list_scroll_offset(&[10, 1], 4), 1);
+}
+
+#[test]
+fn test_max_list_scroll_offset_zero_usable_height() {
+    // Even with no room, one item is always kept visible.
+    assert_eq!(max_list_scroll_offset(&[1, 1, 1, 1], 0), 3);
+}
