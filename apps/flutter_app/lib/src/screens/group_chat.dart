@@ -110,10 +110,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     }
   }
 
+  /// Serializes reloads: a concurrent [loadGroupMessages] run while one is
+  /// already in flight would recompute `added` against stale messages and
+  /// double-count unread (or lose messages) — an event burst can fire several
+  /// of these back-to-back.
+  bool _reloadInFlight = false;
+
   /// Reload history and reflect only the messages we did not already have, so
   /// live incoming messages accumulate without dropping our own optimistic
   /// copies.
   Future<void> _reloadForIncoming() async {
+    if (_reloadInFlight) return;
+    _reloadInFlight = true;
     try {
       final knownIds = {for (final m in _messages) m.id};
       final msgs = await loadGroupMessages(groupId: _groupId, limit: 200);
@@ -126,7 +134,9 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         if (added.isNotEmpty && !_atBottom) _unreadCount += added.length;
       });
       _scrollToBottom();
-    } catch (_) {}
+    } catch (_) {} finally {
+      _reloadInFlight = false;
+    }
   }
 
   void _scrollToBottom() {
@@ -208,9 +218,18 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   }
 
   void _handleGroupEvent(SwarmEventJson event) {
-    if (!mounted || event.eventType != 'group_message') return;
+    if (!mounted) return;
+    if (event.eventType != 'group_message') {
+      _previousSink?.call(event);
+      return;
+    }
     if (event.groupId == _groupId && event.content != null) {
       unawaited(_reloadForIncoming());
+    } else {
+      // A message for a different group (or a status-only event): let the
+      // view underneath refresh group summaries, which keeps member counts
+      // fresh while this screen is open.
+      _previousSink?.call(event);
     }
   }
 

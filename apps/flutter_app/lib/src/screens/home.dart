@@ -461,7 +461,6 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           await startNodeAuto();
         }
-        startEventPolling();
         setState(() {
           _serviceRunning = true;
           _connectedCount = 0;
@@ -473,9 +472,14 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _status = status);
         _syncStatus();
         _syncLiveStatus();
+        // Load history/peers BEFORE the poller forwards live events: a message
+        // that arrives while polling is already forwarding would otherwise be
+        // appended, then wiped out a moment later when this reload `clear()`s
+        // the list with a snapshot that predates the new insert.
         await _loadHistory();
         await _refreshPeers();
         await _refreshGroups();
+        startEventPolling();
       }
     } catch (e) {
       setState(() => _error = e.toString());

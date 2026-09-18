@@ -26,13 +26,19 @@ void Function(SwarmEventJson)? pushEventSink(
   return previous;
 }
 
-/// Poll `pollEvent()` every 200ms and forward non-null events to the sink.
+/// Poll `pollEvent()` every 200ms and forward all pending events to the sink.
+///
+/// A burst (e.g. many peers connecting at once) is drained to completion within
+/// one tick instead of stalling at one event per 200ms.
 void startEventPolling() {
   _pollTimer?.cancel();
   _pollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) async {
     try {
-      final event = await pollEvent();
-      if (event != null) _onEvent?.call(event);
+      for (var i = 0; i < 100; i++) {
+        final event = await pollEvent();
+        if (event == null) break;
+        _onEvent?.call(event);
+      }
     } catch (_) {}
   });
 }

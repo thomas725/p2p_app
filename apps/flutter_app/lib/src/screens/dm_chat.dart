@@ -176,8 +176,16 @@ class _DmChatScreenState extends State<DmChatScreen> {
   }
 
   void _handleDmEvent(SwarmEventJson event) {
-    if (!mounted || event.eventType != 'dm') return;
-    if (event.peerId == _peerId && event.content != null) {
+    if (!mounted) return;
+    final isOwnDm = event.eventType == 'dm' && event.peerId == _peerId;
+    if (!isOwnDm) {
+      // Not this peer's DM (or another event type): pass it to the sink we
+      // replaced so the view underneath keeps persisting/processing it. DMs
+      // from any other peer would otherwise be dropped forever.
+      _previousSink?.call(event);
+      return;
+    }
+    if (event.content != null) {
       unawaited(_persistIncomingDm(event));
     }
   }
