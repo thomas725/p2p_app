@@ -162,8 +162,8 @@ This document captures user stories and acceptance criteria for the P2P Chat app
 
 ### Platform Features
 
-- [ ] **US-040**: Web interface via Dioxus
-- [ ] **US-041**: Mobile app via Dioxus
+- [ ] **US-040**: Web interface (Dioxus frontend was removed on 2026-09-03; no web target is planned)
+- [x] **US-041**: Mobile app via Flutter + flutter_rust_bridge (Android foreground service; see `docs/2026-08-17_android_development_plan.md`)
 - [ ] **US-042**: End-to-end encryption for DMs
 - [ ] **US-043**: File transfer between peers
 - [ ] **US-044**: Voice/video calls

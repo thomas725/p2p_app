@@ -136,12 +136,22 @@ def run_tarpaulin(force: bool = False) -> CoverageData:
 def get_file_purpose(filepath: str) -> str:
     if 'render_loop/mod.rs' in filepath:
         return 'Render loop orchestration (60 FPS)'
-    if 'render_loop/visibility.rs' in filepath:
-        return 'Message visibility calculations'
     if 'render_loop/layout.rs' in filepath:
         return 'UI layout component rendering'
-    if 'render_loop/tab_renderers.rs' in filepath:
-        return 'Tab-specific renderers'
+    if 'tui_render/mod.rs' in filepath:
+        return 'TUI render chrome & dispatch'
+    if 'tui_render/peers.rs' in filepath:
+        return 'TUI peers-table renderer'
+    if 'tui_render/peer_info.rs' in filepath:
+        return 'TUI peer-info renderer'
+    if 'tui_render/chat.rs' in filepath:
+        return 'TUI chat & DM pane renderer'
+    if 'tui_render/log.rs' in filepath:
+        return 'TUI log renderer'
+    if 'tui_render/groups.rs' in filepath:
+        return 'TUI groups renderer'
+    if 'tui_render/settings.rs' in filepath:
+        return 'TUI settings renderer'
     purposes = {
         'build.rs': 'Build script',
         'lib.rs': 'Module declarations & re-exports',
@@ -156,8 +166,6 @@ def get_file_purpose(filepath: str) -> str:
         'network.rs': 'Network size classification',
         'types.rs': 'Event & command type defs',
         'tui_tabs.rs': 'Tab management & navigation',
-        'tui_test_state.rs': 'TUI test state & mouse handling',
-        'tui_events.rs': 'Event/command types & channels',
         'columns.rs': 'Auto-generated column definitions',
         'schema.rs': 'Database schema (Diesel)',
         'models_insertable.rs': 'Insertable data models',
@@ -172,12 +180,9 @@ def get_file_purpose(filepath: str) -> str:
         'message_handlers.rs': 'Message sending logic',
         'main_loop.rs': 'Task orchestration & async',
         'state.rs': 'Shared application state',
-        'constants.rs': 'TUI constants & config',
         'mod.rs': 'Module declarations',
         'tui_helpers.rs': 'TUI helper functions & utilities',
-        'tui_render.rs': 'TUI rendering & state management',
         'tui_render_state.rs': 'TUI render state & tab content',
-        'presentation.rs': 'TUI presentation & formatting helpers',
         'mobile_node.rs': 'Mobile node lifecycle & swarm',
         'mobile_api.rs': 'Mobile FRB API surface',
         'api.rs': 'FRB API surface',
@@ -199,7 +204,6 @@ def get_test_file_purpose(filepath: str) -> str:
         'types.rs': 'types module tests',
         'tui_helpers.rs': 'TUI helpers tests',
         'tui_state.rs': 'TUI state tests',
-        'tui_events.rs': 'TUI events tests',
         'tui_chat.rs': 'TUI chat functionality tests',
         'tui_integration.rs': 'TUI integration tests',
         'tui_render_integration.rs': 'TUI render integration tests',
@@ -215,6 +219,9 @@ def get_test_file_purpose(filepath: str) -> str:
         'tui_tabs_dedicated.rs': 'Dedicated TUI tabs tests',
         'tui_test_state_dedicated.rs': 'Dedicated TUI test-state tests',
         'unit_behavior.rs': 'Unit tests for behavior module',
+        'unit_connected.rs': 'Unit tests for connected module',
+        'unit_group_crypto.rs': 'Unit tests for group crypto module',
+        'unit_groups.rs': 'Unit tests for groups module',
         'unit_bin_tui_click_handlers.rs': 'Unit tests for TUI click handlers',
         'unit_bin_tui_command_processor.rs': 'Unit tests for TUI command processor',
         'unit_bin_tui_event_source.rs': 'Unit tests for TUI event source',
