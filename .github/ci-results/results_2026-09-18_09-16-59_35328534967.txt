@@ -1,0 +1,557 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-09-18 09:16:59 UTC
+Commit: f89205a0229086339b648195191bcff241863a89
+Branch: refs/heads/main
+Run ID: 35328534967
+
+============================================================
+Detailed Logs
+============================================================
+
+
+============================================================
+Phase 1 - Code Quality
+============================================================
+
+--- fmt ---
+Exit code: 0
+
+--- clippy ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: using `chunks_exact` with a constant chunk size[0m
+   [1m[94m--> [0msrc/group_crypto.rs:172:30
+    [1m[94m|[0m
+[1m[94m172[0m [1m[94m|[0m     for pair in s.as_bytes().chunks_exact(2) {
+    [1m[94m|[0m                              [1m[33m^^^^^^^^^^^^^^^[0m [1m[33mhelp: consider using `as_chunks` instead: `as_chunks::<2>().0`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mhelp[0m: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#chunks_exact_to_as_chunks
+    [1m[94m= [0m[1mnote[0m: `#[warn(clippy::chunks_exact_to_as_chunks)]` on by default
+
+[1m[33mwarning[0m: `p2p_app` (lib) generated 1 warning (run `cargo clippy --fix --lib -p p2p_app -- ` to apply 1 suggestion)
+[1m[33mwarning[0m: `p2p_app` (lib test) generated 1 warning (1 duplicate)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 14.72s
+Exit code: 0
+
+
+============================================================
+Phase 2 - Build
+============================================================
+
+--- build ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 02s
+Exit code: 0
+
+
+============================================================
+Phase 3 - Security & Documentation
+============================================================
+
+--- audit ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1251 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (520 crate dependencies)
+[0m[0m[1m[31mCrate:    [0m rustls
+[0m[0m[1m[31mVersion:  [0m 0.23.43
+[0m[0m[1m[31mTitle:    [0m TLS 1.3 handshake messages incorrectly accepted across encryption level boundaries
+[0m[0m[1m[31mDate:     [0m 2026-09-14
+[0m[0m[1m[31mID:       [0m RUSTSEC-2026-0285
+[0m[0m[1m[31mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2026-0285
+[0m[0m[1m[31mSeverity: [0m 5.3 (medium)
+[0m[0m[1m[31mSolution: [0m Upgrade to >=0.23.45
+
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[31merror:[0m 1 vulnerability found!
+[0m[0m[1m[33mwarning:[0m 1 allowed warning found
+Exit code: 0
+
+--- docs ---
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/db.rs:84:1
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m pub fn reset_db_url() {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:44:5
+   [1m[94m|[0m
+[1m[94m44[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:45:5
+   [1m[94m|[0m
+[1m[94m45[0m [1m[94m|[0m     pub display_name: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:46:5
+   [1m[94m|[0m
+[1m[94m46[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:47:5
+   [1m[94m|[0m
+[1m[94m47[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:48:5
+   [1m[94m|[0m
+[1m[94m48[0m [1m[94m|[0m     pub dm_count: u32,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:49:5
+   [1m[94m|[0m
+[1m[94m49[0m [1m[94m|[0m     pub broadcast_count: u32,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:57:5
+   [1m[94m|[0m
+[1m[94m57[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:58:5
+   [1m[94m|[0m
+[1m[94m58[0m [1m[94m|[0m     pub display_name: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:59:5
+   [1m[94m|[0m
+[1m[94m59[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:60:5
+   [1m[94m|[0m
+[1m[94m60[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:61:5
+   [1m[94m|[0m
+[1m[94m61[0m [1m[94m|[0m     pub nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:62:5
+   [1m[94m|[0m
+[1m[94m62[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:63:5
+   [1m[94m|[0m
+[1m[94m63[0m [1m[94m|[0m     pub dm_count: i64,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:64:5
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m     pub broadcast_sent_to_peer: i64,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_api.rs:138:1
+    [1m[94m|[0m
+[1m[94m138[0m [1m[94m|[0m pub struct MobileInitStatus {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:139:5
+    [1m[94m|[0m
+[1m[94m139[0m [1m[94m|[0m     pub database_url: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:140:5
+    [1m[94m|[0m
+[1m[94m140[0m [1m[94m|[0m     pub local_peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_api.rs:144:1
+    [1m[94m|[0m
+[1m[94m144[0m [1m[94m|[0m pub struct MobilePeerStatus {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:145:5
+    [1m[94m|[0m
+[1m[94m145[0m [1m[94m|[0m     pub database_url: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:146:5
+    [1m[94m|[0m
+[1m[94m146[0m [1m[94m|[0m     pub local_peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:147:5
+    [1m[94m|[0m
+[1m[94m147[0m [1m[94m|[0m     pub self_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/mobile_api.rs:150:1
+    [1m[94m|[0m
+[1m[94m150[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/mobile_api.rs:162:1
+    [1m[94m|[0m
+[1m[94m162[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:310:1
+    [1m[94m|[0m
+[1m[94m310[0m [1m[94m|[0m pub struct MobilePeerRecord {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:311:5
+    [1m[94m|[0m
+[1m[94m311[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:312:5
+    [1m[94m|[0m
+[1m[94m312[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:313:5
+    [1m[94m|[0m
+[1m[94m313[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:314:5
+    [1m[94m|[0m
+[1m[94m314[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:315:5
+    [1m[94m|[0m
+[1m[94m315[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:316:5
+    [1m[94m|[0m
+[1m[94m316[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:351:1
+    [1m[94m|[0m
+[1m[94m351[0m [1m[94m|[0m pub struct ChatMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:352:5
+    [1m[94m|[0m
+[1m[94m352[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:353:5
+    [1m[94m|[0m
+[1m[94m353[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:354:5
+    [1m[94m|[0m
+[1m[94m354[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:355:5
+    [1m[94m|[0m
+[1m[94m355[0m [1m[94m|[0m     pub is_broadcast: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:356:5
+    [1m[94m|[0m
+[1m[94m356[0m [1m[94m|[0m     pub target_peer: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:357:5
+    [1m[94m|[0m
+[1m[94m357[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:358:5
+    [1m[94m|[0m
+[1m[94m358[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:359:5
+    [1m[94m|[0m
+[1m[94m359[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:360:5
+    [1m[94m|[0m
+[1m[94m360[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:361:5
+    [1m[94m|[0m
+[1m[94m361[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:560:1
+    [1m[94m|[0m
+[1m[94m560[0m [1m[94m|[0m pub struct MobileGroup {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:561:5
+    [1m[94m|[0m
+[1m[94m561[0m [1m[94m|[0m     pub group_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:562:5
+    [1m[94m|[0m
+[1m[94m562[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:563:5
+    [1m[94m|[0m
+[1m[94m563[0m [1m[94m|[0m     pub member_count: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:564:5
+    [1m[94m|[0m
+[1m[94m564[0m [1m[94m|[0m     pub is_private: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:568:1
+    [1m[94m|[0m
+[1m[94m568[0m [1m[94m|[0m pub struct MobileGroupMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:569:5
+    [1m[94m|[0m
+[1m[94m569[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:570:5
+    [1m[94m|[0m
+[1m[94m570[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:571:5
+    [1m[94m|[0m
+[1m[94m571[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:572:5
+    [1m[94m|[0m
+[1m[94m572[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:573:5
+    [1m[94m|[0m
+[1m[94m573[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:574:5
+    [1m[94m|[0m
+[1m[94m574[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:575:5
+    [1m[94m|[0m
+[1m[94m575[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:576:5
+    [1m[94m|[0m
+[1m[94m576[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:755:1
+    [1m[94m|[0m
+[1m[94m755[0m [1m[94m|[0m pub struct SwarmEventJson {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:756:5
+    [1m[94m|[0m
+[1m[94m756[0m [1m[94m|[0m     pub event_type: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:757:5
+    [1m[94m|[0m
+[1m[94m757[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:758:5
+    [1m[94m|[0m
+[1m[94m758[0m [1m[94m|[0m     pub content: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:759:5
+    [1m[94m|[0m
+[1m[94m759[0m [1m[94m|[0m     pub latency: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:760:5
+    [1m[94m|[0m
+[1m[94m760[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:761:5
+    [1m[94m|[0m
+[1m[94m761[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:762:5
+    [1m[94m|[0m
+[1m[94m762[0m [1m[94m|[0m     pub address: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:763:5
+    [1m[94m|[0m
+[1m[94m763[0m [1m[94m|[0m     pub group_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:168:5
+    [1m[94m|[0m
+[1m[94m168[0m [1m[94m|[0m     pub name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:169:5
+    [1m[94m|[0m
+[1m[94m169[0m [1m[94m|[0m     pub name_kind: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:170:5
+    [1m[94m|[0m
+[1m[94m170[0m [1m[94m|[0m     pub set_at: chrono::NaiveDateTime,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:191:5
+    [1m[94m|[0m
+[1m[94m191[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:192:5
+    [1m[94m|[0m
+[1m[94m192[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:193:5
+    [1m[94m|[0m
+[1m[94m193[0m [1m[94m|[0m     pub dm_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:194:5
+    [1m[94m|[0m
+[1m[94m194[0m [1m[94m|[0m     pub broadcast_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:195:5
+    [1m[94m|[0m
+[1m[94m195[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:196:5
+    [1m[94m|[0m
+[1m[94m196[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for an associated function[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:202:5
+    [1m[94m|[0m
+[1m[94m202[0m [1m[94m|[0m [1m[33m/[0m     pub fn new(
+[1m[94m203[0m [1m[94m|[0m [1m[33m|[0m         peer_id: &str,
+[1m[94m204[0m [1m[94m|[0m [1m[33m|[0m         display_name: &str,
+[1m[94m205[0m [1m[94m|[0m [1m[33m|[0m         dm_count: usize,
+[1m[94m...[0m   [1m[33m|[0m
+[1m[94m208[0m [1m[94m|[0m [1m[33m|[0m         first_seen: &str,
+[1m[94m209[0m [1m[94m|[0m [1m[33m|[0m     ) -> Self {
+    [1m[94m|[0m [1m[33m|_____________^[0m
+
+[1m[33mwarning[0m[1m: unclosed HTML tag `peer`[0m
+  [1m[94m--> [0msrc/connected.rs:12:72
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m /// most recent disconnection so frontends can show "last connected to <peer>".
+   [1m[94m|[0m                                                                        [1m[33m^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::invalid_html_tags)]` on by default
+
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 76 warnings
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 8.53s
+[1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 2 other files
+Exit code: 0
+
