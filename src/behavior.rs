@@ -69,7 +69,7 @@ pub struct GroupMessage {
 }
 
 /// JSON codec for direct message protocol
-pub type ChatCodec = libp2p_request_response::json::codec::Codec<DirectMessage, DirectMessage>;
+pub type ChatCodec = libp2p::request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]

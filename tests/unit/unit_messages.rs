@@ -166,15 +166,24 @@ fn load_messages_respects_limit() {
 #[serial(db)]
 fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
     with_test_db(|| {
-        // peer-a sends 2 DMs and receives 1 DM; peer-a also sent broadcasts to
+        // Real storage convention: outbound DMs have `peer_id = NULL` and
+        // `target_peer = recipient`; inbound DMs set *both* columns to the
+        // sender. peer-a sends us 2 DMs and receives 1 from us (3 total), while
+        // peer-b sends 1 and receives 1 (2 total). We sent broadcasts to
         // peer-b (×1) and peer-c (×2), each recorded in `broadcast_recipients`.
         crate::save_peer("peer-a", &[]).expect("save a");
         crate::save_peer("peer-b", &[]).expect("save b");
         crate::save_peer("peer-c", &[]).expect("save c");
 
-        let _ = save_message("dm-a-to-b", Some("peer-a"), "t", true, Some("peer-b")).expect("ab");
-        let _ = save_message("dm-a-to-c", Some("peer-a"), "t", true, Some("peer-c")).expect("ac");
-        let _ = save_message("dm-b-to-a", Some("peer-b"), "t", true, Some("peer-a")).expect("ba");
+        // Inbound from peer-a (both columns set to the sender) — ×2.
+        let _ = save_message("a-in-1", Some("peer-a"), "t", true, Some("peer-a")).expect("ai1");
+        let _ = save_message("a-in-2", Some("peer-a"), "t", true, Some("peer-a")).expect("ai2");
+        // Outbound to peer-a (peer_id NULL, target = recipient).
+        let _ = save_message("to-a", None, "t", true, Some("peer-a")).expect("ta");
+        // Inbound from peer-b + outbound to peer-b.
+        let _ = save_message("b-in", Some("peer-b"), "t", true, Some("peer-b")).expect("bi");
+        let _ = save_message("to-b", None, "t", true, Some("peer-b")).expect("tb");
+        // Inbound broadcast from peer-a: never counted as a DM or a sent-to.
         let _ =
             save_message("bcast-from-a", Some("peer-a"), "t", false, None).expect("bcast from a");
         crate::peers::record_broadcast_recipients("m1", &["peer-b".to_string()]).expect("rec b");
@@ -183,22 +192,41 @@ fn get_all_peer_stats_aggregates_across_peers_in_one_pass() {
 
         let all = get_all_peer_stats().expect("all stats");
 
-        // peer-a: 2 sent DMs + 1 received DM = 3; no broadcasts *sent to* a.
+        // peer-a: 2 received + 1 sent = 3; no broadcasts *sent to* a.
         let a = all.get("peer-a").expect("peer-a present");
         assert_eq!(a.dm_count, 3);
         assert_eq!(a.broadcast_sent_to_peer, 0);
 
-        // peer-b: 1 DM sent to a + 1 DM received from a = 2; 1 broadcast we sent b.
+        // peer-b: 1 received + 1 sent = 2; 1 broadcast we sent b.
         let b = all.get("peer-b").expect("peer-b present");
         assert_eq!(b.dm_count, 2);
         assert_eq!(b.broadcast_sent_to_peer, 1);
 
-        // peer-c: 1 received DM from a = 1; 2 broadcasts we sent c.
+        // peer-c: no DMs at all; 2 broadcasts we sent c.
         let c = all.get("peer-c").expect("peer-c present");
-        assert_eq!(c.dm_count, 1);
+        assert_eq!(c.dm_count, 0);
         assert_eq!(c.broadcast_sent_to_peer, 2);
 
         // The inbound broadcast from peer-a never attributes a *sent-to* count.
         assert!(!all.contains_key("peer-a") || all["peer-a"].broadcast_sent_to_peer == 0);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn dm_stats_count_inbound_dm_once_even_with_both_columns_set() {
+    with_test_db(|| {
+        // Regression test: inbound DMs store `peer_id = target_peer = sender`,
+        // which used to double-count under a UNION of the two columns.
+        crate::save_peer("peer-a", &[]).expect("save a");
+        let _ = save_message("in", Some("peer-a"), "t", true, Some("peer-a")).expect("inbound");
+        let _ = save_message("from-me", None, "t", true, Some("peer-a")).expect("outbound");
+
+        let all = get_all_peer_stats().expect("all stats");
+        let a = all.get("peer-a").expect("peer-a present");
+        assert_eq!(
+            a.dm_count, 2,
+            "one inbound + one outbound DM each count once"
+        );
     });
 }

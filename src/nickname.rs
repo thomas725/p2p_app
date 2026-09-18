@@ -230,10 +230,12 @@ pub fn get_peer_name_history(peer_id: &str) -> color_eyre::Result<Vec<PeerNameHi
         .collect())
 }
 
-/// Validate a nickname: alphanumeric and dash only, max 20 chars.
+/// Validate a nickname: alphanumeric and dash only, at most 20 characters.
 #[must_use]
 pub fn validate_nickname(nick: &str) -> bool {
-    !nick.is_empty() && nick.len() <= 20 && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
+    !nick.is_empty()
+        && nick.chars().count() <= 20
+        && nick.chars().all(|c| c.is_alphanumeric() || c == '-')
 }
 
 /// Ensure a silent peer has a stable generated petname, assigning and storing
@@ -303,6 +305,13 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
     };
     display_cache().insert(peer_id.to_string(), display.clone());
     Ok(display)
+}
+
+/// Resolve a peer's display name, falling back to the short ID (last 8 chars)
+/// when the database-backed resolution fails.
+#[must_use]
+pub fn get_peer_display_name_or_short(peer_id: &str) -> String {
+    get_peer_display_name(peer_id).unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id))
 }
 
 #[cfg(test)]

@@ -82,6 +82,16 @@ async fn handle_swarm_event(
                 swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
             }
         }
+        #[cfg(feature = "mdns")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Expired(list))) => {
+            for (peer_id, _multiaddr) in list {
+                let _ = event_tx
+                    .send(SwarmEvent::PeerExpired {
+                        peer_id: peer_id.to_string(),
+                    })
+                    .await;
+            }
+        }
         // Ping results drive connection liveness; the resulting close is
         // handled by the ConnectionClosed arm below, so nothing to do here.
         Libp2pSwarmEvent::Behaviour(AppEv::Ping(_)) => {}

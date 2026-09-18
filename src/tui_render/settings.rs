@@ -57,16 +57,14 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         // seen known peer) instead of listing stale peers as connected.
         match last_connected_info(state) {
             Some((peer_id, ts)) => {
-                let display = crate::get_peer_display_name(&peer_id)
-                    .unwrap_or_else(|_| crate::fmt::short_peer_id(&peer_id));
+                let display = crate::get_peer_display_name_or_short(&peer_id);
                 lines.push(format!("  Last connected {ts} to peer {display}"));
             }
             None => lines.push("  —".to_string()),
         }
     } else {
         for peer_id in &state.connected_peer_ids {
-            let display = crate::get_peer_display_name(peer_id)
-                .unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id));
+            let display = crate::get_peer_display_name_or_short(peer_id);
             lines.push(format!("  {display}"));
         }
     }

@@ -319,10 +319,16 @@ async fn process_swarm_event(
             ));
             drop(s);
         }
-        SwarmEvent::GroupInvite { group_id, inviter_peer } => {
-            let mut s = state.lock().await;
-            let sender_display =
-                p2p_app::peer_display_name(&inviter_peer, &s.local_nicknames, &s.received_nicknames);
+        SwarmEvent::GroupInvite {
+            group_id,
+            inviter_peer,
+        } => {
+            let s = state.lock().await;
+            let sender_display = p2p_app::peer_display_name(
+                &inviter_peer,
+                &s.local_nicknames,
+                &s.received_nicknames,
+            );
             let local_peer_id = s.local_peer_id.clone();
             let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
             p2plog_debug(format!(

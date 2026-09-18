@@ -67,13 +67,7 @@ pub fn gen_msg_id() -> String {
 /// Get the last 8 characters of a peer ID string
 #[must_use]
 pub fn short_peer_id(id: &str) -> String {
-    id.chars()
-        .rev()
-        .take(8)
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect()
+    peer_id_tail(id, 8)
 }
 
 /// The last 3 characters of a peer ID, used as a human-friendly `(suffix)` hint beside a nickname.
@@ -82,9 +76,15 @@ pub fn short_peer_id(id: &str) -> String {
 /// instead of a truncation prefix.
 #[must_use]
 pub fn peer_id_suffix(id: &str) -> String {
+    peer_id_tail(id, 3)
+}
+
+/// Take the last `len` characters of a string (a reverse-collect-reverse
+/// preserves the character order regardless of UTF-8 width).
+fn peer_id_tail(id: &str, len: usize) -> String {
     id.chars()
         .rev()
-        .take(3)
+        .take(len)
         .collect::<String>()
         .chars()
         .rev()

@@ -252,6 +252,45 @@ fn test_strip_ansi_codes_nested() {
     assert!(!result.contains('\u{1b}'));
 }
 
+// ── strip_ansi_codes: non-SGR terminal control sequences ──────────────────────
+
+#[test]
+fn test_strip_ansi_codes_csi_clear_screen_keeps_following_text() {
+    // `ESC[2J` (erase display) ends in 'J', not 'm'; the text after it must
+    // survive. The old scanner stripped everything up to the next 'm'.
+    assert_eq!(
+        p2p_app::logging::strip_ansi_codes("\x1b[2Jafter-clear"),
+        "after-clear"
+    );
+    // A line-erase sequence `ESC[K` has no parameters.
+    assert_eq!(p2p_app::logging::strip_ansi_codes("\x1b[Ktail"), "tail");
+}
+
+#[test]
+fn test_strip_ansi_codes_osc_bel_terminated() {
+    let input = "\x1b]0;window title\x07tail";
+    assert_eq!(p2p_app::logging::strip_ansi_codes(input), "tail");
+}
+
+#[test]
+fn test_strip_ansi_codes_osc_st_terminated() {
+    let input = "\x1b]8;;https://example.com\x1b\\link text";
+    assert_eq!(p2p_app::logging::strip_ansi_codes(input), "link text");
+}
+
+#[test]
+fn test_strip_ansi_codes_two_char_sequence() {
+    // `ESC(B` selects a character set and is exactly two characters long.
+    assert_eq!(p2p_app::logging::strip_ansi_codes("\x1b(Btext"), "text");
+}
+
+#[test]
+fn test_strip_ansi_codes_incomplete_csi_dropped() {
+    // A truncated CSI at end-of-string consumes the remainder, never leaks ESC.
+    let result = p2p_app::logging::strip_ansi_codes("keep\x1b[12");
+    assert_eq!(result, "keep");
+}
+
 #[serial]
 #[test]
 fn test_p2plog_levels_all() {

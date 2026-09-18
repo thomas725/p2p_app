@@ -246,39 +246,8 @@ pub struct PeerMessageStats {
     pub broadcast_sent_to_peer: i64,
 }
 
-/// Compute message statistics for a single peer.
-///
-/// * `dm_count` counts direct messages where the peer is either sender or
-///   recipient (received + sent).
-/// * `broadcast_sent_to_peer` counts broadcasts *we* sent that this peer
-///   received (from the `broadcast_recipients` table).
-///
-/// # Errors
-/// Returns an error if the database queries fail.
-pub fn get_peer_stats(peer_id: &str) -> color_eyre::eyre::Result<PeerMessageStats> {
-    use crate::generated::schema::broadcast_recipients::dsl as br;
-    use crate::generated::schema::messages::dsl as m;
-    let conn = &mut crate::sqlite_connect()?;
-
-    let dm_count: i64 = m::messages
-        .filter(m::is_direct.eq(1))
-        .filter(m::peer_id.eq(peer_id).or(m::target_peer.eq(peer_id)))
-        .count()
-        .get_result(conn)?;
-
-    let broadcast_sent_to_peer: i64 = br::broadcast_recipients
-        .filter(br::peer_id.eq(peer_id))
-        .count()
-        .get_result(conn)?;
-
-    Ok(PeerMessageStats {
-        dm_count,
-        broadcast_sent_to_peer,
-    })
-}
-
-/// One grouped row from [`get_all_peer_stats`]: the DM broadcast counts for a
-/// single peer, produced by a single `GROUP BY` query over `messages`.
+/// One grouped row from [`get_all_peer_stats`]: the DM count for a single
+/// peer, produced by a single `GROUP BY` query over `messages`.
 #[derive(Debug, Clone, PartialEq, Eq, diesel::QueryableByName)]
 struct PeerMessageAggregate {
     #[diesel(sql_type = diesel::sql_types::Text)]
@@ -287,41 +256,34 @@ struct PeerMessageAggregate {
     dm_count: i64,
 }
 
-/// Compute message statistics for **all** peers in two passes.
+/// Compute message statistics for **all** peers in two grouped queries.
 ///
-/// This is the bulk sibling of [`get_peer_stats`]: it runs a single grouped
-/// query over `messages` (un-nesting each DM against both its sender and
-/// recipient) plus one grouped query over `broadcast_recipients`, rather than
-/// the N×2 queries the per-peer path needs.
+/// Each DM is stored exactly once with the peer it is exchanged with in either
+/// `peer_id` or `target_peer` (inbound DMs set both to the sender), so
+/// `COALESCE(peer_id, target_peer)` yields one unattributed row per DM — no
+/// double counting. A second grouped query over `broadcast_recipients` counts
+/// the broadcasts *we* sent that reached each peer.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
 pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMessageStats>> {
     use crate::generated::schema::broadcast_recipients::dsl as br;
+    use diesel::{dsl::count, sql_query};
     let conn = &mut crate::sqlite_connect()?;
 
     let dm_sql = "
         SELECT peer_id, COALESCE(SUM(dm), 0) AS dm_count
         FROM (
-            SELECT peer_id, 1 AS dm FROM messages
-                WHERE is_direct = 1 AND peer_id IS NOT NULL
-            UNION ALL
-            SELECT target_peer, 1 AS dm FROM messages
-                WHERE is_direct = 1 AND target_peer IS NOT NULL
+            SELECT COALESCE(peer_id, target_peer) AS peer_id, 1 AS dm FROM messages
+                WHERE is_direct = 1 AND (peer_id IS NOT NULL OR target_peer IS NOT NULL)
         )
         GROUP BY peer_id";
-    let dm_aggregates = diesel::sql_query(dm_sql).load::<PeerMessageAggregate>(conn)?;
+    let dm_aggregates = sql_query(dm_sql).load::<PeerMessageAggregate>(conn)?;
 
-    let recip_count: i64 = br::broadcast_recipients.count().get_result(conn)?;
-    let recip_vec: Vec<(String, i64)> = if recip_count > 0 {
-        use diesel::dsl::count;
-        br::broadcast_recipients
-            .group_by(br::peer_id)
-            .select((br::peer_id, count(br::peer_id)))
-            .load::<(String, i64)>(conn)?
-    } else {
-        Vec::new()
-    };
+    let recip_vec: Vec<(String, i64)> = br::broadcast_recipients
+        .group_by(br::peer_id)
+        .select((br::peer_id, count(br::peer_id)))
+        .load::<(String, i64)>(conn)?;
 
     let mut result: HashMap<String, PeerMessageStats> = HashMap::with_capacity(dm_aggregates.len());
     for a in dm_aggregates {

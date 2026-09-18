@@ -1,10 +1,10 @@
 //! TUI tab management and navigation
 
-/// Flutter-style peer label: nickname (or generated petname) followed by the
-/// first 3 characters of the short peer id, e.g. `"Alice (Ab3)"`. Falls back to
-/// the short id when the database lookup fails (e.g. in tests).
+/// Flutter-style peer label: nickname (or generated petname) followed by a
+/// short-ID suffix, e.g. `"Alice (abc)"`. Falls back to the short id when the
+/// database lookup fails (e.g. in tests).
 fn peer_display_label(peer_id: &str) -> String {
-    crate::get_peer_display_name(peer_id).unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id))
+    crate::get_peer_display_name_or_short(peer_id)
 }
 
 /// Number of fixed tabs before dynamic tabs (Chat, Peers, Groups)

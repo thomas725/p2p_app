@@ -132,7 +132,10 @@ fn group_id_is_shared_across_members_and_distinct_per_group() {
     let shared = group_peer_id(&group_keypair.public());
     let shared_again = group_peer_id(&group_keypair.public());
 
-    assert_eq!(shared, shared_again, "the same shared group public key must mint the same group PeerId, no matter which pair derives it");
+    assert_eq!(
+        shared, shared_again,
+        "the same shared group public key must mint the same group PeerId, no matter which pair derives it"
+    );
     assert_eq!(
         shared,
         group_peer_id(&group_keypair.public()),

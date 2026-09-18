@@ -521,7 +521,9 @@ pub fn get_database_url() -> String {
             return url;
         }
         let slot = PRIMARY_DB_URL.get_or_init(|| std::sync::Mutex::new(None));
-        let mut guard = slot.lock().unwrap();
+        let mut guard = slot
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(url) = guard.clone() {
             return url;
         }

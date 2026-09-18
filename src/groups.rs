@@ -225,7 +225,8 @@ pub fn is_group_member(group_id: &str, peer_id: &str) -> color_eyre::Result<bool
         .filter(group_members::group_id.eq(group_id))
         .filter(group_members::peer_id.eq(peer_id))
         .count()
-        .get_result(conn).wrap_err("failed to check group membership")?;
+        .get_result(conn)
+        .wrap_err("failed to check group membership")?;
     Ok(count > 0)
 }
 

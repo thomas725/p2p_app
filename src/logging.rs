@@ -314,19 +314,56 @@ pub fn register_log_callback(callback: LogCallback) {
 }
 
 /// Remove ANSI escape codes from a string (e.g., color/formatting codes).
+///
+/// Understands CSI sequences (`ESC[ params final`), OSC sequences
+/// (`ESC]…BEL` / `ESC]…ESC\`), and two-character sequences (`ESC(`, `ESC M`,
+/// `ESC=`), so a non-SGR escape like `ESC[2J` never swallows the text that
+/// follows it.
 #[must_use]
 pub fn strip_ansi_codes(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
-    let mut in_escape = false;
-    for c in s.chars() {
-        if c == '\x1b' {
-            in_escape = true;
-        } else if in_escape {
-            if c == 'm' {
-                in_escape = false;
-            }
-        } else {
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\x1b' {
             result.push(c);
+            continue;
+        }
+        match chars.peek().copied() {
+            // CSI: ESC [ parameters / intermediates / final (0x40..=0x7E).
+            Some('[') => {
+                chars.next();
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            // OSC: ESC ] … BEL, or … ESC \.
+            Some(']') => {
+                chars.next();
+                while let Some(c) = chars.next() {
+                    match c {
+                        '\x07' => break,
+                        '\x1b' => {
+                            if chars.peek() == Some(&'\\') {
+                                chars.next();
+                            }
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            // Two-character sequences (ESC M, ESC =, …). Character-set
+            // designation sequences (ESC ( B, ESC ) 0, …) carry an extra
+            // designator byte after the intermediate.
+            Some(intermediate) => {
+                chars.next();
+                if matches!(intermediate, '(' | ')' | '*' | '+' | '-' | '.' | '/') {
+                    chars.next();
+                }
+            }
+            None => {}
         }
     }
     result

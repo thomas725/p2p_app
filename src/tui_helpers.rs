@@ -323,8 +323,7 @@ fn peer_table_row(
         .get(&peer.peer_id)
         .copied()
         .unwrap_or(0);
-    let display_name = crate::get_peer_display_name(&peer.peer_id)
-        .unwrap_or_else(|_| crate::fmt::short_peer_id(&peer.peer_id));
+    let display_name = crate::get_peer_display_name_or_short(&peer.peer_id);
     PeerTableRow::new(
         &peer.peer_id,
         &display_name,

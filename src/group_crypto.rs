@@ -130,17 +130,9 @@ pub fn verify_group_control(
         .wrap_err("group control signature does not verify")
 }
 
-/// Stable group address derived from the group's signing keypair.
+/// Stable group address derived from the group's public key.
 ///
-/// Uses the exact `PeerId::from_public_key` machinery that already fans
-/// point-to-point DMs (see `src/behavior.rs` `build_swarm`), so a private
-/// group is a peer-id-shaped identity *in the DM address space* — no second
-/// namespace on the wireWhat else, choosing a fresh peer-id for a group is
-/// exactly like minting a DM-capable peer: both endpoints just keep using the
-/// same attribution already riding `request_response`.
-/// Shared, peer-id-shaped address of a private group.
-///
-/// Rides the exact [`libp2p::PeerId::from_public_key`] machinery already
+/// Runs through the exact [`libp2p::PeerId::from_public_key`] machinery already
 /// addressing point-to-point DMs, so a private group lives *in the DM address
 /// space* — no second namespace, no new wire semantics. Crucially the input is
 /// the **group's public key** (minted once at group creation, stored on the

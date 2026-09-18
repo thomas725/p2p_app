@@ -1,6 +1,5 @@
 //! Peer-info tab rendering (mirrors Flutter's `PeerInfoScreen`).
 
-use crate::fmt::short_peer_id;
 use crate::tui_render_state::TuiRenderState;
 use ratatui::{
     layout::Rect,
@@ -14,7 +13,7 @@ pub fn render_peer_info_content(
     peer_id: &str,
     state: &TuiRenderState,
 ) {
-    let display = crate::get_peer_display_name(peer_id).unwrap_or_else(|_| short_peer_id(peer_id));
+    let display = crate::get_peer_display_name_or_short(peer_id);
     let local = state.local_nicknames.get(peer_id);
     let received = state.received_nicknames.get(peer_id);
 
