@@ -44,10 +44,14 @@ class _DmChatScreenState extends State<DmChatScreen> {
   String get _label =>
       _peerId.length >= 16 ? _peerId.substring(0, 16) : _peerId;
 
+  // Sink installed while this screen is open; restored on dispose so the view
+  // underneath keeps receiving events (e.g. when opened from Peer info).
+  void Function(SwarmEventJson)? _previousSink;
+
   @override
   void initState() {
     super.initState();
-    setEventSink(_handleDmEvent);
+    _previousSink = pushEventSink(_handleDmEvent);
     _scrollController.addListener(_onScroll);
     _loadHistory();
   }
@@ -57,7 +61,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
-    setEventSink(null);
+    setEventSink(_previousSink);
     super.dispose();
   }
 

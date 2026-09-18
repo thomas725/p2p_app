@@ -45,6 +45,9 @@ Future<void> stopNode() => RustLib.instance.api.crateApiStopNode();
 /// Get all stored TUI log messages (for Log tab display).
 Future<List<String>> getLogs() => RustLib.instance.api.crateApiGetLogs();
 
+/// Clear the in-memory TUI log buffer (Log tab "Clear" action).
+Future<void> clearLogs() => RustLib.instance.api.crateApiClearLogs();
+
 /// Poll the next swarm event (non-blocking).
 ///
 /// # Errors

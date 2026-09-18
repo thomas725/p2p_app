@@ -266,18 +266,27 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     switch (event.eventType) {
       case 'broadcast':
-      case 'dm':
         if (event.content != null && event.peerId != null) {
-          _saveIncoming(
+          _saveIncomingBroadcast(
             event.content!,
             event.peerId!,
-            event.eventType == 'dm',
             event.nickname,
           );
         }
         // A nickname in the event means we just learned or updated this peer's
         // name. Refresh the peer list so the info page (and peer list) reflect
         // the new name instead of the previously id-only/petname display.
+        if (event.nickname != null) {
+          _refreshPeers();
+        }
+        break;
+      case 'dm':
+        // Persist incoming DMs for history. They must never be appended to the
+        // broadcast chat; an open DmChatScreen owns the event sink and persists
+        // its own messages, so this path only runs while no DM screen is open.
+        if (event.content != null && event.peerId != null) {
+          _persistIncomingDm(event.content!, event.peerId!, event.nickname);
+        }
         if (event.nickname != null) {
           _refreshPeers();
         }
@@ -321,17 +330,16 @@ class _HomeScreenState extends State<HomeScreen> {
     _syncLiveStatus();
   }
 
-  Future<void> _saveIncoming(
+  Future<void> _saveIncomingBroadcast(
     String content,
     String peerId,
-    bool isDirect,
     String? nickname,
   ) async {
     try {
       final msg = await saveIncomingMessage(
         content: content,
         peerId: peerId,
-        isDirect: isDirect,
+        isDirect: false,
         nickname: nickname,
       );
       if (mounted) {
@@ -343,6 +351,24 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       debugPrint('Failed to save incoming: $e');
+    }
+  }
+
+  /// Persist an incoming DM without displaying it in the broadcast chat.
+  Future<void> _persistIncomingDm(
+    String content,
+    String peerId,
+    String? nickname,
+  ) async {
+    try {
+      await saveIncomingMessage(
+        content: content,
+        peerId: peerId,
+        isDirect: true,
+        nickname: nickname,
+      );
+    } catch (e) {
+      debugPrint('Failed to save incoming DM: $e');
     }
   }
 

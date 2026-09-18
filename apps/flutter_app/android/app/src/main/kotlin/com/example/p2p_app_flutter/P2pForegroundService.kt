@@ -43,8 +43,7 @@ class P2pForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                releaseMulticastLock()
-                sendStopNetworking()
+                // `sendStopNetworking` runs exactly once, from `onDestroy`.
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -54,9 +53,16 @@ class P2pForegroundService : Service() {
                 acquireMulticastLock()
                 startForeground(NOTIFICATION_ID, buildNotification("P2P networking active"))
                 sendStartNetworking(dbPath)
+                return START_STICKY
+            }
+            else -> {
+                // Sticky restart with a null intent: there is no Flutter engine
+                // to drive networking, so don't linger as a broken foreground
+                // service — stop and let the app start it again explicitly.
+                stopSelf()
+                return START_NOT_STICKY
             }
         }
-        return START_STICKY
     }
 
     override fun onDestroy() {
@@ -97,6 +103,8 @@ class P2pForegroundService : Service() {
     }
 
     private fun acquireMulticastLock() {
+        // A repeated START would otherwise overwrite (and leak) the held lock.
+        releaseMulticastLock()
         val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
         multicastLock = wm.createMulticastLock("p2p_mdns").apply {
             setReferenceCounted(true)

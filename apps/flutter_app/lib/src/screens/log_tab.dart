@@ -18,23 +18,21 @@ class _LogTabState extends State<LogTab> {
   final _scrollController = ScrollController();
   List<String> _logs = [];
   late Timer _pollTimer;
+  // Only follow the tail while the user is already at the bottom, so scrolling
+  // back through older lines isn't yanked away on the next poll.
+  bool _atBottom = true;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Poll for logs every second
     _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       try {
         final logs = await getLogs();
+        if (!mounted) return;
         setState(() => _logs = logs);
-        // Auto-scroll to bottom after new logs are displayed
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.jumpTo(
-              _scrollController.position.maxScrollExtent,
-            );
-          }
-        });
+        if (_atBottom) _scrollToBottom();
       } catch (e) {
         debugPrint('Failed to get logs: $e');
       }
@@ -44,8 +42,32 @@ class _LogTabState extends State<LogTab> {
   @override
   void dispose() {
     _pollTimer.cancel();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    _atBottom = pos.pixels >= pos.maxScrollExtent - 4;
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  Future<void> _clear() async {
+    setState(() => _logs = []);
+    try {
+      await clearLogs();
+    } catch (e) {
+      debugPrint('Failed to clear logs: $e');
+    }
   }
 
   @override
@@ -62,7 +84,7 @@ class _LogTabState extends State<LogTab> {
             ),
           IconButton(
             icon: const Icon(Icons.clear),
-            onPressed: () => setState(() => _logs.clear()),
+            onPressed: _clear,
             tooltip: 'Clear',
           ),
         ],

@@ -55,6 +55,11 @@ pub fn get_logs() -> Vec<String> {
     crate::logging::get_tui_logs()
 }
 
+/// Clear the in-memory TUI log buffer (Log tab "Clear" action).
+pub fn clear_logs() {
+    crate::logging::clear_tui_logs();
+}
+
 /// Poll the next swarm event (non-blocking).
 ///
 /// # Errors

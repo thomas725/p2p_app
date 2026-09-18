@@ -14,6 +14,18 @@ void setEventSink(void Function(SwarmEventJson)? onEvent) {
   _onEvent = onEvent;
 }
 
+/// Take over the sink while a screen is open, returning the callback it
+/// replaced. The overriding screen must pass the returned value back to
+/// [setEventSink] in its `dispose`, so the underlying screen (e.g. the home
+/// view reached through Peer info → Direct message) resumes receiving events.
+void Function(SwarmEventJson)? pushEventSink(
+  void Function(SwarmEventJson) onEvent,
+) {
+  final previous = _onEvent;
+  _onEvent = onEvent;
+  return previous;
+}
+
 /// Poll `pollEvent()` every 200ms and forward non-null events to the sink.
 void startEventPolling() {
   _pollTimer?.cancel();

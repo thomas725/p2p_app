@@ -44,10 +44,14 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   String get _groupId => widget.group.groupId;
   int get _memberCount => widget.group.memberCount.toInt();
 
+  // Sink installed while this screen is open; restored on dispose so the view
+  // underneath keeps receiving events.
+  void Function(SwarmEventJson)? _previousSink;
+
   @override
   void initState() {
     super.initState();
-    setEventSink(_handleGroupEvent);
+    _previousSink = pushEventSink(_handleGroupEvent);
     _scrollController.addListener(_onScroll);
     _loadHistory();
   }
@@ -57,7 +61,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
-    setEventSink(null);
+    setEventSink(_previousSink);
     super.dispose();
   }
 

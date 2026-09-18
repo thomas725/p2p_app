@@ -616,7 +616,9 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
     let group = crate::groups::find_group(&group_id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("no local group row for invite {group_id}"))?;
-    let local_peer_id = crate::get_local_peer_id().map_err(|e| e.to_string())?.to_string();
+    let local_peer_id = crate::get_local_peer_id()
+        .map_err(|e| e.to_string())?
+        .to_string();
     let _ = crate::groups::record_group_member(&group_id, &local_peer_id);
     let member_count = crate::groups::get_group_member_count(&group_id)
         .unwrap_or_default()
@@ -632,6 +634,7 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
 ///
 /// Returns an error if the group name is empty, a group with this name already
 /// exists, or the group membership count cannot be resolved.
+#[flutter_rust_bridge::frb(ignore)]
 pub fn create_group(name: &str) -> Result<MobileGroup, String> {
     let group = crate::groups::create_public_group(name).map_err(|e| e.to_string())?;
     if let Some(m) = NODE.get() {
@@ -737,7 +740,10 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             address: None,
             group_id: Some(m.group_id),
         },
-        SwarmEvent::GroupInvite { group_id, inviter_peer } => SwarmEventJson {
+        SwarmEvent::GroupInvite {
+            group_id,
+            inviter_peer,
+        } => SwarmEventJson {
             event_type: "group_invite".into(),
             peer_id: Some(inviter_peer),
             content: None,
