@@ -3010,7 +3010,6 @@ dependencies = [
  "flutter_rust_bridge",
  "libp2p",
  "libp2p-identity",
- "libp2p-request-response",
  "libsqlite3-sys",
  "petname",
  "ratatui",
