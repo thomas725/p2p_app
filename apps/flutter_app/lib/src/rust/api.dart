@@ -155,6 +155,15 @@ Future<MobileGroupMessage> saveOutgoingGroup({
   content: content,
 );
 
+/// Accept a pending group invite: persist local membership and subscribe to the
+/// group's topic so the swarm starts receiving its traffic.
+///
+/// # Errors
+/// Returns an error if the group has no local row (an invite for a group this
+/// peer never materialized).
+Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
+    RustLib.instance.api.crateApiAcceptGroupInvite(groupId: groupId);
+
 /// Set the local user's nickname.
 ///
 /// # Errors

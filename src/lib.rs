@@ -53,7 +53,6 @@ pub mod behavior;
 pub mod connected;
 pub mod db;
 pub mod fmt;
-pub mod group_crypto;
 pub mod groups;
 pub mod logging;
 pub mod messages;

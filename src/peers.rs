@@ -24,7 +24,11 @@ pub struct KnownPeer {
 
 /// Save or update a peer in the database.
 ///
-/// If peer already exists (by `peer_id`), updates addresses and `last_seen` timestamp.
+/// If peer already exists (by `peer_id`), updates `last_seen` and, when a
+/// non-empty `addresses` list is given, the stored addresses. Inserting with an
+/// empty address list therefore *never* wipes previously learned addresses:
+/// several callers only know a peer id (nickname edits, connection events,
+/// incoming messages) and must not clobber the last known dial addresses.
 /// Otherwise inserts a new peer record with current timestamp.
 ///
 /// # Arguments
@@ -72,20 +76,48 @@ pub fn save_peer(peer_id: &str, addresses: &[String]) -> color_eyre::Result<Peer
         generated_nickname,
     };
 
-    let peer = diesel::insert_into(crate::generated::schema::peers::table)
-        .values(&new_peer)
-        .on_conflict(crate::generated::schema::peers::peer_id)
-        .do_update()
-        .set((
-            crate::generated::schema::peers::addresses.eq(&addresses_str),
-            crate::generated::schema::peers::last_seen.eq(now),
-        ))
-        .returning(Peer::as_returning())
-        .get_result(conn)?;
+    let peer = if addresses_str.is_empty() {
+        // No addresses provided: keep whatever the peer's row already stores.
+        diesel::insert_into(crate::generated::schema::peers::table)
+            .values(&new_peer)
+            .on_conflict(crate::generated::schema::peers::peer_id)
+            .do_update()
+            .set(crate::generated::schema::peers::last_seen.eq(now))
+            .returning(Peer::as_returning())
+            .get_result(conn)?
+    } else {
+        diesel::insert_into(crate::generated::schema::peers::table)
+            .values(&new_peer)
+            .on_conflict(crate::generated::schema::peers::peer_id)
+            .do_update()
+            .set((
+                crate::generated::schema::peers::addresses.eq(&addresses_str),
+                crate::generated::schema::peers::last_seen.eq(now),
+            ))
+            .returning(Peer::as_returning())
+            .get_result(conn)?
+    };
     // A save may assign a new petname (brand-new peers) or touch rows that feed
     // the display-name cache, so drop any memoized name for this peer.
     crate::nickname::invalidate_display_name(peer_id);
     Ok(peer)
+}
+
+/// Record a peer-session sample (how many peers were connected).
+///
+/// Called on every connection/disconnection (TUI and mobile), so
+/// `get_average_peer_count` reflects real usage instead of an empty table.
+///
+/// # Errors
+/// Returns an error if the database operation fails.
+pub fn record_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
+    use crate::generated::schema::peer_sessions;
+
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::insert_into(peer_sessions::table)
+        .values(peer_sessions::concurrent_peers.eq(concurrent_peers))
+        .execute(conn)?;
+    Ok(())
 }
 
 /// Load all known peers, ordered by most recently seen first.

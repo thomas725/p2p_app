@@ -28,6 +28,33 @@ This document captures user stories and acceptance criteria for the P2P Chat app
   - **I want to** see previous direct messages with a peer
   - **So that** I can review private conversations
 
+### Group Chat Features
+
+- [x] **US-060**: Create and join public groups
+  - **As a** user
+  - **I want to** create a group by name and have my peers join the same group by that name
+  - **So that** we all share one per-group gossipsub topic (canonical name → `stable_group_id` → `group:<id>` topic)
+
+- [x] **US-061**: Auto-accept incoming group invites on every frontend
+  - **As a** user
+  - **I want to** have membership recorded and the group subscribed when a peer invites me on either the TUI or the mobile app
+  - **So that** I keep receiving group traffic even if my node restarts (TUI subscribes on `GroupInvite`; mobile calls `acceptGroupInvite`, which materializes the group row when needed — the invite's `group_id` is the only identity in hand)
+
+- [x] **US-062**: Send and receive group messages with mesh re-delivery dedup
+  - **As a** developer
+  - **I want to** deduplicate retransmitted group messages on `(group_id, msg_id)` even when a delivery carries no `msg_id` (a stable `nil:`-prefixed synthetic key derived from the message content stands in)
+  - **So that** a mesh never renders the same group message twice
+
+- [x] **US-063**: Persist DM receipts on mobile
+  - **As a** developer
+  - **I want to** store an incoming receipt in `receipts` with the right kind (`0` = broadcast ack, `1` = DM ack, resolved via `messages::message_is_dm`) and back-fill `broadcast_recipients.confirmed_at` on acks in both frontends
+  - **So that** delivery confirmation no longer disappears when the mobile app handles a receipt event
+
+- [x] **US-064**: Track peer sessions so network-size stats reflect real usage
+  - **As a** developer
+  - **I want to** record a `peer_sessions` row on every connect/disconnect from both the TUI and mobile nodes
+  - **So that** `get_network_size`/`get_average_peer_count` (and the "Never see 0/no-op sessions" behavior of `save_peer`) are backed by real data
+
 ### Peer Management
 
 - [x] **US-010**: See a list of discovered peers with their connection status
@@ -185,6 +212,10 @@ This document captures user stories and acceptance criteria for the P2P Chat app
 - TUI layout calculations
 - Dynamic tabs management
 - Peer extraction from messages
+- Peer session recording feeds network-size averages
+- `save_peer` without addresses preserves stored addresses
+- Group message dedup on `(group_id, msg_id)` and on synthetic `nil:` keys when `msg_id` is absent
+- `ensure_group_for_invite` materializes + is idempotent
 
 ### Integration Tests
 - P2P message transfer

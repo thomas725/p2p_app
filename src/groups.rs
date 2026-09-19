@@ -63,26 +63,31 @@ pub fn canonical_group_name(name: &str) -> String {
         .join(" ")
 }
 
-/// Deterministic 64-bit FNV-1-style hash of the canonical group name as hex.
+/// Deterministic 64-bit FNV-1-style hash of a string as a `%016x` hex id.
 ///
 /// Stable across platforms and processes (unlike `std`'s random hashers) and
-/// hex-only, so the derived `group_id` is safe in a gossipsub topic name. The
-/// hash uses only `wrapping_*` method calls (no operator arithmetic, which the
-/// crate's clippy config denies).
+/// hex-only, so derived ids are safe in a gossipsub topic name. Uses only
+/// `wrapping_*` method calls (no operator arithmetic, which the crate's clippy
+/// config denies).
 #[must_use]
-pub fn stable_group_id(name: &str) -> String {
-    // FNV offset basis (well-mixed 64-bit starting state) and prime. The hash
-    // uses only `wrapping_*` method calls (no operator arithmetic, which the
-    // crate's clippy config denies).
+fn fnv1a_hex(input: &str) -> String {
     const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-    let canonical = canonical_group_name(name);
     let mut hash: u64 = FNV_OFFSET_BASIS;
-    for byte in canonical.bytes() {
+    for byte in input.bytes() {
         hash = hash.wrapping_mul(FNV_PRIME);
         hash = hash.wrapping_add(u64::from(byte));
     }
     format!("{hash:016x}")
+}
+
+/// Deterministic 64-bit FNV-1-style hash of the canonical group name as hex.
+///
+/// Stable across platforms and processes (unlike `std`'s random hashers) and
+/// hex-only, so the derived `group_id` is safe in a gossipsub topic name.
+#[must_use]
+pub fn stable_group_id(name: &str) -> String {
+    fnv1a_hex(&canonical_group_name(name))
 }
 
 // ── Group CRUD ─────────────────────────────────────────────────────────────
@@ -135,6 +140,31 @@ pub fn create_public_group(name: &str) -> color_eyre::Result<Group> {
         .get_result(conn)
         .wrap_err("failed to create group")?;
     Ok(row)
+}
+
+/// Ensure a `groups` row exists for a group we were invited to.
+///
+/// An invite only carries the `group_id` (stable hash — the canonical group
+/// name that produced it is unknown here, so the stored `display_name` falls
+/// back to the id). Idempotent: returns the existing row when one already
+/// exists (e.g. we had joined the same public group by name earlier).
+///
+/// # Errors
+/// Returns an error if the group cannot be inserted.
+pub fn ensure_group_for_invite(group_id: &str) -> color_eyre::Result<Group> {
+    if let Some(existing) = find_group(group_id)? {
+        return Ok(existing);
+    }
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::insert_into(groups::table)
+        .values(NewGroup {
+            group_id: group_id.to_string(),
+            display_name: group_id.to_string(),
+            is_private: 0,
+        })
+        .returning(Group::as_returning())
+        .get_result(conn)
+        .wrap_err("failed to materialize invited group")
 }
 
 /// List all known groups (oldest first).
@@ -279,6 +309,11 @@ pub fn save_outgoing_group_message(
 /// Save an incoming group message, deduplicating mesh re-deliveries on
 /// `(group_id, msg_id)`. Returns [`Option::None`] when a duplicate is skipped.
 ///
+/// Messages without an `msg_id` get a stable synthetic key derived from their
+/// content, so `SQLite`'s `(group_id, msg_id)` unique index still dedups them —
+/// a `NULL` `msg_id` would otherwise slip past the index (`SQLite` treats `NULL`s
+/// as distinct) and accept every retransmit.
+///
 /// # Errors
 /// Returns an error if the message cannot be inserted.
 pub fn save_incoming_group_message(
@@ -288,12 +323,19 @@ pub fn save_incoming_group_message(
     meta: GroupMessageMeta,
 ) -> color_eyre::Result<Option<GroupMessage>> {
     let conn = &mut crate::sqlite_connect()?;
+    let msg_id = meta.msg_id.unwrap_or_else(|| {
+        let key = fnv1a_hex(&format!(
+            "{group_id}|{peer_id}|{}|{content}",
+            meta.sent_at.unwrap_or(0.0)
+        ));
+        format!("nil:{key}")
+    });
     let new_msg = NewGroupMessage {
         group_id: group_id.to_string(),
         content: content.to_string(),
         peer_id: Some(peer_id.to_string()),
         sent: 0,
-        msg_id: meta.msg_id,
+        msg_id: Some(msg_id),
         sent_at: meta.sent_at,
         sender_nickname: meta.sender_nickname,
     };

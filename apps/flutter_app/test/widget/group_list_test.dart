@@ -34,7 +34,9 @@ Widget _app({
 
 void main() {
   testWidgets('empty state prompts to create or join a group', (tester) async {
-    await tester.pumpWidget(_app(groups: const [], onCreateGroup: (_) async {}));
+    await tester.pumpWidget(
+      _app(groups: const [], onCreateGroup: (_) async {}),
+    );
     await tester.pump();
 
     expect(find.text('Groups (0)'), findsOneWidget);
@@ -94,7 +96,10 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      _app(groups: const [], onCreateGroup: (_) async => throw Exception('boom')),
+      _app(
+        groups: const [],
+        onCreateGroup: (_) async => throw Exception('boom'),
+      ),
     );
     await tester.pump();
 
@@ -106,7 +111,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // The error snackbar is shown and the dialog remains for a retry.
-    expect(find.text('Failed to create group: Exception: boom'), findsOneWidget);
+    expect(
+      find.text('Failed to create group: Exception: boom'),
+      findsOneWidget,
+    );
     expect(find.text('Create or join a group'), findsOneWidget);
   });
 

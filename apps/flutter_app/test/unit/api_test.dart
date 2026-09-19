@@ -42,10 +42,9 @@ void main() {
       // The Rust struct is `dm_count` (Dart `dmCount`) + `broadcast_sent_to_peer`
       // (Dart `broadcastSentToPeer`). Assert the Dart mirror declares exactly
       // those two data fields (no old `broadcastReceived` name, no drift).
-      final declared = RegExp(r'final\s+\w+\s+(\w+);')
-          .allMatches(orphanSource)
-          .map((m) => m.group(1)!)
-          .toSet();
+      final declared = RegExp(
+        r'final\s+\w+\s+(\w+);',
+      ).allMatches(orphanSource).map((m) => m.group(1)!).toSet();
       expect(declared, {'dmCount', 'broadcastSentToPeer'});
       expect(orphanSource.contains('broadcastReceived'), isFalse);
       expect(orphanSource.contains('broadcastSent;'), isFalse);

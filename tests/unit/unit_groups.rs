@@ -177,6 +177,61 @@ fn incoming_group_message_dedupes_on_msg_id() {
 
 #[test]
 #[serial(db)]
+fn incoming_group_message_without_msg_id_dedupes_on_content() {
+    with_test_db(|| {
+        let group = create_public_group("lobby").expect("create");
+        record_group_member(&group.group_id, "peer-a").expect("join a");
+        let meta = GroupMessageMeta {
+            sender_nickname: Some("alice".to_string()),
+            msg_id: None,
+            sent_at: Some(122.0),
+        };
+        let first = save_incoming_group_message(&group.group_id, "peer-a", "repeat", meta.clone())
+            .expect("first")
+            .expect("row returned");
+        assert!(
+            first
+                .msg_id
+                .as_deref()
+                .is_some_and(|id| id.starts_with("nil:")),
+            "a stable nil:-prefixed synthetic key stands in for the missing msg_id"
+        );
+
+        let dup = save_incoming_group_message(&group.group_id, "peer-a", "repeat", meta)
+            .expect("dup query");
+        assert!(
+            dup.is_none(),
+            "a NULL msg_id must still dedup on the synthetic content key"
+        );
+
+        let loaded = load_group_messages(&group.group_id, 100).expect("load");
+        assert_eq!(loaded.len(), 1);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn ensure_group_for_invite_materializes_and_is_idempotent() {
+    with_test_db(|| {
+        let group = ensure_group_for_invite("abc123def4567890").expect("materialize");
+        assert_eq!(group.group_id, "abc123def4567890");
+        assert_eq!(
+            group.display_name, "abc123def4567890",
+            "display name falls back to the id"
+        );
+        assert_eq!(group.is_private, 0, "invited groups are treated as public");
+
+        let again = ensure_group_for_invite("abc123def4567890").expect("idempotent");
+        assert_eq!(again.id, group.id, "re-ensuring reuses the existing row");
+
+        let existing = create_public_group("lobby").expect("create");
+        let merged = ensure_group_for_invite(&existing.group_id).expect("existing");
+        assert_eq!(merged.id, existing.id, "a group joined by name is reused");
+    });
+}
+
+#[test]
+#[serial(db)]
 fn load_group_messages_orders_newest_first_and_respects_limit() {
     with_test_db(|| {
         let group = create_public_group("lobby").expect("create");

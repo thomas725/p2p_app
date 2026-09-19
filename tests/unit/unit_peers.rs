@@ -52,6 +52,58 @@ fn average_peer_count_is_zero_when_no_sessions() {
 }
 
 #[test]
+#[allow(clippy::float_cmp)]
+#[serial(db)]
+fn record_peer_session_feeds_average_count() {
+    with_test_db(|| {
+        record_peer_session(1).expect("record 1");
+        record_peer_session(3).expect("record 3");
+        let avg = get_average_peer_count().expect("avg");
+        assert_eq!(avg, 2.0);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn save_peer_without_addresses_preserves_stored_addresses() {
+    with_test_db(|| {
+        save_peer("peer-a", &["/ip4/127.0.0.1/tcp/1234".to_string()]).expect("save with addr");
+        save_peer("peer-a", &[]).expect("save no addr");
+        let loaded = load_peers().expect("load peers");
+        let peer = loaded
+            .into_iter()
+            .find(|p| p.peer_id == "peer-a")
+            .expect("peer-a");
+        assert_eq!(
+            peer.addresses, "/ip4/127.0.0.1/tcp/1234",
+            "empty-address save must not wipe stored addresses"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn save_peer_without_addresses_updates_last_seen() {
+    with_test_db(|| {
+        save_peer("peer-a", &["/ip4/127.0.0.1/tcp/1234".to_string()]).expect("save with addr");
+        let before = load_peers()
+            .expect("load peers")
+            .into_iter()
+            .find(|p| p.peer_id == "peer-a")
+            .expect("peer-a")
+            .last_seen;
+        save_peer("peer-a", &[]).expect("save no addr");
+        let after = load_peers()
+            .expect("load peers")
+            .into_iter()
+            .find(|p| p.peer_id == "peer-a")
+            .expect("peer-a")
+            .last_seen;
+        assert!(after >= before, "empty-address save still bumps last_seen");
+    });
+}
+
+#[test]
 #[serial(db)]
 fn save_and_load_listen_ports() {
     with_test_db(|| {

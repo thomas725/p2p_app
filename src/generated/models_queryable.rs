@@ -40,7 +40,7 @@ pub struct MessageReceipt {
     pub msg_id: String,
     /// Peer ID of the remote party (None = local/broadcast)
     pub peer_id: String,
-    /// Receipt kind (0 = delivered, 1 = read)
+    /// Receipt kind (0 = broadcast ack, 1 = direct-message ack)
     pub kind: i32,
     /// Unix timestamp (seconds) when the receipt was confirmed
     pub confirmed_at: f64,

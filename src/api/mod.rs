@@ -168,6 +168,16 @@ pub fn save_outgoing_group(
     crate::mobile_node::save_outgoing_group(group_id, content)
 }
 
+/// Accept a pending group invite: materialize the group locally, persist
+/// membership, and subscribe to the group's topic so the swarm starts receiving
+/// its traffic.
+///
+/// # Errors
+/// Returns an error if the group row cannot be materialized/loaded.
+pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
+    crate::mobile_node::accept_group_invite(group_id)
+}
+
 /// Set the local user's nickname.
 ///
 /// # Errors

@@ -240,6 +240,9 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             // Track connected peers for broadcast attribution.
             if let Ok(mut set) = CONNECTED_PEERS.lock() {
                 set.on_peer_connected(peer_id.clone());
+                // Feed the peer-session history used for `get_network_size()`.
+                let _ =
+                    crate::peers::record_peer_session(i32::try_from(set.len()).unwrap_or(i32::MAX));
             }
             // Save peer to DB (like TUI does)
             if let Err(e) = save_peer(peer_id, &[]) {
@@ -261,6 +264,24 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
         SwarmEvent::PeerDisconnected(peer_id) => {
             if let Ok(mut set) = CONNECTED_PEERS.lock() {
                 set.on_peer_disconnected(peer_id, crate::current_timestamp());
+                // Feed the peer-session history used for `get_network_size()`.
+                let _ =
+                    crate::peers::record_peer_session(i32::try_from(set.len()).unwrap_or(i32::MAX));
+            }
+        }
+        SwarmEvent::Receipt {
+            peer_id, ack_for, ..
+        } => {
+            // Persist the receipt like the TUI does, so delivery state survives
+            // restart and the Broadcast column's "confirmed" counts are not lost.
+            let at = crate::current_timestamp();
+            let is_dm = match crate::messages::message_is_dm(ack_for) {
+                Ok(Some(is_dm)) => is_dm,
+                _ => false,
+            };
+            let kind = i32::from(is_dm);
+            if let Err(e) = crate::messages::save_receipt(ack_for, peer_id, kind, at) {
+                p2plog_debug(format!("Failed to save receipt: {e}"));
             }
         }
         SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
@@ -361,11 +382,16 @@ pub struct ChatMessage {
     pub sender_nickname: Option<String>,
 }
 
-fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
-    // Always append a short peer-ID suffix to the sender name so it stays
-    // consistent across messages (announced nickname or generated petname).
-    // Falls back to the resolved display name when no nickname was announced.
-    let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
+/// Resolve a message's sender label, shared by DMs/broadcasts and group chats.
+///
+/// Always appends a short peer-ID suffix to an announced nickname so the name
+/// stays consistent across messages (announced nickname or generated petname).
+/// Falls back to the resolved display name when no nickname was announced.
+fn sender_nickname_label(
+    sender_nickname: Option<String>,
+    peer_id: Option<String>,
+) -> Option<String> {
+    match (sender_nickname, peer_id) {
         (Some(nick), Some(pid)) => {
             let suffix = crate::fmt::peer_id_suffix(&pid);
             Some(format!("{nick} ({suffix})"))
@@ -373,7 +399,11 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         (Some(nick), None) => Some(nick),
         (None, Some(pid)) => crate::get_peer_display_name(&pid).ok(),
         (None, None) => None,
-    };
+    }
+}
+
+fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMessage {
+    let sender_nickname = sender_nickname_label(msg.sender_nickname.clone(), msg.peer_id.clone());
     ChatMessage {
         id: msg.id,
         content: msg.content,
@@ -591,15 +621,7 @@ fn group_to_mobile(
 fn group_message_to_mobile(
     msg: crate::generated::models_queryable::GroupMessage,
 ) -> MobileGroupMessage {
-    let sender_nickname = match (msg.sender_nickname.clone(), msg.peer_id.clone()) {
-        (Some(nick), Some(pid)) => {
-            let suffix = crate::fmt::peer_id_suffix(&pid);
-            Some(format!("{nick} ({suffix})"))
-        }
-        (Some(nick), None) => Some(nick),
-        (None, Some(pid)) => crate::get_peer_display_name(&pid).ok(),
-        (None, None) => None,
-    };
+    let sender_nickname = sender_nickname_label(msg.sender_nickname.clone(), msg.peer_id.clone());
     MobileGroupMessage {
         id: msg.id,
         content: msg.content,
@@ -631,15 +653,15 @@ fn group_message_to_mobile(
 /// group, and the returned `MobileGroup` hugs the exact same `group_to_mobile`
 /// tail a fresh `create_group` returns (List parity in Flutter Groups tab).
 ///
+/// An invite only carries the `group_id` (the stable hash of the group's
+/// canonical name — the name itself is unknown here), so when no local `groups`
+/// row exists yet one is materialized with the id as fallback display name.
+///
 /// # Errors
-/// Returns an error if the group has no local row (an invite naming a group this
-/// peer never materialized — FK-safe: we hug a real local row, never FK-suicide
-/// an idempotent `record_group_member` against a missing `groups` row).
+/// Returns an error if the group row cannot be materialized/loaded.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
-    let group = crate::groups::find_group(&group_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| format!("no local group row for invite {group_id}"))?;
+    let group = crate::groups::ensure_group_for_invite(&group_id).map_err(|e| e.to_string())?;
     let local_peer_id = crate::get_local_peer_id()
         .map_err(|e| e.to_string())?
         .to_string();

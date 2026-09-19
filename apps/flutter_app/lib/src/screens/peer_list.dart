@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:p2p_app_flutter/src/rust/messages.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
-import 'package:p2p_app_flutter/src/util/formats.dart';
+import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Test-only seam for [PeerListState]: replaces the FFI-backed `sortPeers`
 /// call so widget tests can exercise sorting without a loaded Rust library.

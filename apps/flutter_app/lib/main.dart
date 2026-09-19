@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'src/rust/api.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/screens/home.dart';
-import 'src/util/env.dart';
+import 'src/util/ui_utils.dart';
 import 'src/util/event_bus.dart';
 
 Future<void> main() async {

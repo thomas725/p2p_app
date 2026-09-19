@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart';
-import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
@@ -30,15 +28,12 @@ class DmChatScreen extends StatefulWidget {
   State<DmChatScreen> createState() => _DmChatScreenState();
 }
 
-class _DmChatScreenState extends State<DmChatScreen> {
+class _DmChatScreenState extends State<DmChatScreen>
+    with MessageChatMixin<DmChatScreen> {
   final List<ChatMessage> _messages = [];
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
-  bool _atBottom = true;
-  int _unreadCount = 0;
-  bool _selectionMode = false;
-  final Set<int> _selectedIndices = {};
 
   String get _peerId => widget.peer.peerId;
   String get _label =>
@@ -67,19 +62,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final pos = _scrollController.position;
-    // Use Rust's is_at_bottom logic for consistency
-    final atBottom = isAtBottom(
-      scrollOffset: pos.pixels.round(),
-      total: pos.maxScrollExtent.round(),
-      visible: 80,
-    );
-    if (atBottom != _atBottom) {
-      setState(() {
-        _atBottom = atBottom;
-        if (_atBottom) _unreadCount = 0;
-      });
-    }
+    onListScroll(_scrollController.position);
   }
 
   Future<void> _loadHistory() async {
@@ -91,88 +74,10 @@ class _DmChatScreenState extends State<DmChatScreen> {
           ..addAll(msgs);
         _loading = false;
       });
-      _scrollToBottom();
+      scrollToBottom(_scrollController);
     } catch (_) {
       setState(() => _loading = false);
     }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients && _atBottom) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
-  }
-
-  void _forceScrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-        setState(() {
-          _atBottom = true;
-          _unreadCount = 0;
-        });
-      }
-    });
-  }
-
-  void _onBubbleDoubleTap(int index) {
-    setState(() {
-      _selectionMode = true;
-      _selectedIndices.add(index);
-    });
-  }
-
-  void _onBubbleTap(int index) {
-    if (!_selectionMode) return;
-    setState(() {
-      if (_selectedIndices.contains(index)) {
-        _selectedIndices.remove(index);
-        if (_selectedIndices.isEmpty) _selectionMode = false;
-      } else {
-        _selectedIndices.add(index);
-      }
-    });
-  }
-
-  void _cancelSelection() {
-    setState(() {
-      _selectionMode = false;
-      _selectedIndices.clear();
-    });
-  }
-
-  void _copySelected() {
-    final buf = StringBuffer();
-    final sorted = _selectedIndices.toList()..sort();
-    for (var i = 0; i < sorted.length; i++) {
-      final msg = _messages[sorted[i]];
-      final isOwn = msg.peerId == null;
-      final peerName = isOwn
-          ? 'Me'
-          : (msg.senderNickname ??
-                (msg.peerId!.length >= 12
-                    ? msg.peerId!.substring(0, 12)
-                    : msg.peerId!));
-      final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
-      buf.writeln(peerName);
-      buf.writeln(msg.content);
-      buf.writeln(time);
-      if (i < sorted.length - 1) buf.writeln();
-    }
-    Clipboard.setData(ClipboardData(text: buf.toString()));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-    _cancelSelection();
   }
 
   void _handleDmEvent(SwarmEventJson event) {
@@ -201,9 +106,9 @@ class _DmChatScreenState extends State<DmChatScreen> {
       if (!mounted) return;
       setState(() {
         _messages.add(msg);
-        if (!_atBottom) _unreadCount++;
+        if (!atBottom) unreadCount++;
       });
-      _scrollToBottom();
+      scrollToBottom(_scrollController);
     } catch (e) {
       debugPrint('Failed to persist incoming DM: $e');
     }
@@ -216,7 +121,7 @@ class _DmChatScreenState extends State<DmChatScreen> {
       final msg = await saveOutgoingDm(peerId: _peerId, content: text);
       _controller.clear();
       setState(() => _messages.add(msg));
-      _forceScrollToBottom();
+      forceJumpToBottom(_scrollController);
     } catch (e) {
       debugPrint('DM send failed: $e');
     }
@@ -263,120 +168,29 @@ class _DmChatScreenState extends State<DmChatScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _messages.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No messages with this peer.',
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                      )
-                    : SelectionArea(
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          child: Column(
-                            children: [
-                              for (int i = 0; i < _messages.length; i++)
-                                MessageBubble(
-                                  message: _messages[i],
-                                  isOwn: _messages[i].peerId == null,
-                                  selected: _selectedIndices.contains(i),
-                                  onDoubleTap: () => _onBubbleDoubleTap(i),
-                                  onTap: () => _onBubbleTap(i),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                if (_selectionMode)
-                  Positioned(
-                    bottom: 8,
-                    child: Card(
-                      elevation: 4,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: _cancelSelection,
-                            icon: const Icon(Icons.close),
-                            tooltip: 'Cancel',
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Text(
-                              '${_selectedIndices.length} selected',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: _selectedIndices.isEmpty
-                                ? null
-                                : _copySelected,
-                            icon: const Icon(Icons.copy),
-                            tooltip: 'Copy',
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (_unreadCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: FilledButton.icon(
-                      onPressed: _forceScrollToBottom,
-                      icon: const Icon(Icons.arrow_downward, size: 16),
-                      label: Text(
-                        '$_unreadCount new',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          MessageChatBody(
+            messages: _messages,
+            scrollController: _scrollController,
+            loading: _loading,
+            emptyText: 'No messages with this peer.',
+            selectionMode: selectionMode,
+            selectedIndices: selectedIndices,
+            onBubbleDoubleTap: onBubbleDoubleTap,
+            onBubbleTap: onBubbleTap,
+            onCancelSelection: cancelSelection,
+            onCopySelected: () {
+              copySelection(_messages);
+              cancelSelection();
+            },
+            unreadCount: unreadCount,
+            unreadLabel: '$unreadCount new',
+            onJumpToBottom: () => forceJumpToBottom(_scrollController),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: widget.serviceRunning
-                            ? 'Message $_label...'
-                            : 'Offline',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                        enabled: widget.serviceRunning,
-                      ),
-                      onSubmitted: (_) => _send(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: widget.serviceRunning ? _send : null,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          MessageInputBar(
+            controller: _controller,
+            enabled: widget.serviceRunning,
+            hintText: widget.serviceRunning ? 'Message $_label...' : 'Offline',
+            onSend: _send,
           ),
         ],
       ),

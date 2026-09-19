@@ -8,7 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:p2p_app_flutter/main.dart';
 
 void main() {
-  testWidgets('App builds and shows loading screen', (WidgetTester tester) async {
+  testWidgets('App builds and shows loading screen', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const P2pApp());
     await tester.pumpAndSettle();
 

@@ -3006,7 +3006,6 @@ dependencies = [
  "crossterm",
  "diesel",
  "diesel_migrations",
- "ed25519-dalek",
  "flutter_rust_bridge",
  "libp2p",
  "libp2p-identity",

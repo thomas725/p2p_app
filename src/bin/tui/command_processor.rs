@@ -323,18 +323,27 @@ async fn process_swarm_event(
             group_id,
             inviter_peer,
         } => {
-            let s = state.lock().await;
-            let sender_display = p2p_app::peer_display_name(
-                &inviter_peer,
-                &s.local_nicknames,
-                &s.received_nicknames,
-            );
-            let local_peer_id = s.local_peer_id.clone();
-            let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
+            let sender_display = {
+                let s = state.lock().await;
+                let sender_display = p2p_app::peer_display_name(
+                    &inviter_peer,
+                    &s.local_nicknames,
+                    &s.received_nicknames,
+                );
+                let local_peer_id = s.local_peer_id.clone();
+                drop(s);
+                let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
+                sender_display
+            };
             p2plog_debug(format!(
                 "Accepted join {group_id} invited by {sender_display}",
             ));
-            drop(s);
+            // Subscribe to the joined group so the swarm receives its traffic,
+            // mirroring mobile's `accept_group_invite` (otherwise incoming
+            // group messages never arrive).
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::SubscribeGroup { group_id })
+                .await;
         }
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
@@ -349,7 +358,7 @@ async fn process_swarm_event(
             let _ = p2p_app::save_receipt(&ack_for, &peer_id, kind, at);
         }
         SwarmEvent::PeerConnected(peer_id) => {
-            let (own_nickname, _concurrent_peers) = {
+            let (own_nickname, count) = {
                 let mut s = state.lock().await;
                 let count = apply_peer_connected_count(&mut s);
                 p2plog_debug(format!("Peer connected: {peer_id} (total: {count})"));
@@ -359,6 +368,8 @@ async fn process_swarm_event(
                 (own_nick, count)
             };
 
+            // Feed the peer-session history used for `get_network_size()`.
+            let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
             let msg_id = p2p_app::gen_msg_id();
             let _ = swarm_cmd_tx
                 .send(SwarmCommand::SendDm {
@@ -371,12 +382,17 @@ async fn process_swarm_event(
                 .await;
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
-            let mut s = state.lock().await;
-            let count = apply_peer_disconnected_count(&mut s);
-            s.connected
-                .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
+            let count = {
+                let mut s = state.lock().await;
+                let count = apply_peer_disconnected_count(&mut s);
+                s.connected
+                    .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
+                count
+            };
             p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
-            drop(s);
+
+            // Feed the peer-session history used for `get_network_size()`.
+            let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
         }
         SwarmEvent::ListenAddrEstablished(addr) => {
             let mut s = state.lock().await;

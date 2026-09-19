@@ -168,7 +168,9 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
 /// # Arguments
 /// * `msg_id` - ID of the message being acknowledged
 /// * `peer_id` - ID of the peer sending the receipt
-/// * `kind` - Receipt type (0=sent, 1=delivered, 2=read)
+/// * `kind` - Receipt type: `0` = broadcast ack, `1` = direct-message ack
+///   (mirrors `i32::from(is_dm)` in the TUI command processor; a kind-0 receipt
+///   is precisely the "peer acknowledged our broadcast" signal).
 /// * `confirmed_at` - Timestamp when the receipt was confirmed
 ///
 /// # Errors
@@ -213,6 +215,27 @@ pub fn save_receipt(
         .execute(conn)?;
     }
     Ok(())
+}
+
+/// Resolve whether the message identified by `msg_id` is a direct message.
+/// Returns `None` when the message id is unknown (nothing was persisted for it).
+///
+/// Used by the mobile receipt handler to pick the receipt `kind` (`i32::from`) —
+/// mirroring the TUI's `is_dm_receipt`, which answers the same question from
+/// in-memory state.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn message_is_dm(msg_id: &str) -> color_eyre::Result<Option<bool>> {
+    use diesel::OptionalExtension as _;
+
+    let conn = &mut crate::sqlite_connect()?;
+    let is_direct = crate::generated::schema::messages::table
+        .filter(crate::generated::schema::messages::msg_id.eq(msg_id))
+        .select(crate::generated::schema::messages::is_direct)
+        .first::<i32>(conn)
+        .optional()?;
+    Ok(is_direct.map(|d| d == 1))
 }
 
 /// Load all message receipts from the database.

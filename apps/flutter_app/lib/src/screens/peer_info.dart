@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
-import 'package:p2p_app_flutter/src/util/formats.dart';
+import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Full-screen peer detail page (name origin, activity), with a shortcut to
 /// open the DM chat for the peer.

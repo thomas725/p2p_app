@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart';
@@ -15,7 +14,7 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/peer_list.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
-import 'package:p2p_app_flutter/src/util/env.dart';
+import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
 /// Root tabbed screen: Broadcast chat, Peers, Groups, Log, and Settings.
@@ -100,23 +99,23 @@ class _HomeScreenState extends State<HomeScreen> {
     _scrollController.removeListener(_onScroll);
     setEventSink(null);
     _scrollController.dispose();
+    _liveStatus.dispose();
+    _statusNotifier.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final pos = _scrollController.position;
-    // Use Rust's is_at_bottom logic for consistency
-    final atBottom = isAtBottom(
-      scrollOffset: pos.pixels.round(),
-      total: pos.maxScrollExtent.round(),
-      visible: 80,
-    );
+    final atBottom = chatScrollAtBottom(_scrollController.position);
     if (atBottom != _atBottom) {
       setState(() {
         _atBottom = atBottom;
         if (_atBottom) _unreadCount = 0;
       });
+      // The user has actually read up to the newest broadcast: persist the
+      // viewed-count watermark so the next launch's unread-skip is right even
+      // when they got here by natural scrolling (not the jump-to-bottom button).
+      if (atBottom) _saveViewedCount();
     }
   }
 
@@ -147,32 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _copySelected() {
-    final buf = StringBuffer();
-    final sorted = _selectedIndices.toList()..sort();
-    for (var i = 0; i < sorted.length; i++) {
-      final msg = _messages[sorted[i]];
-      final isOwn = msg.peerId == null;
-      final peerName = isOwn
-          ? 'Me'
-          : (msg.senderNickname ??
-                (msg.peerId!.length >= 12
-                    ? msg.peerId!.substring(0, 12)
-                    : msg.peerId!));
-      final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
-      buf.writeln(peerName);
-      buf.writeln(msg.content);
-      buf.writeln(time);
-      if (i < sorted.length - 1) buf.writeln();
-    }
-    Clipboard.setData(ClipboardData(text: buf.toString()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${_selectedIndices.length} message${_selectedIndices.length > 1 ? 's' : ''} copied',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    copySelectedMessages(context, _messages, _selectedIndices);
     _cancelSelection();
   }
 
@@ -262,16 +236,37 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refreshGroups();
   }
 
+  /// Accept an incoming group invite: persist membership + subscribe (like the
+  /// TUI) and refresh the Groups list so the accepted group appears.
+  Future<void> _acceptInvite(String groupId) async {
+    try {
+      final group = await acceptGroupInvite(groupId: groupId);
+      if (mounted) {
+        setState(() {
+          if (!_groups.any((g) => g.groupId == group.groupId)) {
+            _groups.add(group);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Joined group: ${group.displayName}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to accept group invite: $e');
+    } finally {
+      _refreshGroups();
+    }
+  }
+
   void _handleSwarmEvent(SwarmEventJson event) {
     if (!mounted) return;
     switch (event.eventType) {
       case 'broadcast':
         if (event.content != null && event.peerId != null) {
-          _saveIncomingBroadcast(
-            event.content!,
-            event.peerId!,
-            event.nickname,
-          );
+          _saveIncomingBroadcast(event.content!, event.peerId!, event.nickname);
         }
         // A nickname in the event means we just learned or updated this peer's
         // name. Refresh the peer list so the info page (and peer list) reflect
@@ -296,6 +291,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // new message means the group's member set may have changed, so refresh
         // the list (counts stay in sync even when no group chat is open).
         _refreshGroups();
+        break;
+      case 'group_invite':
+        // Accept incoming group invites (record local membership + subscribe),
+        // mirroring the TUI's auto-accept behavior, then surface the group.
+        if (event.groupId != null) {
+          _acceptInvite(event.groupId!);
+        }
         break;
       case 'peer_connected':
         setState(() {
