@@ -76,7 +76,7 @@ libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }
 diesel_migrations = { version = "^2.3" }
 
 # feature set copied from chat example
-libp2p = { version = "=0.56.0", features = [
+libp2p = { version = "=0.57.0", features = [
     "tokio",
     "gossipsub",
     "noise",
@@ -105,7 +105,7 @@ tokio = { version = "1.53.1", features = [ "macros", "rt-multi-thread", "io-util
 # nice error handing
 color-eyre ={ version = "=0.6.5" }
 chrono = { version = "0.4.45", features = ["clock"] }
-libp2p-identity = "0.2.14"
+libp2p-identity = "=0.3.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petname = "3.0"

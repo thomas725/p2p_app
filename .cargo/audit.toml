@@ -1,14 +1,7 @@
 # cargo audit configuration.
 #
-# Ignored advisories are blocked upstream rather than accepted silently:
-#
-#   RUSTSEC-2026-0118 / RUSTSEC-2026-0119 (hickory-proto 0.25.2)
-#     libp2p-mdns 0.48.0 is the only hickory consumer in this tree and it
-#     requires hickory 0.25. libp2p 0.56.0 is the newest libp2p release and
-#     pins libp2p-mdns 0.48.0, so hickory >= 0.26.1 (the RUSTSEC-2026-0119
-#     fix) cannot be pulled in yet. Revisit on the next libp2p release.
-[advisories]
-ignore = [
-    "RUSTSEC-2026-0118",
-    "RUSTSEC-2026-0119",
-]
+# No advisories are silently ignored: every RUSTSEC that touched this tree has
+# either been fixed upstream and pulled in, or is unactionable. The hickory
+# RUSTSEC-2026-0118/0119 ignores were removed on 2026-09-20 (libp2p 0.57.0 →
+# libp2p-mdns 0.49.0 → hickory-proto 0.26.3, past the 0.26.1 fix line), and the
+# libp2p-identity re-pin made identity 0.3.0 the single copy.
