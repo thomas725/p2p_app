@@ -49,9 +49,11 @@ pub struct PeerSortInput {
     pub broadcast_count: u32,
 }
 
-/// A known peer joined with its message counts, fetched in a single call so
-/// Flutter can populate both the peer list and the peer table's count columns
-/// without an N+1 round trip over `get_peer_stats`.
+/// A known peer joined with its message counts, fetched in a single call.
+///
+/// Flutter populates both the peer list and the peer table's count columns
+/// from this one response, avoiding the N+1 round trip over
+/// [`crate::messages::get_all_peer_stats`].
 #[derive(Debug, Clone)]
 pub struct PeerWithStats {
     pub peer_id: String,
