@@ -376,8 +376,7 @@ fn test_handle_incoming_broadcast_adds_message() {
             None,
             Some("m1".to_string()),
             false,
-        )
-        .await;
+        );
         assert_eq!(state.messages.len(), 1);
         assert!(state.messages[0].text.contains("hello all"));
         assert_eq!(state.message_ids[0], Some("m1".to_string()));
@@ -406,8 +405,7 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
             None,
             Some("dm1".to_string()),
             true,
-        )
-        .await;
+        );
         assert!(state.dm_messages.contains_key("peer-dm"));
         assert!(state.dm_messages["peer-dm"][0].contains("secret dm"));
         assert_eq!(state.dm_message_ids["peer-dm"][0], Some("dm1".to_string()));
@@ -436,8 +434,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
             Some("Nickname".to_string()),
             None,
             false,
-        )
-        .await;
+        );
         // Should NOT add a message (empty content + nickname is just a nick update)
         assert!(state.messages.is_empty());
         // But should update received_nicknames
@@ -470,7 +467,7 @@ fn test_handle_incoming_sets_received_nickname() {
             None,
             false,
         )
-        .await;
+        ;
         assert_eq!(
             state.received_nicknames.get("peer-3"),
             Some(&"Alice".to_string())
@@ -502,7 +499,7 @@ fn test_handle_incoming_broadcast_with_latency() {
             None,
             false,
         )
-        .await;
+        ;
         assert_eq!(state.messages.len(), 1);
         assert!(state.messages[0].text.contains("42ms"));
     });
@@ -533,7 +530,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
             Some("dm-5".to_string()),
             true,
         )
-        .await;
+        ;
         assert!(state.dm_messages.contains_key("peer-5"));
         assert!(state.dm_messages["peer-5"][0].contains("hey"));
         assert!(state.dm_messages["peer-5"][0].contains("5ms"));

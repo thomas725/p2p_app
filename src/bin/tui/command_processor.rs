@@ -219,8 +219,8 @@ fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     }
 }
 
-#[allow(clippy::unused_async)]
-async fn handle_incoming_message(
+#[allow(clippy::needless_pass_by_value)]
+fn handle_incoming_message(
     s: &mut AppState,
     content: &str,
     peer_id: &str,
@@ -280,7 +280,7 @@ async fn process_swarm_event(
                 msg.msg_id,
                 false,
             )
-            .await;
+            ;
             drop(s);
         }
         SwarmEvent::DirectMessage(msg) => {
@@ -294,7 +294,7 @@ async fn process_swarm_event(
                 msg.msg_id,
                 true,
             )
-            .await;
+            ;
             drop(s);
         }
         SwarmEvent::GroupMessage(msg) => {
