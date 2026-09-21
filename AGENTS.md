@@ -37,11 +37,23 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - **Meshing group messages without an `msg_id` must still dedup**: `save_incoming_group_message` substitutes a stable synthetic key `nil:<fnv1a_hex(group_id|peer_id|sent_at|content)>` so SQLite's `(group_id, msg_id)` unique index (which treats `NULL`s as distinct) still stops retransmits. `GroupMessageMeta` stays as-is; the key is an internal `msg_id` on the row.
 
 ## Next Steps
-- Tracked in **`docs/2026-09-02_backlog.md`**. None urgent. Revisit item 6 (expected `cargo outdated` rows) when libp2p 0.57+ lands (its master unblocker).
+- Tracked in **`docs/2026-09-02_backlog.md`**. None urgent. Item 6 (expected
+  `cargo outdated` rows) was revisited 2026-09-21 — its single master unblocker landed (**libp2p
+  0.57.0**, `fb65264`): 4 of its 8 rows cleared; only the diesel→`libsqlite3-sys` 0.36 row remains
+  open (needs a newer diesel 2.x — newest diesel 2.3 still pins `libsqlite3-sys` 0.36). No further
+  revisit needed.
+
 
 ## Critical Context
 - **FRB regeneration protocol**: `flutter_rust_bridge_codegen generate` (2.13.0, pinned `=2.13.0` in Cargo.toml and `2.13.0` in pubspec) → re-append `clippy::all, clippy::pedantic, clippy::nursery, clippy::restriction` to `src/frb_generated.rs`'s `#![allow(...)]` → `cargo fmt --all` → delete untracked `src/frb_generated.h` → verify `cargo ct` + `cargo test --all-features` + `flutter analyze`/`flutter test`. `pub mod generated;` in `src/lib.rs` carries the `/// flutter_rust_bridge:ignore` doc line that makes FRB skip the diesel schema. `build.rs` regenerates `src/generated/columns.rs` from `schema.rs` at build time.
-- **Dependency audit config**: `.cargo/audit.toml` ignores `RUSTSEC-2026-0118`/`RUSTSEC-2026-0119` (hickory-proto 0.25.2 — unfixable while libp2p stays 0.56). CI dependency job gates on `cargo audit` (hard fail) + artifact upload; `cargo outdated` is informational.
+- **Dependency audit config**: `.cargo/audit.toml` is comment-only — the hickory
+  `RUSTSEC-2026-0118`/`0119` ignores were retired on 2026-09-20 (**libp2p 0.57.0**, `fb65264` →
+  libp2p-mdns 0.49.0 → hickory-proto 0.26.3, past the 0.26.1 fix line). `cargo audit` is clean
+  (exit 0); the one remaining row is the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a
+  build-time proc-macro from `libp2p-mdns → if-watch → netlink-packet-core` — benign, core libp2p).
+  CI dependency job gates on `cargo audit` (hard fail) + artifact upload; `cargo outdated` is
+  informational.
+
 - **Scheduled-workflow skip checks need `actions: read`**: `.github/workflows/dependencies.yml` and `nightly-apk.yml` run `scripts/ci-skip-no-new-commits.sh`, which queries the Actions runs API with the GITHUB_TOKEN. The token must carry `actions: read`, or that endpoint returns 403 and (previously, fail-open) every nightly run executed anyway — producing duplicate `ci: refresh coverage and codebase metrics` commits on main. The script is fail-closed now: any API error skips the run (a manual `workflow_dispatch` overrides). Don't drop that permission when editing the workflows.
 - **Metrics skip-check uses commit-baseline mode**: `.github/workflows/metrics.yml` calls `scripts/ci-skip-no-new-commits.sh metrics.yml --commit-baseline="ci: refresh coverage and codebase metrics"`. The baseline is the newest CI-authored commit matching that subject on the branch (resolved by local git, no API call), NOT the last workflow run — so a skipped run can never become the baseline and reseed the "no commits at all" skip loop. Only the metrics workflow uses this mode; the other two stay on run-history mode.
 - `handle_mouse_left_click(state, mouse_row, mouse_column, is_peers_tab)` keeps its 4-arg signature (tests depend on it).
