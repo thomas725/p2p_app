@@ -57,6 +57,7 @@ tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subs
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
 mobile = [ "basic", "sqlite_bundled", "quic", "flutter_rust_bridge" ]
 test-utils = []
+calls = []
 
 [dependencies]
 tracing = { version = "=0.1.44", optional = true }
