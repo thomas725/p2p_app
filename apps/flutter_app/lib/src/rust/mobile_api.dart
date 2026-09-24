@@ -6,9 +6,9 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `contact_info_from`, `device_info_from`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_user_devices`, `init_mobile_database`, `remove_contact`, `verify_device_binding_claim`
+// These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_user_devices`, `init_mobile_database`, `remove_contact`, `verify_device_binding_claim`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
@@ -64,6 +64,46 @@ List<PeerSortInput> sortPeers({
   ascending: ascending,
 );
 
+/// One device row inside a contact's roster entry.
+class MobileContactDevice {
+  final String peerId;
+  final String displayName;
+  final String firstSeen;
+  final String lastSeen;
+  final String? receivedNickname;
+  final String? localNickname;
+
+  const MobileContactDevice({
+    required this.peerId,
+    required this.displayName,
+    required this.firstSeen,
+    required this.lastSeen,
+    this.receivedNickname,
+    this.localNickname,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      displayName.hashCode ^
+      firstSeen.hashCode ^
+      lastSeen.hashCode ^
+      receivedNickname.hashCode ^
+      localNickname.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileContactDevice &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          displayName == other.displayName &&
+          firstSeen == other.firstSeen &&
+          lastSeen == other.lastSeen &&
+          receivedNickname == other.receivedNickname &&
+          localNickname == other.localNickname;
+}
+
 /// A user-arranged contact pair, as exposed to Flutter.
 class MobileContactInfo {
   /// User ID of the owner of this contact row
@@ -101,6 +141,63 @@ class MobileContactInfo {
           contactUserId == other.contactUserId &&
           nicknameOverride == other.nicknameOverride &&
           addedAt == other.addedAt;
+}
+
+/// One row of the Contacts tab, as exposed to Flutter.
+///
+/// A user's bound devices are collapsed into a single row
+/// ([`MobileContactRow::device_rows`]); unbound peers appear as single-device
+/// rows.
+class MobileContactRow {
+  /// Stable key: `user_id` when [`MobileContactRow::is_user`], else `peer_id`.
+  final String contactId;
+  final bool isUser;
+  final String displayName;
+  final BigInt deviceCount;
+  final List<MobileContactDevice> deviceRows;
+  final String firstSeen;
+  final String lastSeen;
+  final PlatformInt64 dmCount;
+  final PlatformInt64 broadcastSentToPeer;
+
+  const MobileContactRow({
+    required this.contactId,
+    required this.isUser,
+    required this.displayName,
+    required this.deviceCount,
+    required this.deviceRows,
+    required this.firstSeen,
+    required this.lastSeen,
+    required this.dmCount,
+    required this.broadcastSentToPeer,
+  });
+
+  @override
+  int get hashCode =>
+      contactId.hashCode ^
+      isUser.hashCode ^
+      displayName.hashCode ^
+      deviceCount.hashCode ^
+      deviceRows.hashCode ^
+      firstSeen.hashCode ^
+      lastSeen.hashCode ^
+      dmCount.hashCode ^
+      broadcastSentToPeer.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileContactRow &&
+          runtimeType == other.runtimeType &&
+          contactId == other.contactId &&
+          isUser == other.isUser &&
+          displayName == other.displayName &&
+          deviceCount == other.deviceCount &&
+          deviceRows == other.deviceRows &&
+          firstSeen == other.firstSeen &&
+          lastSeen == other.lastSeen &&
+          dmCount == other.dmCount &&
+          broadcastSentToPeer == other.broadcastSentToPeer;
 }
 
 /// A device bound into a user's device-set, as exposed to Flutter.

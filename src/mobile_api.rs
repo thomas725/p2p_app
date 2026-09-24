@@ -97,6 +97,80 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
     Ok(rows)
 }
 
+/// One device row inside a contact's roster entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobileContactDevice {
+    pub peer_id: String,
+    pub display_name: String,
+    pub first_seen: String,
+    pub last_seen: String,
+    pub received_nickname: Option<String>,
+    pub local_nickname: Option<String>,
+}
+
+/// One row of the Contacts tab, as exposed to Flutter.
+///
+/// A user's bound devices are collapsed into a single row
+/// ([`MobileContactRow::device_rows`]); unbound peers appear as single-device
+/// rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobileContactRow {
+    /// Stable key: `user_id` when [`MobileContactRow::is_user`], else `peer_id`.
+    pub contact_id: String,
+    pub is_user: bool,
+    pub display_name: String,
+    pub device_count: usize,
+    pub device_rows: Vec<MobileContactDevice>,
+    pub first_seen: String,
+    pub last_seen: String,
+    pub dm_count: i64,
+    pub broadcast_sent_to_peer: i64,
+}
+
+fn contact_device_from(device: crate::contacts::ContactDevice) -> MobileContactDevice {
+    MobileContactDevice {
+        peer_id: device.peer_id,
+        display_name: device.display_name,
+        first_seen: device.first_seen,
+        last_seen: device.last_seen,
+        received_nickname: device.received_nickname,
+        local_nickname: device.local_nickname,
+    }
+}
+
+fn contact_row_from(row: crate::contacts::ContactRow) -> MobileContactRow {
+    MobileContactRow {
+        contact_id: row.contact_id,
+        is_user: row.is_user,
+        display_name: row.display_name,
+        device_count: row.device_count,
+        device_rows: row
+            .device_rows
+            .into_iter()
+            .map(contact_device_from)
+            .collect(),
+        first_seen: row.first_seen,
+        last_seen: row.last_seen,
+        dm_count: row.dm_count,
+        broadcast_sent_to_peer: row.broadcast_sent_to_peer,
+    }
+}
+
+/// Load the canonical Contacts-tab roster in a single round trip.
+///
+/// Mirrors [`crate::contacts::load_contacts`] for Flutter: bound devices
+/// collapse into user rows, unbound peers stay single-device rows, and stats
+/// are aggregated per contact.
+///
+/// # Errors
+/// Returns an error if the roster cannot be loaded.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn get_contacts_with_stats() -> Result<Vec<MobileContactRow>, String> {
+    crate::contacts::load_contacts()
+        .map(|rows| rows.into_iter().map(contact_row_from).collect())
+        .map_err(|e| e.to_string())
+}
+
 /// Sort known peers by the given column and order, mirroring the TUI peers
 /// table: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
 /// `4` first seen (any other value falls back to name). Ordering always ties
@@ -639,5 +713,56 @@ mod tests {
         assert_eq!(rows[0].nickname.as_deref(), Some("Announced"));
         assert_eq!(rows[0].local_nickname.as_deref(), Some("Local"));
         assert!(!rows[0].display_name.is_empty());
+    }
+
+    #[test]
+    #[serial(db)]
+    fn get_contacts_with_stats_collapses_user_devices() {
+        let _guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("contacts_stats.sqlite");
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
+        crate::init_database().expect("init db");
+
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let user_id = "alice";
+        crate::identity::save_user(
+            user_id,
+            &account_key.public().encode_protobuf(),
+            Some(user_id),
+            Some(user_id),
+        )
+        .expect("save user");
+        for (peer_id, claim_id) in [("dev-A", "claim-A"), ("dev-B", "claim-B")] {
+            let device_pubkey = account_key.public().encode_protobuf();
+            let mut message = Vec::new();
+            message.extend_from_slice(user_id.as_bytes());
+            message.extend_from_slice(&device_pubkey);
+            message.extend_from_slice(claim_id.as_bytes());
+            let claim = account_key.sign(&message).expect("sign claim");
+            crate::peers::save_peer(peer_id, &[]).expect("save peer");
+            crate::identity::save_device_binding(
+                user_id,
+                peer_id,
+                &device_pubkey,
+                claim_id,
+                &claim,
+            )
+            .expect("save binding");
+        }
+        crate::save_message("dm-1", None, "dm-topic", true, Some("dev-A")).expect("save dm");
+        crate::peers::record_broadcast_recipients("b1", &["dev-B".to_string()])
+            .expect("record recipient");
+
+        let rows = get_contacts_with_stats().expect("contacts with stats");
+        assert_eq!(rows.len(), 1, "both devices collapse into one user row");
+        let row = &rows[0];
+        assert!(row.is_user);
+        assert_eq!(row.contact_id, user_id);
+        assert_eq!(row.device_count, 2);
+        assert_eq!(row.dm_count, 1);
+        assert_eq!(row.broadcast_sent_to_peer, 1);
+        assert_eq!(row.device_rows.len(), 2);
     }
 }

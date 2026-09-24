@@ -266,3 +266,10 @@ Future<void> addContact({
 /// Returns an error if the install has no bound user or the delete fails.
 Future<void> removeContact({required String contactUserId}) =>
     RustLib.instance.api.crateApiRemoveContact(contactUserId: contactUserId);
+
+/// Load the canonical Contacts-tab roster in a single round trip.
+///
+/// # Errors
+/// Returns an error if the roster cannot be loaded.
+Future<List<MobileContactRow>> getContactsWithStats() =>
+    RustLib.instance.api.crateApiGetContactsWithStats();

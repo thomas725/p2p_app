@@ -2,7 +2,9 @@
 //!
 //! This module defines the functions and types exposed to Dart via FRB.
 
-use crate::mobile_api::{MobileContactInfo, MobileDeviceInfo, MobileInitStatus, MobilePeerStatus};
+use crate::mobile_api::{
+    MobileContactInfo, MobileContactRow, MobileDeviceInfo, MobileInitStatus, MobilePeerStatus,
+};
 use crate::mobile_node::{
     ChatMessage, MobileGroup, MobileGroupMessage, MobilePeerRecord, SwarmEventJson,
 };
@@ -293,4 +295,12 @@ pub fn add_contact(
 #[allow(clippy::needless_pass_by_value)]
 pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
     crate::mobile_api::remove_contact(contact_user_id)
+}
+
+/// Load the canonical Contacts-tab roster in a single round trip.
+///
+/// # Errors
+/// Returns an error if the roster cannot be loaded.
+pub fn get_contacts_with_stats() -> Result<Vec<MobileContactRow>, String> {
+    crate::mobile_api::get_contacts_with_stats()
 }
