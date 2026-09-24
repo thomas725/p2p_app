@@ -96,6 +96,42 @@ allows → `cargo fmt --all` → delete untracked `.h` → `cargo ct` + `cargo t
 3. **Calls/videocalls** (later, feature-gated): break the `calls` gate, add media deps, gate kept
    so unneeded builds skip them. Uses the call vs. user identity; multi-device lanes follow §11.
 
+## Contacts tab (replaces the Peers tab) — user decision (2026-09-24)
+
+Recorded from the user directly (the "Dart surface" of step 2). Applies to **both** frontends
+(TUI + Flutter) to keep the shared parity rules (single canonical model, one Rust fn per binding,
+TUI/Flutter sort parity).
+
+- **Replace the Peers tab with a Contacts tab.** The tab's rows become *contacts*: unbound peers
+  still appear (as single-device rows, exactly today's behavior), and peers that resolve to a user
+  via `device_bindings` are grouped under that user.
+- **Single-device contact ≈ today's peer row.** Minimal behavior change; click/selection/message
+  flows stay as they are (peer click → DM, message click → sender's PeerInfo).
+- **Multi-device contact = one row.** A user with several bound devices shows a single contact row
+  aggregating all of them (device count, and the device rows are reachable/expandable from the
+  contact — exact expand behavior lands with the TUI/Flutter implementation).
+- **Two-sided nicknames.** Devices *and* users may each carry a nickname from the owner's side
+  (`peer_local_nickname` for a device, `contacts.nickname_override` for a user) and from the
+  receiving user's side (`received_nickname`, `users.self_nickname`); the two may differ. The
+  contact row's display name resolves: user `nickname_override` → user `self_nickname` → best
+  device display name, keeping the existing `get_peer_display_name` precedence (local → received
+  → petname) for the device level.
+
+### Canonical backend shape (both frontends render against this)
+
+A single Rust model + one bulk loading fn feeds both UIs (replacing the peer-list path):
+
+- `ContactRow` = `contact_id` (user_id or peer_id), display name, `is_user`, device list,
+  aggregated stats (dm_count, broadcast_sent_to_peer summed across the user's devices), aggregate
+  `first_seen`/`last_seen` (min/max across the group), and the per-device rows.
+- Grouping: reverse `device_bindings` lookup (`find_user_id_for_peer`) over `load_peers`; build a
+  `HashMap<Option<user_id>, Vec<peer>>`. Bulk `get_all_peer_stats` provides counts (same two-pass
+  query) which are summed per group.
+- Sort parity: the TUI sort and the Flutter `sortPeers` binding keep the deterministic rules, now
+  over contact rows (ties on the contact's stable key = the user_id, or peer_id for unbound rows).
+- Display-name rule above lives in `nickname.rs` so both frontends agree; the existing
+  `DISPLAY_NAME_CACHE` invalidation points stay the source of freshness.
+
 ## Explicit deferrals (recorded, not forgotten)
 
 - Backfill transport choice + watermark persistence location — §11.3, implementation lane.
