@@ -155,12 +155,12 @@ Future<MobileGroupMessage> saveOutgoingGroup({
   content: content,
 );
 
-/// Accept a pending group invite: persist local membership and subscribe to the
-/// group's topic so the swarm starts receiving its traffic.
+/// Accept a pending group invite: materialize the group locally, persist
+/// membership, and subscribe to the group's topic so the swarm starts receiving
+/// its traffic.
 ///
 /// # Errors
-/// Returns an error if the group has no local row (an invite for a group this
-/// peer never materialized).
+/// Returns an error if the group row cannot be materialized/loaded.
 Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
     RustLib.instance.api.crateApiAcceptGroupInvite(groupId: groupId);
 
@@ -184,3 +184,85 @@ Future<bool> validateNickname({required String nickname}) =>
 /// re-derive the thresholds in Dart.
 Future<String> networkSizeLabel({required PlatformInt64 peerCount}) =>
     RustLib.instance.api.crateApiNetworkSizeLabel(peerCount: peerCount);
+
+/// Resolve this install's user ID from its stored identity and binding.
+///
+/// Returns `None` until this install's peer ID is bound into some user's
+/// device-set ([`crate::identity::DeviceBinding`]).
+///
+/// # Errors
+/// Returns an error if the local peer ID cannot be resolved or the DB lookup
+/// fails.
+Future<String?> getMyUserId() => RustLib.instance.api.crateApiGetMyUserId();
+
+/// Verify a raw device-binding claim against the user's stored account key.
+///
+/// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;
+/// all three message parts are required to recompute and verify it.
+///
+/// # Errors
+/// Returns an error if the DB lookup fails.
+Future<bool> verifyDeviceBindingClaim({
+  required String userId,
+  required List<int> devicePubkey,
+  required String claimId,
+  required List<int> claim,
+}) => RustLib.instance.api.crateApiVerifyDeviceBindingClaim(
+  userId: userId,
+  devicePubkey: devicePubkey,
+  claimId: claimId,
+  claim: claim,
+);
+
+/// Verify a claim against the user's account key, then bind the device.
+///
+/// # Errors
+/// Returns an error if the claim fails verification or the insert fails.
+Future<MobileDeviceInfo> addDevice({
+  required String userId,
+  required String peerId,
+  required List<int> devicePubkey,
+  required String claimId,
+  required List<int> claim,
+}) => RustLib.instance.api.crateApiAddDevice(
+  userId: userId,
+  peerId: peerId,
+  devicePubkey: devicePubkey,
+  claimId: claimId,
+  claim: claim,
+);
+
+/// List the live devices bound to a user, most recent first.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+Future<List<MobileDeviceInfo>> getUserDevices({required String userId}) =>
+    RustLib.instance.api.crateApiGetUserDevices(userId: userId);
+
+/// List this install's user's contacts.
+///
+/// Returns an empty list before the install is bound to a user.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+Future<List<MobileContactInfo>> getContacts() =>
+    RustLib.instance.api.crateApiGetContacts();
+
+/// Add a contact for this install's user.
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the insert fails.
+Future<void> addContact({
+  required String contactUserId,
+  String? nicknameOverride,
+}) => RustLib.instance.api.crateApiAddContact(
+  contactUserId: contactUserId,
+  nicknameOverride: nicknameOverride,
+);
+
+/// Remove a contact for this install's user.
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the delete fails.
+Future<void> removeContact({required String contactUserId}) =>
+    RustLib.instance.api.crateApiRemoveContact(contactUserId: contactUserId);

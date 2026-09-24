@@ -2,7 +2,7 @@
 //!
 //! This module defines the functions and types exposed to Dart via FRB.
 
-use crate::mobile_api::{MobileInitStatus, MobilePeerStatus};
+use crate::mobile_api::{MobileContactInfo, MobileDeviceInfo, MobileInitStatus, MobilePeerStatus};
 use crate::mobile_node::{
     ChatMessage, MobileGroup, MobileGroupMessage, MobilePeerRecord, SwarmEventJson,
 };
@@ -207,4 +207,90 @@ pub fn network_size_label(peer_count: i64) -> String {
     // is exact and cannot lose precision for the range used here.
     #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
     NetworkSize::from_peer_count(peer_count as f64).to_string()
+}
+
+// --- Identity lane ---
+
+/// Resolve this install's user ID from its stored identity and binding.
+///
+/// Returns `None` until this install's peer ID is bound into some user's
+/// device-set ([`crate::identity::DeviceBinding`]).
+///
+/// # Errors
+/// Returns an error if the local peer ID cannot be resolved or the DB lookup
+/// fails.
+pub fn get_my_user_id() -> Result<Option<String>, String> {
+    crate::mobile_api::get_my_user_id()
+}
+
+/// Verify a raw device-binding claim against the user's stored account key.
+///
+/// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;
+/// all three message parts are required to recompute and verify it.
+///
+/// # Errors
+/// Returns an error if the DB lookup fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn verify_device_binding_claim(
+    user_id: String,
+    device_pubkey: Vec<u8>,
+    claim_id: String,
+    claim: Vec<u8>,
+) -> Result<bool, String> {
+    crate::mobile_api::verify_device_binding_claim(user_id, device_pubkey, claim_id, claim)
+}
+
+/// Verify a claim against the user's account key, then bind the device.
+///
+/// # Errors
+/// Returns an error if the claim fails verification or the insert fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn add_device(
+    user_id: String,
+    peer_id: String,
+    device_pubkey: Vec<u8>,
+    claim_id: String,
+    claim: Vec<u8>,
+) -> Result<MobileDeviceInfo, String> {
+    crate::mobile_api::add_device(user_id, peer_id, device_pubkey, claim_id, claim)
+}
+
+/// List the live devices bound to a user, most recent first.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_user_devices(user_id: String) -> Result<Vec<MobileDeviceInfo>, String> {
+    crate::mobile_api::get_user_devices(user_id)
+}
+
+/// List this install's user's contacts.
+///
+/// Returns an empty list before the install is bound to a user.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+pub fn get_contacts() -> Result<Vec<MobileContactInfo>, String> {
+    crate::mobile_api::get_contacts()
+}
+
+/// Add a contact for this install's user.
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the insert fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn add_contact(
+    contact_user_id: String,
+    nickname_override: Option<String>,
+) -> Result<(), String> {
+    crate::mobile_api::add_contact(contact_user_id, nickname_override)
+}
+
+/// Remove a contact for this install's user.
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the delete fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
+    crate::mobile_api::remove_contact(contact_user_id)
 }

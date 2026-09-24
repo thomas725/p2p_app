@@ -4,6 +4,8 @@
 //! Android services, and future iOS bindings should depend on this facade rather
 //! than reaching into TUI/desktop-oriented modules directly.
 
+use chrono::TimeZone;
+
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
 /// Used by Dart/Flutter UI to display message timestamps. Uses a checked
@@ -134,6 +136,176 @@ pub fn sort_peers(
         if ascending { ord } else { ord.reverse() }
     });
     keyed.into_iter().map(|(p, _)| p).collect()
+}
+
+/// A device bound into a user's device-set, as exposed to Flutter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobileDeviceInfo {
+    /// Unique identifier of the signed device→user claim
+    pub claim_id: String,
+    /// User this device is bound into
+    pub user_id: String,
+    /// Peer ID of the bound device
+    pub peer_id: String,
+    /// Device pubkey (install key) being bound
+    pub device_pubkey: Vec<u8>,
+    /// Timestamp when the claim was bound, formatted for display
+    pub bound_at: String,
+}
+
+/// A user-arranged contact pair, as exposed to Flutter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MobileContactInfo {
+    /// User ID of the owner of this contact row
+    pub owner_user_id: String,
+    /// User ID of the contact (foreign user)
+    pub contact_user_id: String,
+    /// Nickname override this owner has assigned to the contact
+    pub nickname_override: Option<String>,
+    /// Timestamp when the contact was first added, formatted for display
+    pub added_at: String,
+}
+
+fn device_info_from(
+    binding: crate::generated::models_queryable::DeviceBinding,
+) -> MobileDeviceInfo {
+    MobileDeviceInfo {
+        claim_id: binding.claim_id,
+        user_id: binding.user_id,
+        peer_id: binding.peer_id,
+        device_pubkey: binding.device_pubkey,
+        bound_at: chrono::Utc
+            .from_utc_datetime(&binding.bound_at)
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+    }
+}
+
+fn contact_info_from(contact: crate::generated::models_queryable::Contact) -> MobileContactInfo {
+    MobileContactInfo {
+        owner_user_id: contact.owner_user_id,
+        contact_user_id: contact.contact_user_id,
+        nickname_override: contact.nickname_override,
+        added_at: chrono::Utc
+            .from_utc_datetime(&contact.added_at)
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+    }
+}
+
+/// Resolve this install's user ID from its stored identity and binding.
+///
+/// A user is "this install's user" when a live [`crate::identity::DeviceBinding`]
+/// row binds our local peer ID into that user's device-set. Returns `None`
+/// before the install has been bound to any user.
+///
+/// # Errors
+/// Returns an error if the local peer ID cannot be resolved or the DB lookup
+/// fails.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn get_my_user_id() -> Result<Option<String>, String> {
+    let local_peer = crate::get_local_peer_id().map_err(|e| e.to_string())?;
+    crate::identity::find_user_id_for_peer(&local_peer.to_string()).map_err(|e| e.to_string())
+}
+
+/// Verify a raw device-binding claim against the user's stored account key.
+///
+/// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;
+/// it succeeds only when it checks out against the account pubkey stored on
+/// that user's row.
+///
+/// # Errors
+/// Returns an error if the DB lookup fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn verify_device_binding_claim(
+    user_id: String,
+    device_pubkey: Vec<u8>,
+    claim_id: String,
+    claim: Vec<u8>,
+) -> Result<bool, String> {
+    crate::identity::verify_device_binding_claim(&user_id, &device_pubkey, &claim_id, &claim)
+        .map_err(|e| e.to_string())
+}
+
+/// Verify a claim against the user's account key, then bind the device.
+///
+/// # Errors
+/// Returns an error if the claim fails verification or the insert fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn add_device(
+    user_id: String,
+    peer_id: String,
+    device_pubkey: Vec<u8>,
+    claim_id: String,
+    claim: Vec<u8>,
+) -> Result<MobileDeviceInfo, String> {
+    crate::identity::save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim)
+        .map(device_info_from)
+        .map_err(|e| e.to_string())
+}
+
+/// List the live devices bound to a user, most recent first.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn get_user_devices(user_id: String) -> Result<Vec<MobileDeviceInfo>, String> {
+    crate::identity::list_user_devices(&user_id)
+        .map(|devices| devices.into_iter().map(device_info_from).collect())
+        .map_err(|e| e.to_string())
+}
+
+/// List this install's user's contacts (owner = this install's user).
+///
+/// Returns an empty list before the install is bound to a user.
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn get_contacts() -> Result<Vec<MobileContactInfo>, String> {
+    let Some(owner_user_id) = get_my_user_id()? else {
+        return Ok(Vec::new());
+    };
+    crate::identity::list_contacts(&owner_user_id)
+        .map(|contacts| contacts.into_iter().map(contact_info_from).collect())
+        .map_err(|e| e.to_string())
+}
+
+/// Add a contact for this install's user (owner = this install's user).
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the insert fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn add_contact(
+    contact_user_id: String,
+    nickname_override: Option<String>,
+) -> Result<(), String> {
+    let owner_user_id =
+        get_my_user_id()?.ok_or_else(|| "this install is not bound to a user yet".to_string())?;
+    crate::identity::add_contact(
+        &owner_user_id,
+        &contact_user_id,
+        nickname_override.as_deref(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Remove a contact for this install's user (owner = this install's user).
+///
+/// # Errors
+/// Returns an error if the install has no bound user or the delete fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
+    let owner_user_id =
+        get_my_user_id()?.ok_or_else(|| "this install is not bound to a user yet".to_string())?;
+    crate::identity::remove_contact(&owner_user_id, &contact_user_id).map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

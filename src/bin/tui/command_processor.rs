@@ -279,8 +279,7 @@ async fn process_swarm_event(
                 msg.nickname,
                 msg.msg_id,
                 false,
-            )
-            ;
+            );
             drop(s);
         }
         SwarmEvent::DirectMessage(msg) => {
@@ -293,8 +292,7 @@ async fn process_swarm_event(
                 msg.nickname,
                 msg.msg_id,
                 true,
-            )
-            ;
+            );
             drop(s);
         }
         SwarmEvent::GroupMessage(msg) => {

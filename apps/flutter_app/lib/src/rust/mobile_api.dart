@@ -6,8 +6,9 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `get_mobile_peer_status`, `init_mobile_database`
+// These functions are ignored because they are not marked as `pub`: `contact_info_from`, `device_info_from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_user_devices`, `init_mobile_database`, `remove_contact`, `verify_device_binding_claim`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///
@@ -62,6 +63,90 @@ List<PeerSortInput> sortPeers({
   sortColumn: sortColumn,
   ascending: ascending,
 );
+
+/// A user-arranged contact pair, as exposed to Flutter.
+class MobileContactInfo {
+  /// User ID of the owner of this contact row
+  final String ownerUserId;
+
+  /// User ID of the contact (foreign user)
+  final String contactUserId;
+
+  /// Nickname override this owner has assigned to the contact
+  final String? nicknameOverride;
+
+  /// Timestamp when the contact was first added, formatted for display
+  final String addedAt;
+
+  const MobileContactInfo({
+    required this.ownerUserId,
+    required this.contactUserId,
+    this.nicknameOverride,
+    required this.addedAt,
+  });
+
+  @override
+  int get hashCode =>
+      ownerUserId.hashCode ^
+      contactUserId.hashCode ^
+      nicknameOverride.hashCode ^
+      addedAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileContactInfo &&
+          runtimeType == other.runtimeType &&
+          ownerUserId == other.ownerUserId &&
+          contactUserId == other.contactUserId &&
+          nicknameOverride == other.nicknameOverride &&
+          addedAt == other.addedAt;
+}
+
+/// A device bound into a user's device-set, as exposed to Flutter.
+class MobileDeviceInfo {
+  /// Unique identifier of the signed device→user claim
+  final String claimId;
+
+  /// User this device is bound into
+  final String userId;
+
+  /// Peer ID of the bound device
+  final String peerId;
+
+  /// Device pubkey (install key) being bound
+  final Uint8List devicePubkey;
+
+  /// Timestamp when the claim was bound, formatted for display
+  final String boundAt;
+
+  const MobileDeviceInfo({
+    required this.claimId,
+    required this.userId,
+    required this.peerId,
+    required this.devicePubkey,
+    required this.boundAt,
+  });
+
+  @override
+  int get hashCode =>
+      claimId.hashCode ^
+      userId.hashCode ^
+      peerId.hashCode ^
+      devicePubkey.hashCode ^
+      boundAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileDeviceInfo &&
+          runtimeType == other.runtimeType &&
+          claimId == other.claimId &&
+          userId == other.userId &&
+          peerId == other.peerId &&
+          devicePubkey == other.devicePubkey &&
+          boundAt == other.boundAt;
+}
 
 class MobileInitStatus {
   final String databaseUrl;
@@ -153,7 +238,7 @@ class PeerSortInput {
 ///
 /// Flutter populates both the peer list and the peer table's count columns
 /// from this one response, avoiding the N+1 round trip over
-/// `get_all_peer_stats`.
+/// [`crate::messages::get_all_peer_stats`].
 class PeerWithStats {
   final String peerId;
   final String displayName;

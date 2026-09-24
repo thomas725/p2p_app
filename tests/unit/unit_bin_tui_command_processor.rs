@@ -466,8 +466,7 @@ fn test_handle_incoming_sets_received_nickname() {
             Some("Alice".to_string()),
             None,
             false,
-        )
-        ;
+        );
         assert_eq!(
             state.received_nicknames.get("peer-3"),
             Some(&"Alice".to_string())
@@ -498,8 +497,7 @@ fn test_handle_incoming_broadcast_with_latency() {
             None,
             None,
             false,
-        )
-        ;
+        );
         assert_eq!(state.messages.len(), 1);
         assert!(state.messages[0].text.contains("42ms"));
     });
@@ -529,8 +527,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
             Some("Bob".to_string()),
             Some("dm-5".to_string()),
             true,
-        )
-        ;
+        );
         assert!(state.dm_messages.contains_key("peer-5"));
         assert!(state.dm_messages["peer-5"][0].contains("hey"));
         assert!(state.dm_messages["peer-5"][0].contains("5ms"));

@@ -136,6 +136,25 @@ pub fn list_user_devices(user_id: &str) -> color_eyre::Result<Vec<DeviceBinding>
         .wrap_err("failed to list user devices")
 }
 
+/// Resolve the user bound to a given device peer ID.
+///
+/// This is the reverse edge of [`list_user_devices`]: given the peer ID of a
+/// bound device, return the user it belongs to. Returns `None` when the peer
+/// is not bound to any user.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn find_user_id_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
+    let conn = &mut crate::sqlite_connect()?;
+    device_bindings::table
+        .filter(device_bindings::peer_id.eq(peer_id))
+        .filter(device_bindings::revoked_at.is_null())
+        .select(device_bindings::user_id)
+        .first(conn)
+        .optional()
+        .wrap_err("failed to resolve user for peer")
+}
+
 /// Add a contact (owner → contact adjacency). Idempotent.
 ///
 /// # Errors
