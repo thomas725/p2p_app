@@ -220,3 +220,85 @@ fn owner_nickname_override_wins_over_self_nickname() {
         );
     });
 }
+
+#[test]
+fn build_contact_rows_is_pure_and_groups_live_inputs() {
+    use crate::contacts::{ContactDeviceInput, ContactRow};
+    use crate::messages::PeerMessageStats;
+    let devices = vec![
+        ContactDeviceInput {
+            peer_id: "dev-A".to_string(),
+            first_seen: "2024-01-01 08:00:00".to_string(),
+            last_seen: "2024-03-01 09:00:00".to_string(),
+            received_nickname: None,
+            local_nickname: None,
+        },
+        ContactDeviceInput {
+            peer_id: "dev-B".to_string(),
+            first_seen: "2024-01-02 08:00:00".to_string(),
+            last_seen: "2024-02-01 09:00:00".to_string(),
+            received_nickname: None,
+            local_nickname: None,
+        },
+        ContactDeviceInput {
+            peer_id: "dev-C".to_string(),
+            first_seen: "2024-01-01 08:00:00".to_string(),
+            last_seen: "2024-01-10 09:00:00".to_string(),
+            received_nickname: None,
+            local_nickname: None,
+        },
+    ];
+    let display_names = std::collections::HashMap::from([
+        ("dev-A".to_string(), "Device A".to_string()),
+        ("dev-B".to_string(), "Device B".to_string()),
+        ("dev-C".to_string(), "Device C".to_string()),
+    ]);
+    let peer_user = std::collections::HashMap::from([
+        ("dev-A".to_string(), "alice".to_string()),
+        ("dev-B".to_string(), "alice".to_string()),
+    ]);
+    let users = std::collections::HashMap::new();
+    let overrides = std::collections::HashMap::new();
+    let stats = std::collections::HashMap::from([
+        (
+            "dev-A".to_string(),
+            PeerMessageStats {
+                dm_count: 3,
+                broadcast_sent_to_peer: 1,
+            },
+        ),
+        (
+            "dev-B".to_string(),
+            PeerMessageStats {
+                dm_count: 2,
+                broadcast_sent_to_peer: 4,
+            },
+        ),
+    ]);
+
+    let rows =
+        crate::contacts::build_contact_rows(&devices, &display_names, &peer_user, &users, &overrides, &stats);
+    assert_eq!(rows.len(), 2, "alice collapsed + device-C alone");
+
+    let alice = rows
+        .iter()
+        .find(|r| r.contact_id == "alice")
+        .expect("alice row");
+    assert!(alice.is_user);
+    assert_eq!(alice.device_count, 2);
+    assert_eq!(alice.dm_count, 5, "DMs summed across devices");
+    assert_eq!(alice.broadcast_sent_to_peer, 5, "broadcasts summed");
+    assert_eq!(alice.first_seen, "2024-01-01 08:00:00", "group min");
+    assert_eq!(alice.last_seen, "2024-03-01 09:00:00", "group max");
+
+    let solo = rows
+        .iter()
+        .find(|r| r.contact_id == "dev-C")
+        .expect("device C row");
+    assert!(!solo.is_user);
+
+    // sort_canonical_rows: name desc with stable contact-key ties.
+    let sorted = crate::contacts::sort_canonical_rows(&rows, 0, false);
+    let ids: Vec<&str> = sorted.iter().map(|r: &ContactRow| r.contact_id.as_str()).collect();
+    assert_eq!(ids, vec!["dev-C", "alice"], "name desc via display names");
+}
