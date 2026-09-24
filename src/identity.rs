@@ -63,6 +63,28 @@ pub fn find_user(user_id: &str) -> color_eyre::Result<Option<User>> {
         .wrap_err("failed to look up user")
 }
 
+/// Bulk lookup: map several `user_id`s to their full account rows in one round
+/// trip.
+///
+/// Feeds the canonical contact-roster display-name resolution
+/// (`contacts::load_contacts`), which needs each grouped user's
+/// `self_nickname`/`self_username` but would otherwise pay one query per user.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+#[allow(clippy::implicit_hasher)]
+pub fn find_users(
+    user_ids: &[String],
+) -> color_eyre::Result<std::collections::HashMap<String, User>> {
+    let conn = &mut crate::sqlite_connect()?;
+    users::table
+        .filter(users::user_id.eq_any(user_ids))
+        .select(User::as_select())
+        .load::<User>(conn)
+        .map(|rows| rows.into_iter().map(|u| (u.user_id.clone(), u)).collect())
+        .wrap_err("failed to look up users")
+}
+
 /// Verify a signed device-binding claim against the target user's account key.
 ///
 /// The claim signs `user_id ‖ device_pubkey ‖ claim_id`. Verification only
@@ -153,6 +175,29 @@ pub fn find_user_id_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>
         .first(conn)
         .optional()
         .wrap_err("failed to resolve user for peer")
+}
+
+/// Bulk reverse lookup: map each live-bound device peer ID to its user in one
+/// round trip.
+///
+/// Feeds the canonical contact-roster grouping (`contacts::load_contacts`),
+/// which would otherwise pay one query per peer. Peers with no live binding
+/// (or with no `device_bindings` row at all) are simply absent from the map.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+#[allow(clippy::implicit_hasher)]
+pub fn find_user_ids_for_peers(
+    peer_ids: &[String],
+) -> color_eyre::Result<std::collections::HashMap<String, String>> {
+    let conn = &mut crate::sqlite_connect()?;
+    device_bindings::table
+        .filter(device_bindings::peer_id.eq_any(peer_ids))
+        .filter(device_bindings::revoked_at.is_null())
+        .select((device_bindings::peer_id, device_bindings::user_id))
+        .load::<(String, String)>(conn)
+        .map(|rows| rows.into_iter().collect())
+        .wrap_err("failed to resolve users for peers")
 }
 
 /// Add a contact (owner → contact adjacency). Idempotent.

@@ -51,6 +51,7 @@
 pub mod api;
 pub mod behavior;
 pub mod connected;
+pub mod contacts;
 pub mod db;
 pub mod fmt;
 pub mod groups;
