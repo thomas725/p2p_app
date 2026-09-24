@@ -279,7 +279,10 @@ fn test_remove_tab_group_chat() {
 fn test_all_titles_with_dms() {
     let mut tabs = DynamicTabs::new();
     let titles = tabs.all_titles();
-    assert_eq!(titles, vec!["Chat", "Contacts", "Groups", "Log", "Settings"]);
+    assert_eq!(
+        titles,
+        vec!["Chat", "Contacts", "Groups", "Log", "Settings"]
+    );
     tabs.add_dm_tab("peer1".to_string());
     let titles = tabs.all_titles();
     assert_eq!(titles.len(), 6);

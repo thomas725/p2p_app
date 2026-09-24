@@ -1,4 +1,7 @@
 use super::{DynamicTabs, TextArea};
+use p2p_app::contacts::ContactDeviceInput;
+use p2p_app::messages::PeerMessageStats;
+use p2p_app::tui_helpers::PeerMessageMap;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
@@ -46,6 +49,11 @@ pub struct AppState {
 
     // Peer Management
     pub peers: VecDeque<p2p_app::PeerRecord>,
+    // Canonical Contacts-tab rows (from `contacts::build_contact_rows`).
+    // Rebuilt whenever the device list changes (see `rebuild_contacts`); the
+    // live `peers` deque stays the single device source, and grouped users
+    // collapse here into one row per contact.
+    pub contacts: Vec<p2p_app::contacts::ContactRow>,
     pub concurrent_peers: usize,
     // How many broadcasts *we* sent to each peer (bulk-loaded from the
     // `broadcast_recipients` table via `messages::get_all_peer_stats`, refreshed
@@ -157,10 +165,9 @@ impl AppState {
         }
     }
 
-    /// Re-sort the peer list by the currently active column/order, keeping the
-    /// selected peer (by id) selected. Also refreshes the per-peer
-    /// `broadcast_sent_to_peer` counts (a bulk DB call) so the sort and the
-    /// rendered "Broadcast" column never show stale sent-to-peer numbers.
+    /// Re-sort the Contacts tab: refresh the per-contact stats, rebuild the
+    /// contact rows from the live peer list, and order them by the active
+    /// column/order while keeping the selected contact (by id) selected.
     pub fn resort_peers(&mut self) {
         self.broadcast_sent_to_peer = p2p_app::messages::get_all_peer_stats()
             .map(|stats| {
@@ -170,13 +177,110 @@ impl AppState {
                     .collect()
             })
             .unwrap_or_default();
-        self.peer_selection = p2p_app::tui_helpers::sort_peers_by_column(
-            &mut self.peers,
-            &self.dm_messages,
-            &self.broadcast_sent_to_peer,
+        let previous = self
+            .contacts
+            .get(self.peer_selection)
+            .map(|c| c.contact_id.clone());
+        self.rebuild_contacts();
+        self.contacts = p2p_app::contacts::sort_canonical_rows(
+            &self.contacts,
             self.peer_sort_column,
             self.peer_sort_ascending,
-            self.peer_selection,
+        );
+        self.peer_selection = previous
+            .and_then(|contact_id| {
+                self.contacts
+                    .iter()
+                    .position(|c| c.contact_id == contact_id)
+            })
+            .unwrap_or(0)
+            .min(self.contacts.len().saturating_sub(1));
+    }
+
+    /// Rebuild `self.contacts` from the live peer list through the shared
+    /// grouping builder (`contacts::build_contact_rows`).
+    ///
+    /// The grouping/aggregation is the same pure logic the DB loader and the
+    /// Flutter binding use; only the device inputs (and the display-name
+    /// resolution) come from the live in-memory state, so the Contacts tab
+    /// never regresses peers that haven't been persisted yet. Identity lookups
+    /// are defensive: when they fail (or the DB is unreachable) every device
+    /// stays an unbound single-device row — exactly the pre-contacts rendering.
+    fn rebuild_contacts(&mut self) {
+        let stats: HashMap<String, PeerMessageStats> = self
+            .peers
+            .iter()
+            .map(|p| {
+                (
+                    p.peer_id.clone(),
+                    PeerMessageStats {
+                        dm_count: i64::try_from(self.dm_messages.dm_count_for(&p.peer_id))
+                            .unwrap_or(0),
+                        broadcast_sent_to_peer: i64::try_from(
+                            self.broadcast_sent_to_peer
+                                .get(&p.peer_id)
+                                .copied()
+                                .unwrap_or(0),
+                        )
+                        .unwrap_or(0),
+                    },
+                )
+            })
+            .collect();
+
+        let devices: Vec<ContactDeviceInput> = self
+            .peers
+            .iter()
+            .map(|p| ContactDeviceInput {
+                peer_id: p.peer_id.clone(),
+                first_seen: p.first_seen.clone(),
+                last_seen: p.last_seen.clone(),
+                received_nickname: self.received_nicknames.get(&p.peer_id).cloned(),
+                local_nickname: self.local_nicknames.get(&p.peer_id).cloned(),
+            })
+            .collect();
+
+        let device_display_names: HashMap<String, String> = self
+            .peers
+            .iter()
+            .map(|p| {
+                (
+                    p.peer_id.clone(),
+                    p2p_app::get_peer_display_name_or_short(&p.peer_id),
+                )
+            })
+            .collect();
+
+        let peer_ids: Vec<String> = self.peers.iter().map(|p| p.peer_id.clone()).collect();
+        let peer_user: HashMap<String, String> =
+            p2p_app::identity::find_user_ids_for_peers(&peer_ids).unwrap_or_default();
+        let mut user_ids: Vec<String> = peer_user.values().cloned().collect();
+        user_ids.sort();
+        user_ids.dedup();
+        let users = p2p_app::identity::find_users(&user_ids).unwrap_or_default();
+        let overrides: HashMap<String, String> = p2p_app::get_local_peer_id()
+            .ok()
+            .and_then(|id| {
+                p2p_app::identity::find_user_id_for_peer(&id.to_string())
+                    .ok()
+                    .flatten()
+            })
+            .and_then(|owner| p2p_app::identity::list_contacts(&owner).ok())
+            .map(|contacts| {
+                contacts
+                    .into_iter()
+                    .filter_map(|c| c.nickname_override.map(|n| (c.contact_user_id, n)))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        self.contacts = p2p_app::contacts::build_contact_rows(
+            &devices,
+            &device_display_names,
+            &peer_user,
+            &users,
+            &overrides,
+            &stats,
         );
     }
 
@@ -195,7 +299,7 @@ impl AppState {
         initial_dm_receipts: HashMap<String, (String, f64)>,
         initial_groups: Vec<p2p_app::groups::GroupSummary>,
     ) -> Self {
-        Self {
+        let mut state = Self {
             messages: initial_messages,
             message_ids: initial_message_ids,
             broadcast_receipts: initial_broadcast_receipts,
@@ -203,6 +307,7 @@ impl AppState {
             dm_message_ids: HashMap::new(),
             dm_receipts: initial_dm_receipts,
             peers: initial_peers,
+            contacts: Vec::new(),
             broadcast_sent_to_peer: HashMap::new(),
             group_summaries: initial_groups,
             group_messages: HashMap::new(),
@@ -246,7 +351,9 @@ impl AppState {
             platform: String::new(),
             network_size: String::new(),
             listen_addrs: Vec::new(),
-        }
+        };
+        state.rebuild_contacts();
+        state
     }
 }
 

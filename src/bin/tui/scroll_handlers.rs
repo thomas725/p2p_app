@@ -218,8 +218,12 @@ fn compute_new_peer_selection(
 
 fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let page_size = expected_peer_page_size(state);
-    state.peer_selection =
-        compute_new_peer_selection(key_code, state.peer_selection, state.peers.len(), page_size);
+    state.peer_selection = compute_new_peer_selection(
+        key_code,
+        state.peer_selection,
+        state.contacts.len(),
+        page_size,
+    );
 }
 
 /// Move the Groups list selection; the list uses the same visible-window math

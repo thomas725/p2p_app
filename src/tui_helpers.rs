@@ -356,6 +356,45 @@ pub fn peer_table_rows_range(
         .collect()
 }
 
+/// Map a canonical contact row to a peers-table row.
+///
+/// The Contacts tab renders through the same 5-column `PeerTableRow` layout as
+/// the old peer list so windowing, widths, and header-click geometry stay
+/// shared. Multi-device contacts append their device count to the name cell
+/// (`"name ×N"`); sorting is unaffected because it happens on the contact rows
+/// themselves before this mapping.
+#[must_use]
+pub fn contact_to_peer_table_row(contact: &crate::contacts::ContactRow) -> PeerTableRow {
+    let display_name = if contact.device_count > 1 {
+        format!("{} ×{}", contact.display_name, contact.device_count)
+    } else {
+        contact.display_name.clone()
+    };
+    PeerTableRow::new(
+        &contact.contact_id,
+        &display_name,
+        usize::try_from(contact.dm_count).unwrap_or(0),
+        usize::try_from(contact.broadcast_sent_to_peer).unwrap_or(0),
+        &contact.last_seen,
+        &contact.first_seen,
+    )
+}
+
+/// Build table rows for the contiguous `[start, end)` slice of a contact list.
+#[must_use]
+pub fn contact_table_rows_range(
+    contacts: &[crate::contacts::ContactRow],
+    start: usize,
+    end: usize,
+) -> Vec<PeerTableRow> {
+    contacts
+        .iter()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .map(contact_to_peer_table_row)
+        .collect()
+}
+
 /// Visible window `(start, end)` of the peers table for the given cursor model.
 ///
 /// This mirrors ratatui's `Table::visible_rows` for single-line rows: the

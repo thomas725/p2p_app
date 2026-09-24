@@ -1,7 +1,11 @@
-//! Peers-table rendering (stateful `Table` + sort hint).
+//! Contacts-table rendering (stateful `Table` + sort hint).
+//!
+//! The Contacts tab rows are canonical `ContactRow`s (from
+//! `contacts::build_contact_rows`); they render through the same 5-column
+//! `PeerTableRow` layout as the old peer list.
 
 use crate::tui_helpers::{
-    peer_table_column_widths, peer_table_header_labels, peer_table_rows_range,
+    contact_table_rows_range, peer_table_column_widths, peer_table_header_labels,
     peer_table_visible_range,
 };
 use crate::tui_render_state::TuiRenderState;
@@ -11,27 +15,21 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
 
-/// Render peer list with selection support
+/// Render the Contacts tab with selection support
 pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     // The table body is content_height - 1 (hint) - 2 (borders) - 1 (header)
     // rows tall; a stateful `TableState` scrolls the viewport to keep the
     // selected row visible, so PageUp/PageDown step the selection by a page.
     let page_height = usize::from(area.height.saturating_sub(4)).max(1);
-    let total = state.peers.len();
+    let total = state.contacts.len();
     let selected = (total > 0).then(|| state.peer_selection.min(total.saturating_sub(1)));
     let (start, end) =
         peer_table_visible_range(state.peer_table_offset, selected, total, page_height);
 
     // Materialize only the visible window: display-name lookups are the
     // expensive per-frame cost, so paged rendering stays O(page) no matter how
-    // many peers are known.
-    let rows = peer_table_rows_range(
-        &state.peers,
-        &state.dm_messages,
-        &state.broadcast_sent_to_peer,
-        start,
-        end,
-    );
+    // many contacts are known.
+    let rows = contact_table_rows_range(&state.contacts, start, end);
 
     let header_cells: Vec<Cell> =
         peer_table_header_labels(state.peer_sort_column, state.peer_sort_ascending)
@@ -63,7 +61,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .header(header)
         .block(
             Block::default()
-                .title(format!("Connected Peers ({total})"))
+                .title(format!("Contacts ({total})"))
                 .borders(Borders::ALL),
         )
         .row_highlight_style(Style::default().bg(Color::DarkGray));

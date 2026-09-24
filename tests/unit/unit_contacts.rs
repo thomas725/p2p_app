@@ -276,8 +276,14 @@ fn build_contact_rows_is_pure_and_groups_live_inputs() {
         ),
     ]);
 
-    let rows =
-        crate::contacts::build_contact_rows(&devices, &display_names, &peer_user, &users, &overrides, &stats);
+    let rows = crate::contacts::build_contact_rows(
+        &devices,
+        &display_names,
+        &peer_user,
+        &users,
+        &overrides,
+        &stats,
+    );
     assert_eq!(rows.len(), 2, "alice collapsed + device-C alone");
 
     let alice = rows
@@ -299,6 +305,9 @@ fn build_contact_rows_is_pure_and_groups_live_inputs() {
 
     // sort_canonical_rows: name desc with stable contact-key ties.
     let sorted = crate::contacts::sort_canonical_rows(&rows, 0, false);
-    let ids: Vec<&str> = sorted.iter().map(|r: &ContactRow| r.contact_id.as_str()).collect();
+    let ids: Vec<&str> = sorted
+        .iter()
+        .map(|r: &ContactRow| r.contact_id.as_str())
+        .collect();
     assert_eq!(ids, vec!["dev-C", "alice"], "name desc via display names");
 }

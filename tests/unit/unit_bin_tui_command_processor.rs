@@ -351,7 +351,10 @@ fn test_add_peer_to_state_list_appends_and_sorts() {
         "2024-06-01 12:00:00",
     );
     assert_eq!(state.peers.len(), 2);
-    assert_eq!(state.peers[0].peer_id, "new"); // newest first
+    // The newest contact resolves to the top of the Contacts view (the live
+    // peer deque no longer reorders in place — the view sorts the derived
+    // contact rows through `sort_canonical_rows`).
+    assert_eq!(state.contacts[0].contact_id, "new"); // newest first
 }
 
 // ── handle_incoming_message ───────────────────────────────────────────

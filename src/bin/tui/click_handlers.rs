@@ -181,35 +181,36 @@ pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
     }
 }
 
-/// Handles peer row clicks in the Peers tab
+/// Handles peer row clicks in the Contacts tab
 fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
-    if state.peers.is_empty() {
+    if state.contacts.is_empty() {
         return false;
     }
-    // Map the clicked screen row to an absolute peer index, honoring the
+    // Map the clicked screen row to an absolute contact index, honoring the
     // scrolling viewport: data rows start at global row 3 (tab + block
     // border + table header) and are offset by the first visible row.
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
     let selected = state
         .peer_selection
-        .min(state.peers.len().saturating_sub(1));
+        .min(state.contacts.len().saturating_sub(1));
     let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         Some(selected),
-        state.peers.len(),
+        state.contacts.len(),
         page_height,
     );
-    let peer_row = start.saturating_add(usize::from(row).saturating_sub(3));
-    if peer_row < state.peers.len()
-        && let Some(p) = state.peers.get(peer_row)
+    let contact_row = start.saturating_add(usize::from(row).saturating_sub(3));
+    if contact_row < state.contacts.len()
+        && let Some(c) = state.contacts.get(contact_row)
+        && let Some(peer_id) = c.best_device_peer_id()
     {
-        let peer_id_clone = p.peer_id.clone();
-        state.peer_selection = peer_row;
-        load_dm_messages(state, &peer_id_clone);
-        let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id_clone.clone());
+        let peer_id = peer_id.to_string();
+        state.peer_selection = contact_row;
+        load_dm_messages(state, &peer_id);
+        let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
         state.active_tab = tab_idx;
         state.cancel_nickname_edit();
-        p2plog_debug(format!("Opened DM with peer via mouse: {peer_id_clone}"));
+        p2plog_debug(format!("Opened DM with peer via mouse: {peer_id}"));
         return true;
     }
     false
@@ -408,22 +409,17 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     // sized to fit their longest header/cell (`peer_table_column_widths`) over
     // the same visible window the renderer materializes, with the same block
     // borders and `column_spacing`.
-    let peers: Vec<p2p_app::PeerRecord> = state.peers.iter().cloned().collect();
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
-    let selected = state.peer_selection.min(peers.len().saturating_sub(1));
+    let selected = state
+        .peer_selection
+        .min(state.contacts.len().saturating_sub(1));
     let (start, end) = p2p_app::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         Some(selected),
-        peers.len(),
+        state.contacts.len(),
         page_height,
     );
-    let rows = p2p_app::tui_helpers::peer_table_rows_range(
-        &peers,
-        &state.dm_messages,
-        &state.broadcast_sent_to_peer,
-        start,
-        end,
-    );
+    let rows = p2p_app::tui_helpers::contact_table_rows_range(&state.contacts, start, end);
     let widths = p2p_app::tui_helpers::peer_table_column_widths(
         &rows,
         state.peer_sort_column,

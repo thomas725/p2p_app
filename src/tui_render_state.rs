@@ -22,8 +22,11 @@ pub struct TuiRenderState {
     pub message_ids: VecDeque<Option<String>>,
     /// Receipt status for broadcast messages: `peer_id` -> (`msg_id` -> timestamp)
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-    /// Known peers
+    /// Known peers (the raw device list backing `contacts`)
     pub peers: Vec<PeerRecord>,
+    /// Canonical Contacts-tab rows (from `contacts::build_contact_rows`).
+    /// The Contacts tab renders these; `peers` stays only as the device input.
+    pub contacts: Vec<crate::contacts::ContactRow>,
     /// How many broadcasts *we* sent to each peer (bulk-loaded from
     /// `broadcast_recipients`), driving the peers-table "Broadcast" column.
     pub broadcast_sent_to_peer: HashMap<String, usize>,
@@ -138,6 +141,7 @@ impl TuiRenderState {
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
+            contacts: Vec::new(),
             broadcast_sent_to_peer: HashMap::new(),
             connected_peer_ids: std::collections::HashSet::new(),
             dm_messages: BTreeMap::new(),
@@ -210,7 +214,7 @@ impl TuiRenderState {
         let mut dm_message_ids = BTreeMap::new();
         dm_message_ids.insert("Alice".into(), VecDeque::new());
 
-        Self {
+        let mut state = Self {
             tab_titles: vec![
                 "Chat".into(),
                 "Contacts".into(),
@@ -223,7 +227,9 @@ impl TuiRenderState {
             dm_message_ids,
             peer_count: 2,
             ..Self::new()
-        }
+        };
+        state.contacts = contacts_for_peers(&state.peers);
+        state
     }
 
     /// Add a message to chat (`peer_id` of `None` means local user)
@@ -244,6 +250,7 @@ impl TuiRenderState {
             first_seen: first_seen.into(),
             last_seen: last_seen.into(),
         });
+        self.contacts = contacts_for_peers(&self.peers);
     }
 
     /// Add a DM message for a peer
@@ -252,6 +259,41 @@ impl TuiRenderState {
         let entry = self.dm_messages.entry(peer).or_default();
         entry.push_back(msg.into());
     }
+}
+
+/// Collapse a device list into single-device contact rows via the shared
+/// grouping builder (no identity DB: tests have no bindings, so every device
+/// stays an unbound single row — exactly the pre-contacts rendering).
+#[must_use]
+fn contacts_for_peers(peers: &[PeerRecord]) -> Vec<crate::contacts::ContactRow> {
+    let devices: Vec<crate::contacts::ContactDeviceInput> = peers
+        .iter()
+        .map(|p| crate::contacts::ContactDeviceInput {
+            peer_id: p.peer_id.clone(),
+            first_seen: p.first_seen.clone(),
+            last_seen: p.last_seen.clone(),
+            received_nickname: None,
+            local_nickname: None,
+        })
+        .collect();
+    let device_display_names: HashMap<String, String> = peers
+        .iter()
+        .map(|p| {
+            (
+                p.peer_id.clone(),
+                crate::get_peer_display_name_or_short(&p.peer_id),
+            )
+        })
+        .collect();
+    let stats: HashMap<String, crate::messages::PeerMessageStats> = HashMap::new();
+    crate::contacts::build_contact_rows(
+        &devices,
+        &device_display_names,
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::new(),
+        &stats,
+    )
 }
 
 /// Calculate visible items and effective offset for string-based messages with auto/manual scroll

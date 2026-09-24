@@ -85,6 +85,18 @@ pub struct ContactRow {
     pub broadcast_sent_to_peer: i64,
 }
 
+impl ContactRow {
+    /// Peer ID of the row's most-recently-seen device.
+    ///
+    /// Single-device contacts (the common case) return that one device. For
+    /// multi-device contacts this is the DM/PeerInfo target until explicit
+    /// per-device expand lands.
+    #[must_use]
+    pub fn best_device_peer_id(&self) -> Option<&str> {
+        self.device_rows.first().map(|d| d.peer_id.as_str())
+    }
+}
+
 /// Build the canonical Contacts-tab roster from device-level inputs.
 ///
 /// This is the grouping/aggregation heart shared by both frontends. Given the
@@ -174,7 +186,8 @@ fn build_row(
         })
         .collect();
     devices.sort_by(|a, b| {
-        crate::fmt::parse_last_seen_ms(&b.last_seen).cmp(&crate::fmt::parse_last_seen_ms(&a.last_seen))
+        crate::fmt::parse_last_seen_ms(&b.last_seen)
+            .cmp(&crate::fmt::parse_last_seen_ms(&a.last_seen))
     });
 
     // A peer group always has ≥1 device (groups are built from devices). Fold
@@ -202,7 +215,11 @@ fn build_row(
         .sum();
     let broadcast_sent_to_peer = group
         .iter()
-        .map(|d| stats.get(&d.peer_id).map_or(0, |s| s.broadcast_sent_to_peer))
+        .map(|d| {
+            stats
+                .get(&d.peer_id)
+                .map_or(0, |s| s.broadcast_sent_to_peer)
+        })
         .sum();
 
     let display_name = resolve_row_display_name(&contact_id, is_user, &devices, users, overrides);
@@ -312,7 +329,8 @@ pub fn load_contacts() -> color_eyre::Result<Vec<ContactRow>> {
     let device_display_names: HashMap<String, String> = peers
         .iter()
         .map(|p| {
-            let name = crate::get_peer_display_name(&p.peer_id).unwrap_or_else(|_| p.peer_id.clone());
+            let name =
+                crate::get_peer_display_name(&p.peer_id).unwrap_or_else(|_| p.peer_id.clone());
             (p.peer_id.clone(), name)
         })
         .collect();

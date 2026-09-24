@@ -113,7 +113,7 @@ mod render_tests {
             .iter()
             .map(ratatui::buffer::Cell::symbol)
             .collect();
-        assert!(text.contains("Connected Peers (6)"), "got: {text:?}");
+        assert!(text.contains("Contacts (6)"), "got: {text:?}");
     }
 
     #[test]
@@ -130,7 +130,7 @@ mod render_tests {
                 format!("2026-08-28 15:26:{i:02}"),
             );
         }
-        state.peer_selection = 29; // the very last row
+        state.peer_selection = 29; // the last row in seen-descending order
 
         terminal
             .draw(|f| render_peers_content(f, f.area(), &state))
@@ -141,17 +141,20 @@ mod render_tests {
             .iter()
             .map(ratatui::buffer::Cell::symbol)
             .collect();
-        // The selection (peer 29) sits on the last visible data row...
-        assert!(text.contains("15:26:29"), "got: {text:?}");
-        // ...so the first rows scrolled out of the viewport.
-        assert!(!text.contains("15:26:00"), "got: {text:?}");
+        // The selection (the least-recently-seen contact, injected last by
+        // `build_contact_rows`' descending seen sort) sits on the last visible
+        // data row...
+        assert!(text.contains("15:26:00"), "got: {text:?}");
+        // ...so the most recent rows are scrolled out (the ascending-seen
+        // tail, `start=10`, paged past the top of the viewport).
+        assert!(!text.contains("15:26:29"), "got: {text:?}");
         // Only one page of rows is drawn (20 of the 30 peers).
-        let visible_seconds = (10..30)
+        let visible_seconds = (0..20)
             .filter(|s| text.contains(&format!("15:26:{s:02}")))
             .count();
         assert_eq!(visible_seconds, 20, "got: {text:?}");
         // The total is still reported in the title.
-        assert!(text.contains("Connected Peers (30)"), "got: {text:?}");
+        assert!(text.contains("Contacts (30)"), "got: {text:?}");
     }
 
     #[test]

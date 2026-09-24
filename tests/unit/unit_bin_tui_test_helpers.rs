@@ -41,6 +41,10 @@ pub fn app_state_with_peers(count: usize) -> AppState {
             last_seen: "2024-01-01 12:00:00".into(),
         });
     }
+    // Mirror the production peer-add path (`command_processor` pushes to the
+    // live deque then calls `resort_peers`), so `contacts` is a faithful view
+    // and the Contacts tab tests see the same sort the app does.
+    state.resort_peers();
     state
 }
 

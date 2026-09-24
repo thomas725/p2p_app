@@ -213,15 +213,15 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     let _ = render_tx.send(RenderEvent).await;
 }
 
-/// Opens the Peer Info tab for the selected peer (Peers tab) or the active
-/// DM partner (Direct tab).
+/// Opens the Peer Info tab for the selected contact (Contacts tab) or the
+/// active DM partner (Direct tab).
 fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let peer = match &tab_content {
         p2p_app::tui_tabs::TabContent::Contacts => state
-            .peers
+            .contacts
             .get(state.peer_selection)
-            .map(|p| p.peer_id.clone()),
+            .and_then(|c| c.best_device_peer_id().map(str::to_owned)),
         p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
         _ => None,
     };
@@ -273,9 +273,9 @@ async fn handle_enter_key(
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts) {
         if let Some(peer_id) = state
-            .peers
+            .contacts
             .get(state.peer_selection)
-            .map(|p| p.peer_id.clone())
+            .and_then(|c| c.best_device_peer_id().map(str::to_owned))
         {
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
