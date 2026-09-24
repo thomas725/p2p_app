@@ -155,7 +155,7 @@ fn test_dynamic_tabs_all_titles() {
     tabs.add_dm_tab("peer-t".to_string());
     let titles = tabs.all_titles();
     assert_eq!(titles[0], "Chat");
-    assert_eq!(titles[1], "Peers");
+    assert_eq!(titles[1], "Contacts");
     assert_eq!(*titles.last().unwrap(), "Settings");
     assert_eq!(titles.len(), 6); // Chat, Peers, Groups, 1 DM, Log, Settings
 }
@@ -175,7 +175,7 @@ fn test_dynamic_tabs_tab_index_to_content() {
     let mut tabs = DynamicTabs::new();
     tabs.add_dm_tab("peer-c".to_string());
     assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
-    assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
+    assert_eq!(tabs.tab_index_to_content(1), TabContent::Contacts);
     assert_eq!(tabs.tab_index_to_content(2), TabContent::Groups);
     assert_eq!(
         tabs.tab_index_to_content(3),
@@ -195,7 +195,7 @@ fn test_tab_content_peer_id() {
         Some("peer-x")
     );
     assert!(TabContent::Chat.peer_id().is_none());
-    assert!(TabContent::Peers.peer_id().is_none());
+    assert!(TabContent::Contacts.peer_id().is_none());
     assert!(TabContent::Log.peer_id().is_none());
 }
 
@@ -204,7 +204,7 @@ fn test_tab_content_is_input_enabled() {
     use p2p_app::tui_tabs::TabContent;
     assert!(TabContent::Chat.is_input_enabled());
     assert!(TabContent::Direct("p".to_string()).is_input_enabled());
-    assert!(!TabContent::Peers.is_input_enabled());
+    assert!(!TabContent::Contacts.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
 }
 

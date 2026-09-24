@@ -72,7 +72,7 @@ fn mouse_click_peer_detection() {
 #[test]
 fn formatting_helpers_and_tab_content() {
     let mut state = TuiTestState::new();
-    assert_eq!(state.tab_titles(), vec!["Chat", "Peers", "Log"]);
+    assert_eq!(state.tab_titles(), vec!["Chat", "Contacts", "Log"]);
     assert!(state.peer_info().contains("Peers:"));
     assert!(!state.formatted_messages().is_empty());
     assert_eq!(state.formatted_peers().len(), 2);
@@ -89,7 +89,7 @@ fn formatting_helpers_and_tab_content() {
     state.active_tab = 1;
     assert!(matches!(
         state.tab_content(),
-        crate::tui_tabs::TabContent::Peers
+        crate::tui_tabs::TabContent::Contacts
     ));
     state.active_tab = 2;
     assert!(matches!(

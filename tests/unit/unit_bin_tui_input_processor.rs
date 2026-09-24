@@ -356,7 +356,7 @@ fn test_enter_key_in_peers_tab_opens_dm() {
             &mut state,
             &swarm_cmd_tx,
             false,
-            p2p_app::tui_tabs::TabContent::Peers,
+            p2p_app::tui_tabs::TabContent::Contacts,
         )
         .await;
 
@@ -744,7 +744,7 @@ async fn test_enter_key_in_peers_tab_empty_list_is_noop() {
         &mut state,
         &swarm_cmd_tx,
         false,
-        p2p_app::tui_tabs::TabContent::Peers,
+        p2p_app::tui_tabs::TabContent::Contacts,
     )
     .await;
 
@@ -780,7 +780,7 @@ async fn test_shift_enter_in_peers_tab_is_noop() {
         &mut state,
         &swarm_cmd_tx,
         true,
-        p2p_app::tui_tabs::TabContent::Peers,
+        p2p_app::tui_tabs::TabContent::Contacts,
     )
     .await;
 

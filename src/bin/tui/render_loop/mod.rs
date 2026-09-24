@@ -172,7 +172,7 @@ fn render_frame(f: &mut Frame, state: &AppState) {
                 &mut render_state,
             );
         }
-        TabContent::Peers => {
+        TabContent::Contacts => {
             tui_render::render_peers_content(
                 f,
                 chunks.get(1).copied().unwrap_or_default(),
@@ -264,7 +264,7 @@ pub fn spawn_render_loop(
                 if !s.peer_names_warmed
                     && matches!(
                         s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                        TabContent::Peers
+                        TabContent::Contacts
                     )
                 {
                     for p in &s.peers {

@@ -257,7 +257,7 @@ fn scroll_group_chat_tab(
 pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     match &tab_content {
-        p2p_app::tui_tabs::TabContent::Peers => {
+        p2p_app::tui_tabs::TabContent::Contacts => {
             scroll_peers_tab(key_code, state);
         }
         p2p_app::tui_tabs::TabContent::Groups => {

@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug)]
 pub struct TuiRenderState {
-    /// Names of tabs for display (Chat, Peers, Log, plus DM tabs)
+    /// Names of tabs for display (Chat, Contacts, Log, plus DM tabs)
     pub tab_titles: Vec<String>,
     /// Currently active tab index
     pub active_tab: usize,
@@ -127,7 +127,7 @@ impl TuiRenderState {
         Self {
             tab_titles: vec![
                 "Chat".into(),
-                "Peers".into(),
+                "Contacts".into(),
                 "Groups".into(),
                 "Log".into(),
                 "Settings".into(),
@@ -213,7 +213,7 @@ impl TuiRenderState {
         Self {
             tab_titles: vec![
                 "Chat".into(),
-                "Peers".into(),
+                "Contacts".into(),
                 "Log".into(),
                 "DM: Alice".into(),
             ],
@@ -498,8 +498,8 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
     } else if tab_title.starts_with("Info: ") {
         let peer = tab_title.trim_start_matches("Info: ").to_string();
         crate::tui_tabs::TabContent::PeerInfo(peer)
-    } else if tab_title == "Peers" {
-        crate::tui_tabs::TabContent::Peers
+    } else if tab_title == "Contacts" {
+        crate::tui_tabs::TabContent::Contacts
     } else if tab_title == "Groups" {
         crate::tui_tabs::TabContent::Groups
     } else if tab_title == "Log" {

@@ -65,7 +65,7 @@ fn test_tui_tab_navigation() {
     // Press Tab -> should go to Peers
     active_tab = (active_tab + 1) % max_tabs;
     let content = state.tab_index_to_content(active_tab);
-    assert_eq!(content, p2p_app::tui_tabs::TabContent::Peers);
+    assert_eq!(content, p2p_app::tui_tabs::TabContent::Contacts);
 
     // Press Tab -> should go to Groups (no DM tabs yet)
     active_tab = (active_tab + 1) % max_tabs;
@@ -130,7 +130,7 @@ fn test_tui_tab_navigation_backward() {
         active_tab - 1
     };
     let content = state.tab_index_to_content(active_tab);
-    assert_eq!(content, p2p_app::tui_tabs::TabContent::Peers);
+    assert_eq!(content, p2p_app::tui_tabs::TabContent::Contacts);
 
     // Press Shift+Tab -> should go to Chat
     active_tab = if active_tab == 0 {

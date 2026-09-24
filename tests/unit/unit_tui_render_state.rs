@@ -65,7 +65,7 @@ fn test_get_tab_content_chat() {
 fn test_get_tab_content_peers() {
     let mut state = TuiRenderState::new();
     state.active_tab = 1;
-    assert_eq!(get_tab_content(&state), TabContent::Peers);
+    assert_eq!(get_tab_content(&state), TabContent::Contacts);
 }
 
 #[test]
@@ -98,7 +98,7 @@ fn test_get_tab_content_direct() {
 fn test_tui_tab_content_is_input_enabled() {
     assert!(TabContent::Chat.is_input_enabled());
     assert!(TabContent::Direct("peer".to_string()).is_input_enabled());
-    assert!(!TabContent::Peers.is_input_enabled());
+    assert!(!TabContent::Contacts.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
 }
 

@@ -7,7 +7,7 @@ fn peer_display_label(peer_id: &str) -> String {
     crate::get_peer_display_name_or_short(peer_id)
 }
 
-/// Number of fixed tabs before dynamic tabs (Chat, Peers, Groups)
+/// Number of fixed tabs before dynamic tabs (Chat, Contacts, Groups)
 pub(crate) const FIXED_TAB_COUNT: usize = 3;
 
 /// Fixed tabs that always appear after any dynamic tabs (Log, Settings)
@@ -233,13 +233,13 @@ impl DynamicTabs {
             .collect()
     }
 
-    /// Get display titles for all tabs (Chat, Peers, Groups, Group chats,
+    /// Get display titles for all tabs (Chat, Contacts, Groups, Group chats,
     /// DMs..., Info..., Log, Settings)
     #[must_use]
     pub fn all_titles(&self) -> Vec<String> {
         let mut titles = vec![
             "Chat".to_string(),
-            "Peers".to_string(),
+            "Contacts".to_string(),
             GROUPS_TITLE.to_string(),
         ];
         titles.extend(self.group_tab_titles());
@@ -265,7 +265,7 @@ impl DynamicTabs {
         let info_start = dm_start.saturating_add(dm_count);
         match tab_idx {
             0 => TabContent::Chat,
-            1 => TabContent::Peers,
+            1 => TabContent::Contacts,
             2 => TabContent::Groups,
             idx if idx == log_index => TabContent::Log,
             idx if idx == settings_index => TabContent::Settings,
@@ -312,8 +312,8 @@ impl DynamicTabs {
 pub enum TabContent {
     /// Broadcast chat view
     Chat,
-    /// Peer list view
-    Peers,
+    /// Contacts (peer roster) view
+    Contacts,
     /// Group list and create/join view
     Groups,
     /// Group chat view for the given group ID

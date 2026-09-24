@@ -151,7 +151,7 @@ fn test_tab_content_variants() {
     let direct = TabContent::Direct("peer123".to_string());
     assert_eq!(direct.peer_id(), Some("peer123"));
 
-    let peers = TabContent::Peers;
+    let peers = TabContent::Contacts;
     assert_eq!(peers.peer_id(), None);
 
     let log = TabContent::Log;
@@ -160,7 +160,7 @@ fn test_tab_content_variants() {
     // Test Debug
     assert!(format!("{chat:?}").contains("Chat"));
     assert!(format!("{direct:?}").contains("Direct"));
-    assert!(format!("{peers:?}").contains("Peers"));
+    assert!(format!("{peers:?}").contains("Contacts"));
     assert!(format!("{log:?}").contains("Log"));
 }
 

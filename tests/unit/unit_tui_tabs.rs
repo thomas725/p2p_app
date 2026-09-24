@@ -113,7 +113,7 @@ fn test_tab_content_peer_id() {
         Some("peer1")
     );
     assert_eq!(TabContent::Chat.peer_id(), None);
-    assert_eq!(TabContent::Peers.peer_id(), None);
+    assert_eq!(TabContent::Contacts.peer_id(), None);
     assert_eq!(TabContent::Groups.peer_id(), None);
     assert_eq!(TabContent::GroupChat("g1".to_string()).peer_id(), None);
     assert_eq!(TabContent::Log.peer_id(), None);
@@ -124,7 +124,7 @@ fn test_tab_content_is_input_enabled() {
     assert!(TabContent::Chat.is_input_enabled());
     assert!(TabContent::Direct("peer1".to_string()).is_input_enabled());
     assert!(TabContent::GroupChat("g1".to_string()).is_input_enabled());
-    assert!(!TabContent::Peers.is_input_enabled());
+    assert!(!TabContent::Contacts.is_input_enabled());
     assert!(!TabContent::Groups.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
 }
@@ -143,7 +143,7 @@ fn test_dynamic_tabs_total_tab_count() {
 fn test_dynamic_tabs_tab_index_to_content() {
     let mut tabs = DynamicTabs::new();
     assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
-    assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
+    assert_eq!(tabs.tab_index_to_content(1), TabContent::Contacts);
     assert_eq!(tabs.tab_index_to_content(2), TabContent::Groups);
     tabs.add_dm_tab("peer1".to_string());
     assert_eq!(
@@ -279,12 +279,12 @@ fn test_remove_tab_group_chat() {
 fn test_all_titles_with_dms() {
     let mut tabs = DynamicTabs::new();
     let titles = tabs.all_titles();
-    assert_eq!(titles, vec!["Chat", "Peers", "Groups", "Log", "Settings"]);
+    assert_eq!(titles, vec!["Chat", "Contacts", "Groups", "Log", "Settings"]);
     tabs.add_dm_tab("peer1".to_string());
     let titles = tabs.all_titles();
     assert_eq!(titles.len(), 6);
     assert_eq!(titles[0], "Chat");
-    assert_eq!(titles[1], "Peers");
+    assert_eq!(titles[1], "Contacts");
     assert_eq!(titles[2], "Groups");
     let expected_label = crate::get_peer_display_name("peer1")
         .unwrap_or_else(|_| crate::fmt::short_peer_id("peer1"));
@@ -302,7 +302,7 @@ fn test_all_titles_with_group_chat() {
         titles,
         vec![
             "Chat",
-            "Peers",
+            "Contacts",
             "Groups",
             "Group: Rust Devs [X]",
             "Log",

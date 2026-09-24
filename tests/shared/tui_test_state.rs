@@ -175,7 +175,7 @@ impl TuiTestState {
     /// Get tab titles for rendering Tabs widget
     #[must_use]
     pub fn tab_titles(&self) -> Vec<&str> {
-        vec!["Chat", "Peers", "Log"]
+        vec!["Chat", "Contacts", "Log"]
     }
 
     /// Get peer info text
@@ -189,7 +189,7 @@ impl TuiTestState {
     pub fn tab_content(&self) -> crate::tui_tabs::TabContent {
         match self.active_tab {
             0 => crate::tui_tabs::TabContent::Chat,
-            1 => crate::tui_tabs::TabContent::Peers,
+            1 => crate::tui_tabs::TabContent::Contacts,
             _ => crate::tui_tabs::TabContent::Log,
         }
     }

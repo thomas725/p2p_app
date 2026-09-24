@@ -218,7 +218,7 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
 fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let peer = match &tab_content {
-        p2p_app::tui_tabs::TabContent::Peers => state
+        p2p_app::tui_tabs::TabContent::Contacts => state
             .peers
             .get(state.peer_selection)
             .map(|p| p.peer_id.clone()),
@@ -271,7 +271,7 @@ async fn handle_enter_key(
         if tab_content.is_input_enabled() {
             state.chat_input.insert_str("\n");
         }
-    } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers) {
+    } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts) {
         if let Some(peer_id) = state
             .peers
             .get(state.peer_selection)
@@ -481,7 +481,7 @@ async fn process_key_event(
                 && !s.editing_nickname
                 && matches!(
                     s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Peers
+                    p2p_app::tui_tabs::TabContent::Contacts
                 ) =>
         {
             open_peer_info_for_active_tab(&mut s);
@@ -494,7 +494,7 @@ async fn process_key_event(
                 && !s.editing_nickname
                 && matches!(
                     s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Peers
+                    p2p_app::tui_tabs::TabContent::Contacts
                 ) =>
         {
             handle_peer_sort_key(&mut s, c);
@@ -549,7 +549,7 @@ async fn process_mouse_event(
     s.last_mouse_row = mouse_event.row;
 
     let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-    let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Peers);
+    let is_peers_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts);
     let is_scrollable_tab = matches!(
         tab_content,
         p2p_app::tui_tabs::TabContent::Chat

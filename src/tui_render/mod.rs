@@ -80,7 +80,7 @@ pub fn render_tab_content(
 ) {
     match tab_content {
         TabContent::Chat => render_chat_content(f, area, state),
-        TabContent::Peers => render_peers_content(f, area, state),
+        TabContent::Contacts => render_peers_content(f, area, state),
         TabContent::Groups => render_groups_content(f, area, state),
         TabContent::GroupChat(group_id) => render_group_chat_content(f, area, group_id, state),
         TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
@@ -122,11 +122,11 @@ pub fn render_input_section(
 
 /// Shortcut hint line for the given tab. Peer-Info bindings are documented only
 /// on tabs where they are active: Ctrl+I (kitty) and Ctrl+P (universal) on a
-/// Direct/DM tab, `i` on Peers.
+/// Direct/DM tab, `i` on Contacts.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
-        TabContent::Peers => {
+        TabContent::Contacts => {
             "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Groups => {

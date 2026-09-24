@@ -390,7 +390,7 @@ mod tui_tests {
     fn dynamic_tabs_titles_without_dms() {
         assert_eq!(
             DynamicTabs::new().all_titles(),
-            vec!["Chat", "Peers", "Groups", "Log", "Settings"]
+            vec!["Chat", "Contacts", "Groups", "Log", "Settings"]
         );
     }
 
@@ -419,7 +419,7 @@ mod tui_tests {
     fn dynamic_tabs_tab_index_to_content() {
         let mut tabs = DynamicTabs::new();
         assert_eq!(tabs.tab_index_to_content(0), TabContent::Chat);
-        assert_eq!(tabs.tab_index_to_content(1), TabContent::Peers);
+        assert_eq!(tabs.tab_index_to_content(1), TabContent::Contacts);
         assert_eq!(tabs.tab_index_to_content(2), TabContent::Groups);
 
         tabs.add_dm_tab("peer_dm".into());
@@ -437,7 +437,7 @@ mod tui_tests {
     #[test]
     fn tab_content_peer_id() {
         assert_eq!(TabContent::Chat.peer_id(), None);
-        assert_eq!(TabContent::Peers.peer_id(), None);
+        assert_eq!(TabContent::Contacts.peer_id(), None);
         assert_eq!(TabContent::Log.peer_id(), None);
         assert_eq!(TabContent::Direct("abc".into()).peer_id(), Some("abc"));
     }
@@ -446,7 +446,7 @@ mod tui_tests {
     fn tab_content_is_input_enabled() {
         assert!(TabContent::Chat.is_input_enabled());
         assert!(TabContent::Direct("x".into()).is_input_enabled());
-        assert!(!TabContent::Peers.is_input_enabled());
+        assert!(!TabContent::Contacts.is_input_enabled());
         assert!(!TabContent::Log.is_input_enabled());
     }
 
@@ -611,7 +611,7 @@ mod tui_tests {
     #[test]
     fn get_tab_content_chat() {
         let mut state = TuiRenderState::new();
-        state.tab_titles = vec!["Chat".into(), "Peers".into(), "Log".into()];
+        state.tab_titles = vec!["Chat".into(), "Contacts".into(), "Log".into()];
         state.active_tab = 0;
         assert_eq!(get_tab_content(&state), TabContent::Chat);
     }
@@ -619,15 +619,15 @@ mod tui_tests {
     #[test]
     fn get_tab_content_peers() {
         let mut state = TuiRenderState::new();
-        state.tab_titles = vec!["Chat".into(), "Peers".into(), "Log".into()];
+        state.tab_titles = vec!["Chat".into(), "Contacts".into(), "Log".into()];
         state.active_tab = 1;
-        assert_eq!(get_tab_content(&state), TabContent::Peers);
+        assert_eq!(get_tab_content(&state), TabContent::Contacts);
     }
 
     #[test]
     fn get_tab_content_log() {
         let mut state = TuiRenderState::new();
-        state.tab_titles = vec!["Chat".into(), "Peers".into(), "Log".into()];
+        state.tab_titles = vec!["Chat".into(), "Contacts".into(), "Log".into()];
         state.active_tab = 2;
         assert_eq!(get_tab_content(&state), TabContent::Log);
     }
@@ -637,7 +637,7 @@ mod tui_tests {
         let mut state = TuiRenderState::new();
         state.tab_titles = vec![
             "Chat".into(),
-            "Peers".into(),
+            "Contacts".into(),
             "DM: Alice".into(),
             "Log".into(),
         ];

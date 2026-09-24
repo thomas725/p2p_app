@@ -42,7 +42,7 @@ fn tab_span(titles: &[String], idx: usize) -> (usize, usize, usize) {
 fn test_tab_click_switches_tab() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
-    let (_, title_end, _) = tab_span(&titles, 1); // "Peers"
+    let (_, title_end, _) = tab_span(&titles, 1); // "Contacts"
     let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
     assert!(handled);
     assert_eq!(state.active_tab, 1);

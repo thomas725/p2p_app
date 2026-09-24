@@ -262,7 +262,7 @@ mod tests {
         let titles = tabs.all_titles();
         assert_eq!(titles.len(), 7);
         assert_eq!(titles[0], "Chat");
-        assert_eq!(titles[1], "Peers");
+        assert_eq!(titles[1], "Contacts");
         assert_eq!(titles[2], "Groups");
         assert!(titles[3].contains("[X]"));
         assert!(titles[4].contains("[X]"));
@@ -291,7 +291,7 @@ mod tests {
         );
         assert_eq!(
             tabs.tab_index_to_content(1),
-            p2p_app::tui_tabs::TabContent::Peers
+            p2p_app::tui_tabs::TabContent::Contacts
         );
         assert_eq!(
             tabs.tab_index_to_content(2),
@@ -319,7 +319,7 @@ mod tests {
         let chat = p2p_app::tui_tabs::TabContent::Chat;
         assert_eq!(chat.peer_id(), None);
 
-        let peers = p2p_app::tui_tabs::TabContent::Peers;
+        let peers = p2p_app::tui_tabs::TabContent::Contacts;
         assert_eq!(peers.peer_id(), None);
 
         let log = p2p_app::tui_tabs::TabContent::Log;
@@ -330,7 +330,7 @@ mod tests {
     fn test_tab_content_is_input_enabled() {
         assert!(p2p_app::tui_tabs::TabContent::Chat.is_input_enabled());
         assert!(p2p_app::tui_tabs::TabContent::Direct("peer".to_string()).is_input_enabled());
-        assert!(!p2p_app::tui_tabs::TabContent::Peers.is_input_enabled());
+        assert!(!p2p_app::tui_tabs::TabContent::Contacts.is_input_enabled());
         assert!(!p2p_app::tui_tabs::TabContent::Log.is_input_enabled());
     }
 
@@ -512,7 +512,7 @@ mod tests {
         let titles = tabs.all_titles();
         assert_eq!(titles.len(), 5);
         assert_eq!(titles[0], "Chat");
-        assert_eq!(titles[1], "Peers");
+        assert_eq!(titles[1], "Contacts");
         assert_eq!(titles[2], "Groups");
         assert_eq!(titles[3], "Log");
         assert_eq!(titles[4], "Settings");
@@ -526,7 +526,7 @@ fn test_tab_titles() {
     let state = p2p_app::TuiTestState::new();
     let titles = state.tab_titles();
     assert!(titles.contains(&"Chat"));
-    assert!(titles.contains(&"Peers"));
+    assert!(titles.contains(&"Contacts"));
     assert!(titles.contains(&"Log"));
 }
 
@@ -550,7 +550,7 @@ fn test_tab_content_chat() {
 fn test_tab_content_peers() {
     let mut state = p2p_app::TuiTestState::new();
     state.active_tab = 1;
-    assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Peers);
+    assert_eq!(state.tab_content(), p2p_app::tui_tabs::TabContent::Contacts);
 }
 
 #[test]

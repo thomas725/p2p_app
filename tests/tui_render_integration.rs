@@ -209,7 +209,7 @@ mod render_tests {
 
     #[test]
     fn test_shortcuts_peers_tab_documents_dm_and_info() {
-        let text = shortcuts_text(&TabContent::Peers, false);
+        let text = shortcuts_text(&TabContent::Contacts, false);
         assert!(text.contains("Enter: open DM"));
         assert!(text.contains("i: Peer Info"));
         assert!(!text.contains("Ctrl+I: Peer Info"));
@@ -466,8 +466,8 @@ fn test_get_tab_content_peers() {
     use p2p_app::tui_render_state::{TuiRenderState, get_tab_content};
     use p2p_app::tui_tabs::TabContent;
     let mut state = TuiRenderState::new();
-    state.active_tab = 1; // "Peers"
-    assert!(matches!(get_tab_content(&state), TabContent::Peers));
+    state.active_tab = 1; // "Contacts"
+    assert!(matches!(get_tab_content(&state), TabContent::Contacts));
 }
 
 #[test]
@@ -499,7 +499,7 @@ fn test_tui_tab_content_is_input_enabled() {
     use p2p_app::tui_tabs::TabContent;
     assert!(TabContent::Chat.is_input_enabled());
     assert!(TabContent::Direct("p".into()).is_input_enabled());
-    assert!(!TabContent::Peers.is_input_enabled());
+    assert!(!TabContent::Contacts.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
 }
 
