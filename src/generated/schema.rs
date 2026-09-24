@@ -130,8 +130,56 @@ diesel::table! {
     }
 }
 
+// Hand-maintained (not produced by Diesel CLI): identity lane lanes ("Identity
+// and contacts" backlog §11; design doc 2026-09-21). `identities` stays the
+// per-install libp2p keypair; these three tables lift the app layer *above* it:
+//
+//   users             stable account (root of trust). `account_pubkey` is the
+//                     BLOB account key that signs every device-binding claim.
+//                     `self_username`/`self_nickname` are the display lane.
+//   device_bindings   signed device→user claims. A row only exists after the
+//                     claim's signature verifies against *that user's* account
+//                     pubkey (hostile-device invariant — a device can never
+//                     mint a binding into a foreign user's device-set).
+//   contacts          user→user adjacency (contact list; device-agnostic,
+//                     unlike `peers` which is install/device-scoped).
+// lives here so diesel can query it and FRB ignores this module.
+diesel::table! {
+    users (user_id) {
+        user_id -> Text,
+        account_pubkey -> Binary,
+        created_at -> Timestamp,
+        self_username -> Nullable<Text>,
+        self_nickname -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    device_bindings (claim_id) {
+        claim_id -> Text,
+        user_id -> Text,
+        peer_id -> Text,
+        device_pubkey -> Binary,
+        claim -> Binary,
+        bound_at -> Timestamp,
+        revoked_at -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    contacts (owner_user_id, contact_user_id) {
+        owner_user_id -> Text,
+        contact_user_id -> Text,
+        nickname_override -> Nullable<Text>,
+        added_at -> Timestamp,
+        last_seen -> Nullable<Timestamp>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     broadcast_recipients,
+    contacts,
+    device_bindings,
     group_members,
     group_messages,
     groups,
@@ -141,4 +189,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     peer_name_history,
     peer_sessions,
     peers,
+    users,
 );

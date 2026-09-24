@@ -6,8 +6,8 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    group_members, group_messages, groups, identities, message_receipts, messages, peer_sessions,
-    peers,
+    contacts, device_bindings, group_members, group_messages, groups, identities, message_receipts,
+    messages, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -166,4 +166,56 @@ pub struct Peer {
     pub received_nickname: Option<String>,
     /// Random pronounceable nickname generated for peers that never announced one
     pub generated_nickname: Option<String>,
+}
+
+/// Queryable struct for the `users` table (identity lane §11; root of trust)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = users)]
+pub struct User {
+    /// Stable account identifier (root of the identity graph)
+    pub user_id: String,
+    /// Account pubkey that signs every device-binding claim for this user
+    pub account_pubkey: Vec<u8>,
+    /// Timestamp when this account was created
+    pub created_at: NaiveDateTime,
+    /// Username this account advertises to contacts
+    pub self_username: Option<String>,
+    /// Nickname this account advertises to contacts
+    pub self_nickname: Option<String>,
+}
+
+/// Queryable struct for the `device_bindings` table (identity lane §11)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = device_bindings)]
+pub struct DeviceBinding {
+    /// Unique identifier of the signed device→user claim
+    pub claim_id: String,
+    /// User this device is bound into
+    pub user_id: String,
+    /// Peer ID of the bound device
+    pub peer_id: String,
+    /// Device pubkey (install key) being bound
+    pub device_pubkey: Vec<u8>,
+    /// Signed claim bytes (verified against `users.account_pubkey` before insert)
+    pub claim: Vec<u8>,
+    /// Timestamp when the claim was bound
+    pub bound_at: NaiveDateTime,
+    /// Timestamp when the binding was revoked (None = live)
+    pub revoked_at: Option<NaiveDateTime>,
+}
+
+/// Queryable struct for the `contacts` table (identity lane §11)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = contacts)]
+pub struct Contact {
+    /// User ID of the owner of this contact row
+    pub owner_user_id: String,
+    /// User ID of the contact (foreign user)
+    pub contact_user_id: String,
+    /// Nickname override this owner has assigned to the contact
+    pub nickname_override: Option<String>,
+    /// Timestamp when the contact was first added
+    pub added_at: NaiveDateTime,
+    /// Timestamp when the contact was most recently observed
+    pub last_seen: Option<NaiveDateTime>,
 }
