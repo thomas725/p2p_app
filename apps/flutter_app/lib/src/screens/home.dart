@@ -504,11 +504,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (i == 4) _refreshSettingsOnOpen();
   }
 
-  /// Resolve a contact row to its best device ([MobileContactRow.device_rows]
-  /// is sorted by the canonical model, so the first device is the newest) for
-  /// Peer-info and DM navigation.
-  MobilePeerRecord _bestDevice(MobileContactRow contact) {
-    final device = contact.deviceRows.first;
+  /// Materialize a [MobilePeerRecord] from an exact device row (the peer-info
+  /// and DM screens take a peer, not a contact).
+  MobilePeerRecord _deviceToPeer(MobileContactDevice device) {
     return MobilePeerRecord(
       peerId: device.peerId,
       firstSeen: device.firstSeen,
@@ -519,13 +517,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _openPeerInfo(MobileContactRow contact) {
-    final best = _bestDevice(contact);
+  /// Contact rows pass their best device ([MobileContactRow.deviceRows] is
+  /// sorted by the canonical model, so the first device is the newest); device
+  /// sub-rows pass the exact device the row represents.
+  void _openPeerInfo(MobileContactRow contact, MobileContactDevice device) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PeerInfoScreen(
-          peer: best,
+          peer: _deviceToPeer(device),
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,
@@ -534,13 +534,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _openDmChat(MobileContactRow contact) async {
-    final best = _bestDevice(contact);
+  Future<void> _openDmChat(
+    MobileContactRow contact,
+    MobileContactDevice device,
+  ) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DmChatScreen(
-          peer: best,
+          peer: _deviceToPeer(device),
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,

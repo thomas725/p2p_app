@@ -22,19 +22,22 @@ MobileContactRow contact({
   String lastSeen = '',
   String firstSeen = '',
   int deviceCount = 1,
+  List<MobileContactDevice>? devices,
 }) => MobileContactRow(
   contactId: id,
-  isUser: deviceCount > 1,
+  isUser: (devices ?? const []).length > 1,
   displayName: name.isEmpty ? id : name,
   deviceCount: BigInt.from(deviceCount),
-  deviceRows: [
-    MobileContactDevice(
-      peerId: id,
-      displayName: name.isEmpty ? id : name,
-      firstSeen: firstSeen,
-      lastSeen: lastSeen,
-    ),
-  ],
+  deviceRows:
+      devices ??
+      [
+        MobileContactDevice(
+          peerId: id,
+          displayName: name.isEmpty ? id : name,
+          firstSeen: firstSeen,
+          lastSeen: lastSeen,
+        ),
+      ],
   firstSeen: firstSeen,
   lastSeen: lastSeen,
   dmCount: dm,
@@ -89,12 +92,14 @@ List<ContactSortInput> _sortLikeRust(
 Widget _app({
   required List<MobileContactRow> rows,
   SortContactsOverride? sortOverride,
+  void Function(MobileContactRow, MobileContactDevice)? onOpenInfo,
+  void Function(MobileContactRow, MobileContactDevice)? onOpenDm,
 }) => MaterialApp(
   home: Scaffold(
     body: ContactList(
       rows: rows,
-      onOpenInfo: (_) {},
-      onOpenDm: (_) {},
+      onOpenInfo: onOpenInfo ?? (_, _) {},
+      onOpenDm: onOpenDm ?? (_, _) {},
       sortOverride: sortOverride,
     ),
   ),
@@ -217,16 +222,8 @@ void main() {
     tester,
   ) async {
     final rows = [
-      contact(
-        id: 'zulu',
-        name: 'Zulu',
-        lastSeen: '2026-08-03T10:00:00',
-      ),
-      contact(
-        id: 'alpha',
-        name: 'Alpha',
-        lastSeen: '2026-08-01T10:00:00',
-      ),
+      contact(id: 'zulu', name: 'Zulu', lastSeen: '2026-08-03T10:00:00'),
+      contact(id: 'alpha', name: 'Alpha', lastSeen: '2026-08-01T10:00:00'),
       contact(id: 'same', name: 'Same', lastSeen: 'junk'),
     ];
     final calls = <(int, bool, List<String>)>[];
@@ -301,5 +298,124 @@ void main() {
 
     expect(find.text('Multi \u00d73'), findsOneWidget);
     expect(find.text('Solo'), findsOneWidget);
+  });
+
+  testWidgets(
+    'expanding a multi-device contact reveals device sub-rows with dashes; '
+    'collapsing hides them again',
+    (tester) async {
+      final rows = [
+        contact(
+          id: 'multi',
+          name: 'Multi',
+          dm: 3,
+          broadcast: 2,
+          lastSeen: '2026-08-28T15:26:41',
+          firstSeen: '2026-08-01T10:00:00',
+          deviceCount: 2,
+          devices: [
+            MobileContactDevice(
+              peerId: 'multi-laptop',
+              displayName: 'Laptop',
+              firstSeen: '2026-08-01T10:00:00',
+              lastSeen: '2026-08-28T15:26:41',
+            ),
+            MobileContactDevice(
+              peerId: 'multi-phone',
+              displayName: 'Phone',
+              firstSeen: '2026-08-02T10:00:00',
+              lastSeen: '2026-08-28T15:26:42',
+            ),
+          ],
+        ),
+        contact(id: 'single', name: 'Solo'),
+      ];
+      await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
+      await tester.pump();
+
+      // Collapsed: the contact row keeps its counts and its ×N suffix; device
+      // sub-rows are not rendered at all.
+      expect(find.text('Multi \u00d72'), findsOneWidget);
+      expect(find.text('Laptop'), findsNothing);
+      expect(find.text('Phone'), findsNothing);
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+
+      // Expand via the chevron button.
+      await tester.tap(find.byKey(const Key('expand-multi')));
+      await tester.pump();
+      expect(find.text('Laptop'), findsOneWidget);
+      expect(find.text('Phone'), findsOneWidget);
+      // Per-device DM/broadcast stats aren't aggregated: both device rows show
+      // the dash placeholder in both stat columns (2 × 2).
+      expect(find.text('\u2013'), findsNWidgets(4));
+      // Device rows render their own seen times.
+      expect(find.text('2026-08-28 15:26:42'), findsOneWidget);
+
+      // Collapse again removes the sub-rows.
+      await tester.tap(find.byKey(const Key('expand-multi')));
+      await tester.pump();
+      expect(find.text('Laptop'), findsNothing);
+      expect(find.text('Phone'), findsNothing);
+    },
+  );
+
+  testWidgets('contact-row actions act on the best device; device-row actions '
+      'act on the exact device', (tester) async {
+    final rows = [
+      contact(
+        id: 'multi',
+        name: 'Multi',
+        deviceCount: 2,
+        devices: [
+          MobileContactDevice(
+            peerId: 'multi-laptop',
+            displayName: 'Laptop',
+            firstSeen: '',
+            lastSeen: '',
+          ),
+          MobileContactDevice(
+            peerId: 'multi-phone',
+            displayName: 'Phone',
+            firstSeen: '',
+            lastSeen: '',
+          ),
+        ],
+      ),
+    ];
+    final openedInfo = <String>[];
+    final openedDm = <String>[];
+    await tester.pumpWidget(
+      _app(
+        rows: rows,
+        sortOverride: _sortLikeRust,
+        onOpenInfo: (c, d) => openedInfo.add(d.peerId),
+        onOpenDm: (c, d) => openedDm.add(d.peerId),
+      ),
+    );
+    await tester.pump();
+
+    // Expand via the chevron (visible at the left edge before we scroll the
+    // horizontal table over to reach the action buttons).
+    await tester.tap(find.byKey(const Key('expand-multi')));
+    await tester.pump();
+
+    // Contact-row buttons resolve to the best device (deviceRows.first).
+    await tester.ensureVisible(find.byKey(const Key('info-multi.best')));
+    await tester.tap(find.byKey(const Key('info-multi.best')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('dm-multi.best')));
+    await tester.pump();
+    expect(openedInfo, ['multi-laptop']);
+    expect(openedDm, ['multi-laptop']);
+
+    // The Phone sub-row's buttons act on that exact device.
+    await tester.ensureVisible(find.byKey(const Key('info-multi-phone')));
+    await tester.tap(find.byKey(const Key('info-multi-phone')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('dm-multi-phone')));
+    await tester.pump();
+    expect(openedInfo, ['multi-laptop', 'multi-phone']);
+    expect(openedDm, ['multi-laptop', 'multi-phone']);
   });
 }
