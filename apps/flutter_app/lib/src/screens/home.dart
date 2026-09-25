@@ -85,6 +85,14 @@ class _HomeScreenState extends State<HomeScreen> {
   /// so repeated `device_binding_intro` events never stack dialogs.
   final Map<String, Uint8List> _pendingDeviceBindings = {};
 
+  /// This install's user identity for the Settings page: our user ID and the
+  /// devices bound into it. Refreshed on Settings-tab open and whenever a
+  /// claim exchange changes the local user (accepting an intro binds a foreign
+  /// device into our user; a `device_binding_received` binds us into a foreign
+  /// user).
+  String? _ownUserId;
+  List<MobileDeviceInfo> _ownDevices = const [];
+
   /// Live connection snapshot, broadcast to the Settings page.
   final ValueNotifier<LiveStatus> _liveStatus = ValueNotifier(
     const LiveStatus(
@@ -123,6 +131,24 @@ class _HomeScreenState extends State<HomeScreen> {
         _syncStatus();
         _syncLiveStatus();
       }
+    } catch (_) {}
+    await _refreshIdentity();
+  }
+
+  /// Resolve our user ID + bound devices through the Rust bindings (the single
+  /// source of truth for the identity layer) and surface them on Settings.
+  Future<void> _refreshIdentity() async {
+    try {
+      final userId = await getMyUserId();
+      List<MobileDeviceInfo> devices = const [];
+      if (userId != null) {
+        devices = await getUserDevices(userId: userId);
+      }
+      if (!mounted) return;
+      setState(() {
+        _ownUserId = userId;
+        _ownDevices = devices;
+      });
     } catch (_) {}
   }
 
@@ -293,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
         accept: (id, pubkey) async {
           await acceptDeviceBinding(peerId: id, devicePubkey: pubkey);
           _refreshRoster();
+          _refreshIdentity();
         },
       );
     } finally {
@@ -374,6 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Our account gained a device (e.g. we accepted a peer's intro), so
         // the roster's user-grouping may have changed.
         _refreshRoster();
+        _refreshIdentity();
         break;
       case 'peer_connected':
         setState(() {
@@ -754,6 +782,8 @@ class _HomeScreenState extends State<HomeScreen> {
         peers: _peers,
         networkName: kNetworkName,
         onOpenPeerInfo: _openPeerInfoForPeerId,
+        userId: _ownUserId,
+        devices: _ownDevices,
       ),
     ];
 

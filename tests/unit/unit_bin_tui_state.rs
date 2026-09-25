@@ -323,7 +323,9 @@ fn selected_contact_helpers_resolve_device_rows() {
 
 #[test]
 fn test_load_and_format_messages_db_failure_returns_empty() {
-    let _guard = p2p_app::db::shared_db_test_lock().lock().unwrap();
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = tempfile::TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();

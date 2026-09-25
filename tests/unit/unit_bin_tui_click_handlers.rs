@@ -203,6 +203,9 @@ fn test_mouse_left_click_row_zero_routes_to_tab_click() {
 
 #[test]
 fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut state = app_state_with_peers(3);
     state.chat_area_height = 20;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
@@ -214,6 +217,9 @@ fn test_mouse_left_click_peers_tab_routes_to_peer_row_click() {
 
 #[test]
 fn test_mouse_left_click_peers_header_toggles_sort() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut state = app_state_with_peers(3);
     state.terminal_width = 100;
     state.chat_area_height = 20;

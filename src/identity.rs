@@ -222,6 +222,39 @@ pub fn find_user_ids_for_peers(
         .wrap_err("failed to resolve users for peers")
 }
 
+/// Resolve this install's user ID from its stored identity and self-binding.
+///
+/// Returns `None` before the install has been provisioned and bound to a user
+/// (the TUI and mobile both auto-provision at start, so it is `Some` on any
+/// running install).
+///
+/// # Errors
+/// Returns an error if the local peer ID cannot be resolved or the DB lookup
+/// fails.
+pub fn my_user_id() -> color_eyre::Result<Option<String>> {
+    let local_peer = crate::get_local_peer_id()?.to_string();
+    find_user_id_for_peer(&local_peer)
+}
+
+/// The devices bound into this install's user, newest first, as
+/// `(peer_id, bound_at)` pairs.
+///
+/// Empty before the install belongs to a user (see [`my_user_id`]); formatting
+/// of `bound_at` is left to the caller (`crate::format_peer_datetime`).
+///
+/// # Errors
+/// Returns an error if the local peer/user cannot be resolved or the DB query
+/// fails.
+pub fn my_user_devices() -> color_eyre::Result<Vec<(String, chrono::NaiveDateTime)>> {
+    match my_user_id()? {
+        Some(user_id) => Ok(list_user_devices(&user_id)?
+            .into_iter()
+            .map(|d| (d.peer_id, d.bound_at))
+            .collect()),
+        None => Ok(Vec::new()),
+    }
+}
+
 /// Add a contact (owner → contact adjacency). Idempotent.
 ///
 /// # Errors

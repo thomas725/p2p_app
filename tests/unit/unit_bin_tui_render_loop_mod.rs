@@ -249,3 +249,23 @@ fn test_device_binding_prompt_renders_and_wins_over_popup() {
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.popup.as_deref(), Some(text.as_str()));
 }
+
+#[test]
+fn test_app_state_to_render_state_own_user_identity() {
+    let mut state = app_state();
+    assert_eq!(app_state_to_render_state(&state).own_user_id, None);
+    assert!(
+        app_state_to_render_state(&state)
+            .own_user_devices
+            .is_empty()
+    );
+
+    state.own_user_id = Some("user-abc".to_string());
+    state.own_user_devices = vec![("dev-1".to_string(), "2026-09-25 10:00:00".to_string())];
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.own_user_id.as_deref(), Some("user-abc"));
+    assert_eq!(
+        rs.own_user_devices,
+        vec![("dev-1".to_string(), "2026-09-25 10:00:00".to_string())]
+    );
+}

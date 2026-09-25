@@ -1210,6 +1210,13 @@ fn test_device_binding_accept_mints_and_queues_claim() {
 
         let s = state.lock().await;
         assert!(s.device_binding_prompt.is_none(), "prompt consumed");
+        assert!(
+            s.own_user_devices
+                .iter()
+                .any(|(peer, _)| peer == "target-device"),
+            "accepted device shows on the Settings list: {:?}",
+            s.own_user_devices
+        );
         drop(s);
 
         match swarm_cmd_rx.try_recv().expect("claim queued") {

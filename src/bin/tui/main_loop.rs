@@ -272,6 +272,10 @@ pub async fn run_new_tui(
     if let Err(e) = p2p_app::identity::provision_my_user(None, None) {
         p2plog_debug(format!("Failed to provision user identity: {e}"));
     }
+    {
+        let mut s = state.lock().await;
+        s.refresh_my_user();
+    }
 
     // Re-join every group persisted in the local database: the swarm only
     // receives group traffic for topics it is subscribed to, so saved groups

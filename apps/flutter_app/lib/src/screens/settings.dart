@@ -38,6 +38,8 @@ class Settings extends StatefulWidget {
     required this.peers,
     required this.networkName,
     required this.onOpenPeerInfo,
+    required this.userId,
+    required this.devices,
   });
 
   final ValueNotifier<LiveStatus> liveStatus;
@@ -49,6 +51,8 @@ class Settings extends StatefulWidget {
   final List<MobilePeerRecord> peers;
   final String networkName;
   final void Function(String) onOpenPeerInfo;
+  final String? userId;
+  final List<MobileDeviceInfo> devices;
 
   @override
   State<Settings> createState() => _SettingsState();
@@ -163,6 +167,56 @@ class _SettingsState extends State<Settings> {
             subtitle: Text(platformLabel),
           ),
         ),
+        // User ID (this install's account user, resolved via Rust bindings)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.badge),
+            title: const Text('User ID'),
+            subtitle: SelectableText(widget.userId ?? 'Not provisioned'),
+          ),
+        ),
+        if (widget.userId != null && widget.devices.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Bound devices (${widget.devices.length})',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  for (final device in widget.devices)
+                    InkWell(
+                      onTap: () => widget.onOpenPeerInfo(device.peerId),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.devices, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${device.peerId} · bound ${device.boundAt}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         // Service control
         Card(

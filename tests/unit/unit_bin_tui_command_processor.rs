@@ -758,7 +758,9 @@ async fn test_command_processor_stops_on_input_exit() {
 
 #[test]
 fn test_process_swarm_event_peer_connected_increments_and_sends_dm() {
-    let _guard = p2p_app::db::shared_db_test_lock().lock().unwrap();
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let dir = TempDir::new().unwrap();
     let db_path = dir.path().join("test.db");
     let db_str = db_path.to_str().unwrap().to_string();

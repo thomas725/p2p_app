@@ -144,6 +144,12 @@ pub struct AppState {
     pub platform: String,
     pub network_size: String,
     pub listen_addrs: Vec<String>,
+
+    /// This install's user ID (None before provisioning) — Settings tab.
+    pub own_user_id: Option<String>,
+    /// Devices bound into this install's user: `(peer_id, bound_at)` —
+    /// Settings tab.
+    pub own_user_devices: Vec<(String, String)>,
 }
 
 #[derive(Clone)]
@@ -177,6 +183,25 @@ impl AppState {
         if let Ok(summaries) = p2p_app::groups::list_groups_with_member_counts() {
             self.group_summaries = summaries;
         }
+    }
+
+    /// Re-resolve this install's user identity for the Settings tab: our
+    /// `user_id` plus the devices bound into it. Called at startup right after
+    /// auto-provisioning and after any claim exchange that changes the local
+    /// user's device-set (accepting an intro binds a foreign device into our
+    /// user; a `DeviceBindingReceived` binds us into a foreign user).
+    pub fn refresh_my_user(&mut self) {
+        self.own_user_id = p2p_app::identity::my_user_id().ok().flatten();
+        self.own_user_devices = match p2p_app::identity::my_user_devices() {
+            Ok(devices) => devices
+                .into_iter()
+                .map(|(peer_id, bound_at)| (peer_id, p2p_app::format_peer_datetime(bound_at)))
+                .collect(),
+            Err(e) => {
+                p2p_app::p2plog_debug(format!("Failed to refresh own user identity: {e}"));
+                Vec::new()
+            }
+        };
     }
 
     /// Re-sort the Contacts tab: refresh the per-contact stats, rebuild the
@@ -409,6 +434,8 @@ impl AppState {
             platform: String::new(),
             network_size: String::new(),
             listen_addrs: Vec::new(),
+            own_user_id: None,
+            own_user_devices: Vec::new(),
         };
         state.rebuild_contacts();
         state

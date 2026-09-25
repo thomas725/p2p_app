@@ -117,6 +117,11 @@ pub struct TuiRenderState {
     pub last_connection_peer: Option<String>,
     /// Whether the node is running (always true in the TUI)
     pub node_running: bool,
+    /// This install's user ID (None before provisioning) — Settings tab
+    pub own_user_id: Option<String>,
+    /// Devices bound into this install's user: `(peer_id, bound_at)` —
+    /// Settings tab
+    pub own_user_devices: Vec<(String, String)>,
 }
 
 impl Default for TuiRenderState {
@@ -186,6 +191,8 @@ impl TuiRenderState {
             last_connection_lost: None,
             last_connection_peer: None,
             node_running: true,
+            own_user_id: None,
+            own_user_devices: Vec::new(),
             local_nicknames: HashMap::new(),
             received_nicknames: HashMap::new(),
         }

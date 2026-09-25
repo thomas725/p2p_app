@@ -476,6 +476,60 @@ mod render_tests {
         state.popup = None;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
     }
+
+    #[test]
+    fn test_render_settings_content_own_user_identity() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        state.own_user_id = Some("user-abc".to_string());
+        state.own_user_devices = vec![
+            (
+                "12D3KooWH123456".to_string(),
+                "2026-09-25 10:00:00".to_string(),
+            ),
+            (
+                "12D3KooWH789012".to_string(),
+                "2026-09-25 11:30:00".to_string(),
+            ),
+        ];
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("User ID: user-abc"), "got: {text:?}");
+        assert!(text.contains("Bound devices: 2"), "got: {text:?}");
+        assert!(
+            text.contains("(bound 2026-09-25 10:00:00)"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("(bound 2026-09-25 11:30:00)"),
+            "got: {text:?}"
+        );
+    }
+
+    #[test]
+    fn test_render_settings_content_own_user_unprovisioned() {
+        let mut terminal = create_test_terminal();
+        let state = TuiRenderState::new();
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("User ID: —"), "got: {text:?}");
+    }
 }
 
 // ── TuiRenderState builder methods + get_tab_content ─────────────────────────

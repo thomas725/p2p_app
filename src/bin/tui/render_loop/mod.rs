@@ -156,6 +156,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
             .last_disconnection()
             .map(|(p, _)| p.to_string()),
         node_running: true,
+        own_user_id: state.own_user_id.clone(),
+        own_user_devices: state.own_user_devices.clone(),
         local_nicknames: state.local_nicknames.clone(),
         received_nicknames: state.received_nicknames.clone(),
         peer_table_offset: state.peer_table_offset,

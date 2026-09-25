@@ -260,3 +260,30 @@ fn ascii_concat(user_id: &str, device_pubkey: &[u8], claim_id: &str) -> Vec<u8> 
     message.extend_from_slice(claim_id.as_bytes());
     message
 }
+
+#[test]
+#[serial]
+fn my_user_id_and_devices_reflect_provisioned_account() {
+    with_test_db(|| {
+        // Nothing resolves before provisioning.
+        assert!(crate::identity::my_user_id().expect("resolve").is_none());
+        assert!(
+            crate::identity::my_user_devices()
+                .expect("resolve devices")
+                .is_empty()
+        );
+
+        let user_id = crate::identity::provision_my_user(None, None).expect("provision");
+        assert_eq!(
+            crate::identity::my_user_id().expect("resolve").as_deref(),
+            Some(user_id.as_str())
+        );
+        let local_peer = crate::get_local_peer_id().unwrap().to_string();
+        let devices = crate::identity::my_user_devices().expect("resolve devices");
+        assert!(
+            devices.iter().any(|(peer, _)| *peer == local_peer),
+            "self-binding listed: {devices:?}"
+        );
+        assert_eq!(devices.len(), 1, "only the local device before any accepts");
+    });
+}

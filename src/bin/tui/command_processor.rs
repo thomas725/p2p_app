@@ -437,6 +437,9 @@ async fn process_swarm_event(
                 "This device was bound into user {}",
                 p2p_app::fmt::peer_id_suffix(&user_id)
             ));
+            // Our install may now be bound into a foreign user: re-resolve the
+            // identity shown on the Settings tab.
+            s.refresh_my_user();
             drop(s);
         }
     }

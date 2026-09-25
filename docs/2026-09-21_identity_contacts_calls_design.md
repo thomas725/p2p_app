@@ -185,6 +185,19 @@ proposal above are bolded):
 - Verification gate: `cargo ct` clean, `cargo test --all-features` green (lib 299, bin 244,
   integration suites incl. new identity provisioning/mint/hostile-claim tests), `flutter analyze`
   clean, `flutter test` 18/18. Committed as its own slice.
+- **Settings exposure of the account (current slice, 2026-09-25):** both frontends show the
+  account's `user_id` and its bound devices (peer_id + bound-at) on the Settings tab. TUI renders
+  `User ID: —` / `Bound devices: N` + `  {display} (bound {at})` rows via
+  `identity::{my_user_id, my_user_devices}` (no FRB regen needed — `getMyUserId`/`getUserDevices`/
+  `MobileDeviceInfo` were already in the generated Dart); Flutter shows User ID (`Not provisioned`
+  when null) and a Bound-devices card whose rows open the device's PeerInfo. Identity refresh
+  triggers are shared: at startup after auto-provision, after accepting an intro (mint), on
+  `DeviceBindingReceived`, and (Flutter) on Settings-tab open. The TUI device-binding slice also
+  fixed a latent bin-suite DB race: two click-handler tests called `handle_mouse_left_click`
+  (which DB-reads via `resort_peers`/`load_dm_messages`) without `shared_db_test_lock()` — they
+  now take it like every other DB test, and the two bare `.lock().unwrap()` sites use
+  `PoisonError::into_inner`; the intermittent 3-test cascade no longer reproduces (30× click
+  module, 5× full bin suite). Committed as its own slice.
 
 ## Verification (this doc)
 

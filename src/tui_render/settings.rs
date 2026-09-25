@@ -45,6 +45,17 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         state.own_nickname
     ));
     lines.push(format!("Peer ID: {}", state.local_peer_id));
+    match &state.own_user_id {
+        Some(user_id) => lines.push(format!("User ID: {user_id}")),
+        None => lines.push("User ID: —".to_string()),
+    }
+    if !state.own_user_devices.is_empty() {
+        lines.push(format!("Bound devices: {}", state.own_user_devices.len()));
+        for (device_peer, bound_at) in &state.own_user_devices {
+            let display = crate::get_peer_display_name_or_short(device_peer);
+            lines.push(format!("  {display} (bound {bound_at})"));
+        }
+    }
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
     lines.push(format!("Node: {node_status}"));

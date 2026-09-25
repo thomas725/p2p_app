@@ -250,6 +250,10 @@ pub async fn accept_device_binding_prompt(
                 "Accepted device-binding intro from {}",
                 p2p_app::fmt::peer_id_suffix(&prompt.peer_id)
             ));
+            // Accepting bound the intro's device into our user: refresh the
+            // identity/settings display (device-set grew).
+            let mut s = state.lock().await;
+            s.refresh_my_user();
         }
         Err(e) => {
             p2plog_debug(format!("Failed to accept device binding: {e}"));
