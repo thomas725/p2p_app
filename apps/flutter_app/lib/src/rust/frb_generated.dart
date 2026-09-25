@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1535819624;
+  int get rustContentHash => 193463893;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -171,6 +171,12 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<void> crateApiSetSelfNickname({required String nickname});
+
+  List<ContactSortInput> crateMobileApiSortContacts({
+    required List<ContactSortInput> contacts,
+    required int sortColumn,
+    required bool ascending,
+  });
 
   List<PeerSortInput> crateMobileApiSortPeers({
     required List<PeerSortInput> peers,
@@ -1103,6 +1109,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  List<ContactSortInput> crateMobileApiSortContacts({
+    required List<ContactSortInput> contacts,
+    required int sortColumn,
+    required bool ascending,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_contact_sort_input(contacts, serializer);
+          sse_encode_u_32(sortColumn, serializer);
+          sse_encode_bool(ascending, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_contact_sort_input,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateMobileApiSortContactsConstMeta,
+        argValues: [contacts, sortColumn, ascending],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateMobileApiSortContactsConstMeta => const TaskConstMeta(
+    debugName: "sort_contacts",
+    argNames: ["contacts", "sortColumn", "ascending"],
+  );
+
+  @override
   List<PeerSortInput> crateMobileApiSortPeers({
     required List<PeerSortInput> peers,
     required int sortColumn,
@@ -1115,7 +1152,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_peer_sort_input(peers, serializer);
           sse_encode_u_32(sortColumn, serializer);
           sse_encode_bool(ascending, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_peer_sort_input,
@@ -1143,7 +1180,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1170,7 +1207,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 34,
             port: port_,
           );
         },
@@ -1197,7 +1234,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1225,7 +1262,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1263,7 +1300,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1339,6 +1376,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ContactSortInput dco_decode_contact_sort_input(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return ContactSortInput(
+      contactId: dco_decode_String(arr[0]),
+      displayName: dco_decode_String(arr[1]),
+      lastSeen: dco_decode_String(arr[2]),
+      firstSeen: dco_decode_String(arr[3]),
+      dmCount: dco_decode_i_64(arr[4]),
+      broadcastSentToPeer: dco_decode_i_64(arr[5]),
+    );
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -1360,6 +1413,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<ChatMessage> dco_decode_list_chat_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_chat_message).toList();
+  }
+
+  @protected
+  List<ContactSortInput> dco_decode_list_contact_sort_input(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_contact_sort_input).toList();
   }
 
   @protected
@@ -1724,6 +1783,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ContactSortInput sse_decode_contact_sort_input(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_contactId = sse_decode_String(deserializer);
+    var var_displayName = sse_decode_String(deserializer);
+    var var_lastSeen = sse_decode_String(deserializer);
+    var var_firstSeen = sse_decode_String(deserializer);
+    var var_dmCount = sse_decode_i_64(deserializer);
+    var var_broadcastSentToPeer = sse_decode_i_64(deserializer);
+    return ContactSortInput(
+      contactId: var_contactId,
+      displayName: var_displayName,
+      lastSeen: var_lastSeen,
+      firstSeen: var_firstSeen,
+      dmCount: var_dmCount,
+      broadcastSentToPeer: var_broadcastSentToPeer,
+    );
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -1755,6 +1833,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ChatMessage>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_chat_message(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ContactSortInput> sse_decode_list_contact_sort_input(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ContactSortInput>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_contact_sort_input(deserializer));
     }
     return ans_;
   }
@@ -2227,6 +2319,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_contact_sort_input(
+    ContactSortInput self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.contactId, serializer);
+    sse_encode_String(self.displayName, serializer);
+    sse_encode_String(self.lastSeen, serializer);
+    sse_encode_String(self.firstSeen, serializer);
+    sse_encode_i_64(self.dmCount, serializer);
+    sse_encode_i_64(self.broadcastSentToPeer, serializer);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -2256,6 +2362,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_chat_message(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_contact_sort_input(
+    List<ContactSortInput> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_contact_sort_input(item, serializer);
     }
   }
 

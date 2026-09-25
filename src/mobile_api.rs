@@ -212,6 +212,66 @@ pub fn sort_peers(
     keyed.into_iter().map(|(p, _)| p).collect()
 }
 
+/// One contact row of the Contacts tab, as fed to [`sort_contacts`].
+///
+/// Flutter rebuilds this from `MobileContactRow`s; the sort only needs the
+/// columns it orders on, so the FFI round trip stays as light as `sort_peers`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContactSortInput {
+    /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
+    pub contact_id: String,
+    pub display_name: String,
+    pub last_seen: String,
+    pub first_seen: String,
+    pub dm_count: i64,
+    pub broadcast_sent_to_peer: i64,
+}
+
+/// Sort a Contacts-tab roster by the given column and order, mirroring the
+/// canonical `contacts::sort_canonical_rows` used by the TUI and the DB
+/// loader: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
+/// `4` first seen (any other value falls back to name). Every column ties on
+/// the contact's stable key (`contact_id`), so the result is total and
+/// deterministic; a descending sort reverses the WHOLE ordering (tie-break
+/// included — Rust `ord.reverse()`). Seen columns use the canonical
+/// [`crate::fmt::parse_last_seen_ms`] (0 on unparseable input).
+#[must_use]
+#[flutter_rust_bridge::frb(sync)]
+pub fn sort_contacts(
+    contacts: Vec<ContactSortInput>,
+    sort_column: u32,
+    ascending: bool,
+) -> Vec<ContactSortInput> {
+    let mut keyed: Vec<(ContactSortInput, String)> = contacts
+        .into_iter()
+        .map(|c| {
+            let name_key = c.display_name.to_lowercase();
+            (c, name_key)
+        })
+        .collect();
+    keyed.sort_by(|(a, an), (b, bn)| {
+        let ord = match sort_column {
+            1 => a
+                .dm_count
+                .cmp(&b.dm_count)
+                .then_with(|| a.contact_id.cmp(&b.contact_id)),
+            2 => a
+                .broadcast_sent_to_peer
+                .cmp(&b.broadcast_sent_to_peer)
+                .then_with(|| a.contact_id.cmp(&b.contact_id)),
+            3 => crate::fmt::parse_last_seen_ms(&a.last_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.last_seen))
+                .then_with(|| a.contact_id.cmp(&b.contact_id)),
+            4 => crate::fmt::parse_last_seen_ms(&a.first_seen)
+                .cmp(&crate::fmt::parse_last_seen_ms(&b.first_seen))
+                .then_with(|| a.contact_id.cmp(&b.contact_id)),
+            _ => an.cmp(bn).then_with(|| a.contact_id.cmp(&b.contact_id)),
+        };
+        if ascending { ord } else { ord.reverse() }
+    });
+    keyed.into_iter().map(|(c, _)| c).collect()
+}
+
 /// A device bound into a user's device-set, as exposed to Flutter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MobileDeviceInfo {
@@ -542,6 +602,28 @@ mod tests {
         }
     }
 
+    fn sample_contact(
+        id: &str,
+        name: &str,
+        last_seen: &str,
+        first_seen: &str,
+        dm: i64,
+        br: i64,
+    ) -> ContactSortInput {
+        ContactSortInput {
+            contact_id: id.to_string(),
+            display_name: name.to_string(),
+            last_seen: last_seen.to_string(),
+            first_seen: first_seen.to_string(),
+            dm_count: dm,
+            broadcast_sent_to_peer: br,
+        }
+    }
+
+    fn contact_ids(contacts: &[ContactSortInput]) -> Vec<&str> {
+        contacts.iter().map(|c| c.contact_id.as_str()).collect()
+    }
+
     fn ids(peers: &[PeerSortInput]) -> Vec<&str> {
         peers.iter().map(|p| p.peer_id.as_str()).collect()
     }
@@ -649,6 +731,106 @@ mod tests {
         ];
         let sorted = sort_peers(peers, 0, true);
         assert_eq!(ids(&sorted), vec!["aaa", "ccc", "bbb"]);
+    }
+
+    #[test]
+    fn sort_contacts_last_seen_desc_with_contact_id_tiebreak() {
+        let contacts = vec![
+            sample_contact(
+                "aaa",
+                "alpha",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                2,
+            ),
+            sample_contact(
+                "bbb",
+                "beta",
+                "2024-01-01 10:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                1,
+            ),
+            sample_contact(
+                "ccc",
+                "gamma",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                3,
+                0,
+            ),
+        ];
+        let sorted = sort_contacts(contacts, 3, false);
+        assert_eq!(contact_ids(&sorted), vec!["bbb", "ccc", "aaa"]);
+    }
+
+    #[test]
+    fn sort_contacts_name_asc_is_case_insensitive() {
+        let contacts = vec![
+            sample_contact(
+                "bbb",
+                "Zulu",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
+            sample_contact(
+                "aaa",
+                "alpha",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
+            sample_contact(
+                "ccc",
+                "Bravo",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                0,
+                0,
+            ),
+        ];
+        let sorted = sort_contacts(contacts, 0, true);
+        assert_eq!(contact_ids(&sorted), vec!["aaa", "ccc", "bbb"]);
+    }
+
+    #[test]
+    fn sort_contacts_count_columns_unchanged_by_unrelated_columns() {
+        let contacts = vec![
+            sample_contact(
+                "aaa",
+                "A",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                3,
+                5,
+            ),
+            sample_contact(
+                "bbb",
+                "B",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                1,
+                9,
+            ),
+            sample_contact(
+                "ccc",
+                "C",
+                "2024-01-01 09:00:00",
+                "2024-01-01 08:00:00",
+                2,
+                1,
+            ),
+        ];
+        let by_dm = sort_contacts(contacts.clone(), 1, true);
+        assert_eq!(contact_ids(&by_dm), vec!["bbb", "ccc", "aaa"]);
+        let by_br = sort_contacts(contacts.clone(), 2, false);
+        assert_eq!(contact_ids(&by_br), vec!["bbb", "aaa", "ccc"]);
+        let unknown = sort_contacts(contacts, 99, true);
+        assert_eq!(contact_ids(&unknown), vec!["aaa", "bbb", "ccc"]);
     }
 
     #[test]

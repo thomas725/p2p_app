@@ -10,6 +10,10 @@
     clippy::redundant_closure,
     clippy::useless_conversion,
     clippy::unit_arg,
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::restriction,
     clippy::unused_unit,
     clippy::double_parens,
     clippy::let_and_return,
@@ -22,11 +26,7 @@
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
     clippy::needless_borrow,
-    mismatched_lifetime_syntaxes,
-    clippy::all,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::restriction
+    mismatched_lifetime_syntaxes
 )]
 
 // Section: imports
@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1535819624;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 193463893;
 
 // Section: executor
 
@@ -1053,6 +1053,43 @@ fn wire__crate__api__set_self_nickname_impl(
         },
     )
 }
+fn wire__crate__mobile_api__sort_contacts_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "sort_contacts",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_contacts =
+                <Vec<crate::mobile_api::ContactSortInput>>::sse_decode(&mut deserializer);
+            let api_sort_column = <u32>::sse_decode(&mut deserializer);
+            let api_ascending = <bool>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::mobile_api::sort_contacts(
+                    api_contacts,
+                    api_sort_column,
+                    api_ascending,
+                ))?;
+                std::result::Result::Ok(output_ok)
+            })())
+        },
+    )
+}
 fn wire__crate__mobile_api__sort_peers_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1306,6 +1343,26 @@ impl SseDecode for crate::mobile_node::ChatMessage {
     }
 }
 
+impl SseDecode for crate::mobile_api::ContactSortInput {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_contactId = <String>::sse_decode(deserializer);
+        let mut var_displayName = <String>::sse_decode(deserializer);
+        let mut var_lastSeen = <String>::sse_decode(deserializer);
+        let mut var_firstSeen = <String>::sse_decode(deserializer);
+        let mut var_dmCount = <i64>::sse_decode(deserializer);
+        let mut var_broadcastSentToPeer = <i64>::sse_decode(deserializer);
+        return crate::mobile_api::ContactSortInput {
+            contact_id: var_contactId,
+            display_name: var_displayName,
+            last_seen: var_lastSeen,
+            first_seen: var_firstSeen,
+            dm_count: var_dmCount,
+            broadcast_sent_to_peer: var_broadcastSentToPeer,
+        };
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1339,6 +1396,20 @@ impl SseDecode for Vec<crate::mobile_node::ChatMessage> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<crate::mobile_node::ChatMessage>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
+impl SseDecode for Vec<crate::mobile_api::ContactSortInput> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::mobile_api::ContactSortInput>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
@@ -1804,11 +1875,11 @@ fn pde_ffi_dispatcher_primary_impl(
         28 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
         29 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
         30 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1824,7 +1895,8 @@ fn pde_ffi_dispatcher_sync_impl(
         6 => wire__crate__mobile_api__format_time_hhmm_impl(ptr, rust_vec_len, data_len),
         17 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
         23 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
-        31 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
+        31 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
+        32 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1857,6 +1929,31 @@ impl flutter_rust_bridge::IntoIntoDart<crate::mobile_node::ChatMessage>
     for crate::mobile_node::ChatMessage
 {
     fn into_into_dart(self) -> crate::mobile_node::ChatMessage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::mobile_api::ContactSortInput {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.contact_id.into_into_dart().into_dart(),
+            self.display_name.into_into_dart().into_dart(),
+            self.last_seen.into_into_dart().into_dart(),
+            self.first_seen.into_into_dart().into_dart(),
+            self.dm_count.into_into_dart().into_dart(),
+            self.broadcast_sent_to_peer.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::mobile_api::ContactSortInput
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::mobile_api::ContactSortInput>
+    for crate::mobile_api::ContactSortInput
+{
+    fn into_into_dart(self) -> crate::mobile_api::ContactSortInput {
         self
     }
 }
@@ -2188,6 +2285,18 @@ impl SseEncode for crate::mobile_node::ChatMessage {
     }
 }
 
+impl SseEncode for crate::mobile_api::ContactSortInput {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.contact_id, serializer);
+        <String>::sse_encode(self.display_name, serializer);
+        <String>::sse_encode(self.last_seen, serializer);
+        <String>::sse_encode(self.first_seen, serializer);
+        <i64>::sse_encode(self.dm_count, serializer);
+        <i64>::sse_encode(self.broadcast_sent_to_peer, serializer);
+    }
+}
+
 impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2218,6 +2327,16 @@ impl SseEncode for Vec<crate::mobile_node::ChatMessage> {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <crate::mobile_node::ChatMessage>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for Vec<crate::mobile_api::ContactSortInput> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::mobile_api::ContactSortInput>::sse_encode(item, serializer);
         }
     }
 }

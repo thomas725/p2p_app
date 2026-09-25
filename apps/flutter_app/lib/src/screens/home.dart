@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart';
-import 'package:p2p_app_flutter/src/rust/messages.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/screens/contact_list.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_list.dart';
@@ -12,12 +12,11 @@ import 'package:p2p_app_flutter/src/screens/log_tab.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
-import 'package:p2p_app_flutter/src/screens/peer_list.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
-/// Root tabbed screen: Broadcast chat, Peers, Groups, Log, and Settings.
+/// Root tabbed screen: Broadcast chat, Contacts, Groups, Log, and Settings.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -38,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
-  Map<String, PeerMessageStats> _peerStats = {};
+  List<MobileContactRow> _contacts = [];
   List<MobileGroup> _groups = [];
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
@@ -170,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _syncStatus();
       _syncLiveStatus();
       await _loadHistory();
-      await _refreshPeers();
+      await _refreshRoster();
       await _refreshGroups();
       await _scrollToFirstUnread();
       // Auto-start the node (on Android this also starts the foreground service)
@@ -196,11 +195,13 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _refreshPeers() async {
+  /// Refresh the whole roster in one round trip: the peer list + stats (used by
+  /// Settings and broadcast-sender resolution) and the aggregated Contacts-tab
+  /// rows (single round trip via `getContactsWithStats`).
+  Future<void> _refreshRoster() async {
     try {
       final rows = await getPeersWithStats();
       final peers = <MobilePeerRecord>[];
-      final stats = <String, PeerMessageStats>{};
       for (final row in rows) {
         peers.add(
           MobilePeerRecord(
@@ -212,15 +213,14 @@ class _HomeScreenState extends State<HomeScreen> {
             displayName: row.displayName,
           ),
         );
-        stats[row.peerId] = PeerMessageStats(
-          dmCount: row.dmCount,
-          broadcastSentToPeer: row.broadcastSentToPeer,
-        );
       }
-      setState(() {
-        _peers = peers;
-        _peerStats = stats;
-      });
+      final contacts = await getContactsWithStats();
+      if (mounted) {
+        setState(() {
+          _peers = peers;
+          _contacts = contacts;
+        });
+      }
     } catch (_) {}
   }
 
@@ -272,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // name. Refresh the peer list so the info page (and peer list) reflect
         // the new name instead of the previously id-only/petname display.
         if (event.nickname != null) {
-          _refreshPeers();
+          _refreshRoster();
         }
         break;
       case 'dm':
@@ -283,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _persistIncomingDm(event.content!, event.peerId!, event.nickname);
         }
         if (event.nickname != null) {
-          _refreshPeers();
+          _refreshRoster();
         }
         break;
       case 'group_message':
@@ -307,10 +307,10 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _connectedCount = _connectedPeerIds.length;
         });
-        _refreshPeers();
+        _refreshRoster();
         break;
       case 'peer_discovered':
-        _refreshPeers();
+        _refreshRoster();
         break;
       case 'peer_disconnected':
         setState(() {
@@ -320,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _connectedCount = _connectedPeerIds.length;
           _lastConnectionAt = DateTime.now();
         });
-        _refreshPeers();
+        _refreshRoster();
         break;
       case 'listen_addr':
         if (event.address != null &&
@@ -479,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // appended, then wiped out a moment later when this reload `clear()`s
         // the list with a snapshot that predates the new insert.
         await _loadHistory();
-        await _refreshPeers();
+        await _refreshRoster();
         await _refreshGroups();
         startEventPolling();
       }
@@ -504,12 +504,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (i == 4) _refreshSettingsOnOpen();
   }
 
-  void _openPeerInfo(MobilePeerRecord peer) {
+  /// Resolve a contact row to its best device ([MobileContactRow.device_rows]
+  /// is sorted by the canonical model, so the first device is the newest) for
+  /// Peer-info and DM navigation.
+  MobilePeerRecord _bestDevice(MobileContactRow contact) {
+    final device = contact.deviceRows.first;
+    return MobilePeerRecord(
+      peerId: device.peerId,
+      firstSeen: device.firstSeen,
+      lastSeen: device.lastSeen,
+      nickname: device.receivedNickname,
+      localNickname: device.localNickname,
+      displayName: device.displayName,
+    );
+  }
+
+  void _openPeerInfo(MobileContactRow contact) {
+    final best = _bestDevice(contact);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => PeerInfoScreen(
-          peer: peer,
+          peer: best,
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,
@@ -518,12 +534,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _openDmChat(MobilePeerRecord peer) async {
+  Future<void> _openDmChat(MobileContactRow contact) async {
+    final best = _bestDevice(contact);
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => DmChatScreen(
-          peer: peer,
+          peer: best,
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,
@@ -619,12 +636,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onCopySelected: _copySelected,
         onOpenPeerInfo: _openPeerInfoForPeerId,
       ),
-      PeerList(
-        peers: _peers,
-        stats: _peerStats,
+      ContactList(
+        rows: _contacts,
         onOpenInfo: _openPeerInfo,
         onOpenDm: _openDmChat,
-        serviceRunning: _serviceRunning,
       ),
       GroupList(
         groups: _groups,

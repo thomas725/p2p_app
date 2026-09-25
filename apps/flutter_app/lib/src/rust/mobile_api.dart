@@ -7,7 +7,7 @@ import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_user_devices`, `init_mobile_database`, `remove_contact`, `verify_device_binding_claim`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
@@ -63,6 +63,68 @@ List<PeerSortInput> sortPeers({
   sortColumn: sortColumn,
   ascending: ascending,
 );
+
+/// Sort a Contacts-tab roster by the given column and order, mirroring the
+/// canonical `contacts::sort_canonical_rows` used by the TUI and the DB
+/// loader: column `0` name, `1` DM count, `2` broadcast count, `3` last seen,
+/// `4` first seen (any other value falls back to name). Every column ties on
+/// the contact's stable key (`contact_id`), so the result is total and
+/// deterministic; a descending sort reverses the WHOLE ordering (tie-break
+/// included — Rust `ord.reverse()`). Seen columns use the canonical
+/// [`crate::fmt::parse_last_seen_ms`] (0 on unparseable input).
+List<ContactSortInput> sortContacts({
+  required List<ContactSortInput> contacts,
+  required int sortColumn,
+  required bool ascending,
+}) => RustLib.instance.api.crateMobileApiSortContacts(
+  contacts: contacts,
+  sortColumn: sortColumn,
+  ascending: ascending,
+);
+
+/// One contact row of the Contacts tab, as fed to [`sort_contacts`].
+///
+/// Flutter rebuilds this from `MobileContactRow`s; the sort only needs the
+/// columns it orders on, so the FFI round trip stays as light as `sort_peers`.
+class ContactSortInput {
+  /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
+  final String contactId;
+  final String displayName;
+  final String lastSeen;
+  final String firstSeen;
+  final PlatformInt64 dmCount;
+  final PlatformInt64 broadcastSentToPeer;
+
+  const ContactSortInput({
+    required this.contactId,
+    required this.displayName,
+    required this.lastSeen,
+    required this.firstSeen,
+    required this.dmCount,
+    required this.broadcastSentToPeer,
+  });
+
+  @override
+  int get hashCode =>
+      contactId.hashCode ^
+      displayName.hashCode ^
+      lastSeen.hashCode ^
+      firstSeen.hashCode ^
+      dmCount.hashCode ^
+      broadcastSentToPeer.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContactSortInput &&
+          runtimeType == other.runtimeType &&
+          contactId == other.contactId &&
+          displayName == other.displayName &&
+          lastSeen == other.lastSeen &&
+          firstSeen == other.firstSeen &&
+          dmCount == other.dmCount &&
+          broadcastSentToPeer == other.broadcastSentToPeer;
+}
 
 /// One device row inside a contact's roster entry.
 class MobileContactDevice {
