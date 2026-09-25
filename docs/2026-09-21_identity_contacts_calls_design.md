@@ -155,6 +155,12 @@ proposal above are bolded):
   swap of the per-install keypair to the account key stays **rejected** (that would collapse
   multi-device identity); account_key is a *retained* addition, seeded by
   `api::provision_my_user` (idempotent) — re-provisioning never changes the account root.
+- **Mobile auto-provisions at node start** (`mobile_node::start_node_impl`): every install
+  provisions a fresh user identity on first start (idempotent; later starts reuse the account).
+  No "create account" UI is needed — the Contacts tab grouping just always applies. The Flutter
+  app surfaces incoming `device_binding_intro` events as an explicit **Allow/Decline** dialog
+  (`promptDeviceBinding`, `@visibleForTesting` accept seam like `SortContactsOverride`) whose
+  Allow calls `acceptDeviceBinding`; `device_binding_received` refreshes the roster.
 - **Receivers never auto-mint on an intro.** An incoming `intro` is surfaced as an event only
   (`SwarmEvent::DeviceBindingIntro`, later `DeviceBindingReceived { user_id }` after the account
   holder calls `accept_device_binding`); the holder explicitly accepts. Claims (`kind: "claim"`)

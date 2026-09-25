@@ -84,6 +84,15 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         p2plog_debug(format!("Failed to ensure self nickname: {e}"));
     }
 
+    // Provision a user identity for this install (idempotent): creates the
+    // users row keyed by a generated account keypair and self-binds the local
+    // device. Later starts just return the existing account and never change
+    // the account root, so every install is a holder that can mint device
+    // bindings and accept sibling devices.
+    if let Err(e) = crate::identity::provision_my_user(None, None) {
+        p2plog_debug(format!("Failed to provision user identity: {e}"));
+    }
+
     // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
     // but mDNS/swarm need a reactor.
     let runtime =

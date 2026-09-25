@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +17,41 @@ import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+
+/// Prompt whether to bind an incoming device into this account. Shown when a
+/// peer's `device_binding_intro` arrives; accepting mints a signed claim that
+/// adds that peer's device to our user's device-set.
+///
+/// Test-only seam: [accept] replaces the FFI-backed `acceptDeviceBinding` call
+/// so widget tests can exercise the flow without a loaded Rust library.
+@visibleForTesting
+Future<void> promptDeviceBinding(
+  BuildContext context, {
+  required String peerId,
+  required Uint8List devicePubkey,
+  required Future<void> Function(String peerId, Uint8List devicePubkey) accept,
+}) async {
+  final allowed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Link device to my account?'),
+      content: Text('Allow $peerId to join your account as a device?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Decline'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Allow'),
+        ),
+      ],
+    ),
+  );
+  if (allowed == true) {
+    await accept(peerId, devicePubkey);
+  }
+}
 
 /// Root tabbed screen: Broadcast chat, Contacts, Groups, Log, and Settings.
 class HomeScreen extends StatefulWidget {
@@ -43,6 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
   DateTime? _lastConnectionAt;
+
+  /// Device-binding intros already being prompted for (peer_id → device_pubkey),
+  /// so repeated `device_binding_intro` events never stack dialogs.
+  final Map<String, Uint8List> _pendingDeviceBindings = {};
 
   /// Live connection snapshot, broadcast to the Settings page.
   final ValueNotifier<LiveStatus> _liveStatus = ValueNotifier(
@@ -236,6 +277,29 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refreshGroups();
   }
 
+  /// Prompt to bind an incoming device into this account. Deduplicates by
+  /// peer_id so retransmitted intros never stack dialogs.
+  Future<void> _handleDeviceBindingIntro(
+    String peerId,
+    Uint8List devicePubkey,
+  ) async {
+    if (_pendingDeviceBindings.containsKey(peerId)) return;
+    _pendingDeviceBindings[peerId] = devicePubkey;
+    try {
+      await promptDeviceBinding(
+        context,
+        peerId: peerId,
+        devicePubkey: devicePubkey,
+        accept: (id, pubkey) async {
+          await acceptDeviceBinding(peerId: id, devicePubkey: pubkey);
+          _refreshRoster();
+        },
+      );
+    } finally {
+      _pendingDeviceBindings.remove(peerId);
+    }
+  }
+
   /// Accept an incoming group invite: persist membership + subscribe (like the
   /// TUI) and refresh the Groups list so the accepted group appears.
   Future<void> _acceptInvite(String groupId) async {
@@ -298,6 +362,18 @@ class _HomeScreenState extends State<HomeScreen> {
         if (event.groupId != null) {
           _acceptInvite(event.groupId!);
         }
+        break;
+      case 'device_binding_intro':
+        // A peer advertises its device for binding into our account. Prompt
+        // the account holder; only an explicit Allow mints the claim.
+        if (event.peerId != null && event.devicePubkey != null) {
+          _handleDeviceBindingIntro(event.peerId!, event.devicePubkey!);
+        }
+        break;
+      case 'device_binding_received':
+        // Our account gained a device (e.g. we accepted a peer's intro), so
+        // the roster's user-grouping may have changed.
+        _refreshRoster();
         break;
       case 'peer_connected':
         setState(() {
