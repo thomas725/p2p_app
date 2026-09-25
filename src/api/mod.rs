@@ -225,6 +225,39 @@ pub fn get_my_user_id() -> Result<Option<String>, String> {
     crate::mobile_api::get_my_user_id()
 }
 
+/// Provision this install as a user (account keypair + self-binding claim).
+/// The returned string is the new root `user_id`.
+///
+/// # Errors
+/// Returns an error if provisioning fails.
+#[allow(clippy::needless_pass_by_value)]
+pub fn provision_my_user(
+    self_username: Option<String>,
+    self_nickname: Option<String>,
+) -> Result<String, String> {
+    crate::mobile_api::provision_my_user(self_username, self_nickname)
+}
+
+/// Send a device-binding `intro` request to a peer over the swarm.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued.
+#[allow(clippy::needless_pass_by_value)]
+pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
+    crate::mobile_node::send_device_binding_intro(peer_id)
+}
+
+/// Mint a signed claim binding `device_pubkey` at `peer_id` into this
+/// install's user, persist the local binding, and send the claim to the device.
+///
+/// # Errors
+/// Returns an error if this install has no user, the claim cannot be minted,
+/// or the request cannot be queued.
+#[allow(clippy::needless_pass_by_value)]
+pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<(), String> {
+    crate::mobile_node::accept_device_binding(peer_id, &device_pubkey)
+}
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

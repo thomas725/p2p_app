@@ -70,7 +70,8 @@ fn test_swarm_command_variants_all() {
         SwarmCommand::SendDm { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }
-        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -99,6 +100,7 @@ fn test_swarm_command_variants_all() {
         SwarmCommand::Publish { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }
-        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected SendDm"),
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("expected SendDm"),
     }
 }

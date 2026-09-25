@@ -69,6 +69,11 @@ async fn handle_swarm_event(
         )) => {
             handle_request_response(message, peer, event_tx, swarm).await;
         }
+        Libp2pSwarmEvent::Behaviour(AppEv::DeviceBinding(
+            libp2p::request_response::Event::Message { peer, message, .. },
+        )) => {
+            handle_device_binding(message, peer, event_tx, swarm).await;
+        }
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
             for (peer_id, multiaddr) in list {
@@ -279,6 +284,157 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
     }
 }
 
+/// Verify an incoming claim about **our** device and, only on success, bind it.
+///
+/// Enforcement order (hostile-device invariant held end-to-end, not just at
+/// `save_device_binding`):
+///
+/// 1. The claim must reference a user: `user_id`, `account_pubkey`, `claim_id`,
+///    `signature`.
+/// 2. `save_user` is (re)applied so the root exists for verification. The
+///    upsert refreshes only the display-name seams; the stored `account_pubkey`
+///    is the root and never changes.
+/// 3. The claim must be about **us**: `request.peer_id` must equal the local
+///    peer ID and `request.device_pubkey` the local install key's pubkey.
+/// 4. `save_device_binding` re-verifies `signature` against the account pubkey
+///    stored on *that user's* row. A claim signed by any other key is rejected
+///    before anything is persisted.
+///
+/// A retransmit of an identical claim (`claim_id`) that already bound this
+/// device is treated as accepted.
+fn verify_and_bind_claim(
+    request: &crate::behavior::DeviceBindingRequest,
+    swarm: &Swarm<AppBehaviour>,
+) -> color_eyre::Result<String> {
+    let user_id = request
+        .user_id
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no user_id"))?;
+    let account_pubkey = request
+        .account_pubkey
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no account_pubkey"))?;
+    let claim_id = request
+        .claim_id
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no claim_id"))?;
+    let signature = request
+        .signature
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no signature"))?;
+
+    crate::identity::save_user(
+        &user_id,
+        &account_pubkey,
+        request.self_username.as_deref(),
+        request.self_nickname.as_deref(),
+    )?;
+
+    if request.peer_id != swarm.local_peer_id().to_string() {
+        return Err(color_eyre::eyre::eyre!(
+            "claim names a different device than this node"
+        ));
+    }
+    let local_pubkey = crate::get_libp2p_identity()?.public().encode_protobuf();
+    if request.device_pubkey != local_pubkey {
+        return Err(color_eyre::eyre::eyre!(
+            "claim names a different device key than this install's"
+        ));
+    }
+
+    match crate::identity::save_device_binding(
+        &user_id,
+        &request.peer_id,
+        &request.device_pubkey,
+        &claim_id,
+        &signature,
+    ) {
+        Ok(_) => Ok(user_id),
+        Err(_)
+            if crate::identity::find_user_id_for_peer(&request.peer_id)
+                .unwrap_or(None)
+                .as_deref()
+                == Some(user_id.as_str()) =>
+        {
+            // Identical claim already bound this device into the same user.
+            Ok(user_id)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+async fn handle_device_binding(
+    message: libp2p::request_response::Message<
+        crate::behavior::DeviceBindingRequest,
+        crate::behavior::DeviceBindingAck,
+    >,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let peer_id_str = peer.to_string();
+    match message {
+        libp2p::request_response::Message::Request {
+            request, channel, ..
+        } => {
+            let response = match request.kind.as_str() {
+                "intro" => {
+                    // Advertising device, optionally carrying its account. We
+                    // never auto-mint a claim here: binding a stranger's device
+                    // into our user would route DMs addressed to us to them.
+                    // Surfacing the intro lets the operator decide explicitly.
+                    let _ = event_tx
+                        .send(SwarmEvent::DeviceBindingIntro {
+                            peer_id: peer_id_str,
+                            device_pubkey: request.device_pubkey.clone(),
+                        })
+                        .await;
+                    crate::behavior::DeviceBindingAck {
+                        ok: true,
+                        reason: None,
+                    }
+                }
+                "claim" => match verify_and_bind_claim(&request, swarm) {
+                    Ok(user_id) => {
+                        let _ = event_tx
+                            .send(SwarmEvent::DeviceBindingReceived { user_id })
+                            .await;
+                        crate::behavior::DeviceBindingAck {
+                            ok: true,
+                            reason: None,
+                        }
+                    }
+                    Err(e) => crate::behavior::DeviceBindingAck {
+                        ok: false,
+                        reason: Some(format!("{e}")),
+                    },
+                },
+                other => crate::behavior::DeviceBindingAck {
+                    ok: false,
+                    reason: Some(format!("unknown device-binding kind: {other}")),
+                },
+            };
+            let _ = swarm
+                .behaviour_mut()
+                .device_binding
+                .send_response(channel, response);
+        }
+        libp2p::request_response::Message::Response { response, .. } => {
+            if let Some(reason) = response.reason {
+                if response.ok {
+                    p2plog_debug(format!(
+                        "device-binding request accepted by {peer_id_str}: {reason}"
+                    ));
+                } else {
+                    p2plog_debug(format!(
+                        "device-binding request rejected by {peer_id_str}: {reason}"
+                    ));
+                }
+            }
+        }
+    }
+}
+
 /// Build a `BroadcastMessage` from component parts
 #[must_use]
 pub fn build_broadcast_message(
@@ -311,6 +467,7 @@ pub fn build_group_message(
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
     use libp2p::PeerId;
     match cmd {
@@ -394,6 +551,17 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                 Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
                 Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
                 Err(e) => p2plog_error(format!("Failed to subscribe to group {group_id}: {e:?}")),
+            }
+        }
+        SwarmCommand::SendDeviceBinding { peer_id, request } => {
+            if let Ok(peer) = peer_id.parse::<PeerId>() {
+                // `send_request` returns the outbound request ID; failures
+                // surface as `OutboundFailure` events on the behaviour, so a
+                // successful dispatch is all we can assert here.
+                let _ = swarm
+                    .behaviour_mut()
+                    .device_binding
+                    .send_request(&peer, *request);
             }
         }
         SwarmCommand::UnsubscribeGroup { group_id } => {

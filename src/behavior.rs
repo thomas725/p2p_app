@@ -13,6 +13,14 @@ use serde::{Deserialize, Serialize};
 /// Chat protocol name for direct messages
 pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 
+/// Device-binding protocol name (identity lane §11).
+///
+/// One-shot signed claims that bind a device (install keypair) into a remote
+/// account's device-set. `intro` requests advertise a device+account; `claim`
+/// requests carry the account-key-signed claim that the receiver verifies
+/// before binding.
+pub const DEVICE_BINDING_PROTOCOL_NAME: &str = "/p2p-chat/device-binding/1.0.0";
+
 /// Default chat topic
 pub const CHAT_TOPIC: &str = "test-net";
 
@@ -71,6 +79,56 @@ pub struct GroupMessage {
 /// JSON codec for direct message protocol
 pub type ChatCodec = libp2p::request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 
+/// Device-binding exchange payload (identity lane §11; signed claims).
+///
+/// One wire type, two `kind`s:
+///
+/// * `"intro"`  — sender advertises its device (and account, once provisioned)
+///   so the account holder can decide whether to mint a claim for it.
+/// * `"claim"` — a signed device→user claim. `user_id`, `account_pubkey`,
+///   `claim_id`, `bound_at` and `signature` are all present. The receiver
+///   `save_user`s the root (upsert), verifies `signature` over
+///   `user_id ‖ device_pubkey ‖ claim_id` against *that user's* stored account
+///   pubkey, and only then binds (`save_device_binding`). Never auto-mints.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DeviceBindingRequest {
+    /// `"intro"` or `"claim"`
+    pub kind: String,
+    /// Account the claim/intro is about (`None` for an unprovisioned intro)
+    pub user_id: Option<String>,
+    /// Account pubkey that signs claims for `user_id` (claim; root of trust)
+    pub account_pubkey: Option<Vec<u8>>,
+    /// Account's self-declared username (display lane)
+    pub self_username: Option<String>,
+    /// Account's self-declared nickname (display lane)
+    pub self_nickname: Option<String>,
+    /// Peer ID of the subject device (intro: sender; claim: the device claimed)
+    pub peer_id: String,
+    /// Pubkey (protobuf) of the subject device (install keypair)
+    pub device_pubkey: Vec<u8>,
+    /// Unique claim identifier (present on claim)
+    pub claim_id: Option<String>,
+    /// Unix seconds when the claim was minted (present on claim; display only)
+    pub bound_at: Option<f64>,
+    /// Signed claim over `user_id ‖ device_pubkey ‖ claim_id` (present on claim)
+    pub signature: Option<Vec<u8>>,
+}
+
+/// Ack for a device-binding request (`kind` echoes the request kind).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DeviceBindingAck {
+    /// Whether the exchange was accepted and (for claims) bound
+    pub ok: bool,
+    /// Human-readable reason on failure
+    pub reason: Option<String>,
+}
+
+/// JSON codec for the device-binding protocol
+pub type DeviceBindingCodec =
+    libp2p::request_response::json::codec::Codec<DeviceBindingRequest, DeviceBindingAck>;
+
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
@@ -78,6 +136,9 @@ pub struct AppBehaviour {
     pub gossipsub: gossipsub::Behaviour,
     /// Request-response protocol handler for direct messages
     pub request_response: request_response::Behaviour<ChatCodec>,
+    /// Request-response protocol handler for signed device-binding exchanges
+    /// (identity lane §11: intro + account-signed claims)
+    pub device_binding: request_response::Behaviour<DeviceBindingCodec>,
     /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
@@ -134,6 +195,14 @@ pub fn build_behaviour(
         request_response::Config::default(),
     );
 
+    let device_binding = request_response::Behaviour::new(
+        [(
+            libp2p::StreamProtocol::new(DEVICE_BINDING_PROTOCOL_NAME),
+            request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default(),
+    );
+
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
     // dead connection. This surfaces killed/disconnected peers within ~10-20s
     // instead of waiting on the (often never-elapsed) idle connection timeout.
@@ -153,6 +222,7 @@ pub fn build_behaviour(
     Ok(AppBehaviour {
         gossipsub,
         request_response,
+        device_binding,
         #[cfg(feature = "mdns")]
         mdns,
         ping,

@@ -24,6 +24,9 @@ pub struct NewIdentity {
     pub last_quic_port: Option<i32>,
     /// Nickname this node advertises to peers
     pub self_nickname: Option<String>,
+    /// Serialised account keypair that signs this install's device-binding
+    /// claims (NULL until this install provisions a user; provisioning)
+    pub account_key: Option<Vec<u8>>,
 }
 
 /// Insertable struct for the `message_receipts` table

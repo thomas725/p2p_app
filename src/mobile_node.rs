@@ -584,6 +584,63 @@ pub fn save_incoming_message(
     Ok(message_to_chat(msg))
 }
 
+// --- Device-binding exchange (identity lane §11) ---
+
+/// Introduce this device (and its account if provisioned) to a peer by
+/// sending a device-binding `intro` request over the swarm.
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
+    let request = crate::identity::intro_device_binding_request().map_err(|e| e.to_string())?;
+    let mut queued = false;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            queued = tx
+                .blocking_send(SwarmCommand::SendDeviceBinding {
+                    peer_id,
+                    request: Box::new(request),
+                })
+                .is_ok();
+        }
+    }
+    if !queued {
+        return Err("Failed to queue device-binding intro: node not running".into());
+    }
+    Ok(())
+}
+
+/// Accept a device's intro by minting a signed claim that binds that device
+/// into **our** account's device-set, persisting the local binding and sending
+/// the claim to the device over the swarm.
+///
+/// # Errors
+/// Returns an error if the install has not been provisioned, the claim cannot
+/// be minted, or the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn accept_device_binding(peer_id: String, device_pubkey: &[u8]) -> Result<(), String> {
+    let request =
+        crate::identity::mint_device_binding(&peer_id, device_pubkey).map_err(|e| e.to_string())?;
+    let mut queued = false;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            queued = tx
+                .blocking_send(SwarmCommand::SendDeviceBinding {
+                    peer_id,
+                    request: Box::new(request),
+                })
+                .is_ok();
+        }
+    }
+    if !queued {
+        return Err("Failed to queue device-binding claim: node not running".into());
+    }
+    Ok(())
+}
+
 // --- Group chat types and functions ---
 
 #[derive(Debug, Clone)]
@@ -783,6 +840,7 @@ pub struct SwarmEventJson {
     pub msg_id: Option<String>,
     pub address: Option<String>,
     pub group_id: Option<String>,
+    pub device_pubkey: Option<Vec<u8>>,
 }
 
 fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
@@ -796,6 +854,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             msg_id: m.msg_id,
             address: None,
             group_id: Some(m.group_id),
+            device_pubkey: None,
         },
         SwarmEvent::GroupInvite {
             group_id,
@@ -809,6 +868,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             msg_id: None,
             address: None,
             group_id: Some(group_id),
+            device_pubkey: None,
         },
         SwarmEvent::BroadcastMessage(m) => SwarmEventJson {
             event_type: "broadcast".into(),
@@ -819,6 +879,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             msg_id: m.msg_id,
             address: None,
             group_id: None,
+            device_pubkey: None,
         },
         SwarmEvent::DirectMessage(m) => SwarmEventJson {
             event_type: "dm".into(),
@@ -829,6 +890,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             msg_id: m.msg_id,
             address: None,
             group_id: None,
+            device_pubkey: None,
         },
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
             event_type: "peer_connected".into(),
@@ -866,6 +928,20 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             peer_id: Some(peer_id),
             ..default_event()
         },
+        SwarmEvent::DeviceBindingIntro {
+            peer_id,
+            device_pubkey,
+        } => SwarmEventJson {
+            event_type: "device_binding_intro".into(),
+            peer_id: Some(peer_id),
+            device_pubkey: Some(device_pubkey),
+            ..default_event()
+        },
+        SwarmEvent::DeviceBindingReceived { user_id } => SwarmEventJson {
+            event_type: "device_binding_received".into(),
+            content: Some(user_id),
+            ..default_event()
+        },
     }
 }
 
@@ -880,6 +956,7 @@ fn default_event() -> SwarmEventJson {
         msg_id: None,
         address: None,
         group_id: None,
+        device_pubkey: None,
     }
 }
 

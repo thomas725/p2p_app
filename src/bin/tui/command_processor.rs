@@ -410,6 +410,21 @@ async fn process_swarm_event(
         SwarmEvent::PeerExpired { peer_id } => {
             p2plog_debug(format!("Peer expired: {peer_id}"));
         }
+        SwarmEvent::DeviceBindingIntro {
+            peer_id,
+            device_pubkey,
+        } => {
+            // Identity-lane wiring is mobile-first for now; the TUI only logs
+            // the intro (it never auto-mints — the account holder must accept
+            // explicitly via the mobile/binding API).
+            p2plog_debug(format!(
+                "Device-binding intro from {peer_id} (pubkey {} bytes)",
+                device_pubkey.len()
+            ));
+        }
+        SwarmEvent::DeviceBindingReceived { user_id } => {
+            p2plog_debug(format!("This device was bound into user {user_id}"));
+        }
     }
 }
 

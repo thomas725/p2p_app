@@ -344,6 +344,23 @@ pub fn get_my_user_id() -> Result<Option<String>, String> {
     crate::identity::find_user_id_for_peer(&local_peer.to_string()).map_err(|e| e.to_string())
 }
 
+/// Provision this install as a user: mint an account keypair, persist the
+/// account with the given display seams, store the account key, and sign this
+/// install's own first device-binding claim. Idempotent — returns the existing
+/// user ID if the install is already bound.
+///
+/// # Errors
+/// Returns an error if provisioning/persistence fails.
+#[allow(clippy::needless_pass_by_value)]
+#[flutter_rust_bridge::frb(ignore)]
+pub fn provision_my_user(
+    self_username: Option<String>,
+    self_nickname: Option<String>,
+) -> Result<String, String> {
+    crate::identity::provision_my_user(self_username.as_deref(), self_nickname.as_deref())
+        .map_err(|e| e.to_string())
+}
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

@@ -195,6 +195,38 @@ Future<String> networkSizeLabel({required PlatformInt64 peerCount}) =>
 /// fails.
 Future<String?> getMyUserId() => RustLib.instance.api.crateApiGetMyUserId();
 
+/// Provision this install as a user (account keypair + self-binding claim).
+/// The returned string is the new root `user_id`.
+///
+/// # Errors
+/// Returns an error if provisioning fails.
+Future<String> provisionMyUser({String? selfUsername, String? selfNickname}) =>
+    RustLib.instance.api.crateApiProvisionMyUser(
+      selfUsername: selfUsername,
+      selfNickname: selfNickname,
+    );
+
+/// Send a device-binding `intro` request to a peer over the swarm.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued.
+Future<void> sendDeviceBindingIntro({required String peerId}) =>
+    RustLib.instance.api.crateApiSendDeviceBindingIntro(peerId: peerId);
+
+/// Mint a signed claim binding `device_pubkey` at `peer_id` into this
+/// install's user, persist the local binding, and send the claim to the device.
+///
+/// # Errors
+/// Returns an error if this install has no user, the claim cannot be minted,
+/// or the request cannot be queued.
+Future<void> acceptDeviceBinding({
+  required String peerId,
+  required List<int> devicePubkey,
+}) => RustLib.instance.api.crateApiAcceptDeviceBinding(
+  peerId: peerId,
+  devicePubkey: devicePubkey,
+);
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

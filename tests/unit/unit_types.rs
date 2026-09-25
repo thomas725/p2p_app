@@ -104,7 +104,8 @@ fn test_swarm_command_publish() {
         SwarmCommand::SendDm { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }
-        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("expected Publish"),
     }
 }
 
@@ -131,7 +132,8 @@ fn test_swarm_command_send_dm() {
         SwarmCommand::Publish { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }
-        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected SendDm"),
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -189,7 +191,8 @@ fn test_swarm_command_clone() {
         SwarmCommand::SendDm { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }
-        | SwarmCommand::UnsubscribeGroup { .. } => panic!("expected Publish"),
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("expected Publish"),
     }
 }
 

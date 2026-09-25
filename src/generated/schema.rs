@@ -10,6 +10,7 @@ diesel::table! {
         last_tcp_port -> Nullable<Integer>,
         last_quic_port -> Nullable<Integer>,
         self_nickname -> Nullable<Text>,
+        account_key -> Nullable<Binary>,
     }
 }
 

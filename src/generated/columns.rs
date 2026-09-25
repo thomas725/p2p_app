@@ -27,6 +27,7 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("groups", "group_id", "TEXT"),
     ("groups", "id", "INTEGER"),
     ("groups", "is_private", "INTEGER"),
+    ("identities", "account_key", "BLOB"),
     ("identities", "created_at", "TIMESTAMP"),
     ("identities", "id", "INTEGER"),
     ("identities", "key", "BLOB"),

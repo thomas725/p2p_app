@@ -109,6 +109,22 @@ pub enum SwarmEvent {
         /// Expired peer's ID
         peer_id: String,
     },
+    /// A peer advertised its device (and optionally its account) via the
+    /// device-binding protocol (identity lane §11). Surfaced so the operator
+    /// can decide whether to mint a signed claim for that device.
+    DeviceBindingIntro {
+        /// Peer ID of the advertising device
+        peer_id: String,
+        /// Pubkey (protobuf) of the advertising device's install keypair
+        device_pubkey: Vec<u8>,
+    },
+    /// A signed device-binding claim for **our** device was accepted by the
+    /// account holder (identity lane §11): our install's peer ID is now bound
+    /// into that user's device-set.
+    DeviceBindingReceived {
+        /// The account our device was just bound into
+        user_id: String,
+    },
 }
 
 /// Commands sent to the swarm task
@@ -156,6 +172,15 @@ pub enum SwarmCommand {
     UnsubscribeGroup {
         /// The group to leave
         group_id: String,
+    },
+    /// Send a device-binding request (intro or signed claim) to a peer over the
+    /// dedicated request-response protocol (identity lane §11).
+    SendDeviceBinding {
+        /// The peer to send the request to
+        peer_id: String,
+        /// The device-binding payload to transmit (boxed: keeps this variant
+        /// near the others so the command channel stays small)
+        request: Box<crate::behavior::DeviceBindingRequest>,
     },
 }
 

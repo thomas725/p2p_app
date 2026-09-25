@@ -139,6 +139,35 @@ A single Rust model + one bulk loading fn feeds both UIs (replacing the peer-lis
 - Same-user message sync across devices requires ≥1 of the user's devices online within the gap —
   no external store-and-forward (the §11 note; not a separate promised server lane).
 
+## Provisioning + claims exchange (landed 2026-09-25) — resolved decisions
+
+First implementation slice of the identity layer. Three decisions resolved (deviations from the
+proposal above are bolded):
+
+- **Claim message layout keeps `bound_at` out of the signed bytes.** Signed message =
+  `user_id ‖ device_pubkey ‖ claim_id` (NOT `... ‖ claim_id ‖ bound_at` as drawn at line 45).
+  Shared `identity::device_binding_claim_message` builds it byte-for-byte for both the verifier and
+  the minters, so nothing can drift. `bound_at` is carried in the claim record for display/ordering
+  only (it is mint-time, visible on the claim record itself).
+- **`identities` gains a nullable `account_key BLOB`** (line 59 said "identities unchanged").
+  Deviation: sibling-device claims can only be minted by the account holder; since the account key
+  cannot be reconstructed from the account pubkey, the install that provisions must persist it. The
+  swap of the per-install keypair to the account key stays **rejected** (that would collapse
+  multi-device identity); account_key is a *retained* addition, seeded by
+  `api::provision_my_user` (idempotent) — re-provisioning never changes the account root.
+- **Receivers never auto-mint on an intro.** An incoming `intro` is surfaced as an event only
+  (`SwarmEvent::DeviceBindingIntro`, later `DeviceBindingReceived { user_id }` after the account
+  holder calls `accept_device_binding`); the holder explicitly accepts. Claims (`kind: "claim"`)
+  are verified and bound by `swarm_handler::verify_and_bind_claim` only after the account-signed
+  claim passes, enforcing the §11.1 hostile invariant.
+- Transport: `device_binding` request/response behaviour (protocol id
+  `/p2p-chat/device-binding/1.0.0`) minted/consumed by `identity::{intro,mint,verify}_device_binding*`
+  and routed/managed in `swarm_handler`; sends are queued as `SwarmCommand::SendDeviceBinding` and
+  issued through the existing `request_response` machinery (carries `Box<DeviceBindingRequest>`).
+- Verification gate: `cargo ct` clean, `cargo test --all-features` green (lib 299, bin 244,
+  integration suites incl. new identity provisioning/mint/hostile-claim tests), `flutter analyze`
+  clean, `flutter test` 18/18. Committed as its own slice.
+
 ## Verification (this doc)
 
 `git status` clean; one commit `docs(design): ...`.

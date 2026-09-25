@@ -602,6 +602,7 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         last_tcp_port: None,
         last_quic_port: None,
         self_nickname: None,
+        account_key: None,
     };
     let identity = diesel::insert_into(crate::generated::schema::identities::table)
         .values(&new_identity)
