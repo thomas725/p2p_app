@@ -228,3 +228,24 @@ fn test_app_state_to_render_state_log_messages() {
             .any(|line| line.contains("log line two"))
     );
 }
+
+#[test]
+#[serial]
+fn test_device_binding_prompt_renders_and_wins_over_popup() {
+    let mut state = app_state();
+    state.popup = Some("receipt detail".to_string());
+    assert_eq!(render_popup_text(&state).as_deref(), Some("receipt detail"));
+
+    // An active device-binding prompt replaces any ad-hoc popup text.
+    state.device_binding_prompt = Some(crate::tui::state::DeviceBindingPrompt {
+        peer_id: "12D3Koooprompt-peer".to_string(),
+        device_pubkey: vec![1, 2, 3],
+    });
+    let text = render_popup_text(&state).expect("prompt text");
+    assert!(text.contains("Device-binding intro"));
+    assert!(text.contains("Accept with 'a'"));
+    assert!(text.contains("pubkey 3 bytes"));
+    // app_state_to_render_state surfaces the same prompt text.
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.popup.as_deref(), Some(text.as_str()));
+}

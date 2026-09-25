@@ -14,10 +14,12 @@
     clippy::match_wildcard_for_single_variants
 )]
 use super::*;
+use crate::tui::state::AppState;
 use crate::tui::test_helpers::app_state_with_peers;
 use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
+use serial_test::serial;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::{Mutex, mpsc};
@@ -1110,4 +1112,114 @@ async fn test_i_key_on_device_row_opens_peer_info_for_exact_device() {
         }
         other => panic!("expected PeerInfo(bob-d2), got: {other:?}"),
     }
+}
+
+// ── device-binding prompt (accept/decline) ─────────────────────────────────
+
+fn prompt_state(peer: &str) -> AppState {
+    let mut s = test_app_state();
+    s.device_binding_prompt = Some(crate::tui::state::DeviceBindingPrompt {
+        peer_id: peer.to_string(),
+        device_pubkey: vec![0xAB, 0xCD],
+    });
+    s
+}
+
+#[tokio::test]
+async fn test_device_binding_d_key_declines_prompt() {
+    let state = Arc::new(Mutex::new(prompt_state("target-device")));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.device_binding_prompt.is_none());
+    assert!(render_rx.try_recv().is_ok());
+}
+
+#[tokio::test]
+async fn test_device_binding_any_non_accept_key_declines_prompt() {
+    let state = Arc::new(Mutex::new(prompt_state("target-device")));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.device_binding_prompt.is_none());
+}
+
+#[tokio::test]
+async fn test_device_binding_esc_declines_prompt() {
+    let state = Arc::new(Mutex::new(prompt_state("target-device")));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.device_binding_prompt.is_none());
+}
+
+#[test]
+#[serial]
+fn test_device_binding_accept_mints_and_queues_claim() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().expect("db path").to_string();
+    p2p_app::db::set_db_url(&db_str);
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(prompt_state("target-device")));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+        let (render_tx, _) = mpsc::channel(1);
+
+        let exited = process_key_event(
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+        assert!(!exited);
+
+        let s = state.lock().await;
+        assert!(s.device_binding_prompt.is_none(), "prompt consumed");
+        drop(s);
+
+        match swarm_cmd_rx.try_recv().expect("claim queued") {
+            SwarmCommand::SendDeviceBinding { peer_id, request } => {
+                assert_eq!(peer_id, "target-device");
+                assert_eq!(request.kind, "claim");
+            }
+            other => panic!("expected SendDeviceBinding claim, got: {other:?}"),
+        }
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
 }

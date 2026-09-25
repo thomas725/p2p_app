@@ -414,16 +414,30 @@ async fn process_swarm_event(
             peer_id,
             device_pubkey,
         } => {
-            // Identity-lane wiring is mobile-first for now; the TUI only logs
-            // the intro (it never auto-mints — the account holder must accept
-            // explicitly via the mobile/binding API).
-            p2plog_debug(format!(
-                "Device-binding intro from {peer_id} (pubkey {} bytes)",
-                device_pubkey.len()
-            ));
+            // Surface the intro as an explicit prompt for the account holder
+            // (never auto-mint): accepting mints a signed claim via the 'a' key
+            // path in the input processor.
+            let mut s = state.lock().await;
+            if s.device_binding_prompt.is_none() {
+                s.device_binding_prompt = Some(super::state::DeviceBindingPrompt {
+                    peer_id,
+                    device_pubkey,
+                });
+            } else {
+                p2plog_debug(
+                    "Device-binding intro dropped: a prompt is already active".to_string(),
+                );
+            }
+            drop(s);
         }
         SwarmEvent::DeviceBindingReceived { user_id } => {
             p2plog_debug(format!("This device was bound into user {user_id}"));
+            let mut s = state.lock().await;
+            s.popup = Some(format!(
+                "This device was bound into user {}",
+                p2p_app::fmt::peer_id_suffix(&user_id)
+            ));
+            drop(s);
         }
     }
 }

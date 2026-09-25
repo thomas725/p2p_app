@@ -174,6 +174,14 @@ proposal above are bolded):
   `/p2p-chat/device-binding/1.0.0`) minted/consumed by `identity::{intro,mint,verify}_device_binding*`
   and routed/managed in `swarm_handler`; sends are queued as `SwarmCommand::SendDeviceBinding` and
   issued through the existing `request_response` machinery (carries `Box<DeviceBindingRequest>`).
+- **TUI parity for intros (landed with the mobile slice):** the TUI auto-provisions at startup
+  (same idempotent `provision_my_user(None, None)` call as mobile) and surfaces
+  `DeviceBindingIntro` as a **modal prompt** (single-slot `AppState.device_binding_prompt`,
+  rendered as the window popup): `a` accepts — mints the signed claim via
+  `identity::mint_device_binding` and queues `SwarmCommand::SendDeviceBinding` — and any other
+  key (incl. `d`/Esc) declines. Explicit-accept only, mirroring the mobile Allow/Decline
+  dialog; `DeviceBindingReceived` shows a confirmation popup. Tested in the bin input/render
+  suites (bin 249).
 - Verification gate: `cargo ct` clean, `cargo test --all-features` green (lib 299, bin 244,
   integration suites incl. new identity provisioning/mint/hostile-claim tests), `flutter analyze`
   clean, `flutter test` 18/18. Committed as its own slice.

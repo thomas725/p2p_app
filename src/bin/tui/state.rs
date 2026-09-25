@@ -133,11 +133,23 @@ pub struct AppState {
     // Ad-hoc UI popup (used for receipt timing details, etc.)
     pub popup: Option<String>,
 
+    /// Incoming device-binding intro awaiting the account holder's decision
+    /// (TUI user decision: like the mobile dialog, accepting is explicit — a
+    /// confirmed keypress, never automatic). Rendered as a popup; 'a' accepts,
+    /// 'd'/Esc declines.
+    pub device_binding_prompt: Option<DeviceBindingPrompt>,
+
     // Settings tab (read-only node/network diagnostics)
     pub db_url: String,
     pub platform: String,
     pub network_size: String,
     pub listen_addrs: Vec<String>,
+}
+
+#[derive(Clone)]
+pub struct DeviceBindingPrompt {
+    pub peer_id: String,
+    pub device_pubkey: Vec<u8>,
 }
 
 impl AppState {
@@ -392,6 +404,7 @@ impl AppState {
             editing_nickname: false,
             editing_nickname_peer: None,
             popup: None,
+            device_binding_prompt: None,
             db_url: String::new(),
             platform: String::new(),
             network_size: String::new(),

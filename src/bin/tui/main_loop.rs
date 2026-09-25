@@ -265,6 +265,14 @@ pub async fn run_new_tui(
     let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
         p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
 
+    // Provision a user identity for this install (idempotent): creates the
+    // users row keyed by a generated account keypair and self-binds the local
+    // device, so the TUI is an account holder that can accept device-binding
+    // intros ('a' on the prompt). Mirrors the mobile auto-provision at start.
+    if let Err(e) = p2p_app::identity::provision_my_user(None, None) {
+        p2plog_debug(format!("Failed to provision user identity: {e}"));
+    }
+
     // Re-join every group persisted in the local database: the swarm only
     // receives group traffic for topics it is subscribed to, so saved groups
     // must be re-subscribed on every startup.

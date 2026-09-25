@@ -14,6 +14,24 @@ use ratatui::{
 use std::io::Stdout;
 use tokio::sync::mpsc;
 
+/// The popup to render: the device-binding prompt wins while one is active
+/// (its Accept/Decline keys are handled by the input processor), otherwise the
+/// ad-hoc `state.popup` text.
+fn render_popup_text(state: &AppState) -> Option<String> {
+    state
+        .device_binding_prompt
+        .as_ref()
+        .map(|p| {
+            format!(
+                "Device-binding intro from {} (pubkey {} bytes)\n\
+                 \nAccept with 'a' \u{b7} decline with 'd' or Esc",
+                p2p_app::fmt::peer_id_suffix(&p.peer_id),
+                p.device_pubkey.len()
+            )
+        })
+        .or_else(|| state.popup.clone())
+}
+
 /// Convert `AppState` to `TuiRenderState` for library rendering
 #[allow(clippy::too_many_lines)]
 fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
@@ -108,7 +126,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         peer_count: state.connected.len(),
         mouse_capture: state.mouse_capture,
         kitty_keyboard_active: state.kitty_keyboard_active,
-        popup: state.popup.clone(),
+        popup: render_popup_text(state),
         chat_scroll_offset: state.chat_scroll_offset,
         chat_auto_scroll: state.chat_auto_scroll,
         chat_unread_count: state.chat_unread_count,

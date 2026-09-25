@@ -83,7 +83,9 @@ The peer list is a sortable table (columns: Name, DM count, Broadcast count, Las
 | Key | Action |
 |-----|--------|
 | `F12` | Toggle mouse capture |
-| `Esc` | Dismiss popup / cancel nickname edit / return to Broadcast Chat |
+| `Esc` | Dismiss popup / cancel nickname edit / return to Broadcast Chat / decline device-binding prompt |
+| `a` | Accept the active device-binding intro (mint + send the signed claim; prompt only) |
+| `d` | Decline the active device-binding intro (prompt only) |
 | `Ctrl+Q` | Exit application |
 
 ## DM Tab Layout

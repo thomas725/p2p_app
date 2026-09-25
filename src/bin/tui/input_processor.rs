@@ -196,6 +196,7 @@ fn handle_close_dm_tab(
 async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
     let mut s = state.lock().await;
     dismiss_popup(&mut s);
+    decline_device_binding_prompt(&mut s);
     if s.editing_nickname {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
@@ -211,6 +212,54 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     }
     drop(s);
     let _ = render_tx.send(RenderEvent).await;
+}
+
+/// Decline the active device-binding prompt (leaves the peer unbound). Also
+/// used by the generic popup dismiss and Esc paths so the prompt can never
+/// linger after the popup is gone.
+pub fn decline_device_binding_prompt(state: &mut super::state::AppState) {
+    if state.device_binding_prompt.take().is_some() {
+        p2plog_debug("Declined device-binding intro".to_string());
+    }
+}
+
+/// Accept the active device-binding prompt: mint a signed claim binding the
+/// intro's device into this install's user, persist it locally, and send the
+/// claim back over the swarm. On mint failure (e.g. the install has no
+/// account) the prompt is cleared and the error is surfaced in a popup.
+pub async fn accept_device_binding_prompt(
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let prompt = {
+        let mut s = state.lock().await;
+        s.device_binding_prompt.take()
+    };
+    let Some(prompt) = prompt else {
+        return;
+    };
+    match p2p_app::identity::mint_device_binding(&prompt.peer_id, &prompt.device_pubkey) {
+        Ok(request) => {
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::SendDeviceBinding {
+                    peer_id: prompt.peer_id.clone(),
+                    request: Box::new(request),
+                })
+                .await;
+            p2plog_debug(format!(
+                "Accepted device-binding intro from {}",
+                p2p_app::fmt::peer_id_suffix(&prompt.peer_id)
+            ));
+        }
+        Err(e) => {
+            p2plog_debug(format!("Failed to accept device binding: {e}"));
+            let mut s = state.lock().await;
+            s.popup = Some(format!(
+                "Could not accept device binding from {}: {e}",
+                p2p_app::fmt::peer_id_suffix(&prompt.peer_id)
+            ));
+        }
+    }
 }
 
 /// Opens the Peer Info tab for the selected contact (Contacts tab) or the
@@ -321,6 +370,23 @@ async fn process_key_event(
     }
 
     let mut s = state.lock().await;
+
+    // Device-binding intro prompt: 'a'/'A' accepts (mints a signed claim and
+    // sends it to the peer), any other key declines. Explicit-accept only —
+    // never auto-mint, mirroring the mobile Allow/Decline dialog.
+    if s.device_binding_prompt.is_some() {
+        let accept = matches!(key_event.code, crossterm::event::KeyCode::Char('a' | 'A'));
+        drop(s);
+        if accept {
+            accept_device_binding_prompt(state, swarm_cmd_tx).await;
+        } else {
+            let mut s = state.lock().await;
+            decline_device_binding_prompt(&mut s);
+            drop(s);
+        }
+        let _ = render_tx.send(RenderEvent).await;
+        return false;
+    }
 
     // Diagnostic: log exactly what crossterm parsed for every input key that
     // touches the Tab/Ctrl+I/Ctrl+P routing, regardless of the kitty flag, so
