@@ -27,6 +27,8 @@ pub struct TuiRenderState {
     /// Canonical Contacts-tab rows (from `contacts::build_contact_rows`).
     /// The Contacts tab renders these; `peers` stays only as the device input.
     pub contacts: Vec<crate::contacts::ContactRow>,
+    /// Contact IDs expanded into their device sub-rows on the Contacts tab.
+    pub expanded_contact_ids: std::collections::HashSet<String>,
     /// How many broadcasts *we* sent to each peer (bulk-loaded from
     /// `broadcast_recipients`), driving the peers-table "Broadcast" column.
     pub broadcast_sent_to_peer: HashMap<String, usize>,
@@ -142,6 +144,7 @@ impl TuiRenderState {
             broadcast_receipts: HashMap::new(),
             peers: Vec::new(),
             contacts: Vec::new(),
+            expanded_contact_ids: std::collections::HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
             connected_peer_ids: std::collections::HashSet::new(),
             dm_messages: BTreeMap::new(),

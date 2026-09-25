@@ -475,3 +475,220 @@ fn peer_table_rows_range_matches_full_scan() {
         ids
     );
 }
+
+// ── Flattened Contacts table (device-row expand) ─────────────────────────
+
+use crate::contacts::{ContactDevice, ContactRow};
+
+fn contact_fixture(
+    contact_id: &str,
+    name: &str,
+    devices: Vec<(&str, &str, &str, &str)>,
+) -> ContactRow {
+    ContactRow {
+        contact_id: contact_id.to_string(),
+        is_user: false,
+        display_name: name.to_string(),
+        device_count: devices.len(),
+        device_rows: devices
+            .into_iter()
+            .map(
+                |(peer_id, display_name, first_seen, last_seen)| ContactDevice {
+                    peer_id: peer_id.to_string(),
+                    display_name: display_name.to_string(),
+                    first_seen: first_seen.to_string(),
+                    last_seen: last_seen.to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                },
+            )
+            .collect(),
+        first_seen: "2024-01-01 00:00:00".to_string(),
+        last_seen: "2024-01-02 00:00:00".to_string(),
+        dm_count: 3,
+        broadcast_sent_to_peer: 2,
+    }
+}
+
+#[test]
+fn contact_table_plan_collapses_and_expands() {
+    use crate::tui_helpers::{ContactTableRowRef, contact_table_plan};
+    use std::collections::HashSet;
+
+    let contacts = vec![
+        contact_fixture("alice", "Alice", vec![("a1", "Phone", "s", "l")]),
+        contact_fixture(
+            "bob",
+            "Bob",
+            vec![("b1", "Laptop", "s", "l"), ("b2", "Phone", "s", "l")],
+        ),
+    ];
+    let collapsed = contact_table_plan(&contacts, &HashSet::new());
+    assert_eq!(
+        collapsed,
+        vec![
+            ContactTableRowRef::Contact(0),
+            ContactTableRowRef::Contact(1),
+        ]
+    );
+
+    let expanded = contact_table_plan(&contacts, &HashSet::from(["bob".to_string()]));
+    assert_eq!(
+        expanded,
+        vec![
+            ContactTableRowRef::Contact(0),
+            ContactTableRowRef::Contact(1),
+            ContactTableRowRef::Device {
+                contact_idx: 1,
+                device_idx: 0,
+            },
+            ContactTableRowRef::Device {
+                contact_idx: 1,
+                device_idx: 1,
+            },
+        ]
+    );
+}
+
+#[test]
+fn contact_row_ref_resolves_peer_and_contact_ids() {
+    use crate::tui_helpers::ContactTableRowRef;
+
+    let contacts = vec![
+        contact_fixture("alice", "Alice", vec![("a1", "Phone", "s", "l")]),
+        contact_fixture(
+            "bob",
+            "Bob",
+            vec![("b1", "Laptop", "s", "l"), ("b2", "Phone", "s", "l")],
+        ),
+    ];
+    assert_eq!(
+        ContactTableRowRef::Contact(0).peer_id(&contacts),
+        Some("a1")
+    );
+    assert_eq!(
+        ContactTableRowRef::Contact(0).contact_id(&contacts),
+        Some("alice")
+    );
+    let device = ContactTableRowRef::Device {
+        contact_idx: 1,
+        device_idx: 1,
+    };
+    assert_eq!(device.peer_id(&contacts), Some("b2"));
+    assert_eq!(device.contact_id(&contacts), Some("bob"));
+    assert_eq!(ContactTableRowRef::Contact(9).peer_id(&contacts), None);
+}
+
+#[test]
+fn contact_to_peer_table_row_marks_multidevice_expansion() {
+    use crate::tui_helpers::contact_to_peer_table_row;
+
+    let single = contact_fixture("alice", "Alice", vec![("a1", "Phone", "s", "l")]);
+    let row = contact_to_peer_table_row(&single, false);
+    assert_eq!(row.display_name, "Alice");
+
+    let multi = contact_fixture(
+        "bob",
+        "Bob",
+        vec![("b1", "L", "s", "l"), ("b2", "P", "s", "l")],
+    );
+    let collapsed = contact_to_peer_table_row(&multi, false);
+    assert!(
+        collapsed.display_name.starts_with("\u{25b8}"),
+        "got: {}",
+        collapsed.display_name
+    );
+    assert!(
+        collapsed.display_name.contains("\u{00d7}2"),
+        "got: {}",
+        collapsed.display_name
+    );
+    let expanded = contact_to_peer_table_row(&multi, true);
+    assert!(
+        expanded.display_name.starts_with("\u{25be}"),
+        "got: {}",
+        expanded.display_name
+    );
+}
+
+#[test]
+fn contact_table_row_maps_device_subrows() {
+    use crate::tui_helpers::{DEVICE_ROW_STATS_MARKER, contact_table_row, peer_count_display};
+    use std::collections::HashSet;
+
+    let contacts = vec![contact_fixture(
+        "bob",
+        "Bob",
+        vec![("b1", "Laptop", "s1", "l1"), ("b2", "Phone", "s2", "l2")],
+    )];
+    let expanded = HashSet::from(["bob".to_string()]);
+
+    let contact_row = contact_table_row(
+        &contacts,
+        &expanded,
+        crate::tui_helpers::ContactTableRowRef::Contact(0),
+    );
+    assert!(contact_row.display_name.starts_with("\u{25be}"));
+
+    let device1 = contact_table_row(
+        &contacts,
+        &expanded,
+        crate::tui_helpers::ContactTableRowRef::Device {
+            contact_idx: 0,
+            device_idx: 0,
+        },
+    );
+    assert_eq!(device1.peer_id, "b1");
+    assert_eq!(device1.display_name, "  Laptop");
+    assert_eq!(device1.last_seen, "l1");
+    assert_eq!(device1.first_seen, "s1");
+    // DM/broadcast stats aren't aggregated per device: render as a dash.
+    assert_eq!(device1.dm_count, DEVICE_ROW_STATS_MARKER);
+    assert_eq!(device1.broadcast_count, DEVICE_ROW_STATS_MARKER);
+    assert_eq!(peer_count_display(device1.dm_count), "\u{2013}");
+
+    let device2 = contact_table_row(
+        &contacts,
+        &expanded,
+        crate::tui_helpers::ContactTableRowRef::Device {
+            contact_idx: 0,
+            device_idx: 1,
+        },
+    );
+    assert_eq!(device2.peer_id, "b2");
+    assert_eq!(device2.display_name, "  Phone");
+    assert_eq!(device2.last_seen, "l2");
+}
+
+#[test]
+fn contact_table_rows_range_is_flattened_and_windowed() {
+    use crate::tui_helpers::{contact_table_rows_range, peer_count_display};
+    use std::collections::HashSet;
+
+    let contacts = vec![
+        contact_fixture("alice", "Alice", vec![("a1", "P", "s", "l")]),
+        contact_fixture(
+            "bob",
+            "Bob",
+            vec![("b1", "L", "s", "l"), ("b2", "P", "s", "l")],
+        ),
+    ];
+    let expanded = HashSet::from(["bob".to_string()]);
+    let rows = contact_table_rows_range(&contacts, &expanded, 0, 4);
+    let names: Vec<&str> = rows.iter().map(|r| r.display_name.as_str()).collect();
+    assert_eq!(
+        names,
+        vec!["Alice", "\u{25be} Bob \u{00d7}2", "  L", "  P"],
+        "got: {names:?}"
+    );
+    assert_eq!(
+        rows[2].dm_count,
+        crate::tui_helpers::DEVICE_ROW_STATS_MARKER
+    );
+    assert_eq!(peer_count_display(rows[2].broadcast_count), "\u{2013}");
+
+    // A window can skip contact rows and land entirely on device sub-rows.
+    let window = contact_table_rows_range(&contacts, &expanded, 2, 4);
+    assert_eq!(window.len(), 2);
+    assert!(window[0].display_name.starts_with("  "));
+}

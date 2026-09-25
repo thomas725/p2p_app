@@ -218,10 +218,7 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
 fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let peer = match &tab_content {
-        p2p_app::tui_tabs::TabContent::Contacts => state
-            .contacts
-            .get(state.peer_selection)
-            .and_then(|c| c.best_device_peer_id().map(str::to_owned)),
+        p2p_app::tui_tabs::TabContent::Contacts => state.selected_contact_peer_id(),
         p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
         _ => None,
     };
@@ -272,11 +269,7 @@ async fn handle_enter_key(
             state.chat_input.insert_str("\n");
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Contacts) {
-        if let Some(peer_id) = state
-            .contacts
-            .get(state.peer_selection)
-            .and_then(|c| c.best_device_peer_id().map(str::to_owned))
-        {
+        if let Some(peer_id) = state.selected_contact_peer_id() {
             load_dm_messages(state, &peer_id);
             let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
             state.active_tab = tab_idx;
@@ -486,6 +479,21 @@ async fn process_key_event(
         {
             open_peer_info_for_active_tab(&mut s);
             p2plog_debug("Opened Peer Info tab".to_string());
+        }
+        // `e` expands/collapses the selected contact's device rows on the
+        // Contacts tab (no-op on single-device contacts and device rows).
+        crossterm::event::KeyCode::Char('e')
+            if !key_event
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+                && !s.editing_nickname
+                && matches!(
+                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
+                    p2p_app::tui_tabs::TabContent::Contacts
+                ) =>
+        {
+            s.toggle_expand_selected_contact();
+            p2plog_debug("Toggled contact expansion".to_string());
         }
         crossterm::event::KeyCode::Char(c)
             if !key_event

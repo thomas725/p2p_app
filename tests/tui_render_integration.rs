@@ -117,6 +117,62 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_peers_expands_device_subrows() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        state.contacts = vec![p2p_app::contacts::ContactRow {
+            contact_id: "bob".to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: 2,
+            device_rows: vec![
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d1".to_string(),
+                    display_name: "Laptop".to_string(),
+                    first_seen: "2026-08-01 10:00:00".to_string(),
+                    last_seen: "2026-08-28 15:26:41".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                },
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d2".to_string(),
+                    display_name: "Phone".to_string(),
+                    first_seen: "2026-08-01 10:00:00".to_string(),
+                    last_seen: "2026-08-28 15:26:42".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                },
+            ],
+            first_seen: "2026-08-01 10:00:00".to_string(),
+            last_seen: "2026-08-28 15:26:42".to_string(),
+            dm_count: 3,
+            broadcast_sent_to_peer: 2,
+        }];
+        state.expanded_contact_ids.insert("bob".to_string());
+        // Select the first device sub-row (plan index 1) so the viewport math
+        // exercises the flattened plan rather than the contact list.
+        state.peer_selection = 1;
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        // The contact row keeps the contacts title count and shows the expanded
+        // marker; both device sub-rows render with their indented names.
+        assert!(text.contains("Contacts (1)"), "got: {text:?}");
+        assert!(text.contains("\u{25be} Bob \u{00d7}2"), "got: {text:?}");
+        assert!(text.contains("  Laptop"), "got: {text:?}");
+        assert!(text.contains("  Phone"), "got: {text:?}");
+        assert!(text.contains("15:26:41"), "got: {text:?}");
+        assert!(text.contains("15:26:42"), "got: {text:?}");
+    }
+
+    #[test]
     fn test_render_peers_scrolls_viewport_but_keeps_selection_visible() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::new();

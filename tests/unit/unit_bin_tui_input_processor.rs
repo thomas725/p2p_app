@@ -990,3 +990,124 @@ fn test_prepare_nickname_update_falls_back_to_own_nickname() {
         Some("Global")
     );
 }
+
+// ── e: expand/collapse device rows ──────────────────────────────────────
+
+#[tokio::test]
+async fn test_e_key_toggles_selected_contact_expansion() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.contacts = vec![p2p_app::contacts::ContactRow {
+            contact_id: "bob".to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: 2,
+            device_rows: vec![
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d1".to_string(),
+                    display_name: "Laptop".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                    first_seen: "s".to_string(),
+                    last_seen: "l".to_string(),
+                },
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d2".to_string(),
+                    display_name: "Phone".to_string(),
+                    first_seen: "s".to_string(),
+                    last_seen: "l".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                },
+            ],
+            first_seen: "s".to_string(),
+            last_seen: "l".to_string(),
+            dm_count: 3,
+            broadcast_sent_to_peer: 2,
+        }];
+        s.peer_selection = 0;
+        s.active_tab = 1; // Contacts tab
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let expand = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty());
+    let _ = process_key_event(expand, &state, &swarm_cmd_tx, &render_tx).await;
+    assert!(
+        render_rx.recv().await.is_some(),
+        "expected a re-render after expanding"
+    );
+    let s = state.lock().await;
+    assert!(s.expanded_contact_ids.contains("bob"));
+    assert_eq!(
+        p2p_app::tui_helpers::contact_table_plan_len(&s.contacts, &s.expanded_contact_ids),
+        3
+    );
+    drop(s);
+
+    let _ = process_key_event(expand, &state, &swarm_cmd_tx, &render_tx).await;
+    assert!(
+        render_rx.recv().await.is_some(),
+        "expected a re-render after collapsing"
+    );
+    let s = state.lock().await;
+    assert!(s.expanded_contact_ids.is_empty());
+    assert_eq!(
+        p2p_app::tui_helpers::contact_table_plan_len(&s.contacts, &s.expanded_contact_ids),
+        1
+    );
+}
+
+#[tokio::test]
+async fn test_i_key_on_device_row_opens_peer_info_for_exact_device() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.contacts = vec![p2p_app::contacts::ContactRow {
+            contact_id: "bob".to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: 2,
+            device_rows: vec![
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d1".to_string(),
+                    display_name: "Laptop".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                    first_seen: "s".to_string(),
+                    last_seen: "l".to_string(),
+                },
+                p2p_app::contacts::ContactDevice {
+                    peer_id: "bob-d2".to_string(),
+                    display_name: "Phone".to_string(),
+                    first_seen: "s".to_string(),
+                    last_seen: "l".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                },
+            ],
+            first_seen: "s".to_string(),
+            last_seen: "l".to_string(),
+            dm_count: 3,
+            broadcast_sent_to_peer: 2,
+        }];
+        s.expanded_contact_ids.insert("bob".to_string());
+        s.peer_selection = 2; // bob's second device row ("Phone", peer bob-d2)
+        s.active_tab = 1; // Contacts tab
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('i'), KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    match content {
+        TabContent::PeerInfo(peer_id) => {
+            assert_eq!(peer_id, "bob-d2");
+        }
+        other => panic!("expected PeerInfo(bob-d2), got: {other:?}"),
+    }
+}

@@ -2,11 +2,13 @@
 //!
 //! The Contacts tab rows are canonical `ContactRow`s (from
 //! `contacts::build_contact_rows`); they render through the same 5-column
-//! `PeerTableRow` layout as the old peer list.
+//! `PeerTableRow` layout as the old peer list. Expanded multi-device contacts
+//! contribute one device sub-row each, so the cursor and the scrolling
+//! viewport index into the flattened `contact_table_plan`.
 
 use crate::tui_helpers::{
-    contact_table_rows_range, peer_table_column_widths, peer_table_header_labels,
-    peer_table_visible_range,
+    contact_table_plan, contact_table_row, peer_count_display, peer_table_column_widths,
+    peer_table_header_labels, peer_table_visible_range,
 };
 use crate::tui_render_state::TuiRenderState;
 use ratatui::{
@@ -21,7 +23,8 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     // rows tall; a stateful `TableState` scrolls the viewport to keep the
     // selected row visible, so PageUp/PageDown step the selection by a page.
     let page_height = usize::from(area.height.saturating_sub(4)).max(1);
-    let total = state.contacts.len();
+    let plan = contact_table_plan(&state.contacts, &state.expanded_contact_ids);
+    let total = plan.len();
     let selected = (total > 0).then(|| state.peer_selection.min(total.saturating_sub(1)));
     let (start, end) =
         peer_table_visible_range(state.peer_table_offset, selected, total, page_height);
@@ -29,7 +32,12 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     // Materialize only the visible window: display-name lookups are the
     // expensive per-frame cost, so paged rendering stays O(page) no matter how
     // many contacts are known.
-    let rows = contact_table_rows_range(&state.contacts, start, end);
+    let rows: Vec<_> = plan
+        .iter()
+        .skip(start)
+        .take(end.saturating_sub(start))
+        .map(|&row| contact_table_row(&state.contacts, &state.expanded_contact_ids, row))
+        .collect();
 
     let header_cells: Vec<Cell> =
         peer_table_header_labels(state.peer_sort_column, state.peer_sort_ascending)
@@ -43,8 +51,8 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .map(|r| {
             let cells = [
                 Cell::from(r.display_name.clone()),
-                Cell::from(r.dm_count.to_string()),
-                Cell::from(r.broadcast_count.to_string()),
+                Cell::from(peer_count_display(r.dm_count)),
+                Cell::from(peer_count_display(r.broadcast_count)),
                 Cell::from(r.last_seen.clone()),
                 Cell::from(r.first_seen.clone()),
             ];
@@ -61,7 +69,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .header(header)
         .block(
             Block::default()
-                .title(format!("Contacts ({total})"))
+                .title(format!("Contacts ({})", state.contacts.len()))
                 .borders(Borders::ALL),
         )
         .row_highlight_style(Style::default().bg(Color::DarkGray));
@@ -80,7 +88,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     f.render_stateful_widget(table, table_area, &mut table_state);
 
     let hint = Paragraph::new(
-        "1-5 (or n/m/b/l/f): sort · o: toggle order · click header · PgUp/PgDn: page",
+        "e: expand/collapse ×N · 1-5 (n/m/b/l/f): sort · o: order · click header · PgUp/PgDn: page",
     )
     .style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(hint, hint_area);

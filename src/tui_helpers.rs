@@ -1,7 +1,7 @@
 //! Pure helper functions for TUI modules that can be unit tested.
 //! These functions avoid async state, channels, and external I/O.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use unicode_width::UnicodeWidthStr;
 
 use crate::PeerRecord;
@@ -196,6 +196,22 @@ pub struct PeerTableRow {
     pub first_seen: String,
 }
 
+/// Marker filling the DM/broadcast cells of a device sub-row: per-device
+/// message stats are not tracked (they're aggregated at the contact level), so
+/// those cells render a dash instead of a number.
+pub const DEVICE_ROW_STATS_MARKER: usize = usize::MAX;
+
+/// Format a peers-table count cell, rendering a dash for a device sub-row's
+/// unknown (unaggregated) DM/broadcast stats.
+#[must_use]
+pub fn peer_count_display(count: usize) -> String {
+    if count == DEVICE_ROW_STATS_MARKER {
+        "\u{2013}".to_string()
+    } else {
+        count.to_string()
+    }
+}
+
 impl PeerTableRow {
     #[must_use]
     #[allow(clippy::too_many_arguments)]
@@ -356,17 +372,108 @@ pub fn peer_table_rows_range(
         .collect()
 }
 
+/// One selectable row of the flattened Contacts table.
+///
+/// The Contacts tab renders one row per contact plus, while a multi-device
+/// contact is expanded, one row per device below it. Cursors, clicks, and the
+/// scrolling viewport all index into this flattened plan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContactTableRowRef {
+    /// The contact row itself (index into the sorted contact list).
+    Contact(usize),
+    /// The `device_idx`-th device of contact `contact_idx`.
+    Device {
+        contact_idx: usize,
+        device_idx: usize,
+    },
+}
+
+impl ContactTableRowRef {
+    /// The peer ID this row targets: the contact's best device, or the exact
+    /// device of a device row.
+    #[must_use]
+    pub fn peer_id(self, contacts: &[crate::contacts::ContactRow]) -> Option<&str> {
+        match self {
+            Self::Contact(idx) => contacts
+                .get(idx)
+                .and_then(crate::contacts::ContactRow::best_device_peer_id),
+            Self::Device {
+                contact_idx,
+                device_idx,
+            } => contacts
+                .get(contact_idx)
+                .and_then(|c| c.device_rows.get(device_idx))
+                .map(|d| d.peer_id.as_str()),
+        }
+    }
+
+    /// The contact ID owning this row (used to preserve the selection across
+    /// re-sorts, where a device selection collapses onto its contact row).
+    #[must_use]
+    pub fn contact_id(self, contacts: &[crate::contacts::ContactRow]) -> Option<&str> {
+        let idx = match self {
+            Self::Contact(idx) => idx,
+            Self::Device { contact_idx, .. } => contact_idx,
+        };
+        contacts.get(idx).map(|c| c.contact_id.as_str())
+    }
+}
+
+/// Flatten the Contacts table into its selectable rows, in display order.
+///
+/// Each contact contributes its own row; an expanded multi-device contact
+/// contributes its device rows immediately below. Contact rows keep their
+/// sorted order, so the plan inherits the current sort.
+#[allow(clippy::implicit_hasher)]
+#[must_use]
+pub fn contact_table_plan(
+    contacts: &[crate::contacts::ContactRow],
+    expanded: &HashSet<String>,
+) -> Vec<ContactTableRowRef> {
+    let mut plan = Vec::with_capacity(contacts.len());
+    for (contact_idx, contact) in contacts.iter().enumerate() {
+        plan.push(ContactTableRowRef::Contact(contact_idx));
+        if expanded.contains(&contact.contact_id) {
+            plan.extend((0..contact.device_rows.len()).map(|device_idx| {
+                ContactTableRowRef::Device {
+                    contact_idx,
+                    device_idx,
+                }
+            }));
+        }
+    }
+    plan
+}
+
+/// Number of selectable rows in the flattened Contacts table.
+#[allow(clippy::implicit_hasher)]
+#[must_use]
+pub fn contact_table_plan_len(
+    contacts: &[crate::contacts::ContactRow],
+    expanded: &HashSet<String>,
+) -> usize {
+    contact_table_plan(contacts, expanded).len()
+}
+
 /// Map a canonical contact row to a peers-table row.
 ///
 /// The Contacts tab renders through the same 5-column `PeerTableRow` layout as
 /// the old peer list so windowing, widths, and header-click geometry stay
-/// shared. Multi-device contacts append their device count to the name cell
-/// (`"name ×N"`); sorting is unaffected because it happens on the contact rows
-/// themselves before this mapping.
+/// shared. Multi-device contacts prefix an expand marker (`▸` collapsed, `▾`
+/// expanded) and append their device count (`"×N"`); sorting is unaffected
+/// because it happens on the contact rows themselves before this mapping.
 #[must_use]
-pub fn contact_to_peer_table_row(contact: &crate::contacts::ContactRow) -> PeerTableRow {
+pub fn contact_to_peer_table_row(
+    contact: &crate::contacts::ContactRow,
+    expanded: bool,
+) -> PeerTableRow {
     let display_name = if contact.device_count > 1 {
-        format!("{} ×{}", contact.display_name, contact.device_count)
+        format!(
+            "{} {} \u{00d7}{}",
+            if expanded { "\u{25be}" } else { "\u{25b8}" },
+            contact.display_name,
+            contact.device_count
+        )
     } else {
         contact.display_name.clone()
     };
@@ -380,18 +487,66 @@ pub fn contact_to_peer_table_row(contact: &crate::contacts::ContactRow) -> PeerT
     )
 }
 
-/// Build table rows for the contiguous `[start, end)` slice of a contact list.
+/// Build the peers-table row for one flattened entry: contact rows carry the
+/// aggregate cells, device rows show the device's own seen times under an
+/// indented name with a dash in the DM/broadcast cells.
+///
+/// `expanded` marks the target contact's own row as expanded, so its expand
+/// marker is drawn collapsed or expanded to match the plan.
+#[allow(clippy::implicit_hasher)]
+#[must_use]
+pub fn contact_table_row(
+    contacts: &[crate::contacts::ContactRow],
+    expanded: &HashSet<String>,
+    row: ContactTableRowRef,
+) -> PeerTableRow {
+    match row {
+        ContactTableRowRef::Contact(idx) => {
+            let Some(contact) = contacts.get(idx) else {
+                return PeerTableRow::new("", "", 0, 0, "", "");
+            };
+            contact_to_peer_table_row(
+                contact,
+                expanded.contains(&contact.contact_id) && contact.device_count > 1,
+            )
+        }
+        ContactTableRowRef::Device {
+            contact_idx,
+            device_idx,
+        } => {
+            let Some(contact) = contacts.get(contact_idx) else {
+                return PeerTableRow::new("", "", 0, 0, "", "");
+            };
+            let Some(device) = contact.device_rows.get(device_idx) else {
+                return PeerTableRow::new("", "", 0, 0, "", "");
+            };
+            PeerTableRow::new(
+                &device.peer_id,
+                &format!("  {}", device.display_name),
+                DEVICE_ROW_STATS_MARKER,
+                DEVICE_ROW_STATS_MARKER,
+                &device.last_seen,
+                &device.first_seen,
+            )
+        }
+    }
+}
+
+/// Build table rows for the contiguous `[start, end)` slice of the flattened
+/// Contacts table (contacts plus any expanded device rows).
+#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn contact_table_rows_range(
     contacts: &[crate::contacts::ContactRow],
+    expanded: &HashSet<String>,
     start: usize,
     end: usize,
 ) -> Vec<PeerTableRow> {
-    contacts
-        .iter()
+    let plan = contact_table_plan(contacts, expanded);
+    plan.iter()
         .skip(start)
         .take(end.saturating_sub(start))
-        .map(contact_to_peer_table_row)
+        .map(|&row| contact_table_row(contacts, expanded, row))
         .collect()
 }
 
@@ -469,12 +624,10 @@ pub fn peer_table_header_labels(sort_column: usize, sort_ascending: bool) -> Vec
 /// Display width of each cell of a peers-table row (CJK/wide chars = 2 cols).
 #[must_use]
 fn peer_cell_widths(row: &PeerTableRow) -> [usize; 5] {
-    let dm = row.dm_count.to_string();
-    let broadcast = row.broadcast_count.to_string();
     [
         row.display_name.width(),
-        dm.width(),
-        broadcast.width(),
+        peer_count_display(row.dm_count).width(),
+        peer_count_display(row.broadcast_count).width(),
         row.last_seen.width(),
         row.first_seen.width(),
     ]

@@ -91,6 +91,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
             .collect(),
         broadcast_sent_to_peer: state.broadcast_sent_to_peer.clone(),
         contacts: state.contacts.clone(),
+        expanded_contact_ids: state.expanded_contact_ids.clone(),
         connected_peer_ids: state
             .connected
             .connected_peer_ids()

@@ -2,7 +2,7 @@ use super::{DynamicTabs, TextArea};
 use p2p_app::contacts::ContactDeviceInput;
 use p2p_app::messages::PeerMessageStats;
 use p2p_app::tui_helpers::PeerMessageMap;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 /// Channel capacity for inter-task communication (events per task)
@@ -54,6 +54,8 @@ pub struct AppState {
     // live `peers` deque stays the single device source, and grouped users
     // collapse here into one row per contact.
     pub contacts: Vec<p2p_app::contacts::ContactRow>,
+    // Contact IDs expanded into their device sub-rows on the Contacts tab.
+    pub expanded_contact_ids: HashSet<String>,
     pub concurrent_peers: usize,
     // How many broadcasts *we* sent to each peer (bulk-loaded from the
     // `broadcast_recipients` table via `messages::get_all_peer_stats`, refreshed
@@ -167,7 +169,8 @@ impl AppState {
 
     /// Re-sort the Contacts tab: refresh the per-contact stats, rebuild the
     /// contact rows from the live peer list, and order them by the active
-    /// column/order while keeping the selected contact (by id) selected.
+    /// column/order while keeping the selected contact (by id) selected. A
+    /// device-row selection collapses onto its contact row here.
     pub fn resort_peers(&mut self) {
         self.broadcast_sent_to_peer = p2p_app::messages::get_all_peer_stats()
             .map(|stats| {
@@ -177,10 +180,7 @@ impl AppState {
                     .collect()
             })
             .unwrap_or_default();
-        let previous = self
-            .contacts
-            .get(self.peer_selection)
-            .map(|c| c.contact_id.clone());
+        let previous = self.selected_contact_id();
         self.rebuild_contacts();
         self.contacts = p2p_app::contacts::sort_canonical_rows(
             &self.contacts,
@@ -195,6 +195,50 @@ impl AppState {
             })
             .unwrap_or(0)
             .min(self.contacts.len().saturating_sub(1));
+    }
+
+    /// The selected row of the flattened Contacts table, in the contact list's
+    /// display order (contact rows plus any expanded device rows).
+    pub fn selected_contact_ref(&self) -> Option<p2p_app::tui_helpers::ContactTableRowRef> {
+        let plan =
+            p2p_app::tui_helpers::contact_table_plan(&self.contacts, &self.expanded_contact_ids);
+        plan.get(self.peer_selection).copied()
+    }
+
+    /// The peer ID the current selection targets: the contact's best device, or
+    /// the exact device of a selected device row.
+    pub fn selected_contact_peer_id(&self) -> Option<String> {
+        self.selected_contact_ref()
+            .and_then(|row| row.peer_id(&self.contacts).map(str::to_owned))
+    }
+
+    /// The contact ID owning the current selection (used to preserve the
+    /// selection across re-sorts).
+    pub fn selected_contact_id(&self) -> Option<String> {
+        self.selected_contact_ref()
+            .and_then(|row| row.contact_id(&self.contacts).map(str::to_owned))
+    }
+
+    /// Expand/collapse the selected contact's device rows. No-op on a
+    /// single-device contact or a device row.
+    pub fn toggle_expand_selected_contact(&mut self) {
+        let Some(p2p_app::tui_helpers::ContactTableRowRef::Contact(idx)) =
+            self.selected_contact_ref()
+        else {
+            return;
+        };
+        let Some(contact) = self.contacts.get(idx) else {
+            return;
+        };
+        if contact.device_count <= 1 {
+            return;
+        }
+        let contact_id = contact.contact_id.clone();
+        if self.expanded_contact_ids.contains(&contact_id) {
+            self.expanded_contact_ids.remove(&contact_id);
+        } else {
+            self.expanded_contact_ids.insert(contact_id);
+        }
     }
 
     /// Rebuild `self.contacts` from the live peer list through the shared
@@ -308,6 +352,7 @@ impl AppState {
             dm_receipts: initial_dm_receipts,
             peers: initial_peers,
             contacts: Vec::new(),
+            expanded_contact_ids: HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
             group_summaries: initial_groups,
             group_messages: HashMap::new(),

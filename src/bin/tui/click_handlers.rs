@@ -186,26 +186,26 @@ fn handle_peer_row_click(state: &mut AppState, row: u16) -> bool {
     if state.contacts.is_empty() {
         return false;
     }
-    // Map the clicked screen row to an absolute contact index, honoring the
+    // Map the clicked screen row to an absolute row of the flattened contacts
+    // table (contact rows plus any expanded device rows), honoring the
     // scrolling viewport: data rows start at global row 3 (tab + block
     // border + table header) and are offset by the first visible row.
+    let plan =
+        p2p_app::tui_helpers::contact_table_plan(&state.contacts, &state.expanded_contact_ids);
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
-    let selected = state
-        .peer_selection
-        .min(state.contacts.len().saturating_sub(1));
+    let selected = state.peer_selection.min(plan.len().saturating_sub(1));
     let (start, _end) = p2p_app::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         Some(selected),
-        state.contacts.len(),
+        plan.len(),
         page_height,
     );
-    let contact_row = start.saturating_add(usize::from(row).saturating_sub(3));
-    if contact_row < state.contacts.len()
-        && let Some(c) = state.contacts.get(contact_row)
-        && let Some(peer_id) = c.best_device_peer_id()
+    let flat_row = start.saturating_add(usize::from(row).saturating_sub(3));
+    if let Some(contact_row) = plan.get(flat_row)
+        && let Some(peer_id) = contact_row.peer_id(&state.contacts)
     {
         let peer_id = peer_id.to_string();
-        state.peer_selection = contact_row;
+        state.peer_selection = flat_row;
         load_dm_messages(state, &peer_id);
         let tab_idx = state.dynamic_tabs.add_dm_tab(peer_id.clone());
         state.active_tab = tab_idx;
@@ -410,16 +410,21 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     // the same visible window the renderer materializes, with the same block
     // borders and `column_spacing`.
     let page_height = state.chat_area_height.saturating_sub(2).max(1);
-    let selected = state
-        .peer_selection
-        .min(state.contacts.len().saturating_sub(1));
+    let plan_len =
+        p2p_app::tui_helpers::contact_table_plan_len(&state.contacts, &state.expanded_contact_ids);
+    let selected = state.peer_selection.min(plan_len.saturating_sub(1));
     let (start, end) = p2p_app::tui_helpers::peer_table_visible_range(
         state.peer_table_offset,
         Some(selected),
-        state.contacts.len(),
+        plan_len,
         page_height,
     );
-    let rows = p2p_app::tui_helpers::contact_table_rows_range(&state.contacts, start, end);
+    let rows = p2p_app::tui_helpers::contact_table_rows_range(
+        &state.contacts,
+        &state.expanded_contact_ids,
+        start,
+        end,
+    );
     let widths = p2p_app::tui_helpers::peer_table_column_widths(
         &rows,
         state.peer_sort_column,

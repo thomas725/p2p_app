@@ -221,7 +221,7 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     state.peer_selection = compute_new_peer_selection(
         key_code,
         state.peer_selection,
-        state.contacts.len(),
+        p2p_app::tui_helpers::contact_table_plan_len(&state.contacts, &state.expanded_contact_ids),
         page_size,
     );
 }
