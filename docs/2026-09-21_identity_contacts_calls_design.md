@@ -160,7 +160,11 @@ proposal above are bolded):
   No "create account" UI is needed — the Contacts tab grouping just always applies. The Flutter
   app surfaces incoming `device_binding_intro` events as an explicit **Allow/Decline** dialog
   (`promptDeviceBinding`, `@visibleForTesting` accept seam like `SortContactsOverride`) whose
-  Allow calls `acceptDeviceBinding`; `device_binding_received` refreshes the roster.
+  Allow calls `acceptDeviceBinding`; `device_binding_received` refreshes the roster. The
+  initiating direction (device advertises itself to a peer's account) is the per-device
+  **link** action in the Contacts table (`onLinkDevice` → `sendDeviceBindingIntro`) — the
+  "add my second device" flow: run it on the new device, targeting the account holder already
+  in the roster.
 - **Receivers never auto-mint on an intro.** An incoming `intro` is surfaced as an event only
   (`SwarmEvent::DeviceBindingIntro`, later `DeviceBindingReceived { user_id }` after the account
   holder calls `accept_device_binding`); the holder explicitly accepts. Claims (`kind: "claim"`)

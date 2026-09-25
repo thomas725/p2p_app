@@ -630,6 +630,24 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setEventSink(_handleSwarmEvent);
   }
 
+  /// Send our device-binding intro to a device so its account holder can bind
+  /// us into their account (the primary "add my second device" direction: run
+  /// this on the new device, targeting the account holder already in our
+  /// roster). Confirms via a snackbar; errors surface inline.
+  Future<void> _sendIntro(MobileContactDevice device) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await sendDeviceBindingIntro(peerId: device.peerId);
+      messenger?.showSnackBar(
+        SnackBar(content: Text('Device intro sent to ${device.displayName}')),
+      );
+    } catch (e) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text('Failed to send device intro: $e')),
+      );
+    }
+  }
+
   void _openGroupChat(MobileGroup group) {
     Navigator.push(
       context,
@@ -718,6 +736,7 @@ class _HomeScreenState extends State<HomeScreen> {
         rows: _contacts,
         onOpenInfo: _openPeerInfo,
         onOpenDm: _openDmChat,
+        onLinkDevice: _sendIntro,
       ),
       GroupList(
         groups: _groups,

@@ -24,6 +24,7 @@ class ContactList extends StatefulWidget {
     required this.rows,
     required this.onOpenInfo,
     required this.onOpenDm,
+    this.onLinkDevice,
     this.sortOverride,
   });
   final List<MobileContactRow> rows;
@@ -31,6 +32,11 @@ class ContactList extends StatefulWidget {
   onOpenInfo;
   final void Function(MobileContactRow contact, MobileContactDevice device)
   onOpenDm;
+
+  /// Device-scoped action that sends our device-binding intro to the device's
+  /// peer (so its account holder can bind us into their account). Optional:
+  /// when null, no link button is rendered.
+  final void Function(MobileContactDevice device)? onLinkDevice;
 
   /// Test-only seam: when set, replaces the FFI-backed `sortContacts` call so
   /// widget tests can exercise sorting without a loaded Rust library.
@@ -111,6 +117,13 @@ class ContactListState extends State<ContactList> {
           tooltip: 'Direct message',
           onPressed: () => widget.onOpenDm(c, device),
         ),
+        if (widget.onLinkDevice != null)
+          IconButton(
+            key: Key('link-$keyPrefix'),
+            icon: const Icon(Icons.person_add_alt_1),
+            tooltip: 'Send device intro',
+            onPressed: () => widget.onLinkDevice!(device),
+          ),
       ],
     );
   }

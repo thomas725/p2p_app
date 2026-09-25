@@ -94,12 +94,14 @@ Widget _app({
   SortContactsOverride? sortOverride,
   void Function(MobileContactRow, MobileContactDevice)? onOpenInfo,
   void Function(MobileContactRow, MobileContactDevice)? onOpenDm,
+  void Function(MobileContactDevice)? onLinkDevice,
 }) => MaterialApp(
   home: Scaffold(
     body: ContactList(
       rows: rows,
       onOpenInfo: onOpenInfo ?? (_, _) {},
       onOpenDm: onOpenDm ?? (_, _) {},
+      onLinkDevice: onLinkDevice,
       sortOverride: sortOverride,
     ),
   ),
@@ -385,12 +387,14 @@ void main() {
     ];
     final openedInfo = <String>[];
     final openedDm = <String>[];
+    final openedLink = <String>[];
     await tester.pumpWidget(
       _app(
         rows: rows,
         sortOverride: _sortLikeRust,
         onOpenInfo: (c, d) => openedInfo.add(d.peerId),
         onOpenDm: (c, d) => openedDm.add(d.peerId),
+        onLinkDevice: (d) => openedLink.add(d.peerId),
       ),
     );
     await tester.pump();
@@ -417,5 +421,22 @@ void main() {
     await tester.pump();
     expect(openedInfo, ['multi-laptop', 'multi-phone']);
     expect(openedDm, ['multi-laptop', 'multi-phone']);
+
+    // The link action is device-scoped the same way: the contact row targets
+    // the best device, the Phone sub-row targets the exact device.
+    await tester.ensureVisible(find.byKey(const Key('link-multi.best')));
+    await tester.tap(find.byKey(const Key('link-multi.best')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('link-multi-phone')));
+    await tester.pump();
+    expect(openedLink, ['multi-laptop', 'multi-phone']);
+  });
+
+  testWidgets('no link button renders without onLinkDevice', (tester) async {
+    await tester.pumpWidget(
+      _app(rows: [contact(id: 'solo', name: 'Solo')], sortOverride: _sortLikeRust),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('link-solo')), findsNothing);
   });
 }
