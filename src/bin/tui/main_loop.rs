@@ -269,7 +269,10 @@ pub async fn run_new_tui(
     // users row keyed by a generated account keypair and self-binds the local
     // device, so the TUI is an account holder that can accept device-binding
     // intros ('a' on the prompt). Mirrors the mobile auto-provision at start.
-    if let Err(e) = p2p_app::identity::provision_my_user(None, None) {
+    // Seed the announced user-level nickname with the install's self nickname
+    // (ensured above) so fresh accounts resolve to a name on the receiver side.
+    let self_nickname = p2p_app::get_self_nickname().ok().flatten();
+    if let Err(e) = p2p_app::identity::provision_my_user(None, self_nickname.as_deref()) {
         p2plog_debug(format!("Failed to provision user identity: {e}"));
     }
     {

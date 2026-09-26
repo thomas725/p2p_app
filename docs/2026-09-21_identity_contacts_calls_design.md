@@ -198,6 +198,21 @@ proposal above are bolded):
   now take it like every other DB test, and the two bare `.lock().unwrap()` sites use
   `PoisonError::into_inner`; the intermittent 3-test cascade no longer reproduces (30× click
   module, 5× full bin suite). Committed as its own slice.
+- **Two-sided nickname propagation for the local user (2026-09-25, one file + call sites):** the
+  edit-nickname path (`nickname::set_self_nickname`, which wires the Settings `(press 'n')` edit in
+  the TUI and Flutter's `setSelfNickname`) now also updates the announced user-level name —
+  `users.self_nickname` — for a provisioned install via `identity::set_my_user_nickname` (no-op,
+  no error, when unprovisioned), so the name contacts resolve for our user rows (rule:
+  `contacts.nickname_override` → `users.self_nickname` → best device) is no longer frozen at
+  provision time. Both auto-provision sites (TUI `main_loop.rs`, `mobile_node::start_node_impl`)
+  seed the users row with the install's current self nickname (both already `ensure_self_nickname`
+  first), so a fresh account announces a named user row immediately. `intro_device_binding_request`
+  and `mint_device_binding` already read `users.self_username`/`self_nickname` fresh, so the
+  re-announce flows (intro; claim → `verify_and_bind_claim` → `save_user`) pick up the new name
+  with no further change. No display-name cache depends on the users row (contact-row names are
+  resolved per `load_contacts` call), so no invalidation point was needed. Tests: `set_my_user_*`
+  nickname update in unit_identity, set-self-nickname → users-row propagation in unit_nickname
+  (lib 302). Committed as its own slice.
 
 ## Verification (this doc)
 

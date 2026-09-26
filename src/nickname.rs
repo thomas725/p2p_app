@@ -61,6 +61,11 @@ pub fn get_self_nickname() -> color_eyre::Result<Option<String>> {
 
 /// Persist this node's own nickname to the database.
 ///
+/// Updates both the per-install identity nickname (`identities.self_nickname`,
+/// used for the "me" label in DMs) and — when this install belongs to a user —
+/// the announced user-level nickname (`users.self_nickname`, the name contacts
+/// resolve for this user's rows), keeping the two-sided-nickname rule coherent.
+///
 /// # Errors
 /// Returns an error if the database update fails.
 pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
@@ -68,6 +73,7 @@ pub fn set_self_nickname(nickname: &str) -> color_eyre::Result<()> {
     diesel::update(crate::generated::schema::identities::table)
         .set(crate::generated::schema::identities::self_nickname.eq(nickname))
         .execute(conn)?;
+    crate::identity::set_my_user_nickname(nickname)?;
     Ok(())
 }
 

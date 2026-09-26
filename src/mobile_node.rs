@@ -88,8 +88,10 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     // users row keyed by a generated account keypair and self-binds the local
     // device. Later starts just return the existing account and never change
     // the account root, so every install is a holder that can mint device
-    // bindings and accept sibling devices.
-    if let Err(e) = crate::identity::provision_my_user(None, None) {
+    // bindings and accept sibling devices. Seed the announced user-level
+    // nickname from the install's self nickname ensured above.
+    let self_nickname = crate::get_self_nickname().ok().flatten();
+    if let Err(e) = crate::identity::provision_my_user(None, self_nickname.as_deref()) {
         p2plog_debug(format!("Failed to provision user identity: {e}"));
     }
 

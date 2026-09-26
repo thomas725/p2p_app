@@ -287,3 +287,34 @@ fn my_user_id_and_devices_reflect_provisioned_account() {
         assert_eq!(devices.len(), 1, "only the local device before any accepts");
     });
 }
+
+#[test]
+#[serial]
+fn set_my_user_nickname_updates_the_announced_users_row() {
+    with_test_db(|| {
+        // Unprovisioned: no-op, no error.
+        crate::identity::set_my_user_nickname("Draft").expect("no-op when unprovisioned");
+
+        let user_id = crate::identity::provision_my_user(None, Some("Launch")).expect("provision");
+        assert_eq!(
+            crate::identity::find_user(&user_id)
+                .expect("find user")
+                .expect("user exists")
+                .self_nickname
+                .as_deref(),
+            Some("Launch")
+        );
+
+        // The announcement seam updates only users.self_nickname; the account
+        // root and username are untouched.
+        crate::identity::set_my_user_nickname("Renamed").expect("update announced name");
+        let user = crate::identity::find_user(&user_id)
+            .expect("find user")
+            .expect("user exists");
+        assert_eq!(user.self_nickname.as_deref(), Some("Renamed"));
+        assert_eq!(
+            crate::identity::my_user_id().expect("resolve").as_deref(),
+            Some(user_id.as_str())
+        );
+    });
+}

@@ -255,6 +255,29 @@ pub fn my_user_devices() -> color_eyre::Result<Vec<(String, chrono::NaiveDateTim
     }
 }
 
+/// Update the user-level nickname this install announces to its contacts.
+///
+/// No-op when this install is not provisioned (there is no `users` row to
+/// update); the canonical device-level self nickname stay authoritative in
+/// that case (`identities.self_nickname`). This is the announced-name seam the
+/// two-sided-nickname rule (`nickname_override` → `users.self_nickname` →
+/// device) reads on the receiver side.
+///
+/// # Errors
+/// Returns an error if the local peer/user cannot be resolved or the update
+/// fails.
+pub fn set_my_user_nickname(nickname: &str) -> color_eyre::Result<()> {
+    let Some(user_id) = my_user_id()? else {
+        return Ok(());
+    };
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::update(users::table)
+        .filter(users::user_id.eq(&user_id))
+        .set(users::self_nickname.eq(nickname))
+        .execute(conn)?;
+    Ok(())
+}
+
 /// Add a contact (owner → contact adjacency). Idempotent.
 ///
 /// # Errors

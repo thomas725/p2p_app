@@ -34,6 +34,32 @@ fn self_nickname_roundtrip() {
 
 #[test]
 #[serial(db)]
+fn set_self_nickname_propagates_to_the_announced_users_row() {
+    with_test_db(|| {
+        // Unprovisioned: the identity nickname is still persisted; the users
+        // seam is a no-op.
+        set_self_nickname("pre-provision").expect("set");
+        assert_eq!(
+            get_self_nickname().expect("get").as_deref(),
+            Some("pre-provision")
+        );
+
+        // Provisioned (seeded nickname) → editing propagates to the users row.
+        let user_id = crate::identity::provision_my_user(None, Some("Launch")).expect("provision");
+        set_self_nickname("Renamed").expect("set");
+        let user = crate::identity::find_user(&user_id)
+            .expect("find user")
+            .expect("user exists");
+        assert_eq!(user.self_nickname.as_deref(), Some("Renamed"));
+        assert_eq!(
+            get_self_nickname().expect("get").as_deref(),
+            Some("Renamed")
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
 fn ensure_self_nickname_sets_if_missing() {
     with_test_db(|| {
         let nick = ensure_self_nickname().expect("ensure");
