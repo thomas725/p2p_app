@@ -29,8 +29,14 @@ async fn handle_swarm_event(
         })) => {
             let peer_id_str = peer_id.to_string();
 
-            // Route per-group topics (group:<group_id>) to the group-chat path
-            // before the broadcast path below.
+            // Route per-group control/chat topics (group:<group_id> and the
+            // derived group:<group_id>:backfill) before the broadcast path.
+            // Backfill goes first: `group:X:backfill` also starts with the
+            // group prefix, so the more specific check must win.
+            if crate::groups::is_backfill_topic(&message.topic.to_string()) {
+                handle_backfill_request(&message, peer_id, swarm);
+                return;
+            }
             if crate::groups::is_group_topic(&message.topic.to_string()) {
                 handle_group_message(message, peer_id, event_tx).await;
                 return;
@@ -169,6 +175,83 @@ async fn handle_group_message(
             p2plog_debug(format!(
                 "Failed to parse group message from peer {peer_id_str} on {topic:?}: {e}"
             ));
+        }
+    }
+}
+
+/// Answer a group backfill request (backlog §11.5) by re-publishing our stored
+/// messages newer than the requester's watermark on the main group topic.
+///
+/// Only members that know the group *and* hold history newer than the
+/// requester's `after` respond — they are the ones that were online across
+/// part of the gap. Answers flow through the normal group-message path, so the
+/// requester's `(group_id, msg_id)` unique index (plus the `nil:` synthetic
+/// key for id-less messages) absorbs every overlap and the user sees the gap
+/// fill exactly once. Bounded to [`crate::types::MAX_MESSAGE_HISTORY`].
+fn handle_backfill_request(
+    message: &gossipsub::Message,
+    peer_id: libp2p::PeerId,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let topic = message.topic.to_string();
+    let Some(group_id) = crate::groups::group_id_from_backfill_topic(&topic) else {
+        p2plog_debug(format!("Ignoring malformed backfill topic: {topic:?}"));
+        return;
+    };
+    let Ok(request) = serde_json::from_slice::<crate::GroupBackfillRequest>(&message.data) else {
+        p2plog_debug(format!("Ignoring malformed backfill request on {topic:?}"));
+        return;
+    };
+    if request.group_id != group_id {
+        p2plog_debug(format!(
+            "Ignoring backfill request for {} on {topic:?}",
+            request.group_id
+        ));
+        return;
+    }
+    // Never revive a deleted/unknown group, and never answer when our history
+    // is no newer than the requester's watermark (nothing to contribute).
+    if crate::groups::find_group(group_id).ok().flatten().is_none() {
+        return;
+    }
+    let Ok(Some(latest)) = crate::groups::latest_group_sent_at(group_id) else {
+        return;
+    };
+    if latest <= request.after {
+        return;
+    }
+
+    // Public groups discover membership from traffic; recording is idempotent.
+    if let Err(e) = crate::groups::record_group_member(group_id, &peer_id.to_string()) {
+        p2plog_debug(format!("Failed to record group member: {e:?}"));
+    }
+
+    let Ok(history) = crate::groups::load_group_messages_after(
+        group_id,
+        request.after,
+        crate::types::MAX_MESSAGE_HISTORY,
+    ) else {
+        return;
+    };
+    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(group_id));
+    for row in history {
+        let msg = crate::GroupMessage {
+            group_id: row.group_id,
+            content: row.content,
+            sent_at: row.sent_at,
+            nickname: row.sender_nickname,
+            msg_id: row.msg_id,
+        };
+        let Ok(json) = serde_json::to_string(&msg) else {
+            continue;
+        };
+        if let Err(e) = swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(topic.clone(), json.as_bytes())
+        {
+            p2plog_debug(format!("Failed to publish backfill answer: {e:?}"));
+            break;
         }
     }
 }
@@ -551,6 +634,32 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
                 Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
                 Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
                 Err(e) => p2plog_error(format!("Failed to subscribe to group {group_id}: {e:?}")),
+            }
+            // Backfill (backlog §11.5): join the group's backfill topic and
+            // request everything newer than our newest stored message. Members
+            // online across the gap answer by re-publishing that history on the
+            // main topic; dedup absorbs overlaps. On (re)subscribe of an
+            // already-current group the watermark matches our latest, so
+            // nothing is answered.
+            let request = crate::GroupBackfillRequest {
+                group_id: group_id.clone(),
+                after: crate::groups::latest_group_sent_at(&group_id)
+                    .ok()
+                    .flatten()
+                    .unwrap_or(0.0),
+            };
+            let backfill_topic =
+                gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(&group_id));
+            if let Err(e) = swarm.behaviour_mut().gossipsub.subscribe(&backfill_topic) {
+                p2plog_error(format!(
+                    "Failed to subscribe to backfill topic for {group_id}: {e:?}"
+                ));
+            }
+            if let Ok(json) = serde_json::to_string(&request) {
+                let _ = swarm
+                    .behaviour_mut()
+                    .gossipsub
+                    .publish(backfill_topic, json.as_bytes());
             }
         }
         SwarmCommand::SendDeviceBinding { peer_id, request } => {

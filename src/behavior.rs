@@ -76,6 +76,27 @@ pub struct GroupMessage {
     pub msg_id: Option<String>,
 }
 
+/// Backfill request sent on a group's backfill topic on (re)subscribe
+/// (backlog §11.5).
+///
+/// Gossipsub never replays, so a member that was offline — or joined after the
+/// group started — misses the gap. On subscribe the member publishes this
+/// requesting everything newer than its `after` watermark; **any** online
+/// member whose stored history is newer answers by re-publishing the bounded
+/// recent messages as ordinary [`GroupMessage`]s on the main group topic, where
+/// the `(group_id, msg_id)` unique index (plus the `nil:` synthetic key for
+/// messages without an `msg_id`) absorbs every overlap. The request itself is
+/// anonymous control traffic — never persisted.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct GroupBackfillRequest {
+    /// The group whose gap is being requested (must match the topic's group id).
+    pub group_id: String,
+    /// Only messages stored with `sent_at` strictly newer than this are asked
+    /// for (`0.0` requests the member's full recent history).
+    pub after: f64,
+}
+
 /// JSON codec for direct message protocol
 pub type ChatCodec = libp2p::request_response::json::codec::Codec<DirectMessage, DirectMessage>;
 

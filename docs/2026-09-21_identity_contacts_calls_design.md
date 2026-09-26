@@ -213,6 +213,24 @@ proposal above are bolded):
   resolved per `load_contacts` call), so no invalidation point was needed. Tests: `set_my_user_*`
   nickname update in unit_identity, set-self-nickname → users-row propagation in unit_nickname
   (lib 302). Committed as its own slice.
+- **Group-message backfill (2026-09-26, one library slice; backlog §11.5):** gossipsub never
+  replays, so on `SubscribeGroup` the node now also subscribes the derived `group:<group_id>:backfill`
+  topic and publishes `GroupBackfillRequest { group_id, after }` where `after` is the group's
+  `latest_group_sent_at` watermark (max stored `sent_at`, computed on demand — no schema change;
+  `0.0` = full recent history). Any member that knows the group *and* holds history strictly newer
+  than `after` answers (worst-case mesh amplification bounded by number of members ×
+  `MAX_MESSAGE_HISTORY`; dedup at the requester absorbs overlaps) by re-publishing its stored rows —
+  oldest-first, strictly-greater `sent_at` (`groups::load_group_messages_after`) — as ordinary
+  `GroupMessage`s on the **main** group topic, so rows flow through `save_incoming_group_message`
+  (unique-index + `nil:` dedup) and the UI regenerates from the DB exactly as for live traffic.
+  Requests are anonymous control traffic, never persisted; deleted groups are never revived
+  (`find_group` gate). Transport decision matched design intent (gossipsub for backfill queries,
+  request_response reserved for calls). **Routing hazard recorded in AGENTS.md:** a backfill topic
+  also passes `is_group_topic`, so `handle_swarm_event` checks `is_backfill_topic` FIRST.
+  Both frontends already re-subscribe saved groups at startup (`main_loop.rs`, `mobile_node`), so
+  backfill is strictly additive and transparent — no UI or FRB changes. Tests: topic helpers +
+  request serialization (pure), watermark + bounded/oldest-first `load_group_messages_after` in
+  unit_groups (lib 306). Committed as its own slice.
 
 ## Verification (this doc)
 

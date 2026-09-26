@@ -274,3 +274,120 @@ fn delete_group_removes_messages_and_members() {
         );
     });
 }
+
+// ── Backfill (§11.5) ──────────────────────────────────────────────────────
+
+#[test]
+fn backfill_topic_helpers_roundtrip() {
+    let id = stable_group_id("raid-three");
+    let topic = group_backfill_topic(&id);
+    assert!(is_backfill_topic(&topic));
+    assert!(topic.starts_with(&format!("{GROUP_TOPIC_PREFIX}{id}")));
+    assert_eq!(group_id_from_backfill_topic(&topic), Some(id.as_str()));
+    assert!(
+        !is_backfill_topic(&group_topic(&id)),
+        "chat topic is not backfill"
+    );
+    assert_eq!(
+        group_id_from_backfill_topic("group:not-backfilled"),
+        None,
+        "a chat topic has no backfill group id"
+    );
+    // The routing hazard: a backfill topic also passes `is_group_topic`, so the
+    // swarm handler must check `is_backfill_topic` FIRST.
+    assert!(
+        is_group_topic(&topic),
+        "backfill topics overlap the group prefix; routing must disambiguate"
+    );
+}
+
+#[test]
+fn backfill_request_serializes_both_ways() {
+    let req = crate::GroupBackfillRequest {
+        group_id: "abc123".to_string(),
+        after: 42.5,
+    };
+    let json = serde_json::to_string(&req).expect("serialize");
+    let parsed: crate::GroupBackfillRequest = serde_json::from_str(&json).expect("parse");
+    assert_eq!(parsed.group_id, "abc123");
+    assert!(
+        (parsed.after - 42.5).abs() < f64::EPSILON,
+        "after round-trips exactly"
+    );
+    let defaults: crate::GroupBackfillRequest =
+        serde_json::from_str(r#"{"group_id":"g"}"#).expect("defaults");
+    assert!(
+        defaults.after.abs() < f64::EPSILON,
+        "missing `after` backfills the full gap"
+    );
+}
+
+#[test]
+#[serial(db)]
+fn latest_group_sent_at_returns_newest_watermark_skipping_nulls() {
+    use super::save_outgoing_group_message;
+    with_test_db(|| {
+        let group = create_public_group("watermark").expect("create");
+        assert_eq!(
+            latest_group_sent_at(&group.group_id).expect("empty watermark"),
+            None,
+            "no history yet"
+        );
+        for i in 1..=3 {
+            save_outgoing_group_message(
+                &group.group_id,
+                &format!("msg-{i}"),
+                GroupMessageMeta {
+                    sender_nickname: None,
+                    msg_id: Some(format!("wm-{i}")),
+                    sent_at: Some(f64::from(i)),
+                },
+            )
+            .expect("save");
+        }
+        assert_eq!(
+            latest_group_sent_at(&group.group_id).expect("watermark"),
+            Some(3.0)
+        );
+        // Messages without a `sent_at` never become the watermark.
+        let empty_group = create_public_group("nullwater").expect("create");
+        save_outgoing_group_message(&empty_group.group_id, "legacy", GroupMessageMeta::default())
+            .expect("save legacy");
+        assert_eq!(
+            latest_group_sent_at(&empty_group.group_id).expect("null watermark"),
+            None
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn load_group_messages_after_is_strict_bounded_and_oldest_first() {
+    use super::save_outgoing_group_message;
+    with_test_db(|| {
+        let group = create_public_group("backfill-gap").expect("create");
+        for i in 0..5 {
+            save_outgoing_group_message(
+                &group.group_id,
+                &format!("msg-{i}"),
+                GroupMessageMeta {
+                    sender_nickname: None,
+                    msg_id: Some(format!("bf-{i}")),
+                    sent_at: Some(f64::from(i)),
+                },
+            )
+            .expect("save");
+        }
+        assert!(
+            load_group_messages_after(&group.group_id, 4.5, 100)
+                .expect("no newer")
+                .is_empty()
+        );
+        let after = load_group_messages_after(&group.group_id, 2.0, 100).expect("after");
+        let ids: Vec<&str> = after.iter().filter_map(|m| m.msg_id.as_deref()).collect();
+        assert_eq!(ids, ["bf-3", "bf-4"], "strictly newer, oldest first");
+        let bounded = load_group_messages_after(&group.group_id, 0.0, 2).expect("bounded");
+        let ids: Vec<&str> = bounded.iter().filter_map(|m| m.msg_id.as_deref()).collect();
+        assert_eq!(ids, ["bf-1", "bf-2"], "strict `>` skips the zero watermark");
+    });
+}

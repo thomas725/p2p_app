@@ -91,7 +91,7 @@ pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
-    GroupMessage, build_behaviour, build_swarm,
+    GroupBackfillRequest, GroupMessage, build_behaviour, build_swarm,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url;

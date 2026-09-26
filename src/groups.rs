@@ -51,6 +51,33 @@ pub fn group_id_from_topic(topic: &str) -> Option<&str> {
     topic.strip_prefix(GROUP_TOPIC_PREFIX)
 }
 
+/// Suffix of every per-group backfill topic (`group:<group_id>:backfill`).
+///
+/// Backfill requests travel on this topic so members can ask for the gap they
+/// missed while offline without polluting the main chat topic with control
+/// traffic. Answers re-publish real [`GroupMessage`]s on the main group topic.
+pub const GROUP_BACKFILL_TOPIC_SUFFIX: &str = ":backfill";
+
+/// Build the per-group backfill gossipsub topic for a `group_id`.
+#[must_use]
+pub fn group_backfill_topic(group_id: &str) -> String {
+    format!("{GROUP_TOPIC_PREFIX}{group_id}{GROUP_BACKFILL_TOPIC_SUFFIX}")
+}
+
+/// True if `topic` is a per-group backfill topic.
+#[must_use]
+pub fn is_backfill_topic(topic: &str) -> bool {
+    topic.ends_with(GROUP_BACKFILL_TOPIC_SUFFIX)
+}
+
+/// Extract the group id from a backfill topic string.
+#[must_use]
+pub fn group_id_from_backfill_topic(topic: &str) -> Option<&str> {
+    topic
+        .strip_prefix(GROUP_TOPIC_PREFIX)
+        .and_then(|rest| rest.strip_suffix(GROUP_BACKFILL_TOPIC_SUFFIX))
+}
+
 // ── Group identity ─────────────────────────────────────────────────────────
 
 /// Canonical name of a public group: whitespace-trimmed, internal whitespace
@@ -347,6 +374,59 @@ pub fn save_incoming_group_message(
         .get_result(conn)
         .optional()
         .wrap_err("failed to save group message")
+}
+
+/// The `sent_at` watermark of a group's newest stored message (`None` when the
+/// group has no history).
+///
+/// Served as the requesting side's `after` boundary for backfill: any member
+/// with a *newer* stored message than this was up during the gap and can
+/// answer it.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn latest_group_sent_at(group_id: &str) -> color_eyre::Result<Option<f64>> {
+    use crate::generated::schema::group_messages;
+    let conn = &mut crate::sqlite_connect()?;
+    group_messages::table
+        .filter(group_messages::group_id.eq(group_id))
+        .order_by(group_messages::sent_at.desc())
+        .select(group_messages::sent_at)
+        .first::<Option<f64>>(conn)
+        .optional()
+        .wrap_err("failed to read group watermark")
+        .map(Option::flatten)
+}
+
+/// Load a group's stored messages strictly newer than the `after` watermark,
+/// oldest first, bounded to `limit`.
+///
+/// This is the backfill answer: a member that was up longer than the requester
+/// replies by re-publishing exactly these rows on the main group topic, where
+/// the requester's `(group_id, msg_id)` unique index (and the `nil:` synthetic
+/// key for messages without an `msg_id`) absorbs every overlap. Messages
+/// without a `sent_at` are skipped — they predate the watermark convention and
+/// any live retransmit dedups them anyway.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
+pub fn load_group_messages_after(
+    group_id: &str,
+    after: f64,
+    limit: usize,
+) -> color_eyre::Result<Vec<GroupMessage>> {
+    use crate::generated::schema::group_messages;
+    let conn = &mut crate::sqlite_connect()?;
+    group_messages::table
+        .filter(group_messages::group_id.eq(group_id))
+        .filter(group_messages::sent_at.gt(after))
+        .order_by(group_messages::sent_at.asc())
+        .then_order_by(group_messages::id.asc())
+        .limit(limit as i64)
+        .select(GroupMessage::as_select())
+        .load(conn)
+        .wrap_err("failed to load backfill history")
 }
 
 /// Load a group's messages, newest first, limited to `limit`.
