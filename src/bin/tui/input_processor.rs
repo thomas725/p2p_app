@@ -350,8 +350,35 @@ async fn handle_enter_key(
     }
 }
 
-/// Processes keyboard input events, returns true if exit requested
-#[allow(clippy::too_many_lines)]
+/// Open the DM partner's Peer Info when a `Ctrl+I` / `Ctrl+P` chord lands on a
+/// Direct tab.
+///
+/// `Ctrl+P` is the cross-terminal binding: `p` is 0x70, so Ctrl+P sends 0x10
+/// (`DLE`), a distinct control byte crossterm uniformly reports as
+/// `Char('p')`+CONTROL (the `b'\x01'..=b'\x1A'` arm) whether or not the kitty
+/// protocol is active. `Ctrl+I` works only on kitty terminals
+/// (`WezTerm`), where it arrives as `Char('i')`+CONTROL; on non-kitty terminals
+/// Ctrl+I collapses to the bare Tab byte, which always cycles tabs (see
+/// [`process_key_event`]). Exactly one chord is the Peer Info binding on either
+/// setup.
+fn handle_peer_info_control_chord(
+    key_event: &crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+) {
+    open_peer_info_for_active_tab(s);
+    let chord = if key_event.code == crossterm::event::KeyCode::Char('p') {
+        "Ctrl+P"
+    } else {
+        "Ctrl+I"
+    };
+    p2plog_debug(format!("Opened Peer Info tab ({chord})"));
+}
+
+/// Processes keyboard input events, returns the exit signal (true = quit).
+///
+/// Early-out handling (Esc, Ctrl+Q, the device-binding prompt, popup
+/// dismissal) happens here before the key is dispatched; the actual dispatch
+/// against the active tab lives in [`handle_key_dispatch`].
 async fn process_key_event(
     key_event: crossterm::event::KeyEvent,
     state: &SharedState,
@@ -413,83 +440,61 @@ async fn process_key_event(
         return false;
     }
 
+    handle_key_dispatch(key_event, &mut s, swarm_cmd_tx).await;
+    drop(s);
+    let _ = render_tx.send(RenderEvent).await;
+    false
+}
+
+/// Dispatch a fully-unlocked key event against the active tab.
+///
+/// Tab lookups and modifier flags are computed once up front; shared
+/// terminal-key semantics (Ctrl+I / Ctrl+P vs bare Tab) live with
+/// [`handle_peer_info_control_chord`].
+async fn handle_key_dispatch(
+    key_event: crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let is_ctrl = key_event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL);
+    let shift_held = key_event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::SHIFT);
+    let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    let on_contacts = matches!(&tab, p2p_app::tui_tabs::TabContent::Contacts);
+    let on_direct = matches!(&tab, p2p_app::tui_tabs::TabContent::Direct(_));
+    let on_settings = matches!(&tab, p2p_app::tui_tabs::TabContent::Settings);
+    let on_groups = matches!(&tab, p2p_app::tui_tabs::TabContent::Groups);
+    let input_enabled = tab.is_input_enabled();
+
     match key_event.code {
-        // Ctrl+I opens the DM partner's Peer Info on a Direct tab. On a kitty
-        // terminal (WezTerm) it arrives distinctly as `Char('i')`+CONTROL. On a
-        // non-kitty terminal Ctrl+P (see below) is the distinct binding instead.
-        // Bare Tab always cycles tabs on every terminal.
-        crossterm::event::KeyCode::Char('i')
-            if !s.editing_nickname
-                && key_event
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL)
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Direct(_)
-                ) =>
+        // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
+        crossterm::event::KeyCode::Char('i' | 'p')
+            if !s.editing_nickname && is_ctrl && on_direct =>
         {
-            open_peer_info_for_active_tab(&mut s);
-            p2plog_debug("Opened Peer Info tab (Ctrl+I)".to_string());
+            handle_peer_info_control_chord(&key_event, s);
         }
-        // Ctrl+P opens the DM partner's Peer Info on a Direct tab on **every**
-        // terminal: `p` is 0x70, so Ctrl+P sends 0x10 (DLE), a distinct control
-        // byte crossterm uniformly reports as `Char('p')`+CONTROL (the
-        // `b'\x01'..=b'\x1A'` arm) whether or not the kitty protocol is active.
-        // It is a reliable cross-terminal fallback (Ctrl+I works only on kitty
-        // terminals, where it arrives as `Char('i')`+CONTROL; on non-kitty
-        // terminals Ctrl+I collapses to the bare Tab byte). On a Direct tab it
-        // opens the partner's Peer Info; anywhere else (and while editing a
-        // nickname) it is consumed as a no-op — never typed as literal text.
-        crossterm::event::KeyCode::Char('p')
-            if !s.editing_nickname
-                && key_event
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL)
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Direct(_)
-                ) =>
-        {
-            open_peer_info_for_active_tab(&mut s);
-            p2plog_debug("Opened Peer Info tab (Ctrl+P)".to_string());
-        }
-        // Consume Ctrl+P on non-Direct tabs too (it is not literal text and must
-        // never be typed as an input character).
-        crossterm::event::KeyCode::Char('p')
-            if !s.editing_nickname
-                && key_event
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
-        {
+        // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
+        // non-Direct tabs falls through to the chat-input branch, as before.
+        crossterm::event::KeyCode::Char('p') if !s.editing_nickname && is_ctrl => {
             p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }
         crossterm::event::KeyCode::BackTab => {
-            handle_navigation_key(key_event.code, &mut s).await;
+            handle_navigation_key(key_event.code, s).await;
         }
-        // `Tab`+CONTROL is the CSI-u spelling of Ctrl+I on terminals that send
-        // the key as an explicitly-modified Tab (kitty works off the base `i`
-        // key, so there `Ctrl+I` arrives as `Char('i')`+CONTROL and is handled
-        // above). It is consumed here as a no-op on every tab — it must never
-        // type a literal tab and must never cycle tabs (that job belongs to the
-        // bare Tab below, including on non-kitty terminals where Ctrl+I
-        // collapses to a bare 0x09).
-        crossterm::event::KeyCode::Tab
-            if key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL) =>
-        {
-            p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
-        }
-        // Tab cycles tabs on every tab and terminal (a bare `0x09` — Ctrl+I
-        // collapses to the same byte on non-kitty terminals, but there Ctrl+?
-        // is the distinct Peer Info binding instead, so Tab is always free to
-        // cycle).
-        crossterm::event::KeyCode::Tab
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL) =>
-        {
-            handle_navigation_key(key_event.code, &mut s).await;
+        // Tab carries two meanings: bare Tab cycles tabs on every terminal (a
+        // bare 0x09 — Ctrl+I collapses to the same byte on non-kitty terminals,
+        // but there Ctrl+P is the distinct Peer Info binding instead, so Tab is
+        // always free to cycle). Tab+CONTROL is the CSI-u spelling of Ctrl+I on
+        // terminals that send it as an explicitly-modified Tab; it is a no-op.
+        crossterm::event::KeyCode::Tab => {
+            if is_ctrl {
+                p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
+            } else {
+                handle_navigation_key(key_event.code, s).await;
+            }
         }
         crossterm::event::KeyCode::Up
         | crossterm::event::KeyCode::Down
@@ -497,110 +502,53 @@ async fn process_key_event(
         | crossterm::event::KeyCode::PageDown
         | crossterm::event::KeyCode::Home
         | crossterm::event::KeyCode::End => {
-            handle_scroll_key(key_event.code, &mut s).await;
+            handle_scroll_key(key_event.code, s).await;
         }
         crossterm::event::KeyCode::F(12) => {
-            toggle_mouse_capture(&mut s);
+            toggle_mouse_capture(s);
         }
         crossterm::event::KeyCode::Enter => {
             if s.editing_nickname {
-                handle_nickname_submission(&mut s, swarm_cmd_tx).await;
+                handle_nickname_submission(s, swarm_cmd_tx).await;
             } else {
-                let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-                let shift_held = key_event
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::SHIFT);
-                handle_enter_key(&mut s, swarm_cmd_tx, shift_held, tab_content).await;
+                handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
             }
         }
-        crossterm::event::KeyCode::Char('w')
-            if key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL) =>
-        {
-            let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            handle_close_dm_tab(&mut s, &tab_content);
+        crossterm::event::KeyCode::Char('w') if is_ctrl => {
+            handle_close_dm_tab(s, &tab);
         }
-        crossterm::event::KeyCode::Char('n')
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Settings
-                )
-                && !s.editing_nickname =>
-        {
+        crossterm::event::KeyCode::Char('n') if !is_ctrl && on_settings && !s.editing_nickname => {
             s.editing_nickname = true;
             s.editing_nickname_peer = None;
             s.chat_input = super::TextArea::default();
             p2plog_debug("Started nickname edit from Settings tab".to_string());
         }
-        crossterm::event::KeyCode::Char('i')
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Contacts
-                ) =>
-        {
-            open_peer_info_for_active_tab(&mut s);
+        crossterm::event::KeyCode::Char('i') if !is_ctrl && on_contacts && !s.editing_nickname => {
+            open_peer_info_for_active_tab(s);
             p2plog_debug("Opened Peer Info tab".to_string());
         }
-        // `e` expands/collapses the selected contact's device rows on the
-        // Contacts tab (no-op on single-device contacts and device rows).
-        crossterm::event::KeyCode::Char('e')
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Contacts
-                ) =>
-        {
+        // `e` expands/collapses the selected contact's device rows (no-op on
+        // single-device contacts and device rows).
+        crossterm::event::KeyCode::Char('e') if !is_ctrl && on_contacts && !s.editing_nickname => {
             s.toggle_expand_selected_contact();
             p2plog_debug("Toggled contact expansion".to_string());
         }
-        crossterm::event::KeyCode::Char(c)
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Contacts
-                ) =>
-        {
-            handle_peer_sort_key(&mut s, c);
+        crossterm::event::KeyCode::Char(c) if !is_ctrl && on_contacts && !s.editing_nickname => {
+            handle_peer_sort_key(s, c);
         }
         crossterm::event::KeyCode::Char('g')
-            if !key_event
-                .modifiers
-                .contains(crossterm::event::KeyModifiers::CONTROL)
-                && !s.editing_nickname
-                && !s.creating_group
-                && matches!(
-                    s.dynamic_tabs.tab_index_to_content(s.active_tab),
-                    p2p_app::tui_tabs::TabContent::Groups
-                ) =>
+            if !is_ctrl && on_groups && !s.editing_nickname && !s.creating_group =>
         {
             s.creating_group = true;
             s.chat_input = super::TextArea::default();
             p2plog_debug("Started group create/join".to_string());
         }
         _ => {
-            let tab_content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
-            if tab_content.is_input_enabled() || s.editing_nickname || s.creating_group {
+            if input_enabled || s.editing_nickname || s.creating_group {
                 s.chat_input.input(key_event);
             }
         }
     }
-    drop(s);
-    let _ = render_tx.send(RenderEvent).await;
-    false
 }
 
 /// Processes mouse input events

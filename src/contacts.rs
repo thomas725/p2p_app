@@ -19,8 +19,8 @@
 
 use crate::generated::models_queryable::User;
 use crate::messages::{PeerMessageStats, get_all_peer_stats};
-use std::collections::HashMap;
 use crate::types::StringMap;
+use std::collections::HashMap;
 
 /// A single device (peer) inside a contact row.
 #[derive(Debug, Clone)]

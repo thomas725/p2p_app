@@ -92,7 +92,9 @@ pub fn scroll_down_lines(
 
 /// Convert crossterm `KeyCode` to scroll action string
 #[must_use]
-pub const fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
+pub const fn key_code_to_scroll_action(
+    key_code: crossterm::event::KeyCode,
+) -> Option<&'static str> {
     match key_code {
         crossterm::event::KeyCode::Up => Some("Up"),
         crossterm::event::KeyCode::Down => Some("Down"),

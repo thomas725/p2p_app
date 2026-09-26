@@ -83,144 +83,172 @@ fn push_outgoing_group_message_to_state(
 }
 
 /// Sends a message (broadcast, direct, or group message)
-#[allow(clippy::too_many_lines)]
+/// Sends a message (broadcast, direct, or group message): pushes it into the
+/// active chat state, dispatches it over the swarm, and persists it with
+/// receipt metadata. Routing picks the per-kind helper by the active tab.
 pub async fn send_message(
     state: &mut AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     text: String,
     tab_content: p2p_app::tui_tabs::TabContent,
 ) {
-    let (topic_str, own_nickname) = (state.topic_str.clone(), state.own_nickname.clone());
-    let is_direct = matches!(tab_content, p2p_app::tui_tabs::TabContent::Direct(_));
-    let is_group = matches!(tab_content, p2p_app::tui_tabs::TabContent::GroupChat(_));
-    let dm_target_peer_id: Option<String> =
-        if let p2p_app::tui_tabs::TabContent::Direct(pid) = &tab_content {
-            Some(pid.clone())
-        } else {
-            None
-        };
-    let group_target_id: Option<String> =
-        if let p2p_app::tui_tabs::TabContent::GroupChat(gid) = &tab_content {
-            Some(gid.clone())
-        } else {
-            None
-        };
+    let own_nickname = state.own_nickname.clone();
+    match &tab_content {
+        p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
+            send_dm_message(state, swarm_cmd_tx, peer_id.clone(), text, own_nickname).await;
+        }
+        p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
+            send_group_message(state, swarm_cmd_tx, group_id.clone(), text, own_nickname).await;
+        }
+        _ => send_broadcast_message(state, swarm_cmd_tx, text, own_nickname).await,
+    }
+}
+
+/// Send a direct message: push to the DM chat state, dispatch over the swarm,
+/// and persist with receipt metadata. The sender nickname is the per-peer
+/// override when one exists, else our own nickname.
+async fn send_dm_message(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    peer_id: String,
+    text: String,
+    own_nickname: String,
+) {
     let ts = p2p_app::format_now();
-    let dm_self_nickname = dm_target_peer_id
-        .as_deref()
-        .and_then(|pid| state.self_nicknames_for_peers.get(pid).cloned())
+    let dm_self_nickname = state
+        .self_nicknames_for_peers
+        .get(&peer_id)
+        .cloned()
         .unwrap_or_else(|| own_nickname.clone());
     let msg_id = p2p_app::gen_msg_id();
     let msg_id_for_db = msg_id.clone();
     let sent_at = p2p_app::current_timestamp();
 
-    if is_direct {
-        if let Some(ref peer_id) = dm_target_peer_id {
-            push_outgoing_dm_to_state(
-                state,
-                peer_id,
-                &ts,
-                &dm_self_nickname,
-                &text,
-                msg_id.clone(),
-            );
-            p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
-        }
-    } else if is_group {
-        if let Some(ref group_id) = group_target_id {
-            push_outgoing_group_message_to_state(
-                state,
-                group_id,
-                &ts,
-                &own_nickname,
-                &text,
-                msg_id.clone(),
-            );
-            p2plog_debug(format!("Sent group message to {group_id}: {text}"));
-        }
-    } else {
-        push_outgoing_broadcast_to_state(state, &ts, &own_nickname, &text, msg_id.clone());
-        p2plog_debug(format!("Sent broadcast: {text}"));
-    }
+    push_outgoing_dm_to_state(
+        state,
+        &peer_id,
+        &ts,
+        &dm_self_nickname,
+        &text,
+        msg_id.clone(),
+    );
+    p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
 
     state.chat_input = ratatui_textarea::TextArea::default();
 
-    if is_direct {
-        if let Some(peer_id) = dm_target_peer_id.clone() {
-            let _ = swarm_cmd_tx
-                .send(SwarmCommand::SendDm {
-                    peer_id,
-                    content: text.clone(),
-                    nickname: Some(dm_self_nickname),
-                    msg_id: Some(msg_id),
-                    ack_for: None,
-                })
-                .await;
-        }
-        let meta = p2p_app::MessageMeta {
-            sender_nickname: Some(own_nickname.clone()),
-            msg_id: Some(msg_id_for_db.clone()),
-            sent_at: Some(sent_at),
-        };
-        if let Err(e) = p2p_app::save_message_with_meta(
-            &text,
-            None,
-            &topic_str,
-            true,
-            dm_target_peer_id.as_deref(),
-            meta,
-        ) {
-            p2plog_debug(format!("Failed to save message: {e}"));
-        }
-    } else if is_group {
-        if let Some(group_id) = group_target_id.clone() {
-            let _ = swarm_cmd_tx
-                .send(SwarmCommand::PublishGroup {
-                    group_id,
-                    content: text.clone(),
-                    nickname: Some(own_nickname.clone()),
-                    msg_id: Some(msg_id),
-                })
-                .await;
-        }
-        if let Some(group_id) = group_target_id {
-            let meta = p2p_app::groups::GroupMessageMeta {
-                sender_nickname: Some(own_nickname),
-                msg_id: Some(msg_id_for_db.clone()),
-                sent_at: Some(sent_at),
-            };
-            if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
-                p2plog_debug(format!("Failed to save group message: {e}"));
-            }
-        }
-    } else {
-        let _ = swarm_cmd_tx
-            .send(SwarmCommand::Publish {
-                content: text.clone(),
-                nickname: Some(own_nickname.clone()),
-                msg_id: Some(msg_id),
-            })
-            .await;
-        let meta = p2p_app::MessageMeta {
-            sender_nickname: Some(own_nickname),
-            msg_id: Some(msg_id_for_db.clone()),
-            sent_at: Some(sent_at),
-        };
-        if let Err(e) = p2p_app::save_message_with_meta(&text, None, &topic_str, false, None, meta)
-        {
-            p2plog_debug(format!("Failed to save message: {e}"));
-        }
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::SendDm {
+            peer_id: peer_id.clone(),
+            content: text.clone(),
+            nickname: Some(dm_self_nickname),
+            msg_id: Some(msg_id),
+            ack_for: None,
+        })
+        .await;
 
-        // Attribute outgoing broadcasts to every peer that was online to receive
-        // them, so the peers table can show how many broadcasts we sent each peer.
-        let recipients: Vec<String> = state
-            .connected
-            .connected_peer_ids()
-            .map(str::to_owned)
-            .collect();
-        if !recipients.is_empty() {
-            let _ = p2p_app::peers::record_broadcast_recipients(&msg_id_for_db, &recipients);
-        }
+    let meta = p2p_app::MessageMeta {
+        sender_nickname: Some(own_nickname),
+        msg_id: Some(msg_id_for_db),
+        sent_at: Some(sent_at),
+    };
+    if let Err(e) =
+        p2p_app::save_message_with_meta(&text, None, &state.topic_str, true, Some(&peer_id), meta)
+    {
+        p2plog_debug(format!("Failed to save message: {e}"));
+    }
+}
+
+/// Send a group message: push to the group chat state, dispatch over the
+/// swarm, and persist with group metadata.
+async fn send_group_message(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    group_id: String,
+    text: String,
+    own_nickname: String,
+) {
+    let ts = p2p_app::format_now();
+    let msg_id = p2p_app::gen_msg_id();
+    let msg_id_for_db = msg_id.clone();
+    let sent_at = p2p_app::current_timestamp();
+
+    push_outgoing_group_message_to_state(
+        state,
+        &group_id,
+        &ts,
+        &own_nickname,
+        &text,
+        msg_id.clone(),
+    );
+    p2plog_debug(format!("Sent group message to {group_id}: {text}"));
+
+    state.chat_input = ratatui_textarea::TextArea::default();
+
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::PublishGroup {
+            group_id: group_id.clone(),
+            content: text.clone(),
+            nickname: Some(own_nickname.clone()),
+            msg_id: Some(msg_id),
+        })
+        .await;
+
+    let meta = p2p_app::groups::GroupMessageMeta {
+        sender_nickname: Some(own_nickname),
+        msg_id: Some(msg_id_for_db),
+        sent_at: Some(sent_at),
+    };
+    if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
+        p2plog_debug(format!("Failed to save group message: {e}"));
+    }
+}
+
+/// Send a broadcast: push to the broadcast chat state, dispatch over the
+/// swarm, persist with metadata, and attribute the message to every peer that
+/// was online to receive it so the peers table can show how many broadcasts we
+/// sent each peer.
+async fn send_broadcast_message(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    text: String,
+    own_nickname: String,
+) {
+    let ts = p2p_app::format_now();
+    let msg_id = p2p_app::gen_msg_id();
+    let msg_id_for_db = msg_id.clone();
+    let sent_at = p2p_app::current_timestamp();
+
+    push_outgoing_broadcast_to_state(state, &ts, &own_nickname, &text, msg_id.clone());
+    p2plog_debug(format!("Sent broadcast: {text}"));
+
+    state.chat_input = ratatui_textarea::TextArea::default();
+
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::Publish {
+            content: text.clone(),
+            nickname: Some(own_nickname.clone()),
+            msg_id: Some(msg_id),
+        })
+        .await;
+
+    let meta = p2p_app::MessageMeta {
+        sender_nickname: Some(own_nickname),
+        msg_id: Some(msg_id_for_db.clone()),
+        sent_at: Some(sent_at),
+    };
+    if let Err(e) =
+        p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta)
+    {
+        p2plog_debug(format!("Failed to save message: {e}"));
+    }
+
+    let recipients: Vec<String> = state
+        .connected
+        .connected_peer_ids()
+        .map(str::to_owned)
+        .collect();
+    if !recipients.is_empty() {
+        let _ = p2p_app::peers::record_broadcast_recipients(&msg_id_for_db, &recipients);
     }
 }
 

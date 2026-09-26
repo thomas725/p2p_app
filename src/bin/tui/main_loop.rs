@@ -105,25 +105,28 @@ fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
     logs.get(start..).unwrap_or(&[]).to_vec()
 }
 
-#[allow(clippy::too_many_lines)]
-pub async fn run_new_tui(
-    swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
-    topic_str: String,
-) -> color_eyre::Result<()> {
+/// Bring up the raw-mode terminal and push the minimal keyboard-enhancement
+/// flag.
+///
+/// Only `DISAMBIGUATE_ESCAPE_CODES` is needed to tell Ctrl+I apart from bare
+/// Tab (Ctrl+letter is then reported as its true key code plus CONTROL) — the
+/// `REPORT_ALL_KEYS` flag is deliberately NOT pushed: it makes the terminal
+/// report every key (letters, shift presses) as CSI-u events, which is
+/// unnecessary and leaves the shell deluged in CSI-u garbage if the keyboard
+/// encoding is ever left active on exit. The push is sent AFTER raw mode is
+/// enabled (some terminals only apply kitty encoding to keys read once raw mode
+/// is active). The returned flag is the synchronous kitty-capability probe,
+/// read BEFORE the input-handler task starts reading the tty so there is no
+/// race (`WezTerm` reports supported; Konsole collapses Ctrl+I to 0x09). It
+/// selects which peer-info shortcut is active on a Direct tab: Ctrl+I (kitty)
+/// vs Ctrl+P (non-kitty).
+fn setup_terminal() -> color_eyre::Result<(Terminal<CrosstermBackend<std::io::Stdout>>, bool)> {
     use ratatui::crossterm::{
         event::PushKeyboardEnhancementFlags,
         execute,
-        terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+        terminal::{EnterAlternateScreen, enable_raw_mode},
     };
 
-    // Setup terminal. Only DISAMBIGUATE_ESCAPE_CODES is needed to tell Ctrl+I
-    // apart from bare Tab (Ctrl+letter is then reported as its true key code
-    // plus CONTROL) — the REPORT_ALL_KEYS flag is deliberately NOT pushed: it
-    // makes the terminal report every key (letters, shift presses) as CSI-u
-    // events, which is unnecessary and leaves the shell deluged in CSI-u
-    // garbage if the keyboard encoding is ever left active on exit. The push is
-    // sent AFTER raw mode is enabled (some terminals only apply kitty encoding
-    // to keys read once raw mode is active).
     let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -135,12 +138,6 @@ pub async fn run_new_tui(
         crossterm::event::EnableMouseCapture,
     )?;
 
-    // Detect whether the terminal will actually deliver kitty encoding (its
-    // response is read here synchronously, BEFORE the input-handler task starts
-    // reading the tty, so there is no race). WezTerm reports supported; Konsole
-    // reports not supported (and collapses Ctrl+I to 0x09). The flag selects
-    // which PeerInfo shortcut is active on a Direct tab: Ctrl+I (kitty) vs
-    // Ctrl+? (non-kitty) in `process_key_event`.
     let keyboard_enhanced = crossterm::terminal::supports_keyboard_enhancement().unwrap_or(false);
     p2plog_debug(format!(
         "Keyboard enhancement (kitty) protocol: {} — Ctrl+I {} be distinct from Tab",
@@ -157,27 +154,35 @@ pub async fn run_new_tui(
     ));
 
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
+    let terminal = Terminal::new(backend)?;
+    Ok((terminal, keyboard_enhanced))
+}
 
-    // Initialize state
-    let own_nickname = p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
-
-    // Get database URL (uses cached value from startup)
+/// Load the full initial application state from the database (nickname maps,
+/// message history, known peers, receipts, groups) and set the fixed runtime
+/// fields. Returns the state, the DB URL/label shown in the status bar, and the
+/// group list (reused for re-subscription on startup).
+fn initialize_state(
+    topic_str: &str,
+    own_nickname: String,
+    keyboard_enhanced: bool,
+) -> (
+    super::state::AppState,
+    String,
+    Vec<p2p_app::groups::GroupSummary>,
+) {
     let db_info = p2p_app::get_database_url();
     p2plog_debug(format!("Database: {db_info}"));
     p2plog_debug(format!("Loading data for topic: {topic_str}"));
 
-    // Load nickname maps from database (used for rendering historical messages and peer display).
     let (local_nicknames, received_nicknames, self_nicknames_for_peers) = p2p_app::load_peers()
         .map_or_else(
             |_| (HashMap::new(), HashMap::new(), HashMap::new()),
             |db_peers| extract_nickname_maps(&db_peers),
         );
 
-    // Load initial messages from database
     let (initial_messages, initial_message_ids) = super::state::load_and_format_messages(
-        &topic_str,
+        topic_str,
         super::state::MAX_MESSAGE_HISTORY,
         &local_nicknames,
         &received_nicknames,
@@ -188,7 +193,9 @@ pub async fn run_new_tui(
         initial_messages.len()
     ));
 
-    // Load initial peers from database (including peer IDs that only exist in messages)
+    // Load initial peers from database (including peer IDs that only exist in
+    // messages), sorted by last_seen (latest first) — the format is
+    // "YYYY-MM-DD HH:MM:SS" so lexicographic ordering works.
     let mut initial_peers = p2p_app::load_known_peers().map_or_else(
         |_| {
             p2plog_debug("No peers found in database".to_string());
@@ -204,13 +211,10 @@ pub async fn run_new_tui(
             peers
         },
     );
-
-    // Sort by last_seen (latest first) - format is "YYYY-MM-DD HH:MM:SS" so lexicographic works
     let mut peers_vec: Vec<_> = initial_peers.into_iter().collect();
-    peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen)); // reverse order for latest first
+    peers_vec.sort_by(|a, b| b.last_seen.cmp(&a.last_seen));
     initial_peers = peers_vec.into();
 
-    // Load receipts from database
     let (loaded_broadcast_receipts, loaded_dm_receipts) = p2p_app::load_receipts().map_or_else(
         |_| (HashMap::new(), HashMap::new()),
         |receipts| {
@@ -230,9 +234,9 @@ pub async fn run_new_tui(
     // Load group list (known groups + member counts) from the database.
     let initial_groups = p2p_app::groups::list_groups_with_member_counts().unwrap_or_default();
     let mut state = super::state::AppState::new(
-        topic_str.clone(),
-        own_nickname.clone(),
-        local_peer_id.clone(),
+        topic_str.to_string(),
+        own_nickname,
+        local_peer_id,
         local_nicknames,
         received_nicknames,
         self_nicknames_for_peers,
@@ -244,46 +248,36 @@ pub async fn run_new_tui(
         initial_groups.clone(),
     );
     state.kitty_keyboard_active = keyboard_enhanced;
-    state.db_url = db_info;
+    state.db_url.clone_from(&db_info);
     state.platform = format!("Desktop ({})", std::env::consts::OS);
     state.network_size =
         p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
+    (state, db_info, initial_groups)
+}
 
-    let state = Arc::new(Mutex::new(state));
-
-    // Setup channels
-    let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
-    let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
-    let render_tx_for_logs = render_tx.clone();
-    set_tui_redraw_hook(move || {
-        let _ = render_tx_for_logs.try_send(RenderEvent);
-    });
-    let _ = render_tx.send(RenderEvent).await;
-
-    // Spawn tasks
-    // SwarmHandler returns handle, event receiver, and command sender
-    let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
-        p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
-
-    // Provision a user identity for this install (idempotent): creates the
-    // users row keyed by a generated account keypair and self-binds the local
-    // device, so the TUI is an account holder that can accept device-binding
-    // intros ('a' on the prompt). Mirrors the mobile auto-provision at start.
-    // Seed the announced user-level nickname with the install's self nickname
-    // (ensured above) so fresh accounts resolve to a name on the receiver side.
+/// Provision a user identity for this install (idempotent): creates the users
+/// row keyed by a generated account keypair and self-binds the local device, so
+/// the TUI is an account holder that can accept device-binding intros ('a' on
+/// the prompt). Mirrors the mobile auto-provision at start. The announced
+/// user-level nickname is seeded with the install's self nickname (ensured
+/// earlier) so fresh accounts resolve to a name on the receiver side. Best
+/// effort — a failure only degrades the account features, not the chat.
+async fn provision_account(state: &super::state::SharedState) {
     let self_nickname = p2p_app::get_self_nickname().ok().flatten();
     if let Err(e) = p2p_app::identity::provision_my_user(None, self_nickname.as_deref()) {
         p2plog_debug(format!("Failed to provision user identity: {e}"));
     }
-    {
-        let mut s = state.lock().await;
-        s.refresh_my_user();
-    }
+    state.lock().await.refresh_my_user();
+}
 
-    // Re-join every group persisted in the local database: the swarm only
-    // receives group traffic for topics it is subscribed to, so saved groups
-    // must be re-subscribed on every startup.
-    for summary in &initial_groups {
+/// Re-join every group persisted in the local database: the swarm only receives
+/// group traffic for topics it is subscribed to, so saved groups must be
+/// re-subscribed on every startup.
+async fn resubscribe_saved_groups(
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    groups: &[p2p_app::groups::GroupSummary],
+) {
+    for summary in groups {
         p2plog_debug(format!(
             "Subscribing to saved group {} ({})",
             summary.group.display_name, summary.group.group_id
@@ -294,26 +288,17 @@ pub async fn run_new_tui(
             })
             .await;
     }
+}
 
-    // EventSource sends InputEvent to this channel
-    let event_source = super::event_source::spawn_input_handler(input_tx);
-
-    // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent and SwarmCommand
-    let (command_processor, _) = super::command_processor::spawn_command_processor(
-        state.clone(),
-        input_rx,
-        swarm_event_rx,
-        render_tx,
-        swarm_cmd_tx,
-    );
-
-    // RenderLoop reads state and renders
-    let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal, render_rx);
-
-    p2plog_debug("Started 4-task TUI architecture".to_string());
-
-    // Wait for any task to complete (indicates error or exit)
-    let exit_reason = tokio::select! {
+/// Wait for any of the four tasks to complete (indicating error or exit) and
+/// log which one it was.
+async fn await_first_task_exit(
+    swarm_handler: tokio::task::JoinHandle<()>,
+    event_source: tokio::task::JoinHandle<()>,
+    command_processor: tokio::task::JoinHandle<()>,
+    render_loop: tokio::task::JoinHandle<()>,
+) -> &'static str {
+    tokio::select! {
         result = swarm_handler => {
             if result.is_err() {
                 p2plog_debug( "SwarmHandler panicked".to_string());
@@ -350,33 +335,98 @@ pub async fn run_new_tui(
                 "RenderLoop completed"
             }
         }
+    }
+}
+
+/// Restore the terminal after shutdown: pop the keyboard-enhancement flag and
+/// defensively clear every keyboard mode while raw mode is still on (so the
+/// escape sequences transmit cleanly), then leave the alternate screen and
+/// restore termios.
+///
+/// We pushed only `DISAMBIGUATE_ESCAPE_CODES` at startup; on exit we pop it and
+/// also emit `CSI > 4;0m` (xterm modifyOtherKeys off) in case any terminal left
+/// it on. Otherwise the shell keeps receiving CSI-u/modified-key sequences
+/// (arrow keys print as `A`..`D`, or junk like `;1u;5u…`) and is unusable.
+fn restore_terminal(mut stdout: std::io::Stdout) {
+    use ratatui::crossterm::{
+        execute,
+        terminal::{LeaveAlternateScreen, disable_raw_mode},
     };
 
-    // Signal graceful shutdown to remaining tasks
-    p2plog_debug(format!("Initiating shutdown: {exit_reason}"));
-
-    // Cleanup terminal state (emitted while raw mode is still on so the escape
-    // sequences transmit cleanly; then restore the termios). We pushed only
-    // DISAMBIGUATE_ESCAPE_CODES at startup; on exit we pop it and also clear
-    // every keyboard-enhancement mode defensively:
-    //   - `CSI < 1u` kitty pop (undo our push)
-    //   - `CSI > 4;0m` xterm modifyOtherKeys off (in case any terminal left it on)
-    // Otherwise the shell keeps receiving CSI-u/modified-key sequences (arrow
-    // keys print as `A`..`D`, or junk like `;1u;5u…`) and is unusable.
-    let mut stdout = std::io::stdout();
     let _ = execute!(stdout, crossterm::event::PopKeyboardEnhancementFlags);
     let _ = write!(stdout, "\x1b[>4;0m");
     let _ = stdout.flush();
     let _ = execute!(stdout, LeaveAlternateScreen);
     let _ = execute!(stdout, crossterm::event::DisableMouseCapture);
     let _ = disable_raw_mode();
+}
 
-    // Print cached logs to stdout after restoring the terminal.
+/// Main TUI loop: set up the terminal, initialize state, spawn the task
+/// pipelines, and wait for any task to exit (indicating error or exit). The
+/// function sets up terminal mode (alternate screen, raw mode, mouse capture)
+/// and waits for the pipeline to finish, printing cached logs after restoring
+/// the terminal.
+///
+/// Signal to trigger a render (instead of busy-polling) is carried by the
+/// [`RenderEvent`] unit struct.
+pub async fn run_new_tui(
+    swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
+    topic_str: String,
+) -> color_eyre::Result<()> {
+    let (mut terminal, keyboard_enhanced) = setup_terminal()?;
+    terminal.clear()?;
+
+    // Initialize state
+    let own_nickname = p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
+    let (state, _db_info, initial_groups) =
+        initialize_state(&topic_str, own_nickname, keyboard_enhanced);
+    let state = Arc::new(Mutex::new(state));
+
+    // Setup channels
+    let (input_tx, input_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let (render_tx, render_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let render_tx_for_logs = render_tx.clone();
+    set_tui_redraw_hook(move || {
+        let _ = render_tx_for_logs.try_send(RenderEvent);
+    });
+    let _ = render_tx.send(RenderEvent).await;
+
+    // Spawn tasks: SwarmHandler returns handle, event receiver, command sender
+    let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
+        p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
+
+    provision_account(&state).await;
+
+    resubscribe_saved_groups(&swarm_cmd_tx, &initial_groups).await;
+
+    // EventSource sends InputEvent to this channel
+    let event_source = super::event_source::spawn_input_handler(input_tx);
+
+    // CommandProcessor receives both InputEvent and SwarmEvent, sends RenderEvent and SwarmCommand
+    let (command_processor, _) = super::command_processor::spawn_command_processor(
+        state.clone(),
+        input_rx,
+        swarm_event_rx,
+        render_tx,
+        swarm_cmd_tx,
+    );
+
+    // RenderLoop reads state and renders
+    let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal, render_rx);
+
+    p2plog_debug("Started 4-task TUI architecture".to_string());
+
+    // Wait for any task to complete (indicates error or exit)
+    let exit_reason =
+        await_first_task_exit(swarm_handler, event_source, command_processor, render_loop).await;
+    p2plog_debug(format!("Initiating shutdown: {exit_reason}"));
+
+    // Cleanup terminal state, then print cached logs after restoring the
+    // terminal, then release the database lock file.
+    restore_terminal(std::io::stdout());
     for log in recent_tui_logs(&get_tui_logs(), 100) {
         println!("{log}");
     }
-
-    // Release database lock file
     release_db_lock();
 
     Ok(())

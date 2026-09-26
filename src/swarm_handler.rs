@@ -550,137 +550,170 @@ pub fn build_group_message(
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
-    use libp2p::PeerId;
     match cmd {
         SwarmCommand::Publish {
             content,
             nickname,
             msg_id,
-        } => {
-            let msg = build_broadcast_message(content, nickname, msg_id);
-            if let Ok(json) = serde_json::to_string(&msg) {
-                match swarm
-                    .behaviour_mut()
-                    .gossipsub
-                    .publish(gossipsub::IdentTopic::new(topic), json.as_bytes())
-                {
-                    Ok(gossipsub::MessageId(id)) => {
-                        p2plog_debug(format!(
-                            "Published broadcast: {}",
-                            String::from_utf8_lossy(&id)
-                        ));
-                    }
-                    Err(e) => {
-                        p2plog_error(format!("Failed to publish: {e:?}"));
-                    }
-                }
-            }
-        }
+        } => publish_broadcast(content, nickname, msg_id, swarm, topic),
         SwarmCommand::SendDm {
             peer_id,
             content,
             nickname,
             msg_id,
             ack_for,
-        } => {
-            if let Ok(peer) = peer_id.parse::<PeerId>() {
-                let msg = crate::DirectMessage {
-                    content,
-                    timestamp: chrono::Utc::now().timestamp(),
-                    sent_at: Some(current_timestamp()),
-                    nickname,
-                    msg_id,
-                    ack_for,
-                    received_at: None,
-                    group_id: None,
-                };
-                swarm
-                    .behaviour_mut()
-                    .request_response
-                    .send_request(&peer, msg);
-            }
-        }
+        } => send_dm(&peer_id, content, nickname, msg_id, ack_for, swarm),
         SwarmCommand::PublishGroup {
             group_id,
             content,
             nickname,
             msg_id,
-        } => {
-            let msg = build_group_message(group_id.clone(), content, nickname, msg_id);
-            if let Ok(json) = serde_json::to_string(&msg) {
-                let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
-                match swarm
-                    .behaviour_mut()
-                    .gossipsub
-                    .publish(topic, json.as_bytes())
-                {
-                    Ok(gossipsub::MessageId(id)) => {
-                        p2plog_debug(format!(
-                            "Published group message: {}",
-                            String::from_utf8_lossy(&id)
-                        ));
-                    }
-                    Err(e) => {
-                        p2plog_error(format!("Failed to publish group message: {e:?}"));
-                    }
-                }
-            }
+        } => publish_group(content, nickname, msg_id, group_id, swarm),
+        SwarmCommand::SubscribeGroup { group_id } => subscribe_to_group(&group_id, swarm),
+        SwarmCommand::SendDeviceBinding { peer_id, request } => {
+            send_device_binding(&peer_id, request, swarm);
         }
-        SwarmCommand::SubscribeGroup { group_id } => {
-            let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
-            match swarm.behaviour_mut().gossipsub.subscribe(&topic) {
-                Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
-                Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
-                Err(e) => p2plog_error(format!("Failed to subscribe to group {group_id}: {e:?}")),
-            }
-            // Backfill (backlog §11.5): join the group's backfill topic and
-            // request everything newer than our newest stored message. Members
-            // online across the gap answer by re-publishing that history on the
-            // main topic; dedup absorbs overlaps. On (re)subscribe of an
-            // already-current group the watermark matches our latest, so
-            // nothing is answered.
-            let request = crate::GroupBackfillRequest {
-                group_id: group_id.clone(),
-                after: crate::groups::latest_group_sent_at(&group_id)
-                    .ok()
-                    .flatten()
-                    .unwrap_or(0.0),
-            };
-            let backfill_topic =
-                gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(&group_id));
-            if let Err(e) = swarm.behaviour_mut().gossipsub.subscribe(&backfill_topic) {
-                p2plog_error(format!(
-                    "Failed to subscribe to backfill topic for {group_id}: {e:?}"
+        SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
+    }
+}
+
+fn publish_broadcast(
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+    swarm: &mut Swarm<AppBehaviour>,
+    topic: &str,
+) {
+    let msg = build_broadcast_message(content, nickname, msg_id);
+    if let Ok(json) = serde_json::to_string(&msg) {
+        match swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(gossipsub::IdentTopic::new(topic), json.as_bytes())
+        {
+            Ok(gossipsub::MessageId(id)) => {
+                p2plog_debug(format!(
+                    "Published broadcast: {}",
+                    String::from_utf8_lossy(&id)
                 ));
             }
-            if let Ok(json) = serde_json::to_string(&request) {
-                let _ = swarm
-                    .behaviour_mut()
-                    .gossipsub
-                    .publish(backfill_topic, json.as_bytes());
+            Err(e) => {
+                p2plog_error(format!("Failed to publish: {e:?}"));
             }
         }
-        SwarmCommand::SendDeviceBinding { peer_id, request } => {
-            if let Ok(peer) = peer_id.parse::<PeerId>() {
-                // `send_request` returns the outbound request ID; failures
-                // surface as `OutboundFailure` events on the behaviour, so a
-                // successful dispatch is all we can assert here.
-                let _ = swarm
-                    .behaviour_mut()
-                    .device_binding
-                    .send_request(&peer, *request);
+    }
+}
+
+fn send_dm(
+    peer_id: &str,
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+    ack_for: Option<String>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        let msg = crate::DirectMessage {
+            content,
+            timestamp: chrono::Utc::now().timestamp(),
+            sent_at: Some(current_timestamp()),
+            nickname,
+            msg_id,
+            ack_for,
+            received_at: None,
+            group_id: None,
+        };
+        swarm
+            .behaviour_mut()
+            .request_response
+            .send_request(&peer, msg);
+    }
+}
+
+fn publish_group(
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+    group_id: String,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
+    let msg = build_group_message(group_id, content, nickname, msg_id);
+    if let Ok(json) = serde_json::to_string(&msg) {
+        match swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(topic, json.as_bytes())
+        {
+            Ok(gossipsub::MessageId(id)) => {
+                p2plog_debug(format!(
+                    "Published group message: {}",
+                    String::from_utf8_lossy(&id)
+                ));
+            }
+            Err(e) => {
+                p2plog_error(format!("Failed to publish group message: {e:?}"));
             }
         }
-        SwarmCommand::UnsubscribeGroup { group_id } => {
-            let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
-            if swarm.behaviour_mut().gossipsub.unsubscribe(&topic) {
-                p2plog_debug(format!("Unsubscribed from group {group_id}"));
-            } else {
-                p2plog_debug(format!("Was not subscribed to group {group_id}"));
-            }
-        }
+    }
+}
+
+fn subscribe_to_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
+    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(group_id));
+    match swarm.behaviour_mut().gossipsub.subscribe(&topic) {
+        Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
+        Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
+        Err(e) => p2plog_error(format!("Failed to subscribe to group {group_id}: {e:?}")),
+    }
+    // Backfill (backlog §11.5): join the group's backfill topic and request
+    // everything newer than our newest stored message. Members online across
+    // the gap answer by re-publishing that history on the main topic; dedup
+    // absorbs overlaps. On (re)subscribe of an already-current group the
+    // watermark matches our latest, so nothing is answered.
+    let request = crate::GroupBackfillRequest {
+        group_id: group_id.to_string(),
+        after: crate::groups::latest_group_sent_at(group_id)
+            .ok()
+            .flatten()
+            .unwrap_or(0.0),
+    };
+    let backfill_topic = gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(group_id));
+    if let Err(e) = swarm.behaviour_mut().gossipsub.subscribe(&backfill_topic) {
+        p2plog_error(format!(
+            "Failed to subscribe to backfill topic for {group_id}: {e:?}"
+        ));
+    }
+    if let Ok(json) = serde_json::to_string(&request) {
+        let _ = swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(backfill_topic, json.as_bytes());
+    }
+}
+
+fn send_device_binding(
+    peer_id: &str,
+    request: Box<crate::behavior::DeviceBindingRequest>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        // `send_request` returns the outbound request ID; failures surface as
+        // `OutboundFailure` events on the behaviour, so a successful dispatch
+        // is all we can assert here.
+        let _ = swarm
+            .behaviour_mut()
+            .device_binding
+            .send_request(&peer, *request);
+    }
+}
+
+fn unsubscribe_from_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
+    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(group_id));
+    if swarm.behaviour_mut().gossipsub.unsubscribe(&topic) {
+        p2plog_debug(format!("Unsubscribed from group {group_id}"));
+    } else {
+        p2plog_debug(format!("Was not subscribed to group {group_id}"));
     }
 }
 

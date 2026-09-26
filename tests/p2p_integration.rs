@@ -323,7 +323,6 @@ async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
     let mut node_a = create_node()?;
@@ -337,6 +336,78 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
 
     println!("Peer A: {peer_a}, Peer B: {peer_b}");
 
+    let (a_discovered_b, b_discovered_a) =
+        discover_via_mdns(&mut node_a, &mut node_b, peer_a, peer_b).await;
+    if !a_discovered_b || !b_discovered_a {
+        return Err("mDNS peer discovery timed out".into());
+    }
+
+    println!("Waiting for connections to be established...");
+    wait_for_connection(&mut node_a, &mut node_b, peer_a, peer_b).await;
+
+    println!("Adding explicit peers for gossipsub...");
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .add_explicit_peer(&peer_b);
+    node_b
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .add_explicit_peer(&peer_a);
+    println!("Explicit peers added");
+
+    println!("Waiting for gossipsub subscriptions...");
+    let (subscribed_a, subscribed_b) =
+        wait_for_gossipsub_subscriptions(&mut node_a, &mut node_b, peer_a, peer_b).await;
+    if !subscribed_a || !subscribed_b {
+        eprintln!("Warning: Gossipsub subscription events did not complete");
+        // For now, don't fail here - just note the issue
+        // return Err("Gossipsub subscription timed out".into());
+    } else {
+        println!("Both nodes subscribed!");
+    }
+
+    println!("Attempting to publish message...");
+
+    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
+    let message = b"Hello via mDNS discovery!";
+
+    node_a
+        .swarm
+        .behaviour_mut()
+        .gossipsub
+        .publish(topic.clone(), message)?;
+
+    let received = timeout(Duration::from_secs(5), async {
+        loop {
+            let event = node_b.swarm.select_next_some().await;
+            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
+                gossipsub::Event::Message { message, .. },
+            )) = event
+            {
+                break String::from_utf8_lossy(&message.data).to_string();
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Timeout waiting for message")?;
+
+    assert_eq!(received, "Hello via mDNS discovery!");
+
+    Ok(())
+}
+
+/// Pump both swarms until each has mDNS-discovered the other, dialing the
+/// discovered address and adding the peer as an explicit gossipsub peer.
+/// Returns whether each side saw its discovery within the deadline.
+async fn discover_via_mdns(
+    node_a: &mut TestNode,
+    node_b: &mut TestNode,
+    peer_a: libp2p::PeerId,
+    peer_b: libp2p::PeerId,
+) -> (bool, bool) {
     let mut a_discovered_b = false;
     let mut b_discovered_a = false;
 
@@ -392,12 +463,17 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     })
     .await;
 
-    if !a_discovered_b || !b_discovered_a {
-        return Err("mDNS peer discovery timed out".into());
-    }
+    (a_discovered_b, b_discovered_a)
+}
 
-    println!("Waiting for connections to be established...");
-
+/// Pump both swarms until either reports a connection established to the other
+/// (bounded log-style; the caller decides whether that is fatal).
+async fn wait_for_connection(
+    node_a: &mut TestNode,
+    node_b: &mut TestNode,
+    peer_a: libp2p::PeerId,
+    peer_b: libp2p::PeerId,
+) {
     let mut connected = false;
     let connection_deadline = Duration::from_secs(10);
     let _ = timeout(connection_deadline, async {
@@ -424,21 +500,16 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
         }
     })
     .await;
+}
 
-    println!("Adding explicit peers for gossipsub...");
-    node_a
-        .swarm
-        .behaviour_mut()
-        .gossipsub
-        .add_explicit_peer(&peer_b);
-    node_b
-        .swarm
-        .behaviour_mut()
-        .gossipsub
-        .add_explicit_peer(&peer_a);
-    println!("Explicit peers added");
-
-    println!("Waiting for gossipsub subscriptions...");
+/// Pump both swarms until each peer's gossipsub reports the other's
+/// subscription. Returns whether both subscription events arrived.
+async fn wait_for_gossipsub_subscriptions(
+    node_a: &mut TestNode,
+    node_b: &mut TestNode,
+    peer_a: libp2p::PeerId,
+    peer_b: libp2p::PeerId,
+) -> (bool, bool) {
     let mut subscribed_a = false;
     let mut subscribed_b = false;
     let subscribe_deadline = Duration::from_secs(10);
@@ -503,44 +574,8 @@ async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>
     })
     .await;
 
-    if !subscribed_a || !subscribed_b {
-        eprintln!("Warning: Gossipsub subscription events did not complete");
-        // For now, don't fail here - just note the issue
-        // return Err("Gossipsub subscription timed out".into());
-    } else {
-        println!("Both nodes subscribed!");
-    }
-
-    println!("Attempting to publish message...");
-
-    let topic = gossipsub::IdentTopic::new(TEST_TOPIC);
-    let message = b"Hello via mDNS discovery!";
-
-    node_a
-        .swarm
-        .behaviour_mut()
-        .gossipsub
-        .publish(topic.clone(), message)?;
-
-    let received = timeout(Duration::from_secs(5), async {
-        loop {
-            let event = node_b.swarm.select_next_some().await;
-            if let SwarmEvent::Behaviour(TestBehaviourEvent::Gossipsub(
-                gossipsub::Event::Message { message, .. },
-            )) = event
-            {
-                break String::from_utf8_lossy(&message.data).to_string();
-            }
-        }
-    })
-    .await
-    .map_err(|_| "Timeout waiting for message")?;
-
-    assert_eq!(received, "Hello via mDNS discovery!");
-
-    Ok(())
+    (subscribed_a, subscribed_b)
 }
-
 struct NodeWithDB {
     swarm: libp2p::Swarm<TestBehaviour>,
     peer_id: libp2p::PeerId,
@@ -612,7 +647,6 @@ fn save_stale_peer_to_db(
 }
 
 #[tokio::test]
-#[allow(clippy::too_many_lines)]
 async fn test_connection_with_stale_db_address_and_mdns_recovery()
 -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
@@ -666,6 +700,33 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     eprintln!("Node B dialing stale address...");
     let _ = node_b.swarm.dial(stale_addr_parsed);
 
+    let (connected, dial_failed, mdns_discovered) =
+        await_stale_address_recovery(&mut node_a, &mut node_b, peer_a, peer_b).await;
+    if !connected {
+        return Err(format!(
+            "Connection timed out: dial_failed={dial_failed}, mdns_discovered={mdns_discovered}"
+        )
+        .into());
+    }
+
+    eprintln!("Test passed: connection established despite stale DB address");
+
+    let _ = std::fs::remove_file(db_path_1);
+    let _ = std::fs::remove_file(db_path_2);
+
+    Ok(())
+}
+
+/// Pump both swarms while B recovers from its stale DB address: either the
+/// connection is established directly, or B discovers A via mDNS and dials the
+/// live address. Returns the saw-connection / saw-dial-failure / saw-mDNS flags
+/// for the caller's failure report.
+async fn await_stale_address_recovery(
+    node_a: &mut NodeWithDB,
+    node_b: &mut NodeWithDB,
+    peer_a: libp2p::PeerId,
+    peer_b: libp2p::PeerId,
+) -> (bool, bool, bool) {
     let mut connected = false;
     let mut dial_failed = false;
     let mut mdns_discovered = false;
@@ -744,19 +805,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
         }
     }).await;
 
-    if !connected {
-        return Err(format!(
-            "Connection timed out: dial_failed={dial_failed}, mdns_discovered={mdns_discovered}"
-        )
-        .into());
-    }
-
-    eprintln!("Test passed: connection established despite stale DB address");
-
-    let _ = std::fs::remove_file(db_path_1);
-    let _ = std::fs::remove_file(db_path_2);
-
-    Ok(())
+    (connected, dial_failed, mdns_discovered)
 }
 
 /// Test that connected peers can exchange a gossipsub broadcast.

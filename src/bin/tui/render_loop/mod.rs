@@ -11,6 +11,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
 };
+use std::collections::VecDeque;
 use std::io::Stdout;
 use tokio::sync::mpsc;
 
@@ -33,80 +34,49 @@ fn render_popup_text(state: &AppState) -> Option<String> {
 }
 
 /// Convert `AppState` to `TuiRenderState` for library rendering
-#[allow(clippy::too_many_lines)]
+/// Project the broadcast-chat `DisplayMessage` history into the text + sender
+/// columns the render layer consumes.
+fn message_texts(
+    messages: &VecDeque<p2p_app::DisplayMessage>,
+) -> (VecDeque<String>, VecDeque<Option<String>>) {
+    (
+        messages.iter().map(|dm| dm.text.clone()).collect(),
+        messages
+            .iter()
+            .map(|dm| dm.sender_peer_id.clone())
+            .collect(),
+    )
+}
+
+/// Project the peer ring into the `PeerRecord` rows the render layer consumes.
+fn render_peer_records(peers: &VecDeque<p2p_app::PeerRecord>) -> Vec<p2p_app::PeerRecord> {
+    peers.iter().cloned().collect()
+}
+
+/// Resolve the connected-overlay's last disconnection into the (time, peer)
+/// pair the render layer shows, if any.
+fn last_disconnection(state: &AppState) -> (Option<f64>, Option<String>) {
+    match state.connected.last_disconnection() {
+        Some((peer, at)) => (Some(at), Some(peer.to_string())),
+        None => (None, None),
+    }
+}
+
+/// Convert `AppState` to `TuiRenderState` for library rendering
 fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
-    use std::collections::{BTreeMap, VecDeque};
-
-    let tab_titles: Vec<String> = state.dynamic_tabs.all_titles();
-
-    let dm_messages: BTreeMap<String, VecDeque<String>> = state
-        .dm_messages
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let dm_message_ids: BTreeMap<String, VecDeque<Option<String>>> = state
-        .dm_message_ids
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let dm_scroll_state: BTreeMap<String, (usize, bool)> = state
-        .dm_scroll_state
-        .iter()
-        .map(|(k, v)| (k.clone(), *v))
-        .collect();
-
-    let dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)> = state
-        .dm_broadcast_scroll_state
-        .iter()
-        .map(|(k, v)| (k.clone(), *v))
-        .collect();
-
-    let group_messages: BTreeMap<String, VecDeque<String>> = state
-        .group_messages
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let group_message_ids: BTreeMap<String, VecDeque<Option<String>>> = state
-        .group_message_ids
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let group_message_peer_ids: BTreeMap<String, VecDeque<Option<String>>> = state
-        .group_message_peer_ids
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-
-    let group_scroll_state: BTreeMap<String, (usize, bool)> = state
-        .group_scroll_state
-        .iter()
-        .map(|(k, v)| (k.clone(), *v))
-        .collect();
+    let tab_titles = state.dynamic_tabs.all_titles();
+    let (messages, message_peer_ids) = message_texts(&state.messages);
+    let (last_connection_lost, last_connection_peer) = last_disconnection(state);
+    let peers = render_peer_records(&state.peers);
 
     p2p_app::TuiRenderState {
         tab_titles,
         active_tab: state.active_tab,
-        messages: state.messages.iter().map(|dm| dm.text.clone()).collect(),
-        message_peer_ids: state
-            .messages
-            .iter()
-            .map(|dm| dm.sender_peer_id.clone())
-            .collect(),
+        messages,
+        message_peer_ids,
         message_ids: state.message_ids.clone(),
         broadcast_receipts: state.broadcast_receipts.clone(),
-        peers: state
-            .peers
-            .iter()
-            .map(|p| p2p_app::PeerRecord {
-                peer_id: p.peer_id.clone(),
-                first_seen: p.first_seen.clone(),
-                last_seen: p.last_seen.clone(),
-            })
-            .collect(),
+        peers,
         broadcast_sent_to_peer: state.broadcast_sent_to_peer.clone(),
         contacts: state.contacts.clone(),
         expanded_contact_ids: state.expanded_contact_ids.clone(),
@@ -115,8 +85,16 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
             .connected_peer_ids()
             .map(str::to_owned)
             .collect(),
-        dm_messages,
-        dm_message_ids,
+        dm_messages: state
+            .dm_messages
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        dm_message_ids: state
+            .dm_message_ids
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
         dm_receipts: state.dm_receipts.clone(),
         input_text: state.chat_input.lines().join("\n"),
         log_messages: get_tui_logs().into_iter().collect(),
@@ -132,13 +110,37 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         chat_unread_count: state.chat_unread_count,
         log_scroll_offset: state.log_scroll_offset,
         log_auto_scroll: state.log_auto_scroll,
-        dm_scroll_state,
-        dm_broadcast_scroll_state,
+        dm_scroll_state: state
+            .dm_scroll_state
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect(),
+        dm_broadcast_scroll_state: state
+            .dm_broadcast_scroll_state
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect(),
         group_summaries: state.group_summaries.clone(),
-        group_messages,
-        group_message_ids,
-        group_message_peer_ids,
-        group_scroll_state,
+        group_messages: state
+            .group_messages
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        group_message_ids: state
+            .group_message_ids
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        group_message_peer_ids: state
+            .group_message_peer_ids
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect(),
+        group_scroll_state: state
+            .group_scroll_state
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect(),
         group_selection: state.group_selection,
         creating_group: state.creating_group,
         peer_selection: state.peer_selection,
@@ -150,11 +152,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         platform: state.platform.clone(),
         network_size: state.network_size.clone(),
         listen_addrs: state.listen_addrs.clone(),
-        last_connection_lost: state.connected.last_disconnection().map(|(_, at)| at),
-        last_connection_peer: state
-            .connected
-            .last_disconnection()
-            .map(|(p, _)| p.to_string()),
+        last_connection_lost,
+        last_connection_peer,
         node_running: true,
         own_user_id: state.own_user_id.clone(),
         own_user_devices: state.own_user_devices.clone(),

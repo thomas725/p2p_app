@@ -260,7 +260,7 @@ fn handle_incoming_message(
 }
 
 /// Processes network (swarm) events and updates application state
-#[allow(clippy::too_many_lines)]
+/// Processes network (swarm) events and updates application state
 async fn process_swarm_event(
     swarm_event: SwarmEvent,
     state: &SharedState,
@@ -293,103 +293,18 @@ async fn process_swarm_event(
             );
             drop(s);
         }
-        SwarmEvent::GroupMessage(msg) => {
-            let mut s = state.lock().await;
-            if let Some(n) = msg.nickname.as_ref() {
-                s.received_nicknames.insert(msg.peer_id.clone(), n.clone());
-                let _ = p2p_app::set_peer_received_nickname(&msg.peer_id, n);
-            }
-            let sender_display =
-                p2p_app::peer_display_name(&msg.peer_id, &s.local_nicknames, &s.received_nicknames);
-            apply_group_message_to_state(
-                &mut s,
-                &msg.group_id,
-                &msg.content,
-                &msg.peer_id,
-                msg.msg_id,
-            );
-            s.reload_group_summaries();
-            p2plog_debug(format!(
-                "Group message from {sender_display}: {}",
-                msg.content
-            ));
-            drop(s);
-        }
+        SwarmEvent::GroupMessage(msg) => handle_group_message(state, msg).await,
         SwarmEvent::GroupInvite {
             group_id,
             inviter_peer,
-        } => {
-            let sender_display = {
-                let s = state.lock().await;
-                let sender_display = p2p_app::peer_display_name(
-                    &inviter_peer,
-                    &s.local_nicknames,
-                    &s.received_nicknames,
-                );
-                let local_peer_id = s.local_peer_id.clone();
-                drop(s);
-                let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
-                sender_display
-            };
-            p2plog_debug(format!(
-                "Accepted join {group_id} invited by {sender_display}",
-            ));
-            // Subscribe to the joined group so the swarm receives its traffic,
-            // mirroring mobile's `accept_group_invite` (otherwise incoming
-            // group messages never arrive).
-            let _ = swarm_cmd_tx
-                .send(SwarmCommand::SubscribeGroup { group_id })
-                .await;
-        }
+        } => handle_group_invite(state, swarm_cmd_tx, group_id, inviter_peer).await,
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
-        } => {
-            let mut s = state.lock().await;
-            let at = p2p_app::current_timestamp();
-
-            let is_dm = is_dm_receipt(&s, &ack_for);
-            apply_receipt_to_state(&mut s, &ack_for, &peer_id, at, is_dm);
-            drop(s);
-            let kind = i32::from(is_dm);
-            let _ = p2p_app::save_receipt(&ack_for, &peer_id, kind, at);
-        }
+        } => handle_receipt(state, peer_id, ack_for).await,
         SwarmEvent::PeerConnected(peer_id) => {
-            let (own_nickname, count) = {
-                let mut s = state.lock().await;
-                let count = apply_peer_connected_count(&mut s);
-                p2plog_debug(format!("Peer connected: {peer_id} (total: {count})"));
-                apply_peer_connected_state(&mut s, &peer_id);
-                let own_nick = s.own_nickname.clone();
-                drop(s);
-                (own_nick, count)
-            };
-
-            // Feed the peer-session history used for `get_network_size()`.
-            let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
-            let msg_id = p2p_app::gen_msg_id();
-            let _ = swarm_cmd_tx
-                .send(SwarmCommand::SendDm {
-                    peer_id: peer_id.clone(),
-                    content: String::new(),
-                    nickname: Some(own_nickname),
-                    msg_id: Some(msg_id),
-                    ack_for: None,
-                })
-                .await;
+            handle_peer_connected(state, swarm_cmd_tx, peer_id).await;
         }
-        SwarmEvent::PeerDisconnected(peer_id) => {
-            let count = {
-                let mut s = state.lock().await;
-                let count = apply_peer_disconnected_count(&mut s);
-                s.connected
-                    .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
-                count
-            };
-            p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
-
-            // Feed the peer-session history used for `get_network_size()`.
-            let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
-        }
+        SwarmEvent::PeerDisconnected(peer_id) => handle_peer_disconnected(state, peer_id).await,
         SwarmEvent::ListenAddrEstablished(addr) => {
             let mut s = state.lock().await;
             if !s.listen_addrs.contains(&addr) {
@@ -411,36 +326,148 @@ async fn process_swarm_event(
         SwarmEvent::DeviceBindingIntro {
             peer_id,
             device_pubkey,
-        } => {
-            // Surface the intro as an explicit prompt for the account holder
-            // (never auto-mint): accepting mints a signed claim via the 'a' key
-            // path in the input processor.
-            let mut s = state.lock().await;
-            if s.device_binding_prompt.is_none() {
-                s.device_binding_prompt = Some(super::state::DeviceBindingPrompt {
-                    peer_id,
-                    device_pubkey,
-                });
-            } else {
-                p2plog_debug(
-                    "Device-binding intro dropped: a prompt is already active".to_string(),
-                );
-            }
-            drop(s);
-        }
+        } => handle_device_binding_intro(state, peer_id, device_pubkey).await,
         SwarmEvent::DeviceBindingReceived { user_id } => {
-            p2plog_debug(format!("This device was bound into user {user_id}"));
-            let mut s = state.lock().await;
-            s.popup = Some(format!(
-                "This device was bound into user {}",
-                p2p_app::fmt::peer_id_suffix(&user_id)
-            ));
-            // Our install may now be bound into a foreign user: re-resolve the
-            // identity shown on the Settings tab.
-            s.refresh_my_user();
-            drop(s);
+            handle_device_binding_received(state, user_id).await;
         }
     }
+}
+
+/// Incoming group message: display-name cache + per-group chat state render.
+async fn handle_group_message(state: &SharedState, msg: p2p_app::GroupMessageEvent) {
+    let mut s = state.lock().await;
+    if let Some(n) = msg.nickname.as_ref() {
+        s.received_nicknames.insert(msg.peer_id.clone(), n.clone());
+        let _ = p2p_app::set_peer_received_nickname(&msg.peer_id, n);
+    }
+    let sender_display =
+        p2p_app::peer_display_name(&msg.peer_id, &s.local_nicknames, &s.received_nicknames);
+    apply_group_message_to_state(
+        &mut s,
+        &msg.group_id,
+        &msg.content,
+        &msg.peer_id,
+        msg.msg_id,
+    );
+    s.reload_group_summaries();
+    drop(s);
+    p2plog_debug(format!(
+        "Group message from {sender_display}: {}",
+        msg.content
+    ));
+}
+
+/// A group invite materializes our local membership, then subscribes the swarm
+/// to the group so its traffic arrives (mirrors mobile's `accept_group_invite`;
+/// without the subscribe, incoming group messages never arrive).
+async fn handle_group_invite(
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    group_id: String,
+    inviter_peer: String,
+) {
+    let sender_display = {
+        let s = state.lock().await;
+        let sender_display =
+            p2p_app::peer_display_name(&inviter_peer, &s.local_nicknames, &s.received_nicknames);
+        let local_peer_id = s.local_peer_id.clone();
+        drop(s);
+        let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
+        sender_display
+    };
+    p2plog_debug(format!(
+        "Accepted join {group_id} invited by {sender_display}",
+    ));
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::SubscribeGroup { group_id })
+        .await;
+}
+
+/// Receipt ack: update the in-memory reply state, then persist it to the DB.
+async fn handle_receipt(state: &SharedState, peer_id: String, ack_for: String) {
+    let mut s = state.lock().await;
+    let at = p2p_app::current_timestamp();
+
+    let is_dm = is_dm_receipt(&s, &ack_for);
+    apply_receipt_to_state(&mut s, &ack_for, &peer_id, at, is_dm);
+    drop(s);
+    let kind = i32::from(is_dm);
+    let _ = p2p_app::save_receipt(&ack_for, &peer_id, kind, at);
+}
+
+/// Freshly-connected peer: update state, announce our nickname over a DM, and
+/// feed the peer-session history used for `get_network_size()`.
+async fn handle_peer_connected(
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    peer_id: String,
+) {
+    let (own_nickname, count) = {
+        let mut s = state.lock().await;
+        let count = apply_peer_connected_count(&mut s);
+        p2plog_debug(format!("Peer connected: {peer_id} (total: {count})"));
+        apply_peer_connected_state(&mut s, &peer_id);
+        let own_nick = s.own_nickname.clone();
+        drop(s);
+        (own_nick, count)
+    };
+
+    // Feed the peer-session history used for `get_network_size()`.
+    let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
+    let msg_id = p2p_app::gen_msg_id();
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::SendDm {
+            peer_id,
+            content: String::new(),
+            nickname: Some(own_nickname),
+            msg_id: Some(msg_id),
+            ack_for: None,
+        })
+        .await;
+}
+
+/// Peer disconnect: count-down + connected-overlay bookkeeping, and feed the
+/// peer-session history used for `get_network_size()`.
+async fn handle_peer_disconnected(state: &SharedState, peer_id: String) {
+    let count = {
+        let mut s = state.lock().await;
+        let count = apply_peer_disconnected_count(&mut s);
+        s.connected
+            .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
+        count
+    };
+    p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
+
+    // Feed the peer-session history used for `get_network_size()`.
+    let _ = p2p_app::peers::record_peer_session(i32::try_from(count).unwrap_or(i32::MAX));
+}
+
+/// Device-binding intro: surface it as an explicit prompt for the account
+/// holder (never auto-mint) — accepting mints a signed claim via the 'a' key
+/// path in the input processor; a single-slot prompt drops a second one.
+async fn handle_device_binding_intro(state: &SharedState, peer_id: String, device_pubkey: Vec<u8>) {
+    let mut s = state.lock().await;
+    if s.device_binding_prompt.is_none() {
+        s.device_binding_prompt = Some(super::state::DeviceBindingPrompt {
+            peer_id,
+            device_pubkey,
+        });
+    } else {
+        p2plog_debug("Device-binding intro dropped: a prompt is already active".to_string());
+    }
+    drop(s);
+}
+
+/// Our install was bound into a foreign user: confirm via popup and re-resolve
+/// the identity shown on the Settings tab.
+async fn handle_device_binding_received(state: &SharedState, user_id: String) {
+    p2plog_debug(format!("This device was bound into user {user_id}"));
+    let mut s = state.lock().await;
+    s.popup = Some(format!(
+        "This device was bound into user {}",
+        p2p_app::fmt::peer_id_suffix(&user_id)
+    ));
+    s.refresh_my_user();
 }
 
 pub fn spawn_command_processor(
