@@ -50,6 +50,27 @@ pub struct TerminalEnv {
     pub peer_names_warmed: bool,
 }
 
+/// On-disk data loaded before the UI starts (messages, peers, receipts, groups).
+///
+/// [`AppState::new`] takes these as one struct so construction stays under the
+/// `too_many_arguments` threshold; callers that load nothing real (tests) use
+/// [`InitialStateData::default`].
+#[derive(Default)]
+pub struct InitialStateData {
+    /// Preloaded broadcast-message history (display-ready + aligned IDs).
+    pub messages: VecDeque<p2p_app::DisplayMessage>,
+    /// Message IDs aligned with `messages`.
+    pub message_ids: VecDeque<Option<String>>,
+    /// Known peers, sorted most-recently-seen first.
+    pub peers: VecDeque<p2p_app::PeerRecord>,
+    /// Broadcast receipts: `msg_id` -> (`peer_id` -> `received_at`).
+    pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+    /// DM receipts: `msg_id` -> (`source_peer`, `received_at`).
+    pub dm_receipts: HashMap<String, (String, f64)>,
+    /// Known groups with member counts.
+    pub groups: Vec<p2p_app::groups::GroupSummary>,
+}
+
 /// Single-writer UI state (see the module doc above).
 ///
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
@@ -391,7 +412,6 @@ impl AppState {
         );
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         topic_str: String,
         own_nickname: String,
@@ -399,25 +419,20 @@ impl AppState {
         local_nicknames: HashMap<String, String>,
         received_nicknames: HashMap<String, String>,
         self_nicknames_for_peers: HashMap<String, String>,
-        initial_messages: VecDeque<p2p_app::DisplayMessage>,
-        initial_message_ids: VecDeque<Option<String>>,
-        initial_peers: VecDeque<p2p_app::PeerRecord>,
-        initial_broadcast_receipts: HashMap<String, HashMap<String, f64>>,
-        initial_dm_receipts: HashMap<String, (String, f64)>,
-        initial_groups: Vec<p2p_app::groups::GroupSummary>,
+        data: InitialStateData,
     ) -> Self {
         let mut state = Self {
-            messages: initial_messages,
-            message_ids: initial_message_ids,
-            broadcast_receipts: initial_broadcast_receipts,
+            messages: data.messages,
+            message_ids: data.message_ids,
+            broadcast_receipts: data.broadcast_receipts,
             dm_messages: HashMap::new(),
             dm_message_ids: HashMap::new(),
-            dm_receipts: initial_dm_receipts,
-            peers: initial_peers,
+            dm_receipts: data.dm_receipts,
+            peers: data.peers,
             contacts: Vec::new(),
             expanded_contact_ids: HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
-            group_summaries: initial_groups,
+            group_summaries: data.groups,
             group_messages: HashMap::new(),
             group_message_ids: HashMap::new(),
             group_message_peer_ids: HashMap::new(),
@@ -476,7 +491,6 @@ type FormattedMessages = (VecDeque<p2p_app::DisplayMessage>, VecDeque<Option<Str
 /// Pure: formats DB messages into display-ready `(text, peer_id)` pairs.
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
-#[allow(clippy::type_complexity)]
 fn format_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
     local_nicknames: &HashMap<String, String>,
@@ -504,7 +518,6 @@ fn format_messages_from_db(
     (messages, message_ids)
 }
 
-#[allow(clippy::type_complexity)]
 pub fn load_and_format_messages(
     topic_str: &str,
     max_messages: usize,

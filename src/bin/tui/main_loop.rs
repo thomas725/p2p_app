@@ -240,12 +240,14 @@ fn initialize_state(
         local_nicknames,
         received_nicknames,
         self_nicknames_for_peers,
-        initial_messages,
-        initial_message_ids,
-        initial_peers,
-        loaded_broadcast_receipts,
-        loaded_dm_receipts,
-        initial_groups.clone(),
+        super::state::InitialStateData {
+            messages: initial_messages,
+            message_ids: initial_message_ids,
+            peers: initial_peers,
+            broadcast_receipts: loaded_broadcast_receipts,
+            dm_receipts: loaded_dm_receipts,
+            groups: initial_groups.clone(),
+        },
     );
     state.env.kitty_keyboard_active = keyboard_enhanced;
     state.db_url.clone_from(&db_info);

@@ -212,7 +212,6 @@ pub fn peer_count_display(count: usize) -> String {
 
 impl PeerTableRow {
     #[must_use]
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         peer_id: &str,
         display_name: &str,

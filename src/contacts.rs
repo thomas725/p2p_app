@@ -110,7 +110,6 @@ impl ContactRow {
 ///
 /// Ties are handled by the caller (no sorting key of its own — see
 /// [`sort_canonical_rows`]).
-#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn build_contact_rows(
     devices: &[ContactDeviceInput],
@@ -159,7 +158,6 @@ pub fn build_contact_rows(
     rows
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_row(
     contact_id: String,
     is_user: bool,

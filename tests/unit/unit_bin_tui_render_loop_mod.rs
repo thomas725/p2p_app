@@ -12,12 +12,7 @@ fn app_state() -> AppState {
         HashMap::new(),
         HashMap::new(),
         HashMap::new(),
-        VecDeque::new(),
-        VecDeque::new(),
-        VecDeque::new(),
-        HashMap::new(),
-        HashMap::new(),
-        Vec::new(),
+        crate::tui::state::InitialStateData::default(),
     )
 }
 
