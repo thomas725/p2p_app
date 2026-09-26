@@ -13,6 +13,7 @@ use crate::{
 };
 use chrono::TimeZone;
 use libp2p::gossipsub;
+use num_traits::ToPrimitive;
 use std::sync::Arc;
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
@@ -424,10 +425,9 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
         sent_at: msg.sent_at.map(|t| {
-            // SAFETY: `sent_at` is a Unix timestamp in seconds and is well within
-            // i64 range; the fractional part is intentionally truncated.
-            #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
-            let secs = t as i64;
+            // `sent_at` is a Unix timestamp in seconds (well within i64 range);
+            // `to_i64` truncates the fractional part exactly like `as i64` did.
+            let secs = t.to_i64().unwrap_or_default();
             let dt = chrono::DateTime::from_timestamp(secs, 0)
                 .unwrap_or_default()
                 .with_timezone(&chrono::Local);
@@ -445,14 +445,9 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
 /// Load broadcast messages (newest-first from DB, reversed to chronological).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
-    // SAFETY: `limit` is a non-negative message count; converting to usize is
-    // lossless in practice and a negative/wrapping value never occurs.
-    #[allow(
-        clippy::as_conversions,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
-    let limit_usize = limit as usize;
+    // `limit` is a message count; clamp a negative/wrapping value to the
+    // maximum so the loader simply returns every available row.
+    let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs = load_messages(CHAT_TOPIC, limit_usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().rev().map(message_to_chat).collect())
 }
@@ -460,14 +455,9 @@ pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
 /// Load DM history with a specific peer (already oldest-first in DB).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>, String> {
-    // SAFETY: `limit` is a non-negative message count; converting to usize is
-    // lossless in practice and a negative/wrapping value never occurs.
-    #[allow(
-        clippy::as_conversions,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
-    let limit_usize = limit as usize;
+    // `limit` is a message count; clamp a negative/wrapping value to the
+    // maximum so the loader simply returns every available row.
+    let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs = load_direct_messages(&peer_id, limit_usize).map_err(|e| e.to_string())?;
     Ok(msgs.into_iter().map(message_to_chat).collect())
 }
@@ -697,10 +687,9 @@ fn group_message_to_mobile(
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
         sent_at: msg.sent_at.map(|t| {
-            // SAFETY: `sent_at` is a Unix timestamp in seconds and is well within
-            // i64 range; the fractional part is intentionally truncated.
-            #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
-            let secs = t as i64;
+            // `sent_at` is a Unix timestamp in seconds (well within i64 range);
+            // `to_i64` truncates the fractional part exactly like `as i64` did.
+            let secs = t.to_i64().unwrap_or_default();
             let dt = chrono::DateTime::from_timestamp(secs, 0)
                 .unwrap_or_default()
                 .with_timezone(&chrono::Local);
@@ -792,14 +781,9 @@ pub fn load_group_messages(
     group_id: String,
     limit: i64,
 ) -> Result<Vec<MobileGroupMessage>, String> {
-    // SAFETY: `limit` is a non-negative message count; converting to usize is
-    // lossless in practice and a negative/wrapping value never occurs.
-    #[allow(
-        clippy::as_conversions,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
-    let limit_usize = limit as usize;
+    // `limit` is a message count; clamp a negative/wrapping value to the
+    // maximum so the loader simply returns every available row.
+    let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs =
         crate::groups::load_group_messages(&group_id, limit_usize).map_err(|e| e.to_string())?;
     Ok(msgs

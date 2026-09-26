@@ -8,12 +8,7 @@
     clippy::todo,
     clippy::unimplemented
 )]
-#![allow(
-    clippy::used_underscore_binding,
-    clippy::cast_possible_truncation,
-    clippy::as_conversions,
-    clippy::arithmetic_side_effects
-)]
+#![allow(clippy::used_underscore_binding, clippy::arithmetic_side_effects)]
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
 use std::collections::HashMap;
@@ -43,7 +38,7 @@ fn test_tab_click_switches_tab() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
     let (_, title_end, _) = tab_span(&titles, 1); // "Contacts"
-    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(title_end - 1).unwrap(), &titles);
     assert!(handled);
     assert_eq!(state.active_tab, 1);
 }
@@ -53,7 +48,7 @@ fn test_tab_click_same_tab_noop() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();
     let (_, title_end, _) = tab_span(&titles, 0); // active tab "Chat"
-    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(title_end - 1).unwrap(), &titles);
     assert!(!handled);
     assert_eq!(state.active_tab, 0);
 }
@@ -64,7 +59,7 @@ fn test_tab_click_divider_between_tabs_does_nothing() {
     let titles = state.dynamic_tabs.all_titles();
     let (_, _, chat_tab_end) = tab_span(&titles, 0);
     // `chat_tab_end` is the `|` divider column drawn between Chat and Peers.
-    let handled = handle_tab_click(&mut state, chat_tab_end as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(chat_tab_end).unwrap(), &titles);
     assert!(!handled);
     assert_eq!(state.active_tab, 0);
 }
@@ -87,7 +82,7 @@ fn test_tab_click_close_button_on_dm_tab() {
     // The close button occupies the last three title columns: `[X]`.
     let close_col = title_end - 1;
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    let handled = handle_tab_click(&mut state, close_col as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(close_col).unwrap(), &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before - 1);
     // Closing a tab *after* the active one must not steal focus.
@@ -103,7 +98,7 @@ fn test_tab_click_close_button_on_peer_info_tab() {
     let (_, title_end, _) = tab_span(&titles, info_idx);
     let close_col = title_end - 1;
     let count_before = state.dynamic_tabs.peer_info_tab_count();
-    let handled = handle_tab_click(&mut state, close_col as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(close_col).unwrap(), &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.peer_info_tab_count(), count_before - 1);
 }
@@ -117,7 +112,7 @@ fn test_tab_click_just_past_close_button_switches_instead() {
     let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
     let (_, title_end, _) = tab_span(&titles, dm_idx);
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    let handled = handle_tab_click(&mut state, title_end as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(title_end).unwrap(), &titles);
     assert!(handled);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before);
     assert_eq!(state.active_tab, dm_idx);
@@ -130,7 +125,7 @@ fn test_tab_click_close_active_tab_moves_focus_left() {
     let dm_idx = titles.iter().position(|t| t.contains("[X]")).unwrap();
     let (_, title_end, _) = tab_span(&titles, dm_idx);
     state.active_tab = dm_idx;
-    let handled = handle_tab_click(&mut state, (title_end - 1) as u16, &titles);
+    let handled = handle_tab_click(&mut state, u16::try_from(title_end - 1).unwrap(), &titles);
     assert!(handled);
     assert_eq!(state.active_tab, dm_idx - 1);
 }
@@ -265,9 +260,9 @@ fn test_peer_header_click_maps_each_column() {
         );
         let constraints: Vec<ratatui::layout::Constraint> = widths
             .iter()
-            .map(|w| ratatui::layout::Constraint::Length(*w as u16))
+            .map(|w| ratatui::layout::Constraint::Length(u16::try_from(*w).unwrap()))
             .collect();
-        let width = state.terminal_width as u16;
+        let width = u16::try_from(state.terminal_width).unwrap();
         let area = ratatui::layout::Rect::new(0, 0, width, 1);
         let inner = ratatui::widgets::Block::default()
             .borders(ratatui::widgets::Borders::ALL)

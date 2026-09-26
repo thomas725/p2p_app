@@ -1,16 +1,16 @@
 //! Settings-tab rendering (mirrors Flutter's `_Settings` screen).
 
 use crate::tui_render_state::TuiRenderState;
+use num_traits::ToPrimitive;
 use ratatui::{
     layout::Rect,
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 /// Format an optional epoch-seconds timestamp as a readable local datetime.
-#[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
 fn format_lost_at(ts: Option<f64>) -> String {
     ts.and_then(|t| {
-        chrono::DateTime::from_timestamp(t as i64, 0)
+        chrono::DateTime::from_timestamp(t.to_i64().unwrap_or_default(), 0)
             .map(|dt| crate::format_peer_datetime(dt.with_timezone(&chrono::Local).naive_local()))
     })
     .unwrap_or_else(|| "—".to_string())

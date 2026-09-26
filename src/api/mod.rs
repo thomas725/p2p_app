@@ -205,10 +205,12 @@ pub fn validate_nickname(nickname: String) -> bool {
 /// re-derive the thresholds in Dart.
 #[must_use]
 pub fn network_size_label(peer_count: i64) -> String {
-    // SAFETY: peer counts are small, non-negative values; widening `i64` to `f64`
-    // is exact and cannot lose precision for the range used here.
-    #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-    NetworkSize::from_peer_count(peer_count as f64).to_string()
+    match peer_count {
+        0..=3 => NetworkSize::Small,
+        4..=15 => NetworkSize::Medium,
+        _ => NetworkSize::Large,
+    }
+    .to_string()
 }
 
 // --- Identity lane ---

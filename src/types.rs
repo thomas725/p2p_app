@@ -43,6 +43,16 @@ pub struct AutoScrollFlags {
     pub log: bool,
 }
 
+/// Clamp a `usize` message count to the signed `i64` domain diesel uses for
+/// `LIMIT`.
+///
+/// Counts are small in practice; an astronomical `usize` (beyond `i64::MAX`)
+/// simply clamps to the maximum and loads everything.
+#[must_use]
+pub fn usize_limit_to_i64(limit: usize) -> i64 {
+    i64::try_from(limit).unwrap_or(i64::MAX)
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_types.rs"]
 mod tests;

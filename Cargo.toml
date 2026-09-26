@@ -76,6 +76,10 @@ libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }
 # for embedding the migration sql scripts and update the database found during runtime to reflect the expected structure
 diesel_migrations = { version = "^2.3" }
 
+# safe f64 -> integer conversions (ToPrimitive) for timestamp formatting
+# without `as` casts; already in the tree via libp2p/gossipsub.
+num-traits = "0.2"
+
 # feature set copied from chat example
 libp2p = { version = "=0.57.0", features = [
     "tokio",

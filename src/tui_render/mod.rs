@@ -163,19 +163,13 @@ pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSt
 }
 
 /// Render popup
-#[allow(
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::arithmetic_side_effects
-)]
 pub fn render_popup(f: &mut ratatui::Frame, text: String) {
     let area = f.area();
-    let w = (f32::from(area.width) * 0.70) as u16;
-    let h = (f32::from(area.height) * 0.40) as u16;
+    let w = area.width.saturating_mul(70) / 100;
+    let h = area.height.saturating_mul(40) / 100;
     let popup = Rect {
-        x: area.x + (area.width.saturating_sub(w)) / 2,
-        y: area.y + (area.height.saturating_sub(h)) / 2,
+        x: area.x.saturating_add(area.width.saturating_sub(w) / 2),
+        y: area.y.saturating_add(area.height.saturating_sub(h) / 2),
         width: w.max(20).min(area.width),
         height: h.max(6).min(area.height),
     };

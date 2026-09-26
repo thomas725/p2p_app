@@ -128,7 +128,6 @@ pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
@@ -136,7 +135,7 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
         .filter(crate::generated::schema::messages::is_direct.eq(0))
         .order_by(crate::generated::schema::messages::created_at.desc())
         .then_order_by(crate::generated::schema::messages::id.desc())
-        .limit(limit as i64)
+        .limit(crate::usize_limit_to_i64(limit))
         .select(Message::as_select())
         .load(conn)?;
     Ok(msgs)
@@ -146,7 +145,6 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
     let msgs = messages
@@ -154,7 +152,7 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
         .filter(crate::generated::schema::messages::is_direct.eq(1))
         .order_by(crate::generated::schema::messages::created_at.asc())
         .then_order_by(crate::generated::schema::messages::id.asc())
-        .limit(limit as i64)
+        .limit(crate::usize_limit_to_i64(limit))
         .select(Message::as_select())
         .load(conn)?;
     Ok(msgs)

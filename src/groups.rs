@@ -410,7 +410,6 @@ pub fn latest_group_sent_at(group_id: &str) -> color_eyre::Result<Option<f64>> {
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_group_messages_after(
     group_id: &str,
     after: f64,
@@ -423,7 +422,7 @@ pub fn load_group_messages_after(
         .filter(group_messages::sent_at.gt(after))
         .order_by(group_messages::sent_at.asc())
         .then_order_by(group_messages::id.asc())
-        .limit(limit as i64)
+        .limit(crate::usize_limit_to_i64(limit))
         .select(GroupMessage::as_select())
         .load(conn)
         .wrap_err("failed to load backfill history")
@@ -433,14 +432,13 @@ pub fn load_group_messages_after(
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::as_conversions, clippy::cast_possible_wrap)]
 pub fn load_group_messages(group_id: &str, limit: usize) -> color_eyre::Result<Vec<GroupMessage>> {
     let conn = &mut crate::sqlite_connect()?;
     group_messages::table
         .filter(group_messages::group_id.eq(group_id))
         .order_by(group_messages::created_at.desc())
         .then_order_by(group_messages::id.desc())
-        .limit(limit as i64)
+        .limit(crate::usize_limit_to_i64(limit))
         .select(GroupMessage::as_select())
         .load(conn)
         .wrap_err("failed to load group messages")

@@ -3182,6 +3182,7 @@ dependencies = [
  "libp2p",
  "libp2p-identity",
  "libsqlite3-sys",
+ "num-traits",
  "petname",
  "ratatui",
  "ratatui-textarea",

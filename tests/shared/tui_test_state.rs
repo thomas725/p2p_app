@@ -4,8 +4,6 @@
 // must be explicitly allowed here.
 #![allow(
     clippy::arithmetic_side_effects,
-    clippy::as_conversions,
-    clippy::cast_possible_truncation,
     clippy::indexing_slicing,
     clippy::missing_const_for_fn
 )]
@@ -96,14 +94,16 @@ impl TuiTestState {
             return None;
         }
 
-        let content_width = (self.terminal_width as u16).saturating_sub(4);
+        let content_width = u16::try_from(self.terminal_width)
+            .unwrap_or(0)
+            .saturating_sub(4);
         let clicked_row_in_list = row - first_msg_row;
 
         let mut current_row: u16 = 0;
         for msg_idx in self.chat_list_state_offset..self.messages.len() {
             let msg = &self.messages[msg_idx];
-            let manual_breaks = msg.matches('\n').count() as u16;
-            let wrapped_lines = ((msg.len() as u16) / content_width)
+            let manual_breaks = u16::try_from(msg.matches('\n').count()).unwrap_or(0);
+            let wrapped_lines = (u16::try_from(msg.len()).unwrap_or(0) / content_width)
                 .saturating_add(1)
                 .max(1);
             let msg_lines = manual_breaks + wrapped_lines;
@@ -142,7 +142,7 @@ impl TuiTestState {
     /// Handle tab click event
     pub fn handle_tab_click(&mut self, row: u16) {
         self.active_tab = match row {
-            0..=2 => (row / 3) as usize,
+            0..=2 => usize::from(row / 3),
             _ => self.active_tab,
         };
     }

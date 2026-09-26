@@ -151,7 +151,7 @@ pub use tui_tabs::{DmTab, DynamicTabs, TabContent};
 pub use tui_test_state::{NotificationTarget, TuiTestState};
 pub use types::{
     AutoScrollFlags, DisplayMessage, GroupMessageEvent, InputMode, MessageEvent, PeerRecord,
-    StringMap, StringSet, SwarmCommand, SwarmEvent,
+    StringMap, StringSet, SwarmCommand, SwarmEvent, usize_limit_to_i64,
 };
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};

@@ -36,14 +36,12 @@ impl NetworkSize {
     /// `NetworkSize` classification for configuring gossipsub behavior
     #[must_use]
     pub const fn from_peer_count(avg: f64) -> Self {
-        // SAFETY: average peer counts are small non-negative values, so the
-        // f64 -> i32 conversion cannot truncate meaningful data.
-        #[allow(clippy::as_conversions, clippy::cast_possible_truncation)]
-        let avg = avg as i32;
-        match avg {
-            0..=3 => Self::Small,
-            4..=15 => Self::Medium,
-            _ => Self::Large,
+        if avg < 4.0 {
+            Self::Small
+        } else if avg < 16.0 {
+            Self::Medium
+        } else {
+            Self::Large
         }
     }
 }

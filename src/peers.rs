@@ -222,10 +222,8 @@ pub fn get_average_peer_count() -> color_eyre::Result<f64> {
     if sessions.is_empty() {
         return Ok(0.0);
     }
-    let sum: i64 = sessions.iter().map(|&c| i64::from(c)).sum();
-    #[allow(clippy::as_conversions, clippy::cast_precision_loss)]
-    let avg = sum as f64 / sessions.len() as f64;
-    Ok(avg)
+    let sum: f64 = sessions.iter().map(|&c| f64::from(c)).sum();
+    Ok(sum / f64::from(u32::try_from(sessions.len()).unwrap_or(u32::MAX)))
 }
 
 /// Record that a broadcast we sent was transmitted to each of `peer_ids`.
