@@ -111,8 +111,7 @@ impl DynamicTabs {
 
     /// Count of active group-chat tabs
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn group_tab_count(&self) -> usize {
+    pub const fn group_tab_count(&self) -> usize {
         self.group_tabs.len()
     }
 
@@ -161,8 +160,7 @@ impl DynamicTabs {
 
     /// Count of active DM tabs
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn dm_tab_count(&self) -> usize {
+    pub const fn dm_tab_count(&self) -> usize {
         self.dm_tabs.len()
     }
 
@@ -219,8 +217,7 @@ impl DynamicTabs {
 
     /// Count of active peer-info tabs
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn peer_info_tab_count(&self) -> usize {
+    pub const fn peer_info_tab_count(&self) -> usize {
         self.peer_info_tabs.len()
     }
 
@@ -296,8 +293,7 @@ impl DynamicTabs {
     /// Total count of tabs including Chat, Peers, Groups, group chats, DMs,
     /// Info, Log, and Settings
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn total_tab_count(&self) -> usize {
+    pub const fn total_tab_count(&self) -> usize {
         self.group_tabs
             .len()
             .saturating_add(self.dm_tabs.len())
@@ -340,8 +336,7 @@ impl TabContent {
 
     /// Check if this tab allows text input
     #[must_use]
-    #[allow(clippy::missing_const_for_fn)]
-    pub fn is_input_enabled(&self) -> bool {
+    pub const fn is_input_enabled(&self) -> bool {
         matches!(self, Self::Chat | Self::Direct(_) | Self::GroupChat(_))
     }
 }

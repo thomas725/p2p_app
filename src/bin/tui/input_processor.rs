@@ -19,8 +19,7 @@ fn update_dm_transcript_labels(
 }
 
 /// Pure: flip the mouse capture flag. Returns the new state.
-#[allow(clippy::missing_const_for_fn)]
-fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
+const fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
     state.mouse_capture = !state.mouse_capture;
     state.mouse_capture
 }

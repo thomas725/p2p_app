@@ -162,8 +162,7 @@ fn apply_group_message_to_state(
 }
 
 /// State mutation: increment connected peer count. Returns new count.
-#[allow(clippy::missing_const_for_fn)]
-fn apply_peer_connected_count(state: &mut AppState) -> usize {
+const fn apply_peer_connected_count(state: &mut AppState) -> usize {
     state.concurrent_peers = state.concurrent_peers.saturating_add(1);
     state.concurrent_peers
 }
@@ -200,8 +199,7 @@ fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str,
 }
 
 /// State mutation: decrement connected peer count. Returns new count.
-#[allow(clippy::missing_const_for_fn)]
-fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
+const fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
     state.concurrent_peers = state.concurrent_peers.saturating_sub(1);
     state.concurrent_peers
 }

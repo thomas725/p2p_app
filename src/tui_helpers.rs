@@ -59,8 +59,7 @@ pub const PAGE_SIZE: usize = 8;
 pub const WHEEL_SCROLL_LINES: usize = 3;
 
 /// Disables auto-scroll and sets offset to max if auto-scroll was enabled
-#[allow(clippy::missing_const_for_fn)]
-pub fn disable_auto_scroll_to_max(
+pub const fn disable_auto_scroll_to_max(
     auto_scroll: &mut bool,
     scroll_offset: &mut usize,
     max_offset: usize,
@@ -72,8 +71,7 @@ pub fn disable_auto_scroll_to_max(
 }
 
 /// Scroll up by one line or page
-#[allow(clippy::missing_const_for_fn)]
-pub fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
+pub const fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
     *scroll_offset = scroll_offset.saturating_sub(lines);
 }
 
@@ -93,8 +91,7 @@ pub fn scroll_down_lines(
 
 /// Convert crossterm `KeyCode` to scroll action string
 #[must_use]
-#[allow(clippy::missing_const_for_fn)]
-pub fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
+pub const fn key_code_to_scroll_action(key_code: crossterm::event::KeyCode) -> Option<&'static str> {
     match key_code {
         crossterm::event::KeyCode::Up => Some("Up"),
         crossterm::event::KeyCode::Down => Some("Down"),
@@ -598,7 +595,6 @@ pub fn peer_table_visible_range(
 
 /// Sort-direction indicator shown on the active peers-table column header.
 #[must_use]
-#[allow(clippy::missing_const_for_fn)]
 pub const fn peer_sort_indicator(ascending: bool) -> &'static str {
     if ascending { " ▲" } else { " ▼" }
 }

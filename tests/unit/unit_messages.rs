@@ -66,7 +66,6 @@ fn save_message_with_meta_persists_fields() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)]
 #[serial(db)]
 fn save_receipt_upserts_same_key() {
     with_test_db(|| {
@@ -78,7 +77,7 @@ fn save_receipt_upserts_same_key() {
             .filter(|r| r.msg_id == "msg-2" && r.peer_id == "peer-z" && r.kind == 1)
             .collect();
         assert_eq!(matching.len(), 1);
-        assert_eq!(matching[0].confirmed_at, 20.0);
+        assert!((matching[0].confirmed_at - 20.0).abs() < f64::EPSILON);
     });
 }
 

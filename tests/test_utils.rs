@@ -19,11 +19,11 @@
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
 
-/// Acquire this lock before opening a `SQLite` DB in tests. Tests that share a
-/// deterministic on-disk layout (e.g. relying on the default path-selection)
-/// serialise here; tests using [`with_test_db`] are already isolated by their
-/// own thread-local database URL.
-#[allow(clippy::too_long_first_doc_paragraph)]
+/// Acquire this lock before opening a `SQLite` DB in tests.
+///
+/// Tests that share a deterministic on-disk layout (e.g. relying on the
+/// default path-selection) serialise here; tests using [`with_test_db`] are
+/// already isolated by their own thread-local database URL.
 pub fn test_db_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
@@ -34,7 +34,11 @@ pub fn test_db_lock() -> &'static Mutex<()> {
 /// Creates a temp dir, points the current thread's database URL at a fresh
 /// `SQLite` file inside it, runs migrations, invokes `f`, then cleans up and
 /// resets the thread-local URL so subsequent tests start clean.
-#[allow(clippy::missing_panics_doc)]
+///
+/// # Panics
+///
+/// Panics if the temp dir cannot be created or the database cannot be
+/// initialised for the test run.
 pub fn with_test_db(f: impl FnOnce()) {
     let _guard = test_db_lock()
         .lock()

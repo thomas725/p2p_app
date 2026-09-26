@@ -956,8 +956,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)]
-fn default_event() -> SwarmEventJson {
+const fn default_event() -> SwarmEventJson {
     SwarmEventJson {
         event_type: String::new(),
         peer_id: None,

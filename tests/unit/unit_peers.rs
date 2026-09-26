@@ -42,24 +42,22 @@ fn load_known_peers_includes_message_only_peer() {
 }
 
 #[test]
-#[allow(clippy::float_cmp)]
 #[serial(db)]
 fn average_peer_count_is_zero_when_no_sessions() {
     with_test_db(|| {
         let avg = get_average_peer_count().expect("avg");
-        assert_eq!(avg, 0.0);
+        assert!(avg.abs() < f64::EPSILON);
     });
 }
 
 #[test]
-#[allow(clippy::float_cmp)]
 #[serial(db)]
 fn record_peer_session_feeds_average_count() {
     with_test_db(|| {
         record_peer_session(1).expect("record 1");
         record_peer_session(3).expect("record 3");
         let avg = get_average_peer_count().expect("avg");
-        assert_eq!(avg, 2.0);
+        assert!((avg - 2.0).abs() < f64::EPSILON);
     });
 }
 

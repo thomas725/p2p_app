@@ -264,7 +264,6 @@ fn test_mark_message_sent() {
 // ── save_receipt / load_receipts ──────────────────────────────────────────────
 
 #[serial]
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_save_and_load_receipt() {
     with_test_db(|| {
@@ -275,12 +274,11 @@ fn test_save_and_load_receipt() {
         assert_eq!(receipts[0].msg_id, "msg-r1");
         assert_eq!(receipts[0].peer_id, "peer-r1");
         assert_eq!(receipts[0].kind, 0);
-        assert_eq!(receipts[0].confirmed_at, 1234.5);
+        assert!((receipts[0].confirmed_at - 1234.5).abs() < f64::EPSILON);
     });
 }
 
 #[serial]
-#[allow(clippy::float_cmp)]
 #[test]
 fn test_save_receipt_upsert() {
     with_test_db(|| {
@@ -289,7 +287,7 @@ fn test_save_receipt_upsert() {
 
         let receipts = p2p_app::load_receipts().unwrap();
         assert_eq!(receipts.len(), 1);
-        assert_eq!(receipts[0].confirmed_at, 200.0);
+        assert!((receipts[0].confirmed_at - 200.0).abs() < f64::EPSILON);
     });
 }
 

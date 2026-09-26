@@ -49,8 +49,7 @@ struct TestNode {
     listen_addr: Option<Multiaddr>,
 }
 
-#[allow(clippy::unused_async)]
-async fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
+fn create_node() -> Result<TestNode, Box<dyn std::error::Error>> {
     let keypair = identity::Keypair::generate_ed25519();
     let peer_id = keypair.public().to_peer_id();
 
@@ -228,8 +227,8 @@ async fn connect_nodes(
 #[tokio::test]
 async fn test_p2p_message_transfer() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -267,8 +266,8 @@ async fn test_p2p_message_transfer() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -327,8 +326,8 @@ async fn test_bidirectional_messages() -> Result<(), Box<dyn std::error::Error>>
 #[allow(clippy::too_many_lines)]
 async fn test_auto_discovery_via_mdns() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     node_a.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
     node_b.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
@@ -547,8 +546,7 @@ struct NodeWithDB {
     peer_id: libp2p::PeerId,
 }
 
-#[allow(clippy::unused_async)]
-async fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::error::Error>> {
+fn create_node_with_db(db_path: &str) -> Result<NodeWithDB, Box<dyn std::error::Error>> {
     let _ = std::fs::remove_file(db_path);
 
     let keypair = identity::Keypair::generate_ed25519();
@@ -624,7 +622,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     let _ = std::fs::remove_file(db_path_1);
     let _ = std::fs::remove_file(db_path_2);
 
-    let mut node_a = create_node_with_db(db_path_1).await?;
+    let mut node_a = create_node_with_db(db_path_1)?;
     let peer_a = node_a.peer_id;
 
     node_a.swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
@@ -659,7 +657,7 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     eprintln!("Stale address for DB: {stale_addr}");
     save_stale_peer_to_db(db_path_2, &peer_a.to_string(), &stale_addr)?;
 
-    let mut node_b = create_node_with_db(db_path_2).await?;
+    let mut node_b = create_node_with_db(db_path_2)?;
     let peer_b = node_b.peer_id;
 
     eprintln!("Node B will try stale address: {stale_addr}");
@@ -765,8 +763,8 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
 #[tokio::test]
 async fn test_two_peers_exchange_broadcast() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -799,8 +797,8 @@ async fn test_two_peers_exchange_broadcast() -> Result<(), Box<dyn std::error::E
 #[tokio::test]
 async fn test_mdns_peer_discovery() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -823,8 +821,8 @@ async fn test_mdns_peer_discovery() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn test_gossipsub_deduplication() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -878,8 +876,8 @@ async fn test_gossipsub_deduplication() -> Result<(), Box<dyn std::error::Error>
 #[tokio::test]
 async fn test_broadcast_flow_from_sender_to_receiver() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -924,8 +922,8 @@ async fn test_broadcast_flow_from_sender_to_receiver() -> Result<(), Box<dyn std
 async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn std::error::Error>>
 {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 
@@ -980,8 +978,8 @@ async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn 
 #[tokio::test]
 async fn test_nickname_in_message_flow() -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
-    let mut node_a = create_node().await?;
-    let mut node_b = create_node().await?;
+    let mut node_a = create_node()?;
+    let mut node_b = create_node()?;
 
     connect_nodes(&mut node_a, &mut node_b).await?;
 

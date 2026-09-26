@@ -12,7 +12,6 @@
     clippy::todo,
     clippy::unimplemented
 )]
-#![allow(clippy::match_wildcard_for_single_variants)]
 
 #[test]
 fn test_message_meta_serialization() {
@@ -73,7 +72,11 @@ fn test_swarm_command_variants() {
         SwarmCommand::Publish { content, .. } => {
             assert_eq!(content, "test content");
         }
-        _ => panic!("Expected Publish"),
+        SwarmCommand::SendDm { .. }
+        | SwarmCommand::PublishGroup { .. }
+        | SwarmCommand::SubscribeGroup { .. }
+        | SwarmCommand::UnsubscribeGroup { .. }
+        | SwarmCommand::SendDeviceBinding { .. } => panic!("Expected Publish"),
     }
 
     // Test SendDm

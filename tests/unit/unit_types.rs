@@ -170,7 +170,7 @@ fn test_swarm_event_peer_expired() {
 #[allow(clippy::redundant_clone)]
 fn test_swarm_event_clone() {
     let event = SwarmEvent::PeerConnected("peer1".to_string());
-    let cloned = event.clone();
+    let cloned = Clone::clone(&event);
     match cloned {
         SwarmEvent::PeerConnected(id) => assert_eq!(id, "peer1"),
         _ => panic!("expected PeerConnected"),
@@ -185,7 +185,7 @@ fn test_swarm_command_clone() {
         nickname: None,
         msg_id: None,
     };
-    let cloned = cmd.clone();
+    let cloned = Clone::clone(&cmd);
     match cloned {
         SwarmCommand::Publish { content, .. } => assert_eq!(content, "test"),
         SwarmCommand::SendDm { .. }

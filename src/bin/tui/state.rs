@@ -448,7 +448,6 @@ type FormattedMessages = (VecDeque<p2p_app::DisplayMessage>, VecDeque<Option<Str
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
 #[allow(clippy::type_complexity)]
-#[allow(clippy::option_if_let_else)]
 fn format_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
     local_nicknames: &HashMap<String, String>,
@@ -459,13 +458,13 @@ fn format_messages_from_db(
     let mut message_ids = VecDeque::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
-        let sender = if let Some(ref nick) = msg.sender_nickname {
-            format!("[{nick}]")
-        } else if let Some(ref pid) = msg.peer_id {
-            let display = p2p_app::peer_display_name(pid, local_nicknames, received_nicknames);
-            format!("[{display}]")
-        } else {
-            format!("[{own_nickname}]")
+        let sender = match (msg.sender_nickname.as_ref(), msg.peer_id.as_ref()) {
+            (Some(nick), _) => format!("[{nick}]"),
+            (None, Some(pid)) => {
+                let display = p2p_app::peer_display_name(pid, local_nicknames, received_nicknames);
+                format!("[{display}]")
+            }
+            (None, None) => format!("[{own_nickname}]"),
         };
         messages.push_back(p2p_app::DisplayMessage {
             text: format!("{ts} {sender} {}", msg.content),

@@ -446,6 +446,8 @@ fn test_tui_peer_display_limit() {
 
 #[test]
 fn test_tui_peer_deduplication_with_limit() {
+    const MAX_PEERS: usize = 10000;
+
     // Simulate loading peers from database with many duplicates
     let mut peers: VecDeque<p2p_app::PeerRecord> = VecDeque::new();
     let mut seen_ids = std::collections::HashSet::new();
@@ -460,9 +462,6 @@ fn test_tui_peer_deduplication_with_limit() {
         ("peer2", "2024-01-02", "2024-01-04"), // duplicate - should skip
         ("peer4", "2024-01-01", "2024-01-01"),
     ];
-
-    #[allow(clippy::items_after_statements)]
-    const MAX_PEERS: usize = 10000;
 
     // Deduplicate first, then apply limit
     for (id, first_seen, last_seen) in db_entries {
