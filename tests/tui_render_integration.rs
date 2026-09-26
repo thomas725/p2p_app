@@ -918,7 +918,7 @@ fn test_get_tab_content_different_tabs() {
 #[test]
 fn test_state_connected_default() {
     let state = p2p_app::tui_render_state::TuiRenderState::new();
-    assert!(state.connected);
+    assert!(state.runtime.connected);
     assert_eq!(state.peer_count, 0);
 }
 
@@ -941,10 +941,10 @@ fn test_state_input_text() {
 #[test]
 fn test_state_editing_nickname() {
     let mut state = p2p_app::tui_render_state::TuiRenderState::new();
-    assert!(!state.editing_nickname);
-    state.editing_nickname = true;
+    assert!(!state.is_editing_nickname());
+    state.input_mode = p2p_app::InputMode::EditingNickname;
     state.nickname_peer_id = "peer-1".to_string();
-    assert!(state.editing_nickname);
+    assert!(state.is_editing_nickname());
     assert_eq!(state.nickname_peer_id, "peer-1");
 }
 
@@ -952,7 +952,7 @@ fn test_state_editing_nickname() {
 fn test_state_scroll_defaults() {
     let state = p2p_app::tui_render_state::TuiRenderState::new();
     assert_eq!(state.chat_scroll_offset, 0);
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
 }
 
 #[test]
@@ -967,7 +967,7 @@ fn test_state_peer_selection() {
 fn test_state_with_sample_data_extra() {
     let state = p2p_app::tui_render_state::TuiRenderState::with_sample_data();
     assert_eq!(state.tab_titles.len(), 4);
-    assert!(state.connected);
+    assert!(state.runtime.connected);
 }
 
 #[test]
@@ -976,5 +976,5 @@ fn test_state_default_equals_new() {
     let b = p2p_app::tui_render_state::TuiRenderState::new();
     assert_eq!(a.tab_titles, b.tab_titles);
     assert_eq!(a.active_tab, b.active_tab);
-    assert_eq!(a.connected, b.connected);
+    assert_eq!(a.runtime.connected, b.runtime.connected);
 }

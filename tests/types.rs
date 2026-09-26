@@ -460,7 +460,7 @@ mod tui_tests {
         assert_eq!(state.active_tab, 0);
         assert!(state.messages.is_empty());
         assert!(state.peers.is_empty());
-        assert!(state.connected);
+        assert!(state.runtime.connected);
     }
 
     #[test]

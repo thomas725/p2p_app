@@ -51,9 +51,9 @@ async fn test_nav_resets_scroll_offset() {
 #[tokio::test]
 async fn test_nav_cancels_nickname_edit() {
     let mut state = test_app_state();
-    state.editing_nickname = true;
+    state.input_mode = p2p_app::InputMode::EditingNickname;
     handle_navigation_key(KeyCode::Tab, &mut state).await;
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
 }
 
 #[tokio::test]
@@ -219,16 +219,16 @@ fn test_compute_peer_selection_other_key_noop() {
 #[test]
 fn test_scroll_chat_down() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     scroll_chat_tab(KeyCode::Down, &mut state);
     assert_eq!(state.chat_scroll_offset, 1);
-    assert!(!state.chat_auto_scroll);
+    assert!(!state.auto_scroll.chat);
 }
 
 #[test]
 fn test_scroll_chat_up() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     state.chat_scroll_offset = 3;
     scroll_chat_tab(KeyCode::Up, &mut state);
     assert_eq!(state.chat_scroll_offset, 2);
@@ -244,7 +244,7 @@ fn test_scroll_chat_no_scroll_when_no_messages() {
 #[test]
 fn test_scroll_chat_pgdn() {
     let mut state = app_state_with_chat_messages(20);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     // PAGE_SIZE = 8
     scroll_chat_tab(KeyCode::PageDown, &mut state);
     assert_eq!(state.chat_scroll_offset, 8);
@@ -268,41 +268,41 @@ fn test_scroll_chat_end() {
 #[test]
 fn test_scroll_chat_end_clears_unread() {
     let mut state = app_state_with_chat_messages(20);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     state.chat_unread_count = 3;
     scroll_chat_tab(KeyCode::End, &mut state);
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
     assert_eq!(state.chat_unread_count, 0);
 }
 
 #[test]
 fn test_scroll_chat_up_keeps_unread() {
     let mut state = app_state_with_chat_messages(20);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     state.chat_unread_count = 2;
     scroll_chat_tab(KeyCode::Up, &mut state);
-    assert!(!state.chat_auto_scroll);
+    assert!(!state.auto_scroll.chat);
     assert_eq!(state.chat_unread_count, 2);
 }
 
 #[test]
 fn test_scroll_chat_auto_scroll_stays_at_bottom_on_down() {
     let mut state = app_state_with_chat_messages(10);
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
     scroll_chat_tab(KeyCode::Down, &mut state);
     // auto_scroll = true -> Down: disable_auto sets offset=max, then scroll down keeps at max
     assert_eq!(state.chat_scroll_offset, 9);
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
 }
 
 #[test]
 fn test_scroll_chat_up_disables_auto_scroll() {
     let mut state = app_state_with_chat_messages(10);
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
     scroll_chat_tab(KeyCode::Up, &mut state);
     // Up from auto-scrolled: disable_auto sets offset=max=9, auto=false; then scroll_up to 8
     assert_eq!(state.chat_scroll_offset, 8);
-    assert!(!state.chat_auto_scroll);
+    assert!(!state.auto_scroll.chat);
 }
 
 // ── scroll_log_tab ──────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ async fn test_log_scroll_all() {
     p2p_app::push_log("c".to_string());
     let log_len = p2p_app::get_tui_logs().len();
     assert!(log_len >= pre_len + 3);
-    state.log_auto_scroll = false;
+    state.auto_scroll.log = false;
     scroll_log_tab(KeyCode::Down, &mut state);
     assert_eq!(state.log_scroll_offset, 1);
     // up
@@ -333,14 +333,14 @@ async fn test_log_scroll_all() {
     // WHEEL_SCROLL_LINES.
     let mut state2 = test_app_state();
     p2p_app::push_log("log".to_string());
-    state2.log_auto_scroll = true;
+    state2.auto_scroll.log = true;
     mouse_scroll_log_tab(&mut state2, "up");
-    assert!(!state2.log_auto_scroll);
+    assert!(!state2.auto_scroll.log);
 
     for i in 0..10 {
         p2p_app::push_log(format!("log {i}"));
     }
-    state2.log_auto_scroll = false;
+    state2.auto_scroll.log = false;
     state2.log_scroll_offset = 0;
     mouse_scroll_log_tab(&mut state2, "down");
     assert_eq!(state2.log_scroll_offset, 3);
@@ -348,7 +348,7 @@ async fn test_log_scroll_all() {
     // handle_scroll_key dispatch to log tab
     let mut state3 = test_app_state();
     p2p_app::push_log("log entry".to_string());
-    state3.log_auto_scroll = false;
+    state3.auto_scroll.log = false;
     state3.active_tab = 3; // Log tab (after Chat, Peers, Groups)
     handle_scroll_key(KeyCode::Down, &mut state3).await;
     assert_eq!(state3.log_scroll_offset, 1);
@@ -359,7 +359,7 @@ async fn test_log_scroll_all() {
         p2p_app::push_log(format!("log {i}"));
     }
     state4.active_tab = 3; // Log tab
-    state4.log_auto_scroll = false;
+    state4.auto_scroll.log = false;
     handle_mouse_scroll(&mut state4, "down", None);
     assert_eq!(state4.log_scroll_offset, 3);
 }
@@ -369,9 +369,9 @@ async fn test_log_scroll_all() {
 #[test]
 fn test_mouse_scroll_chat_up_disables_auto_scroll() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     mouse_scroll_chat_tab(&mut state, "up");
-    assert!(!state.chat_auto_scroll);
+    assert!(!state.auto_scroll.chat);
 }
 
 #[test]
@@ -379,20 +379,20 @@ fn test_mouse_scroll_chat_up_from_auto_anchors_at_bottom() {
     // Wheel up while auto-scrolled anchors at the bottom (max offset 9 for a
     // zero-height, single-line list) and then steps up by WHEEL_SCROLL_LINES.
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = true;
+    state.auto_scroll.chat = true;
     mouse_scroll_chat_tab(&mut state, "up");
-    assert!(!state.chat_auto_scroll);
+    assert!(!state.auto_scroll.chat);
     assert_eq!(state.chat_scroll_offset, 6);
 }
 
 #[test]
 fn test_mouse_scroll_chat_down_to_bottom_reenables_auto_and_clears_unread() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     state.chat_scroll_offset = 8;
     state.chat_unread_count = 4;
     mouse_scroll_chat_tab(&mut state, "down");
-    assert!(state.chat_auto_scroll);
+    assert!(state.auto_scroll.chat);
     assert_eq!(state.chat_scroll_offset, 9);
     assert_eq!(state.chat_unread_count, 0);
 }
@@ -400,7 +400,7 @@ fn test_mouse_scroll_chat_down_to_bottom_reenables_auto_and_clears_unread() {
 #[test]
 fn test_mouse_scroll_chat_down() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     mouse_scroll_chat_tab(&mut state, "down");
     assert_eq!(state.chat_scroll_offset, 3);
 }
@@ -408,7 +408,7 @@ fn test_mouse_scroll_chat_down() {
 #[test]
 fn test_mouse_scroll_chat_down_clamps() {
     let mut state = app_state_with_chat_messages(3);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     // max offset = 3 - 1 = 2
     mouse_scroll_chat_tab(&mut state, "down");
     assert_eq!(state.chat_scroll_offset, 2);
@@ -553,7 +553,7 @@ fn test_mouse_scroll_dm_section_empty_list() {
 #[tokio::test]
 async fn test_handle_scroll_key_chat_tab() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     state.active_tab = 0;
     handle_scroll_key(KeyCode::Down, &mut state).await;
     assert_eq!(state.chat_scroll_offset, 1);
@@ -606,7 +606,7 @@ async fn test_handle_scroll_key_dm_tab_dm_section() {
 #[test]
 fn test_handle_mouse_scroll_chat_tab() {
     let mut state = app_state_with_chat_messages(10);
-    state.chat_auto_scroll = false;
+    state.auto_scroll.chat = false;
     handle_mouse_scroll(&mut state, "down", None);
     assert_eq!(state.chat_scroll_offset, 3);
 }

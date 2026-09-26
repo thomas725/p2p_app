@@ -30,13 +30,13 @@ fn test_app_state_to_render_state_defaults() {
     assert!(rs.messages.is_empty());
     assert!(rs.peers.is_empty());
     assert_eq!(rs.input_text, "");
-    assert!(!rs.editing_nickname);
-    assert!(rs.connected);
+    assert!(!rs.is_editing_nickname());
+    assert!(rs.runtime.connected);
     assert_eq!(rs.peer_count, 0);
     assert!(rs.mouse_capture);
     assert_eq!(rs.popup, None);
     assert_eq!(rs.chat_scroll_offset, 0);
-    assert!(rs.chat_auto_scroll);
+    assert!(rs.auto_scroll.chat);
     assert_eq!(rs.peer_selection, 0);
 }
 
@@ -164,10 +164,10 @@ fn test_app_state_to_render_state_input_text() {
 #[test]
 fn test_app_state_to_render_state_editing_nickname() {
     let mut state = app_state();
-    state.editing_nickname = true;
+    state.input_mode = p2p_app::InputMode::EditingNickname;
     state.editing_nickname_peer = Some("peer-edit".to_string());
     let rs = app_state_to_render_state(&state);
-    assert!(rs.editing_nickname);
+    assert!(rs.is_editing_nickname());
     assert_eq!(rs.nickname_peer_id, "peer-edit");
 }
 
@@ -183,12 +183,12 @@ fn test_app_state_to_render_state_popup() {
 fn test_app_state_to_render_state_scroll_and_selection() {
     let mut state = app_state();
     state.chat_scroll_offset = 10;
-    state.chat_auto_scroll = false;
-    state.mouse_capture = false;
+    state.auto_scroll.chat = false;
+    state.env.mouse_capture = false;
 
     let rs = app_state_to_render_state(&state);
     assert_eq!(rs.chat_scroll_offset, 10);
-    assert!(!rs.chat_auto_scroll);
+    assert!(!rs.auto_scroll.chat);
     assert!(!rs.mouse_capture);
 }
 

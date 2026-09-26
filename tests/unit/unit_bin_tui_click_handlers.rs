@@ -330,7 +330,7 @@ fn test_message_click_opens_peer_info_tab() {
     let mut state = test_app_state();
     state.terminal_width = 1000;
     state.chat_area_height = 20;
-    state.chat_auto_scroll = true;
+    state.auto_scroll.chat = true;
     state.chat_scroll_offset = 0;
     state.messages.push_back(p2p_app::DisplayMessage {
         text: "hello from peer".to_string(),
@@ -356,7 +356,7 @@ fn test_message_click_each_message_is_one_row() {
     let mut state = test_app_state();
     state.terminal_width = 20;
     state.chat_area_height = 20;
-    state.chat_auto_scroll = true;
+    state.auto_scroll.chat = true;
     state.chat_scroll_offset = 0;
     // First message is long, but the renderer does not wrap it.
     state.messages.push_back(p2p_app::DisplayMessage {
@@ -384,7 +384,7 @@ fn test_message_click_on_own_message_is_noop() {
     let mut state = test_app_state();
     state.terminal_width = 1000;
     state.chat_area_height = 20;
-    state.chat_auto_scroll = true;
+    state.auto_scroll.chat = true;
     state.chat_scroll_offset = 0;
     state.messages.push_back(p2p_app::DisplayMessage {
         text: "my own message".to_string(),
@@ -403,7 +403,7 @@ fn test_message_click_autoscroll_maps_to_first_visible_peer() {
     let mut state = test_app_state();
     state.terminal_width = 100;
     state.chat_area_height = 10;
-    state.chat_auto_scroll = true;
+    state.auto_scroll.chat = true;
     state.chat_scroll_offset = 0;
     for i in 0..20 {
         let sender = if i % 2 == 0 {

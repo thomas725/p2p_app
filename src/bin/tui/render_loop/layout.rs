@@ -14,9 +14,9 @@ pub fn render_input_section(
     state: &AppState,
     tab_content: &TabContent,
 ) {
-    let title = if state.creating_group {
+    let title = if state.is_creating_group() {
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()
-    } else if state.editing_nickname {
+    } else if state.is_editing_nickname() {
         format!(
             "Edit Nickname ({}) - Enter to save, Esc to cancel",
             p2p_app::short_peer_id(&state.local_peer_id)
@@ -25,7 +25,7 @@ pub fn render_input_section(
         "Input".to_string()
     };
     let input_block = Block::default().title(title).borders(Borders::ALL);
-    if tab_content.is_input_enabled() || state.editing_nickname || state.creating_group {
+    if tab_content.is_input_enabled() || state.is_editing_nickname() || state.is_creating_group() {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);
         let mut textarea = state.chat_input.clone();
@@ -38,7 +38,7 @@ pub fn render_input_section(
 
 /// Render the status bar with connection and mouse mode info
 pub fn render_status_bar(f: &mut Frame, status_area: Rect, state: &AppState) {
-    let mouse_mode = if state.mouse_capture { "ON" } else { "OFF" };
+    let mouse_mode = if state.env.mouse_capture { "ON" } else { "OFF" };
     let connected = state.concurrent_peers > 0 || state.local_peer_id != "unknown";
     let conn = if connected {
         "Connected"

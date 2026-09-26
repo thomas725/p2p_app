@@ -17,7 +17,7 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
 
     let (visible, effective_offset) = calc_visible_list_items(
         &state.messages,
-        state.chat_auto_scroll,
+        state.auto_scroll.chat,
         state.chat_scroll_offset,
         usable_height,
     );

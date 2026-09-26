@@ -19,6 +19,30 @@ pub type StringMap<V> =
 /// [`RandomState`]: std::collections::hash_map::RandomState
 pub type StringSet = std::collections::HashSet<String, std::collections::hash_map::RandomState>;
 
+/// What the shared single-line text input is currently capturing.
+///
+/// The TUI state (`AppState`) and the render-state mirror (`TuiRenderState`)
+/// agree on this so input gates and hints behave identically in both layers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum InputMode {
+    /// Ordinary chat/command input for the active tab.
+    #[default]
+    Chat,
+    /// Capturing a nickname edit (own nickname or a DM partner's).
+    EditingNickname,
+    /// Capturing a group name for create/join on the Groups tab.
+    CreatingGroup,
+}
+
+/// Per-tab "keep scrolled to the newest message" toggles.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AutoScrollFlags {
+    /// Broadcast chat tab.
+    pub chat: bool,
+    /// Log tab.
+    pub log: bool,
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_types.rs"]
 mod tests;

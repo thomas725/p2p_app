@@ -320,7 +320,7 @@ fn handle_message_click(
             let usable_height = state.chat_area_height;
             let (visible, start) = p2p_app::calc_visible_list_items(
                 &strings,
-                state.chat_auto_scroll,
+                state.auto_scroll.chat,
                 state.chat_scroll_offset,
                 usable_height,
             );

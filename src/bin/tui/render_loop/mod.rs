@@ -98,18 +98,17 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         dm_receipts: state.dm_receipts.clone(),
         input_text: state.chat_input.lines().join("\n"),
         log_messages: get_tui_logs().into_iter().collect(),
-        editing_nickname: state.editing_nickname,
+        input_mode: state.input_mode,
         nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
-        connected: true,
         peer_count: state.connected.len(),
-        mouse_capture: state.mouse_capture,
-        kitty_keyboard_active: state.kitty_keyboard_active,
+        mouse_capture: state.env.mouse_capture,
+        kitty_keyboard_active: state.env.kitty_keyboard_active,
         popup: render_popup_text(state),
         chat_scroll_offset: state.chat_scroll_offset,
-        chat_auto_scroll: state.chat_auto_scroll,
+        auto_scroll: state.auto_scroll,
         chat_unread_count: state.chat_unread_count,
         log_scroll_offset: state.log_scroll_offset,
-        log_auto_scroll: state.log_auto_scroll,
+
         dm_scroll_state: state
             .dm_scroll_state
             .iter()
@@ -142,7 +141,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
             .map(|(k, v)| (k.clone(), *v))
             .collect(),
         group_selection: state.group_selection,
-        creating_group: state.creating_group,
+
         peer_selection: state.peer_selection,
         peer_sort_column: state.peer_sort_column,
         peer_sort_ascending: state.peer_sort_ascending,
@@ -154,7 +153,10 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         listen_addrs: state.listen_addrs.clone(),
         last_connection_lost,
         last_connection_peer,
-        node_running: true,
+        runtime: p2p_app::tui_render_state::RuntimeStatus {
+            connected: true,
+            node_running: true,
+        },
         own_user_id: state.own_user_id.clone(),
         own_user_devices: state.own_user_devices.clone(),
         local_nicknames: state.local_nicknames.clone(),
@@ -257,7 +259,7 @@ fn render_frame(f: &mut Frame, state: &AppState) {
         f,
         chunks.get(3).copied().unwrap_or_default(),
         &tab_content,
-        state.kitty_keyboard_active,
+        state.env.kitty_keyboard_active,
     );
     layout::render_status_bar(f, chunks.get(4).copied().unwrap_or_default(), state);
 
@@ -282,7 +284,7 @@ pub fn spawn_render_loop(
                 // known peer's display name once so the library's name cache
                 // is warm and switching sort columns never pays a per-peer DB
                 // lookup.
-                if !s.peer_names_warmed
+                if !s.env.peer_names_warmed
                     && matches!(
                         s.dynamic_tabs.tab_index_to_content(s.active_tab),
                         TabContent::Contacts
@@ -291,7 +293,7 @@ pub fn spawn_render_loop(
                     for p in &s.peers {
                         let _ = p2p_app::get_peer_display_name(&p.peer_id);
                     }
-                    s.peer_names_warmed = true;
+                    s.env.peer_names_warmed = true;
                 }
                 render_frame(f, &s);
             });

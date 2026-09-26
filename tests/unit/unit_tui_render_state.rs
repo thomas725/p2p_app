@@ -14,10 +14,10 @@ fn test_tui_render_state_default() {
 #[test]
 fn test_tui_render_state_new() {
     let state = TuiRenderState::new();
-    assert!(state.connected);
+    assert!(state.runtime.connected);
     assert!(!state.mouse_capture);
     assert!(state.popup.is_none());
-    assert!(state.log_auto_scroll);
+    assert!(state.auto_scroll.log);
     assert_eq!(state.log_scroll_offset, 0);
 }
 

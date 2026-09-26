@@ -95,23 +95,26 @@ fn test_close_dm_tab_noop_on_chat_tab() {
 #[test]
 fn test_flip_mouse_capture_toggles_on() {
     let mut state = test_app_state();
-    state.mouse_capture = false;
+    state.env.mouse_capture = false;
     assert!(flip_mouse_capture_state(&mut state));
-    assert!(state.mouse_capture);
+    assert!(state.env.mouse_capture);
 }
 
 #[test]
 fn test_flip_mouse_capture_toggles_off() {
     let mut state = test_app_state();
-    state.mouse_capture = true;
+    state.env.mouse_capture = true;
     assert!(!flip_mouse_capture_state(&mut state));
-    assert!(!state.mouse_capture);
+    assert!(!state.env.mouse_capture);
 }
 
 #[test]
 fn test_flip_mouse_capture_returns_new_state() {
     let mut state = test_app_state();
-    assert_eq!(flip_mouse_capture_state(&mut state), state.mouse_capture);
+    assert_eq!(
+        flip_mouse_capture_state(&mut state),
+        state.env.mouse_capture
+    );
 }
 
 #[tokio::test]
@@ -329,11 +332,11 @@ async fn test_enter_without_text_does_not_send() {
 #[test]
 fn test_toggle_mouse_capture_toggles_state() {
     let mut state = test_app_state();
-    state.mouse_capture = false;
+    state.env.mouse_capture = false;
     toggle_mouse_capture(&mut state);
-    assert!(state.mouse_capture);
+    assert!(state.env.mouse_capture);
     toggle_mouse_capture(&mut state);
-    assert!(!state.mouse_capture);
+    assert!(!state.env.mouse_capture);
 }
 
 // ── handle_enter_key ──────────────────────────────────────────────────
@@ -444,7 +447,7 @@ async fn test_bare_tab_in_direct_tab_navigates_on_kitty_and_nonkitty() {
     {
         let mut s = state.lock().await;
         s.active_tab = 3; // Direct tab for "peer-dm"
-        s.kitty_keyboard_active = false; // collapsed (non-kitty) terminal
+        s.env.kitty_keyboard_active = false; // collapsed (non-kitty) terminal
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
@@ -486,7 +489,7 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_nonkitty() {
     {
         let mut s = state.lock().await;
         s.active_tab = 3; // Direct tab for "peer-dm"
-        s.kitty_keyboard_active = false; // non-kitty terminal
+        s.env.kitty_keyboard_active = false; // non-kitty terminal
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
@@ -507,7 +510,7 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_kitty() {
     {
         let mut s = state.lock().await;
         s.active_tab = 3; // Direct tab for "peer-dm"
-        s.kitty_keyboard_active = true; // kitty terminal (default)
+        s.env.kitty_keyboard_active = true; // kitty terminal (default)
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
@@ -528,7 +531,7 @@ async fn test_ctrl_p_is_noop_on_non_direct_tabs() {
     {
         let mut s = state.lock().await;
         s.active_tab = 0; // Chat tab (input enabled)
-        s.kitty_keyboard_active = true; // kitty terminal
+        s.env.kitty_keyboard_active = true; // kitty terminal
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
@@ -652,7 +655,7 @@ async fn test_legacy_bare_tab_on_chat_tab_still_navigates() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.kitty_keyboard_active = false;
+        s.env.kitty_keyboard_active = false;
         s.active_tab = 0; // Chat tab
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -673,7 +676,7 @@ async fn test_legacy_plain_i_on_direct_tab_still_types() {
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
     {
         let mut s = state.lock().await;
-        s.kitty_keyboard_active = false;
+        s.env.kitty_keyboard_active = false;
         s.active_tab = 3; // Direct tab for "peer-dm"
     }
     let (swarm_cmd_tx, _) = mpsc::channel(1);
@@ -795,14 +798,14 @@ async fn test_shift_enter_in_peers_tab_is_noop() {
 #[tokio::test]
 async fn test_nickname_submission_empty_clears_edit() {
     let mut state = test_app_state();
-    state.editing_nickname = true;
+    state.input_mode = p2p_app::InputMode::EditingNickname;
     state.editing_nickname_peer = Some("p1".to_string());
     // chat_input is empty -> prepare_nickname_update returns None
     let (swarm_cmd_tx, _) = mpsc::channel(1);
 
     handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
     assert_eq!(state.editing_nickname_peer, None);
 }
 
@@ -818,7 +821,7 @@ fn test_nickname_submission_per_peer_sends_dm() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let mut state = test_app_state();
-        state.editing_nickname = true;
+        state.input_mode = p2p_app::InputMode::EditingNickname;
         state.editing_nickname_peer = Some("peer-nick".to_string());
         state.own_nickname = "OldGlobal".to_string();
         state.chat_input.insert_str("NewPerPeer");
@@ -826,7 +829,7 @@ fn test_nickname_submission_per_peer_sends_dm() {
 
         handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-        assert!(!state.editing_nickname);
+        assert!(!state.is_editing_nickname());
         assert_eq!(
             state.self_nicknames_for_peers.get("peer-nick"),
             Some(&"NewPerPeer".to_string())
@@ -861,7 +864,7 @@ fn test_nickname_submission_global_updates_own_nickname() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let mut state = test_app_state();
-        state.editing_nickname = true;
+        state.input_mode = p2p_app::InputMode::EditingNickname;
         state.editing_nickname_peer = None;
         state.own_nickname = "OldGlobal".to_string();
         state.chat_input.insert_str("NewGlobal");
@@ -869,7 +872,7 @@ fn test_nickname_submission_global_updates_own_nickname() {
 
         handle_nickname_submission(&mut state, &swarm_cmd_tx).await;
 
-        assert!(!state.editing_nickname);
+        assert!(!state.is_editing_nickname());
         assert_eq!(state.own_nickname, "NewGlobal");
     });
     p2p_app::db::reset_db_url();
@@ -884,7 +887,7 @@ async fn test_esc_cancels_nickname_edit() {
     let (render_tx, _) = mpsc::channel(1);
     {
         let mut s = state.lock().await;
-        s.editing_nickname = true;
+        s.input_mode = p2p_app::InputMode::EditingNickname;
         s.editing_nickname_peer = Some("p1".to_string());
     }
 
@@ -898,7 +901,7 @@ async fn test_esc_cancels_nickname_edit() {
 
     assert!(!exited);
     let s = state.lock().await;
-    assert!(!s.editing_nickname);
+    assert!(!s.is_editing_nickname());
     assert_eq!(s.editing_nickname_peer, None);
 }
 
@@ -920,7 +923,7 @@ fn test_enter_during_nickname_edit_submits_nickname() {
         let (render_tx, _) = mpsc::channel(1);
         {
             let mut s = state.lock().await;
-            s.editing_nickname = true;
+            s.input_mode = p2p_app::InputMode::EditingNickname;
             s.editing_nickname_peer = Some("p1".to_string());
             s.chat_input.insert_str("NewNick");
         }
@@ -935,7 +938,7 @@ fn test_enter_during_nickname_edit_submits_nickname() {
 
         assert!(!exited);
         let s = state.lock().await;
-        assert!(!s.editing_nickname);
+        assert!(!s.is_editing_nickname());
     });
     p2p_app::db::reset_db_url();
 }

@@ -12,7 +12,7 @@ pub fn render_log_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderS
 
     let (visible, effective_offset) = calc_visible_list_items(
         &state.log_messages,
-        state.log_auto_scroll,
+        state.auto_scroll.log,
         state.log_scroll_offset,
         usable_height,
     );

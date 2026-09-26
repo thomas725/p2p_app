@@ -7,8 +7,16 @@ use crate::PeerRecord;
 use crate::types::StringMap;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
+/// App-liveness flags for the renderer (Settings-tab node status + connection).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RuntimeStatus {
+    /// Whether connected to the network.
+    pub connected: bool,
+    /// Whether the node is running (always true in the TUI).
+    pub node_running: bool,
+}
+
 /// Minimum state needed to render a TUI frame
-#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug)]
 pub struct TuiRenderState {
     /// Names of tabs for display (Chat, Contacts, Log, plus DM tabs)
@@ -45,12 +53,12 @@ pub struct TuiRenderState {
     pub input_text: String,
     /// Logs shown in the debug tab
     pub log_messages: VecDeque<String>,
-    /// Whether we're editing a peer's nickname
-    pub editing_nickname: bool,
-    /// Peer ID being edited (if `editing_nickname` is true)
+    /// What the shared text input is currently capturing (chat/nickname/group).
+    pub input_mode: crate::InputMode,
+    /// Peer ID being edited (when `input_mode` is [`crate::InputMode::EditingNickname`])
     pub nickname_peer_id: String,
-    /// Whether connected to the network
-    pub connected: bool,
+    /// App-liveness flags (connected + node running)
+    pub runtime: RuntimeStatus,
     /// Number of connected peers
     pub peer_count: usize,
     /// Whether mouse is captured (for text input)
@@ -72,18 +80,14 @@ pub struct TuiRenderState {
     pub group_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Index of selected group in the Groups list tab
     pub group_selection: usize,
-    /// Whether the Groups tab is capturing a group name to create/join
-    pub creating_group: bool,
     /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
-    /// Whether chat tab is auto-scrolling to bottom
-    pub chat_auto_scroll: bool,
+    /// Whether chat tab and log tab auto-scroll to bottom
+    pub auto_scroll: crate::AutoScrollFlags,
     /// Number of broadcast messages that arrived while not at the bottom
     pub chat_unread_count: usize,
     /// Scroll offset for the log tab
     pub log_scroll_offset: usize,
-    /// Whether log tab is auto-scrolling to bottom
-    pub log_auto_scroll: bool,
     /// Scroll state per DM peer: (offset, `auto_scroll`)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Scroll state for DM+broadcast view per peer
@@ -116,8 +120,6 @@ pub struct TuiRenderState {
     pub last_connection_lost: Option<f64>,
     /// Peer ID we last disconnected from, if any (for Settings tab)
     pub last_connection_peer: Option<String>,
-    /// Whether the node is running (always true in the TUI)
-    pub node_running: bool,
     /// This install's user ID (None before provisioning) — Settings tab
     pub own_user_id: Option<String>,
     /// Devices bound into this install's user: `(peer_id, bound_at)` —
@@ -162,21 +164,25 @@ impl TuiRenderState {
             group_message_peer_ids: BTreeMap::new(),
             group_scroll_state: BTreeMap::new(),
             group_selection: 0,
-            creating_group: false,
             input_text: String::new(),
             log_messages: VecDeque::new(),
-            editing_nickname: false,
+            input_mode: crate::InputMode::Chat,
             nickname_peer_id: String::new(),
-            connected: true,
+            runtime: RuntimeStatus {
+                connected: true,
+                node_running: true,
+            },
             peer_count: 0,
             mouse_capture: false,
             kitty_keyboard_active: false,
             popup: None,
             chat_scroll_offset: 0,
-            chat_auto_scroll: true,
+            auto_scroll: crate::AutoScrollFlags {
+                chat: true,
+                log: true,
+            },
             chat_unread_count: 0,
             log_scroll_offset: 0,
-            log_auto_scroll: true,
             dm_scroll_state: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             peer_selection: 0,
@@ -191,12 +197,23 @@ impl TuiRenderState {
             listen_addrs: Vec::new(),
             last_connection_lost: None,
             last_connection_peer: None,
-            node_running: true,
             own_user_id: None,
             own_user_devices: Vec::new(),
             local_nicknames: HashMap::new(),
             received_nicknames: HashMap::new(),
         }
+    }
+
+    /// True while the shared text input captures a nickname edit.
+    #[must_use]
+    pub const fn is_editing_nickname(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::EditingNickname)
+    }
+
+    /// True while the shared text input captures a group name.
+    #[must_use]
+    pub const fn is_creating_group(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::CreatingGroup)
     }
 
     /// Create with sample data for testing

@@ -32,9 +32,42 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 /// - **`InputHandler`**: No direct access, sends `InputEvent` to `CommandProcessor`
 /// - **`SwarmHandler`**: No direct access, sends `SwarmEvent` to `CommandProcessor`
 ///
+/// Terminal input/output environment flags for the TUI runtime.
+#[derive(Clone, Copy, Debug)]
+pub struct TerminalEnv {
+    /// Whether the terminal genuinely delivers kitty-keyboard encoding (from
+    /// crossterm's `supports_keyboard_enhancement()`). On `WezTerm` (kitty active)
+    /// `Ctrl+I` arrives as `Char('i')`+`CONTROL` and opens `PeerInfo` on a Direct tab.
+    /// On collapsed terminals (Konsole) Ctrl+I (and Ctrl+Shift+I) collapse to
+    /// the bare `0x09` Tab byte, so `Ctrl+I` opens `PeerInfo` only on kitty
+    /// terminals. Ctrl+P (`Char('p')`+CONTROL from 0x10 DLE) works on every
+    /// terminal as a universal fallback. Bare `Tab` always cycles tabs either way.
+    pub kitty_keyboard_active: bool,
+    /// Whether curses-style mouse events are captured (Esc toggles).
+    pub mouse_capture: bool,
+    /// One-shot flag: display names have been resolved for every known peer the
+    /// first time the Peers tab is opened (warms the library's name cache).
+    pub peer_names_warmed: bool,
+}
+
+/// Single-writer UI state (see the module doc above).
+///
 /// This single-writer pattern prevents race conditions and simplifies reasoning about state changes.
-#[allow(clippy::struct_excessive_bools)]
 pub struct AppState {
+    // Input mode
+    /// What the shared single-line text input is currently capturing. Covers the
+    /// old `editing_nickname`/`creating_group` booleans: `Chat` = normal
+    /// input, [`p2p_app::InputMode::EditingNickname`] = nickname edit,
+    /// [`p2p_app::InputMode::CreatingGroup`] = group name entry.
+    pub input_mode: p2p_app::InputMode,
+
+    // Runtime environment (TUI input/output flags)
+    /// Terminal input/output environment flags (see the individual docs).
+    pub env: TerminalEnv,
+
+    // Scroll preferences (Chat + Log)
+    /// Per-tab auto-scroll toggles (broadcast chat + log tabs).
+    pub auto_scroll: p2p_app::AutoScrollFlags,
     // Messages & Chat
     pub messages: VecDeque<p2p_app::DisplayMessage>,
     // Message IDs aligned with `messages` (used for receipts / click actions).
@@ -80,8 +113,6 @@ pub struct AppState {
     pub group_scroll_state: HashMap<String, (usize, bool)>,
     // Selected group in the Groups list tab.
     pub group_selection: usize,
-    // Creating/joining a group: the input box captures a group name.
-    pub creating_group: bool,
 
     // UI State (TUI-specific)
     pub active_tab: usize,
@@ -91,30 +122,16 @@ pub struct AppState {
     pub peer_sort_column: usize, // Active sort column (0=Name,1=DM,2=Broadcast,3=Last Seen,4=First Seen)
     pub peer_sort_ascending: bool, // Whether the peer list is sorted ascending on the active column
     pub peer_table_offset: usize, // First visible row of the peer table (set by render loop)
-    // One-shot flag: display names have been resolved for every known peer the
-    // first time the Peers tab is opened (warms the library's name cache).
-    pub peer_names_warmed: bool,
-    // Whether the terminal genuinely delivers kitty-keyboard encoding (from
-    // crossterm's `supports_keyboard_enhancement()`). On WezTerm (kitty active)
-    // Ctrl+I arrives as `Char('i')`+CONTROL and opens PeerInfo on a Direct tab.
-    // On collapsed terminals (Konsole) Ctrl+I (and Ctrl+Shift+I) collapse to
-    // the bare `0x09` Tab byte, so Ctrl+I opens PeerInfo only on kitty
-    // terminals. Ctrl+P (`Char('p')`+CONTROL from 0x10 DLE) works on every
-    // terminal as a universal fallback. Bare Tab always cycles tabs either way.
-    pub kitty_keyboard_active: bool,
-    pub mouse_capture: bool,
-    pub last_mouse_row: u16, // For mouse-targeted scroll behavior in split layouts
+    pub last_mouse_row: u16,     // For mouse-targeted scroll behavior in split layouts
 
     // Scroll State (Chat tab)
     pub chat_scroll_offset: usize,
-    pub chat_auto_scroll: bool,
     pub chat_unread_count: usize, // Unread broadcast messages while scrolled up
     pub chat_area_height: usize,  // Height of message area in rows (set by render loop)
     pub terminal_width: usize,    // Terminal width in columns (set by render loop)
 
     // Scroll State (Log tab)
     pub log_scroll_offset: usize,
-    pub log_auto_scroll: bool,
 
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
@@ -127,7 +144,6 @@ pub struct AppState {
     pub topic_str: String,
 
     // Edit Mode
-    pub editing_nickname: bool,
     pub editing_nickname_peer: Option<String>,
 
     // Ad-hoc UI popup (used for receipt timing details, etc.)
@@ -159,21 +175,31 @@ pub struct DeviceBindingPrompt {
 }
 
 impl AppState {
+    /// True while the shared text input is capturing a nickname edit.
+    pub const fn is_editing_nickname(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::EditingNickname)
+    }
+
+    /// True while the shared text input is capturing a group name.
+    pub const fn is_creating_group(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::CreatingGroup)
+    }
+
     pub fn cancel_nickname_edit(&mut self) {
-        if !self.editing_nickname {
+        if !self.is_editing_nickname() {
             return;
         }
-        self.editing_nickname = false;
+        self.input_mode = p2p_app::InputMode::Chat;
         self.editing_nickname_peer = None;
         self.chat_input = TextArea::default();
     }
 
     /// Cancel an in-progress "create/join group" name entry.
     pub fn cancel_group_create(&mut self) {
-        if !self.creating_group {
+        if !self.is_creating_group() {
             return;
         }
-        self.creating_group = false;
+        self.input_mode = p2p_app::InputMode::Chat;
         self.chat_input = TextArea::default();
     }
 
@@ -397,7 +423,7 @@ impl AppState {
             group_message_peer_ids: HashMap::new(),
             group_scroll_state: HashMap::new(),
             group_selection: 0,
-            creating_group: false,
+            input_mode: p2p_app::InputMode::Chat,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
             chat_input: TextArea::default(),
@@ -405,19 +431,23 @@ impl AppState {
             peer_sort_column: 3,
             peer_sort_ascending: false,
             peer_table_offset: 0,
-            peer_names_warmed: false,
-            kitty_keyboard_active: true,
+            env: TerminalEnv {
+                kitty_keyboard_active: true,
+                mouse_capture: true,
+                peer_names_warmed: false,
+            },
             concurrent_peers: 0,
             connected: p2p_app::connected::ConnectedTracker::new(),
-            mouse_capture: true,
             last_mouse_row: 0,
             chat_scroll_offset: 0,
-            chat_auto_scroll: true,
+            auto_scroll: p2p_app::AutoScrollFlags {
+                chat: true,
+                log: true,
+            },
             chat_unread_count: 0,
             chat_area_height: 0,
             terminal_width: 0,
             log_scroll_offset: 0,
-            log_auto_scroll: true,
             dm_scroll_state: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
             own_nickname,
@@ -426,7 +456,6 @@ impl AppState {
             received_nicknames,
             self_nicknames_for_peers,
             topic_str,
-            editing_nickname: false,
             editing_nickname_peer: None,
             popup: None,
             device_binding_prompt: None,

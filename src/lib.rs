@@ -150,7 +150,8 @@ pub use tui_tabs::{DmTab, DynamicTabs, TabContent};
 #[cfg(any(test, feature = "test-utils"))]
 pub use tui_test_state::{NotificationTarget, TuiTestState};
 pub use types::{
-    DisplayMessage, GroupMessageEvent, MessageEvent, PeerRecord, SwarmCommand, SwarmEvent,
+    AutoScrollFlags, DisplayMessage, GroupMessageEvent, InputMode, MessageEvent, PeerRecord,
+    StringMap, StringSet, SwarmCommand, SwarmEvent,
 };
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};

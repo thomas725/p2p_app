@@ -247,7 +247,7 @@ fn initialize_state(
         loaded_dm_receipts,
         initial_groups.clone(),
     );
-    state.kitty_keyboard_active = keyboard_enhanced;
+    state.env.kitty_keyboard_active = keyboard_enhanced;
     state.db_url.clone_from(&db_info);
     state.platform = format!("Desktop ({})", std::env::consts::OS);
     state.network_size =

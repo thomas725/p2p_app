@@ -102,7 +102,7 @@ pub fn render_input_section(
     state: &TuiRenderState,
     tab_content: &TabContent,
 ) {
-    let title = if state.editing_nickname {
+    let title = if state.is_editing_nickname() {
         format!("Edit Nickname ({})", short_peer_id(&state.nickname_peer_id))
     } else {
         "Input".to_string()
@@ -110,7 +110,7 @@ pub fn render_input_section(
 
     let input_block = Block::default().title(title).borders(Borders::ALL);
 
-    if tab_content.is_input_enabled() || state.editing_nickname {
+    if tab_content.is_input_enabled() || state.is_editing_nickname() {
         let inner_area = input_block.inner(area);
         f.render_widget(input_block, area);
         let input = Paragraph::new(state.input_text.as_str());
@@ -153,7 +153,7 @@ pub fn render_shortcuts(f: &mut ratatui::Frame, area: Rect, tab_content: &TabCon
 /// Render status bar
 pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let mouse = if state.mouse_capture { "ON" } else { "OFF" };
-    let conn = if state.connected {
+    let conn = if state.runtime.connected {
         "Connected"
     } else {
         "Disconnected"

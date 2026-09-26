@@ -148,14 +148,14 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
 fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let line_counts = display_line_counts(state.messages.iter());
     let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
-    let was_auto_scroll = state.chat_auto_scroll;
+    let was_auto_scroll = state.auto_scroll.chat;
     handle_scroll_key_for_section(
         key_code,
         &mut state.chat_scroll_offset,
-        &mut state.chat_auto_scroll,
+        &mut state.auto_scroll.chat,
         max_offset,
     );
-    if state.chat_auto_scroll && !was_auto_scroll {
+    if state.auto_scroll.chat && !was_auto_scroll {
         state.chat_unread_count = 0;
     }
 }
@@ -168,7 +168,7 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     handle_scroll_key_for_section(
         key_code,
         &mut state.log_scroll_offset,
-        &mut state.log_auto_scroll,
+        &mut state.auto_scroll.log,
         max_offset,
     );
 }
@@ -322,14 +322,14 @@ fn apply_mouse_scroll(
 fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
     let line_counts = display_line_counts(state.messages.iter());
     let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
-    let was_auto_scroll = state.chat_auto_scroll;
+    let was_auto_scroll = state.auto_scroll.chat;
     let changed = apply_mouse_scroll(
         &mut state.chat_scroll_offset,
-        &mut state.chat_auto_scroll,
+        &mut state.auto_scroll.chat,
         scroll_dir,
         max_offset,
     );
-    if state.chat_auto_scroll && !was_auto_scroll {
+    if state.auto_scroll.chat && !was_auto_scroll {
         state.chat_unread_count = 0;
     }
     changed
@@ -342,7 +342,7 @@ fn mouse_scroll_log_tab(state: &mut AppState, scroll_dir: &str) -> bool {
     let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
     apply_mouse_scroll(
         &mut state.log_scroll_offset,
-        &mut state.log_auto_scroll,
+        &mut state.auto_scroll.log,
         scroll_dir,
         max_offset,
     )

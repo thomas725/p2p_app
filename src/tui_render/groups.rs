@@ -47,7 +47,7 @@ pub fn render_groups_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
     list_state.select(selected.map(|sel| sel.saturating_sub(start)));
     f.render_stateful_widget(list, list_area, &mut list_state);
 
-    let hint = if state.creating_group {
+    let hint = if state.is_creating_group() {
         let name = state.input_text.clone();
         let target = if name.is_empty() {
             "enter a group name".to_string()

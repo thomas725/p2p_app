@@ -170,7 +170,7 @@ fn test_format_messages_outgoing_peer_id_is_none() {
 #[test]
 fn test_cancel_nickname_edit_when_active() {
     let mut state = test_app_state();
-    state.editing_nickname = true;
+    state.input_mode = p2p_app::InputMode::EditingNickname;
     state.editing_nickname_peer = Some("peer-1".to_string());
     let mut ta = TextArea::default();
     ta.insert_str("something");
@@ -178,7 +178,7 @@ fn test_cancel_nickname_edit_when_active() {
 
     state.cancel_nickname_edit();
 
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
     assert_eq!(state.editing_nickname_peer, None);
     assert!(state.chat_input.lines().join("").is_empty());
 }
@@ -186,9 +186,9 @@ fn test_cancel_nickname_edit_when_active() {
 #[test]
 fn test_cancel_nickname_edit_when_inactive_is_noop() {
     let mut state = test_app_state();
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
     state.cancel_nickname_edit();
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
     assert_eq!(state.editing_nickname_peer, None);
 }
 
@@ -197,12 +197,12 @@ fn test_app_state_new_defaults() {
     let state = test_app_state();
     assert_eq!(state.active_tab, 0);
     assert_eq!(state.peer_selection, 0);
-    assert!(state.mouse_capture);
-    assert!(state.chat_auto_scroll);
-    assert!(state.log_auto_scroll);
+    assert!(state.env.mouse_capture);
+    assert!(state.auto_scroll.chat);
+    assert!(state.auto_scroll.log);
     assert_eq!(state.topic_str, "test-net");
     assert_eq!(state.own_nickname, "TestUser");
-    assert!(!state.editing_nickname);
+    assert!(!state.is_editing_nickname());
     assert_eq!(state.popup, None);
 }
 

@@ -20,8 +20,8 @@ fn update_dm_transcript_labels(
 
 /// Pure: flip the mouse capture flag. Returns the new state.
 const fn flip_mouse_capture_state(state: &mut super::state::AppState) -> bool {
-    state.mouse_capture = !state.mouse_capture;
-    state.mouse_capture
+    state.env.mouse_capture = !state.env.mouse_capture;
+    state.env.mouse_capture
 }
 
 /// Pure: dismiss the popup if one is open. Returns true if a popup was dismissed.
@@ -60,14 +60,14 @@ fn prepare_nickname_update(
 fn toggle_mouse_capture(state: &mut super::state::AppState) {
     use ratatui::crossterm::execute;
     flip_mouse_capture_state(state);
-    let mode = if state.mouse_capture {
+    let mode = if state.env.mouse_capture {
         "enabled"
     } else {
         "disabled"
     };
     p2plog_debug(format!("Mouse capture {mode}"));
     let mut stdout = std::io::stdout();
-    let _ = if state.mouse_capture {
+    let _ = if state.env.mouse_capture {
         execute!(stdout, crossterm::event::EnableMouseCapture)
     } else {
         execute!(stdout, crossterm::event::DisableMouseCapture)
@@ -166,7 +166,7 @@ async fn create_or_join_group(
                 .position(|g| g.group.group_id == group_id)
                 .unwrap_or(0);
             super::click_handlers::open_group_chat(state, &group_id, &display_name);
-            state.creating_group = false;
+            state.input_mode = p2p_app::InputMode::Chat;
             state.chat_input = super::TextArea::default();
             p2plog_debug(format!("Created/joined group: {display_name} ({group_id})"));
         }
@@ -196,16 +196,16 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     let mut s = state.lock().await;
     dismiss_popup(&mut s);
     decline_device_binding_prompt(&mut s);
-    if s.editing_nickname {
+    if s.is_editing_nickname() {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
-    } else if s.creating_group {
+    } else if s.is_creating_group() {
         s.cancel_group_create();
         p2plog_debug("Cancelled group create/join".to_string());
     } else {
         s.active_tab = 0;
         s.chat_scroll_offset = 0;
-        s.chat_auto_scroll = true;
+        s.auto_scroll.chat = true;
         s.chat_unread_count = 0;
         p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
     }
@@ -328,7 +328,7 @@ async fn handle_enter_key(
             p2plog_debug(format!("Opened DM with peer: {peer_id}"));
         }
     } else if matches!(tab_content, p2p_app::tui_tabs::TabContent::Groups) {
-        if state.creating_group {
+        if state.is_creating_group() {
             let name = state.chat_input.lines().join("\n");
             create_or_join_group(state, swarm_cmd_tx, &name).await;
         } else if let Some(group) = state.group_summaries.get(state.group_selection) {
@@ -472,13 +472,13 @@ async fn handle_key_dispatch(
     match key_event.code {
         // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
         crossterm::event::KeyCode::Char('i' | 'p')
-            if !s.editing_nickname && is_ctrl && on_direct =>
+            if !s.is_editing_nickname() && is_ctrl && on_direct =>
         {
             handle_peer_info_control_chord(&key_event, s);
         }
         // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
         // non-Direct tabs falls through to the chat-input branch, as before.
-        crossterm::event::KeyCode::Char('p') if !s.editing_nickname && is_ctrl => {
+        crossterm::event::KeyCode::Char('p') if !s.is_editing_nickname() && is_ctrl => {
             p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }
         crossterm::event::KeyCode::BackTab => {
@@ -508,7 +508,7 @@ async fn handle_key_dispatch(
             toggle_mouse_capture(s);
         }
         crossterm::event::KeyCode::Enter => {
-            if s.editing_nickname {
+            if s.is_editing_nickname() {
                 handle_nickname_submission(s, swarm_cmd_tx).await;
             } else {
                 handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
@@ -517,34 +517,42 @@ async fn handle_key_dispatch(
         crossterm::event::KeyCode::Char('w') if is_ctrl => {
             handle_close_dm_tab(s, &tab);
         }
-        crossterm::event::KeyCode::Char('n') if !is_ctrl && on_settings && !s.editing_nickname => {
-            s.editing_nickname = true;
+        crossterm::event::KeyCode::Char('n')
+            if !is_ctrl && on_settings && !s.is_editing_nickname() =>
+        {
+            s.input_mode = p2p_app::InputMode::EditingNickname;
             s.editing_nickname_peer = None;
             s.chat_input = super::TextArea::default();
             p2plog_debug("Started nickname edit from Settings tab".to_string());
         }
-        crossterm::event::KeyCode::Char('i') if !is_ctrl && on_contacts && !s.editing_nickname => {
+        crossterm::event::KeyCode::Char('i')
+            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
+        {
             open_peer_info_for_active_tab(s);
             p2plog_debug("Opened Peer Info tab".to_string());
         }
         // `e` expands/collapses the selected contact's device rows (no-op on
         // single-device contacts and device rows).
-        crossterm::event::KeyCode::Char('e') if !is_ctrl && on_contacts && !s.editing_nickname => {
+        crossterm::event::KeyCode::Char('e')
+            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
+        {
             s.toggle_expand_selected_contact();
             p2plog_debug("Toggled contact expansion".to_string());
         }
-        crossterm::event::KeyCode::Char(c) if !is_ctrl && on_contacts && !s.editing_nickname => {
+        crossterm::event::KeyCode::Char(c)
+            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
+        {
             handle_peer_sort_key(s, c);
         }
         crossterm::event::KeyCode::Char('g')
-            if !is_ctrl && on_groups && !s.editing_nickname && !s.creating_group =>
+            if !is_ctrl && on_groups && !s.is_editing_nickname() && !s.is_creating_group() =>
         {
-            s.creating_group = true;
+            s.input_mode = p2p_app::InputMode::CreatingGroup;
             s.chat_input = super::TextArea::default();
             p2plog_debug("Started group create/join".to_string());
         }
         _ => {
-            if input_enabled || s.editing_nickname || s.creating_group {
+            if input_enabled || s.is_editing_nickname() || s.is_creating_group() {
                 s.chat_input.input(key_event);
             }
         }

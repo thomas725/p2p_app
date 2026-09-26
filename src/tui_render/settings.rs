@@ -33,7 +33,7 @@ fn last_connected_info(state: &TuiRenderState) -> Option<(String, String)> {
 /// Render the Settings tab (mirrors the Flutter `_Settings` screen).
 pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let connected = state.peer_count;
-    let node_status = if state.node_running {
+    let node_status = if state.runtime.node_running {
         "Running"
     } else {
         "Stopped"

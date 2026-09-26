@@ -49,7 +49,7 @@ fn apply_broadcast_to_state(
     state.message_ids.push_back(msg_id);
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
-    if !state.chat_auto_scroll {
+    if !state.auto_scroll.chat {
         state.chat_unread_count = state.chat_unread_count.saturating_add(1);
     }
     msg
