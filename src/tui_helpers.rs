@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use unicode_width::UnicodeWidthStr;
 
 use crate::PeerRecord;
+use crate::types::{StringMap, StringSet};
 
 /// Sort peers by last seen time (descending)
 pub fn sort_peers_by_last_seen(
@@ -169,14 +170,12 @@ pub trait PeerMessageMap {
     fn dm_count_for(&self, peer_id: &str) -> usize;
 }
 
-#[allow(clippy::implicit_hasher)]
-impl PeerMessageMap for HashMap<String, VecDeque<String>> {
+impl PeerMessageMap for StringMap<VecDeque<String>> {
     fn dm_count_for(&self, peer_id: &str) -> usize {
         self.get(peer_id).map_or(0, VecDeque::len)
     }
 }
 
-#[allow(clippy::implicit_hasher)]
 impl PeerMessageMap for std::collections::BTreeMap<String, VecDeque<String>> {
     fn dm_count_for(&self, peer_id: &str) -> usize {
         self.get(peer_id).map_or(0, VecDeque::len)
@@ -239,12 +238,11 @@ impl PeerTableRow {
 ///
 /// `broadcast_sent_to_peer` maps a peer id to how many broadcasts *we* sent that
 /// peer (from the `broadcast_recipients` table via `messages::get_all_peer_stats`).
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn sort_peers_table(
     peers: &[PeerRecord],
     dm_messages: &impl PeerMessageMap,
-    broadcast_sent_to_peer: &HashMap<String, usize>,
+    broadcast_sent_to_peer: &StringMap<usize>,
     sort_column: usize,
     ascending: bool,
 ) -> Vec<PeerTableRow> {
@@ -288,12 +286,11 @@ pub fn sort_peers_table(
 
 /// Reorder `peers` in place according to the active column/order, preserving
 /// the currently selected peer (by id) and returning its new index.
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn sort_peers_by_column(
     peers: &mut VecDeque<PeerRecord>,
     dm_messages: &impl PeerMessageMap,
-    broadcast_sent_to_peer: &HashMap<String, usize>,
+    broadcast_sent_to_peer: &StringMap<usize>,
     sort_column: usize,
     ascending: bool,
     selection: usize,
@@ -352,12 +349,11 @@ fn peer_table_row(
 /// Only peers inside the visible window get a `PeerTableRow`, so paged
 /// rendering pays for the display-name lookups on the visible page instead of
 /// the whole peer list.
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn peer_table_rows_range(
     peers: &[PeerRecord],
     dm_messages: &impl PeerMessageMap,
-    broadcast_sent_to_peer: &HashMap<String, usize>,
+    broadcast_sent_to_peer: &StringMap<usize>,
     start: usize,
     end: usize,
 ) -> Vec<PeerTableRow> {
@@ -421,11 +417,10 @@ impl ContactTableRowRef {
 /// Each contact contributes its own row; an expanded multi-device contact
 /// contributes its device rows immediately below. Contact rows keep their
 /// sorted order, so the plan inherits the current sort.
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn contact_table_plan(
     contacts: &[crate::contacts::ContactRow],
-    expanded: &HashSet<String>,
+    expanded: &StringSet,
 ) -> Vec<ContactTableRowRef> {
     let mut plan = Vec::with_capacity(contacts.len());
     for (contact_idx, contact) in contacts.iter().enumerate() {
@@ -443,11 +438,10 @@ pub fn contact_table_plan(
 }
 
 /// Number of selectable rows in the flattened Contacts table.
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn contact_table_plan_len(
     contacts: &[crate::contacts::ContactRow],
-    expanded: &HashSet<String>,
+    expanded: &StringSet,
 ) -> usize {
     contact_table_plan(contacts, expanded).len()
 }
@@ -490,11 +484,10 @@ pub fn contact_to_peer_table_row(
 ///
 /// `expanded` marks the target contact's own row as expanded, so its expand
 /// marker is drawn collapsed or expanded to match the plan.
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn contact_table_row(
     contacts: &[crate::contacts::ContactRow],
-    expanded: &HashSet<String>,
+    expanded: &StringSet,
     row: ContactTableRowRef,
 ) -> PeerTableRow {
     match row {

@@ -4,6 +4,7 @@
 //! and integration tests. The binary uses `AppState`, tests use this abstraction.
 
 use crate::PeerRecord;
+use crate::types::StringMap;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
 /// Minimum state needed to render a TUI frame
@@ -478,10 +479,9 @@ where
 /// Return a checkmark prefix (`"v "`) if any peer has acknowledged the given
 /// broadcast message, or two spaces otherwise.
 #[must_use]
-#[allow(clippy::implicit_hasher)]
 pub fn broadcast_receipt_prefix(
     msg_id: Option<&str>,
-    broadcast_receipts: &HashMap<String, HashMap<String, f64>>,
+    broadcast_receipts: &StringMap<StringMap<f64>>,
 ) -> &'static str {
     msg_id.map_or("  ", |msg_id| {
         let confirmed = broadcast_receipts
@@ -494,10 +494,9 @@ pub fn broadcast_receipt_prefix(
 /// Return a checkmark prefix (`"v "`) if the recipient has acknowledged the
 /// given direct message, or two spaces otherwise.
 #[must_use]
-#[allow(clippy::implicit_hasher)]
 pub fn dm_receipt_prefix(
     msg_id: Option<&str>,
-    dm_receipts: &HashMap<String, (String, f64)>,
+    dm_receipts: &StringMap<(String, f64)>,
 ) -> &'static str {
     match msg_id {
         Some(msg_id) if dm_receipts.contains_key(msg_id) => "v ",

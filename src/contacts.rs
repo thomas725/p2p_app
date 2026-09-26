@@ -20,6 +20,7 @@
 use crate::generated::models_queryable::User;
 use crate::messages::{PeerMessageStats, get_all_peer_stats};
 use std::collections::HashMap;
+use crate::types::StringMap;
 
 /// A single device (peer) inside a contact row.
 #[derive(Debug, Clone)]
@@ -109,15 +110,15 @@ impl ContactRow {
 ///
 /// Ties are handled by the caller (no sorting key of its own — see
 /// [`sort_canonical_rows`]).
-#[allow(clippy::too_many_arguments, clippy::implicit_hasher)]
+#[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn build_contact_rows(
     devices: &[ContactDeviceInput],
-    device_display_names: &HashMap<String, String>,
-    peer_user: &HashMap<String, String>,
-    users: &HashMap<String, User>,
-    overrides: &HashMap<String, String>,
-    stats: &HashMap<String, PeerMessageStats>,
+    device_display_names: &StringMap<String>,
+    peer_user: &StringMap<String>,
+    users: &StringMap<User>,
+    overrides: &StringMap<String>,
+    stats: &StringMap<PeerMessageStats>,
 ) -> Vec<ContactRow> {
     // Group devices by contact: bound devices collapse under their user id,
     // unbound devices each keep their own device id.

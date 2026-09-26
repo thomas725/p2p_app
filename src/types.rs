@@ -2,6 +2,23 @@
 
 use libp2p::Multiaddr;
 
+/// String-keyed map with the standard [`RandomState`] hasher.
+///
+/// The app-wide map convention: every keyed lookup in this codebase is keyed
+/// by a peer id, group id, or display name (all `String`), so the few dozen
+/// signatures that take a `HashMap` name the hasher once here instead of
+/// spelling `RandomState` at every call site. This is what the `implicit_hasher`
+/// pedantic lint demands of those signatures.
+///
+/// [`RandomState`]: std::collections::hash_map::RandomState
+pub type StringMap<V> =
+    std::collections::HashMap<String, V, std::collections::hash_map::RandomState>;
+
+/// String set with the standard [`RandomState`] hasher.
+///
+/// [`RandomState`]: std::collections::hash_map::RandomState
+pub type StringSet = std::collections::HashSet<String, std::collections::hash_map::RandomState>;
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_types.rs"]
 mod tests;

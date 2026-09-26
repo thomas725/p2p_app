@@ -93,11 +93,10 @@ fn peer_id_tail(id: &str, len: usize) -> String {
 
 /// Get display name for a peer - uses local nickname if set, else received nickname, else short ID
 #[must_use]
-#[allow(clippy::implicit_hasher)]
 pub fn peer_display_name(
     peer_id: &str,
-    local_nicknames: &std::collections::HashMap<String, String>,
-    received_nicknames: &std::collections::HashMap<String, String>,
+    local_nicknames: &crate::types::StringMap<String>,
+    received_nicknames: &crate::types::StringMap<String>,
 ) -> String {
     local_nicknames
         .get(peer_id)

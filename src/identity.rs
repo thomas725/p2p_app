@@ -72,7 +72,6 @@ pub fn find_user(user_id: &str) -> color_eyre::Result<Option<User>> {
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::implicit_hasher)]
 pub fn find_users(
     user_ids: &[String],
 ) -> color_eyre::Result<std::collections::HashMap<String, User>> {
@@ -208,7 +207,6 @@ pub fn find_user_id_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>
 ///
 /// # Errors
 /// Returns an error if the database query fails.
-#[allow(clippy::implicit_hasher)]
 pub fn find_user_ids_for_peers(
     peer_ids: &[String],
 ) -> color_eyre::Result<std::collections::HashMap<String, String>> {
