@@ -8,11 +8,8 @@
     clippy::todo,
     clippy::unimplemented
 )]
-#![allow(
-    clippy::used_underscore_binding,
-    clippy::significant_drop_tightening,
-    clippy::match_wildcard_for_single_variants
-)]
+#![allow(clippy::used_underscore_binding, clippy::significant_drop_tightening)]
+
 use super::*;
 use crate::tui::state::AppState;
 use crate::tui::test_helpers::app_state_with_peers;

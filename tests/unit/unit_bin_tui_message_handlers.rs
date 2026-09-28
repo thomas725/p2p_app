@@ -8,10 +8,7 @@
     clippy::todo,
     clippy::unimplemented
 )]
-#![allow(
-    clippy::used_underscore_binding,
-    clippy::match_wildcard_for_single_variants
-)]
+
 use super::*;
 use crate::tui::test_helpers::test_app_state;
 use tempfile::TempDir;
@@ -108,8 +105,8 @@ fn test_send_broadcast_updates_state_and_sends_command() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let _dir = tempfile::TempDir::new().unwrap();
-    let db_path = _dir.path().join("test.db");
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
     p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -143,8 +140,8 @@ fn test_send_dm_updates_state_and_sends_command() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
-    let _dir = tempfile::TempDir::new().unwrap();
-    let db_path = _dir.path().join("test.db");
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
     p2p_app::db::set_db_url(db_path.to_str().unwrap());
     p2p_app::db::init_database().unwrap();
     let rt = tokio::runtime::Runtime::new().unwrap();
