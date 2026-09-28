@@ -191,7 +191,6 @@ fn expected_group_page_size(state: &AppState) -> usize {
     state.chat_area_height.saturating_sub(1).max(1)
 }
 
-#[allow(clippy::missing_const_for_fn)]
 fn compute_new_peer_selection(
     key_code: crossterm::event::KeyCode,
     current_selection: usize,

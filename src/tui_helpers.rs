@@ -1,7 +1,7 @@
 //! Pure helper functions for TUI modules that can be unit tested.
 //! These functions avoid async state, channels, and external I/O.
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use unicode_width::UnicodeWidthStr;
 
 use crate::PeerRecord;
@@ -77,14 +77,18 @@ pub const fn scroll_up_lines(scroll_offset: &mut usize, lines: usize) {
 }
 
 /// Scroll down to target, enabling auto-scroll if reaching max
-#[allow(clippy::missing_const_for_fn)]
-pub fn scroll_down_lines(
+pub const fn scroll_down_lines(
     scroll_offset: &mut usize,
     auto_scroll: &mut bool,
     lines: usize,
     max_offset: usize,
 ) {
-    *scroll_offset = scroll_offset.saturating_add(lines).min(max_offset);
+    let candidate = scroll_offset.saturating_add(lines);
+    *scroll_offset = if candidate < max_offset {
+        candidate
+    } else {
+        max_offset
+    };
     if *scroll_offset >= max_offset {
         *auto_scroll = true;
     }
@@ -525,11 +529,10 @@ pub fn contact_table_row(
 
 /// Build table rows for the contiguous `[start, end)` slice of the flattened
 /// Contacts table (contacts plus any expanded device rows).
-#[allow(clippy::implicit_hasher)]
 #[must_use]
 pub fn contact_table_rows_range(
     contacts: &[crate::contacts::ContactRow],
-    expanded: &HashSet<String>,
+    expanded: &StringSet,
     start: usize,
     end: usize,
 ) -> Vec<PeerTableRow> {

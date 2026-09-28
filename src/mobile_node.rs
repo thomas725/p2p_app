@@ -202,34 +202,38 @@ pub fn stop_node() -> Result<(), String> {
 /// Poll the next swarm event (non-blocking). Returns None if no event ready.
 /// Also processes events: saves peers, sends nickname DMs, stores received nicknames.
 #[flutter_rust_bridge::frb(ignore)]
-#[allow(clippy::significant_drop_tightening)]
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
-    let mut node = lock_node_mutex(m);
-    // Clone the sender so the loop body never re-borrows `node` while `rx`
-    // (a mutable borrow of `node.event_rx`) is live across iterations.
-    let cmd_tx = node.cmd_tx.clone();
-    let rx = node.event_rx.as_mut().ok_or("Node stopped")?;
+    // Clone the sender once so the loop body can call
+    // `process_event_for_mobile` (a stateful routine that must never run while
+    // the node guard is held) without keeping the lock across iterations.
+    let cmd_tx = {
+        let node = lock_node_mutex(m);
+        node.cmd_tx.clone()
+    };
 
     loop {
-        match rx.try_recv() {
-            Ok(ev) => {
-                // Process events like the TUI does (save peers, exchange nicknames)
-                process_event_for_mobile(&ev, cmd_tx.as_ref());
-                // A nickname-only DM is the name-exchange side channel, not a
-                // message: its side effects (storing the announced nickname)
-                // were already applied above, so skip it before it can reach
-                // Dart — whose `content != null` guard would happily persist an
-                // empty-content DM. Keep draining so a run of pure name
-                // exchanges cannot stall the queue.
-                if is_nickname_only_dm(&ev) {
-                    continue;
-                }
-                return Ok(Some(event_to_json(ev)));
+        let ev = {
+            let mut node = lock_node_mutex(m);
+            match node.event_rx.as_mut().ok_or("Node stopped")?.try_recv() {
+                Ok(ev) => ev,
+                Err(TryRecvError::Empty) => return Ok(None),
+                Err(TryRecvError::Disconnected) => return Err("Swarm task ended".into()),
             }
-            Err(TryRecvError::Empty) => return Ok(None),
-            Err(TryRecvError::Disconnected) => return Err("Swarm task ended".into()),
+        };
+
+        // Process events like the TUI does (save peers, exchange nicknames)
+        process_event_for_mobile(&ev, cmd_tx.as_ref());
+        // A nickname-only DM is the name-exchange side channel, not a
+        // message: its side effects (storing the announced nickname)
+        // were already applied above, so skip it before it can reach
+        // Dart — whose `content != null` guard would happily persist an
+        // empty-content DM. Keep draining so a run of pure name
+        // exchanges cannot stall the queue.
+        if is_nickname_only_dm(&ev) {
+            continue;
         }
+        return Ok(Some(event_to_json(ev)));
     }
 }
 
