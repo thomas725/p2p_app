@@ -351,7 +351,6 @@ pub fn get_my_user_id() -> Result<Option<String>, String> {
 ///
 /// # Errors
 /// Returns an error if provisioning/persistence fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn provision_my_user(
     self_username: Option<String>,
@@ -369,7 +368,6 @@ pub fn provision_my_user(
 ///
 /// # Errors
 /// Returns an error if the DB lookup fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn verify_device_binding_claim(
     user_id: String,
@@ -385,7 +383,6 @@ pub fn verify_device_binding_claim(
 ///
 /// # Errors
 /// Returns an error if the claim fails verification or the insert fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn add_device(
     user_id: String,
@@ -403,7 +400,6 @@ pub fn add_device(
 ///
 /// # Errors
 /// Returns an error if the DB query fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn get_user_devices(user_id: String) -> Result<Vec<MobileDeviceInfo>, String> {
     crate::identity::list_user_devices(&user_id)
@@ -431,7 +427,6 @@ pub fn get_contacts() -> Result<Vec<MobileContactInfo>, String> {
 ///
 /// # Errors
 /// Returns an error if the install has no bound user or the insert fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn add_contact(
     contact_user_id: String,
@@ -451,7 +446,6 @@ pub fn add_contact(
 ///
 /// # Errors
 /// Returns an error if the install has no bound user or the delete fails.
-#[allow(clippy::needless_pass_by_value)]
 #[flutter_rust_bridge::frb(ignore)]
 pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
     let owner_user_id =

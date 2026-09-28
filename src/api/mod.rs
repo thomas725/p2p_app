@@ -135,9 +135,8 @@ pub fn save_incoming_message(
 ///
 /// # Errors
 /// Returns an error if the group cannot be created.
-#[allow(clippy::needless_pass_by_value)]
-pub fn create_group(name: String) -> Result<MobileGroup, String> {
-    crate::mobile_node::create_group(&name)
+pub fn create_group(name: &str) -> Result<MobileGroup, String> {
+    crate::mobile_node::create_group(name)
 }
 
 /// List all known groups with their member counts.
@@ -184,9 +183,8 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
 ///
 /// # Errors
 /// Returns an error if the nickname cannot be persisted.
-#[allow(clippy::needless_pass_by_value)]
-pub fn set_self_nickname(nickname: String) -> Result<(), String> {
-    crate::set_self_nickname(&nickname).map_err(|e| e.to_string())
+pub fn set_self_nickname(nickname: &str) -> Result<(), String> {
+    crate::set_self_nickname(nickname).map_err(|e| e.to_string())
 }
 
 /// Validate a nickname before persisting it.
@@ -195,9 +193,8 @@ pub fn set_self_nickname(nickname: String) -> Result<(), String> {
 /// ([`crate::nickname::validate_nickname`]). Exposed so the Flutter UI can
 /// reject invalid input without re-implementing the rules in Dart.
 #[must_use]
-#[allow(clippy::needless_pass_by_value)]
-pub fn validate_nickname(nickname: String) -> bool {
-    crate::nickname::validate_nickname(&nickname)
+pub fn validate_nickname(nickname: &str) -> bool {
+    crate::nickname::validate_nickname(nickname)
 }
 
 /// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
@@ -232,7 +229,6 @@ pub fn get_my_user_id() -> Result<Option<String>, String> {
 ///
 /// # Errors
 /// Returns an error if provisioning fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn provision_my_user(
     self_username: Option<String>,
     self_nickname: Option<String>,
@@ -244,7 +240,6 @@ pub fn provision_my_user(
 ///
 /// # Errors
 /// Returns an error if the request cannot be queued.
-#[allow(clippy::needless_pass_by_value)]
 pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
     crate::mobile_node::send_device_binding_intro(peer_id)
 }
@@ -257,6 +252,8 @@ pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
 /// or the request cannot be queued.
 #[allow(clippy::needless_pass_by_value)]
 pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<(), String> {
+    // FFI boundary: FRB's Dart `List<int>` only deserializes into an owned
+    // `Vec<u8>`; `&[u8]` is unsupported by codegen 2.13.0.
     crate::mobile_node::accept_device_binding(peer_id, &device_pubkey)
 }
 
@@ -267,7 +264,6 @@ pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<
 ///
 /// # Errors
 /// Returns an error if the DB lookup fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn verify_device_binding_claim(
     user_id: String,
     device_pubkey: Vec<u8>,
@@ -281,7 +277,6 @@ pub fn verify_device_binding_claim(
 ///
 /// # Errors
 /// Returns an error if the claim fails verification or the insert fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn add_device(
     user_id: String,
     peer_id: String,
@@ -296,7 +291,6 @@ pub fn add_device(
 ///
 /// # Errors
 /// Returns an error if the DB query fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn get_user_devices(user_id: String) -> Result<Vec<MobileDeviceInfo>, String> {
     crate::mobile_api::get_user_devices(user_id)
 }
@@ -315,7 +309,6 @@ pub fn get_contacts() -> Result<Vec<MobileContactInfo>, String> {
 ///
 /// # Errors
 /// Returns an error if the install has no bound user or the insert fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn add_contact(
     contact_user_id: String,
     nickname_override: Option<String>,
@@ -327,7 +320,6 @@ pub fn add_contact(
 ///
 /// # Errors
 /// Returns an error if the install has no bound user or the delete fails.
-#[allow(clippy::needless_pass_by_value)]
 pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
     crate::mobile_api::remove_contact(contact_user_id)
 }

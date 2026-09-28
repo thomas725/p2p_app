@@ -11,11 +11,10 @@ pub enum InputEvent {
 }
 
 /// Pure: convert crossterm `Event` to `InputEvent`
-#[allow(clippy::needless_pass_by_value)]
-fn crossterm_event_to_input_event(event: Event) -> Option<InputEvent> {
+const fn crossterm_event_to_input_event(event: &Event) -> Option<InputEvent> {
     match event {
-        Event::Key(key) => Some(InputEvent::Key(key)),
-        Event::Mouse(mouse) => Some(InputEvent::Mouse(mouse)),
+        Event::Key(key) => Some(InputEvent::Key(*key)),
+        Event::Mouse(mouse) => Some(InputEvent::Mouse(*mouse)),
         _ => None,
     }
 }
@@ -26,7 +25,7 @@ pub fn spawn_input_handler(input_tx: mpsc::Sender<InputEvent>) -> tokio::task::J
         loop {
             if poll(Duration::ZERO).ok() == Some(true)
                 && let Ok(event) = read()
-                && let Some(input) = crossterm_event_to_input_event(event)
+                && let Some(input) = crossterm_event_to_input_event(&event)
             {
                 let _ = input_tx.send(input).await;
             } else {

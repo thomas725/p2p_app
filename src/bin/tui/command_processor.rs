@@ -217,18 +217,18 @@ fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
 fn handle_incoming_message(
     s: &mut AppState,
     content: &str,
     peer_id: &str,
-    latency: Option<String>,
-    nickname: Option<String>,
+    latency: Option<&str>,
+    nickname: Option<&str>,
     msg_id: Option<String>,
     is_direct: bool,
 ) {
-    if let Some(n) = nickname.as_ref() {
-        s.received_nicknames.insert(peer_id.to_string(), n.clone());
+    if let Some(n) = nickname {
+        s.received_nicknames
+            .insert(peer_id.to_string(), n.to_string());
         let _ = p2p_app::set_peer_received_nickname(peer_id, n);
     }
     if content.trim().is_empty() && nickname.is_some() {
@@ -239,9 +239,9 @@ fn handle_incoming_message(
     let sender_display =
         p2p_app::peer_display_name(peer_id, &s.local_nicknames, &s.received_nicknames);
     if is_direct {
-        apply_dm_to_state(s, content, peer_id, latency.as_deref(), msg_id);
+        apply_dm_to_state(s, content, peer_id, latency, msg_id);
     } else {
-        apply_broadcast_to_state(s, content, peer_id, latency.as_deref(), msg_id);
+        apply_broadcast_to_state(s, content, peer_id, latency, msg_id);
     }
     p2plog_debug(format!(
         "{} from {sender_display}: {content}",
@@ -273,8 +273,8 @@ async fn process_swarm_event(
                 &mut s,
                 &msg.content,
                 &msg.peer_id,
-                msg.latency,
-                msg.nickname,
+                msg.latency.as_deref(),
+                msg.nickname.as_deref(),
                 msg.msg_id,
                 false,
             );
@@ -286,8 +286,8 @@ async fn process_swarm_event(
                 &mut s,
                 &msg.content,
                 &msg.peer_id,
-                msg.latency,
-                msg.nickname,
+                msg.latency.as_deref(),
+                msg.nickname.as_deref(),
                 msg.msg_id,
                 true,
             );

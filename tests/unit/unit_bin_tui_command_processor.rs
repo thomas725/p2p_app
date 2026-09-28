@@ -434,7 +434,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
             "",
             "peer-2",
             None,
-            Some("Nickname".to_string()),
+            Some("Nickname"),
             None,
             false,
         );
@@ -466,7 +466,7 @@ fn test_handle_incoming_sets_received_nickname() {
             "hello",
             "peer-3",
             None,
-            Some("Alice".to_string()),
+            Some("Alice"),
             None,
             false,
         );
@@ -496,7 +496,7 @@ fn test_handle_incoming_broadcast_with_latency() {
             &mut state,
             "ping",
             "peer-4",
-            Some("42ms".to_string()),
+            Some("42ms"),
             None,
             None,
             false,
@@ -526,8 +526,8 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
             &mut state,
             "hey",
             "peer-5",
-            Some("5ms".to_string()),
-            Some("Bob".to_string()),
+            Some("5ms"),
+            Some("Bob"),
             Some("dm-5".to_string()),
             true,
         );

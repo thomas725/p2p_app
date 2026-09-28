@@ -18,15 +18,15 @@
     clippy::clone_on_copy,
     clippy::let_unit_value,
     clippy::deref_addrof,
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::restriction,
     clippy::explicit_auto_deref,
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
     clippy::needless_borrow,
-    mismatched_lifetime_syntaxes,
-    clippy::all,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::restriction
+    mismatched_lifetime_syntaxes
 )]
 
 // Section: imports
@@ -257,7 +257,7 @@ fn wire__crate__api__create_group_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::create_group(api_name)?;
+                    let output_ok = crate::api::create_group(&api_name)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1149,7 +1149,7 @@ fn wire__crate__api__set_self_nickname_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::set_self_nickname(api_nickname)?;
+                    let output_ok = crate::api::set_self_nickname(&api_nickname)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1352,7 +1352,7 @@ fn wire__crate__api__validate_nickname_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, ()>((move || {
-                    let output_ok = Ok::<_, ()>(crate::api::validate_nickname(api_nickname))?;
+                    let output_ok = Ok::<_, ()>(crate::api::validate_nickname(&api_nickname))?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
