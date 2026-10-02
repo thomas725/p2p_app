@@ -80,6 +80,11 @@ async fn handle_swarm_event(
         )) => {
             handle_device_binding(message, peer, event_tx, swarm).await;
         }
+        Libp2pSwarmEvent::Behaviour(AppEv::CallSignaling(
+            libp2p::request_response::Event::Message { peer, message, .. },
+        )) => {
+            handle_call_signal(message, peer, event_tx, swarm).await;
+        }
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
             for (peer_id, multiaddr) in list {
@@ -518,6 +523,98 @@ async fn handle_device_binding(
     }
 }
 
+/// Handle a call-signaling exchange (calls lane).
+///
+/// Requests are surfaced as [`SwarmEvent`]s (invite → ringing prompt on the
+/// callee; accept/reject/end → session transitions on the caller) and acked
+/// with a [`CallSignalAck`]. Responses are the ack to one of our own signals —
+/// the receiving UI already advanced its session from the matching event, so
+/// the ack is informational (mostly the failure reason).
+async fn handle_call_signal(
+    message: libp2p::request_response::Message<
+        crate::behavior::CallSignal,
+        crate::behavior::CallSignalAck,
+    >,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let peer_id_str = peer.to_string();
+    match message {
+        libp2p::request_response::Message::Request { request, channel, .. } => {
+            let (event, ack) = match request.kind.as_str() {
+                "invite" => (
+                    Some(SwarmEvent::CallInvite {
+                        call_id: request.call_id.clone(),
+                        peer_id: peer_id_str,
+                    }),
+                    crate::behavior::CallSignalAck {
+                        ok: true,
+                        reason: None,
+                    },
+                ),
+                "accept" => (
+                    Some(SwarmEvent::CallAccepted {
+                        call_id: request.call_id.clone(),
+                        peer_id: peer_id_str,
+                    }),
+                    crate::behavior::CallSignalAck {
+                        ok: true,
+                        reason: None,
+                    },
+                ),
+                "reject" => (
+                    Some(SwarmEvent::CallRejected {
+                        call_id: request.call_id.clone(),
+                        peer_id: peer_id_str,
+                    }),
+                    crate::behavior::CallSignalAck {
+                        ok: true,
+                        reason: None,
+                    },
+                ),
+                "end" => (
+                    Some(SwarmEvent::CallEnded {
+                        call_id: request.call_id.clone(),
+                        peer_id: peer_id_str,
+                    }),
+                    crate::behavior::CallSignalAck {
+                        ok: true,
+                        reason: None,
+                    },
+                ),
+                other => (
+                    None,
+                    crate::behavior::CallSignalAck {
+                        ok: false,
+                        reason: Some(format!("unknown call-signal kind: {other}")),
+                    },
+                ),
+            };
+            if let Some(ev) = event {
+                let _ = event_tx.send(ev).await;
+            }
+            let _ = swarm
+                .behaviour_mut()
+                .call_signaling
+                .send_response(channel, ack);
+        }
+        libp2p::request_response::Message::Response { response, .. } => {
+            if let Some(reason) = response.reason {
+                if response.ok {
+                    p2plog_debug(format!(
+                        "call signal accepted by {peer_id_str}: {reason}"
+                    ));
+                } else {
+                    p2plog_debug(format!(
+                        "call signal rejected by {peer_id_str}: {reason}"
+                    ));
+                }
+            }
+        }
+    }
+}
+
 /// Build a `BroadcastMessage` from component parts
 #[must_use]
 pub fn build_broadcast_message(
@@ -573,6 +670,9 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         SwarmCommand::SubscribeGroup { group_id } => subscribe_to_group(&group_id, swarm),
         SwarmCommand::SendDeviceBinding { peer_id, request } => {
             send_device_binding(&peer_id, request, swarm);
+        }
+        SwarmCommand::SendCallSignal { peer_id, signal } => {
+            send_call_signal(&peer_id, *signal, swarm);
         }
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
     }
@@ -705,6 +805,21 @@ fn send_device_binding(
             .behaviour_mut()
             .device_binding
             .send_request(&peer, *request);
+    }
+}
+
+fn send_call_signal(
+    peer_id: &str,
+    signal: crate::behavior::CallSignal,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        // See `send_device_binding`: dispatch is fire-and-forget from here;
+        // protocol failures surface as `OutboundFailure` behaviour events.
+        let _ = swarm
+            .behaviour_mut()
+            .call_signaling
+            .send_request(&peer, signal);
     }
 }
 

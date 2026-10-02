@@ -330,6 +330,40 @@ async fn process_swarm_event(
         SwarmEvent::DeviceBindingReceived { user_id } => {
             handle_device_binding_received(state, user_id).await;
         }
+        SwarmEvent::CallInvite { call_id, peer_id } => {
+            let mut s = state.lock().await;
+            // One session at a time (mirrors the device-binding prompt): an
+            // invite while already on a call is declined implicitly.
+            if s.call_session.is_none() {
+                s.call_session = Some(p2p_app::CallSession::incoming(&call_id, &peer_id));
+            }
+            drop(s);
+            p2plog_debug(format!("Incoming call {call_id} from {peer_id}"));
+        }
+        SwarmEvent::CallAccepted { call_id, peer_id } => {
+            let mut s = state.lock().await;
+            if let Some(session) = s.call_session.as_mut() {
+                session.on_signal(&p2p_app::CallSignal::new("accept", call_id.clone()));
+            }
+            drop(s);
+            p2plog_debug(format!("Call {call_id} accepted by {peer_id}"));
+        }
+        SwarmEvent::CallRejected { call_id, peer_id } => {
+            let mut s = state.lock().await;
+            if let Some(session) = s.call_session.as_mut() {
+                session.on_signal(&p2p_app::CallSignal::new("reject", call_id.clone()));
+            }
+            drop(s);
+            p2plog_debug(format!("Call {call_id} declined by {peer_id}"));
+        }
+        SwarmEvent::CallEnded { call_id, peer_id } => {
+            let mut s = state.lock().await;
+            if let Some(session) = s.call_session.as_mut() {
+                session.on_signal(&p2p_app::CallSignal::new("end", call_id.clone()));
+            }
+            drop(s);
+            p2plog_debug(format!("Call {call_id} ended with {peer_id}"));
+        }
     }
 }
 

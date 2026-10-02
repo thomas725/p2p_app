@@ -19,6 +19,15 @@ pub const DM_PROTOCOL_NAME: &str = "/p2p-chat/dm/1.0.0";
 /// before binding.
 pub const DEVICE_BINDING_PROTOCOL_NAME: &str = "/p2p-chat/device-binding/1.0.0";
 
+/// Call-signaling protocol name (calls lane).
+///
+/// One-shot JSON signals over a dedicated `request_response` lane, mirroring the
+/// device-binding pattern. Kinds: `"invite"` (the callee is asked to ring),
+/// `"accept"`/`"reject"` (the callee's answer to an invite), and `"end"`
+/// (either side tears the call down). The signaling slice carries no media:
+/// `CallSignal::descriptor` is reserved for the later offer/answer payload.
+pub const CALL_PROTOCOL_NAME: &str = "/p2p-chat/call/1.0.0";
+
 /// Default chat topic
 pub const CHAT_TOPIC: &str = "test-net";
 
@@ -148,6 +157,52 @@ pub struct DeviceBindingAck {
 pub type DeviceBindingCodec =
     libp2p::request_response::json::codec::Codec<DeviceBindingRequest, DeviceBindingAck>;
 
+/// Call-signaling exchange payload (calls lane; signaling first, media later).
+///
+/// One wire type, four `kind`s — the caller mints the end-to-end `call_id`
+/// (via `gen_msg_id`) and every side echoes it back, so each side can match
+/// signals to its live session.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CallSignal {
+    /// `"invite"` | `"accept"` | `"reject"` | `"end"`
+    pub kind: String,
+    /// Session id minted by the caller; echoed by every later signal.
+    pub call_id: String,
+    /// Unix seconds when the signal was sent.
+    pub timestamp: f64,
+    /// Reserved: media offer/answer descriptor (SDP/ICE) when media lands.
+    pub descriptor: Option<String>,
+}
+
+impl CallSignal {
+    /// Build a signal of the given kind for a session, stamping the current
+    /// time and leaving the reserved media descriptor empty.
+    #[must_use]
+    pub fn new(kind: &str, call_id: String) -> Self {
+        Self {
+            kind: kind.to_string(),
+            call_id,
+            timestamp: crate::current_timestamp(),
+            descriptor: None,
+        }
+    }
+}
+
+/// Ack for a call-signaling request (`ok` = the signal was understood).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct CallSignalAck {
+    /// Whether the signal was accepted
+    pub ok: bool,
+    /// Human-readable reason on failure
+    pub reason: Option<String>,
+}
+
+/// JSON codec for the call-signaling protocol
+pub type CallSignalCodec =
+    libp2p::request_response::json::codec::Codec<CallSignal, CallSignalAck>;
+
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
@@ -158,6 +213,9 @@ pub struct AppBehaviour {
     /// Request-response protocol handler for signed device-binding exchanges
     /// (identity lane §11: intro + account-signed claims)
     pub device_binding: request_response::Behaviour<DeviceBindingCodec>,
+    /// Request-response protocol handler for call signaling (calls lane:
+    /// invite/accept/reject/end; media transport lands on a later slice)
+    pub call_signaling: request_response::Behaviour<CallSignalCodec>,
     /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
@@ -222,6 +280,14 @@ pub fn build_behaviour(
         request_response::Config::default(),
     );
 
+    let call_signaling = request_response::Behaviour::new(
+        [(
+            libp2p::StreamProtocol::new(CALL_PROTOCOL_NAME),
+            request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default(),
+    );
+
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
     // dead connection. This surfaces killed/disconnected peers within ~10-20s
     // instead of waiting on the (often never-elapsed) idle connection timeout.
@@ -242,6 +308,7 @@ pub fn build_behaviour(
         gossipsub,
         request_response,
         device_binding,
+        call_signaling,
         #[cfg(feature = "mdns")]
         mdns,
         ping,

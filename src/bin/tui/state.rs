@@ -176,6 +176,12 @@ pub struct AppState {
     /// 'd'/Esc declines.
     pub device_binding_prompt: Option<DeviceBindingPrompt>,
 
+    /// Live call session (calls lane). One session at a time, mirroring the
+    /// single-slot device-binding prompt; `None` = no active/ringing call.
+    /// Advanced here on call events; the interactive surface (accept/reject/
+    /// hangup keys + prompt overlay + status line) lands in the TUI slice.
+    pub call_session: Option<p2p_app::CallSession>,
+
     // Settings tab (read-only node/network diagnostics)
     pub db_url: String,
     pub platform: String,
@@ -474,6 +480,7 @@ impl AppState {
             editing_nickname_peer: None,
             popup: None,
             device_binding_prompt: None,
+            call_session: None,
             db_url: String::new(),
             platform: String::new(),
             network_size: String::new(),

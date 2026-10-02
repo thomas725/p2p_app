@@ -7,6 +7,31 @@ fn constants_are_stable() {
 }
 
 #[test]
+fn call_protocol_name_is_stable() {
+    assert_eq!(CALL_PROTOCOL_NAME, "/p2p-chat/call/1.0.0");
+}
+
+#[test]
+fn call_signal_builder_and_json_roundtrip() {
+    let sig = CallSignal::new("invite", "c1".into());
+    assert_eq!(sig.kind, "invite");
+    assert_eq!(sig.call_id, "c1");
+    assert!(sig.descriptor.is_none());
+    let json = serde_json::to_string(&sig).expect("serialize");
+    let parsed: CallSignal = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(parsed.kind, "invite");
+    assert_eq!(parsed.call_id, "c1");
+    assert!(parsed.descriptor.is_none());
+}
+
+#[test]
+fn call_signal_ack_default_is_not_ok() {
+    let ack = CallSignalAck::default();
+    assert!(!ack.ok);
+    assert!(ack.reason.is_none());
+}
+
+#[test]
 fn direct_message_default_is_empty() {
     let dm = DirectMessage::default();
     assert!(dm.content.is_empty());

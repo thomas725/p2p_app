@@ -50,6 +50,7 @@
 #[cfg(feature = "mobile")]
 pub mod api;
 pub mod behavior;
+pub mod calls;
 pub mod connected;
 pub mod contacts;
 pub mod db;
@@ -90,8 +91,9 @@ pub mod tui_render;
 pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 
 pub use behavior::{
-    AppBehaviour, BroadcastMessage, CHAT_TOPIC, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
-    GroupBackfillRequest, GroupMessage, build_behaviour, build_swarm,
+    AppBehaviour, BroadcastMessage, CHAT_TOPIC, CALL_PROTOCOL_NAME, CallSignal, CallSignalAck,
+    ChatCodec, DM_PROTOCOL_NAME, DirectMessage, GroupBackfillRequest, GroupMessage,
+    build_behaviour, build_swarm,
 };
 #[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url;
@@ -153,6 +155,7 @@ pub use types::{
     AutoScrollFlags, DisplayMessage, GroupMessageEvent, InputMode, MessageEvent, PeerRecord,
     StringMap, StringSet, SwarmCommand, SwarmEvent, usize_limit_to_i64,
 };
+pub use calls::{CallSession, CallState};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 

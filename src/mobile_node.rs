@@ -869,28 +869,8 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             group_id: Some(group_id),
             device_pubkey: None,
         },
-        SwarmEvent::BroadcastMessage(m) => SwarmEventJson {
-            event_type: "broadcast".into(),
-            peer_id: Some(m.peer_id),
-            content: Some(m.content),
-            latency: m.latency,
-            nickname: m.nickname,
-            msg_id: m.msg_id,
-            address: None,
-            group_id: None,
-            device_pubkey: None,
-        },
-        SwarmEvent::DirectMessage(m) => SwarmEventJson {
-            event_type: "dm".into(),
-            peer_id: Some(m.peer_id),
-            content: Some(m.content),
-            latency: m.latency,
-            nickname: m.nickname,
-            msg_id: m.msg_id,
-            address: None,
-            group_id: None,
-            device_pubkey: None,
-        },
+        SwarmEvent::BroadcastMessage(m) => message_event_json("broadcast", m),
+        SwarmEvent::DirectMessage(m) => message_event_json("dm", m),
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
             event_type: "peer_connected".into(),
             peer_id: Some(id),
@@ -941,6 +921,33 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             content: Some(user_id),
             ..default_event()
         },
+        // Call-signaling events (calls lane). `content` carries the
+        // end-to-end `call_id`; Dart keys its call screen/rings on
+        // `event_type` + `peer_id` + the echoed `call_id`.
+        SwarmEvent::CallInvite { call_id, peer_id } => {
+            call_event_json("call_invite", call_id, peer_id)
+        }
+        SwarmEvent::CallAccepted { call_id, peer_id } => {
+            call_event_json("call_accepted", call_id, peer_id)
+        }
+        SwarmEvent::CallRejected { call_id, peer_id } => {
+            call_event_json("call_rejected", call_id, peer_id)
+        }
+        SwarmEvent::CallEnded { call_id, peer_id } => {
+            call_event_json("call_ended", call_id, peer_id)
+        }
+    }
+}
+
+/// JSON envelope shared by all four call-signaling events: the `event_type`
+/// distinguishes them, `content` carries the echoed `call_id`, and `peer_id`
+/// names the other side.
+fn call_event_json(event_type: &str, call_id: String, peer_id: String) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: event_type.to_string(),
+        peer_id: Some(peer_id),
+        content: Some(call_id),
+        ..default_event()
     }
 }
 
@@ -952,6 +959,22 @@ const fn default_event() -> SwarmEventJson {
         latency: None,
         nickname: None,
         msg_id: None,
+        address: None,
+        group_id: None,
+        device_pubkey: None,
+    }
+}
+
+/// JSON envelope for broadcast/DM events (the two text-message kinds the Dart
+/// chat surfaces persist); the `event_type` distinguishes them.
+fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: event_type.to_string(),
+        peer_id: Some(m.peer_id),
+        content: Some(m.content),
+        latency: m.latency,
+        nickname: m.nickname,
+        msg_id: m.msg_id,
         address: None,
         group_id: None,
         device_pubkey: None,
@@ -1065,6 +1088,50 @@ mod tests {
         });
         assert_eq!(j.event_type, "peer_expired");
         assert_eq!(j.peer_id.as_deref(), Some("p6"));
+    }
+
+    #[test]
+    fn test_event_to_json_call_invite() {
+        let j = event_to_json(SwarmEvent::CallInvite {
+            call_id: "c1".into(),
+            peer_id: "p1".into(),
+        });
+        assert_eq!(j.event_type, "call_invite");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.content.as_deref(), Some("c1"));
+    }
+
+    #[test]
+    fn test_event_to_json_call_accepted() {
+        let j = event_to_json(SwarmEvent::CallAccepted {
+            call_id: "c1".into(),
+            peer_id: "p1".into(),
+        });
+        assert_eq!(j.event_type, "call_accepted");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.content.as_deref(), Some("c1"));
+    }
+
+    #[test]
+    fn test_event_to_json_call_rejected() {
+        let j = event_to_json(SwarmEvent::CallRejected {
+            call_id: "c1".into(),
+            peer_id: "p1".into(),
+        });
+        assert_eq!(j.event_type, "call_rejected");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.content.as_deref(), Some("c1"));
+    }
+
+    #[test]
+    fn test_event_to_json_call_ended() {
+        let j = event_to_json(SwarmEvent::CallEnded {
+            call_id: "c1".into(),
+            peer_id: "p1".into(),
+        });
+        assert_eq!(j.event_type, "call_ended");
+        assert_eq!(j.peer_id.as_deref(), Some("p1"));
+        assert_eq!(j.content.as_deref(), Some("c1"));
     }
 
     // ── default_event ──────────────────────────────────────────────────

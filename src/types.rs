@@ -176,6 +176,36 @@ pub enum SwarmEvent {
         /// The account our device was just bound into
         user_id: String,
     },
+    /// An incoming call invite (calls lane). The `call_id` is minted by the
+    /// caller and must be echoed back in the accept/reject/end signals.
+    CallInvite {
+        /// End-to-end session id minted by the caller
+        call_id: String,
+        /// Peer ID of the caller
+        peer_id: String,
+    },
+    /// Our outgoing invite was accepted: the call is live from our side.
+    CallAccepted {
+        /// Session id echoed back by the callee
+        call_id: String,
+        /// Peer ID of the callee
+        peer_id: String,
+    },
+    /// Our outgoing invite was declined.
+    CallRejected {
+        /// Session id echoed back by the callee
+        call_id: String,
+        /// Peer ID of the callee
+        peer_id: String,
+    },
+    /// A call was torn down (either side sent "end"). Both sides transition
+    /// their session to `Ended`.
+    CallEnded {
+        /// Session id of the ended call
+        call_id: String,
+        /// Peer ID the call was with
+        peer_id: String,
+    },
 }
 
 /// Commands sent to the swarm task
@@ -232,6 +262,14 @@ pub enum SwarmCommand {
         /// The device-binding payload to transmit (boxed: keeps this variant
         /// near the others so the command channel stays small)
         request: Box<crate::behavior::DeviceBindingRequest>,
+    },
+    /// Send a call-signaling request to a peer over the dedicated
+    /// request-response lane (calls lane: invite/accept/reject/end).
+    SendCallSignal {
+        /// The peer to send the signal to
+        peer_id: String,
+        /// The call-signaling payload (boxed: keeps the command channel small)
+        signal: Box<crate::behavior::CallSignal>,
     },
 }
 
