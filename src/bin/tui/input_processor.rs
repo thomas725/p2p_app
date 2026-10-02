@@ -190,6 +190,130 @@ fn handle_close_dm_tab(
     }
 }
 
+/// Queue a call signal to `peer_id` on the calls lane (invite/accept/reject/
+/// end; the session id is echoed by every kind).
+async fn send_call_signal(
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    peer_id: &str,
+    call_id: &str,
+    kind: &str,
+) {
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::SendCallSignal {
+            peer_id: peer_id.to_string(),
+            signal: Box::new(p2p_app::CallSignal::new(kind, call_id.to_string())),
+        })
+        .await;
+}
+
+/// Place an outgoing call to `peer_id`: mint a fresh session and send its
+/// invite. A no-op while a call is already active (one session at a time).
+async fn start_call_to_peer(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    peer_id: &str,
+) {
+    if state
+        .call_session
+        .as_ref()
+        .is_some_and(p2p_app::CallSession::is_active)
+    {
+        p2plog_debug("Call already active; ignoring new ring".to_string());
+        return;
+    }
+    let session = p2p_app::CallSession::outgoing(peer_id);
+    let call_id = session.call_id.clone();
+    send_call_signal(swarm_cmd_tx, peer_id, &call_id, "invite").await;
+    state.call_session = Some(session);
+    p2plog_debug(format!("Placing call to {peer_id} ({call_id})"));
+}
+
+/// `c` starts a call to the peer targeted by `tab`: the selected
+/// contact/device on the Contacts tab, or the Peer Info owner.
+async fn start_call_for_tab(
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    if let Some(peer_id) = match tab {
+        p2p_app::tui_tabs::TabContent::Contacts => s.selected_contact_peer_id(),
+        p2p_app::tui_tabs::TabContent::PeerInfo(pid) => Some(pid.clone()),
+        _ => None,
+    } {
+        start_call_to_peer(s, swarm_cmd_tx, &peer_id).await;
+    }
+}
+
+/// Route a key to the active call overlay. A live session swallows all input
+/// until it resolves (mirrors the device-binding prompt):
+///   * `Ringing` — `a`/`A` accepts; any other key (Esc included) declines.
+///   * `Calling` — `c`/`C`/Esc cancels the outgoing ring; other keys ignored.
+///   * `InCall`  — Esc hangs up; other keys ignored.
+///
+/// Always consumes the key (the caller short-circuits before generic dispatch).
+async fn handle_call_overlay_key(
+    key_event: &crossterm::event::KeyEvent,
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    render_tx: &mpsc::Sender<RenderEvent>,
+) {
+    let s = state.lock().await;
+    let Some(session) = s.call_session.as_ref() else {
+        return;
+    };
+    let (call_id, peer_id, call_state) = (
+        session.call_id.clone(),
+        session.peer_id.clone(),
+        session.state,
+    );
+    drop(s);
+
+    match call_state {
+        p2p_app::CallState::Ringing => {
+            let accept = matches!(key_event.code, crossterm::event::KeyCode::Char('a' | 'A'));
+            let kind = if accept { "accept" } else { "reject" };
+            let mut s = state.lock().await;
+            if accept {
+                if let Some(session) = s.call_session.as_mut() {
+                    session.on_signal(&p2p_app::CallSignal::new(kind, call_id.clone()));
+                }
+            } else {
+                s.call_session = None;
+            }
+            drop(s);
+            send_call_signal(swarm_cmd_tx, &peer_id, &call_id, kind).await;
+            p2plog_debug(if accept {
+                format!("Accepted call {call_id}")
+            } else {
+                format!("Declined call {call_id} (ringing)")
+            });
+        }
+        p2p_app::CallState::Calling => {
+            let is_esc = key_event.code == crossterm::event::KeyCode::Esc;
+            let cancel =
+                is_esc || matches!(key_event.code, crossterm::event::KeyCode::Char('c' | 'C'));
+            if cancel {
+                let mut s = state.lock().await;
+                s.call_session = None;
+                drop(s);
+                send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
+                p2plog_debug(format!("Cancelled outgoing call {call_id}"));
+            }
+        }
+        p2p_app::CallState::InCall => {
+            if key_event.code == crossterm::event::KeyCode::Esc {
+                let mut s = state.lock().await;
+                s.call_session = None;
+                drop(s);
+                send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
+                p2plog_debug(format!("Hanging up call {call_id}"));
+            }
+        }
+        p2p_app::CallState::Ended => {}
+    }
+    let _ = render_tx.send(RenderEvent).await;
+}
+
 /// Handles Esc: dismiss popup / cancel nickname edit / cancel group create /
 /// return to broadcast chat.
 async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEvent>) {
@@ -385,11 +509,6 @@ async fn process_key_event(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     render_tx: &mpsc::Sender<RenderEvent>,
 ) -> bool {
-    if key_event.code == crossterm::event::KeyCode::Esc {
-        handle_esc_key(state, render_tx).await;
-        return false;
-    }
-
     if key_event
         .modifiers
         .contains(crossterm::event::KeyModifiers::CONTROL)
@@ -397,6 +516,24 @@ async fn process_key_event(
     {
         p2plog_debug("Exit signal received".to_string());
         return true;
+    }
+
+    // A live call session owns the keys until it resolves (mirrors the
+    // device-binding prompt): accept/decline a ring, cancel an outgoing call,
+    // hang up an active one. Handled before Esc so Esc is a call key here, not
+    // the generic dismiss/return-to-chat handling.
+    let call_active = {
+        let s = state.lock().await;
+        s.call_session.as_ref().is_some_and(p2p_app::CallSession::is_active)
+    };
+    if call_active {
+        handle_call_overlay_key(&key_event, state, swarm_cmd_tx, render_tx).await;
+        return false;
+    }
+
+    if key_event.code == crossterm::event::KeyCode::Esc {
+        handle_esc_key(state, render_tx).await;
+        return false;
     }
 
     let mut s = state.lock().await;
@@ -538,6 +675,16 @@ async fn handle_key_dispatch(
         {
             s.toggle_expand_selected_contact();
             p2plog_debug("Toggled contact expansion".to_string());
+        }
+        // `c` places a call to the selected contact/device (Contacts) or the
+        // Peer Info owner. Must precede the generic sort-key arm below (which
+        // would otherwise swallow the `c`).
+        crossterm::event::KeyCode::Char('c')
+            if !is_ctrl
+                && !s.is_editing_nickname()
+                && (on_contacts || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
+        {
+            start_call_for_tab(&tab, s, swarm_cmd_tx).await;
         }
         crossterm::event::KeyCode::Char(c)
             if !is_ctrl && on_contacts && !s.is_editing_nickname() =>

@@ -902,3 +902,157 @@ async fn test_process_swarm_event_peer_expired() {
     )
     .await;
 }
+
+// ── process_swarm_event: call signaling ────────────────────────────────
+
+async fn assert_call_session(
+    state: &Arc<Mutex<AppState>>,
+    expected_state: Option<p2p_app::CallState>,
+) -> p2p_app::CallSession {
+    let s = state.lock().await;
+    expected_state.map_or_else(
+        || {
+            assert!(s.call_session.is_none());
+            p2p_app::CallSession::default()
+        },
+        |state| {
+            let session = s.call_session.as_ref().unwrap();
+            assert_eq!(session.state, state);
+            session.clone()
+        },
+    )
+}
+
+fn call_event(kind: &str, call_id: &str, peer_id: &str) -> SwarmEvent {
+    match kind {
+        "invite" => SwarmEvent::CallInvite {
+            call_id: call_id.to_string(),
+            peer_id: peer_id.to_string(),
+        },
+        "accept" => SwarmEvent::CallAccepted {
+            call_id: call_id.to_string(),
+            peer_id: peer_id.to_string(),
+        },
+        "reject" => SwarmEvent::CallRejected {
+            call_id: call_id.to_string(),
+            peer_id: peer_id.to_string(),
+        },
+        _ => SwarmEvent::CallEnded {
+            call_id: call_id.to_string(),
+            peer_id: peer_id.to_string(),
+        },
+    }
+}
+
+#[tokio::test]
+async fn test_call_invite_adopts_ringing_session() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("invite", "call-1", "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    let session = assert_call_session(&state, Some(p2p_app::CallState::Ringing)).await;
+    assert_eq!(session.call_id, "call-1");
+    assert_eq!(session.peer_id, "bob-d1");
+}
+
+#[tokio::test]
+async fn test_call_invite_ignored_while_on_live_call() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::incoming("live-call", "alice-d1"));
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("invite", "other-call", "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    let session = assert_call_session(&state, Some(p2p_app::CallState::Ringing)).await;
+    assert_eq!(session.call_id, "live-call", "first call wins");
+}
+
+#[tokio::test]
+async fn test_call_invite_adopted_after_settled_session() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession {
+        call_id: "ended-call".to_string(),
+        peer_id: "alice-d1".to_string(),
+        state: p2p_app::CallState::Ended,
+    });
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("invite", "fresh-call", "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    let session = assert_call_session(&state, Some(p2p_app::CallState::Ringing)).await;
+    assert_eq!(session.call_id, "fresh-call");
+}
+
+#[tokio::test]
+async fn test_call_accept_upgrades_outgoing_to_incall() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::outgoing("bob-d1"));
+    let call_id = app.call_session.as_ref().unwrap().call_id.clone();
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("accept", &call_id, "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    assert_call_session(&state, Some(p2p_app::CallState::InCall)).await;
+}
+
+#[tokio::test]
+async fn test_call_accept_ignores_foreign_call_id() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::outgoing("bob-d1"));
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("accept", "wrong-call", "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    assert_call_session(&state, Some(p2p_app::CallState::Calling)).await;
+}
+
+#[tokio::test]
+async fn test_call_reject_clears_session() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::outgoing("bob-d1"));
+    let call_id = app.call_session.as_ref().unwrap().call_id.clone();
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("reject", &call_id, "bob-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    assert_call_session(&state, None).await;
+}
+
+#[tokio::test]
+async fn test_call_end_clears_session() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::incoming("in-call", "alice-d1"));
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("end", "in-call", "alice-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    assert_call_session(&state, None).await;
+}

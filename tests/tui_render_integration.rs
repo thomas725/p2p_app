@@ -271,7 +271,15 @@ mod render_tests {
         let text = shortcuts_text(&TabContent::Contacts, false);
         assert!(text.contains("Enter: open DM"));
         assert!(text.contains("i: Peer Info"));
+        assert!(text.contains("c: call"));
         assert!(!text.contains("Ctrl+I: Peer Info"));
+    }
+
+    #[test]
+    fn test_shortcuts_peer_info_tab_documents_call() {
+        let text = shortcuts_text(&TabContent::PeerInfo("peer-1".to_string()), false);
+        assert!(text.contains("c: call"));
+        assert!(!text.contains("Peer Info"));
     }
 
     #[test]

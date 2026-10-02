@@ -127,7 +127,10 @@ pub fn render_input_section(
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Contacts => {
-            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::PeerInfo(_) => {
+            "Tab: next | Enter: open DM | c: call | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Groups => {
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | F12: mouse | Ctrl+Q: quit"

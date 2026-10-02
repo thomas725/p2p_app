@@ -1230,3 +1230,256 @@ fn test_device_binding_accept_mints_and_queues_claim() {
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();
 }
+
+// ── call overlay (start / accept / decline / cancel / hang up) ─────────────
+
+fn call_state(peer: &str, state: p2p_app::CallState) -> AppState {
+    let mut s = test_app_state();
+    s.call_session = Some(p2p_app::CallSession {
+        call_id: "call-1".to_string(),
+        peer_id: peer.to_string(),
+        state,
+    });
+    s
+}
+
+/// Ask for the queued call signal, asserting it is a `SendCallSignal`.
+fn assert_send_call_signal(
+    rx: &mut mpsc::Receiver<SwarmCommand>,
+    expected_peer: &str,
+    expected_kind: &str,
+) {
+    match rx.try_recv().expect("call signal queued") {
+        SwarmCommand::SendCallSignal { peer_id, signal } => {
+            assert_eq!(peer_id, expected_peer);
+            assert_eq!(signal.kind, expected_kind);
+        }
+        other => panic!("expected SendCallSignal, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_c_key_on_contacts_starts_outgoing_call() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.contacts = vec![p2p_app::contacts::ContactRow {
+            contact_id: "bob".to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: 1,
+            device_rows: vec![p2p_app::contacts::ContactDevice {
+                peer_id: "bob-d1".to_string(),
+                display_name: "Laptop".to_string(),
+                received_nickname: None,
+                local_nickname: None,
+                first_seen: "s".to_string(),
+                last_seen: "l".to_string(),
+            }],
+            first_seen: "s".to_string(),
+            last_seen: "l".to_string(),
+            dm_count: 0,
+            broadcast_sent_to_peer: 0,
+        }];
+        s.peer_selection = 0;
+        s.active_tab = 1; // Contacts tab
+    }
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.call_session.is_some());
+    assert_eq!(s.call_session.as_ref().unwrap().peer_id, "bob-d1");
+    assert_eq!(s.call_session.as_ref().unwrap().state, p2p_app::CallState::Calling);
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "invite");
+}
+
+#[tokio::test]
+async fn test_c_key_on_peer_info_starts_outgoing_call() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = s.dynamic_tabs.add_peer_info_tab("bob-d1".to_string());
+    }
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.call_session.is_some());
+    assert_eq!(s.call_session.as_ref().unwrap().peer_id, "bob-d1");
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "invite");
+}
+
+#[tokio::test]
+async fn test_call_overlay_a_accepts_ringing() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('a'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(
+        s.call_session.as_ref().unwrap().state,
+        p2p_app::CallState::InCall
+    );
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "accept");
+}
+
+#[tokio::test]
+async fn test_call_overlay_any_key_declines_ringing() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(s.call_session.is_none(), "session cleared after decline");
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "reject");
+}
+
+#[tokio::test]
+async fn test_call_overlay_esc_declines_ringing() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited, "Esc declines a ring, it does not exit");
+    let s = state.lock().await;
+    assert!(s.call_session.is_none());
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "reject");
+}
+
+#[tokio::test]
+async fn test_call_overlay_c_cancels_calling() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    let s = state.lock().await;
+    assert!(s.call_session.is_none());
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+}
+
+#[tokio::test]
+async fn test_call_overlay_esc_cancels_calling() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    let s = state.lock().await;
+    assert!(s.call_session.is_none());
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+}
+
+#[tokio::test]
+async fn test_call_overlay_typing_ignored_while_calling() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    let s = state.lock().await;
+    assert!(s.call_session.is_some(), "ignored key keeps the call");
+    assert_eq!(s.call_session.as_ref().unwrap().state, p2p_app::CallState::Calling);
+    drop(s);
+    assert!(swarm_cmd_rx.try_recv().is_err(), "no signal sent");
+}
+
+#[tokio::test]
+async fn test_call_overlay_esc_hangs_up_incall() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::InCall)));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    let s = state.lock().await;
+    assert!(s.call_session.is_none());
+    drop(s);
+    assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+}
+
+#[tokio::test]
+async fn test_call_overlay_ctrl_q_quits_during_call() {
+    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::InCall)));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(exited, "Ctrl+Q still exits during a call");
+}

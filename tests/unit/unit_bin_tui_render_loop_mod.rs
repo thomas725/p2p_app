@@ -246,6 +246,57 @@ fn test_device_binding_prompt_renders_and_wins_over_popup() {
 }
 
 #[test]
+fn test_call_overlay_renders_each_state() {
+    for (state, expected) in [
+        (p2p_app::CallState::Ringing, "Incoming call from"),
+        (p2p_app::CallState::Calling, "Calling"),
+        (p2p_app::CallState::InCall, "In call with"),
+    ] {
+        let mut s = app_state();
+        s.call_session = Some(p2p_app::CallSession {
+            call_id: "call-1".to_string(),
+            peer_id: "bob-d1".to_string(),
+            state,
+        });
+        let text = call_overlay_text(&s).expect("overlay text");
+        assert!(text.contains(expected), "{text}");
+    }
+    // A settled session renders no overlay.
+    let mut s = app_state();
+    s.call_session = Some(p2p_app::CallSession {
+        call_id: "call-1".to_string(),
+        peer_id: "bob-d1".to_string(),
+        state: p2p_app::CallState::Ended,
+    });
+    assert_eq!(call_overlay_text(&s), None);
+}
+
+#[test]
+fn test_render_popup_text_call_overlay_beats_popup_and_loses_to_device_prompt() {
+    let mut state = app_state();
+    state.call_session = Some(p2p_app::CallSession::incoming("call-1", "bob-d1"));
+    state.popup = Some("ad-hoc".to_string());
+    let text = render_popup_text(&state).expect("overlay wins over popup");
+    assert!(text.contains("Incoming call from"));
+    assert!(!text.contains("ad-hoc"));
+
+    // The device-binding prompt outranks the call overlay.
+    state.device_binding_prompt = Some(crate::tui::state::DeviceBindingPrompt {
+        peer_id: "12D3Koooprompt-peer".to_string(),
+        device_pubkey: vec![1],
+    });
+    let text = render_popup_text(&state).expect("prompt wins over overlay");
+    assert!(text.contains("Device-binding intro"));
+    assert!(!text.contains("Incoming call from"));
+
+    // app_state_to_render_state surfaces the same overlay text.
+    let mut idle = app_state();
+    idle.call_session = Some(p2p_app::CallSession::incoming("call-1", "bob-d1"));
+    let rs = app_state_to_render_state(&idle);
+    assert!(rs.popup.as_deref().is_some_and(|t| t.contains("Incoming call from")));
+}
+
+#[test]
 fn test_app_state_to_render_state_own_user_identity() {
     let mut state = app_state();
     assert_eq!(app_state_to_render_state(&state).own_user_id, None);

@@ -331,40 +331,55 @@ async fn process_swarm_event(
             handle_device_binding_received(state, user_id).await;
         }
         SwarmEvent::CallInvite { call_id, peer_id } => {
-            let mut s = state.lock().await;
-            // One session at a time (mirrors the device-binding prompt): an
-            // invite while already on a call is declined implicitly.
-            if s.call_session.is_none() {
-                s.call_session = Some(p2p_app::CallSession::incoming(&call_id, &peer_id));
-            }
-            drop(s);
-            p2plog_debug(format!("Incoming call {call_id} from {peer_id}"));
+            handle_call_event(state, "invite", &call_id, &peer_id).await;
         }
         SwarmEvent::CallAccepted { call_id, peer_id } => {
-            let mut s = state.lock().await;
-            if let Some(session) = s.call_session.as_mut() {
-                session.on_signal(&p2p_app::CallSignal::new("accept", call_id.clone()));
-            }
-            drop(s);
-            p2plog_debug(format!("Call {call_id} accepted by {peer_id}"));
+            handle_call_event(state, "accept", &call_id, &peer_id).await;
         }
         SwarmEvent::CallRejected { call_id, peer_id } => {
-            let mut s = state.lock().await;
-            if let Some(session) = s.call_session.as_mut() {
-                session.on_signal(&p2p_app::CallSignal::new("reject", call_id.clone()));
-            }
-            drop(s);
-            p2plog_debug(format!("Call {call_id} declined by {peer_id}"));
+            handle_call_event(state, "reject", &call_id, &peer_id).await;
         }
         SwarmEvent::CallEnded { call_id, peer_id } => {
-            let mut s = state.lock().await;
-            if let Some(session) = s.call_session.as_mut() {
-                session.on_signal(&p2p_app::CallSignal::new("end", call_id.clone()));
-            }
-            drop(s);
-            p2plog_debug(format!("Call {call_id} ended with {peer_id}"));
+            handle_call_event(state, "end", &call_id, &peer_id).await;
         }
     }
+}
+
+/// Route a remote call-signaling event into the single `call_session` slot.
+/// An `invite` is adopted only while idle — a settled (ended) session never
+/// blocks a fresh ring, and a live one implicitly declines (one call at a
+/// time). `accept`/`reject`/`end` transition the matching session, and the
+/// slot is dropped once it settles so the caller can ring again.
+async fn handle_call_event(state: &SharedState, kind: &str, call_id: &str, peer_id: &str) {
+    let mut s = state.lock().await;
+    let mut settled = false;
+    match kind {
+        "invite" => {
+            if !s
+                .call_session
+                .as_ref()
+                .is_some_and(p2p_app::CallSession::is_active)
+            {
+                s.call_session = Some(p2p_app::CallSession::incoming(call_id, peer_id));
+            }
+        }
+        _ => {
+            if let Some(session) = s.call_session.as_mut() {
+                session.on_signal(&p2p_app::CallSignal::new(kind, call_id.to_string()));
+                settled = !session.is_active();
+            }
+        }
+    }
+    if settled {
+        s.call_session = None;
+    }
+    drop(s);
+    p2plog_debug(match kind {
+        "invite" => format!("Incoming call {call_id} from {peer_id}"),
+        "accept" => format!("Call {call_id} accepted by {peer_id}"),
+        "reject" => format!("Call {call_id} declined by {peer_id}"),
+        _ => format!("Call {call_id} ended with {peer_id}"),
+    });
 }
 
 /// Incoming group message: display-name cache + per-group chat state render.

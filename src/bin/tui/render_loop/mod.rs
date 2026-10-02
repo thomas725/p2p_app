@@ -15,9 +15,8 @@ use std::collections::VecDeque;
 use std::io::Stdout;
 use tokio::sync::mpsc;
 
-/// The popup to render: the device-binding prompt wins while one is active
-/// (its Accept/Decline keys are handled by the input processor), otherwise the
-/// ad-hoc `state.popup` text.
+/// The popup to render: the device-binding prompt wins while one is active, then
+/// any live call overlay, then the ad-hoc `state.popup` text.
 fn render_popup_text(state: &AppState) -> Option<String> {
     state
         .device_binding_prompt
@@ -30,7 +29,39 @@ fn render_popup_text(state: &AppState) -> Option<String> {
                 p.device_pubkey.len()
             )
         })
+        .or_else(|| call_overlay_text(state))
         .or_else(|| state.popup.clone())
+}
+
+/// The call-overlay text for a live session (`None` when no call is active or
+/// the session has settled). Accept/decline/cancel/hang-up keys are handled by
+/// the input processor; this is the visual prompt mirroring the device-binding
+/// one.
+fn call_overlay_text(state: &AppState) -> Option<String> {
+    let session = state.call_session.as_ref()?;
+    if !session.is_active() {
+        return None;
+    }
+    let peer = p2p_app::peer_display_name(
+        &session.peer_id,
+        &state.local_nicknames,
+        &state.received_nicknames,
+    );
+    match session.state {
+        p2p_app::CallState::Ringing => Some(format!(
+            "Incoming call from {peer}\n\
+             \nAccept with 'a' \u{b7} decline with any other key"
+        )),
+        p2p_app::CallState::Calling => Some(format!(
+            "Calling {peer} \u{2026}\n\
+             \nCancel with 'c' or Esc"
+        )),
+        p2p_app::CallState::InCall => Some(format!(
+            "In call with {peer}\n\
+             \nHang up with Esc"
+        )),
+        p2p_app::CallState::Ended => None,
+    }
 }
 
 /// Convert `AppState` to `TuiRenderState` for library rendering
@@ -263,7 +294,10 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     );
     layout::render_status_bar(f, chunks.get(4).copied().unwrap_or_default(), state);
 
-    if let Some(ref text) = state.popup {
+    // The popup/overlay layer: paint the merged text (device-binding prompt or
+    // call overlay wins over the ad-hoc `AppState.popup`), which is what
+    // `render_popup_text` folded into `render_state.popup`.
+    if let Some(ref text) = render_state.popup {
         render_popup(f, text.clone());
     }
 }
