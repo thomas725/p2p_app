@@ -88,6 +88,19 @@ The peer list is a sortable table (columns: Name, DM count, Broadcast count, Las
 | `d` | Decline the active device-binding intro (prompt only) |
 | `Ctrl+Q` | Exit application |
 
+## Calls
+
+| Key | Action |
+|-----|--------|
+| `c` | On the **Contacts** tab: ring the selected contact's best device. On a **Peer Info** tab: ring the info owner |
+| `a` / `A` | (Ringing overlay) Accept the incoming call |
+| any other key | (Ringing overlay) Decline the incoming call |
+| `c` / `C` / `Esc` | (Calling overlay) Cancel the outgoing ring |
+| `Esc` | (In-call overlay) Hang up |
+
+One call at a time (like the device-binding prompt): a live call overlay swallows all other input
+until it resolves. Call signaling is signaling-only — audio/video media is a future slice.
+
 ## DM Tab Layout
 
 ```

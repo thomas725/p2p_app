@@ -231,6 +231,43 @@ proposal above are bolded):
   backfill is strictly additive and transparent — no UI or FRB changes. Tests: topic helpers +
   request serialization (pure), watermark + bounded/oldest-first `load_group_messages_after` in
   unit_groups (lib 306). Committed as its own slice.
+- **Call signaling, slices A–C (2026-10-02/03):** landed three slices ahead of the media lane.
+  - **Transport (slice A):** a `request_response` lane (`/p2p-chat/call/1.0.0`, `CallSignal`,
+    `CallSignalAck`) mirrored after device-binding; caller minted `call_id` (`gen_msg_id`);
+    `CallSignal::new(kind, call_id)` echoes the id on every kind (`invite`/`accept`/`reject`/`end`).
+    The shared `calls::CallSession`/`CallState` machine is the canonical session model both
+    frontends use: `outgoing(peer)` mints, `incoming(call_id, peer)` adopts an invite,
+    `on_signal` mutates only when the echoed `call_id` matches (stale/foreign ids are no-ops),
+    one session at a time. `SwarmEvent::CallInvite/CallAccepted/CallRejected/CallEnded` +
+    `SwarmCommand::SendCallSignal` routed in `swarm_handler`. Kept **un-gated** (the reserved
+    `calls` feature stays for the future media deps, exactly like device-binding shipped
+    un-gated).
+  - **TUI (slice B):** Contacts `c` rings the selected contact's best device; a Peer Info tab
+    `c` rings the info owner (`start_call_for_tab`). Live sessions become a window overlay that
+    swallows all input until it resolves (mirrors the device-binding prompt): Ringing `a`/`A`
+    accepts, any other key declines; Calling `c`/`C`/Esc cancels; InCall Esc hangs up. Rendered
+    via `call_overlay_text` + `render_popup_text` precedence (device prompt → call overlay →
+    ad-hoc popup). `handle_call_event` adopts invites only when idle and drops
+    settle/foreign-`call_id` signals. TUI bin 269.
+  - **Flutter (slice C):** `api::start_call(peer_id) -> Result<String, String>` mints the session
+    id Rust-side and queues the `invite`, returning the `call_id` (caller must not mint its own —
+    id generation stays in Rust, matching TUI); `api::send_call_signal(peer_id, call_id, kind)`
+    queues accept/reject/end. Both are FRB-exposed wrappers (`api/mod.rs`) over
+    `#[flutter_rust_bridge::frb(ignore)]` `mobile_node` impls that `cmd_tx.blocking_send` a
+    `SendCallSignal`, mirroring `send_device_binding_intro`. FRB 2.13 regen produced Dart
+    `startCall`/`sendCallSignal`. The full-screen `CallScreen` takes over the event sink while
+    open (like `DmChatScreen`, restored on dispose) and keys session events on `peer_id` + echoed
+    `call_id` (`content`); non-call events forward downstream; a second incoming invite while one
+    session is live is auto-declined (`reject`). Affordances: per-device call button in the
+    Contacts table + an AppBar call action on PeerInfo; one `_activeCallId` guard in `home.dart`.
+    `CallScreen` carries `@visibleForTesting` seams (`sendSignalOverride`,
+    `state.deliverEvent`) like `SortContactsOverride`, exercised by 8 widget tests.
+  - **Parity note:** Flutter keys on `event_type` + `peer_id` + `content` (call_id) — exactly how
+    `call_event_json` fills the `SwarmEventJson` envelope Slice A added — so accept/decline/cancel
+    transitions are wire-driven, not optimistic state guesses (Accept only optimistically flips
+    to InCall locally; the peer's `call_accepted` is authoritative).
+  - Tests: lib 323 (slice A state machine + handler arms), bin 269 (slice B overlay), Flutter 35
+    widget tests (slice C). Committed per-slice. Slice D (docs) is this entry + KEYBOARD_SHORTCUTS.
 
 ## Verification (this doc)
 
