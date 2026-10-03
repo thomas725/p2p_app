@@ -524,7 +524,9 @@ async fn process_key_event(
     // the generic dismiss/return-to-chat handling.
     let call_active = {
         let s = state.lock().await;
-        s.call_session.as_ref().is_some_and(p2p_app::CallSession::is_active)
+        s.call_session
+            .as_ref()
+            .is_some_and(p2p_app::CallSession::is_active)
     };
     if call_active {
         handle_call_overlay_key(&key_event, state, swarm_cmd_tx, render_tx).await;

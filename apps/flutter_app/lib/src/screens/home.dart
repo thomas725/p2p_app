@@ -7,6 +7,7 @@ import 'package:p2p_app_flutter/src/rust/api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/contact_list.dart';
+import 'package:p2p_app_flutter/src/screens/call_screen.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_list.dart';
@@ -84,6 +85,11 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Device-binding intros already being prompted for (peer_id → device_pubkey),
   /// so repeated `device_binding_intro` events never stack dialogs.
   final Map<String, Uint8List> _pendingDeviceBindings = {};
+
+  /// call_id of the call currently presented by an open [CallScreen] (null when
+  /// none). One session at a time: guards against stacking a second call screen
+  /// and against placing an outgoing call while another session is live.
+  String? _activeCallId;
 
   /// This install's user identity for the Settings page: our user ID and the
   /// devices bound into it. Refreshed on Settings-tab open and whenever a
@@ -432,8 +438,47 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() => _listenAddresses.add(event.address!));
         }
         break;
+      case 'call_invite':
+        // An incoming call ring: open the call screen (or implicitly decline
+        // while another call is already active — one session at a time).
+        if (event.peerId != null && event.content != null) {
+          _handleCallInvite(event.peerId!, event.content!);
+        }
+        break;
     }
     _syncLiveStatus();
+  }
+
+  Future<void> _handleCallInvite(String peerId, String callId) async {
+    if (_activeCallId != null) {
+      // We're already in a session; decline the new ring so its caller stops
+      // ringing us. Best-effort — the caller times out the invite anyway.
+      try {
+        await sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
+      } catch (e) {
+        debugPrint('Failed to decline concurrent call: $e');
+      }
+      return;
+    }
+    final peer = _peers.where((p) => p.peerId == peerId).firstOrNull;
+    final displayName = peer?.displayName ?? peerId;
+    if (!mounted) return;
+    _activeCallId = callId;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CallScreen(
+          peerId: peerId,
+          displayName: displayName,
+          callId: callId,
+          initialPhase: CallScreenPhase.ringing,
+          onNavigate: _navigateToTab,
+          currentTab: 0,
+        ),
+      ),
+    );
+    // Back from the call; drop the live-session guard (the CallScreen has
+    // already restored the event sink on dispose).
+    if (mounted) setState(() => _activeCallId = null);
   }
 
   Future<void> _saveIncomingBroadcast(
@@ -633,9 +678,45 @@ class _HomeScreenState extends State<HomeScreen> {
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,
+          onCall: (p) => _startCallTo(p.peerId, p.displayName),
         ),
       ),
     );
+  }
+
+  /// Place an outgoing call to a contact device: mint a fresh session id via
+  /// the Rust `start_call` binding and open the call screen in its `calling`
+  /// phase. A no-op while a call is already active (one session at a time).
+  Future<void> _startCall(MobileContactDevice device) async {
+    await _startCallTo(device.peerId, device.displayName);
+  }
+
+  Future<void> _startCallTo(String peerId, String displayName) async {
+    if (_activeCallId != null) return;
+    try {
+      final callId = await startCall(peerId: peerId);
+      if (!mounted) return;
+      _activeCallId = callId;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => CallScreen(
+            peerId: peerId,
+            displayName: displayName,
+            callId: callId,
+            initialPhase: CallScreenPhase.calling,
+            onNavigate: _navigateToTab,
+            currentTab: 1,
+          ),
+        ),
+      );
+      if (mounted) setState(() => _activeCallId = null);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start call: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _openDmChat(
@@ -719,6 +800,7 @@ class _HomeScreenState extends State<HomeScreen> {
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 0,
+          onCall: (p) => _startCallTo(p.peerId, p.displayName),
         ),
       ),
     );
@@ -765,6 +847,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenInfo: _openPeerInfo,
         onOpenDm: _openDmChat,
         onLinkDevice: _sendIntro,
+        onCallDevice: _startCall,
       ),
       GroupList(
         groups: _groups,

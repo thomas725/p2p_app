@@ -646,6 +646,46 @@ pub fn accept_device_binding(peer_id: String, device_pubkey: &[u8]) -> Result<()
     Ok(())
 }
 
+/// Place an outgoing call to `peer_id`: mint a fresh session id and queue its
+/// `invite` over the calls lane. Returns the new `call_id` so the caller can
+/// track the session end-to-end (a session ends via `send_call_signal` with
+/// kind `end`).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn start_call(peer_id: String) -> Result<String, String> {
+    let call_id = crate::gen_msg_id();
+    send_call_signal(peer_id, call_id.clone(), "invite".to_string())?;
+    Ok(call_id)
+}
+
+/// Queue a call signal (`accept`/`reject`/`end`) over the calls lane; `call_id`
+/// is echoed by every kind and pins the session (mint a fresh one with
+/// [`Self::start_call`]).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Result<(), String> {
+    let mut queued = false;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            queued = tx
+                .blocking_send(SwarmCommand::SendCallSignal {
+                    peer_id,
+                    signal: Box::new(crate::behavior::CallSignal::new(&kind, call_id)),
+                })
+                .is_ok();
+        }
+    }
+    if !queued {
+        return Err("Failed to queue call signal: node not running".into());
+    }
+    Ok(())
+}
+
 // --- Group chat types and functions ---
 
 #[derive(Debug, Clone)]

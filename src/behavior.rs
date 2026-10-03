@@ -200,8 +200,7 @@ pub struct CallSignalAck {
 }
 
 /// JSON codec for the call-signaling protocol
-pub type CallSignalCodec =
-    libp2p::request_response::json::codec::Codec<CallSignal, CallSignalAck>;
+pub type CallSignalCodec = libp2p::request_response::json::codec::Codec<CallSignal, CallSignalAck>;
 
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]

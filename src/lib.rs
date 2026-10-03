@@ -91,10 +91,11 @@ pub mod tui_render;
 pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 
 pub use behavior::{
-    AppBehaviour, BroadcastMessage, CHAT_TOPIC, CALL_PROTOCOL_NAME, CallSignal, CallSignalAck,
+    AppBehaviour, BroadcastMessage, CALL_PROTOCOL_NAME, CHAT_TOPIC, CallSignal, CallSignalAck,
     ChatCodec, DM_PROTOCOL_NAME, DirectMessage, GroupBackfillRequest, GroupMessage,
     build_behaviour, build_swarm,
 };
+pub use calls::{CallSession, CallState};
 #[cfg(any(test, feature = "test-utils"))]
 pub use db::reset_db_url;
 pub use db::{
@@ -155,7 +156,6 @@ pub use types::{
     AutoScrollFlags, DisplayMessage, GroupMessageEvent, InputMode, MessageEvent, PeerRecord,
     StringMap, StringSet, SwarmCommand, SwarmEvent, usize_limit_to_i64,
 };
-pub use calls::{CallSession, CallState};
 
 use diesel_migrations::{EmbeddedMigrations, embed_migrations};
 

@@ -227,6 +227,32 @@ Future<void> acceptDeviceBinding({
   devicePubkey: devicePubkey,
 );
 
+/// Place an outgoing call: mint a session id, queue its `invite`.
+///
+/// Returns the fresh `call_id` so the caller can track the session end-to-end
+/// (a session ends via [`send_call_signal`] with kind `end`).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+Future<String> startCall({required String peerId}) =>
+    RustLib.instance.api.crateApiStartCall(peerId: peerId);
+
+/// Queue a call signal (`accept`/`reject`/`end`) over the calls lane; `call_id`
+/// is echoed by every kind and pins the session (mint a fresh one with
+/// [`start_call`]).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+Future<void> sendCallSignal({
+  required String peerId,
+  required String callId,
+  required String kind,
+}) => RustLib.instance.api.crateApiSendCallSignal(
+  peerId: peerId,
+  callId: callId,
+  kind: kind,
+);
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

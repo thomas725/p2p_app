@@ -293,7 +293,11 @@ fn test_render_popup_text_call_overlay_beats_popup_and_loses_to_device_prompt() 
     let mut idle = app_state();
     idle.call_session = Some(p2p_app::CallSession::incoming("call-1", "bob-d1"));
     let rs = app_state_to_render_state(&idle);
-    assert!(rs.popup.as_deref().is_some_and(|t| t.contains("Incoming call from")));
+    assert!(
+        rs.popup
+            .as_deref()
+            .is_some_and(|t| t.contains("Incoming call from"))
+    );
 }
 
 #[test]

@@ -95,6 +95,7 @@ Widget _app({
   void Function(MobileContactRow, MobileContactDevice)? onOpenInfo,
   void Function(MobileContactRow, MobileContactDevice)? onOpenDm,
   void Function(MobileContactDevice)? onLinkDevice,
+  void Function(MobileContactDevice)? onCallDevice,
 }) => MaterialApp(
   home: Scaffold(
     body: ContactList(
@@ -102,6 +103,7 @@ Widget _app({
       onOpenInfo: onOpenInfo ?? (_, _) {},
       onOpenDm: onOpenDm ?? (_, _) {},
       onLinkDevice: onLinkDevice,
+      onCallDevice: onCallDevice,
       sortOverride: sortOverride,
     ),
   ),
@@ -388,6 +390,7 @@ void main() {
     final openedInfo = <String>[];
     final openedDm = <String>[];
     final openedLink = <String>[];
+    final openedCall = <String>[];
     await tester.pumpWidget(
       _app(
         rows: rows,
@@ -395,6 +398,7 @@ void main() {
         onOpenInfo: (c, d) => openedInfo.add(d.peerId),
         onOpenDm: (c, d) => openedDm.add(d.peerId),
         onLinkDevice: (d) => openedLink.add(d.peerId),
+        onCallDevice: (d) => openedCall.add(d.peerId),
       ),
     );
     await tester.pump();
@@ -430,6 +434,14 @@ void main() {
     await tester.tap(find.byKey(const Key('link-multi-phone')));
     await tester.pump();
     expect(openedLink, ['multi-laptop', 'multi-phone']);
+
+    // The call action is device-scoped identically to info/dm/link.
+    await tester.ensureVisible(find.byKey(const Key('call-multi.best')));
+    await tester.tap(find.byKey(const Key('call-multi.best')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('call-multi-phone')));
+    await tester.pump();
+    expect(openedCall, ['multi-laptop', 'multi-phone']);
   });
 
   testWidgets('no link button renders without onLinkDevice', (tester) async {
@@ -438,5 +450,13 @@ void main() {
     );
     await tester.pump();
     expect(find.byKey(const Key('link-solo')), findsNothing);
+  });
+
+  testWidgets('no call button renders without onCallDevice', (tester) async {
+    await tester.pumpWidget(
+      _app(rows: [contact(id: 'solo', name: 'Solo')], sortOverride: _sortLikeRust),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('call-solo')), findsNothing);
   });
 }

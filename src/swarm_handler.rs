@@ -541,7 +541,9 @@ async fn handle_call_signal(
 ) {
     let peer_id_str = peer.to_string();
     match message {
-        libp2p::request_response::Message::Request { request, channel, .. } => {
+        libp2p::request_response::Message::Request {
+            request, channel, ..
+        } => {
             let (event, ack) = match request.kind.as_str() {
                 "invite" => (
                     Some(SwarmEvent::CallInvite {
@@ -602,13 +604,9 @@ async fn handle_call_signal(
         libp2p::request_response::Message::Response { response, .. } => {
             if let Some(reason) = response.reason {
                 if response.ok {
-                    p2plog_debug(format!(
-                        "call signal accepted by {peer_id_str}: {reason}"
-                    ));
+                    p2plog_debug(format!("call signal accepted by {peer_id_str}: {reason}"));
                 } else {
-                    p2plog_debug(format!(
-                        "call signal rejected by {peer_id_str}: {reason}"
-                    ));
+                    p2plog_debug(format!("call signal rejected by {peer_id_str}: {reason}"));
                 }
             }
         }

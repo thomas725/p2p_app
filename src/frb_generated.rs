@@ -18,14 +18,14 @@
     clippy::clone_on_copy,
     clippy::let_unit_value,
     clippy::deref_addrof,
-    clippy::all,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::restriction,
     clippy::explicit_auto_deref,
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
     clippy::needless_borrow,
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::restriction,
     mismatched_lifetime_syntaxes
 )]
 
@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 618136648;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 50473666;
 
 // Section: executor
 
@@ -1090,6 +1090,42 @@ fn wire__crate__api__save_outgoing_group_impl(
         },
     )
 }
+fn wire__crate__api__send_call_signal_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "send_call_signal",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_peer_id = <String>::sse_decode(&mut deserializer);
+            let api_call_id = <String>::sse_decode(&mut deserializer);
+            let api_kind = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok =
+                        crate::api::send_call_signal(api_peer_id, api_call_id, api_kind)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
 fn wire__crate__api__send_device_binding_intro_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1226,6 +1262,39 @@ fn wire__crate__mobile_api__sort_peers_impl(
                 ))?;
                 std::result::Result::Ok(output_ok)
             })())
+        },
+    )
+}
+fn wire__crate__api__start_call_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "start_call",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_peer_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::api::start_call(api_peer_id)?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
         },
     )
 }
@@ -1992,13 +2061,15 @@ fn pde_ffi_dispatcher_primary_impl(
         29 => wire__crate__api__save_outgoing_broadcast_impl(port, ptr, rust_vec_len, data_len),
         30 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
         31 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__send_call_signal_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__start_call_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2014,8 +2085,8 @@ fn pde_ffi_dispatcher_sync_impl(
         7 => wire__crate__mobile_api__format_time_hhmm_impl(ptr, rust_vec_len, data_len),
         18 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
         24 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
-        34 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
+        35 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
+        36 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

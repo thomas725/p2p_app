@@ -1298,7 +1298,10 @@ async fn test_c_key_on_contacts_starts_outgoing_call() {
     let s = state.lock().await;
     assert!(s.call_session.is_some());
     assert_eq!(s.call_session.as_ref().unwrap().peer_id, "bob-d1");
-    assert_eq!(s.call_session.as_ref().unwrap().state, p2p_app::CallState::Calling);
+    assert_eq!(
+        s.call_session.as_ref().unwrap().state,
+        p2p_app::CallState::Calling
+    );
     drop(s);
     assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "invite");
 }
@@ -1330,7 +1333,10 @@ async fn test_c_key_on_peer_info_starts_outgoing_call() {
 
 #[tokio::test]
 async fn test_call_overlay_a_accepts_ringing() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Ringing,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1353,7 +1359,10 @@ async fn test_call_overlay_a_accepts_ringing() {
 
 #[tokio::test]
 async fn test_call_overlay_any_key_declines_ringing() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Ringing,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1373,7 +1382,10 @@ async fn test_call_overlay_any_key_declines_ringing() {
 
 #[tokio::test]
 async fn test_call_overlay_esc_declines_ringing() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Ringing)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Ringing,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1393,7 +1405,10 @@ async fn test_call_overlay_esc_declines_ringing() {
 
 #[tokio::test]
 async fn test_call_overlay_c_cancels_calling() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Calling,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1412,7 +1427,10 @@ async fn test_call_overlay_c_cancels_calling() {
 
 #[tokio::test]
 async fn test_call_overlay_esc_cancels_calling() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Calling,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1431,7 +1449,10 @@ async fn test_call_overlay_esc_cancels_calling() {
 
 #[tokio::test]
 async fn test_call_overlay_typing_ignored_while_calling() {
-    let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::Calling)));
+    let state = Arc::new(Mutex::new(call_state(
+        "bob-d1",
+        p2p_app::CallState::Calling,
+    )));
     let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     let (render_tx, _) = mpsc::channel(1);
 
@@ -1444,7 +1465,10 @@ async fn test_call_overlay_typing_ignored_while_calling() {
     .await;
     let s = state.lock().await;
     assert!(s.call_session.is_some(), "ignored key keeps the call");
-    assert_eq!(s.call_session.as_ref().unwrap().state, p2p_app::CallState::Calling);
+    assert_eq!(
+        s.call_session.as_ref().unwrap().state,
+        p2p_app::CallState::Calling
+    );
     drop(s);
     assert!(swarm_cmd_rx.try_recv().is_err(), "no signal sent");
 }

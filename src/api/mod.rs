@@ -257,6 +257,27 @@ pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<
     crate::mobile_node::accept_device_binding(peer_id, &device_pubkey)
 }
 
+/// Place an outgoing call: mint a session id, queue its `invite`.
+///
+/// Returns the fresh `call_id` so the caller can track the session end-to-end
+/// (a session ends via [`send_call_signal`] with kind `end`).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+pub fn start_call(peer_id: String) -> Result<String, String> {
+    crate::mobile_node::start_call(peer_id)
+}
+
+/// Queue a call signal (`accept`/`reject`/`end`) over the calls lane; `call_id`
+/// is echoed by every kind and pins the session (mint a fresh one with
+/// [`start_call`]).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Result<(), String> {
+    crate::mobile_node::send_call_signal(peer_id, call_id, kind)
+}
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

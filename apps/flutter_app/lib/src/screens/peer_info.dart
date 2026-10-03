@@ -14,11 +14,16 @@ class PeerInfoScreen extends StatelessWidget {
     required this.serviceRunning,
     this.onNavigate,
     this.currentTab = 1,
+    this.onCall,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
   final void Function(int)? onNavigate;
   final int currentTab;
+
+  /// Places an outgoing call to this peer. Optional: when null, no call action
+  /// is rendered.
+  final void Function(MobilePeerRecord peer)? onCall;
 
   // Where the displayed name came from: local nickname > received > generated.
   static (String, String) _origin(MobilePeerRecord peer) {
@@ -41,7 +46,18 @@ class PeerInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final (origin, originDetail) = _origin(peer);
     return Scaffold(
-      appBar: AppBar(title: Text(peer.displayName)),
+      appBar: AppBar(
+        title: Text(peer.displayName),
+        actions: [
+          if (onCall != null)
+            IconButton(
+              key: const Key('call-peer-info'),
+              icon: const Icon(Icons.phone),
+              tooltip: 'Call',
+              onPressed: () => onCall!(peer),
+            ),
+        ],
+      ),
       bottomNavigationBar: MainTabNavBar(
         currentIndex: currentTab,
         onSelect: (i) {
