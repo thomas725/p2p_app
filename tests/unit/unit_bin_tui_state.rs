@@ -24,6 +24,7 @@ fn msg(
         msg_id: msg_id.map(String::from),
         sent_at,
         sender_nickname: sender_nickname.map(String::from),
+        attachment_json: None,
     }
 }
 

@@ -60,6 +60,7 @@ fn test_swarm_command_variants_all() {
         content: "msg".to_string(),
         nickname: None,
         msg_id: None,
+        attachment: None,
     };
 
     // Verify Publish variant
@@ -81,6 +82,7 @@ fn test_swarm_command_variants_all() {
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
         ack_for: Some("prev-msg".to_string()),
+        attachment: None,
     };
 
     // Verify SendDm variant with all fields
@@ -91,6 +93,7 @@ fn test_swarm_command_variants_all() {
             nickname,
             msg_id,
             ack_for,
+            attachment: _,
         } => {
             assert_eq!(peer_id, "peer");
             assert_eq!(content, "dm msg");

@@ -6,8 +6,8 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    contacts, device_bindings, group_members, group_messages, groups, identities, message_receipts,
-    messages, peer_sessions, peers, users,
+    contacts, device_bindings, files, group_members, group_messages, groups, identities,
+    message_receipts, messages, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -77,6 +77,8 @@ pub struct Message {
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending
     pub sender_nickname: Option<String>,
+    /// Serialized attachment descriptor (`None` = no attachment)
+    pub attachment_json: Option<String>,
 }
 
 /// Queryable struct for the `groups` table
@@ -131,6 +133,28 @@ pub struct GroupMessage {
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending
     pub sender_nickname: Option<String>,
+    /// Serialized attachment descriptor (`None` = no attachment)
+    pub attachment_json: Option<String>,
+}
+
+/// Queryable struct for the `files` table (content-addressed attachment store)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = files)]
+pub struct File {
+    /// Content address (SHA-256 hex) of the attachment bytes
+    pub file_id: String,
+    /// Original filename advertised by the sender
+    pub name: String,
+    /// Total byte length
+    pub size: i64,
+    /// Best-effort MIME type hint (`None` when unknown)
+    pub mime: Option<String>,
+    /// 0 = received, 1 = sent
+    pub direction: i32,
+    /// Absolute path of the stored blob
+    pub path: String,
+    /// Timestamp when this record was created
+    pub created_at: NaiveDateTime,
 }
 
 /// Queryable struct for the `peer_sessions` table

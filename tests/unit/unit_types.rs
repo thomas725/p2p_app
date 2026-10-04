@@ -8,6 +8,7 @@ fn test_swarm_event_broadcast_message() {
         latency: Some("10ms".to_string()),
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
+        attachment: None,
     });
     match event {
         SwarmEvent::BroadcastMessage(MessageEvent {
@@ -28,6 +29,7 @@ fn test_swarm_event_direct_message() {
         latency: None,
         nickname: None,
         msg_id: None,
+        attachment: None,
     });
     match event {
         SwarmEvent::DirectMessage(MessageEvent {
@@ -91,12 +93,14 @@ fn test_swarm_command_publish() {
         content: "hello".to_string(),
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
+        attachment: None,
     };
     match cmd {
         SwarmCommand::Publish {
             content,
             nickname,
             msg_id: _,
+            attachment: _,
         } => {
             assert_eq!(content, "hello");
             assert_eq!(nickname, Some("Alice".to_string()));
@@ -118,6 +122,7 @@ fn test_swarm_command_send_dm() {
         nickname: Some("Bob".to_string()),
         msg_id: Some("dm-1".to_string()),
         ack_for: Some("orig-msg".to_string()),
+        attachment: None,
     };
     match cmd {
         SwarmCommand::SendDm {
@@ -186,6 +191,7 @@ fn test_swarm_command_clone() {
         content: "test".to_string(),
         nickname: None,
         msg_id: None,
+        attachment: None,
     };
     let cloned = Clone::clone(&cmd);
     match cloned {
@@ -206,6 +212,7 @@ fn test_swarm_group_command_variants() {
         content: "hello group".to_string(),
         nickname: Some("Alice".to_string()),
         msg_id: Some("gm-1".to_string()),
+        attachment: None,
     };
     match publish {
         SwarmCommand::PublishGroup {
@@ -213,6 +220,7 @@ fn test_swarm_group_command_variants() {
             content,
             nickname,
             msg_id,
+            attachment: _,
         } => {
             assert_eq!(group_id, "g1");
             assert_eq!(content, "hello group");
@@ -247,6 +255,7 @@ fn test_swarm_event_group_message() {
         peer_id: "peer1".to_string(),
         nickname: Some("Bob".to_string()),
         msg_id: Some("gm-2".to_string()),
+        attachment: None,
     });
     match event {
         SwarmEvent::GroupMessage(m) => {
@@ -319,6 +328,7 @@ fn test_message_event_empty_content() {
         latency: None,
         nickname: None,
         msg_id: None,
+        attachment: None,
     });
     match event {
         SwarmEvent::BroadcastMessage(me) => {

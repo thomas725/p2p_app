@@ -98,6 +98,8 @@ pub struct MessageEvent {
     pub nickname: Option<String>,
     /// Unique message ID, if present
     pub msg_id: Option<String>,
+    /// Attachment descriptor, if the message carries a file (files lane §12)
+    pub attachment: Option<crate::files::MessageAttachment>,
 }
 
 /// A group message received from a peer over a per-group gossipsub topic
@@ -113,6 +115,8 @@ pub struct GroupMessageEvent {
     pub nickname: Option<String>,
     /// Unique message ID, if present
     pub msg_id: Option<String>,
+    /// Attachment descriptor, if the message carries a file (files lane §12)
+    pub attachment: Option<crate::files::MessageAttachment>,
 }
 
 /// High-level application events from the swarm
@@ -206,6 +210,19 @@ pub enum SwarmEvent {
         /// Peer ID the call was with
         peer_id: String,
     },
+    /// An inbound attachment finished downloading (files lane §12). The message
+    /// it rode on was already delivered; this fires when the bytes are stored
+    /// and verifiable, so frontends can refresh their chip status/open affordance.
+    FileReceived {
+        /// Peer the file was pulled from
+        peer_id: String,
+        /// Content address (SHA-256 hex) of the stored file
+        file_id: String,
+        /// Original filename
+        name: String,
+        /// Absolute path of the stored blob
+        path: String,
+    },
 }
 
 /// Commands sent to the swarm task
@@ -219,6 +236,9 @@ pub enum SwarmCommand {
         nickname: Option<String>,
         /// Optional unique message ID
         msg_id: Option<String>,
+        /// Optional attachment descriptor (files lane §12); the sender already
+        /// staged the bytes with `files::store_outgoing_file`.
+        attachment: Option<crate::files::MessageAttachment>,
     },
     /// Send a direct message to a peer
     SendDm {
@@ -232,6 +252,8 @@ pub enum SwarmCommand {
         msg_id: Option<String>,
         /// Optional ID of the message this is acknowledging
         ack_for: Option<String>,
+        /// Optional attachment descriptor (files lane §12)
+        attachment: Option<crate::files::MessageAttachment>,
     },
     /// Publish a message to a group's per-group gossipsub topic
     PublishGroup {
@@ -243,6 +265,8 @@ pub enum SwarmCommand {
         nickname: Option<String>,
         /// Optional unique message ID
         msg_id: Option<String>,
+        /// Optional attachment descriptor (files lane §12)
+        attachment: Option<crate::files::MessageAttachment>,
     },
     /// Subscribe to a group's per-group gossipsub topic
     SubscribeGroup {

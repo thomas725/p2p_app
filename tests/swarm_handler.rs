@@ -40,6 +40,7 @@ fn test_serialize_broadcast_message_some() {
         sent_at: Some(1.0),
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
+        attachment: None,
     };
     let json = serde_json::to_string(&msg);
     assert!(json.is_ok());
@@ -54,6 +55,7 @@ fn test_serialize_broadcast_message_none() {
         sent_at: None,
         nickname: None,
         msg_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&msg);
     assert!(json.is_ok());
@@ -294,6 +296,7 @@ async fn test_spawn_handler_broadcast_message() {
             content: "integration test broadcast".to_string(),
             nickname: Some("tester".to_string()),
             msg_id: Some("test-msg-1".to_string()),
+            attachment: None,
         })
         .await
         .unwrap();
@@ -331,6 +334,7 @@ async fn test_spawn_handler_direct_message() {
             nickname: Some("dm_tester".to_string()),
             msg_id: Some("dm-msg-1".to_string()),
             ack_for: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -372,6 +376,7 @@ async fn test_spawn_handler_nickname_only_dm_surfaces() {
             nickname: Some("nobby".to_string()),
             msg_id: None,
             ack_for: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -413,6 +418,7 @@ async fn test_spawn_handler_direct_message_receipt() {
             nickname: None,
             msg_id: Some("dm-ack-1".to_string()),
             ack_for: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -465,6 +471,7 @@ async fn test_spawn_handler_broadcast_receipt() {
             content: "broadcast with receipt".to_string(),
             nickname: Some("tester".to_string()),
             msg_id: Some("bcast-ack-1".to_string()),
+            attachment: None,
         })
         .await
         .unwrap();
@@ -512,6 +519,7 @@ async fn test_send_dm_invalid_peer_id_is_ignored() {
             nickname: None,
             msg_id: None,
             ack_for: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -522,6 +530,7 @@ async fn test_send_dm_invalid_peer_id_is_ignored() {
             content: "still alive".to_string(),
             nickname: None,
             msg_id: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -541,9 +550,10 @@ async fn test_publish_with_no_peers_logs_error_and_continues() {
 
     cmd_tx
         .send(SwarmCommand::Publish {
-            content: "into the void".to_string(),
+            content: "still alive".to_string(),
             nickname: None,
             msg_id: None,
+            attachment: None,
         })
         .await
         .unwrap();
@@ -554,6 +564,7 @@ async fn test_publish_with_no_peers_logs_error_and_continues() {
             content: "still alive".to_string(),
             nickname: None,
             msg_id: None,
+            attachment: None,
         })
         .await
         .unwrap();

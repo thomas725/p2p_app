@@ -26,6 +26,8 @@ pub struct GroupMessageMeta {
     pub msg_id: Option<String>,
     /// Optional timestamp of when the message was sent
     pub sent_at: Option<f64>,
+    /// Optional attachment descriptor (files lane §12)
+    pub attachment: Option<crate::files::MessageAttachment>,
 }
 
 // ── Topic helpers ──────────────────────────────────────────────────────────
@@ -325,6 +327,10 @@ pub fn save_outgoing_group_message(
         msg_id: meta.msg_id,
         sent_at: meta.sent_at,
         sender_nickname: meta.sender_nickname,
+        attachment_json: meta
+            .attachment
+            .as_ref()
+            .and_then(crate::files::attachment_to_json),
     };
     diesel::insert_into(group_messages::table)
         .values(&new_msg)
@@ -365,6 +371,10 @@ pub fn save_incoming_group_message(
         msg_id: Some(msg_id),
         sent_at: meta.sent_at,
         sender_nickname: meta.sender_nickname,
+        attachment_json: meta
+            .attachment
+            .as_ref()
+            .and_then(crate::files::attachment_to_json),
     };
     diesel::insert_into(group_messages::table)
         .values(&new_msg)

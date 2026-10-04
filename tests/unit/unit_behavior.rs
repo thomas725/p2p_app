@@ -63,6 +63,7 @@ fn direct_message_json_roundtrip() {
         ack_for: Some("ack".to_string()),
         received_at: Some(3.4),
         group_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&dm).expect("serialize");
     let parsed: DirectMessage = serde_json::from_str(&json).expect("deserialize");

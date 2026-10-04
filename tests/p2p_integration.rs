@@ -992,6 +992,7 @@ async fn test_headless_tui_message_format_compatibility() -> Result<(), Box<dyn 
         ),
         nickname: None,
         msg_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&broadcast_msg)?;
     node_a
@@ -1046,6 +1047,7 @@ async fn test_nickname_in_message_flow() -> Result<(), Box<dyn std::error::Error
         ),
         nickname: Some(nickname_a.to_string()),
         msg_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&broadcast_msg)?;
     node_a

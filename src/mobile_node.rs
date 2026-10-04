@@ -245,7 +245,8 @@ pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
 const fn is_nickname_only_dm(ev: &SwarmEvent) -> bool {
     matches!(
         ev,
-        SwarmEvent::DirectMessage(m) if m.content.is_empty() && m.nickname.is_some()
+        SwarmEvent::DirectMessage(m)
+            if m.content.is_empty() && m.nickname.is_some() && m.attachment.is_none()
     )
 }
 
@@ -274,6 +275,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
                     nickname,
                     msg_id: Some(msg_id),
                     ack_for: None,
+                    attachment: None,
                 });
             }
         }
@@ -320,6 +322,10 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
                 let _ = record_peer_received_name_change(&m.peer_id, nick);
             }
         }
+        // Inbound attachment finished downloading (files lane §12). The blob is
+        // content-addressed on disk, so there is nothing to persist here — the
+        // Dart side surfaces it off the `file_received` event.
+        SwarmEvent::FileReceived { .. } => {}
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
             let addrs: Vec<String> = addresses.iter().map(ToString::to_string).collect();
@@ -478,6 +484,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, false, None, meta)
         .map_err(|e| e.to_string())?;
@@ -492,6 +499,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
                     content,
                     nickname,
                     msg_id: Some(msg_id.clone()),
+                    attachment: None,
                 })
                 .is_ok();
         }
@@ -529,6 +537,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, true, Some(&peer_id), meta)
         .map_err(|e| e.to_string())?;
@@ -545,6 +554,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
                     nickname,
                     msg_id: Some(msg_id),
                     ack_for: None,
+                    attachment: None,
                 })
                 .is_ok();
         }
@@ -576,6 +586,7 @@ pub fn save_incoming_message(
         sender_nickname: nickname,
         msg_id: None,
         sent_at: None,
+        attachment: None,
     };
     let msg = save_message_with_meta(
         &content,
@@ -850,6 +861,7 @@ pub fn save_outgoing_group(
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     let msg = crate::groups::save_outgoing_group_message(&group_id, &content, meta)
         .map_err(|e| e.to_string())?;
@@ -861,6 +873,7 @@ pub fn save_outgoing_group(
                 content,
                 nickname,
                 msg_id: Some(msg_id),
+                attachment: None,
             });
         }
     }
@@ -884,31 +897,11 @@ pub struct SwarmEventJson {
 
 fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
     match ev {
-        SwarmEvent::GroupMessage(m) => SwarmEventJson {
-            event_type: "group_message".into(),
-            peer_id: Some(m.peer_id),
-            content: Some(m.content),
-            latency: None,
-            nickname: m.nickname,
-            msg_id: m.msg_id,
-            address: None,
-            group_id: Some(m.group_id),
-            device_pubkey: None,
-        },
+        SwarmEvent::GroupMessage(m) => group_message_event_json(m),
         SwarmEvent::GroupInvite {
             group_id,
             inviter_peer,
-        } => SwarmEventJson {
-            event_type: "group_invite".into(),
-            peer_id: Some(inviter_peer),
-            content: None,
-            latency: None,
-            nickname: None,
-            msg_id: None,
-            address: None,
-            group_id: Some(group_id),
-            device_pubkey: None,
-        },
+        } => group_invite_event_json(group_id, inviter_peer),
         SwarmEvent::BroadcastMessage(m) => message_event_json("broadcast", m),
         SwarmEvent::DirectMessage(m) => message_event_json("dm", m),
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
@@ -976,6 +969,20 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
         SwarmEvent::CallEnded { call_id, peer_id } => {
             call_event_json("call_ended", call_id, peer_id)
         }
+        // An attachment finished downloading (files lane §12). `content` is the
+        // content address and `nickname` the original filename.
+        SwarmEvent::FileReceived {
+            peer_id,
+            file_id,
+            name,
+            path: _,
+        } => SwarmEventJson {
+            event_type: "file_received".into(),
+            peer_id: Some(peer_id),
+            content: Some(file_id),
+            nickname: Some(name),
+            ..default_event()
+        },
     }
 }
 
@@ -1021,6 +1028,29 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
     }
 }
 
+/// JSON envelope for group chat events; `group_id` names the room.
+fn group_message_event_json(m: crate::GroupMessageEvent) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: "group_message".into(),
+        peer_id: Some(m.peer_id),
+        content: Some(m.content),
+        nickname: m.nickname,
+        msg_id: m.msg_id,
+        group_id: Some(m.group_id),
+        ..default_event()
+    }
+}
+
+/// JSON envelope for group invite events.
+fn group_invite_event_json(group_id: String, inviter_peer: String) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: "group_invite".into(),
+        peer_id: Some(inviter_peer),
+        group_id: Some(group_id),
+        ..default_event()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1043,6 +1073,7 @@ mod tests {
             latency: Some("5ms".into()),
             nickname: Some("Alice".into()),
             msg_id: Some("m1".into()),
+            attachment: None,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "broadcast");
@@ -1062,6 +1093,7 @@ mod tests {
             latency: None,
             nickname: None,
             msg_id: None,
+            attachment: None,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "dm");
@@ -1204,6 +1236,7 @@ mod tests {
             msg_id: Some("msg-1".into()),
             sent_at: Some(1_718_455_800.0),
             sender_nickname: Some("Alice".into()),
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 1);
@@ -1244,6 +1277,7 @@ mod tests {
             msg_id: None,
             sent_at: None,
             sender_nickname: None,
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 2);
@@ -1273,6 +1307,7 @@ mod tests {
             msg_id: None,
             sent_at: None,
             sender_nickname: Some("Bob".into()),
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         let suffix = crate::fmt::peer_id_suffix("peer-bob");
@@ -1299,6 +1334,7 @@ mod tests {
             msg_id: None,
             sent_at: None,
             sender_nickname: Some("Me".into()),
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
@@ -1319,6 +1355,7 @@ mod tests {
             msg_id: None,
             sent_at: None,
             sender_nickname: None,
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         assert!(chat.content.is_empty());
@@ -1338,6 +1375,7 @@ mod tests {
             msg_id: Some("m4".into()),
             sent_at: None,
             sender_nickname: None,
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         assert!(chat.sent_at.is_none());
@@ -1353,6 +1391,7 @@ mod tests {
             latency: None,
             nickname: Some("Bob".into()),
             msg_id: None,
+            attachment: None,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1365,6 +1404,7 @@ mod tests {
             latency: None,
             nickname: Some("Charlie".into()),
             msg_id: Some("msg-b1".into()),
+            attachment: None,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1412,6 +1452,7 @@ mod tests {
             latency: None,
             nickname: Some("Alice".into()),
             msg_id: None,
+            attachment: None,
         });
         assert!(is_nickname_only_dm(&ev));
     }
@@ -1424,6 +1465,7 @@ mod tests {
             latency: None,
             nickname: None,
             msg_id: None,
+            attachment: None,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1436,6 +1478,7 @@ mod tests {
             latency: None,
             nickname: Some("Alice".into()),
             msg_id: None,
+            attachment: None,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1448,6 +1491,7 @@ mod tests {
             latency: None,
             nickname: Some("Alice".into()),
             msg_id: None,
+            attachment: None,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1476,6 +1520,7 @@ mod tests {
             msg_id: None,
             sent_at: None,
             sender_nickname: None,
+            attachment_json: None,
         };
         let chat = message_to_chat(msg);
         let cloned = chat.clone();

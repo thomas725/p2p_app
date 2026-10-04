@@ -54,6 +54,7 @@ pub mod calls;
 pub mod connected;
 pub mod contacts;
 pub mod db;
+pub mod files;
 pub mod fmt;
 pub mod groups;
 pub mod identity;
@@ -92,8 +93,9 @@ pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may
 
 pub use behavior::{
     AppBehaviour, BroadcastMessage, CALL_PROTOCOL_NAME, CHAT_TOPIC, CallSignal, CallSignalAck,
-    ChatCodec, DM_PROTOCOL_NAME, DirectMessage, GroupBackfillRequest, GroupMessage,
-    build_behaviour, build_swarm,
+    ChatCodec, DM_PROTOCOL_NAME, DirectMessage, FILE_TRANSFER_PROTOCOL_NAME, FileTransfer,
+    FileTransferCodec, FileTransferResponse, GroupBackfillRequest, GroupMessage, build_behaviour,
+    build_swarm,
 };
 pub use calls::{CallSession, CallState};
 #[cfg(any(test, feature = "test-utils"))]
@@ -102,6 +104,7 @@ pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
     sqlite_connect,
 };
+pub use files::{MessageAttachment, file_path, store_outgoing_file};
 pub use fmt::{
     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,

@@ -118,6 +118,7 @@ async fn main() -> color_eyre::Result<()> {
                     sent_at: Some(current_timestamp()),
                     nickname: None,
                     msg_id: None,
+                    attachment: None,
                 };
                 if let Ok(json) = serde_json::to_string(&msg) {
                     let _ = swarm

@@ -1,5 +1,6 @@
 //! P2P network behavior and protocol definitions
 
+use crate::files::MessageAttachment;
 use crate::network::NetworkSize;
 use crate::p2plog_debug;
 use libp2p::gossipsub;
@@ -28,6 +29,16 @@ pub const DEVICE_BINDING_PROTOCOL_NAME: &str = "/p2p-chat/device-binding/1.0.0";
 /// `CallSignal::descriptor` is reserved for the later offer/answer payload.
 pub const CALL_PROTOCOL_NAME: &str = "/p2p-chat/call/1.0.0";
 
+/// File-transfer protocol name (files lane §12).
+///
+/// A dedicated `request_response` lane for content-addressed attachments. The
+/// receiver drives every transfer: it requests the metadata (`"meta"`), then
+/// pulls fixed-size chunks (`"chunk"`) sequentially until the file is complete.
+/// The sender serves purely from its content-addressed store (prepared by
+/// `files::store_outgoing_file` before the message is sent, so the blob is
+/// already on disk when the receiver asks).
+pub const FILE_TRANSFER_PROTOCOL_NAME: &str = "/p2p-chat/files/1.0.0";
+
 /// Default chat topic
 pub const CHAT_TOPIC: &str = "test-net";
 
@@ -51,6 +62,9 @@ pub struct DirectMessage {
     pub received_at: Option<f64>,
     /// Stable `group_id` a private-group DM is attributed to; `None` = plain DM
     pub group_id: Option<String>,
+    /// Optional attachment descriptor (files lane §12); the bytes are fetched
+    /// separately over the file lane by the receiver.
+    pub attachment: Option<MessageAttachment>,
 }
 
 /// Broadcast message content with timestamp and sender info
@@ -65,6 +79,8 @@ pub struct BroadcastMessage {
     pub nickname: Option<String>,
     /// Optional unique identifier for this message
     pub msg_id: Option<String>,
+    /// Optional attachment descriptor (files lane §12)
+    pub attachment: Option<MessageAttachment>,
 }
 
 /// Group message content traveling over a per-group gossipsub topic
@@ -81,6 +97,8 @@ pub struct GroupMessage {
     pub nickname: Option<String>,
     /// Optional unique identifier for this message
     pub msg_id: Option<String>,
+    /// Optional attachment descriptor (files lane §12)
+    pub attachment: Option<MessageAttachment>,
 }
 
 /// Backfill request sent on a group's backfill topic on (re)subscribe
@@ -106,6 +124,60 @@ pub struct GroupBackfillRequest {
 
 /// JSON codec for direct message protocol
 pub type ChatCodec = libp2p::request_response::json::codec::Codec<DirectMessage, DirectMessage>;
+
+/// File-transfer exchange payload (files lane §12; receiver-driven).
+///
+/// One wire type, two request `kind`s and one response type:
+///
+/// * request `"meta"`  — ask for `file_id`'s metadata (name/size/mime/chunking).
+/// * request `"chunk"` — pull chunk `chunk_index` of `file_id`.
+/// * response         — `kind == "meta"` carries the metadata handshake;
+///   `kind == "chunk"` carries `data`; `kind == "error"` carries a `reason`
+///   (unknown file, oversized, out-of-range chunk).
+///
+/// CBOR (not JSON) is used on purpose: chunk payloads are opaque byte strings,
+/// which CBOR serializes natively (~1:1) whereas JSON would expand a 1 MiB
+/// chunk ~4x into a base64/array text blob.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FileTransfer {
+    /// `"meta"` | `"chunk"`
+    pub kind: String,
+    /// Content address (SHA-256 hex) of the whole file
+    pub file_id: String,
+    /// Zero-based chunk index (request `"chunk"` only)
+    pub chunk_index: Option<u64>,
+}
+
+/// Response to a [`FileTransfer`] request.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct FileTransferResponse {
+    /// `"meta"` | `"chunk"` | `"error"`
+    pub kind: String,
+    /// Content address (SHA-256 hex) of the whole file
+    pub file_id: String,
+    /// Original filename (`"meta"` only)
+    pub name: Option<String>,
+    /// Total byte length (`"meta"` only)
+    pub size: Option<u64>,
+    /// Best-effort MIME type hint (`"meta"` only)
+    pub mime: Option<String>,
+    /// Number of fixed-size chunks (`"meta"` only; `ceil(size / chunk_size)`)
+    pub total_chunks: Option<u64>,
+    /// Chunk size in bytes (`"meta"` only)
+    pub chunk_size: Option<u64>,
+    /// The chunk index echoed back (`"chunk"` only)
+    pub chunk_index: Option<u64>,
+    /// Raw chunk bytes (`"chunk"` only)
+    pub data: Option<Vec<u8>>,
+    /// Human-readable failure description (`"error"` only)
+    pub reason: Option<String>,
+}
+
+/// CBOR codec for the file-transfer protocol
+pub type FileTransferCodec =
+    libp2p::request_response::cbor::codec::Codec<FileTransfer, FileTransferResponse>;
 
 /// Device-binding exchange payload (identity lane §11; signed claims).
 ///
@@ -215,6 +287,10 @@ pub struct AppBehaviour {
     /// Request-response protocol handler for call signaling (calls lane:
     /// invite/accept/reject/end; media transport lands on a later slice)
     pub call_signaling: request_response::Behaviour<CallSignalCodec>,
+    /// Request-response protocol handler for content-addressed file transfers
+    /// (files lane §12): the receiver pulls metadata and chunks, the sender
+    /// serves them from its on-disk store.
+    pub file_transfer: request_response::Behaviour<FileTransferCodec>,
     /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
@@ -287,6 +363,17 @@ pub fn build_behaviour(
         request_response::Config::default(),
     );
 
+    // Chunk payloads ride in the response (cbor default cap: 10 MiB), which
+    // comfortably fits one FILE_CHUNK_SIZE chunk plus CBOR overhead; requests
+    // (meta/chunk) are tiny. Both sides support Full so any peer can pull.
+    let file_transfer = request_response::Behaviour::new(
+        [(
+            libp2p::StreamProtocol::new(FILE_TRANSFER_PROTOCOL_NAME),
+            request_response::ProtocolSupport::Full,
+        )],
+        request_response::Config::default(),
+    );
+
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
     // dead connection. This surfaces killed/disconnected peers within ~10-20s
     // instead of waiting on the (often never-elapsed) idle connection timeout.
@@ -308,6 +395,7 @@ pub fn build_behaviour(
         request_response,
         device_binding,
         call_signaling,
+        file_transfer,
         #[cfg(feature = "mdns")]
         mdns,
         ping,

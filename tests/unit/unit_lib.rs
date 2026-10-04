@@ -119,6 +119,7 @@ fn test_direct_message_serialization() {
         ack_for: None,
         received_at: None,
         group_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     assert!(json.contains("Hello"));
@@ -133,6 +134,7 @@ fn test_broadcast_message_serialization() {
         sent_at: Some(1_234_567_890.5),
         nickname: None,
         msg_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&bm).unwrap();
     assert!(json.contains("World"));

@@ -370,11 +370,14 @@ fn test_handle_incoming_broadcast_adds_message() {
         let mut state = test_app_state();
         handle_incoming_message(
             &mut state,
-            "hello all",
-            "peer-1",
-            None,
-            None,
-            Some("m1".to_string()),
+            p2p_app::MessageEvent {
+                content: "hello all".to_string(),
+                peer_id: "peer-1".to_string(),
+                latency: None,
+                nickname: None,
+                msg_id: Some("m1".to_string()),
+                attachment: None,
+            },
             false,
         );
         assert_eq!(state.messages.len(), 1);
@@ -399,11 +402,14 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
         let dm_count_before = state.dynamic_tabs.dm_tab_count();
         handle_incoming_message(
             &mut state,
-            "secret dm",
-            "peer-dm",
-            None,
-            None,
-            Some("dm1".to_string()),
+            p2p_app::MessageEvent {
+                content: "secret dm".to_string(),
+                peer_id: "peer-dm".to_string(),
+                latency: None,
+                nickname: None,
+                msg_id: Some("dm1".to_string()),
+                attachment: None,
+            },
             true,
         );
         assert!(state.dm_messages.contains_key("peer-dm"));
@@ -428,11 +434,14 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
         let mut state = test_app_state();
         handle_incoming_message(
             &mut state,
-            "",
-            "peer-2",
-            None,
-            Some("Nickname"),
-            None,
+            p2p_app::MessageEvent {
+                content: String::new(),
+                peer_id: "peer-2".to_string(),
+                latency: None,
+                nickname: Some("Nickname".to_string()),
+                msg_id: None,
+                attachment: None,
+            },
             false,
         );
         // Should NOT add a message (empty content + nickname is just a nick update)
@@ -460,11 +469,14 @@ fn test_handle_incoming_sets_received_nickname() {
         let mut state = test_app_state();
         handle_incoming_message(
             &mut state,
-            "hello",
-            "peer-3",
-            None,
-            Some("Alice"),
-            None,
+            p2p_app::MessageEvent {
+                content: "hello".to_string(),
+                peer_id: "peer-3".to_string(),
+                latency: None,
+                nickname: Some("Alice".to_string()),
+                msg_id: None,
+                attachment: None,
+            },
             false,
         );
         assert_eq!(
@@ -491,11 +503,14 @@ fn test_handle_incoming_broadcast_with_latency() {
         let mut state = test_app_state();
         handle_incoming_message(
             &mut state,
-            "ping",
-            "peer-4",
-            Some("42ms"),
-            None,
-            None,
+            p2p_app::MessageEvent {
+                content: "ping".to_string(),
+                peer_id: "peer-4".to_string(),
+                latency: Some("42ms".to_string()),
+                nickname: None,
+                msg_id: None,
+                attachment: None,
+            },
             false,
         );
         assert_eq!(state.messages.len(), 1);
@@ -521,11 +536,14 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
             .insert("peer-5".to_string(), "Bob".to_string());
         handle_incoming_message(
             &mut state,
-            "hey",
-            "peer-5",
-            Some("5ms"),
-            Some("Bob"),
-            Some("dm-5".to_string()),
+            p2p_app::MessageEvent {
+                content: "hey".to_string(),
+                peer_id: "peer-5".to_string(),
+                latency: Some("5ms".to_string()),
+                nickname: Some("Bob".to_string()),
+                msg_id: Some("dm-5".to_string()),
+                attachment: None,
+            },
             true,
         );
         assert!(state.dm_messages.contains_key("peer-5"));
@@ -559,6 +577,7 @@ fn test_process_swarm_event_broadcast_adds_message() {
                 latency: None,
                 nickname: None,
                 msg_id: Some("m1".to_string()),
+                attachment: None,
             }),
             &state,
             &swarm_cmd_tx,
@@ -594,6 +613,7 @@ fn test_process_swarm_event_dm_adds_message() {
                 latency: None,
                 nickname: None,
                 msg_id: Some("dm1".to_string()),
+                attachment: None,
             }),
             &state,
             &swarm_cmd_tx,
@@ -698,6 +718,7 @@ fn test_command_processor_processes_swarm_events() {
                 latency: None,
                 nickname: None,
                 msg_id: Some("m-loop".to_string()),
+                attachment: None,
             }))
             .await
             .unwrap();

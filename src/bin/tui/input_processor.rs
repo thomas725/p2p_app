@@ -95,6 +95,7 @@ async fn handle_nickname_submission(
                 nickname: Some(new_nickname.clone()),
                 msg_id: None,
                 ack_for: None,
+                attachment: None,
             })
             .await;
         update_dm_transcript_labels(
@@ -119,6 +120,7 @@ async fn handle_nickname_submission(
                     nickname: Some(new_nickname.clone()),
                     msg_id: None,
                     ack_for: None,
+                    attachment: None,
                 })
                 .await;
         }

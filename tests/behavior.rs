@@ -46,6 +46,7 @@ fn test_direct_message_serialization() {
         ack_for: None,
         received_at: None,
         group_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     assert!(json.contains("hello"));
@@ -59,6 +60,7 @@ fn test_broadcast_message_serialization() {
         sent_at: Some(1_234_567_890.0),
         nickname: Some("Bob".to_string()),
         msg_id: Some("bcast-1".to_string()),
+        attachment: None,
     };
     let json = serde_json::to_string(&bm).unwrap();
     assert!(json.contains("broadcast test"));
@@ -123,6 +125,7 @@ fn test_direct_message_fields() {
         ack_for: Some("orig".to_string()),
         received_at: Some(2.0),
         group_id: None,
+        attachment: None,
     };
     assert_eq!(dm.content, "test");
     assert_eq!(dm.timestamp, 99);
@@ -137,6 +140,7 @@ fn test_broadcast_message_fields() {
         sent_at: Some(3.0),
         nickname: None,
         msg_id: Some("bm-id".to_string()),
+        attachment: None,
     };
     assert_eq!(bm.content, "hello");
     assert!(bm.nickname.is_none());
@@ -154,6 +158,7 @@ fn test_direct_message_clone() {
         ack_for: None,
         received_at: Some(2.0),
         group_id: None,
+        attachment: None,
     };
     let cloned = dm.clone();
     assert_eq!(dm.content, cloned.content);
@@ -168,6 +173,7 @@ fn test_broadcast_message_clone() {
         sent_at: Some(1.5),
         nickname: Some("sender".to_string()),
         msg_id: Some("b-id".to_string()),
+        attachment: None,
     };
     let cloned = bm.clone();
     assert_eq!(bm.content, cloned.content);
@@ -212,6 +218,7 @@ fn test_direct_message_serialization_roundtrip() {
         ack_for: Some("orig-7".to_string()),
         received_at: Some(3.0),
         group_id: None,
+        attachment: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     let parsed: DirectMessage = serde_json::from_str(&json).unwrap();

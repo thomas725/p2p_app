@@ -6,7 +6,7 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    broadcast_recipients, contacts, device_bindings, group_members, group_messages, groups,
+    broadcast_recipients, contacts, device_bindings, files, group_members, group_messages, groups,
     identities, message_receipts, messages, peer_sessions, peers, users,
 };
 use diesel::Insertable;
@@ -65,6 +65,8 @@ pub struct NewMessage {
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending
     pub sender_nickname: Option<String>,
+    /// Serialized attachment descriptor (`None` = no attachment)
+    pub attachment_json: Option<String>,
 }
 
 /// Insertable struct for the `peer_sessions` table
@@ -117,6 +119,26 @@ pub struct NewGroupMessage {
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending
     pub sender_nickname: Option<String>,
+    /// Serialized attachment descriptor (`None` = no attachment)
+    pub attachment_json: Option<String>,
+}
+
+/// Insertable struct for the `files` table (content-addressed attachment store)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = files)]
+pub struct NewFile {
+    /// Content address (SHA-256 hex) of the attachment bytes
+    pub file_id: String,
+    /// Original filename advertised by the sender
+    pub name: String,
+    /// Total byte length
+    pub size: i64,
+    /// Best-effort MIME type hint (`None` when unknown)
+    pub mime: Option<String>,
+    /// 0 = received, 1 = sent
+    pub direction: i32,
+    /// Absolute path of the stored blob
+    pub path: String,
 }
 
 /// Insertable struct for the `peers` table

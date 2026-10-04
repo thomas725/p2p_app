@@ -19,6 +19,7 @@ fn swarm_event_broadcast_message() {
         latency: Some("42ms".into()),
         nickname: Some("alice".into()),
         msg_id: Some("id1".into()),
+        attachment: None,
     });
     assert!(format!("{ev:?}").contains("BroadcastMessage"));
 }
@@ -31,6 +32,7 @@ fn swarm_event_direct_message() {
         latency: None,
         nickname: None,
         msg_id: None,
+        attachment: None,
     });
     assert!(format!("{ev:?}").contains("DirectMessage"));
 }
@@ -93,6 +95,7 @@ fn swarm_command_publish() {
         content: "hello".into(),
         nickname: Some("alice".into()),
         msg_id: Some("id1".into()),
+        attachment: None,
     };
     assert!(format!("{cmd:?}").contains("Publish"));
 }
@@ -105,6 +108,7 @@ fn swarm_command_send_dm() {
         nickname: None,
         msg_id: None,
         ack_for: None,
+        attachment: None,
     };
     assert!(format!("{cmd:?}").contains("SendDm"));
 }
@@ -120,6 +124,7 @@ fn broadcast_message_fields() {
         sent_at: Some(1000.0),
         nickname: Some("alice".into()),
         msg_id: Some("id1".into()),
+        attachment: None,
     };
     assert_eq!(msg.content, "hello");
     assert_eq!(msg.sent_at, Some(1000.0));
@@ -149,6 +154,7 @@ fn direct_message_fields() {
         ack_for: Some("orig_id".into()),
         received_at: Some(2000.0),
         group_id: None,
+        attachment: None,
     };
     assert_eq!(msg.content, "hi");
     assert_eq!(msg.timestamp, 12345);

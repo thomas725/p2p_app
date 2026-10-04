@@ -143,6 +143,7 @@ async fn send_dm_message(
             nickname: Some(dm_self_nickname),
             msg_id: Some(msg_id),
             ack_for: None,
+            attachment: None,
         })
         .await;
 
@@ -150,6 +151,7 @@ async fn send_dm_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, true, Some(&peer_id), meta)
@@ -190,6 +192,7 @@ async fn send_group_message(
             content: text.clone(),
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
+            attachment: None,
         })
         .await;
 
@@ -197,6 +200,7 @@ async fn send_group_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
         p2plog_debug(format!("Failed to save group message: {e}"));
@@ -228,6 +232,7 @@ async fn send_broadcast_message(
             content: text.clone(),
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
+            attachment: None,
         })
         .await;
 
@@ -235,6 +240,7 @@ async fn send_broadcast_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db.clone()),
         sent_at: Some(sent_at),
+        attachment: None,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta)

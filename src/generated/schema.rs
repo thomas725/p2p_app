@@ -38,6 +38,7 @@ diesel::table! {
         msg_id -> Nullable<Text>,
         sent_at -> Nullable<Double>,
         sender_nickname -> Nullable<Text>,
+        attachment_json -> Nullable<Text>,
     }
 }
 
@@ -128,6 +129,7 @@ diesel::table! {
         msg_id -> Nullable<Text>,
         sent_at -> Nullable<Double>,
         sender_nickname -> Nullable<Text>,
+        attachment_json -> Nullable<Text>,
     }
 }
 
@@ -177,10 +179,28 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: content-addressed attachment store (files lane §12). The
+// bytes live on disk under `files_dir()` keyed by `file_id` = SHA-256 hex of
+// the content; this table records delivery-facing metadata plus the absolute
+// stored path so `serve_file_*` and the frontends' open/save affordances have
+// one lookup. Lives here so diesel can query it and FRB ignores this module.
+diesel::table! {
+    files (file_id) {
+        file_id -> Text,
+        name -> Text,
+        size -> BigInt,
+        mime -> Nullable<Text>,
+        direction -> Integer,
+        path -> Text,
+        created_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     broadcast_recipients,
     contacts,
     device_bindings,
+    files,
     group_members,
     group_messages,
     groups,

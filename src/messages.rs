@@ -20,6 +20,8 @@ pub struct MessageMeta {
     pub msg_id: Option<String>,
     /// Optional timestamp of when the message was sent
     pub sent_at: Option<f64>,
+    /// Optional attachment descriptor (files lane §12)
+    pub attachment: Option<crate::files::MessageAttachment>,
 }
 
 /// Save a message to the database.
@@ -93,6 +95,10 @@ pub fn save_message_with_meta(
         sender_nickname: meta.sender_nickname,
         msg_id: meta.msg_id,
         sent_at: meta.sent_at,
+        attachment_json: meta
+            .attachment
+            .as_ref()
+            .and_then(crate::files::attachment_to_json),
     };
     diesel::insert_into(crate::generated::schema::messages::table)
         .values(&new_msg)
