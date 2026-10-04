@@ -33,6 +33,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
+
+  @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw);
 
   @protected
@@ -90,6 +93,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  MobileAttachment dco_decode_mobile_attachment(dynamic raw);
+
+  @protected
   MobileContactDevice dco_decode_mobile_contact_device(dynamic raw);
 
   @protected
@@ -118,6 +124,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  MobileAttachment? dco_decode_opt_box_autoadd_mobile_attachment(dynamic raw);
 
   @protected
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
@@ -160,6 +169,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  MobileAttachment sse_decode_box_autoadd_mobile_attachment(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
@@ -239,6 +253,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  MobileAttachment sse_decode_mobile_attachment(SseDeserializer deserializer);
+
+  @protected
   MobileContactDevice sse_decode_mobile_contact_device(
     SseDeserializer deserializer,
   );
@@ -273,6 +290,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  MobileAttachment? sse_decode_opt_box_autoadd_mobile_attachment(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
@@ -317,6 +339,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_mobile_attachment(
+    MobileAttachment self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_swarm_event_json(
@@ -418,6 +446,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_mobile_attachment(
+    MobileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_mobile_contact_device(
     MobileContactDevice self,
     SseSerializer serializer,
@@ -470,6 +504,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_mobile_attachment(
+    MobileAttachment? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_opt_box_autoadd_swarm_event_json(

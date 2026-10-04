@@ -6,9 +6,9 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `call_event_json`, `default_event`, `event_to_json`, `group_message_to_mobile`, `group_to_mobile`, `is_nickname_only_dm`, `lock_node_mutex`, `message_event_json`, `message_to_chat`, `process_event_for_mobile`, `sender_nickname_label`, `start_node_impl`
+// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `is_nickname_only_dm`, `lock_node_mutex`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `create_group`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `start_call`, `start_node_auto`, `start_node`, `stop_node`
 
 /// Get the local peer ID.
@@ -17,6 +17,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// Returns an error if the node has not been started yet.
 Future<String> getNodePeerId() =>
     RustLib.instance.api.crateMobileNodeGetNodePeerId();
+
+/// Absolute on-disk path for a received attachment's blob (files lane §12).
+///
+/// The blob may not exist yet if the pull hasn't finished (`file_id` from an
+/// inbound descriptor); the sender's blob lands here once the swarm handler
+/// completes the chunk transfer. Dart uses this to open/save the file.
+///
+/// # Errors
+/// Returns an error if the store directory cannot be created.
+Future<String> attachmentFilePath({required String fileId}) =>
+    RustLib.instance.api.crateMobileNodeAttachmentFilePath(fileId: fileId);
 
 class ChatMessage {
   final int id;
@@ -29,6 +40,7 @@ class ChatMessage {
   final String? sentAt;
   final String createdAt;
   final String? senderNickname;
+  final MobileAttachment? attachment;
 
   const ChatMessage({
     required this.id,
@@ -41,6 +53,7 @@ class ChatMessage {
     this.sentAt,
     required this.createdAt,
     this.senderNickname,
+    this.attachment,
   });
 
   @override
@@ -54,7 +67,8 @@ class ChatMessage {
       msgId.hashCode ^
       sentAt.hashCode ^
       createdAt.hashCode ^
-      senderNickname.hashCode;
+      senderNickname.hashCode ^
+      attachment.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -70,7 +84,46 @@ class ChatMessage {
           msgId == other.msgId &&
           sentAt == other.sentAt &&
           createdAt == other.createdAt &&
-          senderNickname == other.senderNickname;
+          senderNickname == other.senderNickname &&
+          attachment == other.attachment;
+}
+
+/// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12): the
+/// descriptor that rides message payloads; bytes live on disk under
+/// `files::store_path_for(file_id)` (`attachment_file_path` hands the path).
+class MobileAttachment {
+  /// SHA-256 hex of the file bytes (content address)
+  final String fileId;
+
+  /// Original filename the sender advertised
+  final String name;
+
+  /// Total byte length
+  final PlatformInt64 size;
+
+  /// Best-effort MIME type hint (`None` when unknown)
+  final String? mime;
+
+  const MobileAttachment({
+    required this.fileId,
+    required this.name,
+    required this.size,
+    this.mime,
+  });
+
+  @override
+  int get hashCode =>
+      fileId.hashCode ^ name.hashCode ^ size.hashCode ^ mime.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileAttachment &&
+          runtimeType == other.runtimeType &&
+          fileId == other.fileId &&
+          name == other.name &&
+          size == other.size &&
+          mime == other.mime;
 }
 
 class MobileGroup {
@@ -113,6 +166,7 @@ class MobileGroupMessage {
   final String? sentAt;
   final String createdAt;
   final String? senderNickname;
+  final MobileAttachment? attachment;
 
   const MobileGroupMessage({
     required this.id,
@@ -123,6 +177,7 @@ class MobileGroupMessage {
     this.sentAt,
     required this.createdAt,
     this.senderNickname,
+    this.attachment,
   });
 
   @override
@@ -134,7 +189,8 @@ class MobileGroupMessage {
       msgId.hashCode ^
       sentAt.hashCode ^
       createdAt.hashCode ^
-      senderNickname.hashCode;
+      senderNickname.hashCode ^
+      attachment.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -148,7 +204,8 @@ class MobileGroupMessage {
           msgId == other.msgId &&
           sentAt == other.sentAt &&
           createdAt == other.createdAt &&
-          senderNickname == other.senderNickname;
+          senderNickname == other.senderNickname &&
+          attachment == other.attachment;
 }
 
 class MobilePeerRecord {

@@ -101,19 +101,32 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
 }
 
 /// Save an outgoing broadcast message to DB and send via swarm.
+/// `attachment_path`, when present, is stored content-addressedly (files lane
+/// §12) and sent as an attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
-pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_outgoing_broadcast(content)
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
+pub fn save_outgoing_broadcast(
+    content: String,
+    attachment_path: Option<String>,
+) -> Result<ChatMessage, String> {
+    crate::mobile_node::save_outgoing_broadcast(content, attachment_path)
 }
 
-/// Save an outgoing DM to DB and send via swarm.
+/// Save an outgoing DM to DB and send via swarm. `attachment_path`, when
+/// present, is stored content-addressedly (files lane §12) and sent as an
+/// attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
-pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_outgoing_dm(peer_id, content)
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
+pub fn save_outgoing_dm(
+    peer_id: String,
+    content: String,
+    attachment_path: Option<String>,
+) -> Result<ChatMessage, String> {
+    crate::mobile_node::save_outgoing_dm(peer_id, content, attachment_path)
 }
 
 /// Save an incoming message (broadcast or DM) to the database.
@@ -159,14 +172,18 @@ pub fn load_group_messages(
 }
 
 /// Save an outgoing group message to DB and publish via swarm.
+/// `attachment_path`, when present, is stored content-addressedly (files lane
+/// §12) and sent as an attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
 pub fn save_outgoing_group(
     group_id: String,
     content: String,
+    attachment_path: Option<String>,
 ) -> Result<MobileGroupMessage, String> {
-    crate::mobile_node::save_outgoing_group(group_id, content)
+    crate::mobile_node::save_outgoing_group(group_id, content, attachment_path)
 }
 
 /// Accept a pending group invite: materialize the group locally, persist

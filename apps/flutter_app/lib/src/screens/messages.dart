@@ -159,6 +159,7 @@ class MessageChatBody extends StatelessWidget {
     required this.unreadLabel,
     required this.onJumpToBottom,
     this.onOpenPeerInfo,
+    this.onOpenAttachment,
   });
 
   final List<ChatMessage> messages;
@@ -175,6 +176,7 @@ class MessageChatBody extends StatelessWidget {
   final String unreadLabel;
   final VoidCallback onJumpToBottom;
   final void Function(String)? onOpenPeerInfo;
+  final void Function(ChatMessage)? onOpenAttachment;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +209,9 @@ class MessageChatBody extends StatelessWidget {
                         onDoubleTap: () => onBubbleDoubleTap(i),
                         onTap: () => onBubbleTap(i),
                         onOpenPeerInfo: onOpenPeerInfo,
+                        onOpenAttachment: onOpenAttachment == null
+                            ? null
+                            : () => onOpenAttachment!(messages[i]),
                       ),
                   ],
                 ),
@@ -294,12 +299,14 @@ class MessageInputBar extends StatelessWidget {
     required this.enabled,
     required this.hintText,
     required this.onSend,
+    this.onPickFile,
   });
 
   final TextEditingController controller;
   final bool enabled;
   final String hintText;
   final VoidCallback onSend;
+  final VoidCallback? onPickFile;
 
   @override
   Widget build(BuildContext context) {
@@ -321,6 +328,12 @@ class MessageInputBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
+            if (onPickFile != null)
+              IconButton(
+                onPressed: enabled ? onPickFile : null,
+                icon: const Icon(Icons.attach_file),
+                tooltip: 'Attach a file',
+              ),
             IconButton.filled(
               onPressed: enabled ? onSend : null,
               icon: const Icon(Icons.send),
@@ -355,6 +368,8 @@ class BroadcastChat extends StatefulWidget {
     required this.onCancelSelection,
     required this.onCopySelected,
     required this.onOpenPeerInfo,
+    this.onPickFile,
+    this.onOpenAttachment,
   });
 
   final List<ChatMessage> messages;
@@ -370,6 +385,8 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
   final void Function(String) onOpenPeerInfo;
+  final VoidCallback? onPickFile;
+  final void Function(ChatMessage)? onOpenAttachment;
 
   @override
   State<BroadcastChat> createState() => _BroadcastChatState();
@@ -435,12 +452,14 @@ class _BroadcastChatState extends State<BroadcastChat> {
               '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',
           onJumpToBottom: widget.onJumpToBottom,
           onOpenPeerInfo: widget.onOpenPeerInfo,
+          onOpenAttachment: widget.onOpenAttachment,
         ),
         MessageInputBar(
           controller: _controller,
           enabled: widget.serviceRunning,
           hintText: widget.serviceRunning ? 'Broadcast...' : 'Offline',
           onSend: _send,
+          onPickFile: widget.onPickFile,
         ),
       ],
     );
@@ -460,6 +479,7 @@ class MessageBubble extends StatelessWidget {
     this.onDoubleTap,
     this.onTap,
     this.onOpenPeerInfo,
+    this.onOpenAttachment,
   });
   final ChatMessage message;
   final bool isOwn;
@@ -468,6 +488,7 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onDoubleTap;
   final VoidCallback? onTap;
   final void Function(String)? onOpenPeerInfo;
+  final VoidCallback? onOpenAttachment;
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +549,16 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-              Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
+              if (message.content.isNotEmpty)
+                Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
+              if (message.attachment != null)
+                _AttachmentChip(
+                  attachment: message.attachment!,
+                  color: fg.withAlpha(200),
+                  onOpen: (selectionMode || onOpenAttachment == null)
+                      ? null
+                      : onOpenAttachment,
+                ),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
@@ -538,6 +568,59 @@ class MessageBubble extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The file-attachment chip (files lane §12) shown inside a bubble: a
+/// tappable `[file] name (size)` summary that opens the stored blob.
+class _AttachmentChip extends StatelessWidget {
+  const _AttachmentChip({
+    required this.attachment,
+    required this.color,
+    this.onOpen,
+  });
+
+  final MobileAttachment attachment;
+  final Color color;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onOpen,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withAlpha(25),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withAlpha(90)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.insert_drive_file,
+              size: 14,
+              color: onOpen != null ? Theme.of(context).colorScheme.primary : color,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '[file] ${attachment.name} (${attachment.size})',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: onOpen != null
+                      ? Theme.of(context).colorScheme.primary
+                      : color,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

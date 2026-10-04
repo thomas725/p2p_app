@@ -18,6 +18,7 @@ import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/attachments.dart';
 
 /// Prompt whether to bind an incoming device into this account. Shown when a
 /// peer's `device_binding_intro` arrives; accepting mints a signed claim that
@@ -585,6 +586,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Pick a file and send it as an attachment-only broadcast (files lane §12).
+  Future<void> _pickAndSendBroadcast() async {
+    final path = await pickFileOverride();
+    if (path == null) return;
+    try {
+      final msg = await saveOutgoingBroadcast(content: '', attachmentPath: path);
+      setState(() => _messages.add(msg));
+      _forceScrollToBottom();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
+  /// Resolve and open a received attachment's stored blob.
+  Future<void> _openBroadcastAttachment(ChatMessage msg) async {
+    final error = await openAttachedFile(msg);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Opening ${msg.attachment?.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   Future<void> _toggleService() async {
     try {
       if (_serviceRunning) {
@@ -841,6 +869,8 @@ class _HomeScreenState extends State<HomeScreen> {
         onCancelSelection: _cancelSelection,
         onCopySelected: _copySelected,
         onOpenPeerInfo: _openPeerInfoForPeerId,
+        onPickFile: _pickAndSendBroadcast,
+        onOpenAttachment: _openBroadcastAttachment,
       ),
       ContactList(
         rows: _contacts,

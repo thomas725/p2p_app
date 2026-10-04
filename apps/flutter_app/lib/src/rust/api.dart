@@ -83,22 +83,35 @@ Future<List<ChatMessage>> loadDmMessages({
 }) => RustLib.instance.api.crateApiLoadDmMessages(peerId: peerId, limit: limit);
 
 /// Save an outgoing broadcast message to DB and send via swarm.
+/// `attachment_path`, when present, is stored content-addressedly (files lane
+/// §12) and sent as an attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
-Future<ChatMessage> saveOutgoingBroadcast({required String content}) =>
-    RustLib.instance.api.crateApiSaveOutgoingBroadcast(content: content);
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
+Future<ChatMessage> saveOutgoingBroadcast({
+  required String content,
+  String? attachmentPath,
+}) => RustLib.instance.api.crateApiSaveOutgoingBroadcast(
+  content: content,
+  attachmentPath: attachmentPath,
+);
 
-/// Save an outgoing DM to DB and send via swarm.
+/// Save an outgoing DM to DB and send via swarm. `attachment_path`, when
+/// present, is stored content-addressedly (files lane §12) and sent as an
+/// attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
 Future<ChatMessage> saveOutgoingDm({
   required String peerId,
   required String content,
+  String? attachmentPath,
 }) => RustLib.instance.api.crateApiSaveOutgoingDm(
   peerId: peerId,
   content: content,
+  attachmentPath: attachmentPath,
 );
 
 /// Save an incoming message (broadcast or DM) to the database.
@@ -144,15 +157,20 @@ Future<List<MobileGroupMessage>> loadGroupMessages({
 );
 
 /// Save an outgoing group message to DB and publish via swarm.
+/// `attachment_path`, when present, is stored content-addressedly (files lane
+/// §12) and sent as an attachment descriptor on the message.
 ///
 /// # Errors
-/// Returns an error if the message cannot be saved or sent.
+/// Returns an error if the message cannot be saved, sent, or the attachment
+/// stored/read.
 Future<MobileGroupMessage> saveOutgoingGroup({
   required String groupId,
   required String content,
+  String? attachmentPath,
 }) => RustLib.instance.api.crateApiSaveOutgoingGroup(
   groupId: groupId,
   content: content,
+  attachmentPath: attachmentPath,
 );
 
 /// Accept a pending group invite: materialize the group locally, persist

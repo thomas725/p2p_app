@@ -8,6 +8,7 @@ import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/attachments.dart';
 
 /// Full-screen DM chat for a single peer (history + live incoming DMs while
 /// open), with selection/copy and an unread "jump to latest" banner.
@@ -127,6 +128,33 @@ class _DmChatScreenState extends State<DmChatScreen>
     }
   }
 
+  /// Pick a file and send it as an attachment-only DM (files lane §12).
+  Future<void> _pickAndSend() async {
+    final path = await pickFileOverride();
+    if (path == null) return;
+    try {
+      final msg = await saveOutgoingDm(peerId: _peerId, content: '', attachmentPath: path);
+      setState(() => _messages.add(msg));
+      forceJumpToBottom(_scrollController);
+    } catch (e) {
+      debugPrint('DM attachment send failed: $e');
+    }
+  }
+
+  /// Resolve and open a received attachment's stored blob.
+  Future<void> _openAttachment(ChatMessage msg) async {
+    final error = await openAttachedFile(msg);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Opening ${msg.attachment?.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,12 +213,14 @@ class _DmChatScreenState extends State<DmChatScreen>
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
+            onOpenAttachment: _openAttachment,
           ),
           MessageInputBar(
             controller: _controller,
             enabled: widget.serviceRunning,
             hintText: widget.serviceRunning ? 'Message $_label...' : 'Offline',
             onSend: _send,
+            onPickFile: _pickAndSend,
           ),
         ],
       ),

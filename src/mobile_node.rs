@@ -402,6 +402,35 @@ pub struct ChatMessage {
     pub sent_at: Option<String>,
     pub created_at: String,
     pub sender_nickname: Option<String>,
+    pub attachment: Option<MobileAttachment>,
+}
+
+/// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
+#[derive(Debug, Clone)]
+pub struct MobileAttachment {
+    /// SHA-256 hex of the file bytes (content address)
+    pub file_id: String,
+    /// Original filename the sender advertised
+    pub name: String,
+    /// Total byte length
+    pub size: i64,
+    /// Best-effort MIME type hint (`None` when unknown)
+    pub mime: Option<String>,
+}
+
+fn mobile_attachment(att: crate::files::MessageAttachment) -> MobileAttachment {
+    MobileAttachment {
+        file_id: att.file_id,
+        name: att.name,
+        size: i64::try_from(att.size).unwrap_or(i64::MAX),
+        mime: att.mime,
+    }
+}
+
+fn attachment_from_row(attachment_json: Option<&str>) -> Option<MobileAttachment> {
+    attachment_json
+        .and_then(crate::files::attachment_from_json)
+        .map(mobile_attachment)
 }
 
 /// Resolve a message's sender label, shared by DMs/broadcasts and group chats.
@@ -449,6 +478,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
             .format("%Y-%m-%d %H:%M:%S")
             .to_string(),
         sender_nickname,
+        attachment: attachment_from_row(msg.attachment_json.as_deref()),
     }
 }
 
@@ -472,10 +502,27 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
     Ok(msgs.into_iter().map(message_to_chat).collect())
 }
 
+/// Store an outbound file (files lane §12) and return its delivery descriptor,
+/// or `None` when the caller sent no path. Failures are returned as `Err` so the
+/// frontend can surface them instead of silently sending a text-only message.
+fn store_send_attachment(
+    attachment_path: Option<String>,
+) -> Result<Option<crate::files::MessageAttachment>, String> {
+    attachment_path.map_or(Ok(None), |path| {
+        crate::files::store_outgoing_file(&path)
+            .map(Some)
+            .map_err(|e| e.to_string())
+    })
+}
+
 /// Save an outgoing broadcast message, persist to DB, and send via swarm.
 /// Returns the saved ChatMessage.
 #[flutter_rust_bridge::frb(ignore)]
-pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
+pub fn save_outgoing_broadcast(
+    content: String,
+    attachment_path: Option<String>,
+) -> Result<ChatMessage, String> {
+    let attachment = store_send_attachment(attachment_path)?;
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -484,7 +531,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment: attachment.clone(),
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, false, None, meta)
         .map_err(|e| e.to_string())?;
@@ -499,7 +546,7 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
                     content,
                     nickname,
                     msg_id: Some(msg_id.clone()),
-                    attachment: None,
+                    attachment: attachment.clone(),
                 })
                 .is_ok();
         }
@@ -528,7 +575,12 @@ pub fn save_outgoing_broadcast(content: String) -> Result<ChatMessage, String> {
 /// Save an outgoing DM, persist to DB, and send via swarm.
 /// Returns the saved ChatMessage.
 #[flutter_rust_bridge::frb(ignore)]
-pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage, String> {
+pub fn save_outgoing_dm(
+    peer_id: String,
+    content: String,
+    attachment_path: Option<String>,
+) -> Result<ChatMessage, String> {
+    let attachment = store_send_attachment(attachment_path)?;
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -537,7 +589,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment: attachment.clone(),
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, true, Some(&peer_id), meta)
         .map_err(|e| e.to_string())?;
@@ -554,7 +606,7 @@ pub fn save_outgoing_dm(peer_id: String, content: String) -> Result<ChatMessage,
                     nickname,
                     msg_id: Some(msg_id),
                     ack_for: None,
-                    attachment: None,
+                    attachment: attachment.clone(),
                 })
                 .is_ok();
         }
@@ -717,6 +769,7 @@ pub struct MobileGroupMessage {
     pub sent_at: Option<String>,
     pub created_at: String,
     pub sender_nickname: Option<String>,
+    pub attachment: Option<MobileAttachment>,
 }
 
 fn group_to_mobile(
@@ -756,6 +809,7 @@ fn group_message_to_mobile(
             .format("%Y-%m-%d %H:%M:%S")
             .to_string(),
         sender_nickname,
+        attachment: attachment_from_row(msg.attachment_json.as_deref()),
     }
 }
 
@@ -853,7 +907,9 @@ pub fn load_group_messages(
 pub fn save_outgoing_group(
     group_id: String,
     content: String,
+    attachment_path: Option<String>,
 ) -> Result<MobileGroupMessage, String> {
+    let attachment = store_send_attachment(attachment_path)?;
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -861,7 +917,7 @@ pub fn save_outgoing_group(
         sender_nickname: nickname.clone(),
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment: attachment.clone(),
     };
     let msg = crate::groups::save_outgoing_group_message(&group_id, &content, meta)
         .map_err(|e| e.to_string())?;
@@ -873,11 +929,25 @@ pub fn save_outgoing_group(
                 content,
                 nickname,
                 msg_id: Some(msg_id),
-                attachment: None,
+                attachment: attachment.clone(),
             });
         }
     }
     Ok(group_message_to_mobile(msg))
+}
+
+/// Absolute on-disk path for a received attachment's blob (files lane §12).
+///
+/// The blob may not exist yet if the pull hasn't finished (`file_id` from an
+/// inbound descriptor); the sender's blob lands here once the swarm handler
+/// completes the chunk transfer. Dart uses this to open/save the file.
+///
+/// # Errors
+/// Returns an error if the store directory cannot be created.
+pub fn attachment_file_path(file_id: &str) -> Result<String, String> {
+    crate::files::store_path_for(file_id)
+        .map(|p| p.to_string_lossy().into_owned())
+        .map_err(|e| e.to_string())
 }
 
 // --- JSON types for FRB ---

@@ -6,6 +6,7 @@ import 'package:p2p_app_flutter/src/rust/api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
+import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
 /// Full-screen group chat (history + live incoming group messages while open),
@@ -76,6 +77,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     sentAt: m.sentAt,
     createdAt: m.createdAt,
     senderNickname: m.senderNickname,
+    attachment: m.attachment,
   );
 
   Future<void> _loadHistory() async {
@@ -152,6 +154,35 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     }
   }
 
+  /// Pick a file and send it as an attachment-only group message (files lane
+  /// §12).
+  Future<void> _pickAndSend() async {
+    final path = await pickFileOverride();
+    if (path == null) return;
+    try {
+      final msg =
+          await saveOutgoingGroup(groupId: _groupId, content: '', attachmentPath: path);
+      setState(() => _messages.add(_toChatMessage(msg)));
+      forceJumpToBottom(_scrollController);
+    } catch (e) {
+      debugPrint('Group attachment send failed: $e');
+    }
+  }
+
+  /// Resolve and open a received attachment's stored blob.
+  Future<void> _openAttachment(ChatMessage msg) async {
+    final error = await openAttachedFile(msg);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Opening ${msg.attachment?.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,6 +235,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
+            onOpenAttachment: _openAttachment,
           ),
           MessageInputBar(
             controller: _controller,
@@ -212,6 +244,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 ? 'Message ${widget.group.displayName}...'
                 : 'Offline',
             onSend: _send,
+            onPickFile: _pickAndSend,
           ),
         ],
       ),

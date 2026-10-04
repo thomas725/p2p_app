@@ -22,11 +22,11 @@
     clippy::borrow_deref_ref,
     clippy::uninlined_format_args,
     clippy::needless_borrow,
+    mismatched_lifetime_syntaxes,
     clippy::all,
     clippy::pedantic,
     clippy::nursery,
-    clippy::restriction,
-    mismatched_lifetime_syntaxes
+    clippy::restriction
 )]
 
 // Section: imports
@@ -43,7 +43,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 50473666;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1491745215;
 
 // Section: executor
 
@@ -191,6 +191,39 @@ fn wire__crate__api__add_device_impl(
                         api_claim_id,
                         api_claim,
                     )?;
+                    std::result::Result::Ok(output_ok)
+                })())
+            }
+        },
+    )
+}
+fn wire__crate__mobile_node__attachment_file_path_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "attachment_file_path",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_file_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| {
+                transform_result_sse::<_, String>((move || {
+                    let output_ok = crate::mobile_node::attachment_file_path(&api_file_id)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1012,10 +1045,12 @@ fn wire__crate__api__save_outgoing_broadcast_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_content = <String>::sse_decode(&mut deserializer);
+            let api_attachment_path = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::save_outgoing_broadcast(api_content)?;
+                    let output_ok =
+                        crate::api::save_outgoing_broadcast(api_content, api_attachment_path)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1046,10 +1081,15 @@ fn wire__crate__api__save_outgoing_dm_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_peer_id = <String>::sse_decode(&mut deserializer);
             let api_content = <String>::sse_decode(&mut deserializer);
+            let api_attachment_path = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::save_outgoing_dm(api_peer_id, api_content)?;
+                    let output_ok = crate::api::save_outgoing_dm(
+                        api_peer_id,
+                        api_content,
+                        api_attachment_path,
+                    )?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1080,10 +1120,15 @@ fn wire__crate__api__save_outgoing_group_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_group_id = <String>::sse_decode(&mut deserializer);
             let api_content = <String>::sse_decode(&mut deserializer);
+            let api_attachment_path = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::save_outgoing_group(api_group_id, api_content)?;
+                    let output_ok = crate::api::save_outgoing_group(
+                        api_group_id,
+                        api_content,
+                        api_attachment_path,
+                    )?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -1500,6 +1545,8 @@ impl SseDecode for crate::mobile_node::ChatMessage {
         let mut var_sentAt = <Option<String>>::sse_decode(deserializer);
         let mut var_createdAt = <String>::sse_decode(deserializer);
         let mut var_senderNickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_attachment =
+            <Option<crate::mobile_node::MobileAttachment>>::sse_decode(deserializer);
         return crate::mobile_node::ChatMessage {
             id: var_id,
             content: var_content,
@@ -1511,6 +1558,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             sent_at: var_sentAt,
             created_at: var_createdAt,
             sender_nickname: var_senderNickname,
+            attachment: var_attachment,
         };
     }
 }
@@ -1719,6 +1767,22 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for crate::mobile_node::MobileAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_fileId = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_size = <i64>::sse_decode(deserializer);
+        let mut var_mime = <Option<String>>::sse_decode(deserializer);
+        return crate::mobile_node::MobileAttachment {
+            file_id: var_fileId,
+            name: var_name,
+            size: var_size,
+            mime: var_mime,
+        };
+    }
+}
+
 impl SseDecode for crate::mobile_api::MobileContactDevice {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1827,6 +1891,8 @@ impl SseDecode for crate::mobile_node::MobileGroupMessage {
         let mut var_sentAt = <Option<String>>::sse_decode(deserializer);
         let mut var_createdAt = <String>::sse_decode(deserializer);
         let mut var_senderNickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_attachment =
+            <Option<crate::mobile_node::MobileAttachment>>::sse_decode(deserializer);
         return crate::mobile_node::MobileGroupMessage {
             id: var_id,
             content: var_content,
@@ -1836,6 +1902,7 @@ impl SseDecode for crate::mobile_node::MobileGroupMessage {
             sent_at: var_sentAt,
             created_at: var_createdAt,
             sender_nickname: var_senderNickname,
+            attachment: var_attachment,
         };
     }
 }
@@ -1891,6 +1958,19 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::mobile_node::MobileAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::mobile_node::MobileAttachment>::sse_decode(
+                deserializer,
+            ));
         } else {
             return None;
         }
@@ -2037,39 +2117,40 @@ fn pde_ffi_dispatcher_primary_impl(
         2 => wire__crate__api__accept_group_invite_impl(port, ptr, rust_vec_len, data_len),
         3 => wire__crate__api__add_contact_impl(port, ptr, rust_vec_len, data_len),
         4 => wire__crate__api__add_device_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__clear_logs_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__create_group_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__get_contacts_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__get_contacts_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__get_known_peers_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__get_logs_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__get_mobile_peer_status_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__get_my_user_id_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__mobile_node__get_node_peer_id_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__mobile_api__get_peers_with_stats_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__get_user_devices_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__init_mobile_database_impl(port, ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__list_groups_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__load_broadcast_messages_impl(port, ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__load_dm_messages_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__load_group_messages_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__network_size_label_impl(port, ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__poll_event_impl(port, ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__provision_my_user_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__remove_contact_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__save_incoming_message_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__save_outgoing_broadcast_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__send_call_signal_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__start_call_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
-        42 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__mobile_node__attachment_file_path_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__clear_logs_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__create_group_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__get_contacts_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__get_contacts_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__get_known_peers_impl(port, ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__get_logs_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__get_mobile_peer_status_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__get_my_user_id_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__mobile_node__get_node_peer_id_impl(port, ptr, rust_vec_len, data_len),
+        16 => wire__crate__mobile_api__get_peers_with_stats_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__get_user_devices_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__init_mobile_database_impl(port, ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__list_groups_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__load_broadcast_messages_impl(port, ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__load_dm_messages_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__load_group_messages_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__network_size_label_impl(port, ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__poll_event_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__provision_my_user_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__remove_contact_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__save_incoming_message_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__save_outgoing_broadcast_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__save_outgoing_dm_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__save_outgoing_group_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__send_call_signal_impl(port, ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__send_device_binding_intro_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__set_self_nickname_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__start_call_impl(port, ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__start_node_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__start_node_auto_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__stop_node_impl(port, ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__validate_nickname_impl(port, ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__verify_device_binding_claim_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2082,11 +2163,11 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        7 => wire__crate__mobile_api__format_time_hhmm_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
-        36 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
+        8 => wire__crate__mobile_api__format_time_hhmm_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__mobile_api__is_at_bottom_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__mobile_api__parse_last_seen_ms_impl(ptr, rust_vec_len, data_len),
+        36 => wire__crate__mobile_api__sort_contacts_impl(ptr, rust_vec_len, data_len),
+        37 => wire__crate__mobile_api__sort_peers_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2107,6 +2188,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessage {
             self.sent_at.into_into_dart().into_dart(),
             self.created_at.into_into_dart().into_dart(),
             self.sender_nickname.into_into_dart().into_dart(),
+            self.attachment.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2144,6 +2226,29 @@ impl flutter_rust_bridge::IntoIntoDart<crate::mobile_api::ContactSortInput>
     for crate::mobile_api::ContactSortInput
 {
     fn into_into_dart(self) -> crate::mobile_api::ContactSortInput {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::mobile_node::MobileAttachment {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.file_id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.size.into_into_dart().into_dart(),
+            self.mime.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::mobile_node::MobileAttachment
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::mobile_node::MobileAttachment>
+    for crate::mobile_node::MobileAttachment
+{
+    fn into_into_dart(self) -> crate::mobile_node::MobileAttachment {
         self
     }
 }
@@ -2282,6 +2387,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::MobileGroupMessage {
             self.sent_at.into_into_dart().into_dart(),
             self.created_at.into_into_dart().into_dart(),
             self.sender_nickname.into_into_dart().into_dart(),
+            self.attachment.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2473,6 +2579,7 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <Option<String>>::sse_encode(self.sent_at, serializer);
         <String>::sse_encode(self.created_at, serializer);
         <Option<String>>::sse_encode(self.sender_nickname, serializer);
+        <Option<crate::mobile_node::MobileAttachment>>::sse_encode(self.attachment, serializer);
     }
 }
 
@@ -2632,6 +2739,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for crate::mobile_node::MobileAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.file_id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <i64>::sse_encode(self.size, serializer);
+        <Option<String>>::sse_encode(self.mime, serializer);
+    }
+}
+
 impl SseEncode for crate::mobile_api::MobileContactDevice {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2701,6 +2818,7 @@ impl SseEncode for crate::mobile_node::MobileGroupMessage {
         <Option<String>>::sse_encode(self.sent_at, serializer);
         <String>::sse_encode(self.created_at, serializer);
         <Option<String>>::sse_encode(self.sender_nickname, serializer);
+        <Option<crate::mobile_node::MobileAttachment>>::sse_encode(self.attachment, serializer);
     }
 }
 
@@ -2739,6 +2857,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::mobile_node::MobileAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::mobile_node::MobileAttachment>::sse_encode(value, serializer);
         }
     }
 }
