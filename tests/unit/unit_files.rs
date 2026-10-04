@@ -60,6 +60,52 @@ fn attachment_json_roundtrips() {
 }
 
 #[test]
+fn file_chip_renders_name_and_size() {
+    let att = MessageAttachment {
+        file_id: "aabb".into(),
+        name: "notes.txt".into(),
+        size: 2048,
+        mime: None,
+    };
+    assert_eq!(file_chip(&att), "[file] notes.txt (2048)");
+}
+
+#[test]
+fn render_message_body_composes_text_and_chip() {
+    let att = MessageAttachment {
+        file_id: "aabb".into(),
+        name: "photo.png".into(),
+        size: 5,
+        mime: Some("image/png".into()),
+    };
+    assert_eq!(
+        render_message_body("look", Some(&att)),
+        "look [file] photo.png (5)"
+    );
+    assert!(render_message_body("", Some(&att)).contains("[file] photo.png (5)"));
+    assert_eq!(render_message_body("plain", None), "plain");
+    assert_eq!(render_message_body("", None), "");
+}
+
+#[test]
+fn render_stored_body_hydrates_attachment_json_column() {
+    let att = MessageAttachment {
+        file_id: "c0ffee".into(),
+        name: "archive.zip".into(),
+        size: 99,
+        mime: None,
+    };
+    let json = attachment_to_json(&att).expect("serialize");
+    assert!(
+        render_stored_body("", Some(&json)).contains("[file] archive.zip (99)"),
+        "attachment-only row must still show the chip"
+    );
+    assert!(render_stored_body("for you", Some(&json)).contains("for you [file] archive.zip (99)"));
+    assert_eq!(render_stored_body("hi", Some("garbage")), "hi");
+    assert_eq!(render_stored_body("hi", None), "hi");
+}
+
+#[test]
 fn mime_from_name_maps_known_extensions() {
     assert_eq!(mime_from_name("a.TXT").as_deref(), Some("text/plain"));
     assert_eq!(mime_from_name("photo.jpeg").as_deref(), Some("image/jpeg"));

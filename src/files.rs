@@ -49,6 +49,38 @@ pub struct MessageAttachment {
     pub mime: Option<String>,
 }
 
+/// Render an attachment descriptor as a plain-text chat chip, e.g.
+/// `[file] notes.txt (2048)`. Used verbatim by frontends (TUI chat rows +
+/// input) so a sent and a received file always look identical.
+#[must_use]
+pub fn file_chip(attachment: &MessageAttachment) -> String {
+    format!("[file] {} ({})", attachment.name, attachment.size)
+}
+
+/// Compose a chat line body from message text plus an attachment descriptor:
+/// text first, chip appended; an attachment-only message renders as just the
+/// chip so a file never shows up as a blank row.
+#[must_use]
+pub fn render_message_body(content: &str, attachment: Option<&MessageAttachment>) -> String {
+    if content.trim().is_empty() {
+        attachment.map_or_else(String::new, file_chip)
+    } else if let Some(attachment) = attachment {
+        format!("{content} {}", file_chip(attachment))
+    } else {
+        content.to_string()
+    }
+}
+
+/// Hydrate a chat row body from a DB `attachment_json` column (files lane §12)
+/// plus the stored message text — the inverse of what the send path persisted.
+#[must_use]
+pub fn render_stored_body(content: &str, attachment_json: Option<&str>) -> String {
+    render_message_body(
+        content,
+        attachment_json.and_then(attachment_from_json).as_ref(),
+    )
+}
+
 /// SHA-256 of `data` as a lowercase hex string — the content address
 /// (`file_id`) for the bytes.
 #[must_use]

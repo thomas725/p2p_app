@@ -516,8 +516,9 @@ fn format_messages_from_db(
             }
             (None, None) => format!("[{own_nickname}]"),
         };
+        let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
         messages.push_back(p2p_app::DisplayMessage {
-            text: format!("{ts} {sender} {}", msg.content),
+            text: format!("{ts} {sender} {body}"),
             sender_peer_id: msg.peer_id.clone(),
         });
         message_ids.push_back(msg.msg_id.clone());

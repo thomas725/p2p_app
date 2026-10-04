@@ -336,6 +336,29 @@ fn test_toggle_mouse_capture_toggles_state() {
     assert!(!state.env.mouse_capture);
 }
 
+// ── parse_file_command ────────────────────────────────────────────────
+
+#[test]
+fn test_parse_file_command_extracts_path() {
+    assert_eq!(
+        parse_file_command("/file /tmp/notes.txt"),
+        Some("/tmp/notes.txt".to_string())
+    );
+    assert_eq!(
+        parse_file_command("  /file  some dir/a b.txt  "),
+        Some("some dir/a b.txt".to_string())
+    );
+}
+
+#[test]
+fn test_parse_file_command_rejects_non_commands() {
+    assert_eq!(parse_file_command("/file"), None);
+    assert_eq!(parse_file_command("/file "), None);
+    assert_eq!(parse_file_command("send /file to the group"), None);
+    assert_eq!(parse_file_command("hello"), None);
+    assert_eq!(parse_file_command(""), None);
+}
+
 // ── handle_enter_key ──────────────────────────────────────────────────
 
 #[test]

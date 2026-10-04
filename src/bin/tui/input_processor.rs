@@ -470,10 +470,38 @@ async fn handle_enter_key(
         p2plog_debug(format!("Opened DM with peer: {peer_id}"));
     } else if tab_content.is_input_enabled() {
         let text: String = state.chat_input.lines().join("\n");
-        if !text.trim().is_empty() {
-            super::message_handlers::send_message(state, swarm_cmd_tx, text, tab_content).await;
+        let trimmed = text.trim_start();
+        if trimmed.starts_with("/file ") {
+            match parse_file_command(&text) {
+                Some(path) => {
+                    super::message_handlers::send_file_message(
+                        state,
+                        swarm_cmd_tx,
+                        &path,
+                        tab_content,
+                    )
+                    .await;
+                }
+                None => state.popup = Some("Usage: /file <path>".to_string()),
+            }
+        } else if !text.trim().is_empty() {
+            super::message_handlers::send_message(state, swarm_cmd_tx, text, None, tab_content)
+                .await;
         }
     }
+}
+
+/// Pure: parse a `/file` chat command into a path (files lane §12). Comments
+/// out of any ordinary message; only an actual `/file <path>` with a non-blank
+/// path returns `Some`, everything else stays `None` so it passes through the
+/// normal send path.
+fn parse_file_command(input: &str) -> Option<String> {
+    input
+        .trim_start()
+        .strip_prefix("/file ")
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(str::to_owned)
 }
 
 /// Open the DM partner's Peer Info when a `Ctrl+I` / `Ctrl+P` chord lands on a

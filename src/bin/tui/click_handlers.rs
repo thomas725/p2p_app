@@ -70,7 +70,8 @@ fn format_dm_messages_from_db(
             || self_nick_for_peer.to_string(),
             |p| p2p_app::peer_display_name(p, local_nicknames, received_nicknames),
         );
-        messages.push_back(format!("{} [{}] {}", ts, sender_display, msg.content));
+        let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        messages.push_back(format!("{ts} [{sender_display}] {body}"));
     }
     messages
 }
@@ -145,7 +146,8 @@ fn format_group_messages_from_db(
             },
             |nick| format!("[{nick}]"),
         );
-        messages.push_back(format!("{ts} {sender} {}", msg.content));
+        let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        messages.push_back(format!("{ts} {sender} {body}"));
         message_ids.push_back(msg.msg_id.clone());
         peer_ids.push_back(msg.peer_id.clone());
     }

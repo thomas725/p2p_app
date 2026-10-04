@@ -9,9 +9,11 @@ fn push_outgoing_broadcast_to_state(
     ts: &str,
     own_nickname: &str,
     content: &str,
+    attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
 ) {
-    let msg = format!("{ts} [{own_nickname}] {content}");
+    let body = render_outgoing_body(content, attachment);
+    let msg = format!("{ts} [{own_nickname}] {body}");
     state.messages.push_back(DisplayMessage {
         text: msg,
         sender_peer_id: None,
@@ -21,6 +23,23 @@ fn push_outgoing_broadcast_to_state(
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
 }
 
+/// Pure: compose an outgoing chat line before the sender tag: text first, the
+/// attachment chip appended; an attachment-only message renders as just the
+/// chip so a file never shows up as a blank row.
+fn render_outgoing_body(
+    content: &str,
+    attachment: Option<&p2p_app::files::MessageAttachment>,
+) -> String {
+    let chip = attachment.map_or_else(String::new, p2p_app::files::file_chip);
+    if content.trim().is_empty() {
+        chip
+    } else if chip.is_empty() {
+        content.to_string()
+    } else {
+        format!("{content} {chip}")
+    }
+}
+
 /// Pure: format and push an outgoing DM to state, trimming history
 fn push_outgoing_dm_to_state(
     state: &mut AppState,
@@ -28,9 +47,11 @@ fn push_outgoing_dm_to_state(
     ts: &str,
     dm_self_nickname: &str,
     content: &str,
+    attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
 ) {
-    let msg = format!("{ts} [{dm_self_nickname}] {content}");
+    let body = render_outgoing_body(content, attachment);
+    let msg = format!("{ts} [{dm_self_nickname}] {body}");
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);
     state
@@ -51,9 +72,11 @@ fn push_outgoing_group_message_to_state(
     ts: &str,
     own_nickname: &str,
     content: &str,
+    attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
 ) {
-    let msg = format!("{ts} [{own_nickname}] {content}");
+    let body = render_outgoing_body(content, attachment);
+    let msg = format!("{ts} [{own_nickname}] {body}");
     let msgs = state
         .group_messages
         .entry(group_id.to_string())
@@ -82,25 +105,72 @@ fn push_outgoing_group_message_to_state(
     });
 }
 
-/// Sends a message (broadcast, direct, or group message)
 /// Sends a message (broadcast, direct, or group message): pushes it into the
 /// active chat state, dispatches it over the swarm, and persists it with
 /// receipt metadata. Routing picks the per-kind helper by the active tab.
+///
+/// `attachment` rides along as a descriptor (files lane §12); the bytes were
+/// already stored via `files::store_outgoing_file` so the receiving end can
+/// pull them from us.
 pub async fn send_message(
     state: &mut AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     text: String,
+    attachment: Option<p2p_app::files::MessageAttachment>,
     tab_content: p2p_app::tui_tabs::TabContent,
 ) {
     let own_nickname = state.own_nickname.clone();
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
-            send_dm_message(state, swarm_cmd_tx, peer_id.clone(), text, own_nickname).await;
+            send_dm_message(
+                state,
+                swarm_cmd_tx,
+                peer_id.clone(),
+                text,
+                attachment,
+                own_nickname,
+            )
+            .await;
         }
         p2p_app::tui_tabs::TabContent::GroupChat(group_id) => {
-            send_group_message(state, swarm_cmd_tx, group_id.clone(), text, own_nickname).await;
+            send_group_message(
+                state,
+                swarm_cmd_tx,
+                group_id.clone(),
+                text,
+                attachment,
+                own_nickname,
+            )
+            .await;
         }
-        _ => send_broadcast_message(state, swarm_cmd_tx, text, own_nickname).await,
+        _ => send_broadcast_message(state, swarm_cmd_tx, text, attachment, own_nickname).await,
+    }
+}
+
+/// Attach a local file to a message on the active tab and send it (files lane
+/// §12). The bytes are content-addressed into our store first so senders can
+/// serve the receiver's pull; failures surface in a popup and the input is
+/// kept as-is.
+pub async fn send_file_message(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    path: &str,
+    tab_content: p2p_app::tui_tabs::TabContent,
+) {
+    match p2p_app::files::store_outgoing_file(path) {
+        Ok(attachment) => {
+            send_message(
+                state,
+                swarm_cmd_tx,
+                String::new(),
+                Some(attachment),
+                tab_content,
+            )
+            .await;
+        }
+        Err(e) => {
+            state.popup = Some(format!("Failed to attach {path}: {e}"));
+        }
     }
 }
 
@@ -112,6 +182,7 @@ async fn send_dm_message(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     peer_id: String,
     text: String,
+    attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
 ) {
     let ts = p2p_app::format_now();
@@ -130,6 +201,7 @@ async fn send_dm_message(
         &ts,
         &dm_self_nickname,
         &text,
+        attachment.as_ref(),
         msg_id.clone(),
     );
     p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
@@ -143,7 +215,7 @@ async fn send_dm_message(
             nickname: Some(dm_self_nickname),
             msg_id: Some(msg_id),
             ack_for: None,
-            attachment: None,
+            attachment: attachment.clone(),
         })
         .await;
 
@@ -151,7 +223,7 @@ async fn send_dm_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, true, Some(&peer_id), meta)
@@ -167,6 +239,7 @@ async fn send_group_message(
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     group_id: String,
     text: String,
+    attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
 ) {
     let ts = p2p_app::format_now();
@@ -180,6 +253,7 @@ async fn send_group_message(
         &ts,
         &own_nickname,
         &text,
+        attachment.as_ref(),
         msg_id.clone(),
     );
     p2plog_debug(format!("Sent group message to {group_id}: {text}"));
@@ -192,7 +266,7 @@ async fn send_group_message(
             content: text.clone(),
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
-            attachment: None,
+            attachment: attachment.clone(),
         })
         .await;
 
@@ -200,7 +274,7 @@ async fn send_group_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment,
     };
     if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
         p2plog_debug(format!("Failed to save group message: {e}"));
@@ -215,6 +289,7 @@ async fn send_broadcast_message(
     state: &mut AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
     text: String,
+    attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
 ) {
     let ts = p2p_app::format_now();
@@ -222,7 +297,14 @@ async fn send_broadcast_message(
     let msg_id_for_db = msg_id.clone();
     let sent_at = p2p_app::current_timestamp();
 
-    push_outgoing_broadcast_to_state(state, &ts, &own_nickname, &text, msg_id.clone());
+    push_outgoing_broadcast_to_state(
+        state,
+        &ts,
+        &own_nickname,
+        &text,
+        attachment.as_ref(),
+        msg_id.clone(),
+    );
     p2plog_debug(format!("Sent broadcast: {text}"));
 
     state.chat_input = ratatui_textarea::TextArea::default();
@@ -232,7 +314,7 @@ async fn send_broadcast_message(
             content: text.clone(),
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
-            attachment: None,
+            attachment: attachment.clone(),
         })
         .await;
 
@@ -240,7 +322,7 @@ async fn send_broadcast_message(
         sender_nickname: Some(own_nickname),
         msg_id: Some(msg_id_for_db.clone()),
         sent_at: Some(sent_at),
-        attachment: None,
+        attachment,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta)

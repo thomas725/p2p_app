@@ -506,6 +506,20 @@ fn test_format_dm_messages_from_db_self_nick_override() {
     assert!(result[0].contains("my msg"));
 }
 
+#[test]
+fn test_format_dm_messages_from_db_renders_attachment_chip() {
+    let mut msg = dm_msg("", None, None, "2024-01-01 12:00:00");
+    msg.attachment_json = Some(
+        "{\"file_id\":\"aabb\",\"name\":\"notes.txt\",\"size\":2048,\"mime\":null}".to_string(),
+    );
+    let result = super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
+    assert!(
+        result[0].contains("[file] notes.txt (2048)"),
+        "attachment-only row must still show the chip: {}",
+        result[0]
+    );
+}
+
 // ── load_dm_messages ───────────────────────────────────────────────────
 
 #[test]

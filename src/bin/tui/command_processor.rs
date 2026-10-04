@@ -217,27 +217,12 @@ fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     }
 }
 
-/// Format an attachment descriptor as a chat-text chip (files lane §12).
-///
-/// Plain text (no emoji) so it renders in the TUI exactly as shown. Receivers
-/// show the same chip; the stored path becomes available via `files::file_path`
-/// once the pull completes.
-fn attachment_chip(attachment: Option<&p2p_app::MessageAttachment>) -> String {
-    attachment.map_or_else(String::new, |a| format!("[file] {} ({})", a.name, a.size))
-}
-
 /// Compose a chat line body from message text plus an attachment chip: text
 /// first, chip appended; an attachment-only message renders as just the chip so
-/// a file never shows up as a blank row.
+/// a file never shows up as a blank row. (Shared with the history-reload paths
+/// via `p2p_app::files::render_stored_body`.)
 fn render_message_body(content: &str, attachment: Option<&p2p_app::MessageAttachment>) -> String {
-    let chip = attachment_chip(attachment);
-    if content.trim().is_empty() {
-        chip
-    } else if chip.is_empty() {
-        content.to_string()
-    } else {
-        format!("{content} {chip}")
-    }
+    p2p_app::files::render_message_body(content, attachment)
 }
 
 /// Route one inbound chat message into TUI state (and the DB). `is_direct`

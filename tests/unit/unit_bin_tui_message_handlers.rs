@@ -18,7 +18,7 @@ use tempfile::TempDir;
 #[test]
 fn test_push_outgoing_broadcast_adds_message() {
     let mut state = test_app_state();
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", "m1".into());
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
     assert_eq!(state.messages.len(), 1);
     assert!(state.messages[0].text.contains("[Me]"));
     assert!(state.messages[0].text.contains("hello"));
@@ -35,11 +35,12 @@ fn test_push_outgoing_broadcast_trims_history() {
             "12:00",
             "Me",
             &format!("msg-{i}"),
+            None,
             format!("m{i}"),
         );
     }
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "newest", "m-last".into());
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "newest", None, "m-last".into());
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
     assert!(
         state.messages[MAX_MESSAGE_HISTORY - 1]
@@ -51,7 +52,7 @@ fn test_push_outgoing_broadcast_trims_history() {
 #[test]
 fn test_push_outgoing_broadcast_peer_id_is_none() {
     let mut state = test_app_state();
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "test", "m1".into());
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "test", None, "m1".into());
     assert_eq!(state.messages[0].sender_peer_id, None);
 }
 
@@ -60,7 +61,15 @@ fn test_push_outgoing_broadcast_peer_id_is_none() {
 #[test]
 fn test_push_outgoing_dm_adds_message() {
     let mut state = test_app_state();
-    push_outgoing_dm_to_state(&mut state, "peer-1", "12:00", "Me", "secret", "dm1".into());
+    push_outgoing_dm_to_state(
+        &mut state,
+        "peer-1",
+        "12:00",
+        "Me",
+        "secret",
+        None,
+        "dm1".into(),
+    );
     assert!(state.dm_messages.contains_key("peer-1"));
     assert_eq!(state.dm_messages["peer-1"].len(), 1);
     assert!(state.dm_messages["peer-1"][0].contains("[Me]"));
@@ -78,11 +87,20 @@ fn test_push_outgoing_dm_trims_history() {
             "12:00",
             "Me",
             &format!("msg-{i}"),
+            None,
             format!("m{i}"),
         );
     }
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
-    push_outgoing_dm_to_state(&mut state, "p1", "12:00", "Me", "newest", "m-last".into());
+    push_outgoing_dm_to_state(
+        &mut state,
+        "p1",
+        "12:00",
+        "Me",
+        "newest",
+        None,
+        "m-last".into(),
+    );
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
     assert!(state.dm_messages["p1"][MAX_DM_HISTORY - 1].contains("newest"));
     assert!(state.dm_messages["p1"][0].contains("msg-1")); // msg-0 was popped
@@ -91,8 +109,8 @@ fn test_push_outgoing_dm_trims_history() {
 #[test]
 fn test_push_outgoing_dm_separate_peers() {
     let mut state = test_app_state();
-    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", "m1".into());
-    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", "m2".into());
+    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", None, "m1".into());
+    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", None, "m2".into());
     assert_eq!(state.dm_messages.len(), 2);
     assert_eq!(state.dm_messages["pa"].len(), 1);
     assert_eq!(state.dm_messages["pb"].len(), 1);
@@ -118,6 +136,7 @@ fn test_send_broadcast_updates_state_and_sends_command() {
             &mut state,
             &swarm_cmd_tx,
             "hello".to_string(),
+            None,
             p2p_app::tui_tabs::TabContent::Chat,
         )
         .await;
@@ -155,6 +174,7 @@ fn test_send_dm_updates_state_and_sends_command() {
             &mut state,
             &swarm_cmd_tx,
             "secret".to_string(),
+            None,
             p2p_app::tui_tabs::TabContent::Direct(peer_id.to_string()),
         )
         .await;
@@ -207,6 +227,7 @@ fn test_send_broadcast_saves_to_db() {
                 &mut state,
                 &swarm_cmd_tx,
                 "db test".to_string(),
+                None,
                 p2p_app::tui_tabs::TabContent::Chat,
             )
             .await;
@@ -230,6 +251,7 @@ fn test_send_dm_saves_to_db() {
                 &mut state,
                 &swarm_cmd_tx,
                 "dm db".to_string(),
+                None,
                 p2p_app::tui_tabs::TabContent::Direct("dm-peer".to_string()),
             )
             .await;
