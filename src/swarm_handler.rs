@@ -677,6 +677,35 @@ fn receiving_files() -> &'static Mutex<StringMap<crate::files::ReceivingFile>> {
     RECEIVING_FILES.get_or_init(|| Mutex::new(StringMap::default()))
 }
 
+/// Garbage-collect dead attachment blobs (files lane §12): `.part` partials of
+/// interrupted pulls and orphaned blobs/rows nothing references any more.
+///
+/// The `attachment-gc` Cargo feature is the enable/disable switch: with the
+/// feature off this returns a zeroed report and the store never deletes
+/// anything, so a build can opt out of blob cleanup entirely. Blobs with a
+/// transfer currently in flight are excluded, and anything younger than
+/// [`GC_GRACE`](crate::files::GC_GRACE) is skipped.
+///
+/// # Errors
+/// Returns an error if a sweep fails (see [`crate::files::gc`]).
+#[cfg(feature = "attachment-gc")]
+pub fn gc_stale_attachments() -> color_eyre::Result<crate::files::GcStats> {
+    let active: std::collections::HashSet<String> = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .keys()
+        .cloned()
+        .collect();
+    crate::files::gc(&active, crate::files::GC_GRACE)
+}
+
+/// No-op build of [`gc_stale_attachments`] when the `attachment-gc` feature is
+/// off (see the feature's doc comment in Cargo.toml).
+#[cfg(not(feature = "attachment-gc"))]
+pub fn gc_stale_attachments() -> color_eyre::Result<crate::files::GcStats> {
+    Ok(crate::files::GcStats::default())
+}
+
 /// What applying one chunk response should do next.
 enum ChunkOutcome {
     /// All bytes are in: hand the assembled transfer to the finalizer.

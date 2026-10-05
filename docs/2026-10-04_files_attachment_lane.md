@@ -56,8 +56,25 @@ frontends can send and receive file attachments on DMs, broadcast, and groups.
   selection-mode tap is inert); full Rust (clippy + `--all-features`) and
   Flutter (analyze + 38 widget tests) suites green.
 
+## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
+
+Blob cleanup is real and behind an on/off switch: the `attachment-gc` Cargo
+feature (part of `default` and `mobile`) is the enable/disable knob — disabled,
+`swarm_handler::gc_stale_attachments()` is a `Ok(GcStats::default())` no-op and
+the store never deletes anything.
+
+- `files::gc(active, grace)` sweeps two classes: **incomplete** `.part` partials
+  of interrupted pulls (no transfer in flight for them) and **overwritten /
+  orphaned** full blobs no live message references (superseded after DB reset /
+  message loss), blobs detached from their `files` row, and `files` rows whose
+  blob is missing on disk.
+- Runs at startup in both frontends (TUI `main_loop.rs`, mobile
+  `start_node_impl`). In-flight transfers are excluded by the active `file_id`
+  set; blobs younger than `files::GC_GRACE` (1 min) are skipped.
+- A transfer interrupted mid-run keeps its `.part` until the next restart clears
+  the in-flight map; the restart sweep then removes it as stale.
+
 ## Open follow-ups (none urgent)
 
-- Blob lifecycle / GC (nothing deletes stored files yet).
 - Size-formatting of the chip is raw bytes in both frontends (by design, matches
   `file_chip`); a human-readable suffix is future polish if desired.

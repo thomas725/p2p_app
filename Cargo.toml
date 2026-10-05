@@ -48,16 +48,21 @@ strip = false
 panic = 'unwind'
 
 [features]
-default = [ "mdns", "tracing", "quic", "tui" ]
+default = [ "mdns", "tracing", "quic", "tui", "attachment-gc" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subscriber/env-filter" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
-mobile = [ "basic", "sqlite_bundled", "quic", "flutter_rust_bridge" ]
+mobile = [ "basic", "sqlite_bundled", "quic", "flutter_rust_bridge", "attachment-gc" ]
 test-utils = []
 calls = []
+# Blob lifecycle (files lane §12): on-by-default switch for attachment GC —
+# remove stale `.part` partials (incomplete pulls) and orphaned blobs/rows
+# ("overwritten"/superseded attachments). Disable to never delete blob state:
+# `--no-default-features --features <the rest you need>`.
+attachment-gc = []
 
 [dependencies]
 tracing = { version = "=0.1.44", optional = true }

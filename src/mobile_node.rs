@@ -108,6 +108,13 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         let mut swarm =
             build_swarm(network_size).map_err(|e| format!("Failed to build swarm: {e}"))?;
 
+        // Sweep dead attachment blobs (files lane §12): `.part` partials from
+        // interrupted pulls plus orphaned blobs nothing references any more.
+        // No-op unless the `attachment-gc` Cargo feature is on.
+        if let Err(e) = crate::swarm_handler::gc_stale_attachments() {
+            p2plog_debug(format!("attachment GC failed: {e}"));
+        }
+
         let topic = gossipsub::IdentTopic::new(CHAT_TOPIC);
         swarm
             .listen_on(

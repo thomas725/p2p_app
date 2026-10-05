@@ -1,4 +1,5 @@
 use super::*;
+use diesel::prelude::*;
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
@@ -269,5 +270,112 @@ fn receiving_file_hash_mismatch_removes_partial() {
             find_file(&wrong_id).expect("lookup").is_none(),
             "no files row may survive a failed transfer"
         );
+    });
+}
+
+/// Insert a `messages` row whose `attachment_json` references `file_id`, so the
+/// GC treats the blob as live content.
+fn insert_message_with_attachment(file_id: &str, json: &str) {
+    use crate::generated::models_insertable::NewMessage;
+    use crate::generated::schema::messages::dsl::messages;
+    let conn = &mut crate::sqlite_connect().expect("connect");
+    let row = NewMessage {
+        content: String::new(),
+        peer_id: None,
+        topic: "gc".to_string(),
+        sent: 1,
+        is_direct: 0,
+        target_peer: None,
+        msg_id: Some(format!("gc-{file_id}")),
+        sent_at: None,
+        sender_nickname: None,
+        attachment_json: Some(json.to_string()),
+    };
+    diesel::insert_into(messages)
+        .values(&row)
+        .execute(conn)
+        .expect("insert message row");
+}
+
+#[test]
+#[serial(db)]
+fn gc_sweeps_stale_parts_but_not_active_transfers() {
+    with_test_db(|| {
+        let dir = files_dir().expect("store dir");
+        let stale = dir.join("deadbeef.part");
+        let live = dir.join("c0ffee.part");
+        std::fs::write(&stale, b"partial").expect("write stale");
+        std::fs::write(&live, b"partial").expect("write live");
+
+        let active = HashSet::from(["c0ffee".to_string()]);
+        let stats = gc(&active, Duration::ZERO).expect("gc");
+
+        assert_eq!(stats.incomplete_removed, 1);
+        assert_eq!(stats.orphans_removed, 0);
+        assert!(!stale.exists(), "stale .part must be swept");
+        assert!(live.exists(), "in-flight .part must be kept");
+    });
+}
+
+#[test]
+#[serial(db)]
+fn gc_keeps_parts_younger_than_grace() {
+    with_test_db(|| {
+        let fresh = files_dir().expect("store dir").join("fresh.part");
+        std::fs::write(&fresh, b"partial").expect("write fresh");
+
+        let stats = gc(&HashSet::new(), Duration::from_hours(1)).expect("gc");
+
+        assert_eq!(stats.incomplete_removed, 0);
+        assert!(
+            fresh.exists(),
+            "young partials must survive the grace window"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn gc_removes_orphans_and_broken_rows_keeps_referenced() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("tempdir");
+
+        // A blob a live message references survives the sweep.
+        let kept_path = dir.path().join("kept.txt");
+        std::fs::write(&kept_path, b"kept bytes").expect("write source");
+        let kept = store_outgoing_file(kept_path.to_str().expect("path")).expect("store");
+        insert_message_with_attachment(&kept.file_id, &attachment_to_json(&kept).expect("json"));
+        assert!(find_file(&kept.file_id).expect("lookup").is_some());
+
+        // A staged blob with a `files` row but no message reference is an orphan.
+        let orphan_path = dir.path().join("orphan.bin");
+        std::fs::write(&orphan_path, b"orphan bytes").expect("write source");
+        let orphan = store_outgoing_file(orphan_path.to_str().expect("path")).expect("store");
+
+        // A `files` row whose blob vanished is broken.
+        let broken_path = dir.path().join("broken.bin");
+        std::fs::write(&broken_path, b"broken bytes").expect("write source");
+        let broken = store_outgoing_file(broken_path.to_str().expect("path")).expect("store");
+        let broken_blob = files_dir().expect("store").join(&broken.file_id);
+        std::fs::remove_file(broken_blob).expect("simulate lost blob");
+
+        // A blob on disk with no `files` row at all.
+        let rowless_id = hash_bytes(b"rowless");
+        std::fs::write(files_dir().expect("store").join(&rowless_id), b"rowless")
+            .expect("write rowless blob");
+
+        let stats = gc(&HashSet::new(), Duration::ZERO).expect("gc");
+        assert_eq!(stats.incomplete_removed, 0);
+        // orphan: blob + row (2), broken row (1), rowless blob (1)
+        assert_eq!(stats.orphans_removed, 4);
+
+        // The referenced file is untouched.
+        assert!(find_file(&kept.file_id).expect("lookup").is_some());
+        assert!(files_dir().expect("store").join(&kept.file_id).exists());
+        // Everything else is gone: orphaned, broken, rowless.
+        assert!(find_file(&orphan.file_id).expect("lookup").is_none());
+        assert!(!files_dir().expect("store").join(&orphan.file_id).exists());
+        assert!(find_file(&broken.file_id).expect("lookup").is_none());
+        assert!(!files_dir().expect("store").join(&rowless_id).exists());
     });
 }

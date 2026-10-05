@@ -401,6 +401,13 @@ pub async fn run_new_tui(
 
     resubscribe_saved_groups(&swarm_cmd_tx, &initial_groups).await;
 
+    // Sweep dead attachment blobs (files lane §12): `.part` partials from
+    // interrupted pulls plus orphaned blobs nothing references any more. No-op
+    // unless the `attachment-gc` Cargo feature is on (the enable/disable knob).
+    if let Err(e) = p2p_app::swarm_handler::gc_stale_attachments() {
+        p2plog_debug(format!("attachment GC failed: {e}"));
+    }
+
     // EventSource sends InputEvent to this channel
     let event_source = super::event_source::spawn_input_handler(input_tx);
 

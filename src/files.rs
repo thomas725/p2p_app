@@ -20,6 +20,8 @@ use crate::generated::models_insertable::NewFile;
 use crate::generated::schema::files::dsl::files;
 use color_eyre::eyre::{Context, eyre};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::time::Duration;
 
 /// Size of one chunk pulled over the file-transfer lane (fits the cbor codec's
 /// default 10 MiB response cap).
@@ -441,6 +443,194 @@ impl ReceivingFile {
 #[must_use]
 pub fn attachment_path(attachment: &MessageAttachment) -> Option<String> {
     file_path(&attachment.file_id)
+}
+
+/// Minimum age a blob must reach before the GC is allowed to delete it.
+///
+/// Guards the brief window after `ReceivingFile::finalize` renames a blob into
+/// the store but before its `files` row (and the message reference) lands, and
+/// anything else that is still being written.
+pub const GC_GRACE: Duration = Duration::from_mins(1);
+
+/// What one attachment-GC pass deleted (files lane §12).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct GcStats {
+    /// `.part` partials of interrupted pulls that were removed
+    pub incomplete_removed: usize,
+    /// Full blobs / broken `files` rows that were removed
+    pub orphans_removed: usize,
+}
+
+/// Attachment garbage collection (blob lifecycle, files lane §12): deletes
+/// store entries nothing can use any more.
+///
+/// Two classes are swept:
+/// - **Incomplete**: `.part` partials from interrupted pulls (crashes, aborted
+///   transfers) with no transfer in flight backing them.
+/// - **Overwritten/orphaned**: full blobs no live message references (superseded
+///   content after a DB reset or message loss), blobs detached from their
+///   `files` row, and `files` rows whose blob is missing on disk.
+///
+/// `active` is the set of `file_id`s currently being pulled (never swept) and
+/// `grace` the minimum blob age before removal. Invocation is the knob: the
+/// feature-gated `crate::swarm_handler::gc_stale_attachments` only runs it when
+/// the `attachment-gc` Cargo feature is on.
+///
+/// # Errors
+/// Returns an error if the store directory cannot be created or a DB query
+/// fails; individual unreadable/deleted blobs are skipped, not fatal.
+pub fn gc<S: std::hash::BuildHasher>(
+    active: &HashSet<String, S>,
+    grace: Duration,
+) -> color_eyre::Result<GcStats> {
+    Ok(GcStats {
+        incomplete_removed: sweep_incomplete_parts(active, grace)?,
+        orphans_removed: sweep_orphan_blobs(grace)?,
+    })
+}
+
+/// Remove every `.part` partial whose `file_id` has no transfer in flight and
+/// that is older than `grace`; returns how many were deleted.
+fn sweep_incomplete_parts<S: std::hash::BuildHasher>(
+    active: &HashSet<String, S>,
+    grace: Duration,
+) -> color_eyre::Result<usize> {
+    let mut removed = 0usize;
+    for entry in std::fs::read_dir(files_dir()?).wrap_err("failed to scan attachment store")? {
+        let entry = entry.wrap_err("failed to read attachment store entry")?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Some(file_id) = name.strip_suffix(".part") else {
+            continue;
+        };
+        if active.contains(file_id) || !blob_older_than(entry.path().as_path(), grace) {
+            continue;
+        }
+        if std::fs::remove_file(entry.path()).is_ok() {
+            removed = removed.saturating_add(1);
+        }
+    }
+    Ok(removed)
+}
+
+/// Remove blobs nothing can use any more (see [`gc`]); returns how many
+/// artifacts (blobs or rows) were deleted.
+fn sweep_orphan_blobs(grace: Duration) -> color_eyre::Result<usize> {
+    let referenced = referenced_file_ids()?;
+    let mut removed = 0usize;
+    for entry in std::fs::read_dir(files_dir()?).wrap_err("failed to scan attachment store")? {
+        let entry = entry.wrap_err("failed to read attachment store entry")?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if is_part_blob(&name)
+            || !entry.file_type().is_ok_and(|t| t.is_file())
+            || !blob_older_than(entry.path().as_path(), grace)
+        {
+            continue;
+        }
+        let file_id = name;
+        if referenced.contains(&file_id) {
+            continue;
+        }
+        // A blob with no live message reference is orphaned: delete the blob,
+        // and its `files` row too if one lingers.
+        if std::fs::remove_file(entry.path()).is_ok() {
+            removed = removed.saturating_add(1);
+        }
+        if find_file(&file_id)?.is_some() {
+            delete_file_row(&file_id)?;
+            removed = removed.saturating_add(1);
+        }
+    }
+    removed = removed.saturating_add(sweep_broken_rows()?);
+    Ok(removed)
+}
+
+/// Delete `files` rows whose stored blob no longer exists on disk; returns how
+/// many rows were removed (the blob is gone, so such a row can never be served
+/// or opened again).
+fn sweep_broken_rows() -> color_eyre::Result<usize> {
+    use crate::generated::schema::files::dsl::{file_id, path};
+    use diesel::QueryDsl as _;
+    use diesel::RunQueryDsl as _;
+    let conn = &mut crate::sqlite_connect()?;
+    let rows = files
+        .select((file_id, path))
+        .load::<(String, String)>(conn)
+        .wrap_err("failed to list stored attachments")?;
+    let mut removed = 0usize;
+    for (id, stored) in rows {
+        if !std::path::Path::new(&stored).exists() {
+            delete_file_row(&id)?;
+            removed = removed.saturating_add(1);
+        }
+    }
+    Ok(removed)
+}
+
+/// The set of `file_id`s referenced by any persisted message
+/// (`messages.attachment_json` ∪ `group_messages.attachment_json`).
+fn referenced_file_ids() -> color_eyre::Result<HashSet<String>> {
+    use crate::generated::schema::group_messages::dsl::{
+        attachment_json as group_attachment_json, group_messages,
+    };
+    use crate::generated::schema::messages::dsl::{attachment_json, messages};
+    use diesel::QueryDsl as _;
+    use diesel::RunQueryDsl as _;
+    let conn = &mut crate::sqlite_connect()?;
+    let message_rows = messages
+        .select(attachment_json)
+        .load::<Option<String>>(conn)
+        .wrap_err("failed to scan message attachments")?;
+    let group_rows = group_messages
+        .select(group_attachment_json)
+        .load::<Option<String>>(conn)
+        .wrap_err("failed to scan group attachments")?;
+    let mut referenced = HashSet::new();
+    for json in message_rows.into_iter().chain(group_rows) {
+        let Some(json) = json else {
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else {
+            continue;
+        };
+        if let Some(file_id) = value.get("file_id").and_then(serde_json::Value::as_str) {
+            referenced.insert(file_id.to_string());
+        }
+    }
+    Ok(referenced)
+}
+
+fn delete_file_row(file_id: &str) -> color_eyre::Result<()> {
+    use crate::generated::schema::files::dsl::files as files_table;
+    use diesel::ExpressionMethods as _;
+    use diesel::QueryDsl as _;
+    use diesel::RunQueryDsl as _;
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::delete(files_table.filter(crate::generated::schema::files::file_id.eq(file_id)))
+        .execute(conn)
+        .wrap_err("failed to remove attachment row")?;
+    Ok(())
+}
+
+/// Whether a store entry name is an in-progress `.part` partial (the extension
+/// comparison ignores case, like the filesystem's conventional hints).
+#[must_use]
+fn is_part_blob(name: &str) -> bool {
+    std::path::Path::new(name)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("part"))
+}
+
+/// Whether the blob file at `path` was last modified at least `grace` ago (`true`
+/// for files we cannot stat — a conservative *skip* would be safer, but a swept
+/// directory entry that vanishes mid-scan is already handled by the caller's
+/// `is_ok` guard, so treat the un-statable case as stale).
+#[must_use]
+fn blob_older_than(path: &std::path::Path, grace: Duration) -> bool {
+    let modified = match std::fs::metadata(path) {
+        Ok(metadata) => metadata.modified(),
+        Err(_) => return true,
+    };
+    modified.is_ok_and(|m| m.elapsed().is_ok_and(|age| age >= grace))
 }
 
 #[cfg(test)]
