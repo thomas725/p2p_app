@@ -70,6 +70,8 @@ pub mod peers;
 pub mod swarm_handler;
 pub mod tui_tabs;
 pub mod types;
+#[cfg(feature = "web")]
+pub mod web;
 
 /// Diesel schema/models for local SQLite storage.
 ///

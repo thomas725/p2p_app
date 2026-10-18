@@ -14,6 +14,7 @@ use crate::{
 use chrono::TimeZone;
 use libp2p::gossipsub;
 use num_traits::ToPrimitive;
+use serde::Serialize;
 use std::sync::Arc;
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
@@ -356,7 +357,7 @@ pub fn get_node_peer_id() -> Result<String, String> {
 
 // --- Mobile peer record with nicknames ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MobilePeerRecord {
     pub peer_id: String,
     pub first_seen: String,
@@ -397,7 +398,7 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
 
 // --- Message history types ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ChatMessage {
     pub id: i32,
     pub content: String,
@@ -413,7 +414,7 @@ pub struct ChatMessage {
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MobileAttachment {
     /// SHA-256 hex of the file bytes (content address)
     pub file_id: String,
@@ -530,6 +531,18 @@ pub fn save_outgoing_broadcast(
     attachment_path: Option<String>,
 ) -> Result<ChatMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
+    save_outgoing_broadcast_attached(content, attachment)
+}
+
+/// [`save_outgoing_broadcast`] with a pre-stored attachment (files lane §12).
+///
+/// The web upload route (docs/2026-10-18_web_frontend.md) stores the blob from
+/// raw bytes server-side and passes the descriptor straight through, so the
+/// path-based step never happens on that flow.
+pub(crate) fn save_outgoing_broadcast_attached(
+    content: String,
+    attachment: Option<crate::files::MessageAttachment>,
+) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -553,7 +566,7 @@ pub fn save_outgoing_broadcast(
                     content,
                     nickname,
                     msg_id: Some(msg_id.clone()),
-                    attachment: attachment.clone(),
+                    attachment,
                 })
                 .is_ok();
         }
@@ -588,6 +601,16 @@ pub fn save_outgoing_dm(
     attachment_path: Option<String>,
 ) -> Result<ChatMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
+    save_outgoing_dm_attached(peer_id, content, attachment)
+}
+
+/// [`save_outgoing_dm`] with a pre-stored attachment (files lane §12); see
+/// [`save_outgoing_broadcast_attached`].
+pub(crate) fn save_outgoing_dm_attached(
+    peer_id: String,
+    content: String,
+    attachment: Option<crate::files::MessageAttachment>,
+) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -613,7 +636,7 @@ pub fn save_outgoing_dm(
                     nickname,
                     msg_id: Some(msg_id),
                     ack_for: None,
-                    attachment: attachment.clone(),
+                    attachment,
                 })
                 .is_ok();
         }
@@ -758,7 +781,7 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
 
 // --- Group chat types and functions ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MobileGroup {
     pub group_id: String,
     pub display_name: String,
@@ -766,7 +789,7 @@ pub struct MobileGroup {
     pub is_private: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MobileGroupMessage {
     pub id: i32,
     pub content: String,
@@ -917,6 +940,16 @@ pub fn save_outgoing_group(
     attachment_path: Option<String>,
 ) -> Result<MobileGroupMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
+    save_outgoing_group_attached(group_id, content, attachment)
+}
+
+/// [`save_outgoing_group`] with a pre-stored attachment (files lane §12); see
+/// [`save_outgoing_broadcast_attached`].
+pub(crate) fn save_outgoing_group_attached(
+    group_id: String,
+    content: String,
+    attachment: Option<crate::files::MessageAttachment>,
+) -> Result<MobileGroupMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
     let nickname = crate::get_self_nickname().ok().flatten();
@@ -936,7 +969,7 @@ pub fn save_outgoing_group(
                 content,
                 nickname,
                 msg_id: Some(msg_id),
-                attachment: attachment.clone(),
+                attachment,
             });
         }
     }
@@ -959,7 +992,7 @@ pub fn attachment_file_path(file_id: &str) -> Result<String, String> {
 
 // --- JSON types for FRB ---
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SwarmEventJson {
     pub event_type: String,
     pub peer_id: Option<String>,

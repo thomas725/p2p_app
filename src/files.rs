@@ -174,6 +174,22 @@ pub fn attachment_from_json(json: &str) -> Option<MessageAttachment> {
 pub fn store_outgoing_file(path: &str) -> color_eyre::Result<MessageAttachment> {
     let data =
         std::fs::read(path).wrap_err_with(|| format!("failed to read attachment {path:?}"))?;
+    let name = std::path::Path::new(path).file_name().map_or_else(
+        || "attachment".to_string(),
+        |s| s.to_string_lossy().into_owned(),
+    );
+    store_outgoing_bytes(&name, &data)
+}
+
+/// Store attachment bytes received out-of-band (the web upload route),
+/// content-addressed exactly like [`store_outgoing_file`].
+///
+/// SHA-256 `file_id`, blob under [`files_dir`], row in the `files` table.
+///
+/// # Errors
+/// Returns an error if `data` is over [`MAX_ATTACHMENT_SIZE`] or the blob
+/// cannot be written/registered.
+pub fn store_outgoing_bytes(name: &str, data: &[u8]) -> color_eyre::Result<MessageAttachment> {
     let size =
         u64::try_from(data.len()).map_err(|_| eyre!("attachment byte length out of range"))?;
     if size > MAX_ATTACHMENT_SIZE {
@@ -181,16 +197,17 @@ pub fn store_outgoing_file(path: &str) -> color_eyre::Result<MessageAttachment> 
             "attachment too large: {size} bytes (max {MAX_ATTACHMENT_SIZE})"
         ));
     }
-    let file_id = hash_bytes(&data);
-    let name = std::path::Path::new(path).file_name().map_or_else(
-        || "attachment".to_string(),
-        |s| s.to_string_lossy().into_owned(),
-    );
+    let file_id = hash_bytes(data);
+    let name = if name.is_empty() {
+        "attachment".to_string()
+    } else {
+        name.to_string()
+    };
     let mime = mime_from_name(&name);
 
     let store_path = store_path_for(&file_id)?;
     if !store_path.exists() {
-        std::fs::write(&store_path, &data).wrap_err_with(|| {
+        std::fs::write(&store_path, data).wrap_err_with(|| {
             format!("failed to write attachment blob {}", store_path.display())
         })?;
     }

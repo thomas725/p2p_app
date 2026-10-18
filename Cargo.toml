@@ -48,7 +48,7 @@ strip = false
 panic = 'unwind'
 
 [features]
-default = [ "mdns", "tracing", "quic", "tui", "attachment-gc" ]
+default = [ "mdns", "tracing", "quic", "tui", "attachment-gc", "web" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
@@ -63,6 +63,11 @@ calls = []
 # ("overwritten"/superseded attachments). Disable to never delete blob state:
 # `--no-default-features --features <the rest you need>`.
 attachment-gc = []
+# Web frontend (docs/2026-10-18_web_frontend.md): axum HTTP+WebSocket server that
+# mirrors the FRB API surface so a Flutter-Web (or any) client can drive the node
+# remotely. Server binary `p2p_chat_server` requires it; the `mobile` feature set
+# deliberately excludes it.
+web = ["dep:axum", "dep:tower-http", "tokio/signal", "dep:futures-util"]
 
 [dependencies]
 tracing = { version = "=0.1.44", optional = true }
@@ -126,6 +131,14 @@ unicode-width = "0.2"
 # deduplicated and transfer integrity is verified on finalize.
 sha2 = "0.10"
 
+# Web frontend server (feature `web`): JSON-over-WebSocket mirror of the FRB
+# surface + attachment upload/download routes + static serving of the Flutter
+# web build.
+axum = { version = "0.8", optional = true, features = ["ws", "json", "query", "tokio", "http1", "macros"] }
+tower-http = { version = "0.6", optional = true, features = ["cors", "fs"] }
+# Stream/Sink combinators for splitting the axum WebSocket in the web server.
+futures-util = { version = "0.3", optional = true }
+
 [dev-dependencies]
 tempfile = "3"
 serial_test = "4"
@@ -138,6 +151,11 @@ path = "src/bin/p2p_chat.rs"
 name = "p2p_chat_tui"
 path = "src/bin/p2p_chat_tui.rs"
 required-features = ["tui"]
+
+[[bin]]
+name = "p2p_chat_server"
+path = "src/bin/p2p_chat_server.rs"
+required-features = ["web"]
 
 # [patch.crates-io]
 # rustls-webpki = { version = ">=0.103.13" }
