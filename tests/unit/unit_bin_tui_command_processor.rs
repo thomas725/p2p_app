@@ -1141,8 +1141,13 @@ fn test_handle_group_invite_keeps_an_existing_group_name() {
         let state = Arc::new(Mutex::new(test_app_state()));
         let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(8);
 
-        handle_group_invite(&state, &swarm_cmd_tx, created.group_id.clone(), "peer-1".to_string())
-            .await;
+        handle_group_invite(
+            &state,
+            &swarm_cmd_tx,
+            created.group_id.clone(),
+            "peer-1".to_string(),
+        )
+        .await;
 
         // Materializing is idempotent: the canonical name survives, and the
         // membership insert does not duplicate the row.

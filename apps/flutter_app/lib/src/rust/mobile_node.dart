@@ -6,7 +6,7 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `is_nickname_only_dm`, `lock_node_mutex`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
+// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `is_nickname_only_dm`, `lock_node_mutex`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `create_group`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `start_call`, `start_node_auto`, `start_node`, `stop_node`
@@ -17,6 +17,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 /// Returns an error if the node has not been started yet.
 Future<String> getNodePeerId() =>
     RustLib.instance.api.crateMobileNodeGetNodePeerId();
+
+/// Leave a group: drop the local row (messages, membership, the group itself)
+/// and unsubscribe from its gossipsub topic so the swarm stops delivering it.
+///
+/// Local-only by design — public groups have no server-side membership to
+/// notify; other members keep their copy of the history.
+///
+/// # Errors
+/// Returns an error if the group rows cannot be deleted.
+Future<void> deleteGroup({required String groupId}) =>
+    RustLib.instance.api.crateMobileNodeDeleteGroup(groupId: groupId);
 
 /// Absolute on-disk path for a received attachment's blob (files lane §12).
 ///
@@ -88,9 +99,7 @@ class ChatMessage {
           attachment == other.attachment;
 }
 
-/// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12): the
-/// descriptor that rides message payloads; bytes live on disk under
-/// `files::store_path_for(file_id)` (`attachment_file_path` hands the path).
+/// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
 class MobileAttachment {
   /// SHA-256 hex of the file bytes (content address)
   final String fileId;

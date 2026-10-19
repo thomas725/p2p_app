@@ -209,6 +209,26 @@ void main() {
       expect(fake.frame(1)['method'], 'stopNode');
     });
 
+    test('deleteGroup and setPeerLocalNickname route camelCase params',
+        () async {
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        fake.respond(fake.frame(fake.sentFrames.length - 1), ok: null);
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+
+      await api.deleteGroup(groupId: 'g-1');
+      await api.setPeerLocalNickname(peerId: 'peer-x', nickname: 'bob');
+
+      expect(fake.frame(0)['method'], 'deleteGroup');
+      expect(fake.frame(0)['params'], {'groupId': 'g-1'});
+      expect(fake.frame(1)['method'], 'setPeerLocalNickname');
+      expect(fake.frame(1)['params'], {
+        'peerId': 'peer-x',
+        'nickname': 'bob',
+      });
+    });
+
     test('non-protocol frames are ignored, not fatal', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {

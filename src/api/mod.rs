@@ -196,12 +196,35 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
     crate::mobile_node::accept_group_invite(group_id)
 }
 
+/// Leave a group: delete the local rows (messages, membership, the group
+/// itself) and unsubscribe from its gossipsub topic. Local-only — public
+/// groups have no server-side membership to notify.
+///
+/// # Errors
+/// Returns an error if the group rows cannot be deleted.
+pub fn delete_group(group_id: String) -> Result<(), String> {
+    crate::mobile_node::delete_group(group_id)
+}
+
 /// Set the local user's nickname.
 ///
 /// # Errors
 /// Returns an error if the nickname cannot be persisted.
 pub fn set_self_nickname(nickname: &str) -> Result<(), String> {
     crate::set_self_nickname(nickname).map_err(|e| e.to_string())
+}
+
+/// Set a per-peer local nickname (the name only this install shows for that
+/// peer). Validated against the canonical nickname rules
+/// ([`validate_nickname`]) so every frontend accepts the same input.
+///
+/// # Errors
+/// Returns an error if the nickname is invalid or cannot be persisted.
+pub fn set_peer_local_nickname(peer_id: &str, nickname: &str) -> Result<(), String> {
+    if !crate::nickname::validate_nickname(nickname) {
+        return Err(format!("invalid nickname: {nickname}"));
+    }
+    crate::nickname::set_peer_local_nickname(peer_id, nickname).map_err(|e| e.to_string())
 }
 
 /// Validate a nickname before persisting it.
@@ -368,4 +391,89 @@ pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
 /// Returns an error if the roster cannot be loaded.
 pub fn get_contacts_with_stats() -> Result<Vec<MobileContactRow>, String> {
     crate::mobile_api::get_contacts_with_stats()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    fn db_lock() -> std::sync::MutexGuard<'static, ()> {
+        crate::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    #[test]
+    #[serial(db)]
+    fn set_peer_local_nickname_validates_and_persists() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        crate::db::reset_db_url();
+        crate::mobile_api::init_mobile_database(
+            dir.path().join("api.sqlite").to_string_lossy().into_owned(),
+        )
+        .expect("mobile init");
+
+        // Valid: persisted and readable back through the canonical getter.
+        set_peer_local_nickname("peer-1", "alice-1").expect("valid nickname");
+        assert_eq!(
+            crate::nickname::get_peer_local_nickname("peer-1")
+                .expect("read back")
+                .as_deref(),
+            Some("alice-1")
+        );
+
+        // Invalid input is rejected by the same canonical rules everywhere
+        // (empty, over the length cap, non-alphanumeric/dash characters).
+        for bad in ["", "a-very-long-nickname-over-20", "has space", "bad!"] {
+            assert!(
+                set_peer_local_nickname("peer-1", bad).is_err(),
+                "expected rejection for {bad:?}"
+            );
+        }
+        // A rejected name never overwrites the stored one.
+        assert_eq!(
+            crate::nickname::get_peer_local_nickname("peer-1")
+                .expect("read back")
+                .as_deref(),
+            Some("alice-1")
+        );
+    }
+
+    #[test]
+    #[serial(db)]
+    fn delete_group_removes_group_and_membership() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        crate::db::reset_db_url();
+        crate::mobile_api::init_mobile_database(
+            dir.path().join("api.sqlite").to_string_lossy().into_owned(),
+        )
+        .expect("mobile init");
+
+        let group = crate::groups::create_public_group("Team Rocket").expect("create group");
+        crate::groups::record_group_member(&group.group_id, "peer-1").expect("member");
+        assert_eq!(
+            crate::groups::get_group_member_count(&group.group_id).expect("count"),
+            1
+        );
+
+        delete_group(group.group_id.clone()).expect("leave group");
+
+        assert!(
+            crate::groups::find_group(&group.group_id)
+                .expect("lookup")
+                .is_none(),
+            "group row must be gone"
+        );
+        assert_eq!(
+            crate::groups::get_group_member_count(&group.group_id).expect("count"),
+            0,
+            "membership must be gone"
+        );
+
+        // Unknown group: idempotent success (nothing to delete).
+        delete_group("does-not-exist".to_string()).expect("idempotent leave");
+    }
 }

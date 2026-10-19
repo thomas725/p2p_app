@@ -4,17 +4,23 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 
 /// Groups tab: the list of joined group chats plus a create/join button.
 /// Tapping a group opens its full-screen chat via [onOpenGroup]; creating a
-/// group goes through the Rust `createGroup` call bound in [onCreateGroup].
+/// group goes through the Rust `createGroup` call bound in [onCreateGroup];
+/// the per-row menu leaves a group via [onDeleteGroup] (hidden when omitted).
 class GroupList extends StatefulWidget {
   const GroupList({
     super.key,
     required this.groups,
     required this.onOpenGroup,
     required this.onCreateGroup,
+    this.onDeleteGroup,
   });
   final List<MobileGroup> groups;
   final void Function(MobileGroup) onOpenGroup;
   final Future<void> Function(String) onCreateGroup;
+
+  /// Leave a group (delete it locally + unsubscribe). Shows the per-row menu
+  /// only when provided.
+  final Future<void> Function(MobileGroup)? onDeleteGroup;
 
   @override
   State<GroupList> createState() => _GroupListState();
@@ -30,6 +36,47 @@ class _GroupListState extends State<GroupList> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Group "$created" ready.')));
+    }
+  }
+
+  /// Confirm, then leave [group]. Leaving is local-only (the history on other
+  /// members' installs is untouched), so the dialog says so explicitly.
+  Future<void> _confirmLeave(MobileGroup group) async {
+    final leave = widget.onDeleteGroup;
+    if (leave == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Leave "${group.displayName}"?'),
+        content: const Text(
+          'This deletes the group and its history from this device. '
+          'Other members keep their copy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await leave(group);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Left group "${group.displayName}".')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to leave group: $e')));
     }
   }
 
@@ -92,7 +139,20 @@ class _GroupListState extends State<GroupList> {
                       subtitle: Text(
                         members == 1 ? '1 member' : '$members members',
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: widget.onDeleteGroup == null
+                          ? const Icon(Icons.chevron_right)
+                          : PopupMenuButton<String>(
+                              tooltip: 'Group actions',
+                              onSelected: (value) {
+                                if (value == 'leave') _confirmLeave(g);
+                              },
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'leave',
+                                  child: Text('Leave group…'),
+                                ),
+                              ],
+                            ),
                       onTap: () => widget.onOpenGroup(g),
                     );
                   },

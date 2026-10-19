@@ -909,6 +909,25 @@ pub fn create_group(name: &str) -> Result<MobileGroup, String> {
     Ok(group_to_mobile(group, member_count))
 }
 
+/// Leave a group: drop the local row (messages, membership, the group itself)
+/// and unsubscribe from its gossipsub topic so the swarm stops delivering it.
+///
+/// Local-only by design — public groups have no server-side membership to
+/// notify; other members keep their copy of the history.
+///
+/// # Errors
+/// Returns an error if the group rows cannot be deleted.
+pub fn delete_group(group_id: String) -> Result<(), String> {
+    crate::groups::delete_group(&group_id).map_err(|e| e.to_string())?;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.blocking_send(SwarmCommand::UnsubscribeGroup { group_id });
+        }
+    }
+    Ok(())
+}
+
 /// List all known groups with their member counts.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn list_groups() -> Result<Vec<MobileGroup>, String> {

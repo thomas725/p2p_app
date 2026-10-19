@@ -315,6 +315,29 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refreshGroups();
   }
 
+  /// Leave a group: delete its local rows + unsubscribe, then refresh the list.
+  /// Leaving is local-only — other members keep the history. A confirmation
+  /// dialog lives in [GroupList].
+  Future<void> _leaveGroup(MobileGroup group) async {
+    await nodeApi.deleteGroup(groupId: group.groupId);
+    await _refreshGroups();
+  }
+
+  /// Persist a per-peer local nickname (this install only), then refresh the
+  /// roster. Returns the refreshed record so an open PeerInfo page reflects the
+  /// edit immediately; null when the peer is no longer in the roster.
+  Future<MobilePeerRecord?> _setPeerNickname(
+    MobilePeerRecord peer,
+    String nickname,
+  ) async {
+    await nodeApi.setPeerLocalNickname(
+      peerId: peer.peerId,
+      nickname: nickname,
+    );
+    await _refreshRoster();
+    return _peers.where((p) => p.peerId == peer.peerId).firstOrNull;
+  }
+
   /// Prompt to bind an incoming device into this account. Deduplicates by
   /// peer_id so retransmitted intros never stack dialogs.
   Future<void> _handleDeviceBindingIntro(
@@ -718,6 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onNavigate: _navigateToTab,
           currentTab: 1,
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
+          onEditLocalNickname: _setPeerNickname,
         ),
       ),
     );
@@ -840,6 +864,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onNavigate: _navigateToTab,
           currentTab: 0,
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
+          onEditLocalNickname: _setPeerNickname,
         ),
       ),
     );
@@ -894,6 +919,7 @@ class _HomeScreenState extends State<HomeScreen> {
         groups: _groups,
         onOpenGroup: _openGroupChat,
         onCreateGroup: _createGroup,
+        onDeleteGroup: _leaveGroup,
       ),
       const LogTab(),
       Settings(

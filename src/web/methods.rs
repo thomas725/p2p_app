@@ -39,8 +39,9 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
         m @ ("createGroup" | "listGroups" | "loadGroupMessages" | "saveOutgoingGroup"
-        | "acceptGroupInvite") => groups(m, params),
+        | "acceptGroupInvite" | "deleteGroup") => groups(m, params),
         m @ ("setSelfNickname"
+        | "setPeerLocalNickname"
         | "validateNickname"
         | "networkSizeLabel"
         | "getMyUserId"
@@ -153,6 +154,10 @@ fn groups(method: &str, params: Value) -> Result<Value, String> {
             let p: GroupIdParams = parse(params)?;
             json(api::accept_group_invite(p.group_id))
         }
+        "deleteGroup" => {
+            let p: GroupIdParams = parse(params)?;
+            json(api::delete_group(p.group_id))
+        }
         other => Err(format!("method not routed to groups: {other}")),
     }
 }
@@ -163,6 +168,10 @@ fn identity(method: &str, params: Value) -> Result<Value, String> {
         "setSelfNickname" => {
             let p: NameParams = parse(params)?;
             json(api::set_self_nickname(&p.name))
+        }
+        "setPeerLocalNickname" => {
+            let p: PeerNickParams = parse(params)?;
+            json(api::set_peer_local_nickname(&p.peer_id, &p.nickname))
         }
         "validateNickname" => {
             let p: NameParams = parse(params)?;
@@ -311,6 +320,13 @@ struct GroupLimitParams {
 #[serde(rename_all = "camelCase")]
 struct PeerIdParams {
     peer_id: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PeerNickParams {
+    peer_id: String,
+    nickname: String,
 }
 
 #[derive(serde::Deserialize)]

@@ -22,12 +22,14 @@ Widget _app({
   required List<MobileGroup> groups,
   required Future<void> Function(String) onCreateGroup,
   void Function(MobileGroup)? onOpenGroup,
+  Future<void> Function(MobileGroup)? onDeleteGroup,
 }) => MaterialApp(
   home: Scaffold(
     body: GroupList(
       groups: groups,
       onOpenGroup: onOpenGroup ?? (_) {},
       onCreateGroup: onCreateGroup,
+      onDeleteGroup: onDeleteGroup,
     ),
   ),
 );
@@ -134,5 +136,98 @@ void main() {
 
     expect(calls, 0);
     expect(find.text('Create or join a group'), findsOneWidget);
+  });
+
+  testWidgets('no leave menu renders without onDeleteGroup', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        groups: [group('aaa', name: 'Rust Enthusiasts')],
+        onCreateGroup: (_) async {},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(PopupMenuButton<String>), findsNothing);
+    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+  });
+
+  testWidgets('leave menu confirms then calls onDeleteGroup', (tester) async {
+    final left = <MobileGroup>[];
+    await tester.pumpWidget(
+      _app(
+        groups: [group('aaa', name: 'Rust Enthusiasts', members: 2)],
+        onCreateGroup: (_) async {},
+        onDeleteGroup: (g) async => left.add(g),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave group…'));
+    await tester.pumpAndSettle();
+
+    // The confirmation spells out that leaving is local-only.
+    expect(find.text('Leave "Rust Enthusiasts"?'), findsOneWidget);
+    expect(
+      find.text(
+        'This deletes the group and its history from this device. '
+        'Other members keep their copy.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Leave'));
+    await tester.pumpAndSettle();
+
+    expect(left.single.groupId, 'aaa');
+    expect(find.text('Left group "Rust Enthusiasts".'), findsOneWidget);
+  });
+
+  testWidgets('cancelling the leave dialog leaves the group alone', (
+    tester,
+  ) async {
+    var calls = 0;
+    await tester.pumpWidget(
+      _app(
+        groups: [group('aaa', name: 'Rust Enthusiasts')],
+        onCreateGroup: (_) async {},
+        onDeleteGroup: (_) async => calls++,
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave group…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(calls, 0);
+    expect(find.text('Leave "Rust Enthusiasts"?'), findsNothing);
+  });
+
+  testWidgets('leave failure surfaces an error snackbar', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        groups: [group('aaa', name: 'Rust Enthusiasts')],
+        onCreateGroup: (_) async {},
+        onDeleteGroup: (_) async => throw Exception('boom'),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave group…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Leave'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Failed to leave group: Exception: boom'),
+      findsOneWidget,
+    );
   });
 }

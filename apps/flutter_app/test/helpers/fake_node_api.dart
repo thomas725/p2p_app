@@ -173,9 +173,30 @@ class FakeNodeApi implements NodeApi {
   Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
       throw UnimplementedError();
 
+  /// Group ids passed to [deleteGroup] (records each call).
+  final List<String> deletedGroups = [];
+
+  @override
+  Future<void> deleteGroup({required String groupId}) async {
+    _record('deleteGroup', groupId);
+    deletedGroups.add(groupId);
+  }
+
   @override
   Future<void> setSelfNickname({required String nickname}) =>
       throw UnimplementedError();
+
+  /// `(peerId, nickname)` pairs passed to [setPeerLocalNickname].
+  final List<(String, String)> peerLocalNicknames = [];
+
+  @override
+  Future<void> setPeerLocalNickname({
+    required String peerId,
+    required String nickname,
+  }) async {
+    _record('setPeerLocalNickname', peerId);
+    peerLocalNicknames.add((peerId, nickname));
+  }
 
   @override
   Future<bool> validateNickname({required String nickname}) =>

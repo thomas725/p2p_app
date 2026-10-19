@@ -502,11 +502,24 @@ class HttpNodeApi implements NodeApi {
   Future<MobileGroup> acceptGroupInvite({required String groupId}) async =>
       groupFromJson(await _call('acceptGroupInvite', {'groupId': groupId}));
 
+  @override
+  Future<void> deleteGroup({required String groupId}) =>
+      _call('deleteGroup', {'groupId': groupId});
+
   // ── Nickname / self ───────────────────────────────────────────────────────
 
   @override
   Future<void> setSelfNickname({required String nickname}) =>
       _call('setSelfNickname', {'name': nickname});
+
+  @override
+  Future<void> setPeerLocalNickname({
+    required String peerId,
+    required String nickname,
+  }) => _call('setPeerLocalNickname', {
+    'peerId': peerId,
+    'nickname': nickname,
+  });
 
   @override
   Future<bool> validateNickname({required String nickname}) async =>

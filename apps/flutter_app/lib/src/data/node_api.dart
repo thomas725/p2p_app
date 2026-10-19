@@ -115,9 +115,19 @@ abstract class NodeApi {
 
   Future<MobileGroup> acceptGroupInvite({required String groupId});
 
+  /// Leave a group: delete its local rows and unsubscribe from its topic.
+  /// Local-only — other members keep their copy of the history.
+  Future<void> deleteGroup({required String groupId});
+
   // --- Nicknames / labels ---
 
   Future<void> setSelfNickname({required String nickname});
+
+  /// Set the local nickname shown for a peer (this install only).
+  Future<void> setPeerLocalNickname({
+    required String peerId,
+    required String nickname,
+  });
 
   Future<bool> validateNickname({required String nickname});
 

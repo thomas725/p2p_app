@@ -482,9 +482,10 @@ mod tests {
     #[tokio::test]
     async fn pure_helpers_answer_over_the_frame_protocol() {
         // Times: `HH:MM` slice of a timestamp, whole string when too short.
-        let response =
-            frame(r#"{"id": 1, "method": "formatTimeHhmm", "params": {"dt": "2026-10-19 08:42:00"}}"#)
-                .await;
+        let response = frame(
+            r#"{"id": 1, "method": "formatTimeHhmm", "params": {"dt": "2026-10-19 08:42:00"}}"#,
+        )
+        .await;
         assert_eq!(response, json!({"id": 1, "ok": "08:42"}));
         let response =
             frame(r#"{"id": 2, "method": "formatTimeHhmm", "params": {"dt": "08:42"}}"#).await;
@@ -495,9 +496,10 @@ mod tests {
             frame(r#"{"id": 3, "method": "parseLastSeenMs", "params": {"lastSeen": "1970-01-01 00:00:10"}}"#)
                 .await;
         assert_eq!(response, json!({"id": 3, "ok": 10_000}));
-        let response =
-            frame(r#"{"id": 4, "method": "parseLastSeenMs", "params": {"lastSeen": "not-a-date"}}"#)
-                .await;
+        let response = frame(
+            r#"{"id": 4, "method": "parseLastSeenMs", "params": {"lastSeen": "not-a-date"}}"#,
+        )
+        .await;
         assert_eq!(response, json!({"id": 4, "ok": 0}));
 
         // Network-size buckets (the label rule lives in Rust only).
@@ -510,7 +512,8 @@ mod tests {
 
         // Nickname validation (canonical Rust rule).
         let response =
-            frame(r#"{"id": 7, "method": "validateNickname", "params": {"name": "alice-1"}}"#).await;
+            frame(r#"{"id": 7, "method": "validateNickname", "params": {"name": "alice-1"}}"#)
+                .await;
         assert_eq!(response, json!({"id": 7, "ok": true}));
         let response =
             frame(r#"{"id": 8, "method": "validateNickname", "params": {"name": ""}}"#).await;
@@ -534,7 +537,9 @@ mod tests {
             "loadGroupMessages",
             "saveOutgoingGroup",
             "acceptGroupInvite",
+            "deleteGroup",
             "setSelfNickname",
+            "setPeerLocalNickname",
             "validateNickname",
             "networkSizeLabel",
             "provisionMyUser",
@@ -652,7 +657,10 @@ mod tests {
             None,
             "a bare token is not a bearer token"
         );
-        headers.insert(header::AUTHORIZATION, "Bearer s3cret".parse().expect("value"));
+        headers.insert(
+            header::AUTHORIZATION,
+            "Bearer s3cret".parse().expect("value"),
+        );
         assert_eq!(bearer_token(&headers).as_deref(), Some("s3cret"));
     }
 
@@ -689,10 +697,9 @@ mod tests {
         assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
 
         let mut authorized = http_request("GET", "/api/status", Vec::new());
-        authorized.headers_mut().insert(
-            header::AUTHORIZATION,
-            "Bearer tok".parse().expect("value"),
-        );
+        authorized
+            .headers_mut()
+            .insert(header::AUTHORIZATION, "Bearer tok".parse().expect("value"));
         let allowed = build_router(state.clone(), None)
             .oneshot(authorized)
             .await
@@ -785,9 +792,10 @@ mod tests {
             let checks_file_id = expected_file_id.clone();
             let (blob, reuploaded_id) = tokio::task::spawn_blocking(move || {
                 let blob = crate::files::store_path_for(&checks_file_id).expect("store path");
-                let reuploaded_id = crate::files::store_outgoing_bytes("other-name.txt", &checks_data)
-                    .expect("idempotent store")
-                    .file_id;
+                let reuploaded_id =
+                    crate::files::store_outgoing_bytes("other-name.txt", &checks_data)
+                        .expect("idempotent store")
+                        .file_id;
                 (blob, reuploaded_id)
             })
             .await
@@ -854,7 +862,10 @@ mod tests {
     #[test]
     fn disposition_filename_strips_header_metacharacters() {
         assert_eq!(disposition_filename("notes.txt"), "notes.txt");
-        assert_eq!(disposition_filename("ev\"il\\name\n.txt"), "ev_il_name_.txt");
+        assert_eq!(
+            disposition_filename("ev\"il\\name\n.txt"),
+            "ev_il_name_.txt"
+        );
         assert_eq!(disposition_filename("ünïcode.txt"), "ünïcode.txt");
     }
 
@@ -867,7 +878,12 @@ mod tests {
             + Unpin,
     {
         loop {
-            match socket.next().await.expect("socket frame").expect("frame ok") {
+            match socket
+                .next()
+                .await
+                .expect("socket frame")
+                .expect("frame ok")
+            {
                 WsMessage::Text(text) => return text.to_string(),
                 WsMessage::Close(_) => panic!("server closed the socket"),
                 _ => {}
@@ -882,9 +898,7 @@ mod tests {
             .await
             .expect("bind");
         let addr = listener.local_addr().expect("local addr");
-        let server = tokio::spawn(
-            axum::serve(listener, build_router(state, None)).into_future(),
-        );
+        let server = tokio::spawn(axum::serve(listener, build_router(state, None)).into_future());
 
         let (mut socket, _) =
             tokio_tungstenite::connect_async(format!("ws://{addr}/ws?token=wstok"))
@@ -935,9 +949,7 @@ mod tests {
             .await
             .expect("bind");
         let addr = listener.local_addr().expect("local addr");
-        let server = tokio::spawn(
-            axum::serve(listener, build_router(state, None)).into_future(),
-        );
+        let server = tokio::spawn(axum::serve(listener, build_router(state, None)).into_future());
 
         assert!(
             tokio_tungstenite::connect_async(format!("ws://{addr}/ws"))

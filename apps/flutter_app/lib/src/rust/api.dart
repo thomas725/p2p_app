@@ -182,12 +182,35 @@ Future<MobileGroupMessage> saveOutgoingGroup({
 Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
     RustLib.instance.api.crateApiAcceptGroupInvite(groupId: groupId);
 
+/// Leave a group: delete the local rows (messages, membership, the group
+/// itself) and unsubscribe from its gossipsub topic. Local-only — public
+/// groups have no server-side membership to notify.
+///
+/// # Errors
+/// Returns an error if the group rows cannot be deleted.
+Future<void> deleteGroup({required String groupId}) =>
+    RustLib.instance.api.crateApiDeleteGroup(groupId: groupId);
+
 /// Set the local user's nickname.
 ///
 /// # Errors
 /// Returns an error if the nickname cannot be persisted.
 Future<void> setSelfNickname({required String nickname}) =>
     RustLib.instance.api.crateApiSetSelfNickname(nickname: nickname);
+
+/// Set a per-peer local nickname (the name only this install shows for that
+/// peer). Validated against the canonical nickname rules
+/// ([`validate_nickname`]) so every frontend accepts the same input.
+///
+/// # Errors
+/// Returns an error if the nickname is invalid or cannot be persisted.
+Future<void> setPeerLocalNickname({
+  required String peerId,
+  required String nickname,
+}) => RustLib.instance.api.crateApiSetPeerLocalNickname(
+  peerId: peerId,
+  nickname: nickname,
+);
 
 /// Validate a nickname before persisting it.
 ///

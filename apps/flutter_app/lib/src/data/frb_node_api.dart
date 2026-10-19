@@ -175,11 +175,21 @@ class FrbNodeApi implements NodeApi {
   Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
       bridge.acceptGroupInvite(groupId: groupId);
 
+  @override
+  Future<void> deleteGroup({required String groupId}) =>
+      bridge.deleteGroup(groupId: groupId);
+
   // ── Nickname / self ───────────────────────────────────────────────────────
 
   @override
   Future<void> setSelfNickname({required String nickname}) =>
       bridge.setSelfNickname(nickname: nickname);
+
+  @override
+  Future<void> setPeerLocalNickname({
+    required String peerId,
+    required String nickname,
+  }) => bridge.setPeerLocalNickname(peerId: peerId, nickname: nickname);
 
   @override
   Future<bool> validateNickname({required String nickname}) =>
