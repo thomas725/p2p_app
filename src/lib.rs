@@ -112,9 +112,9 @@ pub use fmt::{
     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,
 };
 #[cfg(any(test, feature = "test-utils"))]
-pub use logging::{clear_tui_logs, tracing_filter};
+pub use logging::tracing_filter;
 pub use logging::{
-    get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, push_log,
+    clear_tui_logs, get_tui_logs, init_logging, p2plog_debug, p2plog_error, p2plog_info, push_log,
     register_log_callback, request_tui_redraw, set_tui_redraw_hook, strip_ansi_codes,
 };
 pub use messages::{

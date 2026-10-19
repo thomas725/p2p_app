@@ -192,6 +192,17 @@ pub fn get_tui_logs() -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Clear the in-memory log buffer (Log tab / Settings "Clear" action).
+///
+/// A no-op when logging was never initialized (empty buffer).
+pub fn clear_tui_logs() {
+    if let Some(logs) = LOG_BUFFER.get()
+        && let Ok(mut guard) = logs.lock()
+    {
+        guard.clear();
+    }
+}
+
 /// Path to the application log file.
 fn log_file_path() -> std::path::PathBuf {
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -389,7 +400,7 @@ pub fn p2plog_error(msg: impl Into<String>) {
 mod test_utils;
 
 #[cfg(any(test, feature = "test-utils"))]
-pub use test_utils::{clear_tui_logs, tracing_filter};
+pub use test_utils::tracing_filter;
 
 #[cfg(test)]
 #[path = "../tests/unit/unit_logging.rs"]

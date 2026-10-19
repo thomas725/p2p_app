@@ -66,8 +66,17 @@ attachment-gc = []
 # Web frontend (docs/2026-10-18_web_frontend.md): axum HTTP+WebSocket server that
 # mirrors the FRB API surface so a Flutter-Web (or any) client can drive the node
 # remotely. Server binary `p2p_chat_server` requires it; the `mobile` feature set
-# deliberately excludes it.
-web = ["dep:axum", "dep:tower-http", "tokio/signal", "dep:futures-util"]
+# deliberately excludes it. The server republishes the `mobile`/FRB surface
+# (`crate::api`, `crate::mobile_api`, `crate::mobile_node`), so `web` implies
+# `mobile` — otherwise the default feature set (which includes `web`) would not
+# compile.
+web = [
+    "dep:axum",
+    "dep:tower-http",
+    "tokio/signal",
+    "dep:futures-util",
+    "mobile",
+]
 
 [dependencies]
 tracing = { version = "=0.1.44", optional = true }
@@ -142,6 +151,11 @@ futures-util = { version = "0.3", optional = true }
 [dev-dependencies]
 tempfile = "3"
 serial_test = "4"
+# Web-server tests: a WebSocket client for the end-to-end frame-protocol test
+# and Router::oneshot for the HTTP routes. Both are already in the tree via
+# axum (same versions), so this adds no new dependency surface.
+tower = { version = "0.5", features = ["util"] }
+tokio-tungstenite = "0.29"
 
 [[bin]]
 name = "p2p_chat"

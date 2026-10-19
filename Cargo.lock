@@ -3306,6 +3306,8 @@ dependencies = [
  "sha2 0.10.9",
  "tempfile",
  "tokio",
+ "tokio-tungstenite",
+ "tower",
  "tower-http",
  "tracing",
  "tracing-subscriber",
