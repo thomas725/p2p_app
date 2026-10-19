@@ -35,6 +35,11 @@ class HttpNodeApi implements NodeApi {
 
   final Future<RemoteTransport> Function() _connect;
   RemoteTransport? _transport;
+
+  /// The single in-flight connection attempt, shared by concurrent callers
+  /// (`startEventPump` + the first `_call`) so the transport's frames stream
+  /// is listened to exactly once. Cleared on drop so reconnects re-run it.
+  Future<void>? _connecting;
   StreamSubscription<String>? _framesSub;
   final Map<int, Completer<dynamic>> _pending = {};
   int _nextId = 0;
@@ -53,6 +58,9 @@ class HttpNodeApi implements NodeApi {
   @override
   void startEventPump(void Function(SwarmEventJson event) onEvent) {
     _onEvent = onEvent;
+    // Eagerly (best-effort) establish the connection so pushed events flow
+    // even before the first request; failures surface on the next _call.
+    unawaited(_ensureConnected().catchError((Object _) {}));
   }
 
   @override
@@ -62,8 +70,23 @@ class HttpNodeApi implements NodeApi {
 
   // ── Wire plumbing ─────────────────────────────────────────────────────────
 
-  Future<void> _ensureConnected() async {
-    if (_transport != null) return;
+  Future<void> _ensureConnected() {
+    if (_transport != null) return Future<void>.value();
+    final pending = _connecting;
+    if (pending != null) return pending;
+    final attempt = _connectAndListen();
+    _connecting = attempt;
+    // A failed attempt must not poison future calls: clear the shared future
+    // (the original still delivers the error to whoever awaited it).
+    unawaited(
+      attempt.catchError((Object _) {
+        if (identical(_connecting, attempt)) _connecting = null;
+      }),
+    );
+    return attempt;
+  }
+
+  Future<void> _connectAndListen() async {
     final transport = await _connect();
     _transport = transport;
     _framesSub = transport.frames.listen(
@@ -102,6 +125,7 @@ class HttpNodeApi implements NodeApi {
     unawaited(_framesSub?.cancel());
     _framesSub = null;
     _transport = null;
+    _connecting = null;
     for (final completer in _pending.values) {
       completer.completeError(Exception('connection to the node closed'));
     }
