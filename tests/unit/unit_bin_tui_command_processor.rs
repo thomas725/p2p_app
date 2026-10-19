@@ -1077,3 +1077,83 @@ async fn test_call_end_clears_session() {
     .await;
     assert_call_session(&state, None).await;
 }
+
+// ── handle_group_invite ───────────────────────────────────────────────
+
+#[test]
+fn test_handle_group_invite_materializes_group_and_subscribes() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(8);
+
+        handle_group_invite(
+            &state,
+            &swarm_cmd_tx,
+            "group-abc".to_string(),
+            "peer-1".to_string(),
+        )
+        .await;
+
+        // An invite only carries the id, so the groups row is materialized
+        // with the id as its display name (it must show up in the Groups tab).
+        let group = p2p_app::groups::find_group("group-abc")
+            .unwrap()
+            .expect("invited group is materialized");
+        assert_eq!(group.group_id, "group-abc");
+        assert_eq!(group.display_name, "group-abc");
+        // ...the local peer is recorded as a member...
+        assert_eq!(
+            p2p_app::groups::get_group_member_count("group-abc").unwrap(),
+            1
+        );
+        // ...and we subscribed: the swarm only delivers subscribed topics.
+        match swarm_cmd_rx.try_recv() {
+            Ok(SwarmCommand::SubscribeGroup { group_id }) => assert_eq!(group_id, "group-abc"),
+            other => panic!("expected SubscribeGroup, got {other:?}"),
+        }
+    });
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_handle_group_invite_keeps_an_existing_group_name() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        // A group we already joined by name (canonical display name known).
+        let created = p2p_app::groups::create_public_group("Team Rocket").unwrap();
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(8);
+
+        handle_group_invite(&state, &swarm_cmd_tx, created.group_id.clone(), "peer-1".to_string())
+            .await;
+
+        // Materializing is idempotent: the canonical name survives, and the
+        // membership insert does not duplicate the row.
+        let group = p2p_app::groups::find_group(&created.group_id)
+            .unwrap()
+            .expect("group still there");
+        assert_eq!(group.display_name, "Team Rocket");
+        assert_eq!(
+            p2p_app::groups::get_group_member_count(&created.group_id).unwrap(),
+            1
+        );
+    });
+    p2p_app::db::reset_db_url();
+}

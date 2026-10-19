@@ -428,6 +428,11 @@ async fn handle_group_invite(
             p2p_app::peer_display_name(&inviter_peer, &s.local_nicknames, &s.received_nicknames);
         let local_peer_id = s.local_peer_id.clone();
         drop(s);
+        // An invite only carries a `group_id`, so materialize the group row
+        // first (display_name = group_id when the canonical name isn't known;
+        // idempotent for a group we already joined by name) — `group_members`
+        // references `groups`, and the group must show up in the Groups tab.
+        let _ = p2p_app::groups::ensure_group_for_invite(&group_id);
         let _ = p2p_app::groups::record_group_member(&group_id, &local_peer_id);
         sender_display
     };
