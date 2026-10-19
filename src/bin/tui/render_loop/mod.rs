@@ -29,6 +29,17 @@ fn render_popup_text(state: &AppState) -> Option<String> {
                 p.device_pubkey.len()
             )
         })
+        .or_else(|| {
+            state.group_leave_prompt.as_ref().map(|p| {
+                format!(
+                    "Leave group \"{}\"?\n\
+                     \nThis deletes the group and its history from this device. \
+                     Other members keep their copy.\n\
+                     \nConfirm with 'y' or Enter \u{b7} cancel with Esc",
+                    p.display_name
+                )
+            })
+        })
         .or_else(|| call_overlay_text(state))
         .or_else(|| state.popup.clone())
 }

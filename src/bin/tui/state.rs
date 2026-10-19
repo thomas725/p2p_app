@@ -176,6 +176,13 @@ pub struct AppState {
     /// 'd'/Esc declines.
     pub device_binding_prompt: Option<DeviceBindingPrompt>,
 
+    /// Group the user asked to leave, awaiting confirmation ('y'/Enter
+    /// confirms, any other key or Esc cancels). Single-slot like the
+    /// device-binding prompt; leaving is local-only (the group row, its
+    /// messages and the membership are deleted here, other members keep their
+    /// copy), mirroring Flutter's "Leave group" dialog.
+    pub group_leave_prompt: Option<GroupLeavePrompt>,
+
     /// Live call session (calls lane). One session at a time, mirroring the
     /// single-slot device-binding prompt; `None` = no active/ringing call.
     /// Advanced here on call events; the interactive surface (accept/reject/
@@ -199,6 +206,13 @@ pub struct AppState {
 pub struct DeviceBindingPrompt {
     pub peer_id: String,
     pub device_pubkey: Vec<u8>,
+}
+
+/// A group the user asked to leave, pending a `y`/Enter confirmation.
+#[derive(Clone)]
+pub struct GroupLeavePrompt {
+    pub group_id: String,
+    pub display_name: String,
 }
 
 impl AppState {
@@ -228,6 +242,43 @@ impl AppState {
         }
         self.input_mode = p2p_app::InputMode::Chat;
         self.chat_input = TextArea::default();
+    }
+
+    /// Arm the leave-group confirmation for `group_id` (single slot: an
+    /// already-armed prompt is replaced).
+    pub fn begin_group_leave(&mut self, group_id: String, display_name: String) {
+        self.group_leave_prompt = Some(GroupLeavePrompt {
+            group_id,
+            display_name,
+        });
+    }
+
+    /// Clear the leave-group confirmation; true when one was armed.
+    pub fn cancel_group_leave(&mut self) -> bool {
+        self.group_leave_prompt.take().is_some()
+    }
+
+    /// Apply the local side of leaving `group_id` after the DB rows are gone:
+    /// refresh the list, keep the selection in range, drop the in-memory
+    /// history (so re-joining starts from the backfill, not stale rows), and
+    /// close the group's chat tab (adjusting the active tab if it was open).
+    pub fn apply_group_leave(&mut self, group_id: &str) {
+        self.reload_group_summaries();
+        self.group_selection = self
+            .group_selection
+            .min(self.group_summaries.len().saturating_sub(1));
+        self.group_messages.remove(group_id);
+        self.group_message_ids.remove(group_id);
+        self.group_message_peer_ids.remove(group_id);
+        self.group_scroll_state.remove(group_id);
+        if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
+            if closed == self.active_tab {
+                // Leaving from the group's own chat tab: back to the list.
+                self.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT.saturating_sub(1);
+            } else if closed < self.active_tab {
+                self.active_tab = self.active_tab.saturating_sub(1);
+            }
+        }
     }
 
     /// Refresh the group list from the database (used after create/join and on
@@ -480,6 +531,7 @@ impl AppState {
             editing_nickname_peer: None,
             popup: None,
             device_binding_prompt: None,
+            group_leave_prompt: None,
             call_session: None,
             db_url: String::new(),
             platform: String::new(),

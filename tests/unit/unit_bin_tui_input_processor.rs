@@ -1530,3 +1530,171 @@ async fn test_call_overlay_ctrl_q_quits_during_call() {
     .await;
     assert!(exited, "Ctrl+Q still exits during a call");
 }
+
+// ── group leave (d key + confirmation) ─────────────────────────────────────
+
+fn group_summary(group_id: &str, name: &str) -> p2p_app::groups::GroupSummary {
+    p2p_app::groups::GroupSummary {
+        group: p2p_app::generated::models_queryable::Group {
+            id: 1,
+            group_id: group_id.to_string(),
+            display_name: name.to_string(),
+            is_private: 0,
+            created_at: chrono::NaiveDateTime::default(),
+        },
+        member_count: 2,
+    }
+}
+
+/// A state sitting on the Groups list with one group and nothing else armed.
+fn groups_tab_state(group_id: &str, name: &str) -> AppState {
+    let mut s = test_app_state();
+    s.group_summaries = vec![group_summary(group_id, name)];
+    s.group_selection = 0;
+    s.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT - 1; // the Groups list
+    s
+}
+
+#[tokio::test]
+async fn test_group_d_key_arms_leave_confirmation() {
+    let state = Arc::new(Mutex::new(groups_tab_state("g-1", "Team")));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    let prompt = s.group_leave_prompt.as_ref().expect("prompt armed");
+    assert_eq!(prompt.group_id, "g-1");
+    assert_eq!(prompt.display_name, "Team");
+    drop(s);
+    assert!(render_rx.try_recv().is_ok(), "prompt triggers a redraw");
+}
+
+#[tokio::test]
+async fn test_group_leave_any_other_key_cancels() {
+    let mut s = groups_tab_state("g-1", "Team");
+    s.begin_group_leave("g-1".to_string(), "Team".to_string());
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.group_leave_prompt.is_none(), "cancelled");
+    assert_eq!(s.group_summaries.len(), 1, "nothing deleted");
+    drop(s);
+    assert!(swarm_cmd_rx.try_recv().is_err(), "no unsubscribe sent");
+}
+
+#[tokio::test]
+async fn test_group_leave_esc_cancels_without_returning_to_chat() {
+    let mut s = groups_tab_state("g-1", "Team");
+    s.begin_group_leave("g-1".to_string(), "Team".to_string());
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.group_leave_prompt.is_none());
+    assert_eq!(
+        s.active_tab,
+        p2p_app::tui_tabs::FIXED_TAB_COUNT - 1,
+        "Esc only cancels the prompt, it does not jump back to Chat"
+    );
+}
+
+#[test]
+#[serial]
+fn test_group_leave_confirmation_deletes_and_unsubscribes() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("group-leave.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let group = p2p_app::groups::create_public_group("Team Rocket").expect("create group");
+        let group_id = group.group_id.clone();
+
+        let mut s = groups_tab_state(&group_id, "Team Rocket");
+        s.reload_group_summaries();
+        // The group also has an open chat tab (so leaving must close it).
+        s.dynamic_tabs
+            .add_group_tab(group_id.clone(), "Team Rocket".to_string());
+        s.group_messages.insert(
+            group_id.clone(),
+            std::collections::VecDeque::from(["hi".to_string()]),
+        );
+        s.begin_group_leave(group_id.clone(), "Team Rocket".to_string());
+
+        let state = Arc::new(Mutex::new(s));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+        let (render_tx, _) = mpsc::channel(1);
+
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+
+        // Local rows gone (the DB side of "leave group").
+        assert!(
+            p2p_app::groups::find_group(&group_id)
+                .expect("lookup")
+                .is_none(),
+            "group row deleted"
+        );
+        // And we stop receiving its traffic.
+        match swarm_cmd_rx.try_recv() {
+            Ok(SwarmCommand::UnsubscribeGroup { group_id: id }) => {
+                assert_eq!(id, group_id);
+            }
+            other => panic!("expected UnsubscribeGroup, got {other:?}"),
+        }
+
+        let s = state.lock().await;
+        assert!(s.group_leave_prompt.is_none(), "prompt consumed");
+        assert!(
+            s.group_summaries
+                .iter()
+                .all(|g| g.group.group_id != group_id),
+            "list refreshed without the group"
+        );
+        assert!(
+            s.dynamic_tabs.get_group_tab(&group_id).is_none(),
+            "chat tab closed"
+        );
+        assert!(
+            !s.group_messages.contains_key(&group_id),
+            "in-memory history dropped so a re-join starts clean"
+        );
+    });
+}

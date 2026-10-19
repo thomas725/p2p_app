@@ -7,8 +7,10 @@ fn peer_display_label(peer_id: &str) -> String {
     crate::get_peer_display_name_or_short(peer_id)
 }
 
-/// Number of fixed tabs before dynamic tabs (Chat, Contacts, Groups)
-pub(crate) const FIXED_TAB_COUNT: usize = 3;
+/// Number of fixed tabs before dynamic tabs (Chat, Contacts, Groups). Public
+/// so binaries can address the fixed layout (the Groups list is the last fixed
+/// tab, `FIXED_TAB_COUNT - 1`).
+pub const FIXED_TAB_COUNT: usize = 3;
 
 /// Fixed tabs that always appear after any dynamic tabs (Log, Settings)
 const SUFFIX_TAB_COUNT: usize = 2;

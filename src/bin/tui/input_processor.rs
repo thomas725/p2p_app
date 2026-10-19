@@ -176,6 +176,58 @@ async fn create_or_join_group(
     }
 }
 
+/// Groups-tab keys: `g` opens the create/join prompt, `d` arms the leave
+/// confirmation for the selected group (`y`/Enter confirms). Both are no-ops
+/// while a text-input mode is active, which the caller guards.
+fn handle_groups_key(c: char, s: &mut super::state::AppState) {
+    match c {
+        'g' => {
+            s.input_mode = p2p_app::InputMode::CreatingGroup;
+            s.chat_input = super::TextArea::default();
+            p2plog_debug("Started group create/join".to_string());
+        }
+        'd' => {
+            if let Some(group) = s.group_summaries.get(s.group_selection) {
+                let group_id = group.group.group_id.clone();
+                let display_name = group.group.display_name.clone();
+                s.begin_group_leave(group_id, display_name);
+                p2plog_debug("Leave group confirmation armed".to_string());
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Leaves a group after the user confirms: delete the local rows (messages +
+/// membership + the group itself) and unsubscribe from its gossipsub topic,
+/// close the group's chat tab, and refresh the list. Local-only by design —
+/// public groups have no server-side membership to notify, so other members
+/// keep their copy of the history (mirrors Flutter's "Leave group").
+async fn confirm_group_leave(state: &SharedState, swarm_cmd_tx: &mpsc::Sender<SwarmCommand>) {
+    let prompt = {
+        let mut s = state.lock().await;
+        s.group_leave_prompt.take()
+    };
+    let Some(prompt) = prompt else {
+        return;
+    };
+    match p2p_app::groups::delete_group(&prompt.group_id) {
+        Ok(()) => {
+            let _ = swarm_cmd_tx
+                .send(SwarmCommand::UnsubscribeGroup {
+                    group_id: prompt.group_id.clone(),
+                })
+                .await;
+            state.lock().await.apply_group_leave(&prompt.group_id);
+            p2plog_debug(format!(
+                "Left group: {} ({})",
+                prompt.display_name, prompt.group_id
+            ));
+        }
+        Err(e) => p2plog_debug(format!("Failed to leave group: {e}")),
+    }
+}
+
 /// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
@@ -322,7 +374,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     let mut s = state.lock().await;
     dismiss_popup(&mut s);
     decline_device_binding_prompt(&mut s);
-    if s.is_editing_nickname() {
+    if s.cancel_group_leave() {
+        p2plog_debug("Cancelled group leave".to_string());
+    } else if s.is_editing_nickname() {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
     } else if s.is_creating_group() {
@@ -587,6 +641,28 @@ async fn process_key_event(
         return false;
     }
 
+    // Group-leave confirmation: 'y'/Enter confirms (delete + unsubscribe),
+    // any other key cancels. Single-slot and wins over all other input, like
+    // the device-binding prompt.
+    if s.group_leave_prompt.is_some() {
+        let confirm = matches!(
+            key_event.code,
+            crossterm::event::KeyCode::Char('y' | 'Y') | crossterm::event::KeyCode::Enter
+        );
+        drop(s);
+        if confirm {
+            confirm_group_leave(state, swarm_cmd_tx).await;
+        } else {
+            let mut s = state.lock().await;
+            if s.cancel_group_leave() {
+                p2plog_debug("Cancelled group leave".to_string());
+            }
+            drop(s);
+        }
+        let _ = render_tx.send(RenderEvent).await;
+        return false;
+    }
+
     // Diagnostic: log exactly what crossterm parsed for every input key that
     // touches the Tab/Ctrl+I/Ctrl+P routing, regardless of the kitty flag, so
     // we can tell from the TUI log what the app actually received.
@@ -723,12 +799,10 @@ async fn handle_key_dispatch(
         {
             handle_peer_sort_key(s, c);
         }
-        crossterm::event::KeyCode::Char('g')
+        crossterm::event::KeyCode::Char(c)
             if !is_ctrl && on_groups && !s.is_editing_nickname() && !s.is_creating_group() =>
         {
-            s.input_mode = p2p_app::InputMode::CreatingGroup;
-            s.chat_input = super::TextArea::default();
-            p2plog_debug("Started group create/join".to_string());
+            handle_groups_key(c, s);
         }
         _ => {
             if input_enabled || s.is_editing_nickname() || s.is_creating_group() {

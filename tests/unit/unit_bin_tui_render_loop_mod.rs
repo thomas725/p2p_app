@@ -246,6 +246,34 @@ fn test_device_binding_prompt_renders_and_wins_over_popup() {
 }
 
 #[test]
+fn test_group_leave_prompt_renders_and_ranks_below_device_binding() {
+    let mut state = app_state();
+    state.popup = Some("ad-hoc".to_string());
+    state.group_leave_prompt = Some(crate::tui::state::GroupLeavePrompt {
+        group_id: "g-1".to_string(),
+        display_name: "Team Rocket".to_string(),
+    });
+
+    // The confirmation outranks an ad-hoc popup and spells out the stakes.
+    let text = render_popup_text(&state).expect("leave prompt text");
+    assert!(text.contains("Leave group \"Team Rocket\"?"));
+    assert!(text.contains("Confirm with 'y' or Enter"));
+    assert!(!text.contains("ad-hoc"));
+    // app_state_to_render_state surfaces the same prompt text.
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.popup.as_deref(), Some(text.as_str()));
+
+    // An incoming device-binding intro still outranks the leave prompt.
+    state.device_binding_prompt = Some(crate::tui::state::DeviceBindingPrompt {
+        peer_id: "12D3Koooprompt-peer".to_string(),
+        device_pubkey: vec![1],
+    });
+    let text = render_popup_text(&state).expect("device prompt wins");
+    assert!(text.contains("Device-binding intro"));
+    assert!(!text.contains("Leave group"));
+}
+
+#[test]
 fn test_call_overlay_renders_each_state() {
     for (state, expected) in [
         (p2p_app::CallState::Ringing, "Incoming call from"),
