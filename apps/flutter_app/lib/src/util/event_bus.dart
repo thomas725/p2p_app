@@ -1,15 +1,12 @@
-import 'dart:async';
-
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 
-/// Single event sink for polled node events. Exactly one screen owns it at a
-/// time: the home broadcast view by default, or the DM chat screen while it is
+/// Single event sink for node events. Exactly one screen owns it at a time:
+/// the home broadcast view by default, or the DM chat screen while it is
 /// open (so DMs route there instead).
 void Function(SwarmEventJson)? _onEvent;
-Timer? _pollTimer;
 
-/// Install the callback that receives each polled [SwarmEventJson].
+/// Install the callback that receives each node [SwarmEventJson].
 void setEventSink(void Function(SwarmEventJson)? onEvent) {
   _onEvent = onEvent;
 }
@@ -26,25 +23,16 @@ void Function(SwarmEventJson)? pushEventSink(
   return previous;
 }
 
-/// Poll `pollEvent()` every 200ms and forward all pending events to the sink.
-///
-/// A burst (e.g. many peers connecting at once) is drained to completion within
-/// one tick instead of stalling at one event per 200ms.
+/// Start delivering node events to the installed sink. The in-process
+/// transport polls `pollEvent()` every 200ms; the remote transport receives
+/// server-pushed frames — both funnel through [NodeApi.startEventPump], so
+/// screens never care which one is active.
 void startEventPolling() {
-  _pollTimer?.cancel();
-  _pollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) async {
-    try {
-      for (var i = 0; i < 100; i++) {
-        final event = await pollEvent();
-        if (event == null) break;
-        _onEvent?.call(event);
-      }
-    } catch (_) {}
-  });
+  nodeApi.startEventPump((event) => _onEvent?.call(event));
 }
 
-/// Stop the polling timer started by [startEventPolling].
+/// Stop the event pump (e.g. before `stopNode`, so no frames are polled
+/// after the node is gone).
 void stopEventPolling() {
-  _pollTimer?.cancel();
-  _pollTimer = null;
+  nodeApi.stopEventPump();
 }

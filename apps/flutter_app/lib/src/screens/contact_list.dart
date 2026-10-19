@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
@@ -62,6 +65,13 @@ class ContactListState extends State<ContactList> {
   int _sortColumn = _kLastSeen;
   bool _ascending = false;
 
+  /// Last resolved sort order with the input key it was computed for. Rust
+  /// still owns the ordering (`nodeApi.sortContacts`); this only caches the
+  /// resolved rows so builds stay synchronous, re-sorting when the inputs or
+  /// sort params change.
+  List<MobileContactRow>? _sortedCache;
+  String? _sortedCacheKey;
+
   /// Contact ids whose device sub-rows are currently expanded (kept across
   /// re-sorts; sorted input only reorders, never drops, contacts).
   final Set<String> _expanded = {};
@@ -74,6 +84,20 @@ class ContactListState extends State<ContactList> {
   String _label(MobileContactRow c) => c.deviceCount.toInt() > 1
       ? '${c.displayName} \u00d7${c.deviceCount}'
       : c.displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_resort());
+  }
+
+  @override
+  void didUpdateWidget(covariant ContactList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.rows, widget.rows)) {
+      unawaited(_resort());
+    }
+  }
 
   void _toggleExpand(String contactId) {
     setState(() {
@@ -181,7 +205,14 @@ class ContactListState extends State<ContactList> {
     );
   }
 
-  List<MobileContactRow> get _sorted {
+  /// Identity of the current sort inputs: the rows list identity + shape +
+  /// the sort params. Cache hits render synchronously; misses re-sort
+  /// off-band and swap in via setState.
+  String get _sortKey =>
+      '${identityHashCode(widget.rows)}:${widget.rows.length}:'
+      '$_sortColumn:$_ascending';
+
+  Future<List<MobileContactRow>> _computeSorted() async {
     final rows = widget.rows
         .map(
           (c) => ContactSortInput(
@@ -189,26 +220,43 @@ class ContactListState extends State<ContactList> {
             displayName: c.displayName,
             lastSeen: c.lastSeen,
             firstSeen: c.firstSeen,
-            dmCount: _dmCount(c),
-            broadcastSentToPeer: _broadcastCount(c),
+            // Pass the Rust-side i64 values straight through (an int round
+            // trip would not survive the web build's BigInt mapping).
+            dmCount: c.dmCount,
+            broadcastSentToPeer: c.broadcastSentToPeer,
           ),
         )
         .toList();
-    final sorted = _runSort(rows);
+    final sorted = await _runSort(rows);
     final byId = {for (final r in widget.rows) r.contactId: r};
     return [for (final row in sorted) byId[row.contactId]!];
   }
 
-  List<ContactSortInput> _runSort(List<ContactSortInput> rows) {
+  Future<List<ContactSortInput>> _runSort(List<ContactSortInput> rows) {
     final override = widget.sortOverride;
     if (override != null) {
-      return override(rows, _sortColumn, _ascending);
+      return Future<List<ContactSortInput>>.value(
+        override(rows, _sortColumn, _ascending),
+      );
     }
-    return sortContacts(
+    return nodeApi.sortContacts(
       contacts: rows,
       sortColumn: _sortColumn,
       ascending: _ascending,
     );
+  }
+
+  Future<void> _resort() async {
+    final key = _sortKey;
+    if (key == _sortedCacheKey && _sortedCache != null) return;
+    final sorted = await _computeSorted();
+    // Drop superseded results (a newer sort started while this one was in
+    // flight); the newer call lands the then-current ordering.
+    if (!mounted || key != _sortKey) return;
+    setState(() {
+      _sortedCache = sorted;
+      _sortedCacheKey = key;
+    });
   }
 
   void _sort(int column, bool ascending) {
@@ -216,12 +264,13 @@ class ContactListState extends State<ContactList> {
       _sortColumn = column;
       _ascending = ascending;
     });
+    unawaited(_resort());
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final sorted = _sorted;
+    final sorted = _sortedCache ?? widget.rows;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

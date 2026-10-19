@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 
 /// Log tab: polls the Rust log buffer every second with copy-all and clear
@@ -30,7 +30,7 @@ class _LogTabState extends State<LogTab> {
     // Poll for logs every second
     _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       try {
-        final logs = await getLogs();
+        final logs = await nodeApi.getLogs();
         if (!mounted) return;
         setState(() => _logs = logs);
         if (_atBottom) _scrollToBottom();
@@ -48,11 +48,13 @@ class _LogTabState extends State<LogTab> {
     super.dispose();
   }
 
-  void _onScroll() {
+  Future<void> _onScroll() async {
     if (!_scrollController.hasClients) return;
     // Reuse the shared at-bottom definition so every scroll view (home, log,
     // all chats) agrees on when the tail is visible.
-    _atBottom = chatScrollAtBottom(_scrollController.position);
+    final atBottom = await chatScrollAtBottom(_scrollController.position);
+    if (!mounted) return;
+    _atBottom = atBottom;
   }
 
   void _scrollToBottom() {
@@ -66,7 +68,7 @@ class _LogTabState extends State<LogTab> {
   Future<void> _clear() async {
     setState(() => _logs = []);
     try {
-      await clearLogs();
+      await nodeApi.clearLogs();
     } catch (e) {
       debugPrint('Failed to clear logs: $e');
     }

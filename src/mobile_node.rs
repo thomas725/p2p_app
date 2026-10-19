@@ -358,6 +358,7 @@ pub fn get_node_peer_id() -> Result<String, String> {
 // --- Mobile peer record with nicknames ---
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobilePeerRecord {
     pub peer_id: String,
     pub first_seen: String,
@@ -399,6 +400,7 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
 // --- Message history types ---
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ChatMessage {
     pub id: i32,
     pub content: String,
@@ -415,6 +417,7 @@ pub struct ChatMessage {
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileAttachment {
     /// SHA-256 hex of the file bytes (content address)
     pub file_id: String,
@@ -782,6 +785,7 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
 // --- Group chat types and functions ---
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileGroup {
     pub group_id: String,
     pub display_name: String,
@@ -790,6 +794,7 @@ pub struct MobileGroup {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileGroupMessage {
     pub id: i32,
     pub content: String,
@@ -993,6 +998,7 @@ pub fn attachment_file_path(file_id: &str) -> Result<String, String> {
 // --- JSON types for FRB ---
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SwarmEventJson {
     pub event_type: String,
     pub peer_id: Option<String>,

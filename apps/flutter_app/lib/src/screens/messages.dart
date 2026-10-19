@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 
 /// Return true when the scroll position is at (or past) the bottom, using the
 /// same Rust `is_at_bottom` definition every chat view shares.
-bool chatScrollAtBottom(ScrollPosition pos) => isAtBottom(
+Future<bool> chatScrollAtBottom(ScrollPosition pos) => nodeApi.isAtBottom(
   scrollOffset: pos.pixels.round(),
   total: pos.maxScrollExtent.round(),
   visible: 80,
@@ -25,14 +25,13 @@ mixin MessageChatMixin<T extends StatefulWidget> on State<T> {
   bool selectionMode = false;
   final Set<int> selectedIndices = {};
 
-  void onListScroll(ScrollPosition pos) {
-    final reachedBottom = chatScrollAtBottom(pos);
-    if (reachedBottom != atBottom) {
-      setState(() {
-        atBottom = reachedBottom;
-        if (atBottom) unreadCount = 0;
-      });
-    }
+  Future<void> onListScroll(ScrollPosition pos) async {
+    final reachedBottom = await chatScrollAtBottom(pos);
+    if (!mounted || reachedBottom == atBottom) return;
+    setState(() {
+      atBottom = reachedBottom;
+      if (atBottom) unreadCount = 0;
+    });
   }
 
   void onBubbleDoubleTap(int index) {
@@ -83,9 +82,9 @@ mixin MessageChatMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
-  /// Build the clipboard transcript and show the copied snackbar; returns the
-  /// number of messages copied. Pure (clipboard + snackbar side effects only).
-  int copySelection(List<ChatMessage> messages) {
+  /// Build the clipboard transcript and show the copied snackbar; resolves
+  /// with the number of messages copied. Side effects: clipboard + snackbar.
+  Future<int> copySelection(List<ChatMessage> messages) {
     return _copyMessages(context, messages, selectedIndices);
   }
 }
@@ -93,7 +92,7 @@ mixin MessageChatMixin<T extends StatefulWidget> on State<T> {
 /// Copy a set of selected messages to the clipboard and confirm with a
 /// snackbar. Shared by the broadcast tab (which owns its selection state) and
 /// the DM/group screens.
-int copySelectedMessages(
+Future<int> copySelectedMessages(
   BuildContext context,
   List<ChatMessage> messages,
   Set<int> selectedIndices,
@@ -101,11 +100,13 @@ int copySelectedMessages(
   return _copyMessages(context, messages, selectedIndices);
 }
 
-int _copyMessages(
+Future<int> _copyMessages(
   BuildContext context,
   List<ChatMessage> messages,
   Set<int> selectedIndices,
-) {
+) async {
+  // Capture before the awaits below (context must not cross async gaps).
+  final messenger = ScaffoldMessenger.of(context);
   final sorted = selectedIndices.toList()..sort();
   final buf = StringBuffer();
   for (var i = 0; i < sorted.length; i++) {
@@ -117,14 +118,15 @@ int _copyMessages(
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-    final time = msg.sentAt ?? formatTimeHhmm(dt: msg.createdAt);
+    final time =
+        msg.sentAt ?? await nodeApi.formatTimeHhmm(dt: msg.createdAt);
     buf.writeln(peerName);
     buf.writeln(msg.content);
     buf.writeln(time);
     if (i < sorted.length - 1) buf.writeln();
   }
   Clipboard.setData(ClipboardData(text: buf.toString()));
-  ScaffoldMessenger.of(context).showSnackBar(
+  messenger.showSnackBar(
     SnackBar(
       content: Text(
         '${sorted.length} message${sorted.length > 1 ? 's' : ''} copied',
@@ -561,9 +563,10 @@ class MessageBubble extends StatelessWidget {
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  message.sentAt ?? formatTimeHhmm(dt: message.createdAt),
-                  style: TextStyle(fontSize: 10, color: fg.withAlpha(130)),
+                child: _MessageTime(
+                  sentAt: message.sentAt,
+                  createdAt: message.createdAt,
+                  color: fg.withAlpha(130),
                 ),
               ),
             ],
@@ -622,6 +625,76 @@ class _AttachmentChip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bubble timestamp: `sentAt` when the message carries one, else Rust's
+/// canonical `format_time_hhmm`. The in-process transport resolves
+/// synchronously; the remote (web) transport memoizes Rust's answers, so only
+/// a cold miss shows the raw timestamp for a frame before the formatted one.
+class _MessageTime extends StatefulWidget {
+  const _MessageTime({
+    required this.sentAt,
+    required this.createdAt,
+    required this.color,
+  });
+
+  final String? sentAt;
+  final String createdAt;
+  final Color color;
+
+  @override
+  State<_MessageTime> createState() => _MessageTimeState();
+}
+
+class _MessageTimeState extends State<_MessageTime> {
+  Future<String>? _future;
+  String? _resolved;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MessageTime oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.createdAt != widget.createdAt ||
+        oldWidget.sentAt != widget.sentAt) {
+      _future = null;
+      _resolved = null;
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    final sentAt = widget.sentAt;
+    if (sentAt != null) {
+      _resolved = sentAt;
+      return;
+    }
+    final sync = nodeApi.formatTimeHhmmSync(dt: widget.createdAt);
+    if (sync != null) {
+      _resolved = sync;
+      return;
+    }
+    _future ??= nodeApi.formatTimeHhmm(dt: widget.createdAt);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = _resolved;
+    final style = TextStyle(fontSize: 10, color: widget.color);
+    if (resolved != null) return Text(resolved, style: style);
+    return FutureBuilder<String>(
+      future: _future,
+      builder: (context, snapshot) => Text(
+        // Rust's raw timestamp until its formatted answer lands.
+        snapshot.data ?? widget.createdAt,
+        style: style,
       ),
     );
   }

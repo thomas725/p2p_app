@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
@@ -98,7 +98,7 @@ class CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
     if (override != null) {
       return Future.sync(() => override(widget.peerId, widget.callId, kind));
     }
-    return sendCallSignal(
+    return nodeApi.sendCallSignal(
       peerId: widget.peerId,
       callId: widget.callId,
       kind: kind,
@@ -146,7 +146,7 @@ class CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
       if (override != null) {
         await override(peerId, callId, 'reject');
       } else {
-        await sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
+        await nodeApi.sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
       }
     } catch (e) {
       debugPrint('Failed to auto-decline second call: $e');

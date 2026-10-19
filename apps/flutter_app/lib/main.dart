@@ -1,17 +1,28 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'src/rust/api.dart';
+import 'src/data/http_node_api.dart';
+import 'src/data/node_api.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/screens/home.dart';
-import 'src/util/ui_utils.dart';
 import 'src/util/event_bus.dart';
+import 'src/util/ui_utils.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await RustLib.init();
-  if (isAndroid) {
-    serviceChannel.setMethodCallHandler(_handleServiceCall);
+  if (kIsWeb) {
+    // Browser build: the node lives in a native `p2p_chat_server` process;
+    // this app is a pure display client over its WebSocket/HTTP API. The
+    // transport is installed before runApp so the first frame can already
+    // reach the node. Deployments that require auth carry the token in the
+    // page URL (`?token=...`).
+    nodeApi = HttpNodeApi.toServer(token: webAuthToken);
+  } else {
+    await RustLib.init();
+    if (isAndroid) {
+      serviceChannel.setMethodCallHandler(_handleServiceCall);
+    }
   }
   runApp(const P2pApp());
 }
@@ -21,7 +32,7 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
     case 'startNetworking':
       final dbPath = call.arguments as String? ?? defaultDbPath;
       try {
-        await startNode(dbPath: dbPath);
+        await nodeApi.startNode(dbPath: dbPath);
         startEventPolling();
         return true;
       } catch (_) {
@@ -29,7 +40,7 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
       }
     case 'stopNetworking':
       stopEventPolling();
-      await stopNode();
+      await nodeApi.stopNode();
       return true;
     default:
       return null;

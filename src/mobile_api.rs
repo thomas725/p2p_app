@@ -43,6 +43,7 @@ pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
 
 /// One row of the peers table, as fed to [`sort_peers`].
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PeerSortInput {
     pub peer_id: String,
     pub display_name: String,
@@ -58,6 +59,7 @@ pub struct PeerSortInput {
 /// from this one response, avoiding the N+1 round trip over
 /// [`crate::messages::get_all_peer_stats`].
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PeerWithStats {
     pub peer_id: String,
     pub display_name: String,
@@ -100,6 +102,7 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
 
 /// One device row inside a contact's roster entry.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileContactDevice {
     pub peer_id: String,
     pub display_name: String,
@@ -115,6 +118,7 @@ pub struct MobileContactDevice {
 /// ([`MobileContactRow::device_rows`]); unbound peers appear as single-device
 /// rows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileContactRow {
     /// Stable key: `user_id` when [`MobileContactRow::is_user`], else `peer_id`.
     pub contact_id: String,
@@ -218,6 +222,7 @@ pub fn sort_peers(
 /// Flutter rebuilds this from `MobileContactRow`s; the sort only needs the
 /// columns it orders on, so the FFI round trip stays as light as `sort_peers`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ContactSortInput {
     /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
     pub contact_id: String,
@@ -275,6 +280,7 @@ pub fn sort_contacts(
 
 /// A device bound into a user's device-set, as exposed to Flutter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileDeviceInfo {
     /// Unique identifier of the signed device→user claim
     pub claim_id: String,
@@ -290,6 +296,7 @@ pub struct MobileDeviceInfo {
 
 /// A user-arranged contact pair, as exposed to Flutter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileContactInfo {
     /// User ID of the owner of this contact row
     pub owner_user_id: String,
@@ -455,12 +462,14 @@ pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobileInitStatus {
     pub database_url: String,
     pub local_peer_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MobilePeerStatus {
     pub database_url: String,
     pub local_peer_id: String,

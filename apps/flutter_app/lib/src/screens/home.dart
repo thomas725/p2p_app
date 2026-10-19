@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/contact_list.dart';
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshSettingsOnOpen() async {
     if (!_serviceRunning) return;
     try {
-      final status = await getMobilePeerStatus();
+      final status = await nodeApi.getMobilePeerStatus();
       if (mounted) {
         _status = status;
         _syncStatus();
@@ -146,10 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// source of truth for the identity layer) and surface them on Settings.
   Future<void> _refreshIdentity() async {
     try {
-      final userId = await getMyUserId();
+      final userId = await nodeApi.getMyUserId();
       List<MobileDeviceInfo> devices = const [];
       if (userId != null) {
-        devices = await getUserDevices(userId: userId);
+        devices = await nodeApi.getUserDevices(userId: userId);
       }
       if (!mounted) return;
       setState(() {
@@ -177,19 +177,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _onScroll() {
+  Future<void> _onScroll() async {
     if (!_scrollController.hasClients) return;
-    final atBottom = chatScrollAtBottom(_scrollController.position);
-    if (atBottom != _atBottom) {
-      setState(() {
-        _atBottom = atBottom;
-        if (_atBottom) _unreadCount = 0;
-      });
-      // The user has actually read up to the newest broadcast: persist the
-      // viewed-count watermark so the next launch's unread-skip is right even
-      // when they got here by natural scrolling (not the jump-to-bottom button).
-      if (atBottom) _saveViewedCount();
-    }
+    final atBottom = await chatScrollAtBottom(_scrollController.position);
+    if (!mounted || atBottom == _atBottom) return;
+    setState(() {
+      _atBottom = atBottom;
+      if (_atBottom) _unreadCount = 0;
+    });
+    // The user has actually read up to the newest broadcast: persist the
+    // viewed-count watermark so the next launch's unread-skip is right even
+    // when they got here by natural scrolling (not the jump-to-bottom button).
+    if (atBottom) _saveViewedCount();
   }
 
   void _onBubbleDoubleTap(int index) {
@@ -218,8 +217,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _copySelected() {
-    copySelectedMessages(context, _messages, _selectedIndices);
+  Future<void> _copySelected() async {
+    await copySelectedMessages(context, _messages, _selectedIndices);
     _cancelSelection();
   }
 
@@ -232,11 +231,13 @@ class _HomeScreenState extends State<HomeScreen> {
             false;
       }
       if (isAndroid) {
-        await initMobileDatabase(dbPath: defaultDbPath);
+        await nodeApi.initMobileDatabase(dbPath: defaultDbPath);
       }
-      final status = await getMobilePeerStatus();
+      final status = await nodeApi.getMobilePeerStatus();
       setState(() {
-        _serviceRunning = running;
+        // The web client is always attached to a server-owned node (its
+        // lifecycle belongs to `p2p_chat_server`), so never auto-start one.
+        _serviceRunning = running || nodeApi.isRemoteTransport;
         _status = status;
         _loading = false;
       });
@@ -249,6 +250,10 @@ class _HomeScreenState extends State<HomeScreen> {
       // Auto-start the node (on Android this also starts the foreground service)
       if (!_serviceRunning) {
         await _toggleService();
+      } else if (nodeApi.isRemoteTransport) {
+        // Events are server-pushed on the remote transport; registering the
+        // sink is all that's needed.
+        startEventPolling();
       }
     } catch (e) {
       setState(() {
@@ -260,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final messages = await loadBroadcastMessages(limit: 200);
+      final messages = await nodeApi.loadBroadcastMessages(limit: 200);
       setState(() {
         _messages
           ..clear()
@@ -274,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// rows (single round trip via `getContactsWithStats`).
   Future<void> _refreshRoster() async {
     try {
-      final rows = await getPeersWithStats();
+      final rows = await nodeApi.getPeersWithStats();
       final peers = <MobilePeerRecord>[];
       for (final row in rows) {
         peers.add(
@@ -288,7 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       }
-      final contacts = await getContactsWithStats();
+      final contacts = await nodeApi.getContactsWithStats();
       if (mounted) {
         setState(() {
           _peers = peers;
@@ -300,13 +305,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshGroups() async {
     try {
-      final groups = await listGroups();
+      final groups = await nodeApi.listGroups();
       setState(() => _groups = groups);
     } catch (_) {}
   }
 
   Future<void> _createGroup(String name) async {
-    await createGroup(name: name);
+    await nodeApi.createGroup(name: name);
     await _refreshGroups();
   }
 
@@ -324,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
         peerId: peerId,
         devicePubkey: devicePubkey,
         accept: (id, pubkey) async {
-          await acceptDeviceBinding(peerId: id, devicePubkey: pubkey);
+          await nodeApi.acceptDeviceBinding(peerId: id, devicePubkey: pubkey);
           _refreshRoster();
           _refreshIdentity();
         },
@@ -338,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// TUI) and refresh the Groups list so the accepted group appears.
   Future<void> _acceptInvite(String groupId) async {
     try {
-      final group = await acceptGroupInvite(groupId: groupId);
+      final group = await nodeApi.acceptGroupInvite(groupId: groupId);
       if (mounted) {
         setState(() {
           if (!_groups.any((g) => g.groupId == group.groupId)) {
@@ -455,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // We're already in a session; decline the new ring so its caller stops
       // ringing us. Best-effort — the caller times out the invite anyway.
       try {
-        await sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
+        await nodeApi.sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
       } catch (e) {
         debugPrint('Failed to decline concurrent call: $e');
       }
@@ -488,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? nickname,
   ) async {
     try {
-      final msg = await saveIncomingMessage(
+      final msg = await nodeApi.saveIncomingMessage(
         content: content,
         peerId: peerId,
         isDirect: false,
@@ -513,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? nickname,
   ) async {
     try {
-      await saveIncomingMessage(
+      await nodeApi.saveIncomingMessage(
         content: content,
         peerId: peerId,
         isDirect: true,
@@ -578,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _sendBroadcast(String text) async {
     if (text.isEmpty) return;
     try {
-      final msg = await saveOutgoingBroadcast(content: text);
+      final msg = await nodeApi.saveOutgoingBroadcast(content: text);
       setState(() => _messages.add(msg));
       _forceScrollToBottom();
     } catch (e) {
@@ -587,11 +592,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Pick a file and send it as an attachment-only broadcast (files lane §12).
+  /// Native picks send by path; web picks upload the picked bytes.
   Future<void> _pickAndSendBroadcast() async {
-    final path = await pickFileOverride();
-    if (path == null) return;
+    final picked = await pickFileOverride();
+    if (picked == null) return;
     try {
-      final msg = await saveOutgoingBroadcast(content: '', attachmentPath: path);
+      final msg = await nodeApi.saveOutgoingBroadcast(
+        content: '',
+        attachmentPath: picked.path,
+        attachmentBytes: picked.bytes,
+        attachmentName: picked.name,
+      );
       setState(() => _messages.add(msg));
       _forceScrollToBottom();
     } catch (e) {
@@ -620,7 +631,7 @@ class _HomeScreenState extends State<HomeScreen> {
           await serviceChannel.invokeMethod('stopService');
         }
         stopEventPolling();
-        await stopNode();
+        await nodeApi.stopNode();
         setState(() {
           _serviceRunning = false;
           _connectedCount = 0;
@@ -636,9 +647,9 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
         if (isAndroid) {
-          await startNode(dbPath: defaultDbPath);
+          await nodeApi.startNode(dbPath: defaultDbPath);
         } else {
-          await startNodeAuto();
+          await nodeApi.startNodeAuto();
         }
         setState(() {
           _serviceRunning = true;
@@ -647,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _listenAddresses.clear();
           _lastConnectionAt = null;
         });
-        final status = await getMobilePeerStatus();
+        final status = await nodeApi.getMobilePeerStatus();
         setState(() => _status = status);
         _syncStatus();
         _syncLiveStatus();
@@ -722,7 +733,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startCallTo(String peerId, String displayName) async {
     if (_activeCallId != null) return;
     try {
-      final callId = await startCall(peerId: peerId);
+      final callId = await nodeApi.startCall(peerId: peerId);
       if (!mounted) return;
       _activeCallId = callId;
       await Navigator.of(context).push(
@@ -774,7 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _sendIntro(MobileContactDevice device) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     try {
-      await sendDeviceBindingIntro(peerId: device.peerId);
+      await nodeApi.sendDeviceBindingIntro(peerId: device.peerId);
       messenger?.showSnackBar(
         SnackBar(content: Text('Device intro sent to ${device.displayName}')),
       );

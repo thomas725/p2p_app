@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
@@ -68,7 +68,7 @@ class _DmChatScreenState extends State<DmChatScreen>
 
   Future<void> _loadHistory() async {
     try {
-      final msgs = await loadDmMessages(peerId: _peerId, limit: 200);
+      final msgs = await nodeApi.loadDmMessages(peerId: _peerId, limit: 200);
       setState(() {
         _messages
           ..clear()
@@ -98,7 +98,7 @@ class _DmChatScreenState extends State<DmChatScreen>
 
   Future<void> _persistIncomingDm(SwarmEventJson event) async {
     try {
-      final msg = await saveIncomingMessage(
+      final msg = await nodeApi.saveIncomingMessage(
         content: event.content!,
         peerId: event.peerId!,
         isDirect: true,
@@ -119,7 +119,7 @@ class _DmChatScreenState extends State<DmChatScreen>
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     try {
-      final msg = await saveOutgoingDm(peerId: _peerId, content: text);
+      final msg = await nodeApi.saveOutgoingDm(peerId: _peerId, content: text);
       _controller.clear();
       setState(() => _messages.add(msg));
       forceJumpToBottom(_scrollController);
@@ -129,11 +129,18 @@ class _DmChatScreenState extends State<DmChatScreen>
   }
 
   /// Pick a file and send it as an attachment-only DM (files lane §12).
+  /// Native picks send by path; web picks upload the picked bytes.
   Future<void> _pickAndSend() async {
-    final path = await pickFileOverride();
-    if (path == null) return;
+    final picked = await pickFileOverride();
+    if (picked == null) return;
     try {
-      final msg = await saveOutgoingDm(peerId: _peerId, content: '', attachmentPath: path);
+      final msg = await nodeApi.saveOutgoingDm(
+        peerId: _peerId,
+        content: '',
+        attachmentPath: picked.path,
+        attachmentBytes: picked.bytes,
+        attachmentName: picked.name,
+      );
       setState(() => _messages.add(msg));
       forceJumpToBottom(_scrollController);
     } catch (e) {

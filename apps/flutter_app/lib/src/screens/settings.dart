@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:p2p_app_flutter/src/rust/api.dart';
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
@@ -96,7 +96,7 @@ class _SettingsState extends State<Settings> {
   /// never re-derives the thresholds.
   Future<void> _refreshNetworkSize() async {
     try {
-      final label = await networkSizeLabel(peerCount: _live.connectedCount);
+      final label = await nodeApi.networkSizeLabel(peerCount: _live.connectedCount);
       if (mounted && label != _networkSize) {
         setState(() => _networkSize = label);
       }
@@ -418,14 +418,14 @@ class _SettingsState extends State<Settings> {
     final nick = ctrl.text.trim();
     if (nick.isEmpty) return;
     // Reject via the Rust single source of truth: alphanumeric + dash, max 20.
-    if (!await validateNickname(nickname: nick)) {
+    if (!await nodeApi.validateNickname(nickname: nick)) {
       setDialogState(() {
         _nicknameError = 'Use letters, numbers or dashes (max 20 characters)';
       });
       return;
     }
     try {
-      await setSelfNickname(nickname: nick);
+      await nodeApi.setSelfNickname(nickname: nick);
       if (!ctx.mounted) return;
       if (mounted) setState(() => _nickname = nick);
       Navigator.pop(ctx);
