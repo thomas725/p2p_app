@@ -17,9 +17,20 @@ pub fn render_input_section(
     let title = if state.is_creating_group() {
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()
     } else if state.is_editing_nickname() {
+        let (label, target) = if state.is_editing_local_nickname() {
+            (
+                "Local Nickname",
+                state
+                    .editing_nickname_peer
+                    .clone()
+                    .unwrap_or_else(|| state.local_peer_id.clone()),
+            )
+        } else {
+            ("Edit Nickname", state.local_peer_id.clone())
+        };
         format!(
-            "Edit Nickname ({}) - Enter to save, Esc to cancel",
-            p2p_app::short_peer_id(&state.local_peer_id)
+            "{label} ({}) - Enter to save, Esc to cancel",
+            p2p_app::short_peer_id(&target)
         )
     } else {
         "Input".to_string()

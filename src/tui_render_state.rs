@@ -204,10 +204,20 @@ impl TuiRenderState {
         }
     }
 
-    /// True while the shared text input captures a nickname edit.
+    /// True while the shared text input captures a nickname edit (own, per-peer
+    /// announced, or a peer's local display name).
     #[must_use]
     pub const fn is_editing_nickname(&self) -> bool {
-        matches!(self.input_mode, crate::InputMode::EditingNickname)
+        matches!(
+            self.input_mode,
+            crate::InputMode::EditingNickname | crate::InputMode::EditingLocalNickname
+        )
+    }
+
+    /// True while the editor sets the local display name of `nickname_peer_id`.
+    #[must_use]
+    pub const fn is_editing_local_nickname(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::EditingLocalNickname)
     }
 
     /// True while the shared text input captures a group name.

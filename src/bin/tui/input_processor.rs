@@ -74,10 +74,66 @@ fn toggle_mouse_capture(state: &mut super::state::AppState) {
     };
 }
 
+/// `n` opens the shared nickname editor: this install's own nickname on the
+/// Settings tab, or the local display name of the Peer Info tab's peer (the
+/// name only this install shows). A no-op on every other tab.
+fn handle_nickname_key(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    match tab {
+        p2p_app::tui_tabs::TabContent::Settings => {
+            s.begin_self_nickname_edit();
+            p2plog_debug("Started nickname edit from Settings tab".to_string());
+        }
+        p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) => {
+            s.begin_local_nickname_edit(peer_id.clone());
+            p2plog_debug("Started local nickname edit".to_string());
+        }
+        _ => {}
+    }
+}
+
+/// Applies a per-peer *local* nickname edit (the name only this install shows
+/// for the peer). Invalid input keeps the editor open with a popup, mirroring
+/// the canonical Rust rule the other frontends use; a successful edit updates
+/// the in-memory display maps and re-sorts the Contacts tab so the new name is
+/// reflected immediately.
+fn handle_local_nickname_submission(state: &mut super::state::AppState, peer_id: &str) {
+    let new_nickname = state.chat_input.lines().join("\n");
+    let trimmed = new_nickname.trim();
+    if trimmed.is_empty() {
+        state.cancel_nickname_edit();
+        return;
+    }
+    if !p2p_app::nickname::validate_nickname(trimmed) {
+        state.popup = Some(
+            "Local nickname: letters, numbers or dashes (max 20 characters)".to_string(),
+        );
+        return;
+    }
+    match p2p_app::set_peer_local_nickname(peer_id, trimmed) {
+        Ok(()) => {
+            state
+                .local_nicknames
+                .insert(peer_id.to_string(), trimmed.to_string());
+            state.resort_peers();
+            p2plog_debug(format!("Set local nickname for {peer_id}: {trimmed}"));
+        }
+        Err(e) => p2plog_debug(format!("Failed to set local nickname: {e}")),
+    }
+    state.cancel_nickname_edit();
+}
+
 async fn handle_nickname_submission(
     state: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) {
+    if state.is_editing_local_nickname() {
+        if let Some(peer_id) = state.editing_nickname_peer.clone() {
+            handle_local_nickname_submission(state, &peer_id);
+        } else {
+            state.cancel_nickname_edit();
+        }
+        return;
+    }
     let Some((new_nickname, old_nickname, peer_id)) = prepare_nickname_update(state) else {
         state.cancel_nickname_edit();
         return;
@@ -763,12 +819,12 @@ async fn handle_key_dispatch(
             handle_close_dm_tab(s, &tab);
         }
         crossterm::event::KeyCode::Char('n')
-            if !is_ctrl && on_settings && !s.is_editing_nickname() =>
+            if !is_ctrl
+                && !s.is_editing_nickname()
+                && (on_settings
+                    || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
         {
-            s.input_mode = p2p_app::InputMode::EditingNickname;
-            s.editing_nickname_peer = None;
-            s.chat_input = super::TextArea::default();
-            p2plog_debug("Started nickname edit from Settings tab".to_string());
+            handle_nickname_key(s, &tab);
         }
         crossterm::event::KeyCode::Char('i')
             if !is_ctrl && on_contacts && !s.is_editing_nickname() =>

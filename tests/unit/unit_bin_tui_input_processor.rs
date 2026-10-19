@@ -898,6 +898,173 @@ fn test_nickname_submission_global_updates_own_nickname() {
     p2p_app::db::reset_db_url();
 }
 
+// ── per-peer local nickname (n on a Peer Info tab) ─────────────────────
+
+#[test]
+fn test_nickname_key_branches_by_tab() {
+    let mut settings = test_app_state();
+    handle_nickname_key(&mut settings, &TabContent::Settings);
+    assert!(settings.is_editing_nickname());
+    assert!(!settings.is_editing_local_nickname());
+    assert_eq!(settings.editing_nickname_peer, None);
+
+    let mut peer_info = test_app_state();
+    handle_nickname_key(
+        &mut peer_info,
+        &TabContent::PeerInfo("peer-abc".to_string()),
+    );
+    assert!(peer_info.is_editing_nickname());
+    assert!(peer_info.is_editing_local_nickname());
+    assert_eq!(peer_info.editing_nickname_peer.as_deref(), Some("peer-abc"));
+
+    // Every other tab ignores `n` (it is either literal text or unused there).
+    for tab in [
+        TabContent::Chat,
+        TabContent::Groups,
+        TabContent::Log,
+        TabContent::Contacts,
+    ] {
+        let mut s = test_app_state();
+        handle_nickname_key(&mut s, &tab);
+        assert!(!s.is_editing_nickname(), "no edit on {tab:?}");
+        assert_eq!(s.editing_nickname_peer, None);
+    }
+}
+
+#[tokio::test]
+async fn test_n_key_on_peer_info_starts_local_nickname_edit() {
+    let mut s = test_app_state();
+    s.active_tab = s.dynamic_tabs.add_peer_info_tab("peer-abc".to_string());
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.is_editing_local_nickname());
+    assert_eq!(s.editing_nickname_peer.as_deref(), Some("peer-abc"));
+}
+
+#[tokio::test]
+async fn test_n_key_outside_nickname_tabs_stays_plain_input() {
+    // On the broadcast Chat tab (input enabled) `n` must remain literal text,
+    // never open an editor.
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('n'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(!s.is_editing_nickname());
+    assert_eq!(s.chat_input.lines().join(""), "n");
+}
+
+#[test]
+fn test_local_nickname_submission_rejects_invalid_and_keeps_open() {
+    let mut s = test_app_state();
+    s.input_mode = p2p_app::InputMode::EditingLocalNickname;
+    s.editing_nickname_peer = Some("peer-x".to_string());
+    s.chat_input.insert_str("bad name!");
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(handle_nickname_submission(&mut s, &swarm_cmd_tx));
+
+    // The editor stays open with the canonical-rule hint, nothing persisted.
+    assert!(s.is_editing_local_nickname());
+    let popup = s.popup.as_deref().expect("popup");
+    assert!(popup.contains("letters, numbers or dashes"));
+    assert!(!s.local_nicknames.contains_key("peer-x"));
+}
+
+#[test]
+fn test_local_nickname_submission_empty_cancels() {
+    let mut s = test_app_state();
+    s.input_mode = p2p_app::InputMode::EditingLocalNickname;
+    s.editing_nickname_peer = Some("peer-x".to_string());
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(handle_nickname_submission(&mut s, &swarm_cmd_tx));
+
+    assert!(!s.is_editing_nickname());
+    assert_eq!(s.editing_nickname_peer, None);
+}
+
+#[test]
+fn test_local_nickname_submission_persists_and_updates_maps() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("local-nick.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut s = test_app_state();
+        s.input_mode = p2p_app::InputMode::EditingLocalNickname;
+        s.editing_nickname_peer = Some("peer-local".to_string());
+        s.chat_input.insert_str("Bobby");
+        let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+        handle_nickname_submission(&mut s, &swarm_cmd_tx).await;
+
+        assert!(!s.is_editing_nickname(), "editor closed on success");
+        assert_eq!(
+            s.local_nicknames.get("peer-local").map(String::as_str),
+            Some("Bobby")
+        );
+        // Persisted under the canonical column (a Peer Info reload reads it).
+        assert_eq!(
+            p2p_app::nickname::get_peer_local_nickname("peer-local")
+                .unwrap()
+                .as_deref(),
+            Some("Bobby")
+        );
+    });
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
+async fn test_esc_cancels_local_nickname_edit() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+    {
+        let mut s = state.lock().await;
+        s.input_mode = p2p_app::InputMode::EditingLocalNickname;
+        s.editing_nickname_peer = Some("peer-x".to_string());
+    }
+
+    let exited = process_input_event(
+        InputEvent::Key(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE)),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert!(!s.is_editing_nickname());
+    assert_eq!(s.editing_nickname_peer, None);
+}
+
 // ── process_key_event: ESC + editing_nickname ─────────────────────────
 
 #[tokio::test]

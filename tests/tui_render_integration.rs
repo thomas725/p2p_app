@@ -255,6 +255,49 @@ mod render_tests {
             .unwrap();
     }
 
+    /// The input-section title names the nickname flavor being edited, so the
+    /// per-peer local edit reads differently from the own-nickname one.
+    #[test]
+    fn test_render_input_section_titles_nickname_flavors() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.nickname_peer_id = "peer-abcd1234".to_string();
+        let tab = TabContent::Chat;
+
+        let buffer_text = |terminal: &Terminal<TestBackend>| -> String {
+            terminal
+                .backend()
+                .buffer()
+                .content
+                .iter()
+                .map(ratatui::buffer::Cell::symbol)
+                .collect()
+        };
+
+        state.input_mode = p2p_app::InputMode::EditingNickname;
+        terminal
+            .draw(|f| render_input_section(f, Rect::new(0, 0, 80, 5), &state, &tab))
+            .unwrap();
+        let text = buffer_text(&terminal);
+        assert!(text.contains("Edit Nickname"), "buffer: {text}");
+        assert!(!text.contains("Local Nickname"), "buffer: {text}");
+
+        state.input_mode = p2p_app::InputMode::EditingLocalNickname;
+        terminal
+            .draw(|f| render_input_section(f, Rect::new(0, 0, 80, 5), &state, &tab))
+            .unwrap();
+        let text = buffer_text(&terminal);
+        assert!(text.contains("Local Nickname"), "buffer: {text}");
+
+        // Back to plain chat input: neither flavor is named.
+        state.input_mode = p2p_app::InputMode::Chat;
+        terminal
+            .draw(|f| render_input_section(f, Rect::new(0, 0, 80, 5), &state, &tab))
+            .unwrap();
+        let text = buffer_text(&terminal);
+        assert!(!text.contains("Nickname"), "buffer: {text}");
+    }
+
     #[test]
     fn test_render_shortcuts_library() {
         let mut terminal = create_test_terminal();
@@ -278,7 +321,9 @@ mod render_tests {
     #[test]
     fn test_shortcuts_peer_info_tab_documents_call() {
         let text = shortcuts_text(&TabContent::PeerInfo("peer-1".to_string()), false);
+        assert!(text.contains("Enter: open DM"));
         assert!(text.contains("c: call"));
+        assert!(text.contains("n: set local nickname"));
         assert!(!text.contains("Peer Info"));
     }
 
@@ -953,7 +998,14 @@ fn test_state_editing_nickname() {
     state.input_mode = p2p_app::InputMode::EditingNickname;
     state.nickname_peer_id = "peer-1".to_string();
     assert!(state.is_editing_nickname());
+    assert!(!state.is_editing_local_nickname());
     assert_eq!(state.nickname_peer_id, "peer-1");
+
+    // The local-nickname mode counts as a nickname edit too, but is
+    // distinguishable so the input-section title can say which flavor it is.
+    state.input_mode = p2p_app::InputMode::EditingLocalNickname;
+    assert!(state.is_editing_nickname());
+    assert!(state.is_editing_local_nickname());
 }
 
 #[test]

@@ -163,6 +163,15 @@ fn test_app_state_to_render_state_editing_nickname() {
     state.editing_nickname_peer = Some("peer-edit".to_string());
     let rs = app_state_to_render_state(&state);
     assert!(rs.is_editing_nickname());
+    assert!(!rs.is_editing_local_nickname());
+    assert_eq!(rs.nickname_peer_id, "peer-edit");
+
+    // The local-nickname flavor carries the same target but a distinct mode, so
+    // the input-section title reads "Local Nickname" instead of "Edit Nickname".
+    state.input_mode = p2p_app::InputMode::EditingLocalNickname;
+    let rs = app_state_to_render_state(&state);
+    assert!(rs.is_editing_nickname());
+    assert!(rs.is_editing_local_nickname());
     assert_eq!(rs.nickname_peer_id, "peer-edit");
 }
 

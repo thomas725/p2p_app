@@ -30,6 +30,9 @@ pub enum InputMode {
     Chat,
     /// Capturing a nickname edit (own nickname or a DM partner's).
     EditingNickname,
+    /// Capturing the local display name this install shows for a peer
+    /// (`peers.peer_local_nickname`), edited from a Peer Info tab.
+    EditingLocalNickname,
     /// Capturing a group name for create/join on the Groups tab.
     CreatingGroup,
 }

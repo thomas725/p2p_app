@@ -103,7 +103,12 @@ pub fn render_input_section(
     tab_content: &TabContent,
 ) {
     let title = if state.is_editing_nickname() {
-        format!("Edit Nickname ({})", short_peer_id(&state.nickname_peer_id))
+        let label = if state.is_editing_local_nickname() {
+            "Local Nickname"
+        } else {
+            "Edit Nickname"
+        };
+        format!("{label} ({})", short_peer_id(&state.nickname_peer_id))
     } else {
         "Input".to_string()
     };
@@ -120,9 +125,11 @@ pub fn render_input_section(
     }
 }
 
-/// Shortcut hint line for the given tab. Peer-Info bindings are documented only
-/// on tabs where they are active: Ctrl+I (kitty) and Ctrl+P (universal) on a
-/// Direct/DM tab, `i` on Contacts.
+/// Shortcut hint line for the given tab.
+///
+/// Bindings are documented only where they are active: Ctrl+I (kitty) and
+/// Ctrl+P (universal) on a Direct/DM tab, `i` on Contacts, `n` (local
+/// nickname) on a Peer Info tab.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -130,7 +137,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
-            "Tab: next | Enter: open DM | c: call | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Enter: open DM | c: call | n: set local nickname | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Groups => {
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | Ctrl+Q: quit"

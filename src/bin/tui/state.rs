@@ -165,6 +165,11 @@ pub struct AppState {
     pub topic_str: String,
 
     // Edit Mode
+    /// Peer the nickname editor targets: the peer whose *local* display name is
+    /// being set (with [`p2p_app::InputMode::EditingLocalNickname`]) or the peer
+    /// we announce a personalised nickname to (with
+    /// [`p2p_app::InputMode::EditingNickname`]); `None` in the nickname mode
+    /// means this install's own nickname.
     pub editing_nickname_peer: Option<String>,
 
     // Ad-hoc UI popup (used for receipt timing details, etc.)
@@ -216,9 +221,20 @@ pub struct GroupLeavePrompt {
 }
 
 impl AppState {
-    /// True while the shared text input is capturing a nickname edit.
+    /// True while the shared text input is capturing a nickname edit (either
+    /// this install's own nickname, a per-peer announced nickname, or a peer's
+    /// local display name).
     pub const fn is_editing_nickname(&self) -> bool {
-        matches!(self.input_mode, p2p_app::InputMode::EditingNickname)
+        matches!(
+            self.input_mode,
+            p2p_app::InputMode::EditingNickname | p2p_app::InputMode::EditingLocalNickname
+        )
+    }
+
+    /// True while the editor is setting the local display name of
+    /// [`Self::editing_nickname_peer`].
+    pub const fn is_editing_local_nickname(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::EditingLocalNickname)
     }
 
     /// True while the shared text input is capturing a group name.
@@ -232,6 +248,22 @@ impl AppState {
         }
         self.input_mode = p2p_app::InputMode::Chat;
         self.editing_nickname_peer = None;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Open the shared editor for this install's own nickname (Settings tab).
+    pub fn begin_self_nickname_edit(&mut self) {
+        self.input_mode = p2p_app::InputMode::EditingNickname;
+        self.editing_nickname_peer = None;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Open the shared editor for the local display name of `peer_id` (the name
+    /// only this install shows). The editor starts empty, like the self-nickname
+    /// one; canceling leaves the stored nickname untouched.
+    pub fn begin_local_nickname_edit(&mut self, peer_id: String) {
+        self.input_mode = p2p_app::InputMode::EditingLocalNickname;
+        self.editing_nickname_peer = Some(peer_id);
         self.chat_input = TextArea::default();
     }
 
