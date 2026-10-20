@@ -81,6 +81,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     // Group messages carry no per-recipient receipt tracking, so they never
     // show a delivery tick.
     confirmed: false,
+    // …and the group wire format carries no latency either.
+    latency: null,
   );
 
   Future<void> _loadHistory() async {

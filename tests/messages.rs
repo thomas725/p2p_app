@@ -450,8 +450,12 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
             "silent-peer".to_string(),
             false,
             None,
+            Some("5ms".to_string()),
         )
         .unwrap();
+
+        // The live latency decorates the reply only (matching the TUI)…
+        assert_eq!(chat.latency.as_deref(), Some("5ms"));
 
         // sender_nickname must be resolved to the petname, not a raw ID fragment.
         let name = chat
@@ -473,5 +477,7 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
             .find(|m| m.content == "hello")
             .expect("message persisted");
         assert_eq!(loaded.sender_nickname, Some(name));
+        // …but the latency is live-only, so a reload drops it.
+        assert_eq!(loaded.latency, None);
     });
 }

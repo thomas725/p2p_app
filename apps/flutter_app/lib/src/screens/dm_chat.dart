@@ -122,6 +122,7 @@ class _DmChatScreenState extends State<DmChatScreen>
         peerId: event.peerId!,
         isDirect: true,
         nickname: event.nickname,
+        latency: event.latency,
       );
       if (!mounted) return;
       setState(() {

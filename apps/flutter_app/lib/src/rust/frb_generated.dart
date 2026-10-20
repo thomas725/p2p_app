@@ -172,6 +172,7 @@ abstract class RustLibApi extends BaseApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
+    String? latency,
   });
 
   Future<ChatMessage> crateApiSaveOutgoingBroadcast({
@@ -1138,6 +1139,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
+    String? latency,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1147,6 +1149,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(peerId, serializer);
           sse_encode_bool(isDirect, serializer);
           sse_encode_opt_String(nickname, serializer);
+          sse_encode_opt_String(latency, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -1159,7 +1162,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiSaveIncomingMessageConstMeta,
-        argValues: [content, peerId, isDirect, nickname],
+        argValues: [content, peerId, isDirect, nickname, latency],
         apiImpl: this,
       ),
     );
@@ -1168,7 +1171,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiSaveIncomingMessageConstMeta =>
       const TaskConstMeta(
         debugName: "save_incoming_message",
-        argNames: ["content", "peerId", "isDirect", "nickname"],
+        argNames: ["content", "peerId", "isDirect", "nickname", "latency"],
       );
 
   @override
@@ -1695,8 +1698,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChatMessage dco_decode_chat_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 12)
-      throw Exception('unexpected arr length: expect 12 but see ${arr.length}');
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
     return ChatMessage(
       id: dco_decode_i_32(arr[0]),
       content: dco_decode_String(arr[1]),
@@ -1710,6 +1713,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       senderNickname: dco_decode_opt_String(arr[9]),
       attachment: dco_decode_opt_box_autoadd_mobile_attachment(arr[10]),
       confirmed: dco_decode_bool(arr[11]),
+      latency: dco_decode_opt_String(arr[12]),
     );
   }
 
@@ -2146,6 +2150,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       deserializer,
     );
     var var_confirmed = sse_decode_bool(deserializer);
+    var var_latency = sse_decode_opt_String(deserializer);
     return ChatMessage(
       id: var_id,
       content: var_content,
@@ -2159,6 +2164,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       senderNickname: var_senderNickname,
       attachment: var_attachment,
       confirmed: var_confirmed,
+      latency: var_latency,
     );
   }
 
@@ -2752,6 +2758,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.senderNickname, serializer);
     sse_encode_opt_box_autoadd_mobile_attachment(self.attachment, serializer);
     sse_encode_bool(self.confirmed, serializer);
+    sse_encode_opt_String(self.latency, serializer);
   }
 
   @protected

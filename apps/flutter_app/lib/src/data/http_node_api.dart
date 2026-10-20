@@ -205,6 +205,7 @@ class HttpNodeApi implements NodeApi {
           ? null
           : attachmentFromJson(m['attachment']),
       confirmed: m['confirmed'] as bool? ?? false,
+      latency: m['latency'] as String?,
     );
   }
 
@@ -448,12 +449,14 @@ class HttpNodeApi implements NodeApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
+    String? latency,
   }) async => chatMessageFromJson(
     await _call('saveIncomingMessage', {
       'content': content,
       'peerId': peerId,
       'isDirect': isDirect,
       'nickname': ?nickname,
+      'latency': ?latency,
     }),
   );
 

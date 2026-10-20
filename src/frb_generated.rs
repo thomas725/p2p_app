@@ -1073,6 +1073,7 @@ fn wire__crate__api__save_incoming_message_impl(
             let api_peer_id = <String>::sse_decode(&mut deserializer);
             let api_is_direct = <bool>::sse_decode(&mut deserializer);
             let api_nickname = <Option<String>>::sse_decode(&mut deserializer);
+            let api_latency = <Option<String>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
@@ -1081,6 +1082,7 @@ fn wire__crate__api__save_incoming_message_impl(
                         api_peer_id,
                         api_is_direct,
                         api_nickname,
+                        api_latency,
                     )?;
                     std::result::Result::Ok(output_ok)
                 })())
@@ -1649,6 +1651,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
         let mut var_attachment =
             <Option<crate::mobile_node::MobileAttachment>>::sse_decode(deserializer);
         let mut var_confirmed = <bool>::sse_decode(deserializer);
+        let mut var_latency = <Option<String>>::sse_decode(deserializer);
         return crate::mobile_node::ChatMessage {
             id: var_id,
             content: var_content,
@@ -1662,6 +1665,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             sender_nickname: var_senderNickname,
             attachment: var_attachment,
             confirmed: var_confirmed,
+            latency: var_latency,
         };
     }
 }
@@ -2296,6 +2300,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessage {
             self.sender_nickname.into_into_dart().into_dart(),
             self.attachment.into_into_dart().into_dart(),
             self.confirmed.into_into_dart().into_dart(),
+            self.latency.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2688,6 +2693,7 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <Option<String>>::sse_encode(self.sender_nickname, serializer);
         <Option<crate::mobile_node::MobileAttachment>>::sse_encode(self.attachment, serializer);
         <bool>::sse_encode(self.confirmed, serializer);
+        <Option<String>>::sse_encode(self.latency, serializer);
     }
 }
 

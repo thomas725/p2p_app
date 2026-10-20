@@ -393,7 +393,12 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (event.eventType) {
       case 'broadcast':
         if (event.content != null && event.peerId != null) {
-          _saveIncomingBroadcast(event.content!, event.peerId!, event.nickname);
+          _saveIncomingBroadcast(
+            event.content!,
+            event.peerId!,
+            event.nickname,
+            event.latency,
+          );
         }
         // A nickname in the event means we just learned or updated this peer's
         // name. Refresh the peer list so the info page (and peer list) reflect
@@ -407,7 +412,12 @@ class _HomeScreenState extends State<HomeScreen> {
         // broadcast chat; an open DmChatScreen owns the event sink and persists
         // its own messages, so this path only runs while no DM screen is open.
         if (event.content != null && event.peerId != null) {
-          _persistIncomingDm(event.content!, event.peerId!, event.nickname);
+          _persistIncomingDm(
+            event.content!,
+            event.peerId!,
+            event.nickname,
+            event.latency,
+          );
         }
         if (event.nickname != null) {
           _refreshRoster();
@@ -527,10 +537,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() => _activeCallId = null);
   }
 
+  /// Append an incoming broadcast to the chat. `latency` is the live
+  /// round-trip time the event carried (the TUI renders it inline; it is
+  /// decoration only and never persisted).
   Future<void> _saveIncomingBroadcast(
     String content,
     String peerId,
     String? nickname,
+    String? latency,
   ) async {
     try {
       final msg = await nodeApi.saveIncomingMessage(
@@ -538,6 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
         peerId: peerId,
         isDirect: false,
         nickname: nickname,
+        latency: latency,
       );
       if (mounted) {
         setState(() {
@@ -556,6 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String content,
     String peerId,
     String? nickname,
+    String? latency,
   ) async {
     try {
       await nodeApi.saveIncomingMessage(
@@ -563,6 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
         peerId: peerId,
         isDirect: true,
         nickname: nickname,
+        latency: latency,
       );
     } catch (e) {
       debugPrint('Failed to save incoming DM: $e');

@@ -131,6 +131,9 @@ pub fn save_outgoing_dm(
 
 /// Save an incoming message (broadcast or DM) to the database.
 ///
+/// `latency` is the live event's measured round-trip time; it only decorates
+/// the returned message (never persisted), mirroring the TUI.
+///
 /// # Errors
 /// Returns an error if the message cannot be saved.
 pub fn save_incoming_message(
@@ -138,8 +141,9 @@ pub fn save_incoming_message(
     peer_id: String,
     is_direct: bool,
     nickname: Option<String>,
+    latency: Option<String>,
 ) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname)
+    crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname, latency)
 }
 
 // --- Groups ---

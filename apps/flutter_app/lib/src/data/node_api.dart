@@ -92,6 +92,7 @@ abstract class NodeApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
+    String? latency,
   });
 
   // --- Groups ---

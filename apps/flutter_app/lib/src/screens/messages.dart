@@ -469,8 +469,8 @@ class _BroadcastChatState extends State<BroadcastChat> {
 }
 
 /// A single message bubble: peer name (tappable to open peer info), content,
-/// and a timestamp. Double-tap enters selection mode; tapping toggles the
-/// bubble's selection.
+/// a live round-trip latency (incoming messages only), and a timestamp.
+/// Double-tap enters selection mode; tapping toggles the bubble's selection.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
@@ -566,6 +566,15 @@ class MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Round-trip latency of a live incoming message, printed
+                    // before the time just as the TUI prefixes it onto the line.
+                    if (message.latency != null) ...[
+                      Text(
+                        message.latency!,
+                        style: TextStyle(fontSize: 11, color: fg.withAlpha(130)),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     _MessageTime(
                       sentAt: message.sentAt,
                       createdAt: message.createdAt,

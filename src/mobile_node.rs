@@ -435,6 +435,11 @@ pub struct ChatMessage {
     /// returned right after sending; [`load_broadcast_messages`] /
     /// [`load_dm_messages`] fill it in from the receipts table.
     pub confirmed: bool,
+    /// Round-trip latency of a *live* incoming message (`5ms`, `<1ms`, `1.2s`),
+    /// the value the TUI prefixes onto the message line. `None` for outgoing
+    /// messages, group messages, and every row read back from the database —
+    /// the TUI measures it in memory only and never persists it.
+    pub latency: Option<String>,
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
@@ -513,6 +518,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
         confirmed: false,
+        latency: None,
     }
 }
 
@@ -703,12 +709,17 @@ pub(crate) fn save_outgoing_dm_attached(
 }
 
 /// Save an incoming message (broadcast or DM) to the database.
+///
+/// `latency` is the measured round-trip time of the live event; it decorates
+/// the returned [`ChatMessage`] only (never written to the database), matching
+/// the TUI's in-memory rendering.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn save_incoming_message(
     content: String,
     peer_id: String,
     is_direct: bool,
     nickname: Option<String>,
+    latency: Option<String>,
 ) -> Result<ChatMessage, String> {
     let target = is_direct.then_some(peer_id.as_str());
     // Ensure the peer row exists (and gets a generated petname if it's a
@@ -732,7 +743,9 @@ pub fn save_incoming_message(
         meta,
     )
     .map_err(|e| e.to_string())?;
-    Ok(message_to_chat(msg))
+    let mut chat = message_to_chat(msg);
+    chat.latency = latency;
+    Ok(chat)
 }
 
 // --- Device-binding exchange (identity lane §11) ---

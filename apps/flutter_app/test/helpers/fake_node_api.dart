@@ -174,7 +174,26 @@ class FakeNodeApi implements NodeApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
-  }) => throw UnimplementedError();
+    String? latency,
+  }) async {
+    _record('saveIncomingMessage', content);
+    final override = saveIncomingMessageOverride;
+    if (override == null) {
+      throw UnimplementedError('set saveIncomingMessageOverride in this test');
+    }
+    return override(content, peerId, isDirect, nickname, latency);
+  }
+
+  /// Builds the persisted incoming message for [saveIncomingMessage] when set;
+  /// otherwise the call throws. The callback receives the raw arguments so a
+  /// test can assert how the live event's `latency` was threaded through.
+  ChatMessage Function(
+    String content,
+    String peerId,
+    bool isDirect,
+    String? nickname,
+    String? latency,
+  )? saveIncomingMessageOverride;
 
   @override
   Future<MobileGroup> createGroup({required String name}) =>

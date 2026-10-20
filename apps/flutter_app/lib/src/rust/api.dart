@@ -116,6 +116,9 @@ Future<ChatMessage> saveOutgoingDm({
 
 /// Save an incoming message (broadcast or DM) to the database.
 ///
+/// `latency` is the live event's measured round-trip time; it only decorates
+/// the returned message (never persisted), mirroring the TUI.
+///
 /// # Errors
 /// Returns an error if the message cannot be saved.
 Future<ChatMessage> saveIncomingMessage({
@@ -123,11 +126,13 @@ Future<ChatMessage> saveIncomingMessage({
   required String peerId,
   required bool isDirect,
   String? nickname,
+  String? latency,
 }) => RustLib.instance.api.crateApiSaveIncomingMessage(
   content: content,
   peerId: peerId,
   isDirect: isDirect,
   nickname: nickname,
+  latency: latency,
 );
 
 /// Create (or join) a public group by name and subscribe to its topic.

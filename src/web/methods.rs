@@ -123,6 +123,7 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
                 p.peer_id,
                 p.is_direct,
                 p.nickname,
+                p.latency,
             ))
         }
         other => Err(format!("method not routed to messages: {other}")),
@@ -400,6 +401,9 @@ struct SaveIncomingParams {
     peer_id: String,
     is_direct: bool,
     nickname: Option<String>,
+    /// Live round-trip latency of the event (decorates the reply only).
+    #[serde(default)]
+    latency: Option<String>,
 }
 
 #[derive(serde::Deserialize)]

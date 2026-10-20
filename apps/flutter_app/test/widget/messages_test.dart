@@ -1,7 +1,7 @@
-// Widget tests for the shared message UI and its delivery-receipt tick: a
-// bubble shows `Icons.done_all` only for our own messages, and both the
-// broadcast tab and an open DM screen flip that flag when a `receipt` event
-// arrives (keyed on the event's `msgId`, which carries the acknowledged id).
+// Widget tests for the shared message UI: the delivery-receipt tick (a bubble
+// shows `Icons.done_all` only for our own acknowledged messages, and both the
+// broadcast tab and an open DM screen flip the flag on a live `receipt` event)
+// and the per-message round-trip latency the TUI already renders inline.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +25,7 @@ ChatMessage chatMessage({
   bool sent = true,
   bool confirmed = false,
   String? senderNickname,
+  String? latency,
 }) => ChatMessage(
   id: id,
   content: content,
@@ -38,6 +39,7 @@ ChatMessage chatMessage({
   senderNickname: senderNickname,
   attachment: null,
   confirmed: confirmed,
+  latency: latency,
 );
 
 MobilePeerRecord peerRecord() => MobilePeerRecord(
@@ -154,5 +156,74 @@ void main() {
     );
     await tester.pump();
     expect(find.byIcon(Icons.done_all), findsOneWidget);
+  });
+
+  testWidgets('an incoming bubble renders its live latency', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(
+                message: chatMessage(
+                  id: 1,
+                  peerId: 'peer-abc',
+                  latency: '5ms',
+                  senderNickname: 'Alice',
+                ),
+                isOwn: false,
+              ),
+              // A message with no measured latency shows none.
+              MessageBubble(
+                message: chatMessage(id: 2, peerId: 'peer-abc'),
+                isOwn: false,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('5ms'), findsOneWidget);
+  });
+
+  testWidgets('a live broadcast carries its latency into the chat', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final fake = FakeNodeApi(isRemoteTransport: true);
+    fake.mobilePeerStatus = const MobilePeerStatus(
+      databaseUrl: ':memory:',
+      localPeerId: 'me',
+    );
+    // (Assignments are separate statements: a `=> []` cascade target would
+    // swallow the following `..setter` into the list literal's own cascade.)
+    fake.loadBroadcastMessagesOverride = (_) => [];
+    fake.saveIncomingMessageOverride =
+        (content, peerId, isDirect, nickname, latency) => chatMessage(
+          id: 7,
+          content: content,
+          peerId: peerId,
+          msgId: null,
+          senderNickname: nickname,
+          latency: latency,
+        );
+    nodeApi = fake;
+
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('12ms'), findsNothing);
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'broadcast',
+        peerId: 'peer-abc',
+        content: 'hi all',
+        latency: '12ms',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('12ms'), findsOneWidget);
   });
 }

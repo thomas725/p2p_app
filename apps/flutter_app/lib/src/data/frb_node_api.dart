@@ -130,11 +130,13 @@ class FrbNodeApi implements NodeApi {
     required String peerId,
     required bool isDirect,
     String? nickname,
+    String? latency,
   }) => bridge.saveIncomingMessage(
     content: content,
     peerId: peerId,
     isDirect: isDirect,
     nickname: nickname,
+    latency: latency,
   );
 
   // ── Groups ────────────────────────────────────────────────────────────────

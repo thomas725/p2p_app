@@ -59,6 +59,12 @@ class ChatMessage {
   /// [`load_dm_messages`] fill it in from the receipts table.
   final bool confirmed;
 
+  /// Round-trip latency of a *live* incoming message (`5ms`, `<1ms`, `1.2s`),
+  /// the value the TUI prefixes onto the message line. `None` for outgoing
+  /// messages, group messages, and every row read back from the database —
+  /// the TUI measures it in memory only and never persists it.
+  final String? latency;
+
   const ChatMessage({
     required this.id,
     required this.content,
@@ -72,6 +78,7 @@ class ChatMessage {
     this.senderNickname,
     this.attachment,
     required this.confirmed,
+    this.latency,
   });
 
   @override
@@ -87,7 +94,8 @@ class ChatMessage {
       createdAt.hashCode ^
       senderNickname.hashCode ^
       attachment.hashCode ^
-      confirmed.hashCode;
+      confirmed.hashCode ^
+      latency.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -105,7 +113,8 @@ class ChatMessage {
           createdAt == other.createdAt &&
           senderNickname == other.senderNickname &&
           attachment == other.attachment &&
-          confirmed == other.confirmed;
+          confirmed == other.confirmed &&
+          latency == other.latency;
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
