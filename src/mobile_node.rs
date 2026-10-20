@@ -333,7 +333,24 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
         // Inbound attachment finished downloading (files lane §12). The blob is
         // content-addressed on disk, so there is nothing to persist here — the
         // Dart side surfaces it off the `file_received` event.
-        SwarmEvent::FileReceived { .. } => {}
+        //
+        // Log it exactly as the TUI does so the Flutter/web Log tab shows the
+        // same "file arrived" line the TUI binary shows.
+        SwarmEvent::FileReceived {
+            peer_id,
+            file_id,
+            name,
+            path,
+        } => {
+            p2plog_debug(format!(
+                "Received file {name} ({file_id}) from {peer_id} at {path}"
+            ));
+        }
+        #[cfg(feature = "mdns")]
+        SwarmEvent::PeerExpired { peer_id } => {
+            // Mirrors the TUI's log line (mDNS's peer-expiry notice).
+            p2plog_debug(format!("Peer expired: {peer_id}"));
+        }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
             let addrs: Vec<String> = addresses.iter().map(ToString::to_string).collect();
@@ -1575,6 +1592,45 @@ mod tests {
             attachment: None,
         });
         process_event_for_mobile(&ev, None);
+    }
+
+    #[test]
+    fn test_process_event_logs_file_received() {
+        // Unique markers avoid clashing with other tests writing to the shared
+        // in-memory log buffer in parallel.
+        process_event_for_mobile(
+            &SwarmEvent::FileReceived {
+                peer_id: "peer-file-log".into(),
+                file_id: "file-id-log-marker".into(),
+                name: "log-marker.bin".into(),
+                path: "/tmp/log-marker.bin".into(),
+            },
+            None,
+        );
+        let logs = crate::logging::get_tui_logs();
+        assert!(
+            logs.iter().any(|l| l.contains(
+                "Received file log-marker.bin (file-id-log-marker) from peer-file-log at /tmp/log-marker.bin"
+            )),
+            "file_received must land in the shared log buffer: {logs:?}"
+        );
+    }
+
+    #[cfg(feature = "mdns")]
+    #[test]
+    fn test_process_event_logs_peer_expired() {
+        process_event_for_mobile(
+            &SwarmEvent::PeerExpired {
+                peer_id: "peer-expired-log-marker".into(),
+            },
+            None,
+        );
+        let logs = crate::logging::get_tui_logs();
+        assert!(
+            logs.iter()
+                .any(|l| l.contains("Peer expired: peer-expired-log-marker")),
+            "peer_expired must land in the shared log buffer: {logs:?}"
+        );
     }
 
     #[test]
