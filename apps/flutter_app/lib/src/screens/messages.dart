@@ -563,10 +563,26 @@ class MessageBubble extends StatelessWidget {
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: _MessageTime(
-                  sentAt: message.sentAt,
-                  createdAt: message.createdAt,
-                  color: fg.withAlpha(130),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _MessageTime(
+                      sentAt: message.sentAt,
+                      createdAt: message.createdAt,
+                      color: fg.withAlpha(130),
+                    ),
+                    // Delivery tick: a recipient acknowledged this outgoing
+                    // message (mirrors the TUI's confirmed prefix).
+                    if (isOwn && message.confirmed) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.done_all,
+                        size: 12,
+                        color: fg.withAlpha(150),
+                        semanticLabel: 'Delivered',
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],

@@ -27,6 +27,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
     size: 12,
     mime: 'text/plain',
   ),
+  confirmed: false,
 );
 
 void main() {
@@ -97,6 +98,7 @@ void main() {
         createdAt: '2026-10-19 10:00:00',
         senderNickname: null,
         attachment: null,
+        confirmed: false,
       );
 
       expect(await openAttachedFile(message), isNull);

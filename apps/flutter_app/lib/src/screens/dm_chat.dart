@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
@@ -83,6 +84,16 @@ class _DmChatScreenState extends State<DmChatScreen>
 
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted) return;
+    if (event.eventType == 'receipt') {
+      // The peer acknowledged one of our DMs (or someone acknowledged a
+      // broadcast): tick our own copy, then keep forwarding so the broadcast
+      // chat under us sees it too.
+      if (event.msgId != null) {
+        _markConfirmed(event.msgId!);
+      }
+      _previousSink?.call(event);
+      return;
+    }
     final isOwnDm = event.eventType == 'dm' && event.peerId == _peerId;
     if (!isOwnDm) {
       // Not this peer's DM (or another event type): pass it to the sink we
@@ -94,6 +105,14 @@ class _DmChatScreenState extends State<DmChatScreen>
     if (event.content != null) {
       unawaited(_persistIncomingDm(event));
     }
+  }
+
+  /// Flip the delivery tick on the message a `receipt` acknowledged. A no-op
+  /// when the id belongs to a message this screen doesn't show.
+  void _markConfirmed(String msgId) {
+    final idx = _messages.indexWhere((m) => m.msgId == msgId);
+    if (idx < 0 || _messages[idx].confirmed) return;
+    setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
   }
 
   Future<void> _persistIncomingDm(SwarmEventJson event) async {

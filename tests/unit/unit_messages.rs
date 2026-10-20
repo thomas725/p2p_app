@@ -230,3 +230,128 @@ fn dm_stats_count_inbound_dm_once_even_with_both_columns_set() {
         );
     });
 }
+
+#[test]
+#[serial(db)]
+fn confirmed_message_ids_matches_receipts() {
+    with_test_db(|| {
+        // No ids at all short-circuits without touching the database.
+        assert!(confirmed_message_ids(&[]).expect("empty input").is_empty());
+
+        save_message_with_meta(
+            "hi",
+            None,
+            crate::CHAT_TOPIC,
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("msg-a".to_string()),
+                sent_at: Some(1.0),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save");
+
+        // An outgoing message with no receipt is not yet confirmed.
+        assert!(
+            confirmed_message_ids(&["msg-a".to_string(), "msg-none".to_string()])
+                .expect("no receipts")
+                .is_empty()
+        );
+
+        save_receipt("msg-a", "peer-x", 0, 10.0).expect("receipt");
+        let confirmed =
+            confirmed_message_ids(&["msg-a".to_string(), "msg-none".to_string()]).expect("ids");
+        assert_eq!(confirmed.len(), 1);
+        assert!(confirmed.contains("msg-a"));
+        assert!(!confirmed.contains("msg-none"));
+
+        // A second peer acknowledging the same message stays one entry.
+        save_receipt("msg-a", "peer-y", 0, 11.0).expect("second receipt");
+        assert_eq!(
+            confirmed_message_ids(&["msg-a".to_string()])
+                .expect("deduped")
+                .len(),
+            1
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn message_is_dm_resolves_kind_and_unknown_ids() {
+    with_test_db(|| {
+        save_message_with_meta(
+            "dm",
+            None,
+            "t",
+            true,
+            Some("peer-b"),
+            MessageMeta {
+                msg_id: Some("dm-id".to_string()),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save dm");
+        save_message_with_meta(
+            "bc",
+            None,
+            "t",
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("bc-id".to_string()),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save broadcast");
+
+        assert_eq!(message_is_dm("dm-id").expect("dm"), Some(true));
+        assert_eq!(message_is_dm("bc-id").expect("broadcast"), Some(false));
+        assert_eq!(message_is_dm("missing-id").expect("missing"), None);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn save_receipt_backfills_broadcast_recipient_confirmation() {
+    use crate::generated::schema::broadcast_recipients;
+    use diesel::OptionalExtension as _;
+
+    with_test_db(|| {
+        crate::peers::record_broadcast_recipients("bc-1", &["peer-a".to_string()])
+            .expect("record recipient");
+
+        let conn = &mut crate::sqlite_connect().expect("connect");
+        let before: Option<Option<f64>> = broadcast_recipients::table
+            .filter(broadcast_recipients::msg_id.eq("bc-1"))
+            .select(broadcast_recipients::confirmed_at)
+            .first(conn)
+            .optional()
+            .expect("query before");
+        assert_eq!(before, Some(None), "unacked broadcasts start unconfirmed");
+
+        // A kind-0 receipt labels the *broadcast* ack, so it back-fills the row.
+        save_receipt("bc-1", "peer-a", 0, 42.0).expect("ack");
+
+        let after: Option<Option<f64>> = broadcast_recipients::table
+            .filter(broadcast_recipients::msg_id.eq("bc-1"))
+            .select(broadcast_recipients::confirmed_at)
+            .first(conn)
+            .optional()
+            .expect("query after");
+        assert_eq!(after, Some(Some(42.0)));
+
+        // A DM-kind (1) receipt never touches the broadcast recipients table.
+        crate::peers::record_broadcast_recipients("bc-2", &["peer-a".to_string()])
+            .expect("record recipient 2");
+        save_receipt("bc-2", "peer-a", 1, 99.0).expect("dm-kind ack");
+        let untouched: Option<Option<f64>> = broadcast_recipients::table
+            .filter(broadcast_recipients::msg_id.eq("bc-2"))
+            .select(broadcast_recipients::confirmed_at)
+            .first(conn)
+            .optional()
+            .expect("query dm-kind");
+        assert_eq!(untouched, Some(None));
+    });
+}

@@ -221,6 +221,32 @@ pub fn save_receipt(
     Ok(())
 }
 
+/// The subset of `msg_ids` that at least one recipient has acknowledged: a
+/// `message_receipts` row exists for the id (`kind` 0 = broadcast ack, `1` = DM
+/// ack — both mean "the peer received our message").
+///
+/// Batched into a single query so a history load stays a constant number of
+/// round trips; the frontends render a delivery tick for the ids returned here.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn confirmed_message_ids(
+    msg_ids: &[String],
+) -> color_eyre::Result<std::collections::HashSet<String>> {
+    use crate::generated::schema::message_receipts;
+    if msg_ids.is_empty() {
+        return Ok(std::collections::HashSet::new());
+    }
+    let conn = &mut crate::sqlite_connect()?;
+    let ids: Vec<String> = message_receipts::table
+        .filter(message_receipts::msg_id.eq_any(msg_ids))
+        .select(message_receipts::msg_id)
+        .distinct()
+        .load(conn)
+        .wrap_err("failed to load confirmed message ids")?;
+    Ok(ids.into_iter().collect())
+}
+
 /// Resolve whether the message identified by `msg_id` is a direct message.
 /// Returns `None` when the message id is unknown (nothing was persisted for it).
 ///

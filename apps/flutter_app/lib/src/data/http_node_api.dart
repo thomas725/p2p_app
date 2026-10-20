@@ -204,6 +204,7 @@ class HttpNodeApi implements NodeApi {
       attachment: m['attachment'] == null
           ? null
           : attachmentFromJson(m['attachment']),
+      confirmed: m['confirmed'] as bool? ?? false,
     );
   }
 

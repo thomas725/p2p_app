@@ -94,7 +94,17 @@ class FakeNodeApi implements NodeApi {
       throw UnimplementedError();
 
   @override
-  Future<MobilePeerStatus> getMobilePeerStatus() => throw UnimplementedError();
+  Future<MobilePeerStatus> getMobilePeerStatus() async {
+    _record('getMobilePeerStatus');
+    final status = mobilePeerStatus;
+    if (status == null) {
+      throw UnimplementedError('set mobilePeerStatus in this test');
+    }
+    return status;
+  }
+
+  /// Returned by [getMobilePeerStatus] when set; otherwise the call throws.
+  MobilePeerStatus? mobilePeerStatus;
 
   @override
   Future<String> startNode({required String dbPath}) =>
@@ -113,14 +123,33 @@ class FakeNodeApi implements NodeApi {
   Future<void> clearLogs() => throw UnimplementedError();
 
   @override
-  Future<List<ChatMessage>> loadBroadcastMessages({required int limit}) =>
-      throw UnimplementedError();
+  Future<List<ChatMessage>> loadBroadcastMessages({required int limit}) async {
+    _record('loadBroadcastMessages', limit);
+    final override = loadBroadcastMessagesOverride;
+    if (override == null) {
+      throw UnimplementedError('set loadBroadcastMessagesOverride in this test');
+    }
+    return override(limit);
+  }
+
+  /// Returned by [loadBroadcastMessages] when set; otherwise the call throws.
+  List<ChatMessage> Function(int limit)? loadBroadcastMessagesOverride;
 
   @override
   Future<List<ChatMessage>> loadDmMessages({
     required String peerId,
     required int limit,
-  }) => throw UnimplementedError();
+  }) async {
+    _record('loadDmMessages', peerId);
+    final override = loadDmMessagesOverride;
+    if (override == null) {
+      throw UnimplementedError('set loadDmMessagesOverride in this test');
+    }
+    return override(peerId, limit);
+  }
+
+  /// Returned by [loadDmMessages] when set; otherwise the call throws.
+  List<ChatMessage> Function(String peerId, int limit)? loadDmMessagesOverride;
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
@@ -236,7 +265,20 @@ class FakeNodeApi implements NodeApi {
     required List<ContactSortInput> contacts,
     required int sortColumn,
     required bool ascending,
-  }) => throw UnimplementedError();
+  }) async {
+    _record('sortContacts', contacts.length);
+    final override = sortContactsOverride;
+    // Rust owns contact ordering. The fake returns the rows unchanged unless an
+    // override mirrors the real semantics (as `contact_list_test.dart` does).
+    return override == null ? contacts : override(contacts, sortColumn, ascending);
+  }
+
+  /// Replaces Rust's canonical contact ordering in [sortContacts] when set.
+  List<ContactSortInput> Function(
+    List<ContactSortInput> contacts,
+    int sortColumn,
+    bool ascending,
+  )? sortContactsOverride;
 
   @override
   Future<String> startCall({required String peerId}) =>

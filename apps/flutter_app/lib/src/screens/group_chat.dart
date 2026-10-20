@@ -78,6 +78,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     createdAt: m.createdAt,
     senderNickname: m.senderNickname,
     attachment: m.attachment,
+    // Group messages carry no per-recipient receipt tracking, so they never
+    // show a delivery tick.
+    confirmed: false,
   );
 
   Future<void> _loadHistory() async {

@@ -29,6 +29,7 @@ void main() {
                   createdAt: '2026-10-04 12:00:00',
                   senderNickname: 'Alice',
                   attachment: attachment,
+                  confirmed: false,
                 ),
                 isOwn: false,
                 selectionMode: selectionMode,

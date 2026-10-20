@@ -1648,6 +1648,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
         let mut var_senderNickname = <Option<String>>::sse_decode(deserializer);
         let mut var_attachment =
             <Option<crate::mobile_node::MobileAttachment>>::sse_decode(deserializer);
+        let mut var_confirmed = <bool>::sse_decode(deserializer);
         return crate::mobile_node::ChatMessage {
             id: var_id,
             content: var_content,
@@ -1660,6 +1661,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             created_at: var_createdAt,
             sender_nickname: var_senderNickname,
             attachment: var_attachment,
+            confirmed: var_confirmed,
         };
     }
 }
@@ -2293,6 +2295,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessage {
             self.created_at.into_into_dart().into_dart(),
             self.sender_nickname.into_into_dart().into_dart(),
             self.attachment.into_into_dart().into_dart(),
+            self.confirmed.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2684,6 +2687,7 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <String>::sse_encode(self.created_at, serializer);
         <Option<String>>::sse_encode(self.sender_nickname, serializer);
         <Option<crate::mobile_node::MobileAttachment>>::sse_encode(self.attachment, serializer);
+        <bool>::sse_encode(self.confirmed, serializer);
     }
 }
 

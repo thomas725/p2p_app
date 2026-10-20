@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
@@ -451,6 +452,14 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'peer_discovered':
         _refreshRoster();
         break;
+      case 'receipt':
+        // A recipient acknowledged one of our messages: light up its delivery
+        // tick in the broadcast chat (DMs are owned by DmChatScreen, which also
+        // watches receipts; history reloads read the flag from the DB).
+        if (event.msgId != null) {
+          _markConfirmed(event.msgId!);
+        }
+        break;
       case 'peer_disconnected':
         setState(() {
           if (event.peerId != null) {
@@ -476,6 +485,14 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
     }
     _syncLiveStatus();
+  }
+
+  /// Flip the delivery tick on the broadcast message a `receipt` acknowledged.
+  /// A no-op for unknown ids (e.g. a DM's receipt, or a message not loaded here).
+  void _markConfirmed(String msgId) {
+    final idx = _messages.indexWhere((m) => m.msgId == msgId);
+    if (idx < 0 || _messages[idx].confirmed) return;
+    setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
   }
 
   Future<void> _handleCallInvite(String peerId, String callId) async {

@@ -413,6 +413,11 @@ pub struct ChatMessage {
     pub created_at: String,
     pub sender_nickname: Option<String>,
     pub attachment: Option<MobileAttachment>,
+    /// True once a recipient acknowledged this (outgoing) message — a delivery
+    /// tick in the UI. Always false for incoming messages and for the value
+    /// returned right after sending; [`load_broadcast_messages`] /
+    /// [`load_dm_messages`] fill it in from the receipts table.
+    pub confirmed: bool,
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
@@ -490,6 +495,30 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
             .to_string(),
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
+        confirmed: false,
+    }
+}
+
+/// Flag which of these outgoing messages a recipient has acknowledged, using a
+/// single batched query over `message_receipts` (see
+/// [`crate::messages::confirmed_message_ids`]). A DB failure leaves every flag
+/// false and logs, so the history view still renders.
+fn mark_confirmed(messages: &mut [ChatMessage]) {
+    let ids: Vec<String> = messages
+        .iter()
+        .filter(|m| m.sent)
+        .filter_map(|m| m.msg_id.clone())
+        .collect();
+    if ids.is_empty() {
+        return;
+    }
+    match crate::messages::confirmed_message_ids(&ids) {
+        Ok(confirmed) => {
+            for m in messages.iter_mut() {
+                m.confirmed = m.msg_id.as_ref().is_some_and(|id| confirmed.contains(id));
+            }
+        }
+        Err(e) => p2plog_debug(format!("Failed to load message receipts: {e}")),
     }
 }
 
@@ -500,7 +529,9 @@ pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
     // maximum so the loader simply returns every available row.
     let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs = load_messages(CHAT_TOPIC, limit_usize).map_err(|e| e.to_string())?;
-    Ok(msgs.into_iter().rev().map(message_to_chat).collect())
+    let mut out: Vec<ChatMessage> = msgs.into_iter().rev().map(message_to_chat).collect();
+    mark_confirmed(&mut out);
+    Ok(out)
 }
 
 /// Load DM history with a specific peer (already oldest-first in DB).
@@ -510,7 +541,9 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
     // maximum so the loader simply returns every available row.
     let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs = load_direct_messages(&peer_id, limit_usize).map_err(|e| e.to_string())?;
-    Ok(msgs.into_iter().map(message_to_chat).collect())
+    let mut out: Vec<ChatMessage> = msgs.into_iter().map(message_to_chat).collect();
+    mark_confirmed(&mut out);
+    Ok(out)
 }
 
 /// Store an outbound file (files lane §12) and return its delivery descriptor,
@@ -1725,5 +1758,102 @@ mod tests {
 
         let msgs = load_dm_messages("peer1".into(), 100).expect("load dm");
         assert!(msgs.is_empty());
+    }
+
+    // ── confirmed (delivery receipt) flags ─────────────────────────────
+
+    fn save_outgoing_with_msg_id(
+        content: &str,
+        msg_id: &str,
+        is_direct: bool,
+        target: Option<&str>,
+    ) {
+        let saved = save_message_with_meta(
+            content,
+            None,
+            CHAT_TOPIC,
+            is_direct,
+            target,
+            MessageMeta {
+                msg_id: Some(msg_id.to_string()),
+                sent_at: Some(1.0),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save message");
+        mark_message_sent(saved.id).expect("mark sent");
+    }
+
+    #[test]
+    #[serial(db)]
+    fn test_load_broadcast_messages_marks_confirmed_receipts() {
+        let _guard = crate::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("bc_confirmed.sqlite");
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
+        crate::init_database().expect("init db");
+
+        // Two outgoing broadcasts; only the first gets a receipt. A third
+        // *incoming* row (never `sent`) carries a receipt id too, but an
+        // inbound message never shows a delivery tick on our side.
+        save_outgoing_with_msg_id("acked", "msg-acked", false, None);
+        save_outgoing_with_msg_id("unacked", "msg-unacked", false, None);
+        let inbound = save_message_with_meta(
+            "in",
+            Some("peer-a"),
+            CHAT_TOPIC,
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("msg-in".to_string()),
+                sent_at: Some(3.0),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save inbound");
+
+        crate::messages::save_receipt("msg-acked", "peer-a", 0, 5.0).expect("receipt");
+        crate::messages::save_receipt("msg-in", "peer-a", 0, 6.0).expect("inbound receipt");
+
+        let msgs = load_broadcast_messages(100).expect("load broadcast");
+        assert_eq!(msgs.len(), 3);
+        let by_id = |id: &str| {
+            msgs.iter()
+                .find(|m| m.msg_id.as_deref() == Some(id))
+                .expect("message present")
+        };
+        assert!(by_id("msg-acked").confirmed, "acked message shows a tick");
+        assert!(
+            !by_id("msg-unacked").confirmed,
+            "unacked message has no tick"
+        );
+        assert!(!by_id("msg-in").confirmed, "inbound message never ticks");
+        assert_eq!(inbound.sent, 0);
+    }
+
+    #[test]
+    #[serial(db)]
+    fn test_load_dm_messages_marks_confirmed_receipts() {
+        let _guard = crate::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("dm_confirmed.sqlite");
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
+        crate::init_database().expect("init db");
+
+        save_outgoing_with_msg_id("hi", "dm-acked", true, Some("peer-b"));
+        crate::messages::save_receipt("dm-acked", "peer-b", 1, 7.0).expect("receipt");
+
+        let msgs = load_dm_messages("peer-b".into(), 100).expect("load dm");
+        let dm = msgs
+            .iter()
+            .find(|m| m.msg_id.as_deref() == Some("dm-acked"))
+            .expect("dm present");
+        assert!(dm.confirmed, "acknowledged DM shows a tick");
     }
 }
