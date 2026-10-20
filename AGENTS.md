@@ -58,9 +58,9 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   open (needs a newer diesel 2.x — newest diesel 2.3 still pins `libsqlite3-sys` 0.36). No further
   revisit needed.
 - Remaining frontend-parity work (not urgent, nothing blocked): a Contacts search
-  affordance; PeerInfo stats rows (DM/broadcast counts from `get_all_peer_stats`;
-  no peer-latency data exists anywhere, so a latency row would need new
-  aggregation).
+  affordance. No peer-latency data exists anywhere (a per-peer latency row would
+  need new aggregation), and per-message latency is now rendered by both
+  frontends.
 
 
 ## Critical Context
@@ -95,7 +95,7 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - `src/bin/tui/scroll_handlers.rs` — PeerInfo no-op arms, `expected_peer_page_size`, paged `compute_new_peer_selection`, `scroll_peers_tab`.
 - `src/bin/tui/render_loop/layout.rs` — `render_shortcuts` (tab-aware) + `shortcuts_text`.
 - `src/bin/tui/render_loop/mod.rs` — 5-chunk `render_frame`, sets `chat_area_height` (`height - 10`)/`terminal_width`; renders PeerInfo; `app_state_to_render_state` nickname maps + `peer_table_offset` + `expanded_contact_ids`; `render_popup_text` (the device-binding prompt replaces ad-hoc popup text while active).
-- `src/tui_render/` — chrome + per-tab renderers split from the old single file: `mod.rs` (`render_frame`/`render_tabs`/`render_tab_content`/`render_input_section`/`render_shortcuts`/`render_status_bar`/`render_popup`, `bordered_block`), `peers.rs` (`render_peers_content`: stateful `Table`/`TableState`, `contact_table_plan`-driven rows, `row_highlight_style` selection, `Contacts ({total})` title), `peer_info.rs` (`render_peer_info_content`), `chat.rs`, `settings.rs`, `log.rs`.
+- `src/tui_render/` — chrome + per-tab renderers split from the old single file: `mod.rs` (`render_frame`/`render_tabs`/`render_tab_content`/`render_input_section`/`render_shortcuts`/`render_status_bar`/`render_popup`, `bordered_block`), `peers.rs` (`render_peers_content`: stateful `Table`/`TableState`, `contact_table_plan`-driven rows, `row_highlight_style` selection, `Contacts ({total})` title), `peer_info.rs` (`render_peer_info_content`: name origin, first/last seen, plus the `Direct messages`/`Broadcasts sent` rows read off the owning contact row), `chat.rs`, `settings.rs`, `log.rs`.
 - `src/tui_render_state.rs` — nickname fields, `broadcast_sent_to_peer`, `peer_table_offset`, `expanded_contact_ids` (`std::collections::HashSet<String>`), `get_tab_content` `Info:` prefix.
 - `src/tui_helpers.rs` — `peer_table_visible_range` (pure scroll-window math), `peer_table_rows_range`/`peer_table_row` (windowed O(page) row building), `peer_table_column_widths`/`peer_table_header_labels`, `sort_peers_table`/`sort_peers_by_column` (O(n) rebuild); the Contacts tab's flattened expand model: `ContactTableRowRef` (contact row vs `{ contact_idx, device_idx }` device row), `contact_table_plan`/`contact_table_plan_len`, `contact_to_peer_table_row(contact, expanded)` (▸/▾ ×N markers), `contact_table_row`, flattened `contact_table_rows_range`, `DEVICE_ROW_STATS_MARKER` (usize::MAX) + `peer_count_display` ("–" dash for device rows).
 - `src/nickname.rs` — `get_peer_display_name` + `DISPLAY_NAME_CACHE`, `invalidate_display_name`/`clear_display_names` (`pub(crate)`), `impl_set_peer_field!` macro invalidation. Display name brackets use `fmt::peer_id_suffix` (last 3 chars). **Two-sided nickname seam**: `set_self_nickname` updates BOTH the per-install `identities.self_nickname` AND (when provisioned) the announced `users.self_nickname` via `identity::set_my_user_nickname`; both auto-provision sites seed the users row with the install's self nickname.
@@ -125,5 +125,5 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - `src/web/mod.rs` + `src/web/methods.rs` — axum HTTP+WS web server: WS `{id, method, params}` dispatch (method names mirror FRB), the no-param source-string drift list, `/api/upload`, `/api/files/{file_id}`, `/api/status`, static SPA with index.html fallback, and the `Bearer`/`?token=` gate on `/ws` + `/api/*` (static assets stay open). Unit tests live in-module.
 - `src/bin/p2p_chat_server.rs` — headless node + web frontend binary (`--bind`/`--port`/`--token`/`--assets`/`--db`), started like the mobile path (provisioning, group re-subscribe, GC sweep).
 - `apps/flutter_app/lib/src/data/{node_api,frb_node_api,http_node_api}.dart` — transport abstraction behind every screen: in-process FRB (Android) vs WS/HTTP JSON (web); `test/helpers/fake_node_api.dart` backs the widget tests.
-- `apps/flutter_app/lib/src/screens/group_list.dart` — `GroupList` per-row "Leave group…" menu + confirm; `apps/flutter_app/lib/src/screens/peer_info.dart` — stateful `PeerInfoScreen` with `onEditLocalNickname`.
+- `apps/flutter_app/lib/src/screens/group_list.dart` — `GroupList` per-row "Leave group…" menu + confirm; `apps/flutter_app/lib/src/screens/peer_info.dart` — stateful `PeerInfoScreen` with `onEditLocalNickname` and an optional `contact: MobileContactRow?` (its aggregate DM/broadcast counts render as the `Direct messages`/`Broadcasts sent` rows, mirroring the TUI's contact-row lookup; `HomeScreen._contactForPeer` resolves it for the message-sender path).
 - `scripts/build-web.sh` — one-shot web build (server binary + `flutter build web`) plus the run commands it prints.

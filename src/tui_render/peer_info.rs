@@ -40,6 +40,14 @@ pub fn render_peer_info_content(
             |p| (p.first_seen.clone(), p.last_seen.clone()),
         );
 
+    // The contact row that owns this device carries the DB-backed message
+    // stats (the same numbers its Contacts-tab row shows), so the two views
+    // can never disagree.
+    let contact = state
+        .contacts
+        .iter()
+        .find(|c| c.device_rows.iter().any(|d| d.peer_id == peer_id));
+
     let mut lines: Vec<String> = Vec::new();
     lines.push(format!("Peer: {display}"));
     lines.push(format!("Peer ID: {peer_id}"));
@@ -53,6 +61,13 @@ pub fn render_peer_info_content(
     }
     lines.push(format!("First seen: {first_seen}"));
     lines.push(format!("Last seen: {last_seen}"));
+    if let Some(contact) = contact {
+        lines.push(format!("Direct messages: {}", contact.dm_count));
+        lines.push(format!(
+            "Broadcasts sent: {}",
+            contact.broadcast_sent_to_peer
+        ));
+    }
     lines.push("Press Enter to open direct message".to_string());
 
     let para = Paragraph::new(lines.join("\n"))

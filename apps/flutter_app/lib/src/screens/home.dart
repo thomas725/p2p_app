@@ -762,6 +762,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// The contact row that owns [peerId]'s device, or null when it isn't in the
+  /// roster. Its aggregate stats back the Peer Info page (matching the row the
+  /// user clicked, and the TUI's contact-row lookup).
+  MobileContactRow? _contactForPeer(String peerId) {
+    for (final contact in _contacts) {
+      if (contact.deviceRows.any((d) => d.peerId == peerId)) return contact;
+    }
+    return null;
+  }
+
   /// Contact rows pass their best device ([MobileContactRow.deviceRows] is
   /// sorted by the canonical model, so the first device is the newest); device
   /// sub-rows pass the exact device the row represents.
@@ -776,6 +786,7 @@ class _HomeScreenState extends State<HomeScreen> {
           currentTab: 1,
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
           onEditLocalNickname: _setPeerNickname,
+          contact: contact,
         ),
       ),
     );
@@ -899,6 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
           currentTab: 0,
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
           onEditLocalNickname: _setPeerNickname,
+          contact: _contactForPeer(peerId),
         ),
       ),
     );

@@ -1,11 +1,13 @@
-// Widget tests for the peer-info page's call and local-nickname affordances.
-// The screen never touches the node itself: calling goes through `onCall` and
-// nickname edits through `onEditLocalNickname`, so both can be exercised
-// without a loaded Rust library.
+// Widget tests for the peer-info page's call, local-nickname and message-stats
+// affordances. The screen never touches the node itself: calling goes through
+// `onCall`, nickname edits through `onEditLocalNickname` and the stats come
+// from the supplied contact row, so all can be exercised without a loaded Rust
+// library.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 
@@ -20,6 +22,27 @@ MobilePeerRecord peer({
   displayName: localNickname ?? nickname ?? 'Alice',
   localNickname: localNickname,
   nickname: nickname,
+);
+
+/// The contact row that owns the peer's device, carrying the aggregate stats
+/// the Contacts tab shows (and the Peer Info page mirrors).
+MobileContactRow contact({int dm = 3, int broadcast = 7}) => MobileContactRow(
+  contactId: 'peer-abc',
+  isUser: false,
+  displayName: 'Alice',
+  deviceCount: BigInt.one,
+  deviceRows: [
+    MobileContactDevice(
+      peerId: 'peer-abc',
+      displayName: 'Alice',
+      firstSeen: '',
+      lastSeen: '',
+    ),
+  ],
+  firstSeen: '',
+  lastSeen: '',
+  dmCount: dm,
+  broadcastSentToPeer: broadcast,
 );
 
 void main() {
@@ -112,5 +135,31 @@ void main() {
     expect(find.text('Set local nickname'), findsOneWidget);
     // Nothing was applied to the page title.
     expect(find.text('Alice'), findsWidgets);
+  });
+
+  testWidgets('renders the contact stats rows when a contact is supplied', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(),
+          serviceRunning: true,
+          contact: contact(),
+        ),
+      ),
+    );
+    expect(find.text('Direct messages'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('Broadcasts sent'), findsOneWidget);
+    expect(find.text('7'), findsOneWidget);
+  });
+
+  testWidgets('renders no stats rows without a contact', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PeerInfoScreen(peer: peer(), serviceRunning: true)),
+    );
+    expect(find.text('Direct messages'), findsNothing);
+    expect(find.text('Broadcasts sent'), findsNothing);
   });
 }

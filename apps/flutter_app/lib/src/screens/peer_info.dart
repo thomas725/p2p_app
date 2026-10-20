@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
-/// Full-screen peer detail page (name origin, activity), with a shortcut to
-/// open the DM chat for the peer and — when [onEditLocalNickname] is supplied —
-/// an action to set the local nickname this install shows for the peer.
+/// Full-screen peer detail page (name origin, activity, message stats), with a
+/// shortcut to open the DM chat for the peer and — when [onEditLocalNickname]
+/// is supplied — an action to set the local nickname this install shows.
 class PeerInfoScreen extends StatefulWidget {
   const PeerInfoScreen({
     super.key,
@@ -17,11 +18,18 @@ class PeerInfoScreen extends StatefulWidget {
     this.currentTab = 1,
     this.onCall,
     this.onEditLocalNickname,
+    this.contact,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
   final void Function(int)? onNavigate;
   final int currentTab;
+
+  /// The contact row this peer's device belongs to. Its aggregate DM/broadcast
+  /// counts back the Activity stats rows — the same numbers the Contacts table
+  /// shows for that row, so the two views agree. Optional: when null, no stats
+  /// rows are rendered.
+  final MobileContactRow? contact;
 
   /// Places an outgoing call to this peer. Optional: when null, no call action
   /// is rendered.
@@ -93,6 +101,7 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
   Widget build(BuildContext context) {
     final peer = _peer;
     final localNickname = _effectiveLocalNickname;
+    final contact = widget.contact;
     final (origin, originDetail) = _origin(
       MobilePeerRecord(
         peerId: peer.peerId,
@@ -208,6 +217,15 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
                   _infoRow('First seen', formatSeenTimestamp(peer.firstSeen)),
                   const SizedBox(height: 8),
                   _infoRow('Last seen', formatSeenTimestamp(peer.lastSeen)),
+                  if (contact != null) ...[
+                    const SizedBox(height: 8),
+                    _infoRow('Direct messages', '${contact.dmCount.toInt()}'),
+                    const SizedBox(height: 8),
+                    _infoRow(
+                      'Broadcasts sent',
+                      '${contact.broadcastSentToPeer.toInt()}',
+                    ),
+                  ],
                 ],
               ),
             ),

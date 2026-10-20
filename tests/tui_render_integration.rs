@@ -8,8 +8,9 @@ mod render_tests {
         TuiRenderState,
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_input_section,
-            render_log_content, render_peers_content, render_popup, render_settings_content,
-            render_shortcuts, render_status_bar, render_tabs, shortcuts_text,
+            render_log_content, render_peer_info_content, render_peers_content, render_popup,
+            render_settings_content, render_shortcuts, render_status_bar, render_tabs,
+            shortcuts_text,
         },
         tui_tabs::TabContent,
     };
@@ -582,6 +583,53 @@ mod render_tests {
             .map(ratatui::buffer::Cell::symbol)
             .collect();
         assert!(text.contains("User ID: —"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peer_info_shows_contact_message_stats() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        // The stats come from the contact row that owns the device, so they
+        // always match the number the Contacts tab shows for that row.
+        let peer_id = state.contacts[0].device_rows[0].peer_id.clone();
+        state.contacts[0].dm_count = 3;
+        state.contacts[0].broadcast_sent_to_peer = 7;
+
+        terminal
+            .draw(|f| render_peer_info_content(f, f.area(), &peer_id, &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Direct messages: 3"), "got: {text:?}");
+        assert!(text.contains("Broadcasts sent: 7"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peer_info_omits_stats_for_peer_without_a_contact_row() {
+        let mut terminal = create_test_terminal();
+        let state = TuiRenderState::with_sample_data();
+
+        terminal
+            .draw(|f| {
+                render_peer_info_content(f, f.area(), "peer-not-in-roster", &state);
+            })
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(
+            text.contains("Peer ID: peer-not-in-roster"),
+            "got: {text:?}"
+        );
+        assert!(!text.contains("Direct messages"), "got: {text:?}");
+        assert!(!text.contains("Broadcasts sent"), "got: {text:?}");
     }
 }
 
