@@ -104,9 +104,8 @@ fn handle_local_nickname_submission(state: &mut super::state::AppState, peer_id:
         return;
     }
     if !p2p_app::nickname::validate_nickname(trimmed) {
-        state.popup = Some(
-            "Local nickname: letters, numbers or dashes (max 20 characters)".to_string(),
-        );
+        state.popup =
+            Some("Local nickname: letters, numbers or dashes (max 20 characters)".to_string());
         return;
     }
     match p2p_app::set_peer_local_nickname(peer_id, trimmed) {
@@ -821,8 +820,7 @@ async fn handle_key_dispatch(
         crossterm::event::KeyCode::Char('n')
             if !is_ctrl
                 && !s.is_editing_nickname()
-                && (on_settings
-                    || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
+                && (on_settings || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
         {
             handle_nickname_key(s, &tab);
         }
