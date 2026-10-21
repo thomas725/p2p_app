@@ -24,19 +24,19 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            binary_name: p2p_chat_example
+            binary_name: p2p_chat_tui
             build_cmd: cargo build --release --target x86_64-unknown-linux-gnu
           - target: x86_64-apple-darwin
             os: macos-latest
-            binary_name: p2p_chat_example
+            binary_name: p2p_chat_tui
             build_cmd: cargo build --release --target x86_64-apple-darwin
           - target: aarch64-apple-darwin
             os: macos-latest
-            binary_name: p2p_chat_example
+            binary_name: p2p_chat_tui
             build_cmd: cargo build --release --target aarch64-apple-darwin
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
-            binary_name: p2p_chat_example
+            binary_name: p2p_chat_tui
             build_cmd: cargo build --release --target aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v4
@@ -79,8 +79,11 @@ jobs:
       - name: Create checksums
         run: |
           cd target/${{ matrix.target }}/release
-          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}.sha256
-          cat ${{ matrix.binary_name }}.sha256
+          # Include the target in the file name: all four matrix jobs produce a
+          # binary called `p2p_chat_tui`, and identically-named files would
+          # overwrite each other when the release job flattens the artifacts.
+          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}-${{ matrix.target }}.sha256
+          cat ${{ matrix.binary_name }}-${{ matrix.target }}.sha256
       
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
@@ -88,7 +91,7 @@ jobs:
           name: ${{ matrix.target }}-release
           path: |
             target/${{ matrix.target }}/release/${{ matrix.binary_name }}
-            target/${{ matrix.target }}/release/${{ matrix.binary_name }}.sha256
+            target/${{ matrix.target }}/release/${{ matrix.binary_name }}-${{ matrix.target }}.sha256
           retention-days: 30
 
   create-release:
@@ -109,7 +112,19 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release-files
-          find release-artifacts -type f \( -name "p2p_chat_example" -o -name "*.sha256" \) -exec cp {} release-files/ \;
+          # Each downloaded artifact directory is named after its target
+          # (`<target>-release`), and every matrix job produces a binary called
+          # `p2p_chat_tui`. Copy each one out as `p2p_chat_tui-<target>` so the
+          # platform builds cannot overwrite each other, and checksum the
+          # renamed file so `sha256sum -c` matches what is actually published.
+          for dir in release-artifacts/*/; do
+            target="$(basename "$dir" | sed 's/-release$//')"
+            bin="$dir/p2p_chat_tui"
+            [ -f "$bin" ] || continue
+            out="release-files/p2p_chat_tui-$target"
+            cp "$bin" "$out"
+            (cd release-files && sha256sum "$(basename "$out")" > "$(basename "$out").sha256")
+          done
           ls -la release-files/
       
       - name: Get release notes from CHANGELOG
@@ -152,19 +167,21 @@ jobs:
           sudo apt-get install -y libsqlite3-dev pkg-config
       
       - name: Build minimal binary
+        # `p2p_chat_tui` and `p2p_chat_server` declare required-features, so
+        # without `tui`/`web` this builds only the headless `p2p_chat` CLI.
         run: cargo build --release --no-default-features --features basic,mdns,sqlite_bundled
       
       - name: Create checksums
         run: |
           cd target/release
-          sha256sum p2p_chat_example > p2p_chat_example.minimal.sha256
-          cat p2p_chat_example.minimal.sha256
+          sha256sum p2p_chat > p2p_chat.minimal.sha256
+          cat p2p_chat.minimal.sha256
       
       - name: Upload minimal artifact
         uses: actions/upload-artifact@v4
         with:
           name: minimal-release
           path: |
-            target/release/p2p_chat_example
-            target/release/p2p_chat_example.minimal.sha256
+            target/release/p2p_chat
+            target/release/p2p_chat.minimal.sha256
           retention-days: 30

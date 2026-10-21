@@ -77,9 +77,19 @@ jobs:
         continue-on-error: true
       
       # ============================================================
-      # PHASE 2: Build (once)
+      # PHASE 2: Test + Build (once)
       # ============================================================
-      
+
+      - name: Run test suite
+        run: |
+          set +e
+          cargo test --all-features 2>&1 | tee .github/ci-logs/test.log
+          TEST_EXIT=$?
+          set -e
+          echo "Exit code: $TEST_EXIT" >> .github/ci-logs/test.log
+          exit $TEST_EXIT
+        continue-on-error: true
+
       - name: Build project
         run: |
           set +e
@@ -105,6 +115,16 @@ jobs:
           exit $AUDIT_EXIT
         continue-on-error: true
       
+      - name: Check documentation links
+        run: |
+          set +e
+          python3 scripts/check_docs_links.py 2>&1 | tee .github/ci-logs/doclinks.log
+          DOCLINKS_EXIT=$?
+          set -e
+          echo "Exit code: $DOCLINKS_EXIT" >> .github/ci-logs/doclinks.log
+          exit $DOCLINKS_EXIT
+        continue-on-error: true
+
       - name: Build documentation
         run: |
           set +e
@@ -167,11 +187,13 @@ jobs:
           append_log fmt
           append_log clippy
           
-          phase_header "Phase 2 - Build"
+          phase_header "Phase 2 - Test & Build"
+          append_log test
           append_log build
           
           phase_header "Phase 3 - Security & Documentation"
           append_log audit
+          append_log doclinks
           append_log docs
 
           echo "Results file created at: $RESULTS_FILE"

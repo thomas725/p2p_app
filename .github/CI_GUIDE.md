@@ -1,261 +1,131 @@
-# CI/CD Workflow Quick Reference
+# CI/CD quick reference
 
-## For Developers: Making Changes
+What actually runs, and what to do before you push.
 
-### Typical Development Workflow
+The technical reference lives in [`docs/ci_pipeline.md`](../docs/ci_pipeline.md).
 
-```bash
-# 1. Create a feature branch
-git checkout -b feature/my-feature
-
-# 2. Make your changes and commit
-git add .
-git commit -m "feat: add my feature"
-
-# 3. Push to GitHub
-git push origin feature/my-feature
-
-# 4. Create a Pull Request on GitHub
-# GitHub Actions will automatically:
-#    ✓ Check formatting (cargo fmt)
-#    ✓ Run linter (cargo clippy)
-#    ✓ Run all tests (cargo test)
-#    ✓ Build release binaries for multiple platforms
-#    ✓ Generate code coverage report
-
-# 5. Review CI results in the Pull Request
-# If any checks fail:
-#    - Click "Details" to see the full logs
-#    - Fix the issues locally
-#    - Commit and push again (CI re-runs automatically)
-
-# 6. Merge the Pull Request once all checks pass
-# - Locally: git checkout main && git merge feature/my-feature
-# - Or: Use GitHub's "Merge" button in the PR
-```
-
-### What Happens on Every Push
-
-The **CI workflow** (`ci.yml`) automatically runs:
-
-| Job | Purpose | Fails If |
-|-----|---------|----------|
-| **fmt** | Check code formatting | Code doesn't match `cargo fmt` |
-| **clippy** | Lint code | Warnings are treated as errors |
-| **test** | Run all tests | Any test fails |
-| **build** | Build binaries | Compilation fails on any platform |
-| **build-minimal** | Minimal feature set | Build fails without default features |
-
-**Time:** Usually 3-8 minutes
-
-### Local Pre-Push Checklist
-
-Before pushing, you can run locally to catch issues early:
+## Before you push
 
 ```bash
-# Format code
-cargo fmt
-
-# Check formatting
-cargo fmt -- --check
-
-# Run clippy
-cargo clippy --all-targets --all-features
-
-# Run tests
+cargo fmt --all
+cargo ct                                  # alias for: cargo clippy --all-targets --all-features
 cargo test --all-features
-
-# Build release
-cargo build --release
+python3 scripts/check_docs_links.py       # if you touched any Markdown
 ```
 
-Or run all at once:
+Plus, if you touched the Flutter app or the Android native code:
+
 ```bash
-cargo fmt && cargo clippy --all-targets --all-features && cargo test && cargo build --release
+cd apps/flutter_app
+flutter analyze
+flutter test
 ```
 
-## For Maintainers: Creating Releases
+`cargo ct` must exit 0 with **no warnings**. The project denies clippy's
+`pedantic`, `nursery`, and `restriction` groups, plus `unwrap_used`,
+`expect_used`, `indexing_slicing`, `as_conversions`, and friends. The
+allowance policy is in [`AGENTS.md`](../AGENTS.md) — do not add new allows
+without following that policy.
 
-### Creating a Release
+## What runs when
+
+| Workflow | Trigger | Runs |
+|---|---|---|
+| `main.yml` | push to `main`/`develop` | fmt, clippy, tests, build, audit, rustdoc |
+| `dependencies.yml` | daily 02:00 UTC | `cargo outdated` (informational), `cargo audit` (**gates**) |
+| `metrics.yml` | daily 02:30 UTC | Rust/Dart/Kotlin coverage + codebase metrics → commits to `main` |
+| `nightly-apk.yml` | daily 03:17 UTC | Android APK → rolling nightly GitHub release |
+| `release.yml` | tag `v*.*.*` | Cross-platform binaries → GitHub Release |
+
+**Nothing gates a push.** Every step in `main.yml` is `continue-on-error`, so
+the workflow stays green even when a test fails; the results are the artifact.
+The one hard gate in the repo is `cargo audit` in `dependencies.yml`. This is
+a known gap — see "Known gaps" in
+[`docs/ci_pipeline.md`](../docs/ci_pipeline.md).
+
+## Where to read the results
+
+- **Actions tab** → pick a run → expand the step for the full log.
+- **Push-pipeline runs** also write a consolidated file to the **`ci-results`
+  branch** (`.github/ci-results/results_<timestamp>_<run_id>.txt`). That branch
+  is machine-generated and force-pushed; never branch work off it.
+- **Dependency runs** write `.github/ci-results/dependency-check_<timestamp>_<run_id>.txt`.
+
+## Making a release
 
 ```bash
-# 1. Ensure everything is committed
+# 1. Everything committed and green locally
 git status
 
-# 2. Update version in Cargo.toml
-# Change: version = "0.1.0" → version = "0.2.0"
+# 2. Bump the version
+#    Cargo.toml: version = "0.1.0" → "0.2.0"
 git add Cargo.toml
 git commit -m "bump: version to 0.2.0"
 
-# 3. (Optional) Create a CHANGELOG entry
-# Edit CHANGELOG.md:
-# ## [0.2.0] - 2024-04-14
-# ### Added
-# - New feature 1
-# - New feature 2
-git add CHANGELOG.md
-git commit -m "docs: add changelog for v0.2.0"
+# 3. (Optional) Add a CHANGELOG.md entry.
+#    release.yml reads the section for the tag from CHANGELOG.md; without the
+#    file the release notes are a single placeholder line.
 
-# 4. Create a git tag
+# 4. Tag and push
 git tag -a v0.2.0 -m "Release v0.2.0"
-
-# 5. Push the tag to GitHub
 git push origin v0.2.0
-
-# 6. GitHub Actions will automatically:
-#    ✓ Build optimized release binaries for all platforms
-#    ✓ Create a GitHub Release
-#    ✓ Upload binaries with checksums
-#    ✓ (Optional) Deploy documentation to GitHub Pages
 ```
 
-**Time to complete release:** ~10-15 minutes
+The release workflow then builds `p2p_chat_tui` for Linux x86-64, Linux
+aarch64, macOS x86-64, and macOS aarch64, plus a minimal headless `p2p_chat`
+binary, and publishes them with SHA-256 checksums.
 
-### What Gets Released
-
-The Release workflow builds:
-- ✅ Linux x86_64 (GNU)
-- ✅ macOS x86_64
-- ✅ macOS ARM64 (Apple Silicon)
-- ✅ Linux ARM64 (aarch64)
-- ✅ Minimal binary (embedded Linux)
-
-Each binary includes:
-- Stripped symbols (smaller size)
-- SHA256 checksums
-- Release notes from CHANGELOG
-
-### Verifying a Release
+To check a published binary:
 
 ```bash
-# Download binary from GitHub Release page
-# Verify checksum
-sha256sum -c p2p_chat_example.sha256
-
-# Make executable and run
-chmod +x p2p_chat_example
-./p2p_chat_example
+sha256sum -c p2p_chat_tui-x86_64-unknown-linux-gnu.sha256
 ```
 
-## Viewing Results
+## Scheduled runs
 
-### GitHub Actions Dashboard
-
-1. Go to **Actions** tab in your repository
-2. Click on a workflow name (e.g., "CI")
-3. Click on a run to see details
-4. Click on a job to see step-by-step logs
-
-### PR Status Checks
-
-When you create a PR:
-1. GitHub automatically runs CI
-2. Scroll to the bottom of the PR to see status
-3. Click "Details" next to any failed check to see logs
-4. Once all checks pass, you can merge (if approved)
-
-### Monitoring
-
-#### For New PRs:
-- Keep an eye on the **Checks** section
-- Fix and push again if something fails
-
-#### For Main Branch:
-- Visit the **Actions** tab to monitor builds
-- All commits to main should have passing CI
-
-#### For Releases:
-- Go to **Releases** page to download binaries
-- Check that binaries exist for all platforms
+The three scheduled workflows skip themselves when no new human commit has
+landed on the default branch since they last succeeded — the nightly APK
+build takes ~25 minutes and the coverage run ~13, so there is no point paying
+for them when nothing changed. CI's own commits (the metrics push) do not
+count as new work, and a manual **Run workflow** always forces a full run.
 
 ## Troubleshooting
 
-### "Checks Failed" on Pull Request
+**Clippy fails with a lint you did not expect.** The project denies the
+`restriction` group, which includes opinionated lints. Fix the code rather
+than adding an allow — see the allowance policy in `AGENTS.md`. The one
+existing allow is documented there.
 
-1. Click "Details" next to the failed check
-2. Scroll through logs to find the error
-3. Common issues:
-   - **Formatting:** Run `cargo fmt` locally and push
-   - **Clippy warnings:** Run `cargo clippy --fix` and push
-   - **Test failures:** Run `cargo test` locally to debug
-   - **Build errors:** Check dependencies, run `cargo build` locally
+**A test fails only in CI.** The database tests share one SQLite file and are
+serialized by `shared_db_test_lock()`; a test that touches the DB without
+holding that lock can cascade. If you added a test, make sure it takes the
+lock.
 
-### CI Takes Too Long
+**The metrics workflow pushes twice.** It has a redundancy guard for this,
+but if it happens, check that the `ci-skip-no-new-commits.sh` call still has
+`--commit-baseline="ci: refresh coverage and codebase metrics"` and that the
+workflow's `permissions` block still contains `actions: read`.
 
-- First build of a branch is slow (builds from scratch)
-- Subsequent pushes are faster (uses cache)
-- Each platform builds independently (can take 5-10 min)
+**The dependency workflow runs every night despite no changes.** The token is
+missing `actions: read`, so the runs API returns 403 and the check cannot
+tell whether anything landed. Add `actions: read` to the workflow's
+`permissions`.
 
-### Coverage Report Not Uploading
-
-- This is non-critical; coverage still runs
-- To use codecov: Add `CODECOV_TOKEN` secret to GitHub Settings
-
-## Environment Files
-
-The CI workflows use these key files:
-
-| File | Purpose |
-|------|---------|
-| `Cargo.toml` | Package metadata and dependencies |
-| `Cargo.lock` | Dependency lock file (commit this!) |
-| `.github/workflows/*.yml` | GitHub Actions workflows |
-| `CHANGELOG.md` | Release notes (optional) |
-| `.rustfmt.toml` | Code formatting rules (auto-used) |
-
-## Pro Tips
-
-### 1. Catch Errors Before Pushing
+## Local pre-commit hook
 
 ```bash
-# Create a pre-commit hook
 cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
-cargo fmt --check || exit 1
-cargo clippy --all-targets -- -D warnings || exit 1
+cargo fmt --all -- --check || exit 1
+cargo ct || exit 1
 exit 0
 EOF
 chmod +x .git/hooks/pre-commit
 ```
 
-### 2. Speed Up Local Testing
+## Useful links
 
-```bash
-# Test only changed files
-cargo test --lib
-
-# Skip slow integration tests initially
-cargo test --lib --all-features
-```
-
-### 3. Build Multiple Targets Locally
-
-```bash
-# Requires cross: cargo install cross
-cross build --release --target aarch64-unknown-linux-gnu
-```
-
-### 4. Monitor in Real-Time
-
-```bash
-# Watch for CI updates (requires 'gh' CLI)
-gh run watch
-```
-
-## Getting Help
-
-- **GitHub Actions Docs:** https://docs.github.com/en/actions
-- **Rust Ecosystem:** https://www.rust-lang.org/what/wasm/
-- **libp2p Docs:** https://docs.libp2p.io/
-- **Project Issues:** Create an issue on GitHub
-
-## Summary
-
-| Scenario | Action | Time | Result |
-|----------|--------|------|--------|
-| Push to PR | Auto-runs CI | 3-8 min | Green/red status |
-| Merge to main | Auto-runs CI + deploys docs | 3-8 min | Tests + deploy |
-| Create release tag | Auto-builds + releases | 10-15 min | GitHub Release page |
-| Daily check | Auto-checks deps | Daily | Audit report |
-
-**The goal:** All tedious testing, building, and deployment is automated. You focus on code! 🚀
+- [GitHub Actions documentation](https://docs.github.com/en/actions)
+- [Rust on GitHub Actions](https://github.com/actions-rs/toolchain)
+- [cargo-audit](https://github.com/rustsec/rustsec)
+- [libp2p docs](https://docs.libp2p.io/)
