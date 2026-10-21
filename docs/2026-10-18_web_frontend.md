@@ -92,11 +92,19 @@ compiles to JS normally. Pass `--no-wasm-dry-run` to silence it.
 ## Building and running
 
 ```bash
-scripts/build-web.sh            # release; add --debug for a fast local build
+scripts/build-all.sh              # TUI + web frontend in one go (release; --debug for a fast build)
+scripts/build-web.sh              # web frontend only
+./target/release/p2p_chat_tui     # the terminal frontend
 ./target/release/p2p_chat_server --assets apps/flutter_app/build/web
 # LAN exposure (token required off loopback):
 ./target/release/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web
 ```
+
+`scripts/build-all.sh` builds **both** desktop frontends: the TUI binary and the Flutter web
+bundle, from a single `cargo build --bin p2p_chat_tui --bin p2p_chat_server` (one feature
+resolution, shared dependency graph) plus `flutter build web`. The node stays native in the Rust
+web server in both cases — the browser bundle is a display client only. `--tui-only` /
+`--web-only` build one half.
 
 ## Out of scope
 

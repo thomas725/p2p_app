@@ -68,6 +68,22 @@ flutter pub get
 flutter run        # needs the Rust .so on the target platform
 ```
 
+### Web frontend (Flutter Web, Rust node server)
+
+The browser app is a **display client**: the node stays native inside the Rust
+web server (`p2p_chat_server`) and the browser talks JSON-over-WebSocket to it.
+Nothing is compiled to WASM. Build both desktop frontends in one go:
+
+```bash
+scripts/build-all.sh              # TUI + web frontend (add --debug for a fast build)
+./target/release/p2p_chat_tui     # terminal frontend
+./target/release/p2p_chat_server --assets apps/flutter_app/build/web
+```
+
+The server binds `127.0.0.1` by default (no token — the TUI trust model). For LAN
+exposure pass `--bind 0.0.0.0 --token <secret>`; the token is enforced on `/ws`
+and `/api/*`. See `docs/2026-10-18_web_frontend.md`.
+
 The Rust↔Dart bindings are **generated** (`src/frb_generated.rs`,
 `lib/src/rust/*`). After changing the FRB surface in `src/api/mod.rs`,
 regenerate with the project's codegen config:

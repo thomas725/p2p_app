@@ -1,3 +1,42 @@
+# Repo Scripts
+
+## build-all.sh
+
+Builds **both** desktop frontends in one command: the TUI binary and the Flutter
+web bundle (served by the Rust node server).
+
+```bash
+scripts/build-all.sh              # release build of everything
+scripts/build-all.sh --debug      # fast debug build
+scripts/build-all.sh --tui-only   # only the TUI binary
+scripts/build-all.sh --web-only   # only the server binary + web bundle
+```
+
+Why one script: the web frontend is a **display client** — the node stays native
+inside the Rust web server (`p2p_chat_server`) and the browser talks
+JSON-over-WebSocket to it (`docs/2026-10-18_web_frontend.md`). Nothing is
+compiled to WASM, so the web half is a normal Rust build plus `flutter build web`.
+Both Rust binaries come out of a **single** `cargo build --bin p2p_chat_tui --bin
+p2p_chat_server`, so the shared dependency graph is compiled once and the two
+frontends get an identical feature set (same migrations, same attachment GC, same
+node behaviour).
+
+Then run (from the repo root):
+
+```bash
+./target/release/p2p_chat_tui
+./target/release/p2p_chat_server --assets apps/flutter_app/build/web
+# LAN exposure (token required off loopback):
+./target/release/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web
+```
+
+`scripts/build-web.sh` is the web-only script (same web half, without the TUI).
+
+## build-web.sh
+
+Web frontend only: `cargo build --bin p2p_chat_server` + `flutter build web`.
+See `build-all.sh` above for the combined build.
+
 # Metrics Generation Script
 
 ## generate_metrics.py

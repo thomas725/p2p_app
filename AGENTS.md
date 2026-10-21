@@ -68,7 +68,15 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 
 ## Critical Context
 - **FRB regeneration protocol**: `flutter_rust_bridge_codegen generate` (2.13.0, pinned `=2.13.0` in Cargo.toml and `2.13.0` in pubspec) → re-append `clippy::all, clippy::pedantic, clippy::nursery, clippy::restriction` to `src/frb_generated.rs`'s `#![allow(...)]` → `cargo fmt --all` → delete untracked `src/frb_generated.h` → verify `cargo ct` + `cargo test --all-features` + `flutter analyze`/`flutter test`. `pub mod generated;` in `src/lib.rs` carries the `/// flutter_rust_bridge:ignore` doc line that makes FRB skip the diesel schema. `build.rs` regenerates `src/generated/columns.rs` from `schema.rs` at build time.
-- **Web frontend build**: `scripts/build-web.sh` (`cargo build --bin p2p_chat_server` + `flutter build web`) then `./target/release/p2p_chat_server --assets apps/flutter_app/build/web`; `--debug` for a fast local build. `flutter build web` prints a benign `Wasm dry run failed` warning sourced from flutter_rust_bridge 2.13.0 itself (`--no-wasm-dry-run` silences it) and otherwise compiles to JS. The `web` feature is in `default`; the `p2p_chat_server` bin declares `required-features = ["web"]`.
+- **Frontend builds**: `scripts/build-all.sh` builds BOTH desktop frontends in one go — the
+  TUI binary and the Flutter web bundle — from a single `cargo build --bin p2p_chat_tui --bin
+  p2p_chat_server` (one feature resolution, shared dep graph) plus `flutter build web`. Then
+  `./target/release/p2p_chat_tui`, and `./target/release/p2p_chat_server --assets
+  apps/flutter_app/build/web`. `--debug` for a fast local build, `--tui-only` / `--web-only` to
+  build one half. `scripts/build-web.sh` remains the web-only script. `flutter build web` prints a
+  benign `Wasm dry run failed` warning sourced from flutter_rust_bridge 2.13.0 itself
+  (`--no-wasm-dry-run` silences it) and otherwise compiles to JS. The `web` feature is in
+  `default`; the `p2p_chat_server` bin declares `required-features = ["web"]`.
 - **Dependency audit config**: `.cargo/audit.toml` is comment-only — the hickory
   `RUSTSEC-2026-0118`/`0119` ignores were retired on 2026-09-20 (**libp2p 0.57.0**, `fb65264` →
   libp2p-mdns 0.49.0 → hickory-proto 0.26.3, past the 0.26.1 fix line). `cargo audit` is clean
