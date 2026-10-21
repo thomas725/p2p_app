@@ -325,7 +325,7 @@ pub fn spawn_render_loop(
             let _ = terminal.draw(|f| {
                 s.terminal_width = usize::from(f.area().width);
                 s.chat_area_height = usize::from(f.area().height.saturating_sub(10));
-                // On the first frame that shows the Peers tab, resolve every
+                // On the first frame that shows the Contacts tab, resolve every
                 // known peer's display name once so the library's name cache
                 // is warm and switching sort columns never pays a per-peer DB
                 // lookup.

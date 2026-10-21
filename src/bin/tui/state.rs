@@ -43,10 +43,10 @@ pub struct TerminalEnv {
     /// terminals. Ctrl+P (`Char('p')`+CONTROL from 0x10 DLE) works on every
     /// terminal as a universal fallback. Bare `Tab` always cycles tabs either way.
     pub kitty_keyboard_active: bool,
-    /// Whether curses-style mouse events are captured (Esc toggles).
+    /// Whether curses-style mouse events are captured (F12 toggles it).
     pub mouse_capture: bool,
     /// One-shot flag: display names have been resolved for every known peer the
-    /// first time the Peers tab is opened (warms the library's name cache).
+    /// first time the Contacts tab is drawn (warms the library's name cache).
     pub peer_names_warmed: bool,
 }
 

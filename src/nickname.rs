@@ -20,7 +20,7 @@ pub fn generate_self_nickname() -> String {
 /// Cache of fully formatted display names (`"name (abc)"`) keyed by peer id.
 ///
 /// Resolving a display name opens a fresh `SQLite` connection and runs up to
-/// three queries, so the Peers tab would otherwise pay one round-trip per peer
+/// three queries, so the Contacts tab would otherwise pay one round-trip per peer
 /// on every full-list sort. The cache is populated lazily on first resolution;
 /// any code path that changes a peer's nicknames (the `impl_set_peer_field!`
 /// setters) or upserts or creates a peer row

@@ -531,7 +531,7 @@ fn apply_peer_sort(state: &mut super::state::AppState, column: usize) {
 }
 
 /// Dispatches a peer-list sort key (`1`-`5`, `n`/`m`/`b`/`l`/`f` for columns,
-/// `o` to toggle direction) when the Peers tab is active.
+/// `o` to toggle direction) when the Contacts tab is active.
 fn handle_peer_sort_key(state: &mut super::state::AppState, c: char) {
     match c {
         '1' | 'n' | 'N' => apply_peer_sort(state, 0),

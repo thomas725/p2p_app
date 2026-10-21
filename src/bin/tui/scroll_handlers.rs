@@ -173,7 +173,7 @@ fn scroll_log_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     );
 }
 
-/// Handle scroll key for Peers tab
+/// Handle scroll key for the Contacts tab
 ///
 /// `page_size` is the number of data rows that fit the visible viewport. The
 /// peer table lives in the content area `chat_area_height + 1`: minus 1 for the
