@@ -26,6 +26,9 @@ REF_DEF = re.compile(r"^\s{0,3}\[[^\]]+\]:\s*(<[^>]*>|\S+)", re.MULTILINE)
 # Fenced code blocks are skipped wholesale: a shell comment that looks like a
 # link is not a link.
 FENCE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
+# Inline code spans are skipped too: this document itself writes
+# `[text](target)` to show what the checker looks for, and that is not a link.
+INLINE_CODE = re.compile(r"(`+)(?!`).*?\1", re.DOTALL)
 
 # Links that are not files on disk.
 SKIP_PREFIXES = ("http://", "https://", "mailto:", "tel:", "data:", "//")
@@ -70,6 +73,7 @@ def iter_markdown_files(paths: list[str]) -> list[Path]:
 def extract_targets(text: str) -> list[str]:
     """Return every link target in a Markdown document."""
     text = FENCE.sub("", text)
+    text = INLINE_CODE.sub("", text)
     targets = [m.group(1) for m in INLINE_LINK.finditer(text)]
     targets += [m.group(1) for m in REF_DEF.finditer(text)]
     return targets

@@ -51,8 +51,9 @@ python3 scripts/check_docs_links.py docs/      # only the docs tree
 
 Exits 0 when all links resolve, 1 otherwise. It checks inline links
 (`[text](target)`) and reference definitions (`[id]: target`), skips fenced
-code blocks, and ignores external URLs and pure anchors. The
-machine-generated history in `.github/workflow-logs/` is excluded.
+code blocks and inline code spans, and ignores external URLs and pure
+anchors. The machine-generated history in `.github/workflow-logs/` is
+excluded.
 
 Run it in CI: `.github/workflows/main.yml` has a "Check documentation links"
 step.
