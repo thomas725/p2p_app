@@ -72,10 +72,14 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - **Dependency audit config**: `.cargo/audit.toml` is comment-only — the hickory
   `RUSTSEC-2026-0118`/`0119` ignores were retired on 2026-09-20 (**libp2p 0.57.0**, `fb65264` →
   libp2p-mdns 0.49.0 → hickory-proto 0.26.3, past the 0.26.1 fix line). `cargo audit` is clean
-  (exit 0); the one remaining row is the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a
-  build-time proc-macro from `libp2p-mdns → if-watch → netlink-packet-core` — benign, core libp2p).
-  CI dependency job gates on `cargo audit` (hard fail) + artifact upload; `cargo outdated` is
-  informational.
+  (exit 0). The rustls `RUSTSEC-2026-0346`/`0347`/`0348`/`0349` rows and the rustls-webpki
+  `RUSTSEC-2026-0382` row were fixed on 2026-10-21 by the patch bumps **rustls 0.23.45 → 0.23.46**
+  and **rustls-webpki 0.103.15 → 0.103.16** (both in `Cargo.lock`; rustls arrives via
+  `libp2p-tls`/`libp2p-quic` → `quinn`). The two remaining rows are *allowed warnings*, not
+  failures: the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
+  `libp2p-mdns → if-watch → netlink-packet-core` — benign, core libp2p) and the yanked
+  `yoke-derive` 0.8.3. CI dependency job gates on `cargo audit` (hard fail) + artifact upload;
+  `cargo outdated` is informational.
 
 - **Scheduled-workflow skip checks need `actions: read`**: `.github/workflows/dependencies.yml` and `nightly-apk.yml` run `scripts/ci-skip-no-new-commits.sh`, which queries the Actions runs API with the GITHUB_TOKEN. The token must carry `actions: read`, or that endpoint returns 403 and (previously, fail-open) every nightly run executed anyway — producing duplicate `ci: refresh coverage and codebase metrics` commits on main. The script is fail-closed now: any API error skips the run (a manual `workflow_dispatch` overrides). Don't drop that permission when editing the workflows.
 - **Metrics skip-check uses commit-baseline mode**: `.github/workflows/metrics.yml` calls `scripts/ci-skip-no-new-commits.sh metrics.yml --commit-baseline="ci: refresh coverage and codebase metrics"`. The baseline is the newest CI-authored commit matching that subject on the branch (resolved by local git, no API call), NOT the last workflow run — so a skipped run can never become the baseline and reseed the "no commits at all" skip loop. Only the metrics workflow uses this mode; the other two stay on run-history mode.
