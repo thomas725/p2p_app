@@ -1,5 +1,9 @@
 # Dual Frontend Architecture
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 > **Superseded (2026-09-02):** The Dioxus GUI frontend has been **removed** in favor of the
 > Flutter app (`apps/flutter_app`, via `flutter_rust_bridge`). The TUI + shared-core design
 > below remains accurate; the Dioxus-specific parts are kept as historical record only. See

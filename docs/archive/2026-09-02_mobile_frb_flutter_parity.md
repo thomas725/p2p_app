@@ -1,5 +1,9 @@
 # Mobile/FRB/Flutter parity: sortable peer table, single-round-trip stats, FRB 2.13.0 (done 2026-09-02)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 Archived from AGENTS.md (was the "## Progress / ### Done" section). Commits:
 `eff4232` (FRB codegen panic fix + 2.13.0), `66e7b53` (dependency upgrades),
 `f8c61ab` (FRB/Dart peer-sort helpers), `d94ae6d` (bulk get_peers_with_stats),

@@ -1,5 +1,9 @@
 # Cross-Platform Frontend Strategy
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Current State
 
 - **No Android code exists** in the repository

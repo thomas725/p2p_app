@@ -1,5 +1,9 @@
 # APK Sharing Strategy
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Requirement
 
 The Android app must be able to share its own APK with other Android phones via whatever means possible: WiFi, Bluetooth, Android's share feature (which also handles generic file sharing).

@@ -1,5 +1,9 @@
 # Dioxus Frontend Research
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Overview
 
 Dioxus is a framework for building cross-platform apps in Rust. It supports:

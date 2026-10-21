@@ -1,5 +1,9 @@
 # Archived content removed from AGENTS.md on 2026-09-07
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 AGENTS.md was reduced to instruction-type content only; everything below is the
 historical record that was removed (goal, done-index, decision rationale, backlog
 recap, and descriptive context). The live, forward-looking rules live in AGENTS.md
@@ -42,7 +46,7 @@ Completed work is archived as dated docs (see `docs/`, oldest → newest):
 
 ## Next Steps (backlog recap — full text archived)
 
-- Tracked as a dated backlog doc: **`docs/2026-09-02_backlog.md`**. Items 1, 2, 3, 4, 5, 8 are done (committed). **4** (the dormant `broadcasts_sent` decision) was resolved by the `broadcast_recipients` rework — the column went away entirely. **6** closed (tracking-only; expected `cargo outdated` rows documented with their upstream unblockers). **7** done: the CI dependency job is now gated on `cargo audit` (hard fail) with results uploaded as a workflow artifact (no longer committed to `main`); `cargo outdated` stays informational; the `libsqlite3-sys`/diesel `sqlite-bundled` restructure was **rejected** (Android requires a bundled SQLite — the Rust side talks FFI to `libsqlite3-sys`, not Android's platform sqlite — and the current `sqlite_bundled` feature already scopes bundling to mobile correctly). None are urgent; revisit item 6 when libp2p 0.57+ lands (its master unblocker).
+- Tracked as a dated backlog doc: **`docs/backlog.md`**. Items 1, 2, 3, 4, 5, 8 are done (committed). **4** (the dormant `broadcasts_sent` decision) was resolved by the `broadcast_recipients` rework — the column went away entirely. **6** closed (tracking-only; expected `cargo outdated` rows documented with their upstream unblockers). **7** done: the CI dependency job is now gated on `cargo audit` (hard fail) with results uploaded as a workflow artifact (no longer committed to `main`); `cargo outdated` stays informational; the `libsqlite3-sys`/diesel `sqlite-bundled` restructure was **rejected** (Android requires a bundled SQLite — the Rust side talks FFI to `libsqlite3-sys`, not Android's platform sqlite — and the current `sqlite_bundled` feature already scopes bundling to mobile correctly). None are urgent; revisit item 6 when libp2p 0.57+ lands (its master unblocker).
 
 ## Critical Context (descriptive — archived)
 

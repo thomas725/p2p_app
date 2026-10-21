@@ -1,5 +1,9 @@
 # Peer Info stats rows in both frontends (2026-10-20)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Gap
 
 The Peer Info tab was the one roster surface with no message activity: the TUI's

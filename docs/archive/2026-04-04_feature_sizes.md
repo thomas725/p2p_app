@@ -1,5 +1,9 @@
 # Build Feature Sizes
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 This document shows the binary sizes for different feature combinations.
 
 ## Feature Flags

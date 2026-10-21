@@ -1,5 +1,9 @@
 # GitHub Actions CI/CD Setup
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 This project uses GitHub Actions for continuous integration and deployment. The workflows are defined in `.github/workflows/`.
 
 ## Workflows

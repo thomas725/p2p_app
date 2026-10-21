@@ -1,5 +1,9 @@
 # Dioxus Frontend Implementation
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Status: Initial Setup Complete
 
 A minimal Dioxus frontend has been created at `src/bin/p2p_chat_dioxus.rs`.

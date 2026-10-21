@@ -1,5 +1,9 @@
 # Broadcast-stats rework on `broadcast_recipients` + Dioxus removal (done 2026-09-03)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 Archived from AGENTS.md (was the "## Progress / ### Done" section). Commits:
 `c44ef35` (broadcast_recipients rework, 2026-09-03), `c5ce9cd` (Dioxus removal, 2026-09-03).
 

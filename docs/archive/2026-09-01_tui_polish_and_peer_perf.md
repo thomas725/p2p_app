@@ -1,5 +1,9 @@
 # TUI settings/peers polish: ConnectedTracker, paging, perf, memoization, keys, cleanup (done 2026-08-30..2026-09-01)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 Archived from AGENTS.md (was the "## Progress / ### Done" section). Commits:
 `79981fc` (connected-only Settings), `af5898c` (paging + stateful Table, 08-30),
 `6deff39` (visible-window rows + "Peers: N" removal, 08-30),

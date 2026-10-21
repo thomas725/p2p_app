@@ -1,5 +1,9 @@
 # Contacts search in both frontends (2026-10-21)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 The last open frontend-parity item: a search affordance over the Contacts
 roster. Both frontends get the same semantics, and both keep the canonical Rust
 sort/format paths as the single source of ordering.

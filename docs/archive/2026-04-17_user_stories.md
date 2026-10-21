@@ -1,5 +1,9 @@
 # User Stories
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Overview
 
 This document captures user stories and acceptance criteria for the P2P Chat application.
@@ -190,7 +194,7 @@ This document captures user stories and acceptance criteria for the P2P Chat app
 ### Platform Features
 
 - [ ] **US-040**: Web interface (Dioxus frontend was removed on 2026-09-03; no web target is planned)
-- [x] **US-041**: Mobile app via Flutter + flutter_rust_bridge (Android foreground service; see `docs/2026-08-17_android_development_plan.md`)
+- [x] **US-041**: Mobile app via Flutter + flutter_rust_bridge (Android foreground service; see `docs/archive/2026-08-17_android_development_plan.md`)
 - [ ] **US-042**: End-to-end encryption for DMs
 - [ ] **US-043**: File transfer between peers
 - [ ] **US-044**: Voice/video calls

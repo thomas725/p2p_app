@@ -1,5 +1,9 @@
 # Log-event parity: `file_received` / `peer_expired` in every frontend (2026-10-20)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Gap
 
 The TUI binary logs an inbound attachment (`Received file {name} ({file_id}) from {peer_id} at

@@ -1,5 +1,9 @@
 # Delivery receipts in Flutter + web (2026-10-20) — a `confirmed` tick from the DB
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Gap
 
 The TUI has always shown a delivery confirmation prefix on a message as soon as a recipient

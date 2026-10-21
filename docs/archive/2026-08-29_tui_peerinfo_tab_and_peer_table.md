@@ -1,5 +1,9 @@
 # TUI PeerInfo tab + sortable peer table (done 2026-08-27..2026-08-29)
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 Archived from AGENTS.md (was the "## Progress / ### Done" section). Commits:
 `38241ed` (strict clippy lints, 08-27), `33ab735` (Settings tab, 08-28),
 `ea741d0` (peer-info tab click fixes), `92c9b07` (sortable peer table),

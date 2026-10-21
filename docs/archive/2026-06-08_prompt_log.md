@@ -1,5 +1,9 @@
 # prompt log
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## 2026-04-12
 
 rename TUI debug tab to "log". add pos1 key handler to go to top of chat or log.

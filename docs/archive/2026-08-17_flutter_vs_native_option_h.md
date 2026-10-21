@@ -1,5 +1,9 @@
 # Flutter vs Native Android + UniFFI
 
+> **ARCHIVED** — a historical record of completed work, kept for context.
+> It is not maintained and may describe behaviour that no longer exists.
+> Current documentation: [docs/README.md](../README.md).
+
 ## Question
 
 Compare:
