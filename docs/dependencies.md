@@ -1,0 +1,130 @@
+# Dependencies
+
+Every direct dependency, why it is here, and where it is pinned.
+
+**Regenerate from the manifest:** the table below is derived from
+`Cargo.toml` + `Cargo.lock`. `Cargo.lock` is the authority on the *resolved*
+version; `Cargo.toml` is the authority on the *requirement*.
+
+## Networking and protocol
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `libp2p` | `=0.57.0` | 0.57.0 | The whole peer-to-peer layer: transports, muxing, discovery, and the four `request_response` protocols. Features: `tokio`, `gossipsub`, `noise`, `macros`, `tcp`, `yamux`, `quic`, `request-response`, `serde`, `json`, `cbor`, `ping`. Optional — behind `basic` (and `mdns`/`quic`). |
+| `libp2p-identity` | `=0.3.0` | 0.3.0 | Keypair generation and peer-id derivation. Pinned to keep a single copy of `libp2p-identity` in the tree (a second copy would mean two incompatible `PeerId` types). |
+| `tokio` | `1.53.1` | 1.53.1 | The async runtime libp2p runs on. Features: `macros`, `rt-multi-thread`, `io-util`, `io-std`. |
+| `axum` | `0.8` | 0.8.9 | The web frontend's HTTP + WebSocket server (`src/web/`). Features: `ws`, `json`, `query`, `tokio`, `http1`, `macros`. Optional — behind `web`. |
+| `tower-http` | `0.6` | 0.6.11 | Static-file serving and CORS for the web server. Features: `cors`, `fs`. Optional — behind `web`. |
+| `futures-util` | `0.3` | 0.3.34 | `Stream`/`Sink` combinators, used to split the axum WebSocket. Optional — behind `web`. |
+
+> The old `futures` umbrella crate was replaced by `futures-util` — the
+> project only needs the stream/sink traits, not the executor.
+
+## Persistence
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `diesel` | `^2.3` | 2.3.13 | The ORM and query builder for SQLite. Features: `sqlite`, `returning_clauses_for_sqlite_3_35`, `chrono`. |
+| `diesel_migrations` | `^2.3` | 2.3.2 | Embeds and runs the SQL migrations in `migrations/` at startup. |
+| `libsqlite3-sys` | `0.36.0` | 0.36.0 | Native SQLite FFI. Feature `bundled` compiles SQLite in, which Android needs. Optional — behind `sqlite_bundled`. |
+| `chrono` | `0.4.45` | 0.4.45 | Timestamps for the `TIMESTAMP` columns. Feature `clock`. |
+
+## Serialization
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `serde` | `1.0` | 1.0.229 | Derives for every wire and row type. Feature `derive`. |
+| `serde_json` | `1.0` | 1.0.151 | The JSON codec for the direct-message lane and the web server's request bodies. |
+| `sha2` | `0.10` | 0.10.9 | SHA-256 for content-addressed attachments: an attachment's `file_id` is the hex digest of its bytes. |
+
+## Frontends
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `ratatui` | `=0.30.2` | 0.30.2 | The TUI's rendering library. Optional — behind `tui`. |
+| `ratatui-textarea` | `0.9` | 0.9.2 | The multi-line text input widget. Optional — behind `tui`. |
+| `crossterm` | `=0.29` | 0.29.0 | Terminal raw mode, key events, and mouse capture. Optional — behind `tui`. |
+| `flutter_rust_bridge` | `=2.13.0` | 2.13.0 | The FFI bridge for the Flutter app. Pinned exactly: FRB's codegen and the Rust crate must agree on the version. Optional — behind `mobile`. |
+
+## Naming, formatting, and crypto helpers
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `petname` | `3.0` | 3.2.0 | Generates the fallback display names for peers with no nickname. |
+| `unicode-width` | `0.2` | 0.2.2 | Display-width measurement, so table cells pad correctly for wide characters. |
+| `num-traits` | `0.2` | 0.2.19 | `ToPrimitive` for safe `f64 → i64` timestamp truncation — the project denies `as` conversions. |
+| `tracing` | `=0.1.44` | 0.1.44 | Structured logging; libp2p emits through it. Optional — behind `tracing`. |
+| `tracing-subscriber` | `=0.3.23` | 0.3.23 | The log formatter/filter. Optional — behind `tracing`. |
+| `color-eyre` | `=0.6.5` | 0.6.5 | Error reporting with context and a readable backtrace. |
+
+## Development dependencies
+
+| Crate | Requirement | Resolved | Why it is here |
+|---|---|---|---|
+| `tempfile` | `3` | 3.27.0 | Scratch databases and directories in tests. |
+| `serial_test` | `4` | 4.0.1 | Serializes the tests that touch the shared SQLite file. |
+| `tower` | `0.5` | 0.5.3 | `Router::oneshot` for testing the web server's HTTP routes. Feature `util`. |
+| `tokio-tungstenite` | `0.29` | 0.29.0 | A WebSocket client for the web server's end-to-end frame-protocol test. |
+
+## Known dependency state
+
+### `cargo audit` — clean
+
+`cargo audit` exits 0. `.cargo/audit.toml` is **comment-only**: no advisory is
+silently ignored. Two rows remain, both allowed *warnings*:
+
+| Crate | Advisory | Why it is acceptable |
+|---|---|---|
+| `paste` 1.0.15 | RUSTSEC-2024-0436 (unmaintained) | A build-time proc-macro pulled in by `libp2p-mdns → if-watch → netlink-packet-core`. Benign, and it is core libp2p's dependency, not ours. |
+| `yoke-derive` 0.8.3 | yanked | A transitive yanked release with no fix published. |
+
+Everything else has been fixed upstream and pulled in. The most recent round
+(2026-10-21) bumped **rustls 0.23.45 → 0.23.46** and
+**rustls-webpki 0.103.15 → 0.103.16**, clearing five advisories
+(RUSTSEC-2026-0346/0347/0348/0349 and RUSTSEC-2026-0382).
+
+### `cargo outdated --depth 1` — nine direct rows
+
+Two different kinds of row, and they need different fixes:
+
+**Lockfile-only** (the requirement already allows the newer version; a plain
+`cargo update` resolves it, no manifest change):
+
+| Crate | Locked | Newer |
+|---|---|---|
+| `diesel` | 2.3.13 | 2.3.14 |
+| `ratatui-textarea` | 0.9.2 | 0.9.3 |
+| `serde_json` | 1.0.151 | 1.0.154 |
+| `tokio` | 1.53.1 | 1.54.0 |
+
+**Requirement changes** (the new version is outside the current requirement,
+so the manifest has to move):
+
+| Crate | Locked | Newer | Note |
+|---|---|---|---|
+| `libsqlite3-sys` | 0.36.0 | 0.38.2 | **Blocked on upstream.** Diesel's newest 2.x still pins `libsqlite3-sys` 0.36. Do not restructure to `sqlite-bundled` — that was evaluated and rejected; see [backlog.md](backlog.md). |
+| `libp2p` | 0.57.0 | 0.57.1 | The `=0.57.0` pin is deliberate; bump it deliberately. |
+| `sha2` | 0.10.9 | 0.11.1 | Major bump. |
+| `tower-http` | 0.6.11 | 0.7.1 | Major bump. |
+| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only. |
+
+The full `cargo outdated` output also lists transitive rows. Those are not
+actionable here — they move when their parent moves.
+
+### `cargo audit` is the only hard dependency gate
+
+The dependency workflow (`dependencies.yml`) fails on any advisory that is
+not ignored in `.cargo/audit.toml`. `cargo outdated` is **informational**:
+it exits non-zero whenever any row exists, including transitive pins no
+repo change can move, so it must not gate the workflow.
+
+## Conventions
+
+- **Pin what must not drift.** `libp2p`, `libp2p-identity`, `flutter_rust_bridge`,
+  `ratatui`, `crossterm`, `tracing`, `tracing-subscriber`, and `color-eyre`
+  use `=` requirements: a silent minor bump in any of them changes the
+  protocol or the FFI contract.
+- **Range what is safe to range.** `diesel`, `serde`, `chrono`, `axum`,
+  `tokio`, and the rest use caret requirements.
+- **A new dependency needs a row in this file** — say what it is for, and
+  whether it is behind a feature flag.

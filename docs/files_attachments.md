@@ -1,8 +1,13 @@
-# File attachments over chat (files lane) — 2026-10-04
+# File attachments over chat (files lane)
 
-Backlog §12 shipped across four slices: `1a14818` (lane + store + DB + swarm),
-`9ef9539` (TUI send/render), `daf4b66` (FRB + Flutter), D (this record). Both
-frontends can send and receive file attachments on DMs, broadcast, and groups.
+**Status: shipped.** Backlog §12 landed across four slices: `1a14818` (lane +
+store + DB + swarm), `9ef9539` (TUI send/render), `daf4b66` (FRB + Flutter),
+and the web mirror. Both frontends can send and receive file attachments on
+DMs, broadcast, and groups.
+
+This document is the lane's reference: the wire design, the store surface, and
+the blob lifecycle. The code is the authority; the open polish item is listed
+in [`backlog.md`](backlog.md).
 
 ## Wire design
 
@@ -74,7 +79,8 @@ the store never deletes anything.
 - A transfer interrupted mid-run keeps its `.part` until the next restart clears
   the in-flight map; the restart sweep then removes it as stale.
 
-## Open follow-ups (none urgent)
+## Open follow-ups
 
 - Size-formatting of the chip is raw bytes in both frontends (by design, matches
-  `file_chip`); a human-readable suffix is future polish if desired.
+  `file_chip`); a human-readable suffix is future polish — tracked in
+  [`backlog.md`](backlog.md) (P2).

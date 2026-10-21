@@ -1,23 +1,40 @@
-# 2026-09-21 — Identity, device-binding, contacts, and (feature-gated) calls: architectural design
+# Identity, device binding, contacts, and calls
 
-Lane: **backlog §11** (user/device identity + contact list first + calls later, feature-gated).
-This doc is the architecture that lane. It is byte-anchored to the real surfaces so the
-implementation lane is mechanical.
+Lane: **backlog §11** (user/device identity + contact list first + calls later).
 
 ## Scope & status
 
-**Design, not implementation.** Records the two-layer identity graph, the signed-claim root of
-trust, the contacts-first sequencing, and the calls feature-gate. Implementation is a separate
-lane (after this lands).
+**Shipped.** This document is the design of the identity layer and the record
+of why it looks the way it does. The implementation landed across
+2026-09-21 → 2026-09-26; the "design" sections below are kept as the
+rationale, and the code is the authority for current behaviour.
 
-## Current state (byte-verified)
+What shipped:
+
+| Piece | Where |
+|---|---|
+| Account key + `users` rows | `src/identity.rs` (`provision_my_user`, `store_account_key`, `get_stored_account_key`) |
+| Signed device-binding claims | `src/identity.rs` (`mint_device_binding`, `sign_device_binding_claim`, `verify_device_binding_claim`, `save_device_binding`) |
+| Contact roster | `src/contacts.rs` |
+| Device-binding protocol | `src/behavior.rs` (`/p2p-chat/device-binding/1.0.0`), `src/swarm_handler.rs` |
+| Call signaling | `src/calls.rs` (`CallSession`, `CallState`) — **signaling only**, media is future work |
+| Frontends | TUI Contacts tab, Flutter ContactList, and the web mirror of both |
+
+The one open question this doc does **not** settle: whether a *sibling* device
+of the same user (as opposed to the account key alone) may add another device
+to that user's set. See [`backlog.md`](backlog.md) (P0).
+
+## The pre-implementation state (historical)
+
+The section below describes the repo **before** this lane landed. It is kept
+because the design was anchored to it.
 
 - **One keypair per install**: `src/db.rs` load-or-generates a single libp2p identity keypair;
   a fresh install → a fresh keypair. Stored in the `identities` table (`key` → Binary, Ed25519,
   with `last_tcp_port`/`last_quic_port`/`self_nickname`).
-- **No user concept exists**: every message/recipient/session/group row keys on `peer_id`
-  (the device). A "user" today is implicitly one device; multi-device-per-user, contacts, and
-  calls have **no schema, no binding, no FRB surface** — confirmed by repo-wide grep.
+- **No user concept existed**: every message/recipient/session/group row keyed on `peer_id`
+  (the device). A "user" was implicitly one device; multi-device-per-user, contacts, and
+  calls had **no schema, no binding, no FRB surface**.
 - `peer_id` **is** identity: DMs address a peer_id, groups are peer-membered. Nothing changes in
   how the mesh transports/keys work; the identity layer sits *above* the transport.
 

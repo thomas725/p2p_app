@@ -1,4 +1,8 @@
-# Web frontend (2026-10-18) — Flutter Web as a display client over a node server
+# Web frontend — Flutter Web as a display client over a node server
+
+**Status: shipped.** This document records the decision and the wire
+protocol. The code (`src/web/`, `apps/flutter_app/lib/src/data/http_node_api.dart`)
+is the authority for current behaviour.
 
 ## Decision
 

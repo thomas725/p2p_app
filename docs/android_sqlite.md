@@ -7,8 +7,8 @@ using a SQLite provided by Android, and how would we switch to Android-provided 
 ## Current setup (the "embedded" SQLite)
 
 - `Cargo.toml:54` — `sqlite_bundled = ["dep:libp2p", "dep:libsqlite3-sys"]`; the direct dep at
-  `Cargo.toml:72` is `libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }`.
-- `Cargo.toml:58` — `mobile = ["basic", "sqlite_bundled", "quic", "flutter_rust_bridge"]`, so every
+  `Cargo.toml:92` is `libsqlite3-sys = { version = "0.36.0", features = ["bundled"], optional = true }`.
+- `Cargo.toml:58` — `mobile = ["basic", "sqlite_bundled", "quic", "flutter_rust_bridge", "attachment-gc"]`, so every
   `--features mobile` build activates `libsqlite3-sys/bundled` **globally for the crate graph**.
 - `apps/flutter_app/build_rust_android.sh` — the mobile build is plain `cargo build --lib --features mobile`
   per NDK target (`aarch64/armv7/x86_64-linux-android`), then the cdylib lands in `jniLibs`.
@@ -33,7 +33,7 @@ using a SQLite provided by Android, and how would we switch to Android-provided 
    `android.database.sqlite.SQLiteDatabase` (and the `sqlite3` program on the shell user).
    That is a JNI wrapper around the private native library, reachable only from Kotlin/Java.
 3. **Version pinning for diesel.** The SQLite backend uses `returning_clauses_for_sqlite_3_35`
-   (`Cargo.toml:68`) — `INSERT … RETURNING`, which needs SQLite ≥ 3.35. Android's platform SQLite
+   (`Cargo.toml:88`) — `INSERT … RETURNING`, which needs SQLite ≥ 3.35. Android's platform SQLite
    version varies per device/ROM (≈3.32 on Android 12, 3.39 on 13, 3.44 on 14, 3.46+ on 15); old
    devices would break diesel's generated queries. The bundle pins a known-new engine (3.51.1) on
    every device, which also keeps migration behavior deterministic.
