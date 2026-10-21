@@ -79,10 +79,12 @@ jobs:
       - name: Create checksums
         run: |
           cd target/${{ matrix.target }}/release
-          # Include the target in the file name: all four matrix jobs produce a
-          # binary called `p2p_chat_tui`, and identically-named files would
-          # overwrite each other when the release job flattens the artifacts.
-          sha256sum ${{ matrix.binary_name }} > ${{ matrix.binary_name }}-${{ matrix.target }}.sha256
+          # Every matrix job produces a binary called `p2p_chat_tui`. Publish
+          # it under a target-qualified name so the platform builds cannot
+          # overwrite each other, and checksum that name so `sha256sum -c`
+          # matches the file that is actually released.
+          cp ${{ matrix.binary_name }} ${{ matrix.binary_name }}-${{ matrix.target }}
+          sha256sum ${{ matrix.binary_name }}-${{ matrix.target }} > ${{ matrix.binary_name }}-${{ matrix.target }}.sha256
           cat ${{ matrix.binary_name }}-${{ matrix.target }}.sha256
       
       - name: Upload binary artifact
@@ -90,7 +92,7 @@ jobs:
         with:
           name: ${{ matrix.target }}-release
           path: |
-            target/${{ matrix.target }}/release/${{ matrix.binary_name }}
+            target/${{ matrix.target }}/release/${{ matrix.binary_name }}-${{ matrix.target }}
             target/${{ matrix.target }}/release/${{ matrix.binary_name }}-${{ matrix.target }}.sha256
           retention-days: 30
 
@@ -112,18 +114,16 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release-files
-          # Each downloaded artifact directory is named after its target
-          # (`<target>-release`), and every matrix job produces a binary called
-          # `p2p_chat_tui`. Copy each one out as `p2p_chat_tui-<target>` so the
-          # platform builds cannot overwrite each other, and checksum the
-          # renamed file so `sha256sum -c` matches what is actually published.
+          # Every artifact directory holds files that are already named for
+          # the platform they came from (p2p_chat_tui-<target>) plus the
+          # minimal headless build, so a flat copy cannot collide. Copy the
+          # checksums too: each one names the file it belongs to, so
+          # `sha256sum -c` works on a downloaded release.
           for dir in release-artifacts/*/; do
-            target="$(basename "$dir" | sed 's/-release$//')"
-            bin="$dir/p2p_chat_tui"
-            [ -f "$bin" ] || continue
-            out="release-files/p2p_chat_tui-$target"
-            cp "$bin" "$out"
-            (cd release-files && sha256sum "$(basename "$out")" > "$(basename "$out").sha256")
+            for f in "$dir"*; do
+              [ -f "$f" ] || continue
+              cp "$f" release-files/
+            done
           done
           ls -la release-files/
       

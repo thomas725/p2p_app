@@ -85,7 +85,21 @@ basic,mdns,sqlite_bundled`).
 Because `p2p_chat_tui` and `p2p_chat_server` declare `required-features`, the
 minimal build produces only the headless `p2p_chat` CLI. Release binaries are
 published as `p2p_chat_tui-<target>` so the platform builds cannot overwrite
-each other, and each checksum is generated against the published name.
+each other, and each checksum is generated against the published name. The
+minimal build is published too, as `p2p_chat` plus `p2p_chat.minimal.sha256`.
+
+A released archive therefore contains:
+
+```
+p2p_chat_tui-x86_64-unknown-linux-gnu        p2p_chat_tui-x86_64-unknown-linux-gnu.sha256
+p2p_chat_tui-x86_64-apple-darwin             p2p_chat_tui-x86_64-apple-darwin.sha256
+p2p_chat_tui-aarch64-apple-darwin            p2p_chat_tui-aarch64-apple-darwin.sha256
+p2p_chat_tui-aarch64-unknown-linux-gnu       p2p_chat_tui-aarch64-unknown-linux-gnu.sha256
+p2p_chat                                    p2p_chat.minimal.sha256
+```
+
+Every `.sha256` names the file it belongs to, so `sha256sum -c` works on a
+downloaded release.
 
 Release notes come from `CHANGELOG.md` if it exists; the repository does not
 have one yet, so the notes fall back to a single line naming the tag.
