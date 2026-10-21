@@ -152,6 +152,12 @@ def get_file_purpose(filepath: str) -> str:
         return 'TUI groups renderer'
     if 'tui_render/settings.rs' in filepath:
         return 'TUI settings renderer'
+    if 'web/mod.rs' in filepath:
+        return 'Web server (axum HTTP+WS)'
+    if 'web/methods.rs' in filepath:
+        return 'Web JSON method dispatch'
+    if 'api/mod.rs' in filepath:
+        return 'FRB API surface'
     purposes = {
         'build.rs': 'Build script',
         'lib.rs': 'Module declarations & re-exports',
@@ -191,6 +197,11 @@ def get_file_purpose(filepath: str) -> str:
         'mobile_api.rs': 'Mobile FRB API surface',
         'api.rs': 'FRB API surface',
         'frb_generated.rs': 'flutter_rust_bridge codegen',
+        'calls.rs': 'Call session state machine (signaling)',
+        'contacts.rs': 'Canonical contacts-roster model',
+        'files.rs': 'Content-addressed attachment store',
+        'identity.rs': 'Users, account keys & device bindings',
+        'p2p_chat_server.rs': 'Headless node + web server entry point',
     }
     return purposes.get(Path(filepath).name, 'Source file')
 
@@ -217,6 +228,12 @@ def get_test_file_purpose(filepath: str) -> str:
         'p2p_integration.rs': 'P2P integration tests',
         'db_selection.rs': 'Database selection tests',
         'test_utils.rs': 'Test utilities',
+        'logging_test_utils.rs': 'Logging test helpers',
+        'tui_test_state.rs': 'TUI test state builders',
+        'unit_calls.rs': 'calls module tests',
+        'unit_contacts.rs': 'contacts module tests',
+        'unit_files.rs': 'files module tests',
+        'unit_identity.rs': 'identity module tests',
         'queryable_tests.rs': 'Diesel queryable model tests',
         'insertable_tests.rs': 'Diesel insertable model tests',
         'swarm_handler.rs': 'swarm_handler module tests',
@@ -345,7 +362,33 @@ def get_dart_file_purpose(filepath: str) -> str:
         'test_helpers.dart': 'Test utilities & helpers',
         'api_test.dart': 'Dart API layer tests',
         'widget_test.dart': 'Widget smoke tests',
+        # Transport layer
+        'node_api.dart': 'Transport-agnostic node API',
+        'node_transport.dart': 'Duplex transport abstraction',
+        'frb_node_api.dart': 'In-process FRB transport',
+        'http_node_api.dart': 'WebSocket/HTTP transport',
+        'chat_message_ext.dart': 'Hand-written message helpers',
+        # Screens
+        'home.dart': 'App shell & broadcast chat',
+        'nav_bar.dart': 'Tab navigation bar',
+        'contact_list.dart': 'Contacts roster screen',
+        'peer_info.dart': 'Peer Info screen',
+        'messages.dart': 'Shared chat widgets',
+        'dm_chat.dart': 'Direct-message chat screen',
+        'group_chat.dart': 'Group chat screen',
+        'group_list.dart': 'Group list screen',
+        'call_screen.dart': 'Call overlay screen',
+        'log_tab.dart': 'Log tab screen',
+        'settings.dart': 'Settings screen',
+        # Utilities
+        'attachments.dart': 'File picker & opener seams',
+        'event_bus.dart': 'Node event fan-out',
+        'ui_utils.dart': 'Shared formatting & env helpers',
     }
+    # Two files are called `messages.dart`: the shared chat widgets and the
+    # hand-maintained Rust bindings under `lib/src/rust/`.
+    if '/src/rust/messages.dart' in filepath:
+        return 'Rust bindings (hand-maintained)'
     return purposes.get(Path(filepath).name, 'Dart source file')
 
 
@@ -354,6 +397,17 @@ def get_dart_test_purpose(filepath: str) -> str:
         'test_helpers.dart': 'Test utilities & helpers',
         'api_test.dart': 'Dart API layer unit tests',
         'widget_test.dart': 'Widget smoke tests',
+        'fake_node_api.dart': 'In-memory node fake',
+        'attachments_test.dart': 'Attachment helper tests',
+        'http_node_api_test.dart': 'Web transport wire-contract tests',
+        'attachment_chip_test.dart': 'Attachment chip widget tests',
+        'call_screen_test.dart': 'Call screen widget tests',
+        'contact_list_test.dart': 'Contacts roster widget tests',
+        'device_binding_test.dart': 'Device-binding prompt tests',
+        'group_list_test.dart': 'Group list widget tests',
+        'messages_test.dart': 'Chat widget tests',
+        'peer_info_test.dart': 'Peer Info widget tests',
+        'settings_test.dart': 'Settings widget tests',
     }
     return purposes.get(Path(filepath).name, 'Dart test file')
 
