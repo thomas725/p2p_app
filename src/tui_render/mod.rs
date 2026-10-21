@@ -102,7 +102,9 @@ pub fn render_input_section(
     state: &TuiRenderState,
     tab_content: &TabContent,
 ) {
-    let title = if state.is_editing_nickname() {
+    let title = if state.is_searching_contacts() {
+        "Search Contacts".to_string()
+    } else if state.is_editing_nickname() {
         let label = if state.is_editing_local_nickname() {
             "Local Nickname"
         } else {
@@ -115,7 +117,10 @@ pub fn render_input_section(
 
     let input_block = Block::default().title(title).borders(Borders::ALL);
 
-    if tab_content.is_input_enabled() || state.is_editing_nickname() {
+    if tab_content.is_input_enabled()
+        || state.is_editing_nickname()
+        || state.is_searching_contacts()
+    {
         let inner_area = input_block.inner(area);
         f.render_widget(input_block, area);
         let input = Paragraph::new(state.input_text.as_str());
@@ -134,7 +139,7 @@ pub fn render_input_section(
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Contacts => {
-            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | /: search | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
             "Tab: next | Enter: open DM | c: call | n: set local nickname | F12: mouse | Ctrl+Q: quit"

@@ -261,6 +261,85 @@ fn toggle_expand_contact_adds_and_removes_device_rows() {
     );
 }
 
+// ── Contacts search filter ─────────────────────────────────────────────
+
+#[test]
+fn test_contact_matches_name_id_and_device() {
+    let contact = multi_device_contact("bob", "Bob", &["Laptop", "Phone"]);
+    // Contact display name, contact id, device display name, device peer id.
+    assert!(contact_matches(&contact, "bob"));
+    assert!(contact_matches(&contact, "laptop"));
+    assert!(contact_matches(&contact, "bob-phone"));
+    assert!(!contact_matches(&contact, "carol"));
+}
+
+#[test]
+fn test_apply_contact_search_filters_and_restores() {
+    let mut state = test_app_state();
+    state.contacts_all = vec![
+        multi_device_contact("alice", "Alice", &["Phone"]),
+        multi_device_contact("bob", "Bob", &["Laptop"]),
+        multi_device_contact("carol", "Carol", &["Tablet"]),
+    ];
+    state.contacts.clone_from(&state.contacts_all);
+
+    state.set_contact_search("bo");
+    assert_eq!(state.contact_search, "bo");
+    assert_eq!(state.contacts.len(), 1);
+    assert_eq!(state.contacts[0].contact_id, "bob");
+
+    // A device-name match keeps the owning contact row.
+    state.set_contact_search("tablet");
+    assert_eq!(state.contacts.len(), 1);
+    assert_eq!(state.contacts[0].contact_id, "carol");
+
+    // Clearing restores every row.
+    state.set_contact_search("");
+    assert_eq!(state.contacts.len(), 3);
+}
+
+#[test]
+fn test_apply_contact_search_keeps_selection_when_it_survives() {
+    let mut state = test_app_state();
+    state.contacts_all = vec![
+        multi_device_contact("alice", "Alice", &["Phone"]),
+        multi_device_contact("bob", "Bob", &["Laptop"]),
+    ];
+    state.contacts.clone_from(&state.contacts_all);
+    state.peer_selection = 1; // bob
+
+    state.set_contact_search("o"); // matches both bob and …alice? -> only "bob"/"Phone"
+    assert_eq!(state.selected_contact_id().as_deref(), Some("bob"));
+
+    // Filtering to nothing clamps the selection to an empty table.
+    state.set_contact_search("zzz");
+    assert!(state.contacts.is_empty());
+    assert_eq!(state.peer_selection, 0);
+}
+
+#[test]
+fn test_contact_search_mode_begin_and_end() {
+    let mut state = test_app_state();
+    assert!(!state.is_searching_contacts());
+
+    state.set_contact_search("bob");
+    state.begin_contact_search();
+    assert!(state.is_searching_contacts());
+    // The box is pre-filled with the active query so it can be edited.
+    assert_eq!(state.chat_input.lines().join("\n"), "bob");
+
+    // Enter keeps the query.
+    state.end_contact_search(true);
+    assert!(!state.is_searching_contacts());
+    assert_eq!(state.contact_search, "bob");
+
+    // Esc clears it and restores the full list.
+    state.begin_contact_search();
+    state.end_contact_search(false);
+    assert!(!state.is_searching_contacts());
+    assert_eq!(state.contact_search, "");
+}
+
 #[test]
 fn toggle_expand_on_device_row_or_single_device_is_noop() {
     let mut state = test_app_state();

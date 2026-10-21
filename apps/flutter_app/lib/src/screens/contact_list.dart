@@ -62,6 +62,9 @@ class ContactListState extends State<ContactList> {
   /// aggregated, so device rows show a dash (mirrors the TUI's rendered "–").
   static const String _kDeviceStatPlaceholder = '\u2013';
 
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+
   int _sortColumn = _kLastSeen;
   bool _ascending = false;
 
@@ -78,6 +81,26 @@ class ContactListState extends State<ContactList> {
 
   int _dmCount(MobileContactRow c) => c.dmCount.toInt();
   int _broadcastCount(MobileContactRow c) => c.broadcastSentToPeer.toInt();
+
+  /// Contacts matching the active query (empty = no filter).
+  ///
+  /// Case-insensitive substring match over the contact/device ids and display
+  /// names, mirroring the TUI's `contact_matches` so searching a peer id finds
+  /// a contact shown by its grouped user name. Filtering happens before the
+  /// Rust sort, which stays the single ordering authority.
+  List<MobileContactRow> _visibleRows() {
+    if (_query.isEmpty) return widget.rows;
+    final q = _query.toLowerCase();
+    bool has(String s) => s.toLowerCase().contains(q);
+    return widget.rows
+        .where(
+          (c) =>
+              has(c.contactId) ||
+              has(c.displayName) ||
+              c.deviceRows.any((d) => has(d.peerId) || has(d.displayName)),
+        )
+        .toList();
+  }
 
   /// Display name, with a ` ×N` device-count suffix when the contact spans
   /// multiple bound devices (mirrors the TUI render-only suffix).
@@ -205,15 +228,22 @@ class ContactListState extends State<ContactList> {
     );
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   /// Identity of the current sort inputs: the rows list identity + shape +
   /// the sort params. Cache hits render synchronously; misses re-sort
   /// off-band and swap in via setState.
   String get _sortKey =>
       '${identityHashCode(widget.rows)}:${widget.rows.length}:'
-      '$_sortColumn:$_ascending';
+      '$_query:$_sortColumn:$_ascending';
 
   Future<List<MobileContactRow>> _computeSorted() async {
-    final rows = widget.rows
+    final visible = _visibleRows();
+    final rows = visible
         .map(
           (c) => ContactSortInput(
             contactId: c.contactId,
@@ -228,7 +258,7 @@ class ContactListState extends State<ContactList> {
         )
         .toList();
     final sorted = await _runSort(rows);
-    final byId = {for (final r in widget.rows) r.contactId: r};
+    final byId = {for (final r in visible) r.contactId: r};
     return [for (final row in sorted) byId[row.contactId]!];
   }
 
@@ -267,10 +297,15 @@ class ContactListState extends State<ContactList> {
     unawaited(_resort());
   }
 
+  void _onQueryChanged(String value) {
+    setState(() => _query = value);
+    unawaited(_resort());
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final sorted = _sortedCache ?? widget.rows;
+    final sorted = _sortedCache ?? _visibleRows();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -282,10 +317,40 @@ class ContactListState extends State<ContactList> {
               const Icon(Icons.people, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Contacts (${widget.rows.length})',
+                _query.isEmpty
+                    ? 'Contacts (${widget.rows.length})'
+                    : 'Contacts (${sorted.length}/${widget.rows.length})',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(color: cs.onPrimaryContainer),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: 220,
+                child: TextField(
+                  key: const Key('contacts-search'),
+                  controller: _searchController,
+                  onChanged: _onQueryChanged,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Search contacts',
+                    prefixIcon: const Icon(Icons.search, size: 18),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            key: const Key('contacts-search-clear'),
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _searchController.clear();
+                              _onQueryChanged('');
+                            },
+                          ),
+                    filled: true,
+                    fillColor: cs.surface,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
               ),
             ],
           ),
@@ -294,7 +359,7 @@ class ContactListState extends State<ContactList> {
           child: sorted.isEmpty
               ? Center(
                   child: Text(
-                    'No contacts yet.',
+                    _query.isEmpty ? 'No contacts yet.' : 'No contacts match.',
                     style: TextStyle(color: Colors.grey[500]),
                   ),
                 )

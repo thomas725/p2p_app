@@ -108,6 +108,13 @@ pub struct AppState {
     // live `peers` deque stays the single device source, and grouped users
     // collapse here into one row per contact.
     pub contacts: Vec<p2p_app::contacts::ContactRow>,
+    // The unfiltered, sorted Contacts rows: `contacts` is this list with the
+    // active search query applied, so the table, click mapping, selection and
+    // scroll math all agree on one filtered list.
+    pub contacts_all: Vec<p2p_app::contacts::ContactRow>,
+    // Active Contacts-tab search query (empty = no filter). Case-insensitive
+    // substring match over the contact/device ids and display names.
+    pub contact_search: String,
     // Contact IDs expanded into their device sub-rows on the Contacts tab.
     pub expanded_contact_ids: HashSet<String>,
     pub concurrent_peers: usize,
@@ -353,13 +360,33 @@ impl AppState {
                     .collect()
             })
             .unwrap_or_default();
-        let previous = self.selected_contact_id();
         self.rebuild_contacts();
         self.contacts = p2p_app::contacts::sort_canonical_rows(
             &self.contacts,
             self.peer_sort_column,
             self.peer_sort_ascending,
         );
+        self.contacts_all.clone_from(&self.contacts);
+        self.apply_contact_search();
+    }
+
+    /// Re-derive [`Self::contacts`] from the unfiltered [`Self::contacts_all`]
+    /// with the active search query, keeping the currently selected contact
+    /// selected when it survives the filter (otherwise the selection falls back
+    /// to the first row).
+    pub fn apply_contact_search(&mut self) {
+        let previous = self.selected_contact_id();
+        if self.contact_search.is_empty() {
+            self.contacts.clone_from(&self.contacts_all);
+        } else {
+            let query = self.contact_search.to_lowercase();
+            self.contacts = self
+                .contacts_all
+                .iter()
+                .filter(|c| contact_matches(c, &query))
+                .cloned()
+                .collect();
+        }
         self.peer_selection = previous
             .and_then(|contact_id| {
                 self.contacts
@@ -368,6 +395,39 @@ impl AppState {
             })
             .unwrap_or(0)
             .min(self.contacts.len().saturating_sub(1));
+    }
+
+    /// Set the Contacts-tab search query and re-filter the table.
+    pub fn set_contact_search(&mut self, query: &str) {
+        self.contact_search = query.to_string();
+        self.apply_contact_search();
+    }
+
+    /// True while the shared text input is capturing a Contacts search query.
+    pub const fn is_searching_contacts(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::SearchingContacts)
+    }
+
+    /// Open the Contacts search box, pre-filled with the active query so it can
+    /// be edited (clearing it and confirming restores the full list).
+    pub fn begin_contact_search(&mut self) {
+        self.input_mode = p2p_app::InputMode::SearchingContacts;
+        let mut input = TextArea::default();
+        input.insert_str(&self.contact_search);
+        self.chat_input = input;
+    }
+
+    /// Leave the search box; `keep_query` keeps the filter applied (Enter) or
+    /// clears it and restores the full list (Esc).
+    pub fn end_contact_search(&mut self, keep_query: bool) {
+        if !self.is_searching_contacts() {
+            return;
+        }
+        self.input_mode = p2p_app::InputMode::Chat;
+        if !keep_query {
+            self.set_contact_search("");
+        }
+        self.chat_input = TextArea::default();
     }
 
     /// The selected row of the flattened Contacts table, in the contact list's
@@ -519,6 +579,8 @@ impl AppState {
             dm_receipts: data.dm_receipts,
             peers: data.peers,
             contacts: Vec::new(),
+            contacts_all: Vec::new(),
+            contact_search: String::new(),
             expanded_contact_ids: HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
             group_summaries: data.groups,
@@ -573,6 +635,7 @@ impl AppState {
             own_user_devices: Vec::new(),
         };
         state.rebuild_contacts();
+        state.contacts_all.clone_from(&state.contacts);
         state
     }
 }
@@ -631,6 +694,21 @@ pub fn load_and_format_messages(
             )
         },
     )
+}
+
+/// Does a contact row match a Contacts-tab search query?
+///
+/// Case-insensitive substring match against the contact's id and display name
+/// plus every device's peer id and display name — so searching a peer ID finds
+/// the row even when the contact is shown by a grouped user name.
+#[must_use]
+pub fn contact_matches(contact: &p2p_app::contacts::ContactRow, query_lower: &str) -> bool {
+    contact.contact_id.to_lowercase().contains(query_lower)
+        || contact.display_name.to_lowercase().contains(query_lower)
+        || contact.device_rows.iter().any(|d| {
+            d.peer_id.to_lowercase().contains(query_lower)
+                || d.display_name.to_lowercase().contains(query_lower)
+        })
 }
 
 #[cfg(test)]

@@ -431,6 +431,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     decline_device_binding_prompt(&mut s);
     if s.cancel_group_leave() {
         p2plog_debug("Cancelled group leave".to_string());
+    } else if s.is_searching_contacts() {
+        s.end_contact_search(false);
+        p2plog_debug("Cleared Contacts search".to_string());
     } else if s.is_editing_nickname() {
         s.cancel_nickname_edit();
         p2plog_debug("Cancelled nickname edit".to_string());
@@ -746,6 +749,64 @@ async fn process_key_event(
     false
 }
 
+/// Contacts-tab key handling: opening the search box and the column sorts.
+///
+/// The search box itself is fed by the dispatch's dedicated arms (it owns every
+/// printable key while open), so this only has to distinguish "is the search
+/// box opening?" from "is this a sort shortcut?".
+fn handle_contacts_tab_key(
+    key_event: crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    s: &mut super::state::AppState,
+) {
+    if is_ctrl || s.is_editing_nickname() {
+        return;
+    }
+    match key_event.code {
+        crossterm::event::KeyCode::Char('/') if !s.is_searching_contacts() => {
+            s.begin_contact_search();
+            p2plog_debug("Searching contacts".to_string());
+        }
+        crossterm::event::KeyCode::Char(c) if !s.is_searching_contacts() => {
+            handle_peer_sort_key(s, c);
+        }
+        _ => {}
+    }
+}
+
+/// Feed a key to the Contacts search box while it is open.
+///
+/// Returns `true` when the key belonged to the box (so the caller's arm can
+/// swallow it instead of letting the tab actions or the sort keys see it).
+fn handle_contacts_search_edit(
+    key_event: crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+) -> bool {
+    if !s.is_searching_contacts() {
+        return false;
+    }
+    match key_event.code {
+        crossterm::event::KeyCode::Char(c) => {
+            s.chat_input.insert_char(c);
+        }
+        crossterm::event::KeyCode::Backspace => {
+            s.chat_input.delete_char();
+        }
+        _ => return false,
+    }
+    sync_contact_search(s);
+    true
+}
+
+/// Re-derive the Contacts filter from the shared search box.
+///
+/// The box is the single source of the query: every keystroke of the
+/// [`p2p_app::InputMode::SearchingContacts`] mode lands here.
+fn sync_contact_search(s: &mut super::state::AppState) {
+    let query = s.chat_input.lines().join("\n");
+    s.set_contact_search(&query);
+}
+
 /// Dispatch a fully-unlocked key event against the active tab.
 ///
 /// Tab lookups and modifier flags are computed once up front; shared
@@ -764,6 +825,7 @@ async fn handle_key_dispatch(
         .contains(crossterm::event::KeyModifiers::SHIFT);
     let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let on_contacts = matches!(&tab, p2p_app::tui_tabs::TabContent::Contacts);
+    let on_peer_info = matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_));
     let on_direct = matches!(&tab, p2p_app::tui_tabs::TabContent::Direct(_));
     let on_settings = matches!(&tab, p2p_app::tui_tabs::TabContent::Settings);
     let on_groups = matches!(&tab, p2p_app::tui_tabs::TabContent::Groups);
@@ -808,7 +870,10 @@ async fn handle_key_dispatch(
             toggle_mouse_capture(s);
         }
         crossterm::event::KeyCode::Enter => {
-            if s.is_editing_nickname() {
+            if s.is_searching_contacts() {
+                s.end_contact_search(true);
+                p2plog_debug("Applied Contacts search".to_string());
+            } else if s.is_editing_nickname() {
                 handle_nickname_submission(s, swarm_cmd_tx).await;
             } else {
                 handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
@@ -817,6 +882,24 @@ async fn handle_key_dispatch(
         crossterm::event::KeyCode::Char('w') if is_ctrl => {
             handle_close_dm_tab(s, &tab);
         }
+        // The Contacts search box owns every printable key while it is open, so
+        // typing `c`/`e`/`i` edits the query instead of triggering their
+        // Contacts actions (checked below).
+        crossterm::event::KeyCode::Char(_) | crossterm::event::KeyCode::Backspace
+            if !is_ctrl && on_contacts && handle_contacts_search_edit(key_event, s) => {}
+        crossterm::event::KeyCode::Char(_)
+            if !is_ctrl
+                && !s.is_editing_nickname()
+                && (on_contacts || on_peer_info)
+                && handle_contacts_action_key(
+                    key_event,
+                    is_ctrl,
+                    on_contacts,
+                    &tab,
+                    s,
+                    swarm_cmd_tx,
+                )
+                .await => {}
         crossterm::event::KeyCode::Char('n')
             if !is_ctrl
                 && !s.is_editing_nickname()
@@ -824,45 +907,64 @@ async fn handle_key_dispatch(
         {
             handle_nickname_key(s, &tab);
         }
-        crossterm::event::KeyCode::Char('i')
-            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
-        {
-            open_peer_info_for_active_tab(s);
-            p2plog_debug("Opened Peer Info tab".to_string());
-        }
-        // `e` expands/collapses the selected contact's device rows (no-op on
-        // single-device contacts and device rows).
-        crossterm::event::KeyCode::Char('e')
-            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
-        {
-            s.toggle_expand_selected_contact();
-            p2plog_debug("Toggled contact expansion".to_string());
-        }
-        // `c` places a call to the selected contact/device (Contacts) or the
-        // Peer Info owner. Must precede the generic sort-key arm below (which
-        // would otherwise swallow the `c`).
-        crossterm::event::KeyCode::Char('c')
-            if !is_ctrl
-                && !s.is_editing_nickname()
-                && (on_contacts || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
-        {
-            start_call_for_tab(&tab, s, swarm_cmd_tx).await;
-        }
-        crossterm::event::KeyCode::Char(c)
-            if !is_ctrl && on_contacts && !s.is_editing_nickname() =>
-        {
-            handle_peer_sort_key(s, c);
-        }
         crossterm::event::KeyCode::Char(c)
             if !is_ctrl && on_groups && !s.is_editing_nickname() && !s.is_creating_group() =>
         {
             handle_groups_key(c, s);
+        }
+        // Remaining Contacts-tab keys: `/` opens the search box (which then owns
+        // every keystroke, so typing never re-sorts) and anything else is a
+        // column-sort shortcut; `e`/`i`/`c` were handled above.
+        crossterm::event::KeyCode::Char(_) | crossterm::event::KeyCode::Backspace
+            if on_contacts && !s.is_editing_nickname() =>
+        {
+            handle_contacts_tab_key(key_event, is_ctrl, s);
         }
         _ => {
             if input_enabled || s.is_editing_nickname() || s.is_creating_group() {
                 s.chat_input.input(key_event);
             }
         }
+    }
+}
+
+/// The Contacts / Peer Info action keys, all of which must be checked before
+/// the search box and the generic sort-key arm.
+///
+/// Returns `true` when the key was one of them.
+async fn handle_contacts_action_key(
+    key_event: crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    on_contacts: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    if is_ctrl || s.is_editing_nickname() {
+        return false;
+    }
+    match key_event.code {
+        crossterm::event::KeyCode::Char('i') if on_contacts => {
+            open_peer_info_for_active_tab(s);
+            p2plog_debug("Opened Peer Info tab".to_string());
+            true
+        }
+        // `e` expands/collapses the selected contact's device rows (no-op on
+        // single-device contacts and device rows).
+        crossterm::event::KeyCode::Char('e') if on_contacts => {
+            s.toggle_expand_selected_contact();
+            p2plog_debug("Toggled contact expansion".to_string());
+            true
+        }
+        // `c` places a call to the selected contact/device or the Peer Info
+        // owner.
+        crossterm::event::KeyCode::Char('c')
+            if on_contacts || matches!(tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
+        {
+            start_call_for_tab(tab, s, swarm_cmd_tx).await;
+            true
+        }
+        _ => false,
     }
 }
 

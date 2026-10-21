@@ -226,6 +226,12 @@ impl TuiRenderState {
         matches!(self.input_mode, crate::InputMode::CreatingGroup)
     }
 
+    /// True while the shared text input captures a Contacts search query.
+    #[must_use]
+    pub const fn is_searching_contacts(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::SearchingContacts)
+    }
+
     /// Create with sample data for testing
     #[must_use]
     pub fn with_sample_data() -> Self {

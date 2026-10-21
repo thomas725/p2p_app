@@ -391,6 +391,130 @@ fn test_enter_key_in_peers_tab_opens_dm() {
     p2p_app::db::reset_db_url();
 }
 
+// ── Contacts search key flow ─────────────────────────────────────────────
+
+/// Press one key and drain the render channel.
+///
+/// `process_key_event` renders once per handled key; with a live receiver on a
+/// single-slot channel the second send would block forever, so the tests drain
+/// after every press.
+async fn press_contacts_key(
+    key: KeyEvent,
+    state: &Arc<Mutex<AppState>>,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    render_tx: &mpsc::Sender<RenderEvent>,
+    render_rx: &mut mpsc::Receiver<RenderEvent>,
+) {
+    let _ = process_key_event(key, state, swarm_cmd_tx, render_tx).await;
+    while render_rx.try_recv().is_ok() {}
+}
+
+#[tokio::test]
+async fn test_slash_key_on_contacts_starts_a_search_and_filters() {
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 1; // Contacts tab
+        // Give the table rows the search can match (the helper's peers carry
+        // generated names, so filter on a device peer id substring).
+        s.contacts_all = s.contacts.clone();
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    // A key press renders once, so the channel is drained between presses (a
+    // full single-slot channel with a live receiver would block the send).
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    // `/` opens the search box (and consumes the key: it must not sort).
+    press_contacts_key(
+        KeyEvent::new(KeyCode::Char('/'), KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+        &mut render_rx,
+    )
+    .await;
+    let all_rows = {
+        let s = state.lock().await;
+        assert!(s.is_searching_contacts());
+        assert_eq!(s.input_mode, p2p_app::InputMode::SearchingContacts);
+        s.contacts.len()
+    };
+    assert!(all_rows > 0);
+
+    // Typing narrows the table; the query mirrors the shared input box.
+    let mut query = String::new();
+    for c in "zzz-no-such-contact".chars() {
+        query.push(c);
+        press_contacts_key(
+            KeyEvent::new(KeyCode::Char(c), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+            &mut render_rx,
+        )
+        .await;
+    }
+    {
+        let s = state.lock().await;
+        assert_eq!(s.contact_search, query);
+        assert!(s.contacts.is_empty());
+    }
+
+    // Backspace widens it again (last char removed).
+    press_contacts_key(
+        KeyEvent::new(KeyCode::Backspace, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+        &mut render_rx,
+    )
+    .await;
+    {
+        let s = state.lock().await;
+        assert_eq!(s.contact_search.len(), query.len() - 1);
+    }
+
+    // Esc exits the search and clears the filter.
+    press_contacts_key(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+        &mut render_rx,
+    )
+    .await;
+    {
+        let s = state.lock().await;
+        assert!(!s.is_searching_contacts());
+        assert_eq!(s.contact_search, "");
+        assert_eq!(s.contacts.len(), all_rows);
+    }
+}
+
+#[tokio::test]
+async fn test_enter_key_keeps_the_contacts_search_filter() {
+    let state = Arc::new(Mutex::new(app_state_with_peers(3)));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = 1;
+        s.contacts_all = s.contacts.clone();
+        s.begin_contact_search();
+        s.chat_input.insert_str("peer");
+        s.set_contact_search("peer");
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+    let _ = process_key_event(enter, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(!s.is_searching_contacts());
+    assert_eq!(s.contact_search, "peer");
+    // Enter must not have opened a DM tab from the filtered selection.
+    assert_eq!(s.dynamic_tabs.dm_tab_count(), 0);
+}
+
 #[tokio::test]
 async fn test_ctrl_w_closes_peer_info_tab() {
     let state = Arc::new(Mutex::new(test_app_state()));

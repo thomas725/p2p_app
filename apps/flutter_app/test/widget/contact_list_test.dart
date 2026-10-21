@@ -459,4 +459,126 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('call-solo')), findsNothing);
   });
+
+  // ── Search affordance ───────────────────────────────────────────────────
+
+  testWidgets('search filters by display name and restores on clear', (
+    tester,
+  ) async {
+    final rows = [
+      contact(id: 'aaa', name: 'Alpha'),
+      contact(id: 'bbb', name: 'Beta'),
+      contact(id: 'ccc', name: 'Gamma'),
+    ];
+    await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
+    await tester.pump();
+
+    expect(find.text('Contacts (3)'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('contacts-search')), 'be');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Alpha'), findsNothing);
+    expect(find.text('Gamma'), findsNothing);
+    // The header shows the filtered/total count.
+    expect(find.text('Contacts (1/3)'), findsOneWidget);
+
+    // The clear button restores the full list.
+    await tester.tap(find.byKey(const Key('contacts-search-clear')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('Gamma'), findsOneWidget);
+    expect(find.text('Contacts (3)'), findsOneWidget);
+  });
+
+  testWidgets('search matches contact id and device name, case-insensitively', (
+    tester,
+  ) async {
+    final rows = [
+      contact(
+        id: 'multi',
+        name: 'Multi',
+        deviceCount: 2,
+        devices: [
+          MobileContactDevice(
+            peerId: 'multi-laptop',
+            displayName: 'Laptop',
+            firstSeen: '',
+            lastSeen: '',
+          ),
+          MobileContactDevice(
+            peerId: 'multi-phone',
+            displayName: 'Phone',
+            firstSeen: '',
+            lastSeen: '',
+          ),
+        ],
+      ),
+      contact(id: 'solo', name: 'Solo'),
+    ];
+    await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
+    await tester.pump();
+
+    // A device-name hit keeps the owning contact row.
+    await tester.enterText(find.byKey(const Key('contacts-search')), 'PHONE');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Multi \u00d72'), findsOneWidget);
+    expect(find.text('Solo'), findsNothing);
+
+    // A contact-id hit does the same.
+    await tester.enterText(find.byKey(const Key('contacts-search')), 'solo');
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Solo'), findsOneWidget);
+    expect(find.text('Multi \u00d72'), findsNothing);
+  });
+
+  testWidgets('search filters before the Rust sort (no rows invented or lost)', (
+    tester,
+  ) async {
+    // Record what the widget hands to the Rust sort: it must be exactly the
+    // filtered subset, so the sort never sees (or returns) a hidden contact.
+    final seen = <List<String>>[];
+    List<ContactSortInput> recordingSort(
+      List<ContactSortInput> rows,
+      int column,
+      bool ascending,
+    ) {
+      seen.add([for (final r in rows) r.contactId]);
+      return _sortLikeRust(rows, column, ascending);
+    }
+
+    final rows = [
+      contact(id: 'alpha', name: 'Alpha'),
+      contact(id: 'beta', name: 'Beta'),
+    ];
+    await tester.pumpWidget(_app(rows: rows, sortOverride: recordingSort));
+    await tester.pump();
+    expect(seen.last, ['alpha', 'beta']);
+
+    await tester.enterText(find.byKey(const Key('contacts-search')), 'alpha');
+    await tester.pump();
+    await tester.pump();
+    expect(seen.last, ['alpha']);
+  });
+
+  testWidgets('no-match search shows an empty hint and keeps the total', (
+    tester,
+  ) async {
+    final rows = [contact(id: 'alpha', name: 'Alpha')];
+    await tester.pumpWidget(_app(rows: rows, sortOverride: _sortLikeRust));
+    await tester.pump();
+
+    await tester.enterText(find.byKey(const Key('contacts-search')), 'zzz');
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('No contacts match.'), findsOneWidget);
+    expect(find.text('Contacts (0/1)'), findsOneWidget);
+  });
 }

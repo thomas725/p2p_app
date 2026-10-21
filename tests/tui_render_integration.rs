@@ -299,6 +299,32 @@ mod render_tests {
         assert!(!text.contains("Nickname"), "buffer: {text}");
     }
 
+    /// Opening the Contacts search box relabels the shared input section and
+    /// echoes the query, even though the Contacts tab has no chat input.
+    #[test]
+    fn test_render_input_section_titles_contacts_search() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.input_text = "bob".to_string();
+        state.input_mode = p2p_app::InputMode::SearchingContacts;
+
+        terminal
+            .draw(|f| {
+                render_input_section(f, Rect::new(0, 0, 80, 5), &state, &TabContent::Contacts);
+            })
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Search Contacts"), "buffer: {text}");
+        // The query is shown inside the box (the Contacts tab has no chat input).
+        assert!(text.contains("bob"), "buffer: {text}");
+    }
+
     #[test]
     fn test_render_shortcuts_library() {
         let mut terminal = create_test_terminal();
@@ -316,6 +342,7 @@ mod render_tests {
         assert!(text.contains("Enter: open DM"));
         assert!(text.contains("i: Peer Info"));
         assert!(text.contains("c: call"));
+        assert!(text.contains("/: search"));
         assert!(!text.contains("Ctrl+I: Peer Info"));
     }
 

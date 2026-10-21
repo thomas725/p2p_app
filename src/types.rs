@@ -35,6 +35,8 @@ pub enum InputMode {
     EditingLocalNickname,
     /// Capturing a group name for create/join on the Groups tab.
     CreatingGroup,
+    /// Capturing a Contacts-tab search query (filters the contact table).
+    SearchingContacts,
 }
 
 /// Per-tab "keep scrolled to the newest message" toggles.
