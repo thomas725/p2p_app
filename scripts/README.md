@@ -14,7 +14,7 @@ scripts/build-all.sh --web-only   # only the server binary + web bundle
 
 Why one script: the web frontend is a **display client** — the node stays native
 inside the Rust web server (`p2p_chat_server`) and the browser talks
-JSON-over-WebSocket to it (`docs/2026-10-18_web_frontend.md`). Nothing is
+JSON-over-WebSocket to it (`docs/web_frontend.md`). Nothing is
 compiled to WASM, so the web half is a normal Rust build plus `flutter build web`.
 Both Rust binaries come out of a **single** `cargo build --bin p2p_chat_tui --bin
 p2p_chat_server`, so the shared dependency graph is compiled once and the two
@@ -36,6 +36,26 @@ Then run (from the repo root):
 
 Web frontend only: `cargo build --bin p2p_chat_server` + `flutter build web`.
 See `build-all.sh` above for the combined build.
+
+## check_docs_links.py
+
+Verifies that every relative link in the repository's Markdown files resolves.
+Moving or renaming a document is the easiest way to leave a broken link
+behind, and a broken link in a doc nobody opens stays invisible until someone
+does open it.
+
+```bash
+python3 scripts/check_docs_links.py            # every tracked *.md
+python3 scripts/check_docs_links.py docs/      # only the docs tree
+```
+
+Exits 0 when all links resolve, 1 otherwise. It checks inline links
+(`[text](target)`) and reference definitions (`[id]: target`), skips fenced
+code blocks, and ignores external URLs and pure anchors. The
+machine-generated history in `.github/workflow-logs/` is excluded.
+
+Run it in CI: `.github/workflows/main.yml` has a "Check documentation links"
+step.
 
 # Metrics Generation Script
 
