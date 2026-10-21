@@ -595,7 +595,7 @@ pub fn save_outgoing_broadcast(
 
 /// [`save_outgoing_broadcast`] with a pre-stored attachment (files lane §12).
 ///
-/// The web upload route (docs/2026-10-18_web_frontend.md) stores the blob from
+/// The web upload route (`docs/web_frontend.md`) stores the blob from
 /// raw bytes server-side and passes the descriptor straight through, so the
 /// path-based step never happens on that flow.
 pub(crate) fn save_outgoing_broadcast_attached(

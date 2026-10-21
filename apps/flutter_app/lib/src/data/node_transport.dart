@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Duplex transport to a `p2p_chat_server` (see
-/// `docs/2026-10-18_web_frontend.md`): text frames for the JSON
+/// `docs/web_frontend.md`): text frames for the JSON
 /// request/response + push-event protocol, plus HTTP routes for attachment
 /// bytes. Production is [WsRemoteTransport]; Dart tests inject a fake so the
 /// [HttpNodeApi] logic runs without a network.

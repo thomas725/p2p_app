@@ -1,4 +1,4 @@
-//! JSON method dispatch for the web frontend (docs/2026-10-18_web_frontend.md).
+//! JSON method dispatch for the web frontend (`docs/web_frontend.md`).
 //!
 //! One arm per FRB-exposed function; method names mirror the Dart-side FRB
 //! names so `HttpNodeApi` is a mechanical mapping. Every arm runs on a

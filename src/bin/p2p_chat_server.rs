@@ -1,4 +1,4 @@
-//! Node server for the web frontend (docs/2026-10-18_web_frontend.md).
+//! Node server for the web frontend (`docs/web_frontend.md`).
 //!
 //! Starts the p2p node with the same headless lifecycle as the mobile path
 //! (DB selection, identity provisioning, group re-subscription, attachment

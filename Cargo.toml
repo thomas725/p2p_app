@@ -63,7 +63,7 @@ calls = []
 # ("overwritten"/superseded attachments). Disable to never delete blob state:
 # `--no-default-features --features <the rest you need>`.
 attachment-gc = []
-# Web frontend (docs/2026-10-18_web_frontend.md): axum HTTP+WebSocket server that
+# Web frontend (docs/web_frontend.md): axum HTTP+WebSocket server that
 # mirrors the FRB API surface so a Flutter-Web (or any) client can drive the node
 # remotely. Server binary `p2p_chat_server` requires it; the `mobile` feature set
 # deliberately excludes it. The server republishes the `mobile`/FRB surface

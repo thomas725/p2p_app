@@ -1,4 +1,4 @@
-// Transport abstraction over the p2p node (docs/2026-10-18_web_frontend.md).
+// Transport abstraction over the p2p node (docs/web_frontend.md).
 //
 // Every screen talks to the node through [NodeApi]. Two transports exist:
 //  - [FrbNodeApi]: in-process flutter_rust_bridge FFI (Android/mobile), the

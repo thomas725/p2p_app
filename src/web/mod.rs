@@ -1,4 +1,4 @@
-//! Web frontend server (docs/2026-10-18_web_frontend.md).
+//! Web frontend server (`docs/web_frontend.md`).
 //!
 //! An axum HTTP+WebSocket server that mirrors the FRB API surface
 //! ([`crate::api`]) as JSON methods, so a browser client (the Flutter Web

@@ -2,7 +2,7 @@
 # Build every desktop frontend in one go: the TUI binary AND the Flutter web
 # bundle (served by the Rust node server).
 #
-# Architecture (docs/2026-10-18_web_frontend.md): the browser app is a pure
+# Architecture (docs/web_frontend.md): the browser app is a pure
 # display client. The node stays native inside the Rust web server
 # (`p2p_chat_server`), and the browser talks JSON-over-WebSocket to it. Nothing
 # is compiled to WASM, so the web half is just a normal Rust build plus

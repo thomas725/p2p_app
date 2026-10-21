@@ -51,7 +51,7 @@ jobs:
 
       # Informational only. cargo outdated exits non-zero whenever any row exists
       # (including transitive pin rows that no repo change can move), so it must NOT
-      # gate the workflow. See docs/2026-09-02_backlog.md item 6 for the expected rows.
+      # gate the workflow. See docs/backlog.md and docs/dependencies.md for the expected rows.
       - name: Check for outdated dependencies
         if: steps.skip-check.outputs.skip != 'true'
         continue-on-error: true

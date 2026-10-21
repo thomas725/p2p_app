@@ -2,7 +2,7 @@
 # Build the web frontend: the node server binary plus the Flutter web bundle.
 #
 # The browser app is a pure display client over the node's JSON-over-WebSocket
-# API (docs/2026-10-18_web_frontend.md) — nothing is compiled to WASM, so this
+# API (docs/web_frontend.md) — nothing is compiled to WASM, so this
 # is just the normal Rust build plus `flutter build web`.
 #
 # Usage:

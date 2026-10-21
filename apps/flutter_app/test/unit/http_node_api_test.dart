@@ -1,5 +1,5 @@
 // Unit tests for the web transport ([HttpNodeApi]) — the browser client half
-// of docs/2026-10-18_web_frontend.md. A fake [RemoteTransport] stands in for
+// of docs/web_frontend.md. A fake [RemoteTransport] stands in for
 // the WebSocket + HTTP routes, so these tests pin the wire contract without a
 // network: request frames ({id, method, params}), response handling
 // ({id, ok|err}), pushed event frames, attachment upload, and reconnect.
