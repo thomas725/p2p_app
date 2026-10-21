@@ -26,7 +26,10 @@ work) and the product stories from the original user-stories doc.
 
 ### `libsqlite3-sys` 0.36 → 0.38 (dependency lane) — **blocked**
 
-The last `cargo outdated` row. Diesel's latest 2.x (2.3.13) still pins
+`cargo outdated --depth 1` currently reports **nine** direct rows (the full
+breakdown is in [`dependencies.md`](dependencies.md)): four are lockfile-only,
+four need a routine manifest bump, and this one is the only row **no change
+in this repo can move**. Diesel's latest 2.x (2.3.13) still pins
 `libsqlite3-sys` 0.36, and 0.36 is the version that blocks the 0.38 line.
 
 - **Blocker**: upstream diesel. Nothing in this repo can move it.
@@ -52,6 +55,22 @@ only the account key (today's rule), or any already-bound device of that user?
 ---
 
 ## P1 — planned work
+
+### Make CI gate a push (CI lane)
+
+Every step in `.github/workflows/main.yml` is `continue-on-error: true`, so a
+failing test, a clippy warning or a broken doc link does **not** turn the
+workflow red — the consolidated results file is the artifact, not the exit
+status. The policy in `AGENTS.md` ("`cargo ct` must exit 0 with no warnings")
+is enforced by convention and by the local checklist, not by CI. The only
+hard gate in the repo is `cargo audit` in `dependencies.yml`.
+
+- **Decision needed**: hard-fail on push, or keep the advisory model and
+  rely on branch protection + a required status check that does not exist.
+- **Cost**: the workflow currently also collects results for *informational*
+  steps; a hard gate means picking which steps are blocking.
+- **Note**: `cargo test --all-features` now runs on push (added 2026-10-21);
+  it is advisory like the rest.
 
 ### End-to-end encryption for direct messages (US-042)
 
@@ -122,6 +141,21 @@ messages, don't dial it) rather than merely hidden in the UI.
 
 ## P2 — polish
 
+### Routine dependency bumps that need a manifest change
+
+`cargo outdated --depth 1` reports four rows whose newer version is outside
+the current requirement, so the manifest has to move (the other four direct
+rows are lockfile-only and clear with a plain `cargo update`):
+
+| Crate | Locked | Newer | Note |
+|---|---|---|---|
+| `libp2p` | 0.57.0 | 0.57.1 | The `=0.57.0` pin is deliberate; bump it deliberately and re-read the protocol docs. |
+| `sha2` | 0.10.9 | 0.11.1 | Major bump — the attachment `file_id` digest must keep producing the same hex. |
+| `tower-http` | 0.6.11 | 0.7.1 | Major bump — the web server's static-file and CORS wiring. |
+| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only; the web server's WebSocket test client. |
+
+Details: [`dependencies.md`](dependencies.md).
+
 ### Human-readable attachment sizes (files lane)
 
 Both frontends render the chip with **raw bytes** (`[file] report.pdf (1048576)`).
@@ -172,7 +206,7 @@ here so they are not mistaken for unfinished work.
 | Calls are signaling-only | Media transport is not implemented; see US-044 above. |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
-| `cargo outdated` reports one row | The `libsqlite3-sys` row above; it is a tracker for a future diesel release, not a defect. |
+| `cargo outdated` reports nine direct rows | Eight are routine bumps (see the dependency lane above); the `libsqlite3-sys` row is a tracker for a future diesel release, not a defect. |
 
 ---
 
@@ -180,6 +214,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Documentation restructure: archive, live docs, one backlog, link checker | 2026-10-21 | `ce28979` … `604ff0c` |
 | Contacts search in both frontends | 2026-10-21 | [`archive/2026-10-21_contacts_search.md`](archive/2026-10-21_contacts_search.md) |
 | Peer Info stats rows | 2026-10-20 | [`archive/2026-10-20_peerinfo_stats_rows.md`](archive/2026-10-20_peerinfo_stats_rows.md) |
 | Per-message latency in Flutter + web | 2026-10-20 | [`archive/2026-10-20_message_latency_parity.md`](archive/2026-10-20_message_latency_parity.md) |
