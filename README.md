@@ -2,19 +2,30 @@
 
 A multi-purpose P2P application. The first feature set is **chat**, built on
 [libp2p](https://libp2p.io) with SQLite (via Diesel) for persistence. The
-networking and persistence core is written in Rust and shared across two
+networking and persistence core is written in Rust and shared across four
 frontends:
 
 * **TUI** (`ratatui`) — the most complete frontend, runs in a terminal.
 * **Headless CLI** — minimal interactive mode with the smallest footprint
   (reads stdin, prints to stderr).
-* **Flutter** — cross-platform GUI that talks to Rust through a
-  `flutter_rust_bridge` (FRB) FFI layer.
+* **Flutter** — cross-platform GUI (Android, Linux desktop) that talks to Rust
+  through a `flutter_rust_bridge` (FRB) FFI layer.
+* **Flutter Web** — a *display client* for a Rust node running in-process in
+  the `p2p_chat_server` binary. Nothing is compiled to WASM.
 
 ## Features
 
 * **Broadcast chat** — publish messages to all peers over gossipsub.
 * **Direct messages** — private 1:1 messaging over the request-response protocol.
+* **Group chats** — gossipsub topics with membership, history, and a
+  store-and-forward backfill lane.
+* **File attachments** — content-addressed (SHA-256) transfer over a separate
+  lane, so gossipsub's 256 KiB message cap is never hit.
+* **Call signaling** — ring / accept / decline / hang up. Media transport is
+  not implemented yet.
+* **Identity and device binding** — an account key per user, signed claims
+  binding devices, and a Contacts roster that collapses one user's devices
+  into a single row.
 * **Peer discovery** — mDNS for automatic local-network discovery.
 * **Transports** — TCP, with optional QUIC.
 * **Nicknames** — per-peer and self nicknames, with auto-generated petnames for
@@ -25,12 +36,12 @@ frontends:
 * **Multi-instance safety** — picks the first unused `sqlite_*.db` via lock files;
   refuses to open a DB already locked by another instance.
 
-## User Stories
+## User stories
 
 * As a user I want to broadcast a message to everyone on my local network so we
   can hold a group conversation.
-* As a user I want to open a private DM tab with a specific peer from the peers
-  list and exchange messages only we can read.
+* As a user I want to open a private DM tab with a specific peer from the
+  contacts list and exchange messages only we can read.
 * As a user I want peers to appear automatically (mDNS) without manual setup.
 * As a user I want to set a nickname (validated by Rust) so others can recognise
   me, and set per-peer nicknames.
@@ -38,10 +49,11 @@ frontends:
   events while troubleshooting.
 * As a user I want my identity, peers and message history persisted across
   restarts in SQLite, and two instances never clobber the same database.
+* As a user I want to send a file to a peer and see it in the conversation.
 * As a mobile user I want the app to keep running in the background (Android
   foreground service holding the mDNS multicast lock) so I stay reachable.
 
-## Build & Run
+## Build & run
 
 ```bash
 cargo build                 # TUI is the default binary
@@ -82,7 +94,7 @@ scripts/build-all.sh              # TUI + web frontend (add --debug for a fast b
 
 The server binds `127.0.0.1` by default (no token — the TUI trust model). For LAN
 exposure pass `--bind 0.0.0.0 --token <secret>`; the token is enforced on `/ws`
-and `/api/*`. See `docs/2026-10-18_web_frontend.md`.
+and `/api/*`. See [`docs/web_frontend.md`](docs/web_frontend.md).
 
 The Rust↔Dart bindings are **generated** (`src/frb_generated.rs`,
 `lib/src/rust/*`). After changing the FRB surface in `src/api/mod.rs`,
@@ -99,33 +111,47 @@ flutter_rust_bridge_codegen generate --config-file <path-to-frb-config>
 
 ## Architecture
 
-* **`libp2p`** — networking (gossipsub, request-response, mDNS, TCP/QUIC).
-* **Diesel + SQLite** — persistent storage of messages, peers, identities, receipts.
+* **`libp2p`** — networking (gossipsub, four request-response protocols, mDNS,
+  TCP/QUIC, ping).
+* **Diesel + SQLite** — persistent storage of messages, peers, identities,
+  receipts, groups, and contacts.
 * **`ratatui`** — terminal UI (binaries under `src/bin/tui`).
 * **`tokio`** — async runtime and swarm task orchestration.
 * **`flutter_rust_bridge`** — FFI surface in `src/api/mod.rs` for the Flutter app.
+* **`axum`** — the web frontend's HTTP + WebSocket server (`src/web/`).
 
 ### Rust layout
 
 ```
 src/
-├── lib.rs / api/mod.rs     # crate root + FRB entry surface
-├── behavior.rs             # libp2p swarm behaviour construction
-├── swarm_handler.rs        # translate libp2p events into app events
-├── db.rs                   # SQLite connection, identity, multi-instance lock
-├── messages.rs             # message persistence + retrieval
-├── peers.rs / nickname.rs  # peer tracking, nicknames
-├── network.rs              # adaptive NetworkSize classification
-├── fmt.rs / types.rs       # formatting + shared event/command types
-├── logging.rs              # logging + TUI log buffer
-├── mobile_api.rs / mobile_node.rs  # FRB facade + node lifecycle
-├── tui_*.rs / tui_tabs.rs  # TUI rendering, state, input, scroll, clicks
-└── generated/              # Diesel schema/models (codegen from migrations)
-src/bin/
-├── p2p_chat.rs             # headless CLI
-├── p2p_chat_tui.rs         # TUI entry point
-└── tui/                    # TUI submodules (main_loop, handlers, render_loop)
+├── lib.rs                     # crate root; module wiring
+├── behavior.rs                # libp2p behaviours: gossipsub, request_response, mdns, ping
+├── swarm_handler.rs           # libp2p events -> app events; inbound persistence
+├── db.rs                      # SQLite connection, multi-instance lock, ensure_columns
+├── messages.rs                # message + receipt persistence, per-peer stats
+├── peers.rs / nickname.rs     # peer rows, sessions, display-name resolution
+├── groups.rs                  # groups, members, group messages, backfill watermark
+├── identity.rs / contacts.rs  # users, account keys, device bindings, contact roster
+├── calls.rs                   # call session model (signaling only)
+├── files.rs                   # content-addressed attachment store
+├── network.rs                 # adaptive NetworkSize classification
+├── fmt.rs / types.rs          # formatting + shared event/command types
+├── logging.rs                 # logging + TUI log buffer
+├── api/mod.rs                 # FRB entry surface (mobile + web)
+├── mobile_api.rs              # FRB-exposed helpers (sorting, formatting, stats)
+├── mobile_node.rs             # node lifecycle for the mobile/web server path
+├── tui_tabs.rs / tui_helpers.rs / tui_render_state.rs
+├── tui_render/                # ratatui renderers (peers, chat, groups, log, ...)
+├── web/                       # axum HTTP+WS server (feature `web`)
+├── generated/                 # Diesel schema/models (codegen from migrations)
+└── bin/
+    ├── p2p_chat.rs             # headless CLI
+    ├── p2p_chat_tui.rs         # TUI entry point
+    ├── p2p_chat_server.rs      # node + web server
+    └── tui/                    # TUI submodules (main_loop, handlers, render_loop)
 ```
+
+Full details: [`docs/architecture.md`](docs/architecture.md).
 
 ### Android
 
@@ -141,28 +167,34 @@ cannot move into Rust.
 ```bash
 cargo t            # alias: cargo test --all-features
 cargo ct           # alias: cargo clippy --all-targets --all-features
+
+cd apps/flutter_app && flutter test
 ```
 
 Tests are split into `unit/` (co-located lib unit tests) and `tests/`
 (integration + TUI/swarm simulations). DB-backed tests use an isolated temp
 database via `set_cached_db_url` and are serialised to stay idempotent.
 
-## Done
+## Documentation
 
-* [x] Embedded Diesel migrations + runtime `ensure_columns` for legacy DBs
-* [x] Ratatui TUI with Chat / Peers / Direct / Debug tabs
-* [x] Direct messaging via request-response
-* [x] mDNS peer discovery
-* [x] Message / peer / identity / receipt persistence
-* [x] Network-size-adaptive gossipsub config
-* [x] Flutter mobile app via flutter_rust_bridge
-* [x] Multi-instance DB selection + lock guarding
-* [x] Per-peer nicknames + auto petnames for silent peers
+[`docs/README.md`](docs/README.md) is the index. The live documents are:
 
-## Todo
+| Doc | What it is |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | How the system fits together |
+| [`docs/backlog.md`](docs/backlog.md) | **Live, open work** — what is next |
+| [`docs/dependencies.md`](docs/dependencies.md) | Direct dependencies and why each is here |
+| [`docs/ci_pipeline.md`](docs/ci_pipeline.md) | The GitHub Actions workflows |
+| [`docs/identity.md`](docs/identity.md) | Users, devices, signed claims, the Contacts roster |
+| [`docs/files_attachments.md`](docs/files_attachments.md) | The attachment lane |
+| [`docs/web_frontend.md`](docs/web_frontend.md) | The Flutter Web display client |
+| [`docs/android_sqlite.md`](docs/android_sqlite.md) | Why Android embeds its own SQLite |
+| [`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md) | Every TUI key and mouse binding |
+| [`AGENTS.md`](AGENTS.md) | Operating rules for agents working in this repo |
 
-* [ ] Build for embedded Linux (OpenWRT, etc.)
-* [ ] Contact list with stored usernames
-* [ ] Expose `validate_nickname` / `network_size_label` to Dart and dedupe the
-      Dart-side reimplementations (requires FRB codegen run)
-* [ ] Improve UI/UX
+Completed work and superseded designs live in [`docs/archive/`](docs/archive/).
+
+## Roadmap
+
+Open work is tracked in [`docs/backlog.md`](docs/backlog.md) — priorities,
+blockers, and the known limitations that are deliberate rather than unfinished.

@@ -1,7 +1,7 @@
 # AGENTS.md — operating rules for this repo
 
 Archived history (goal, done-index, decision rationale, backlog recap, descriptive
-context) lives in `docs/2026-09-07_archived_agents_context.md` and the dated docs it
+context) lives in `docs/archive/2026-09-07_archived_agents_context.md` and the dated docs it
 indexes. This file keeps only instruction-type guidance for future tasks.
 
 ## Constraints & Preferences
@@ -10,7 +10,7 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - All code must be clippy-clean with the project's strict pedantic config: `cargo ct` (alias for `cargo clippy --all-targets --all-features`) must exit 0 with no warnings.
 - **Clippy allowance policy (post-2026-09-28 cleanup)**: hand-written code carries exactly **one** clippy allow — `src/api/mod.rs` `accept_device_binding`'s `needless_pass_by_value` (FRB 2.13 has no `&[u8]` codegen input; a Dart `List<int>` must land as owned `Vec<u8>`, so the wrapper's `&device_pubkey` is irreducible). Test modules keep scaffolding headers (the restriction set + `used_underscore_binding`/`significant_drop_tightening` where guards are held across async blocks). Don't add new allows without this distinction; prefer the idiom patterns the campaigns used: `String`→`&str` at the FRB boundary only where codegen accepts it, `i64::try_from`/`usize::try_from(...).unwrap_or(_)` / `num_traits::ToPrimitive` for casts, `saturating_*` for arithmetic.
 - `usize_limit_to_i64` (`src/types.rs`, `crate::usize_limit_to_i64`) is the single clamp for diesel `LIMIT` clauses (messages/groups load fns); `num-traits = "0.2"` is a direct Rust dep used only for `ToPrimitive` in mobile_node/settings timestamp truncation.
-- User decisions: peer click in Peers tab **keeps opening the DM tab**; message click in Chat/Log/DM **opens the sender's/partner's PeerInfo**.
+- User decisions: peer click in the **Contacts** tab **keeps opening the DM tab**; message click in Chat/Group/DM **opens the sender's/partner's PeerInfo** (Log-tab clicks are a no-op — log lines have no sender).
 - **Committing**: **always commit** once a logical block of work is done and it makes sense (commit early, commit often, as you work). Only **pushing** is reserved for the user.
 
 ## Progress
@@ -22,9 +22,9 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 
 ## Code Rules (do/don't)
 - **PeerInfo is a transient dynamic tab** (like DM), not a fixed tab: inserted after DMs, before Log/Settings. Dedup by peer ID.
-- **PeerInfo binding is tab-specific**: plain `i` opens PeerInfo only on the **Peers** tab (no text input there). On **Direct/DM** tabs use `Ctrl+I` on kitty terminals (WezTerm) and `Ctrl+P` on every terminal. Bare Tab **always** cycles tabs on every tab and terminal. Shortcut bar only documents a binding where it is active.
+- **PeerInfo binding is tab-specific**: plain `i` opens PeerInfo only on the **Contacts** tab (no text input there). On **Direct/DM** tabs use `Ctrl+I` on kitty terminals (WezTerm) and `Ctrl+P` on every terminal. Bare Tab **always** cycles tabs on every tab and terminal. Shortcut bar only documents a binding where it is active.
 - **Display-name memoization keeps the DB-backed resolution path**: don't swap the sort/render to in-memory nickname maps — `get_peer_display_name` caches the exact string it would compute (local → received → generated petname + short-ID suffix), so sort and render always agree. Invalidate exactly where nicknames change: `impl_set_peer_field!` setter macro and `peers::save_peer`; `db::set_db_url`/`reset_db_url` must keep calling `nickname::clear_display_names()`.
-- **Warm the display-name cache lazily**, on the first frame that draws the Peers tab (`state.env.peer_names_warmed` in the render loop's draw closure), not at startup. Warm-at-startup was rejected.
+- **Warm the display-name cache lazily**, on the first frame that draws the Contacts tab (`state.env.peer_names_warmed` in the render loop's draw closure), not at startup. Warm-at-startup was rejected.
 - **The sort must never drop peers**: feed the whole `VecDeque` to `sort_peers_by_column` and rebuild via `HashMap<&str, PeerRecord>` — never `peers.as_slices().0` (a wrapped ring loses its second segment).
 - **One canonical last-seen parser**: `fmt::parse_last_seen_ms` (space-or-T `%Y-%m-%dT%H:%M:%S`, 0 on failure) is the single source for both the TUI sort and the FRB/mobile wrapper — Dart never parses its own sort keys.
 - **Keep TUI/Flutter sort parity**: Flutter sorts via Rust `mobile_api::sort_peers` (mirrors `tui_helpers::sort_peers_table`, ties on `peer_id`, descending reverses the whole `Ordering`). Don't regress to a Dart `List.sort` closure; keep `peer_list_test.dart`'s `_sortLikeRust` fake mirroring these exact semantics (lowercase name key, seen-column `parse_last_seen_ms` 0-on-failure, whole-ordering reversal).
@@ -47,23 +47,44 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 - **Attachment blob GC is gated by the `attachment-gc` Cargo feature** (in `default` and `mobile`): `swarm_handler::gc_stale_attachments()` sweeps `.part` partials of interrupted pulls (incomplete class) plus orphaned blobs/rows nothing references (the "overwritten"/superseded class, including blobs with no `files` row and rows whose blob vanished) — via `files::gc`/`files::GcStats`. Runs at startup in TUI (`main_loop.rs`) and mobile (`start_node_impl`), never touching in-flight transfers (active `file_id`s excluded) and honoring `files::GC_GRACE` (1 min blob age). The off-build is a `Ok(GcStats::default())` no-op — disabling the feature means the store never deletes anything. Sweeps run on startup only; a transfer interrupted mid-run keeps its `.part` until the next restart clears the in-flight map.
 - **Both frontends render the canonical chip `[file] {name} ({size})`**: Rust `files::file_chip` / `render_message_body` / `render_stored_body` (hydrates DB `attachment_json` on reloads); Flutter `_AttachmentChip` in `messages.dart`. Attachment-only messages render as just the chip. Mobile resolves blob paths exclusively through `attachment_file_path(file_id)`.
 - **Flutter picks via `file_picker` 13.x — top-level `FilePicker.pickFile()`** (the `.platform` member was removed); opens via `open_filex` (`ResultType.done`/`result.message`). Both sit behind `pickFileOverride`/`openFileOverride` seams in `apps/flutter_app/lib/src/util/attachments.dart` — these are deliberately NOT `@visibleForTesting` because screens in other libraries call them (the annotation flags `invalid_use_of_visible_for_testing_member` cross-file, unlike the same-library seams in home/contact_list).
-- **The web frontend is a display client, never a WASM node** (`docs/2026-10-18_web_frontend.md`): `src/web/` (axum HTTP+WS) mirrors the FRB surface 1:1 as JSON methods; the `p2p_chat_server` binary runs the node in-process. Every new FRB-exposed fn needs a matching `src/web/methods.rs` arm, an entry in `src/web/mod.rs`'s no-param drift list (for zero-arg arms) and a `methods::dispatch(name, Null)` routing test asserting `invalid params:`. Build/run through `scripts/build-web.sh`.
+- **The web frontend is a display client, never a WASM node** (`docs/web_frontend.md`): `src/web/` (axum HTTP+WS) mirrors the FRB surface 1:1 as JSON methods; the `p2p_chat_server` binary runs the node in-process. Every new FRB-exposed fn needs a matching `src/web/methods.rs` arm, an entry in `src/web/mod.rs`'s no-param drift list (for zero-arg arms) and a `methods::dispatch(name, Null)` routing test asserting `invalid params:`. Build/run through `scripts/build-web.sh`.
 - **TUI group leave** lives on the Groups tab: `d` arms `AppState.group_leave_prompt` (`begin_group_leave`), `y`/Enter confirms (`confirm_group_leave` → `groups::delete_group` + `SwarmCommand::UnsubscribeGroup`, closes the chat tab), any other key/Esc cancels. Popup precedence is `device_binding_prompt` > `group_leave_prompt` > call overlay > `popup`.
 - **TUI local nicknames** (the name only this install shows for a peer) are edited with `n` on a **Peer Info** tab; that is distinct from the Settings-tab `n`, which edits our own nickname. Both go through `AppState::is_editing_nickname()`, which must keep covering `InputMode::EditingLocalNickname` as well as `InputMode::EditingNickname` — that mode (not a bool: `TuiRenderState` sits at clippy's `struct_excessive_bools` limit) is what tells the input-section title "Local Nickname (xxx)" from "Edit Nickname (xxx)". Submissions validate through the canonical `nickname::validate_nickname` and keep the editor open with a hint on bad input.
 - **Contacts search is one matching rule, two implementations, one sort authority**: `state::contact_matches` (Rust) and `ContactListState._visibleRows` (Dart) both match a lowercased substring against the contact id, contact display name, and every device's peer id + display name — so a grouped user stays findable by a machine's peer id. Rust owns the rule; Flutter mirrors it because no FRB binding can filter a Dart list. **Filtering must happen before the Rust sort in both frontends** (TUI: `contacts` is the filtered view of `contacts_all`, re-derived by `apply_contact_search` inside `resort_peers`, never via a DB query per keystroke; Flutter: `_computeSorted` sorts only the visible subset and maps back against it), so a hidden row can never be returned by the comparator. TUI bindings: `/` opens the box, `Enter` keeps the query, `Esc` clears it; the box is checked **before** the Contacts `c`/`e`/`i` actions (`handle_contacts_action_key`) or typing those letters would place a call/expand a row. `InputMode::SearchingContacts` — do **not** add another `TuiRenderState` bool.
 
 ## Next Steps
-- Tracked in **`docs/2026-09-02_backlog.md`**. None urgent. Item 6 (expected
-  `cargo outdated` rows) was revisited 2026-09-21 — its single master unblocker landed (**libp2p
-  0.57.0**, `fb65264`): 4 of its 8 rows cleared; only the diesel→`libsqlite3-sys` 0.36 row remains
-  open (needs a newer diesel 2.x — newest diesel 2.3 still pins `libsqlite3-sys` 0.36). No further
-  revisit needed.
+- Tracked in **`docs/backlog.md`** (live, open work only — completed items live in
+  `docs/archive/`). None urgent.
+- `cargo outdated --depth 1` now reports **9 direct rows** (was 4 as of
+  2026-09-21): 4 are lockfile-only (`diesel`, `ratatui-textarea`, `serde_json`,
+  `tokio` — a plain `cargo update` clears them) and 5 need a manifest change
+  (`libsqlite3-sys` 0.36→0.38, `libp2p` 0.57.0→0.57.1, `sha2` 0.10→0.11,
+  `tower-http` 0.6→0.7, `tokio-tungstenite` 0.29→0.30). The only
+  *unactionable* one is `libsqlite3-sys`: diesel's newest 2.x still pins 0.36.
+  Details: `docs/dependencies.md`.
 - Frontend parity is **complete** as of 2026-10-21 (per-message latency, Peer
   Info stats rows, and the Contacts search affordance all in both frontends —
-  see `docs/2026-10-20_message_latency_parity.md`,
-  `docs/2026-10-20_peerinfo_stats_rows.md`,
-  `docs/2026-10-21_contacts_search.md`). No peer-latency aggregate exists
+  see `docs/archive/2026-10-20_message_latency_parity.md`,
+  `docs/archive/2026-10-20_peerinfo_stats_rows.md`,
+  `docs/archive/2026-10-21_contacts_search.md`). No peer-latency aggregate exists
   anywhere (a per-peer latency row would need new aggregation).
+
+## Documentation rules
+- **Live docs have stable names** (`docs/architecture.md`, `docs/backlog.md`,
+  `docs/dependencies.md`, `docs/ci_pipeline.md`, `docs/identity.md`,
+  `docs/files_attachments.md`, `docs/web_frontend.md`, `docs/android_sqlite.md`)
+  and are updated **in place**. **Archive docs keep their original dated
+  names** under `docs/archive/` and are never maintained — the date is part of
+  the record.
+- **`docs/backlog.md` is the single source of "what's next"** — it merges the
+  engineering items and the product stories. Move an item to `docs/archive/`
+  when it closes, and link the commit.
+- **`docs/codebase_metrics.md` is generated** — never hand-edit it; regenerate
+  with `python3 scripts/generate_metrics.py > docs/codebase_metrics.md`.
+- **Update the doc in the same commit as the code.** `docs/README.md` is the
+  index; `docs/archive/README.md` says why each archived document was retired.
+  `python3 scripts/check_docs_links.py` verifies that every relative link in
+  every tracked `*.md` still resolves — run it after moving or renaming a doc.
 
 
 ## Critical Context
