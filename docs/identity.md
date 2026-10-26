@@ -1,6 +1,7 @@
 # Identity, device binding, contacts, and calls
 
-Lane: **backlog §11** (user/device identity + contact list first + calls later).
+Lane: **backlog §11** in [`archive/2026-09-02_backlog.md`](archive/2026-09-02_backlog.md)
+(user/device identity + contact list first + calls later).
 
 ## Scope & status
 
@@ -59,10 +60,13 @@ Each install keeps its existing per-install libp2p keypair and `peer_id`. What's
 *signed binding* of that peer_id into exactly one user's device-set:
 
 ```
-claim = sign_{account}(user_id ‖ device_pubkey ‖ claim_id ‖ bound_at)
+claim = sign_{account}(user_id ‖ device_pubkey ‖ claim_id)
 ```
 
-- Ruletransforms: a device row is **only** trusted when its claim verifies against the claimed
+The original sketch also signed `bound_at`; the shipped layout does not (see
+*Provisioning + claims exchange* below for the rationale).
+
+- Rule: a device row is **only** trusted when its claim verifies against the claimed
   user's account pubkey. Any peer verifies before trusting the binding.
 - One row per `(user_id, peer_id)`; revocation flips `revoked_at` (the account key re-signs).
 
@@ -94,24 +98,32 @@ Requires the FRB regeneration protocol from AGENTS.md (codegen `=2.13.0` → re-
 allows → `cargo fmt --all` → delete untracked `.h` → `cargo ct` + `cargo test --all-features` +
 `flutter analyze`/`flutter test`). The whole bindings change lands as **one** commit.
 
-## Transport lanes
+## Transport lanes (design sketch — both lanes have since shipped)
 
-- **Claims** travel the existing request/response DM lane — receiver stores only after
-  signature-verification succeeds.
-- **Backfill** (store-and-forward for offline members) stays **deferred** — §11.3/11.4 recorded
-  the sub-decisions (gossipsub vs request_response; watermark persisted vs on-demand) as open.
-- **Calls/videocalls** are **feature-gated**: a `calls = ["dep:..."]` Cargo feature, **off by
-  default, excluded from `mobile`**. When the calls lane lands (after contacts), all media deps
-  (WebRTC/audio codecs) live behind that feature so default/mobile builds stay lean. This doc
-  records the gate; the calls lane is where the feature + deps actually land.
+The bullets below record the design-time intent; each was superseded by an
+implementation slice documented further down.
+
+- **Claims** travel their own `request_response` lane (not the DM lane) — receiver stores only
+  after signature-verification succeeds.
+- **Backfill** (store-and-forward for offline members) shipped 2026-09-26 as anonymous
+  gossipsub traffic on a derived `group:<group_id>:backfill` topic; the watermark is recomputed
+  per request (no row). See *Group-message backfill* below and §11.5 of the archived backlog.
+- **Calls/videocalls** shipped as **un-gated signaling** (`request_response`,
+  `/p2p-chat/call/1.0.0`). The `calls` Cargo feature is an **empty** placeholder reserved for
+  the future media deps (WebRTC/audio codecs) so default/mobile builds stay lean — the same
+  device-binding precedent. Signaling is deliberately **not** gated behind it.
 
 ## Sequencing — contacts first, calls later
+
+Design-time ordering, kept for the record; all three steps have since landed
+(the dated slices below are the history).
 
 1. **Identity layer**: `users` + `device_bindings` + signed-claim verification (the root-of-trust
    prerequisite). New bindings listed above (minus contacts).
 2. **Contacts**: `contacts` table + `get_contacts`/`add_contact`/`remove_contact` + Dart surface.
-3. **Calls/videocalls** (later, feature-gated): break the `calls` gate, add media deps, gate kept
-   so unneeded builds skip them. Uses the call vs. user identity; multi-device lanes follow §11.
+3. **Calls/videocalls** (later, media behind the `calls` gate): the signaling half shipped
+   **un-gated** first, with the empty `calls` feature kept for the media deps. Uses the call vs.
+   user identity; multi-device lanes follow §11.
 
 ## Contacts tab (replaces the Peers tab) — user decision (2026-09-24)
 
@@ -144,15 +156,18 @@ A single Rust model + one bulk loading fn feeds both UIs (replacing the peer-lis
 - Grouping: reverse `device_bindings` lookup (`find_user_id_for_peer`) over `load_peers`; build a
   `HashMap<Option<user_id>, Vec<peer>>`. Bulk `get_all_peer_stats` provides counts (same two-pass
   query) which are summed per group.
-- Sort parity: the TUI sort and the Flutter `sortPeers` binding keep the deterministic rules, now
-  over contact rows (ties on the contact's stable key = the user_id, or peer_id for unbound rows).
+- Sort parity: the TUI sort and the Flutter `sortContacts` binding keep the deterministic rules,
+  now over contact rows (ties on the contact's stable key = the user_id, or peer_id for unbound
+  rows).
 - Display-name rule above lives in `nickname.rs` so both frontends agree; the existing
   `DISPLAY_NAME_CACHE` invalidation points stay the source of freshness.
 
 ## Explicit deferrals (recorded, not forgotten)
 
-- Backfill transport choice + watermark persistence location — §11.3, implementation lane.
-- Who may *add* a sibling device (device-signed vs. account-key-only) — §11.5, implementation lane.
+- ~~Backfill transport choice + watermark persistence location~~ — **resolved 2026-09-26**:
+  anonymous gossipsub on the derived backfill topic, watermark recomputed per request.
+- Who may *add* a sibling device (device-signed vs. account-key-only) — the archived backlog's §11
+  "Open sub-decisions"; tracked as **P0** in [`backlog.md`](backlog.md).
 - Same-user message sync across devices requires ≥1 of the user's devices online within the gap —
   no external store-and-forward (the §11 note; not a separate promised server lane).
 
@@ -162,11 +177,12 @@ First implementation slice of the identity layer. Three decisions resolved (devi
 proposal above are bolded):
 
 - **Claim message layout keeps `bound_at` out of the signed bytes.** Signed message =
-  `user_id ‖ device_pubkey ‖ claim_id` (NOT `... ‖ claim_id ‖ bound_at` as drawn at line 45).
-  Shared `identity::device_binding_claim_message` builds it byte-for-byte for both the verifier and
-  the minters, so nothing can drift. `bound_at` is carried in the claim record for display/ordering
-  only (it is mint-time, visible on the claim record itself).
-- **`identities` gains a nullable `account_key BLOB`** (line 59 said "identities unchanged").
+  `user_id ‖ device_pubkey ‖ claim_id` (NOT `... ‖ claim_id ‖ bound_at` as the original sketch
+  had it). Shared `identity::device_binding_claim_message` builds it byte-for-byte for both the
+  verifier and the minters, so nothing can drift. `bound_at` is carried in the claim record for
+  display/ordering only (it is mint-time, visible on the claim record itself).
+- **`identities` gains a nullable `account_key BLOB`** (the table sketch above originally said
+  "identities unchanged").
   Deviation: sibling-device claims can only be minted by the account holder; since the account key
   cannot be reconstructed from the account pubkey, the install that provisions must persist it. The
   swap of the per-install keypair to the account key stays **rejected** (that would collapse
@@ -285,9 +301,3 @@ proposal above are bolded):
     to InCall locally; the peer's `call_accepted` is authoritative).
   - Tests: lib 323 (slice A state machine + handler arms), bin 269 (slice B overlay), Flutter 35
     widget tests (slice C). Committed per-slice. Slice D (docs) is this entry + KEYBOARD_SHORTCUTS.
-
-## Verification (this doc)
-
-`git status` clean; one commit `docs(design): ...`.
-
-Commits: this commit (design doc) — implementation lane is a separate later lane.

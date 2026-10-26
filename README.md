@@ -6,12 +6,14 @@ networking and persistence core is written in Rust and shared across four
 frontends:
 
 * **TUI** (`ratatui`) — the most complete frontend, runs in a terminal.
-* **Headless CLI** — minimal interactive mode with the smallest footprint
-  (reads stdin, prints to stderr).
-* **Flutter** — cross-platform GUI (Android, Linux desktop) that talks to Rust
-  through a `flutter_rust_bridge` (FRB) FFI layer.
+* **Flutter mobile** (Android) — GUI over a `flutter_rust_bridge` (FRB) FFI
+  layer; a foreground service keeps the node reachable in the background.
+* **Flutter desktop** (Linux) — the same Flutter app, built for the desktop.
 * **Flutter Web** — a *display client* for a Rust node running in-process in
   the `p2p_chat_server` binary. Nothing is compiled to WASM.
+
+There is also a **headless CLI** (`p2p_chat`) — a minimal interactive mode with
+the smallest footprint (reads stdin, prints to stderr).
 
 ## Features
 
@@ -36,7 +38,7 @@ frontends:
 * **Multi-instance safety** — picks the first unused `sqlite_*.db` via lock files;
   refuses to open a DB already locked by another instance.
 
-## User stories
+## Example user stories
 
 * As a user I want to broadcast a message to everyone on my local network so we
   can hold a group conversation.
@@ -52,6 +54,11 @@ frontends:
 * As a user I want to send a file to a peer and see it in the conversation.
 * As a mobile user I want the app to keep running in the background (Android
   foreground service holding the mDNS multicast lock) so I stay reachable.
+
+This is a sample, not the catalogue: the open stories and their acceptance
+criteria live in [`docs/backlog.md`](docs/backlog.md), and the full original set
+(including the shipped ones) is in
+[`docs/archive/2026-04-17_user_stories.md`](docs/archive/2026-04-17_user_stories.md).
 
 ## Build & run
 
@@ -97,17 +104,17 @@ exposure pass `--bind 0.0.0.0 --token <secret>`; the token is enforced on `/ws`
 and `/api/*`. See [`docs/web_frontend.md`](docs/web_frontend.md).
 
 The Rust↔Dart bindings are **generated** (`src/frb_generated.rs`,
-`lib/src/rust/*`). After changing the FRB surface in `src/api/mod.rs`,
-regenerate with the project's codegen config:
+`lib/src/rust/*`) from the checked-in `flutter_rust_bridge.yaml` (input:
+`crate::api`, `crate::mobile_api`, `crate::mobile_node`). After changing an
+FRB-exposed function, regenerate:
 
 ```bash
-flutter_rust_bridge_codegen generate --config-file <path-to-frb-config>
+flutter_rust_bridge_codegen generate   # reads flutter_rust_bridge.yaml
 ```
 
-> The repo's original bindings were produced with
-> `rust_input=crate::api`. New functions added to `src/api/mod.rs`
-> (`validate_nickname`, `network_size_label`) are the single Rust source of
-> truth; they become callable from Dart only after regeneration.
+Then re-append the clippy allow block to `src/frb_generated.rs`, run
+`cargo fmt --all`, and delete the untracked `src/frb_generated.h`. The full
+checklist is in [`AGENTS.md`](AGENTS.md) ("FRB regeneration protocol").
 
 ## Architecture
 
@@ -125,7 +132,7 @@ flutter_rust_bridge_codegen generate --config-file <path-to-frb-config>
 ```
 src/
 ├── lib.rs                     # crate root; module wiring
-├── behavior.rs                # libp2p behaviours: gossipsub, request_response, mdns, ping
+├── behavior.rs                # libp2p behaviours: gossipsub, 4 request_response lanes, mdns, ping
 ├── swarm_handler.rs           # libp2p events -> app events; inbound persistence
 ├── db.rs                      # SQLite connection, multi-instance lock, ensure_columns
 ├── messages.rs                # message + receipt persistence, per-peer stats
@@ -171,9 +178,11 @@ cargo ct           # alias: cargo clippy --all-targets --all-features
 cd apps/flutter_app && flutter test
 ```
 
-Tests are split into `unit/` (co-located lib unit tests) and `tests/`
-(integration + TUI/swarm simulations). DB-backed tests use an isolated temp
-database via `set_cached_db_url` and are serialised to stay idempotent.
+`tests/unit/` holds the unit-level suites (library modules plus the `src/bin`
+TUI submodules); the top-level `tests/*.rs` files hold the integration and
+swarm/TUI simulations. DB-backed tests point each test at an isolated temp
+database via `p2p_app::db::set_db_url` and take `db::shared_db_test_lock()` so
+they stay serialised and idempotent.
 
 ## Documentation
 

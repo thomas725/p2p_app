@@ -81,7 +81,7 @@ src/
 
 ## Protocols and transport
 
-Six libp2p behaviours (`src/behavior.rs`):
+Seven libp2p behaviours (`src/behavior.rs`):
 
 | Behaviour | Protocol | Carries |
 |---|---|---|

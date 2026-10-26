@@ -342,8 +342,8 @@ fn test_tui_input_enabled_only_on_chat_tabs() {
     let chat_content = dynamic_tabs.tab_index_to_content(0); // Chat tab
     assert!(chat_content.is_input_enabled());
 
-    // Peers tab should NOT allow input
-    let peers_content = dynamic_tabs.tab_index_to_content(1); // Peers tab
+    // Contacts tab should NOT allow input
+    let peers_content = dynamic_tabs.tab_index_to_content(1); // Contacts tab
     assert!(!peers_content.is_input_enabled());
 
     // Add a DM tab

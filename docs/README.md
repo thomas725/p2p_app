@@ -7,7 +7,7 @@ Start here if you do not know which file to open.
 
 | Doc | What it is | Maintained |
 |---|---|---|
-| [../README.md](../README.md) | Project overview, build & run, user stories | yes |
+| [../README.md](../README.md) | Project overview, build & run, sample user stories | yes |
 | [../AGENTS.md](../AGENTS.md) | Operating rules for agents working in this repo | yes |
 | [../KEYBOARD_SHORTCUTS.md](../KEYBOARD_SHORTCUTS.md) | Every TUI key and mouse binding | yes |
 | [backlog.md](backlog.md) | **Live, open work** — engineering items and product stories | yes |

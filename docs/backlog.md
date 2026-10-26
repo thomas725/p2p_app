@@ -156,12 +156,6 @@ rows are lockfile-only and clear with a plain `cargo update`):
 
 Details: [`dependencies.md`](dependencies.md).
 
-### Human-readable attachment sizes (files lane)
-
-Both frontends render the chip with **raw bytes** (`[file] report.pdf (1048576)`).
-A `1.0 MiB` suffix is a small, self-contained change in `files::file_chip` plus
-the Flutter `_AttachmentChip`.
-
 ### Connection quality indicators (US-052)
 
 The TUI already has a `ConnectedTracker` and records per-peer sessions, so the
@@ -214,6 +208,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Live-reference accuracy pass (identity, architecture, files, web, README) | 2026-10-26 | `docs: correct the live references against the code` |
 | Documentation restructure: archive, live docs, one backlog, link checker | 2026-10-21 | `ce28979` … `604ff0c` |
 | Contacts search in both frontends | 2026-10-21 | [`archive/2026-10-21_contacts_search.md`](archive/2026-10-21_contacts_search.md) |
 | Peer Info stats rows | 2026-10-20 | [`archive/2026-10-20_peerinfo_stats_rows.md`](archive/2026-10-20_peerinfo_stats_rows.md) |

@@ -412,7 +412,7 @@ mod render_tests {
         state.active_tab = 0;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
 
-        // Test Peers tab
+        // Test Contacts tab
         state.active_tab = 1;
         terminal.draw(|f| render_frame(f, &mut state)).unwrap();
 

@@ -226,7 +226,7 @@ fn scroll_peers_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
 }
 
 /// Move the Groups list selection; the list uses the same visible-window math
-/// as the Peers table.
+/// as the Contacts table.
 fn scroll_groups_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
     let page_size = expected_group_page_size(state);
     state.group_selection = compute_new_peer_selection(

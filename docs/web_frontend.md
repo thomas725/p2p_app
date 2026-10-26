@@ -84,8 +84,8 @@ Implemented and verified end to end:
 - Feature surface equals the union of the TUI and Flutter feature sets (group leave, per-peer
   local nickname, calls, device binding, files/attachments, backfill, stats).
 
-Verified locally: `cargo ct`, `cargo test --all-features` (1166), `flutter analyze`,
-`flutter test` (69), `flutter build web` (`✓ Built build/web`), and a manual smoke run of the
+Verified locally: `cargo ct`, `cargo test --all-features`, `flutter analyze`,
+`flutter test`, `flutter build web` (`✓ Built build/web`), and a manual smoke run of the
 binary (`/api/status`, SPA index + `main.dart.js`, token enforced via both `Authorization:
 Bearer` and `?token=`, static assets open).
 

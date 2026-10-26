@@ -146,7 +146,7 @@ fn test_scroll_peers_empty_list() {
 fn test_group_page_size_is_one_larger_than_peer_page() {
     let mut state = test_app_state();
     state.chat_area_height = 12;
-    // Peers reserve a hint row inside the block; the Groups list does not, so a
+    // Contacts reserve a hint row inside the block; the Groups list does not, so a
     // full-page step must cover the extra row.
     assert_eq!(expected_peer_page_size(&state), 10);
     assert_eq!(expected_group_page_size(&state), 11);
