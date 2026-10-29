@@ -24,22 +24,6 @@ work) and the product stories from the original user-stories doc.
 
 ## P0 — correctness and release blockers
 
-### `libsqlite3-sys` 0.36 → 0.38 (dependency lane) — **blocked**
-
-`cargo outdated --depth 1` currently reports **nine** direct rows (the full
-breakdown is in [`dependencies.md`](dependencies.md)): four are lockfile-only,
-four need a routine manifest bump, and this one is the only row **no change
-in this repo can move**. Diesel's latest 2.x (2.3.13) still pins
-`libsqlite3-sys` 0.36, and 0.36 is the version that blocks the 0.38 line.
-
-- **Blocker**: upstream diesel. Nothing in this repo can move it.
-- **Do not** restructure to diesel's `sqlite-bundled` — that was evaluated and
-  **rejected** (see `archive/2026-09-02_backlog.md` §7, "libsqlite3-sys
-  bundled restructure"). The current `sqlite_bundled` feature already scopes
-  bundling correctly: Android needs a bundled sqlite, and the desktop TUI
-  links the system one.
-- **Watch for**: a diesel 2.4 that allows `libsqlite3-sys` 0.38.
-
 ### Sibling-device claim authority (identity lane)
 
 Decide **who may add a device to a user's device set** without re-provisioning:
@@ -143,9 +127,9 @@ messages, don't dial it) rather than merely hidden in the UI.
 
 ### Routine dependency bumps that need a manifest change
 
-`cargo outdated --depth 1` reports four rows whose newer version is outside
-the current requirement, so the manifest has to move (the other four direct
-rows are lockfile-only and clear with a plain `cargo update`):
+`cargo outdated --depth 1` reports four actionable rows whose newer version is
+outside the current requirement, so the manifest has to move (the lockfile-only
+rows were all cleared on 2026-10-29 — see `dependencies.md`):
 
 | Crate | Locked | Newer | Note |
 |---|---|---|---|
@@ -153,6 +137,10 @@ rows are lockfile-only and clear with a plain `cargo update`):
 | `sha2` | 0.10.9 | 0.11.1 | Major bump — the attachment `file_id` digest must keep producing the same hex. |
 | `tower-http` | 0.6.11 | 0.7.1 | Major bump — the web server's static-file and CORS wiring. |
 | `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only; the web server's WebSocket test client. |
+
+`libsqlite3-sys` is at 0.38.2, the newest release diesel 2.3.14 accepts
+(`>=0.17.2, <0.39.0`); 0.39.1 needs another upstream diesel bump, so it is not
+listed here — nothing in this repo can move it.
 
 Details: [`dependencies.md`](dependencies.md).
 
@@ -200,7 +188,7 @@ here so they are not mistaken for unfinished work.
 | Calls are signaling-only | Media transport is not implemented; see US-044 above. |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
-| `cargo outdated` reports nine direct rows | Eight are routine bumps (see the dependency lane above); the `libsqlite3-sys` row is a tracker for a future diesel release, not a defect. |
+| `cargo outdated` reports five direct rows | Four are routine bumps (see the dependency lane above); the `libsqlite3-sys` row (0.38.2 → 0.39.1) is a tracker for a future diesel release, not a defect. |
 
 ---
 
@@ -208,6 +196,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| `libsqlite3-sys` 0.36 → 0.38 via diesel 2.3.14; `ctutils`/`tokio` advisory bumps | 2026-10-29 | `deps: take libsqlite3-sys 0.38 and clear two advisories` |
 | Human-readable attachment sizes (`2 KiB`, `64 MiB`) | 2026-10-26 | [`archive/2026-10-26_attachment_size_labels.md`](archive/2026-10-26_attachment_size_labels.md) |
 | Live-reference accuracy pass (identity, architecture, files, web, README) | 2026-10-26 | `docs: correct the live references against the code` |
 | Documentation restructure: archive, live docs, one backlog, link checker | 2026-10-21 | `ce28979` … `604ff0c` |

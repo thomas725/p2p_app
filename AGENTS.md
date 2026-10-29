@@ -55,12 +55,13 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 ## Next Steps
 - Tracked in **`docs/backlog.md`** (live, open work only — completed items live in
   `docs/archive/`). None urgent.
-- `cargo outdated --depth 1` now reports **9 direct rows** (was 4 as of
-  2026-09-21): 4 are lockfile-only (`diesel`, `ratatui-textarea`, `serde_json`,
-  `tokio` — a plain `cargo update` clears them) and 5 need a manifest change
-  (`libsqlite3-sys` 0.36→0.38, `libp2p` 0.57.0→0.57.1, `sha2` 0.10→0.11,
-  `tower-http` 0.6→0.7, `tokio-tungstenite` 0.29→0.30). The only
-  *unactionable* one is `libsqlite3-sys`: diesel's newest 2.x still pins 0.36.
+- `cargo outdated --depth 1` now reports **5 direct rows** (was 9 before the
+  2026-10-29 lockfile round): no lockfile-only rows remain, and 4 need a manifest
+  change (`libp2p` 0.57.0→0.57.1, `sha2` 0.10→0.11, `tower-http` 0.6→0.7,
+  `tokio-tungstenite` 0.29→0.30). The only *unactionable* one is
+  `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so
+  0.38.2 is the ceiling until diesel widens it (this is the same upstream-blocker
+  class the old 0.36 pin had — do not restructure to `sqlite-bundled`).
   Details: `docs/dependencies.md`.
 - Frontend parity is **complete** as of 2026-10-21 (per-message latency, Peer
   Info stats rows, and the Contacts search affordance all in both frontends —
@@ -104,7 +105,11 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   (exit 0). The rustls `RUSTSEC-2026-0346`/`0347`/`0348`/`0349` rows and the rustls-webpki
   `RUSTSEC-2026-0382` row were fixed on 2026-10-21 by the patch bumps **rustls 0.23.45 → 0.23.46**
   and **rustls-webpki 0.103.15 → 0.103.16** (both in `Cargo.lock`; rustls arrives via
-  `libp2p-tls`/`libp2p-quic` → `quinn`). The two remaining rows are *allowed warnings*, not
+  `libp2p-tls`/`libp2p-quic` → `quinn`). 2026-10-29 cleared two more by lockfile bumps:
+  **ctutils 0.4.2 → 0.4.7** (RUSTSEC-2026-0385, patched from 0.4.4 — transitive via
+  `digest 0.11 → curve25519-dalek → ed25519-dalek → libp2p-identity`) and
+  **tokio 1.53.1 → 1.54.1** (RUSTSEC-2026-0386 `AsyncFd` I/O safety, patched from 1.53.3).
+  The two remaining rows are *allowed warnings*, not
   failures: the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
   `libp2p-mdns → if-watch → netlink-packet-core` — benign, core libp2p) and the yanked
   `yoke-derive` 0.8.3. CI dependency job gates on `cargo audit` (hard fail) + artifact upload;
