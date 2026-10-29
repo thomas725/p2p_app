@@ -170,7 +170,8 @@ Type `/file /path/to/file.pdf` in the chat input and press `Enter`. The file
 is hashed (SHA-256), stored content-addressed, and sent as a reference; the
 message carries a descriptor and the bytes travel over the separate file
 lane. Both frontends render the result as a chip:
-`[file] report.pdf (1048576)`.
+`[file] report.pdf (1 MiB)` — the size label comes from Rust's canonical
+`files::format_file_size`, so both frontends always agree.
 
 ## UI control
 

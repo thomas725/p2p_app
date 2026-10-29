@@ -68,7 +68,23 @@ fn file_chip_renders_name_and_size() {
         size: 2048,
         mime: None,
     };
-    assert_eq!(file_chip(&att), "[file] notes.txt (2048)");
+    assert_eq!(file_chip(&att), "[file] notes.txt (2 KiB)");
+}
+
+#[test]
+fn format_file_size_uses_binary_units_with_one_decimal() {
+    assert_eq!(format_file_size(0), "0 B");
+    assert_eq!(format_file_size(5), "5 B");
+    assert_eq!(format_file_size(1023), "1023 B");
+    assert_eq!(format_file_size(1024), "1 KiB");
+    assert_eq!(format_file_size(1536), "1.5 KiB");
+    assert_eq!(format_file_size(2 * 1024 * 1024), "2 MiB");
+    // The send/receive ceiling rendered the way a chip shows it.
+    assert_eq!(format_file_size(MAX_ATTACHMENT_SIZE), "64 MiB");
+    // Rounding up across a unit boundary never leaves a bare "1024 <unit>".
+    assert_eq!(format_file_size(1024 * 1024 - 1), "1 MiB");
+    // Whole u64 range: caps at TiB and stays arithmetic-only (no floats).
+    assert_eq!(format_file_size(u64::MAX), "16777216 TiB");
 }
 
 #[test]
@@ -81,9 +97,9 @@ fn render_message_body_composes_text_and_chip() {
     };
     assert_eq!(
         render_message_body("look", Some(&att)),
-        "look [file] photo.png (5)"
+        "look [file] photo.png (5 B)"
     );
-    assert!(render_message_body("", Some(&att)).contains("[file] photo.png (5)"));
+    assert!(render_message_body("", Some(&att)).contains("[file] photo.png (5 B)"));
     assert_eq!(render_message_body("plain", None), "plain");
     assert_eq!(render_message_body("", None), "");
 }
@@ -98,10 +114,12 @@ fn render_stored_body_hydrates_attachment_json_column() {
     };
     let json = attachment_to_json(&att).expect("serialize");
     assert!(
-        render_stored_body("", Some(&json)).contains("[file] archive.zip (99)"),
+        render_stored_body("", Some(&json)).contains("[file] archive.zip (99 B)"),
         "attachment-only row must still show the chip"
     );
-    assert!(render_stored_body("for you", Some(&json)).contains("for you [file] archive.zip (99)"));
+    assert!(
+        render_stored_body("for you", Some(&json)).contains("for you [file] archive.zip (99 B)")
+    );
     assert_eq!(render_stored_body("hi", Some("garbage")), "hi");
     assert_eq!(render_stored_body("hi", None), "hi");
 }

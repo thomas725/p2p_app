@@ -1835,13 +1835,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MobileAttachment dco_decode_mobile_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return MobileAttachment(
       fileId: dco_decode_String(arr[0]),
       name: dco_decode_String(arr[1]),
       size: dco_decode_i_64(arr[2]),
-      mime: dco_decode_opt_String(arr[3]),
+      sizeLabel: dco_decode_String(arr[3]),
+      mime: dco_decode_opt_String(arr[4]),
     );
   }
 
@@ -2381,11 +2382,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_fileId = sse_decode_String(deserializer);
     var var_name = sse_decode_String(deserializer);
     var var_size = sse_decode_i_64(deserializer);
+    var var_sizeLabel = sse_decode_String(deserializer);
     var var_mime = sse_decode_opt_String(deserializer);
     return MobileAttachment(
       fileId: var_fileId,
       name: var_name,
       size: var_size,
+      sizeLabel: var_sizeLabel,
       mime: var_mime,
     );
   }
@@ -2959,6 +2962,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.fileId, serializer);
     sse_encode_String(self.name, serializer);
     sse_encode_i_64(self.size, serializer);
+    sse_encode_String(self.sizeLabel, serializer);
     sse_encode_opt_String(self.mime, serializer);
   }
 

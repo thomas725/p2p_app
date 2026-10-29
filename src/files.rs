@@ -52,11 +52,58 @@ pub struct MessageAttachment {
 }
 
 /// Render an attachment descriptor as a plain-text chat chip, e.g.
-/// `[file] notes.txt (2048)`. Used verbatim by frontends (TUI chat rows +
-/// input) so a sent and a received file always look identical.
+/// `[file] notes.txt (2 KiB)`.
+///
+/// Used by the TUI's chat rows and sent-message echo; the Flutter chip builds
+/// the same string from the descriptor's `size_label`, so a sent and a received
+/// file always look identical.
 #[must_use]
 pub fn file_chip(attachment: &MessageAttachment) -> String {
-    format!("[file] {} ({})", attachment.name, attachment.size)
+    format!(
+        "[file] {} ({})",
+        attachment.name,
+        format_file_size(attachment.size)
+    )
+}
+
+/// Human-readable byte size: `512 B`, `1.5 KiB`, `64 MiB` — binary units
+/// (1 KiB = 1024 B), at most one decimal, trailing `.0` dropped.
+///
+/// This is the single formatter behind every chip: the TUI renders
+/// [`file_chip`], and the Flutter chip displays the label Rust attaches to
+/// `MobileAttachment::size_label` (see `mobile_node`), so no frontend does its
+/// own byte math.
+#[must_use]
+pub fn format_file_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
+    if bytes < 1024 {
+        return format!("{bytes} B");
+    }
+    let mut unit = 1_usize;
+    let mut divisor: u64 = 1024;
+    loop {
+        // Tenths of the chosen unit, rounded to nearest. `u128` is wide enough
+        // that none of these products can overflow for any `u64` input.
+        let scaled = u128::from(bytes)
+            .saturating_mul(10)
+            .saturating_add(u128::from(divisor).saturating_div(2));
+        let tenths = scaled.checked_div(u128::from(divisor)).unwrap_or(0);
+        let next_unit = unit.saturating_add(1);
+        // Rounding up to 1024 tenths would print "1024 KiB"; step up instead.
+        if tenths >= 10_240 && next_unit < UNITS.len() {
+            unit = next_unit;
+            divisor = divisor.saturating_mul(1024);
+            continue;
+        }
+        let whole = tenths.saturating_div(10);
+        let frac = tenths.checked_rem(10).unwrap_or(0);
+        let suffix = UNITS.get(unit).copied().unwrap_or("B");
+        return if frac == 0 {
+            format!("{whole} {suffix}")
+        } else {
+            format!("{whole}.{frac} {suffix}")
+        };
+    }
 }
 
 /// Compose a chat line body from message text plus an attachment descriptor:

@@ -9,6 +9,7 @@ void main() {
     fileId: 'abc123',
     name: 'notes.txt',
     size: 2048,
+    sizeLabel: '2 KiB',
     mime: 'text/plain',
   );
 
@@ -43,14 +44,14 @@ void main() {
   testWidgets('attachment-only bubble renders the chip, not a blank row',
       (tester) async {
     await tester.pumpWidget(harness());
-    expect(find.text('[file] notes.txt (2048)'), findsOneWidget);
+    expect(find.text('[file] notes.txt (2 KiB)'), findsOneWidget);
     expect(find.text(''), findsNothing);
   });
 
   testWidgets('tapping the chip invokes onOpenAttachment', (tester) async {
     var opened = 0;
     await tester.pumpWidget(harness(onOpen: () => opened++));
-    await tester.tap(find.text('[file] notes.txt (2048)'));
+    await tester.tap(find.text('[file] notes.txt (2 KiB)'));
     expect(opened, 1);
   });
 
@@ -59,7 +60,7 @@ void main() {
     await tester.pumpWidget(
       harness(selectionMode: true, onOpen: () => opened++),
     );
-    await tester.tap(find.text('[file] notes.txt (2048)'));
+    await tester.tap(find.text('[file] notes.txt (2 KiB)'));
     expect(opened, 0);
   });
 }

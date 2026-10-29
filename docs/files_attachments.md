@@ -31,7 +31,8 @@ in [`backlog.md`](backlog.md).
 ## Store + message surface
 
 - `src/files.rs` stores, `MessageAttachment` descriptor (`files::file_chip` →
-  `[file] {name} ({size})`), `render_message_body(content, Option<&MessageAttachment>)`
+  `[file] {name} ({size})` with `{size}` from `files::format_file_size`:
+  `512 B` / `1.5 KiB` / `64 MiB`), `render_message_body(content, Option<&MessageAttachment>)`
   (attachment-only messages render as just the chip) and `render_stored_body(content,
   Option<&str>)` to hydrate DB `attachment_json` on reloads.
 - TUI: typed `/file <path>` → `parse_file_command` → `send_file_message` /
@@ -41,8 +42,10 @@ in [`backlog.md`](backlog.md).
 
 ## Mobile (FRB) surface
 
-- `MobileAttachment { fileId, name, size: i64, mime }` lives in `mobile_node.rs`;
-  `ChatMessage.attachment` and `MobileGroupMessage.attachment` added (regen once).
+- `MobileAttachment { fileId, name, size: i64, sizeLabel, mime }` lives in `mobile_node.rs`;
+  `sizeLabel` is `files::format_file_size(size)` computed Rust-side, so the Flutter chip prints
+  the exact same label as the TUI and Dart never does byte math. `ChatMessage.attachment` and
+  `MobileGroupMessage.attachment` added (regen once).
 - `store_send_attachment(Option<String>)`, `save_outgoing_broadcast|dm|group`
   take `attachment_path: Option<String>`; `attachment_file_path(file_id: &str)` →
   content-addressed blob path. `api/mod.rs` wrappers mirror them.
@@ -54,12 +57,13 @@ in [`backlog.md`](backlog.md).
   13.x (`FilePicker.pickFile()` — top-level, the `.platform` member was removed)
   and `open_filex` (`ResultType.done` / `result.message`).
 - `messages.dart`: `MessageInputBar.onPickFile` attach button,
-  `MessageBubble` `_AttachmentChip` (tappable unless selecting), `MessageChatBody`
-  / `BroadcastChat` thread `onOpenAttachment`. Broadcast/DM/Group screens pass
-  pick-and-send (`content: ''` + path) and open-with-snackbar handlers.
+  `MessageBubble` `_AttachmentChip` (tappable unless selecting; renders
+  `attachment.sizeLabel`), `MessageChatBody` / `BroadcastChat` thread
+  `onOpenAttachment`. Broadcast/DM/Group screens pass pick-and-send
+  (`content: ''` + path) and open-with-snackbar handlers.
 - Tests: `test/widget/attachment_chip_test.dart` (chip render, tap opens,
   selection-mode tap is inert); full Rust (clippy + `--all-features`) and
-  Flutter (analyze + 38 widget tests) suites green.
+  Flutter (analyze + test) suites green.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 
@@ -81,6 +85,4 @@ the store never deletes anything.
 
 ## Open follow-ups
 
-- Size-formatting of the chip is raw bytes in both frontends (by design, matches
-  `file_chip`); a human-readable suffix is future polish — tracked in
-  [`backlog.md`](backlog.md) (P2).
+None tracked here — open work lives in [`backlog.md`](backlog.md).

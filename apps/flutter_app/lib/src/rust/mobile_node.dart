@@ -128,6 +128,11 @@ class MobileAttachment {
   /// Total byte length
   final PlatformInt64 size;
 
+  /// Human-readable label for `size` (`2 KiB`, `64 MiB`), produced by the
+  /// canonical `files::format_file_size` so the Flutter chip does no byte
+  /// math of its own.
+  final String sizeLabel;
+
   /// Best-effort MIME type hint (`None` when unknown)
   final String? mime;
 
@@ -135,12 +140,17 @@ class MobileAttachment {
     required this.fileId,
     required this.name,
     required this.size,
+    required this.sizeLabel,
     this.mime,
   });
 
   @override
   int get hashCode =>
-      fileId.hashCode ^ name.hashCode ^ size.hashCode ^ mime.hashCode;
+      fileId.hashCode ^
+      name.hashCode ^
+      size.hashCode ^
+      sizeLabel.hashCode ^
+      mime.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -150,6 +160,7 @@ class MobileAttachment {
           fileId == other.fileId &&
           name == other.name &&
           size == other.size &&
+          sizeLabel == other.sizeLabel &&
           mime == other.mime;
 }
 

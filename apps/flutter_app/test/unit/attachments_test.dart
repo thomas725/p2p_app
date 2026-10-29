@@ -25,6 +25,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
     fileId: fileId,
     name: 'notes.txt',
     size: 12,
+    sizeLabel: '12 B',
     mime: 'text/plain',
   ),
   confirmed: false,

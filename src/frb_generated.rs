@@ -1880,11 +1880,13 @@ impl SseDecode for crate::mobile_node::MobileAttachment {
         let mut var_fileId = <String>::sse_decode(deserializer);
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_size = <i64>::sse_decode(deserializer);
+        let mut var_sizeLabel = <String>::sse_decode(deserializer);
         let mut var_mime = <Option<String>>::sse_decode(deserializer);
         return crate::mobile_node::MobileAttachment {
             file_id: var_fileId,
             name: var_name,
             size: var_size,
+            size_label: var_sizeLabel,
             mime: var_mime,
         };
     }
@@ -2348,6 +2350,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::MobileAttachment {
             self.file_id.into_into_dart().into_dart(),
             self.name.into_into_dart().into_dart(),
             self.size.into_into_dart().into_dart(),
+            self.size_label.into_into_dart().into_dart(),
             self.mime.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -2859,6 +2862,7 @@ impl SseEncode for crate::mobile_node::MobileAttachment {
         <String>::sse_encode(self.file_id, serializer);
         <String>::sse_encode(self.name, serializer);
         <i64>::sse_encode(self.size, serializer);
+        <String>::sse_encode(self.size_label, serializer);
         <Option<String>>::sse_encode(self.mime, serializer);
     }
 }

@@ -514,7 +514,7 @@ fn test_format_dm_messages_from_db_renders_attachment_chip() {
     );
     let result = super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
     assert!(
-        result[0].contains("[file] notes.txt (2048)"),
+        result[0].contains("[file] notes.txt (2 KiB)"),
         "attachment-only row must still show the chip: {}",
         result[0]
     );

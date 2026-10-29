@@ -115,6 +115,7 @@ Map<String, dynamic> chatMessageJson({bool withAttachment = false}) => {
           'fileId': 'abc123',
           'name': 'notes.txt',
           'size': 2048,
+          'sizeLabel': '2 KiB',
           'mime': 'text/plain',
         }
       : null,
@@ -149,6 +150,7 @@ void main() {
       final attachment = messages.last.attachment!;
       expect(attachment.fileId, 'abc123');
       expect(attachment.size.toInt(), 2048);
+      expect(attachment.sizeLabel, '2 KiB');
       expect(attachment.mime, 'text/plain');
     });
 

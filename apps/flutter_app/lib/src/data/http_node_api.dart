@@ -169,21 +169,24 @@ class HttpNodeApi implements NodeApi {
   }
 
   // ── JSON -> generated model conversion (camelCase wire per the Rust
-  //    serde rename_all; `attachment` is the snake_case persisted shape of
-  //    files::MessageAttachment) ────────────────────────────────────────────
+  //    `serde(rename_all = "camelCase")` on the FRB-facing structs; the upload
+  //    descriptor is the snake_case persisted `files::MessageAttachment` shape
+  //    and is passed through to `saveOutgoing*` unchanged) ──────────────────
 
   static List<T> _list<T>(dynamic raw, T Function(dynamic) convert) =>
       (raw as List<dynamic>).map(convert).toList();
 
-  /// `attachment` travels in both directions: messages carry the descriptor
-  /// (snake_case keys, the persisted `attachment_json` shape). Uploads hand
-  /// back the server's own descriptor map, so no Dart-side serializer exists.
+  /// `attachment` travels in both directions: messages carry the frb projection
+  /// of the descriptor (camelCase, incl. Rust's `sizeLabel`), uploads hand back
+  /// the server's snake_case `files::MessageAttachment` map, which
+  /// `saveOutgoing*` accepts verbatim — so no Dart-side serializer exists.
   static MobileAttachment attachmentFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return MobileAttachment(
       fileId: m['fileId'] as String,
       name: m['name'] as String,
       size: PlatformInt64Util.from(m['size'] as int),
+      sizeLabel: m['sizeLabel'] as String,
       mime: m['mime'] as String?,
     );
   }

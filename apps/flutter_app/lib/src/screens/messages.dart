@@ -603,7 +603,9 @@ class MessageBubble extends StatelessWidget {
 }
 
 /// The file-attachment chip (files lane §12) shown inside a bubble: a
-/// tappable `[file] name (size)` summary that opens the stored blob.
+/// tappable `[file] name (size)` summary that opens the stored blob. The size
+/// text is Rust's [MobileAttachment.sizeLabel], so both frontends format bytes
+/// identically.
 class _AttachmentChip extends StatelessWidget {
   const _AttachmentChip({
     required this.attachment,
@@ -638,7 +640,7 @@ class _AttachmentChip extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                '[file] ${attachment.name} (${attachment.size})',
+                '[file] ${attachment.name} (${attachment.sizeLabel})',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 12,

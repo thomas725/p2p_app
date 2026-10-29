@@ -452,6 +452,10 @@ pub struct MobileAttachment {
     pub name: String,
     /// Total byte length
     pub size: i64,
+    /// Human-readable label for `size` (`2 KiB`, `64 MiB`), produced by the
+    /// canonical `files::format_file_size` so the Flutter chip does no byte
+    /// math of its own.
+    pub size_label: String,
     /// Best-effort MIME type hint (`None` when unknown)
     pub mime: Option<String>,
 }
@@ -461,6 +465,7 @@ fn mobile_attachment(att: crate::files::MessageAttachment) -> MobileAttachment {
         file_id: att.file_id,
         name: att.name,
         size: i64::try_from(att.size).unwrap_or(i64::MAX),
+        size_label: crate::files::format_file_size(att.size),
         mime: att.mime,
     }
 }
