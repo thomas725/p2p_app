@@ -10,7 +10,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
-| `libp2p` | `=0.57.0` | 0.57.0 | The whole peer-to-peer layer: transports, muxing, discovery, and the four `request_response` protocols. Features: `tokio`, `gossipsub`, `noise`, `macros`, `tcp`, `yamux`, `quic`, `request-response`, `serde`, `json`, `cbor`, `ping`. Optional — behind `basic` (and `mdns`/`quic`). |
+| `libp2p` | `=0.57.1` | 0.57.1 | The whole peer-to-peer layer: transports, muxing, discovery, and the four `request_response` protocols. Features: `tokio`, `gossipsub`, `noise`, `macros`, `tcp`, `yamux`, `quic`, `request-response`, `serde`, `json`, `cbor`, `ping`. Optional — behind `basic` (and `mdns`/`quic`). |
 | `libp2p-identity` | `=0.3.0` | 0.3.0 | Keypair generation and peer-id derivation. Pinned to keep a single copy of `libp2p-identity` in the tree (a second copy would mean two incompatible `PeerId` types). |
 | `tokio` | `1.53.1` | 1.54.1 | The async runtime libp2p runs on. Features: `macros`, `rt-multi-thread`, `io-util`, `io-std`. 1.54.1 also carries the `AsyncFd` I/O-safety fix (RUSTSEC-2026-0386, patched from 1.53.3). |
 | `axum` | `0.8` | 0.8.9 | The web frontend's HTTP + WebSocket server (`src/web/`). Features: `ws`, `json`, `query`, `tokio`, `http1`, `macros`. Optional — behind `web`. |
@@ -90,16 +90,17 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
   **rustls-webpki 0.103.15 → 0.103.16**, clearing five advisories
   (RUSTSEC-2026-0346/0347/0348/0349 and RUSTSEC-2026-0382).
 
-### `cargo outdated --depth 1` — five direct rows
+### `cargo outdated --depth 1` — four direct rows
 
-No lockfile-only rows remain: `diesel 2.3.14`, `ratatui-textarea 0.9.3`,
-`serde_json 1.0.154` and `tokio 1.54.1` were all resolved with a plain
-`cargo update` on 2026-10-29. What is left all needs a manifest change:
+The 2026-10-29 round cleared every lockfile-only row (`diesel 2.3.14`,
+`ratatui-textarea 0.9.3`, `serde_json 1.0.154`, `tokio 1.54.1`) and deliberately
+moved the pinned `libp2p` from 0.57.0 to 0.57.1 — a patch release that pulled no
+subcrate version changes, so the protocol code is untouched. What is left all
+needs a manifest change:
 
 | Crate | Locked | Newer | Note |
 |---|---|---|---|
 | `libsqlite3-sys` | 0.38.2 | 0.39.1 | **Blocked on upstream.** Diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so 0.38.2 is as far as the tree can go until a diesel release widens the range. Do not restructure to `sqlite-bundled` — that was evaluated and rejected; see [backlog.md](backlog.md). |
-| `libp2p` | 0.57.0 | 0.57.1 | The `=0.57.0` pin is deliberate; bump it deliberately. |
 | `sha2` | 0.10.9 | 0.11.1 | Major bump. |
 | `tower-http` | 0.6.11 | 0.7.1 | Major bump. |
 | `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only. |

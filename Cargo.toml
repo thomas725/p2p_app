@@ -100,7 +100,7 @@ diesel_migrations = { version = "^2.3" }
 num-traits = "0.2"
 
 # feature set copied from chat example
-libp2p = { version = "=0.57.0", features = [
+libp2p = { version = "=0.57.1", features = [
     "tokio",
     "gossipsub",
     "noise",
