@@ -127,7 +127,7 @@ messages, don't dial it) rather than merely hidden in the UI.
 
 ### Routine dependency bumps that need a manifest change
 
-`cargo outdated --depth 1` reports three actionable rows whose newer version is
+`cargo outdated --depth 1` reports two actionable rows whose newer version is
 outside the current requirement, so the manifest has to move (the lockfile-only
 rows and the pinned `libp2p` 0.57.1 bump were cleared on 2026-10-29 — see
 `dependencies.md`):
@@ -136,11 +136,15 @@ rows and the pinned `libp2p` 0.57.1 bump were cleared on 2026-10-29 — see
 |---|---|---|---|
 | `sha2` | 0.10.9 | 0.11.1 | Major bump — the attachment `file_id` digest must keep producing the same hex. |
 | `tower-http` | 0.6.11 | 0.7.1 | Major bump — the web server's static-file and CORS wiring. |
-| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only; the web server's WebSocket test client. |
 
-`libsqlite3-sys` is at 0.38.2, the newest release diesel 2.3.14 accepts
-(`>=0.17.2, <0.39.0`); 0.39.1 needs another upstream diesel bump, so it is not
-listed here — nothing in this repo can move it.
+Two further rows are **held on purpose**, not work:
+
+- `libsqlite3-sys` is at 0.38.2, the newest release diesel 2.3.14 accepts
+  (`>=0.17.2, <0.39.0`); 0.39.1 needs another upstream diesel bump, so nothing
+  in this repo can move it.
+- `tokio-tungstenite` stays at 0.29 to match axum's `ws` feature. 0.30 is
+  dev-only but pulls a second `tungstenite` tree; the bump was built, verified
+  green, and backed out because it buys nothing for a test-only client.
 
 Details: [`dependencies.md`](dependencies.md).
 
@@ -188,7 +192,7 @@ here so they are not mistaken for unfinished work.
 | Calls are signaling-only | Media transport is not implemented; see US-044 above. |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
-| `cargo outdated` reports four direct rows | Three are routine bumps (see the dependency lane above); the `libsqlite3-sys` row (0.38.2 → 0.39.1) is a tracker for a future diesel release, not a defect. |
+| `cargo outdated` reports four direct rows | Two are routine bumps (see the dependency lane above). The other two are held on purpose: `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
 
 ---
 

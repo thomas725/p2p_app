@@ -154,6 +154,11 @@ serial_test = "4"
 # Web-server tests: a WebSocket client for the end-to-end frame-protocol test
 # and Router::oneshot for the HTTP routes. Both are already in the tree via
 # axum (same versions), so this adds no new dependency surface.
+#
+# Keep tokio-tungstenite in lockstep with axum's `ws` feature: axum pulls
+# tokio-tungstenite 0.29 -> tungstenite 0.29, and bumping this test-only client
+# to 0.30 would compile a SECOND tungstenite tree (plus sha1 0.11 and rand 0.10)
+# for no behavioural gain. Revisit when axum moves.
 tower = { version = "0.5", features = ["util"] }
 tokio-tungstenite = "0.29"
 

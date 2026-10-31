@@ -57,13 +57,14 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   `docs/archive/`). None urgent.
 - `cargo outdated --depth 1` now reports **4 direct rows** (was 9 before the
   2026-10-29 lockfile round, which also moved the deliberate `libp2p` pin to
-  0.57.1): no lockfile-only rows remain, and 3 need a manifest
-  change (`sha2` 0.10→0.11, `tower-http` 0.6→0.7,
-  `tokio-tungstenite` 0.29→0.30). The only *unactionable* one is
-  `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so
-  0.38.2 is the ceiling until diesel widens it (this is the same upstream-blocker
-  class the old 0.36 pin had — do not restructure to `sqlite-bundled`).
-  Details: `docs/dependencies.md`.
+  0.57.1). Two are actionable (`sha2` 0.10→0.11, `tower-http` 0.6→0.7); two are
+  **held on purpose** and should not be "fixed" casually:
+  - `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`,
+    so 0.38.2 is the ceiling until diesel widens it (same upstream-blocker class
+    the old 0.36 pin had — do not restructure to `sqlite-bundled`).
+  - `tokio-tungstenite` 0.29→0.30: the dev-only test client is kept in lockstep
+    with axum's `ws` feature; 0.30 compiles a second `tungstenite` tree. Revisit
+    when axum moves. Details: `docs/dependencies.md`.
 - Frontend parity is **complete** as of 2026-10-21 (per-message latency, Peer
   Info stats rows, and the Contacts search affordance all in both frontends —
   see `docs/archive/2026-10-20_message_latency_parity.md`,

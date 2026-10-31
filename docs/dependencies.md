@@ -64,7 +64,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | `tempfile` | `3` | 3.27.0 | Scratch databases and directories in tests. |
 | `serial_test` | `4` | 4.0.1 | Serializes the tests that touch the shared SQLite file. |
 | `tower` | `0.5` | 0.5.3 | `Router::oneshot` for testing the web server's HTTP routes. Feature `util`. |
-| `tokio-tungstenite` | `0.29` | 0.29.0 | A WebSocket client for the web server's end-to-end frame-protocol test. |
+| `tokio-tungstenite` | `0.29` | 0.29.0 | A WebSocket client for the web server's end-to-end frame-protocol test. Held at 0.29 on purpose: axum's `ws` feature already pulls `tokio-tungstenite 0.29 → tungstenite 0.29`, so moving this test-only client to 0.30 would compile a second tungstenite tree (plus `sha1` 0.11 and `rand` 0.10). Revisit when axum moves. |
 
 ## Known dependency state
 
@@ -95,15 +95,21 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
 The 2026-10-29 round cleared every lockfile-only row (`diesel 2.3.14`,
 `ratatui-textarea 0.9.3`, `serde_json 1.0.154`, `tokio 1.54.1`) and deliberately
 moved the pinned `libp2p` from 0.57.0 to 0.57.1 — a patch release that pulled no
-subcrate version changes, so the protocol code is untouched. What is left all
-needs a manifest change:
+subcrate version changes, so the protocol code is untouched.
+
+**Actionable** (a manifest change in this repo):
 
 | Crate | Locked | Newer | Note |
 |---|---|---|---|
-| `libsqlite3-sys` | 0.38.2 | 0.39.1 | **Blocked on upstream.** Diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so 0.38.2 is as far as the tree can go until a diesel release widens the range. Do not restructure to `sqlite-bundled` — that was evaluated and rejected; see [backlog.md](backlog.md). |
 | `sha2` | 0.10.9 | 0.11.1 | Major bump. |
 | `tower-http` | 0.6.11 | 0.7.1 | Major bump. |
-| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Dev-only. |
+
+**Held on purpose** — do not "fix" these without revisiting the reason:
+
+| Crate | Locked | Newer | Why it is held |
+|---|---|---|---|
+| `libsqlite3-sys` | 0.38.2 | 0.39.1 | Diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so 0.38.2 is as far as the tree can go until a diesel release widens the range. Do not restructure to `sqlite-bundled` — that was evaluated and rejected; see [backlog.md](backlog.md). |
+| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Test-only client, kept in lockstep with axum's `ws` feature. Bumping it to 0.30 adds a *second* `tungstenite` tree (`0.29` from axum, `0.30` here, plus `sha1` 0.11 and `rand` 0.10) for no behavioural gain — verified by building the bump and backing it out. Revisit when axum moves. |
 
 The full `cargo outdated` output also lists transitive rows. Those are not
 actionable here — they move when their parent moves.
