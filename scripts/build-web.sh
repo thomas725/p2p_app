@@ -34,7 +34,8 @@ printf '==> flutter build web (%s)\n' "$profile"
 printf '\nBuilt:\n'
 printf '  node   : %s/target/%s/p2p_chat_server\n' "$repo_root" "$profile"
 printf '  assets : %s/apps/flutter_app/build/web\n' "$repo_root"
-printf '\nRun (loopback only, no token — the TUI trust model):\n'
+printf '\nRun (loopback only, no auth — the TUI trust model):\n'
 printf '  ./target/%s/p2p_chat_server --assets apps/flutter_app/build/web\n' "$profile"
-printf '\nFor LAN exposure add a token (required off loopback):\n'
-printf '  ./target/%s/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web\n' "$profile"
+printf '\nFor LAN exposure add HTTP Basic credentials (required off loopback);\n'
+printf 'the browser prompts for them:\n'
+printf '  P2P_WEB_PASSWORD=<secret> ./target/%s/p2p_chat_server --bind 0.0.0.0 --assets apps/flutter_app/build/web\n' "$profile"

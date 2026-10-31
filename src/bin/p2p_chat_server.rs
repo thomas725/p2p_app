@@ -6,15 +6,22 @@
 //! the `flutter build web` output — until Ctrl-C.
 //!
 //! ```text
-//! p2p_chat_server [--bind <ip>] [--port <u16>] [--token <t>] \
-//!                 [--assets <dir>] [--db <sqlite path>]
+//! p2p_chat_server [--bind <ip>] [--port <u16>] [--user <name>] \
+//!                 [--password <secret>] [--assets <dir>] [--db <sqlite path>]
 //! ```
 //!
-//! Defaults to loopback-only with no token (the TUI's trust model). Expose
-//! `--bind 0.0.0.0` to other devices only together with `--token`.
+//! Defaults to loopback-only with no credentials (the TUI's trust model).
+//! Expose `--bind 0.0.0.0` to other devices only together with HTTP Basic
+//! credentials (`--password`, preferably `P2P_WEB_PASSWORD`).
 
-use p2p_app::web::WebConfig;
+use p2p_app::web::{Credentials, WebConfig};
 use std::path::PathBuf;
+
+/// Username the browser's credential dialog must present, unless overridden.
+const DEFAULT_USER: &str = "p2p";
+/// Preferred way to supply the password: it stays out of `ps` and shell history.
+const PASSWORD_ENV: &str = "P2P_WEB_PASSWORD";
+const USER_ENV: &str = "P2P_WEB_USER";
 
 const USAGE: &str = "p2p_chat_server — p2p chat node + web frontend API
 
@@ -22,20 +29,24 @@ USAGE:
     p2p_chat_server [OPTIONS]
 
 OPTIONS:
-    --bind <ip>       Address to bind (default 127.0.0.1)
-    --port <u16>      Port to listen on (default 8080)
-    --token <token>   Bearer token guarding /ws and /api/* (recommended
-                      whenever --bind is not loopback)
-    --assets <dir>    Serve a `flutter build web` output directory
-    --db <path>       SQLite database path (default: auto-select, same
-                      lock-based behavior as the TUI)
-    -h, --help        Show this help
+    --bind <ip>        Address to bind (default 127.0.0.1)
+    --port <u16>       Port to listen on (default 8080)
+    --user <name>      HTTP Basic username (default p2p; env P2P_WEB_USER)
+    --password <pw>    HTTP Basic password; enables auth for the API, the
+                       WebSocket and the static SPA (env P2P_WEB_PASSWORD —
+                       preferred, so the secret stays out of `ps` and shell
+                       history). Browsers prompt for these credentials.
+    --assets <dir>     Serve a `flutter build web` output directory
+    --db <path>        SQLite database path (default: auto-select, same
+                       lock-based behavior as the TUI)
+    -h, --help         Show this help
 ";
 
 struct Cli {
     bind: String,
     port: u16,
-    token: Option<String>,
+    user: String,
+    password: Option<String>,
     assets: Option<PathBuf>,
     db: Option<String>,
 }
@@ -45,7 +56,13 @@ fn parse_args() -> Result<Option<Cli>, String> {
     let mut cli = Cli {
         bind: "127.0.0.1".to_owned(),
         port: 8080,
-        token: None,
+        user: std::env::var(USER_ENV)
+            .ok()
+            .filter(|user| !user.is_empty())
+            .unwrap_or_else(|| DEFAULT_USER.to_owned()),
+        password: std::env::var(PASSWORD_ENV)
+            .ok()
+            .filter(|password| !password.is_empty()),
         assets: None,
         db: None,
     };
@@ -63,13 +80,32 @@ fn parse_args() -> Result<Option<Cli>, String> {
                     .parse()
                     .map_err(|e| format!("invalid --port {raw:?}: {e}"))?;
             }
-            "--token" => cli.token = Some(value_of(&arg, &mut args)?),
+            "--user" => cli.user = value_of(&arg, &mut args)?,
+            "--password" => cli.password = Some(value_of(&arg, &mut args)?),
             "--assets" => cli.assets = Some(PathBuf::from(value_of(&arg, &mut args)?)),
             "--db" => cli.db = Some(value_of(&arg, &mut args)?),
             other => return Err(format!("unknown argument {other:?}\n\n{USAGE}")),
         }
     }
+    validate(&cli)?;
     Ok(Some(cli))
+}
+
+/// Reject credentials the Basic auth layer could not represent.
+fn validate(cli: &Cli) -> Result<(), String> {
+    let Some(password) = cli.password.as_deref() else {
+        return Ok(());
+    };
+    if password.is_empty() {
+        return Err("--password must not be empty".to_owned());
+    }
+    if cli.user.is_empty() {
+        return Err("--user must not be empty when a password is set".to_owned());
+    }
+    if cli.user.contains(':') {
+        return Err("--user must not contain ':' (RFC 7617 splits on it)".to_owned());
+    }
+    Ok(())
 }
 
 fn value_of(flag: &str, args: &mut impl Iterator<Item = String>) -> Result<String, String> {
@@ -91,9 +127,19 @@ fn main() -> color_eyre::Result<()> {
     let addr: std::net::SocketAddr = format!("{}:{}", cli.bind, cli.port)
         .parse()
         .map_err(|e| color_eyre::eyre::eyre!("invalid --bind/--port: {e}"))?;
-    if !addr.ip().is_loopback() && cli.token.is_none() {
+    let credentials = cli.password.map(|password| Credentials {
+        user: cli.user,
+        password,
+    });
+    if credentials.is_some() && std::env::var_os(PASSWORD_ENV).is_none() {
         eprintln!(
-            "WARNING: binding non-loopback {addr} without --token — anyone on the network \
+            "NOTE: the password came from the command line, where `ps` and your shell \
+             history can see it — prefer {PASSWORD_ENV}."
+        );
+    }
+    if !addr.ip().is_loopback() && credentials.is_none() {
+        eprintln!(
+            "WARNING: binding non-loopback {addr} without --password — anyone on the network \
              can drive this node (send messages, read history, download attachments)."
         );
     }
@@ -123,7 +169,7 @@ fn main() -> color_eyre::Result<()> {
         .block_on(async {
             let served = p2p_app::web::serve(WebConfig {
                 bind: addr,
-                token: cli.token,
+                credentials,
                 assets: cli.assets,
             })
             .await;

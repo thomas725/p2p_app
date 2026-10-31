@@ -16,16 +16,20 @@ pub(crate) mod methods;
 use axum::body::Bytes;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{DefaultBodyLimit, Path, Request, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router, extract::Query};
+use base64::Engine as _;
+use base64::engine::general_purpose::{STANDARD as BASE64, URL_SAFE_NO_PAD as BASE64_URL};
 use futures_util::{SinkExt as _, StreamExt as _};
 use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
+use subtle::ConstantTimeEq as _;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -41,23 +45,37 @@ const EVENT_CHANNEL_CAPACITY: usize = 256;
 /// by [`crate::files::store_outgoing_bytes`]).
 const UPLOAD_BODY_SLACK: usize = 1024;
 
+/// Single-user HTTP Basic credentials guarding the web frontend.
+///
+/// The same secret keys the browser session cookie (see [`auth_middleware`]),
+/// so rotating the password invalidates every existing session.
+#[derive(Clone, Debug)]
+pub struct Credentials {
+    /// Username the browser's credential dialog must present. Cannot contain
+    /// `:` (RFC 7617 splits the decoded pair on the first colon).
+    pub user: String,
+    /// Shared secret. One install = one user, so there is no user table.
+    pub password: String,
+}
+
 /// Server configuration for [`serve`].
 pub struct WebConfig {
     /// Address to bind (`127.0.0.1:8080` by default at the call site).
     pub bind: SocketAddr,
-    /// Optional bearer token guarding `/ws` and `/api/*`. Required in
-    /// practice for non-loopback binds; loopback-only deployments may omit it.
-    pub token: Option<String>,
+    /// Optional HTTP Basic credentials guarding `/ws`, `/api/*`, and the
+    /// static SPA. Required in practice for non-loopback binds; loopback-only
+    /// deployments may omit it.
+    pub credentials: Option<Credentials>,
     /// Optional directory with the `flutter build web` output to serve as
     /// static assets (SPA fallback to `index.html`).
     pub assets: Option<PathBuf>,
 }
 
-/// Shared server state (event fan-out + auth token).
+/// Shared server state (event fan-out + auth credentials).
 #[derive(Clone)]
 struct WebState {
     events: tokio::sync::broadcast::Sender<Value>,
-    token: Option<String>,
+    credentials: Option<Credentials>,
 }
 
 /// Serve the web API (and optional static assets) until Ctrl-C.
@@ -73,7 +91,7 @@ pub async fn serve(config: WebConfig) -> Result<(), String> {
 
     let state = WebState {
         events,
-        token: config.token.clone(),
+        credentials: config.credentials.clone(),
     };
     let app = build_router(state, config.assets.as_ref());
 
@@ -81,8 +99,13 @@ pub async fn serve(config: WebConfig) -> Result<(), String> {
         .await
         .map_err(|e| format!("failed to bind {}: {e}", config.bind))?;
     crate::logging::p2plog_info(format!(
-        "web frontend listening on http://{}{}",
+        "web frontend listening on http://{}{}{}",
         config.bind,
+        if config.credentials.is_some() {
+            " (HTTP Basic auth enabled)"
+        } else {
+            ""
+        },
         if config.assets.is_some() {
             " (serving Flutter web assets)"
         } else {
@@ -111,20 +134,24 @@ fn build_router(state: WebState, assets: Option<&PathBuf>) -> Router {
         .route("/api/status", get(status_handler))
         .route("/api/upload", post(upload_handler))
         .route("/api/files/{file_id}", get(download_handler))
-        .layer(DefaultBodyLimit::max(body_limit))
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            auth_middleware,
-        ))
-        .layer(CorsLayer::permissive());
+        .layer(DefaultBodyLimit::max(body_limit));
 
     if let Some(assets) = assets {
         let index = assets.join("index.html");
         app = app.fallback_service(ServeDir::new(assets).fallback(ServeFile::new(index)));
     }
+    // Auth is installed AFTER the fallback so the static SPA is gated too: a
+    // browser must log in before it can even load the app shell. CORS stays
+    // outermost so preflight `OPTIONS` (which never carries credentials) is
+    // answered instead of 401'd.
+    app.layer(middleware::from_fn_with_state(
+        state.clone(),
+        auth_middleware,
+    ))
+    .layer(CorsLayer::permissive())
     // Convert `Router<WebState>` into a servable `Router<()>` (the state is
     // already attached to the middleware; this fills the fallback slot).
-    app.with_state(state)
+    .with_state(state)
 }
 
 /// Drain the node's event queue and push every event as a JSON frame to all
@@ -157,34 +184,140 @@ fn spawn_event_poller(events: tokio::sync::broadcast::Sender<Value>) {
 
 // --- Auth ---
 
-/// Bearer-token gate for `/ws` and `/api/*`. No token configured → open
-/// (the loopback default). Static assets stay reachable either way.
+/// Cookie carrying the browser session minted by a successful HTTP Basic
+/// login. Browsers cannot set headers on a `WebSocket` handshake, so the
+/// session cookie is how `/ws` authenticates.
+const SESSION_COOKIE: &str = "p2p_web_session";
+/// Browser session lifetime in seconds (7 days); a fresh login slides it.
+const SESSION_TTL_SECS: i64 = 604_800;
+/// Domain the session MAC is bound to (see [`session_mac`]).
+const SESSION_MAC_DOMAIN: &[u8] = b"p2p-web-session";
+/// Realm shown by the browser's credential dialog.
+const AUTH_CHALLENGE: &str = "Basic realm=\"p2p_app\", charset=\"UTF-8\"";
+
+/// HTTP Basic gate for `/ws`, `/api/*`, and the static SPA.
+///
+/// No credentials configured → open (the loopback default). Otherwise a
+/// request is allowed when it carries a valid session cookie or a valid
+/// `Authorization: Basic` header; the latter also mints the cookie so the
+/// browser's later requests (and the `WebSocket` handshake) need no header.
 async fn auth_middleware(State(state): State<WebState>, request: Request, next: Next) -> Response {
-    if auth_allows(&state, &request) {
+    let Some(credentials) = state.credentials.as_ref() else {
+        return next.run(request).await;
+    };
+    if session_cookie_is_valid(credentials, request.headers()) {
         return next.run(request).await;
     }
-    (StatusCode::UNAUTHORIZED, "invalid or missing token").into_response()
+    if !basic_credentials_match(credentials, request.headers()) {
+        return unauthorized();
+    }
+    let mut response = next.run(request).await;
+    if let Ok(cookie) = HeaderValue::from_str(&session_cookie(credentials)) {
+        response.headers_mut().append(header::SET_COOKIE, cookie);
+    }
+    response
 }
 
-fn auth_allows(state: &WebState, request: &Request) -> bool {
-    let Some(expected) = state.token.as_deref() else {
-        return true;
-    };
-    bearer_token(request.headers()).as_deref() == Some(expected)
-        || query_token(request.uri().query()).as_deref() == Some(expected)
+/// `401` plus the challenge that makes browsers show their credential dialog.
+fn unauthorized() -> Response {
+    let mut response = (StatusCode::UNAUTHORIZED, "authentication required").into_response();
+    response.headers_mut().insert(
+        header::WWW_AUTHENTICATE,
+        HeaderValue::from_static(AUTH_CHALLENGE),
+    );
+    response
 }
 
-fn bearer_token(headers: &HeaderMap) -> Option<String> {
+/// `Authorization: Basic base64(user:password)` decoded to `user:password`.
+fn basic_credentials(headers: &HeaderMap) -> Option<String> {
     let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
-    let token = value.strip_prefix("Bearer ")?;
-    Some(token.to_owned())
+    let encoded = value.strip_prefix("Basic ")?;
+    let decoded = BASE64.decode(encoded.trim()).ok()?;
+    String::from_utf8(decoded).ok()
 }
 
-fn query_token(query: Option<&str>) -> Option<String> {
-    query?
-        .split('&')
-        .find_map(|kv| kv.strip_prefix("token="))
-        .map(str::to_owned)
+/// Compare the presented pair with the configured one in constant time, so
+/// the password cannot be recovered by measuring how early a mismatch is.
+fn basic_credentials_match(credentials: &Credentials, headers: &HeaderMap) -> bool {
+    let Some(presented) = basic_credentials(headers) else {
+        return false;
+    };
+    let expected = format!("{}:{}", credentials.user, credentials.password);
+    expected.as_bytes().ct_eq(presented.as_bytes()).into()
+}
+
+/// `Set-Cookie` value for a fresh session: `expiry.MAC`, both derived from the
+/// credentials, so sessions are stateless (no store to prune, and rotating the
+/// password invalidates them all).
+fn session_cookie(credentials: &Credentials) -> String {
+    format!(
+        "{SESSION_COOKIE}={}; Path=/; HttpOnly; SameSite=Strict; Max-Age={SESSION_TTL_SECS}",
+        session_cookie_value(credentials)
+    )
+}
+
+/// The `expiry.MAC` part of [`session_cookie`] (also what a client sends back
+/// in its `Cookie` header).
+fn session_cookie_value(credentials: &Credentials) -> String {
+    let expires_at = chrono::Utc::now()
+        .timestamp()
+        .saturating_add(SESSION_TTL_SECS);
+    let mac = BASE64_URL.encode(session_mac(credentials, expires_at));
+    format!("{expires_at}.{mac}")
+}
+
+/// Keyed digest of `domain ‖ user ‖ password ‖ expiry`. The password is the
+/// key, so an attacker cannot forge a cookie without knowing it.
+///
+/// A plain keyed hash (not HMAC) is enough here: the message ends in a
+/// canonical integer, and verification re-derives it from the *parsed*
+/// `expiry`, so a length-extension MAC could never be paired with an expiry
+/// that parses (and the digest itself is only ever shown to its holder).
+fn session_mac(credentials: &Credentials, expires_at: i64) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(SESSION_MAC_DOMAIN);
+    hasher.update(b"\0");
+    hasher.update(credentials.user.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(credentials.password.as_bytes());
+    hasher.update(b"\0");
+    hasher.update(expires_at.to_string().as_bytes());
+    hasher.finalize().to_vec()
+}
+
+fn session_cookie_is_valid(credentials: &Credentials, headers: &HeaderMap) -> bool {
+    let Some(value) = cookie_value(headers, SESSION_COOKIE) else {
+        return false;
+    };
+    let Some((expires, mac)) = value.split_once('.') else {
+        return false;
+    };
+    let Ok(expires_at) = expires.parse::<i64>() else {
+        return false;
+    };
+    if chrono::Utc::now().timestamp() >= expires_at {
+        return false;
+    }
+    let Ok(presented) = BASE64_URL.decode(mac) else {
+        return false;
+    };
+    session_mac(credentials, expires_at)
+        .as_slice()
+        .ct_eq(&presented)
+        .into()
+}
+
+/// Value of `name` from any `Cookie` header (`a=1; name=value; b=2`).
+fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .flat_map(|value| value.split(';'))
+        .find_map(|pair| {
+            let (key, value) = pair.trim().split_once('=')?;
+            (key == name).then(|| value.to_owned())
+        })
 }
 
 // --- WebSocket ---
@@ -356,13 +489,37 @@ mod tests {
 
     // --- helpers ---
 
-    fn test_state(token: Option<&str>) -> (WebState, tokio::sync::broadcast::Sender<Value>) {
+    fn test_state(
+        credentials: Option<Credentials>,
+    ) -> (WebState, tokio::sync::broadcast::Sender<Value>) {
         let (events, _) = tokio::sync::broadcast::channel::<Value>(EVENT_CHANNEL_CAPACITY);
         let state = WebState {
             events: events.clone(),
-            token: token.map(str::to_owned),
+            credentials,
         };
         (state, events)
+    }
+
+    fn credentials() -> Credentials {
+        Credentials {
+            user: "p2p".to_owned(),
+            password: "s3cret".to_owned(),
+        }
+    }
+
+    /// `Authorization: Basic …` for `user:password`.
+    fn basic_header(user: &str, password: &str) -> HeaderValue {
+        HeaderValue::from_str(&format!(
+            "Basic {}",
+            BASE64.encode(format!("{user}:{password}"))
+        ))
+        .expect("basic header")
+    }
+
+    /// `Cookie` header carrying the given `p2p_web_session` value.
+    fn cookie_header(value: &str) -> HeaderValue {
+        HeaderValue::from_str(&format!("other=1; {SESSION_COOKIE}={value}; x=2"))
+            .expect("cookie header")
     }
 
     /// Parse one request through the frame handler and return the response.
@@ -606,79 +763,144 @@ mod tests {
     // --- auth ---
 
     #[test]
-    fn no_configured_token_means_open() {
-        let (state, _events) = test_state(None);
-        let request = http_request("GET", "/api/status", Vec::new());
-        assert!(auth_allows(&state, &request));
-    }
-
-    #[test]
-    fn token_must_match_via_bearer_header_or_query() {
-        let (state, _events) = test_state(Some("s3cret"));
-
-        let request = http_request("GET", "/api/status", Vec::new());
-        assert!(
-            !auth_allows(&state, &request),
-            "no credentials must be denied"
-        );
-
-        let mut request = http_request("GET", "/api/status", Vec::new());
-        request.headers_mut().insert(
-            header::AUTHORIZATION,
-            "Bearer s3cret".parse().expect("header value"),
-        );
-        assert!(auth_allows(&state, &request));
-
-        let mut request = http_request("GET", "/api/status", Vec::new());
-        request.headers_mut().insert(
-            header::AUTHORIZATION,
-            "Bearer wrong".parse().expect("header value"),
-        );
-        assert!(!auth_allows(&state, &request));
-
-        // The WebSocket upgrade carries its token as a query parameter.
-        assert!(auth_allows(
-            &state,
-            &http_request("GET", "/ws?token=s3cret", Vec::new())
-        ));
-        assert!(!auth_allows(
-            &state,
-            &http_request("GET", "/ws?token=nope", Vec::new())
-        ));
-    }
-
-    #[test]
-    fn bearer_parsing_needs_the_exact_prefix() {
+    fn basic_credentials_must_match_the_configured_pair() {
+        let credentials = credentials();
         let mut headers = HeaderMap::new();
-        assert_eq!(bearer_token(&headers), None);
-        headers.insert(header::AUTHORIZATION, "s3cret".parse().expect("value"));
-        assert_eq!(
-            bearer_token(&headers),
-            None,
-            "a bare token is not a bearer token"
+        assert!(
+            !basic_credentials_match(&credentials, &headers),
+            "no header must be denied"
         );
+
+        headers.insert(header::AUTHORIZATION, basic_header("p2p", "s3cret"));
+        assert!(basic_credentials_match(&credentials, &headers));
+
+        headers.insert(header::AUTHORIZATION, basic_header("p2p", "wrong"));
+        assert!(!basic_credentials_match(&credentials, &headers));
+
+        headers.insert(header::AUTHORIZATION, basic_header("other", "s3cret"));
+        assert!(
+            !basic_credentials_match(&credentials, &headers),
+            "the username is part of the credential"
+        );
+
         headers.insert(
             header::AUTHORIZATION,
-            "Bearer s3cret".parse().expect("value"),
+            HeaderValue::from_static("Bearer s3cret"),
         );
-        assert_eq!(bearer_token(&headers).as_deref(), Some("s3cret"));
+        assert!(
+            !basic_credentials_match(&credentials, &headers),
+            "only Basic is accepted"
+        );
     }
 
     #[test]
-    fn query_token_parsing_is_exact() {
-        assert_eq!(query_token(None), None);
+    fn basic_decoding_needs_the_exact_scheme_and_valid_base64() {
+        let mut headers = HeaderMap::new();
+        assert_eq!(basic_credentials(&headers), None);
+
+        headers.insert(header::AUTHORIZATION, basic_header("p2p", "s3cret"));
+        assert_eq!(basic_credentials(&headers).as_deref(), Some("p2p:s3cret"));
+
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Basic not-base64!"),
+        );
+        assert_eq!(basic_credentials(&headers), None);
+
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Basic cDpw"), // "p:p"
+        );
+        assert_eq!(basic_credentials(&headers).as_deref(), Some("p:p"));
+    }
+
+    #[test]
+    fn session_cookie_round_trips_and_rejects_forgeries() {
+        let credentials = credentials();
+        let value = session_cookie_value(&credentials);
+
+        let mut headers = HeaderMap::new();
+        headers.insert(header::COOKIE, cookie_header(&value));
+        assert!(session_cookie_is_valid(&credentials, &headers));
+
+        // A different password keys a different MAC.
+        let other = Credentials {
+            user: "p2p".to_owned(),
+            password: "different".to_owned(),
+        };
+        assert!(!session_cookie_is_valid(&other, &headers));
+
+        // Tampering with the expiry invalidates the MAC.
+        let (expiry, mac) = value.split_once('.').expect("expiry.mac");
+        let extended: i64 = expiry
+            .parse::<i64>()
+            .expect("expiry")
+            .saturating_add(86_400);
+        let forged = format!("{extended}.{mac}");
+        let mut forged_headers = HeaderMap::new();
+        forged_headers.insert(header::COOKIE, cookie_header(&forged));
+        assert!(!session_cookie_is_valid(&credentials, &forged_headers));
+
+        // An expired session is rejected even with a correct MAC.
+        let stale_at = chrono::Utc::now().timestamp().saturating_sub(1);
+        let stale = format!(
+            "{stale_at}.{}",
+            BASE64_URL.encode(session_mac(&credentials, stale_at))
+        );
+        let mut stale_headers = HeaderMap::new();
+        stale_headers.insert(header::COOKIE, cookie_header(&stale));
+        assert!(!session_cookie_is_valid(&credentials, &stale_headers));
+
+        // Garbage is rejected rather than panicking.
+        for junk in ["", "nodot", "abc.def", "1.", ".1"] {
+            let mut junk_headers = HeaderMap::new();
+            junk_headers.insert(header::COOKIE, cookie_header(junk));
+            assert!(
+                !session_cookie_is_valid(&credentials, &junk_headers),
+                "{junk:?} must not validate"
+            );
+        }
+    }
+
+    #[test]
+    fn session_cookie_attributes_are_browser_safe() {
+        let cookie = session_cookie(&credentials());
+        assert!(cookie.starts_with(&format!("{SESSION_COOKIE}=")));
+        for attribute in ["Path=/", "HttpOnly", "SameSite=Strict", "Max-Age="] {
+            assert!(cookie.contains(attribute), "missing {attribute}: {cookie}");
+        }
+        assert!(
+            !cookie.contains("Secure"),
+            "the server has no TLS of its own; `Secure` would break plain-HTTP LAN use"
+        );
+    }
+
+    #[test]
+    fn cookie_value_parsing_is_exact() {
+        let mut headers = HeaderMap::new();
+        assert_eq!(cookie_value(&headers, SESSION_COOKIE), None);
+
+        headers.insert(
+            header::COOKIE,
+            HeaderValue::from_static("a=1; p2p_web_session=abc; b=2"),
+        );
         assert_eq!(
-            query_token(Some("a=1&token=abc&b=2")).as_deref(),
+            cookie_value(&headers, SESSION_COOKIE).as_deref(),
             Some("abc")
         );
-        assert_eq!(query_token(Some("notoken=abc")).as_deref(), None);
-        assert_eq!(query_token(Some("token=")).as_deref(), Some(""));
+        assert_eq!(cookie_value(&headers, "a").as_deref(), Some("1"));
+
+        headers.insert(
+            header::COOKIE,
+            HeaderValue::from_static("notp2p_web_session=abc"),
+        );
+        assert_eq!(cookie_value(&headers, SESSION_COOKIE), None);
     }
 
     // --- HTTP routes ---
 
     #[tokio::test]
-    async fn status_is_open_without_a_token_and_authenticated_with_one() {
+    async fn status_is_open_without_credentials_and_gated_with_them() {
         let (state, _events) = test_state(None);
         let response = build_router(state, None)
             .oneshot(http_request("GET", "/api/status", Vec::new()))
@@ -689,9 +911,27 @@ mod tests {
         assert_eq!(body["ok"], true);
         assert_eq!(body["service"], "p2p-chat-web");
 
-        let (state, _events) = test_state(Some("tok"));
+        let (state, _events) = test_state(Some(credentials()));
         let denied = build_router(state.clone(), None)
             .oneshot(http_request("GET", "/api/status", Vec::new()))
+            .await
+            .expect("router responds");
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            denied
+                .headers()
+                .get(header::WWW_AUTHENTICATE)
+                .and_then(|v| v.to_str().ok()),
+            Some(AUTH_CHALLENGE),
+            "the challenge is what makes a browser prompt"
+        );
+
+        let mut wrong = http_request("GET", "/api/status", Vec::new());
+        wrong
+            .headers_mut()
+            .insert(header::AUTHORIZATION, basic_header("p2p", "wrong"));
+        let denied = build_router(state.clone(), None)
+            .oneshot(wrong)
             .await
             .expect("router responds");
         assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
@@ -699,18 +939,67 @@ mod tests {
         let mut authorized = http_request("GET", "/api/status", Vec::new());
         authorized
             .headers_mut()
-            .insert(header::AUTHORIZATION, "Bearer tok".parse().expect("value"));
+            .insert(header::AUTHORIZATION, basic_header("p2p", "s3cret"));
         let allowed = build_router(state.clone(), None)
             .oneshot(authorized)
             .await
             .expect("router responds");
         assert_eq!(allowed.status(), StatusCode::OK);
+        let set_cookie = allowed
+            .headers()
+            .get(header::SET_COOKIE)
+            .and_then(|v| v.to_str().ok())
+            .expect("a successful login mints the session cookie")
+            .to_owned();
+        assert!(set_cookie.starts_with(&format!("{SESSION_COOKIE}=")));
 
+        // The cookie alone (no Authorization header) is now enough.
+        let mut with_cookie = http_request("GET", "/api/status", Vec::new());
+        let value = set_cookie
+            .split(';')
+            .next()
+            .expect("name=value")
+            .split_once('=')
+            .expect("name=value")
+            .1;
+        with_cookie
+            .headers_mut()
+            .insert(header::COOKIE, cookie_header(value));
         let allowed = build_router(state, None)
-            .oneshot(http_request("GET", "/api/status?token=tok", Vec::new()))
+            .oneshot(with_cookie)
             .await
             .expect("router responds");
         assert_eq!(allowed.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn static_assets_are_gated_too() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("index.html"), "<html>app shell</html>")
+            .expect("write index.html");
+        let assets = dir.path().to_path_buf();
+
+        let (state, _events) = test_state(Some(credentials()));
+        let denied = build_router(state.clone(), Some(&assets))
+            .oneshot(http_request("GET", "/", Vec::new()))
+            .await
+            .expect("router responds");
+        assert_eq!(
+            denied.status(),
+            StatusCode::UNAUTHORIZED,
+            "the SPA shell must not be readable before login"
+        );
+
+        let mut authorized = http_request("GET", "/", Vec::new());
+        authorized
+            .headers_mut()
+            .insert(header::AUTHORIZATION, basic_header("p2p", "s3cret"));
+        let allowed = build_router(state, Some(&assets))
+            .oneshot(authorized)
+            .await
+            .expect("router responds");
+        assert_eq!(allowed.status(), StatusCode::OK);
+        assert!(String::from_utf8_lossy(&response_bytes(allowed).await).contains("app shell"));
     }
 
     #[test]
@@ -893,17 +1182,32 @@ mod tests {
 
     #[tokio::test]
     async fn websocket_answers_requests_and_pushes_events() {
-        let (state, events) = test_state(Some("wstok"));
+        let credentials = credentials();
+        let (state, events) = test_state(Some(credentials.clone()));
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("bind");
         let addr = listener.local_addr().expect("local addr");
         let server = tokio::spawn(axum::serve(listener, build_router(state, None)).into_future());
 
-        let (mut socket, _) =
-            tokio_tungstenite::connect_async(format!("ws://{addr}/ws?token=wstok"))
-                .await
-                .expect("ws connect");
+        // The browser cannot set headers on a WebSocket handshake, so it
+        // authenticates with the session cookie minted by its login.
+        let mut request =
+            tokio_tungstenite::tungstenite::client::IntoClientRequest::into_client_request(
+                format!("ws://{addr}/ws"),
+            )
+            .expect("ws request");
+        request.headers_mut().insert(
+            "cookie",
+            HeaderValue::from_str(&format!(
+                "{SESSION_COOKIE}={}",
+                session_cookie_value(&credentials)
+            ))
+            .expect("cookie header"),
+        );
+        let (mut socket, _) = tokio_tungstenite::connect_async(request)
+            .await
+            .expect("ws connect");
 
         // Request/response with the id echoed back.
         socket
@@ -943,8 +1247,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn websocket_upgrade_requires_the_token() {
-        let (state, _events) = test_state(Some("wstok"));
+    async fn websocket_upgrade_requires_credentials() {
+        let (state, _events) = test_state(Some(credentials()));
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("bind");
@@ -955,7 +1259,22 @@ mod tests {
             tokio_tungstenite::connect_async(format!("ws://{addr}/ws"))
                 .await
                 .is_err(),
-            "a token-guarded upgrade must not succeed without the token"
+            "a credential-guarded upgrade must not succeed without a session"
+        );
+
+        // A forged cookie is not a session either.
+        let mut request =
+            tokio_tungstenite::tungstenite::client::IntoClientRequest::into_client_request(
+                format!("ws://{addr}/ws"),
+            )
+            .expect("ws request");
+        request.headers_mut().insert(
+            "cookie",
+            HeaderValue::from_static("p2p_web_session=4102444800.forged"),
+        );
+        assert!(
+            tokio_tungstenite::connect_async(request).await.is_err(),
+            "a forged session cookie must be rejected"
         );
 
         server.abort();

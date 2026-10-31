@@ -73,6 +73,8 @@ attachment-gc = []
 web = [
     "dep:axum",
     "dep:tower-http",
+    "dep:base64",
+    "dep:subtle",
     "tokio/signal",
     "dep:futures-util",
     "mobile",
@@ -147,6 +149,13 @@ axum = { version = "0.8", optional = true, features = ["ws", "json", "query", "t
 tower-http = { version = "0.7", optional = true, features = ["cors", "fs"] }
 # Stream/Sink combinators for splitting the axum WebSocket in the web server.
 futures-util = { version = "0.3", optional = true }
+# HTTP Basic credentials (web frontend auth): RFC 7617 sends `user:password`
+# base64-encoded, and the session cookie carries a base64url MAC. Both
+# versions are already in the tree via libp2p, so these add no new crates.
+base64 = { version = "0.22", optional = true }
+# Constant-time comparison for the password and the session-cookie MAC, so
+# auth cannot be probed byte-by-byte by timing. Already in the tree.
+subtle = { version = "2", optional = true }
 
 [dev-dependencies]
 tempfile = "3"

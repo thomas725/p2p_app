@@ -99,9 +99,11 @@ scripts/build-all.sh              # TUI + web frontend (add --debug for a fast b
 ./target/release/p2p_chat_server --assets apps/flutter_app/build/web
 ```
 
-The server binds `127.0.0.1` by default (no token — the TUI trust model). For LAN
-exposure pass `--bind 0.0.0.0 --token <secret>`; the token is enforced on `/ws`
-and `/api/*`. See [`docs/web_frontend.md`](docs/web_frontend.md).
+The server binds `127.0.0.1` by default (no credentials — the TUI trust model).
+For LAN exposure pass `--bind 0.0.0.0` together with HTTP Basic credentials
+(`P2P_WEB_PASSWORD`, or `--password`), which the browser prompts for and then
+remembers; the gate covers the API, the WebSocket and the static SPA. See
+[`docs/web_frontend.md`](docs/web_frontend.md).
 
 The Rust↔Dart bindings are **generated** (`src/frb_generated.rs`,
 `lib/src/rust/*`) from the checked-in `flutter_rust_bridge.yaml` (input:

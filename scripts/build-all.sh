@@ -118,8 +118,9 @@ if [[ $build_tui -eq 1 ]]; then
 fi
 
 if [[ $build_web -eq 1 ]]; then
-    printf '\nRun the web frontend (loopback only, no token — the TUI trust model):\n'
+    printf '\nRun the web frontend (loopback only, no auth — the TUI trust model):\n'
     printf '  ./target/%s/p2p_chat_server --assets apps/flutter_app/build/web\n' "$profile"
-    printf '\nFor LAN exposure add a token (required off loopback):\n'
-    printf '  ./target/%s/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web\n' "$profile"
+    printf '\nFor LAN exposure add HTTP Basic credentials (required off loopback);\n'
+    printf 'the browser prompts for them:\n'
+    printf '  P2P_WEB_PASSWORD=<secret> ./target/%s/p2p_chat_server --bind 0.0.0.0 --assets apps/flutter_app/build/web\n' "$profile"
 fi

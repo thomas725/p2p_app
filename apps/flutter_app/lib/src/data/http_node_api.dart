@@ -27,10 +27,11 @@ class HttpNodeApi implements NodeApi {
   HttpNodeApi({required Future<RemoteTransport> Function() connect})
     : _connect = connect;
 
-  /// Connect to the node server serving this page (or [origin]), carrying
-  /// [token] when the deployment requires one.
-  factory HttpNodeApi.toServer({Uri? origin, String? token}) => HttpNodeApi(
-    connect: () => WsRemoteTransport.connect(origin: origin, token: token),
+  /// Connect to the node server serving this page (or [origin]). Auth is
+  /// HTTP Basic: the browser holds the session cookie minted by the login and
+  /// attaches it to both the WebSocket handshake and the attachment routes.
+  factory HttpNodeApi.toServer({Uri? origin}) => HttpNodeApi(
+    connect: () => WsRemoteTransport.connect(origin: origin),
   );
 
   final Future<RemoteTransport> Function() _connect;

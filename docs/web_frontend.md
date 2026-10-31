@@ -47,15 +47,43 @@ Method names mirror the FRB function names 1:1 (`loadDmMessages`, `saveOutgoingD
 
 ## Security model
 
-- Default bind `127.0.0.1` — no token required, same trust model as the TUI.
-- `--bind 0.0.0.0 --token <t>` for LAN exposure: token enforced on `/ws` and `/api/*`
-  (`Authorization: Bearer` or `?token=`). The Flutter web client reads `?token=` from
-  `Uri.base` at startup and attaches it to every call. Static assets stay open.
+Single-user, shared-secret, browser-native: **HTTP Basic auth** (`RFC 7617`).
+
+- Default bind `127.0.0.1` — no credentials required, same trust model as the TUI.
+- Set `--password <secret>` (or, preferably, `P2P_WEB_PASSWORD`) to enable auth.
+  The username is `p2p` unless `--user` / `P2P_WEB_USER` overrides it.
+- The gate covers **everything**: `/ws`, `/api/*`, *and* the static SPA. A
+  browser is challenged (`401` + `WWW-Authenticate: Basic realm="p2p_app"`)
+  before it can load a single asset, and the browser's own credential dialog —
+  not an app-provided login form — collects the secret.
+- A successful login mints the `p2p_web_session` cookie
+  (`HttpOnly; SameSite=Strict; Path=/`, 7-day `Max-Age`, refreshed on each
+  login). It exists because **JavaScript cannot set headers on a `WebSocket`
+  handshake**: the cookie rides the `/ws` upgrade and every attachment route,
+  so the SPA never sees the password and never puts it in a URL.
+- The cookie value is `expiry.MAC`, where the MAC is
+  `SHA-256("p2p-web-session" ‖ user ‖ password ‖ expiry)`. Sessions are
+  therefore **stateless** (nothing to store or prune) and **rotating the
+  password invalidates every session**. Comparisons are constant-time.
+- Secrets never appear in a URL: the old `?token=` query parameter is gone, so
+  nothing lands in browser history, `Referer` headers, or proxy access logs.
+- **There is no TLS of its own.** Basic credentials are base64 (not encrypted),
+  so on an untrusted LAN put the server behind a TLS-terminating reverse proxy
+  and bind it to loopback. `Secure` is deliberately not set on the cookie —
+  that would break plain-HTTP LAN use.
+
+Programmatic clients (curl, scripts, health checks) use the same credentials:
+
+```bash
+curl -u p2p:"$P2P_WEB_PASSWORD" http://127.0.0.1:8080/api/status
+```
 
 ## Rust touch points
 
-- `Cargo.toml`: `web = ["dep:axum", "dep:tower-http"]` (added to `default`),
-  `[[bin]] p2p_chat_server` (`required-features = ["web"]`).
+- `Cargo.toml`: `web = ["dep:axum", "dep:tower-http", "dep:base64", "dep:subtle"]` (added to
+  `default`), `[[bin]] p2p_chat_server` (`required-features = ["web"]`). `base64` and
+  `subtle` were already in the tree; they are the Basic decoding and the constant-time
+  comparison for the auth gate.
 - Wire structs gain `Serialize` (+ `Deserialize` for sort inputs) — no FRB impact
   (`rust_input` is `api,mobile_api,mobile_node`; new fns stay `pub(crate)`).
 - `files::store_outgoing_bytes` (upload handler), `mobile_node::save_outgoing_*_with_attachment`
@@ -84,10 +112,11 @@ Implemented and verified end to end:
 - Feature surface equals the union of the TUI and Flutter feature sets (group leave, per-peer
   local nickname, calls, device binding, files/attachments, backfill, stats).
 
-Verified locally: `cargo ct`, `cargo test --all-features`, `flutter analyze`,
-`flutter test`, `flutter build web` (`✓ Built build/web`), and a manual smoke run of the
-binary (`/api/status`, SPA index + `main.dart.js`, token enforced via both `Authorization:
-Bearer` and `?token=`, static assets open).
+Verified by the in-module tests in `src/web/mod.rs`: frame protocol, every routed
+method, the HTTP routes, HTTP Basic (denied / wrong pair / accepted + `Set-Cookie`),
+session-cookie round trip with forged, expired and garbage values rejected, static-asset
+gating, and a real `tokio-tungstenite` WebSocket upgrade authenticated by the session
+cookie (and refused without one).
 
 `flutter build web` prints a `Wasm dry run failed … invalid_runtime_check_with_js_interop_types`
 warning from **flutter_rust_bridge 2.13.0 itself** (not this app's code); the build then
@@ -100,8 +129,9 @@ scripts/build-all.sh              # TUI + web frontend in one go (release; --deb
 scripts/build-web.sh              # web frontend only
 ./target/release/p2p_chat_tui     # the terminal frontend
 ./target/release/p2p_chat_server --assets apps/flutter_app/build/web
-# LAN exposure (token required off loopback):
-./target/release/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web
+# LAN exposure (auth required off loopback): the browser prompts for these
+export P2P_WEB_PASSWORD='<secret>'   # P2P_WEB_USER defaults to `p2p`
+./target/release/p2p_chat_server --bind 0.0.0.0 --assets apps/flutter_app/build/web
 ```
 
 `scripts/build-all.sh` builds **both** desktop frontends: the TUI binary and the Flutter web

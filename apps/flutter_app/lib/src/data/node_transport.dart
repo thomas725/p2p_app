@@ -37,25 +37,19 @@ abstract class RemoteTransport {
 /// Production transport: a WebSocket for the JSON protocol and HTTP for
 /// attachments, both against a single node-server origin.
 class WsRemoteTransport implements RemoteTransport {
-  WsRemoteTransport._(this._channel, this._httpBase, this._token);
+  WsRemoteTransport._(this._channel, this._httpBase);
 
   /// Connect to the node server at [origin] — the page's own origin by
-  /// default, so the SPA and its API share one host. [token] is carried on
-  /// the WS handshake and the HTTP routes when the deployment requires one.
-  static Future<WsRemoteTransport> connect({
-    Uri? origin,
-    String? token,
-  }) async {
+  /// default, so the SPA and its API share one host. The browser's session
+  /// cookie (HTTP Basic login) is attached automatically to the WebSocket
+  /// handshake and every HTTP route, so nothing credential-shaped is passed
+  /// here.
+  static Future<WsRemoteTransport> connect({Uri? origin}) async {
     final base = origin ?? _pageOrigin();
     final wsBase = base.replace(scheme: base.scheme == 'https' ? 'wss' : 'ws');
-    final channel = WebSocketChannel.connect(
-      wsBase.replace(
-        path: '/ws',
-        queryParameters: token == null ? null : {'token': token},
-      ),
-    );
+    final channel = WebSocketChannel.connect(wsBase.replace(path: '/ws'));
     await channel.ready;
-    return WsRemoteTransport._(channel, base, token);
+    return WsRemoteTransport._(channel, base);
   }
 
   /// Scheme/host/port of the page currently displayed (SPA assets and the
@@ -65,7 +59,6 @@ class WsRemoteTransport implements RemoteTransport {
 
   final WebSocketChannel _channel;
   final Uri _httpBase;
-  final String? _token;
 
   @override
   Stream<String> get frames =>
@@ -86,7 +79,7 @@ class WsRemoteTransport implements RemoteTransport {
   }) async {
     final uri = _httpBase.replace(
       path: '/api/upload',
-      queryParameters: {'name': name, 'token': ?_token},
+      queryParameters: {'name': name},
     );
     final response = await http.post(
       uri,
@@ -103,12 +96,8 @@ class WsRemoteTransport implements RemoteTransport {
   }
 
   @override
-  String downloadUrl(String fileId) => _httpBase
-      .replace(
-        path: '/api/files/$fileId',
-        queryParameters: {'token': ?_token},
-      )
-      .toString();
+  String downloadUrl(String fileId) =>
+      _httpBase.replace(path: '/api/files/$fileId').toString();
 
   @override
   void close() {

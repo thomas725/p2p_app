@@ -16,6 +16,8 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | `axum` | `0.8` | 0.8.9 | The web frontend's HTTP + WebSocket server (`src/web/`). Features: `ws`, `json`, `query`, `tokio`, `http1`, `macros`. Optional — behind `web`. |
 | `tower-http` | `0.7` | 0.7.1 | Static-file serving and CORS for the web server (`ServeDir`/`ServeFile`, `CorsLayer`). Features: `cors`, `fs`. Optional — behind `web`. |
 | `futures-util` | `0.3` | 0.3.34 | `Stream`/`Sink` combinators, used to split the axum WebSocket. Optional — behind `web`. |
+| `base64` | `0.22` | 0.22.1 | RFC 7617 `Authorization: Basic` decoding and the session-cookie MAC encoding for the web frontend's auth. Optional — behind `web`. Already in the tree via libp2p (0.22.1 and 0.23.1), so this adds no new crate. |
+| `subtle` | `2` | 2.6.1 | Constant-time comparison of the Basic password and the session-cookie MAC, so auth cannot be probed byte-by-byte by timing. Optional — behind `web`. Already in the tree. |
 
 > The old `futures` umbrella crate was replaced by `futures-util` — the
 > project only needs the stream/sink traits, not the executor.

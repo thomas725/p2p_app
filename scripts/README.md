@@ -26,8 +26,9 @@ Then run (from the repo root):
 ```bash
 ./target/release/p2p_chat_tui
 ./target/release/p2p_chat_server --assets apps/flutter_app/build/web
-# LAN exposure (token required off loopback):
-./target/release/p2p_chat_server --bind 0.0.0.0 --token <secret> --assets apps/flutter_app/build/web
+# LAN exposure (auth required off loopback): the browser prompts for these
+export P2P_WEB_PASSWORD='<secret>'   # P2P_WEB_USER defaults to `p2p`
+./target/release/p2p_chat_server --bind 0.0.0.0 --assets apps/flutter_app/build/web
 ```
 
 `scripts/build-web.sh` is the web-only script (same web half, without the TUI).

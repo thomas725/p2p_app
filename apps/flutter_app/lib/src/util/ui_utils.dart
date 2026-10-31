@@ -11,14 +11,6 @@ const serviceChannel = MethodChannel('com.example.p2p_app_flutter/service');
 /// web build to `false` before `Platform` is ever evaluated).
 final bool isAndroid = kIsWeb ? false : Platform.isAndroid;
 
-/// Auth token from the page URL (`?token=...`) on web deployments that
-/// require one; always `null` on native. `main()` carries it into the
-/// `HttpNodeApi` transport (WS handshake + HTTP routes).
-String? get webAuthToken {
-  if (kIsWeb) return Uri.base.queryParameters['token'];
-  return null;
-}
-
 /// Network/topic name the node joins. Mirrors CHAT_TOPIC in the Rust core.
 const String kNetworkName = 'test-net';
 

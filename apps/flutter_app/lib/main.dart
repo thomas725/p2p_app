@@ -15,9 +15,10 @@ Future<void> main() async {
     // Browser build: the node lives in a native `p2p_chat_server` process;
     // this app is a pure display client over its WebSocket/HTTP API. The
     // transport is installed before runApp so the first frame can already
-    // reach the node. Deployments that require auth carry the token in the
-    // page URL (`?token=...`).
-    nodeApi = HttpNodeApi.toServer(token: webAuthToken);
+    // reach the node. Auth is HTTP Basic handled by the browser: the session
+    // cookie it stores travels with both the WebSocket handshake and the
+    // attachment routes, so no credential ever reaches Dart or the URL.
+    nodeApi = HttpNodeApi.toServer();
   } else {
     await RustLib.init();
     if (isAndroid) {
