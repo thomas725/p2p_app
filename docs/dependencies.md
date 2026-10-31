@@ -14,7 +14,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | `libp2p-identity` | `=0.3.0` | 0.3.0 | Keypair generation and peer-id derivation. Pinned to keep a single copy of `libp2p-identity` in the tree (a second copy would mean two incompatible `PeerId` types). |
 | `tokio` | `1.53.1` | 1.54.1 | The async runtime libp2p runs on. Features: `macros`, `rt-multi-thread`, `io-util`, `io-std`. 1.54.1 also carries the `AsyncFd` I/O-safety fix (RUSTSEC-2026-0386, patched from 1.53.3). |
 | `axum` | `0.8` | 0.8.9 | The web frontend's HTTP + WebSocket server (`src/web/`). Features: `ws`, `json`, `query`, `tokio`, `http1`, `macros`. Optional — behind `web`. |
-| `tower-http` | `0.6` | 0.6.11 | Static-file serving and CORS for the web server. Features: `cors`, `fs`. Optional — behind `web`. |
+| `tower-http` | `0.7` | 0.7.1 | Static-file serving and CORS for the web server (`ServeDir`/`ServeFile`, `CorsLayer`). Features: `cors`, `fs`. Optional — behind `web`. |
 | `futures-util` | `0.3` | 0.3.34 | `Stream`/`Sink` combinators, used to split the axum WebSocket. Optional — behind `web`. |
 
 > The old `futures` umbrella crate was replaced by `futures-util` — the
@@ -90,19 +90,22 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
   **rustls-webpki 0.103.15 → 0.103.16**, clearing five advisories
   (RUSTSEC-2026-0346/0347/0348/0349 and RUSTSEC-2026-0382).
 
-### `cargo outdated --depth 1` — four direct rows
+### `cargo outdated --depth 1` — three direct rows
 
 The 2026-10-29 round cleared every lockfile-only row (`diesel 2.3.14`,
 `ratatui-textarea 0.9.3`, `serde_json 1.0.154`, `tokio 1.54.1`) and deliberately
 moved the pinned `libp2p` from 0.57.0 to 0.57.1 — a patch release that pulled no
 subcrate version changes, so the protocol code is untouched.
 
+`tower-http` also moved, `0.6.11 → 0.7.1`: the bump needed no code change
+(`ServeDir`/`ServeFile`/`CorsLayer` kept their shape) and pulled no new
+transitives.
+
 **Actionable** (a manifest change in this repo):
 
 | Crate | Locked | Newer | Note |
 |---|---|---|---|
-| `sha2` | 0.10.9 | 0.11.1 | Major bump. |
-| `tower-http` | 0.6.11 | 0.7.1 | Major bump. |
+| `sha2` | 0.10.9 | 0.11.1 | Major bump. The digest API changes, so `files::file_id` must keep producing the same hex — the existing `hash_bytes` test is the guard. |
 
 **Held on purpose** — do not "fix" these without revisiting the reason:
 

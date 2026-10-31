@@ -127,15 +127,14 @@ messages, don't dial it) rather than merely hidden in the UI.
 
 ### Routine dependency bumps that need a manifest change
 
-`cargo outdated --depth 1` reports two actionable rows whose newer version is
+`cargo outdated --depth 1` reports one actionable row whose newer version is
 outside the current requirement, so the manifest has to move (the lockfile-only
-rows and the pinned `libp2p` 0.57.1 bump were cleared on 2026-10-29 — see
-`dependencies.md`):
+rows, the pinned `libp2p` 0.57.1 bump and `tower-http` 0.7.1 were cleared on
+2026-10-29 — see `dependencies.md`):
 
 | Crate | Locked | Newer | Note |
 |---|---|---|---|
 | `sha2` | 0.10.9 | 0.11.1 | Major bump — the attachment `file_id` digest must keep producing the same hex. |
-| `tower-http` | 0.6.11 | 0.7.1 | Major bump — the web server's static-file and CORS wiring. |
 
 Two further rows are **held on purpose**, not work:
 
@@ -171,12 +170,17 @@ Neither frontend has a notification dependency today. Android already runs a
 foreground service, so a system notification is the smaller half; the TUI has
 no notification backend.
 
-### Keyboard shortcut help overlay (US-029) — **shipped, doc pending**
+### Keyboard shortcut help overlay (US-029)
 
-The TUI renders a tab-aware shortcut bar (`src/tui_render/mod.rs`), and
-[`KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) is the full reference. A
-modal overlay (a `?` key that opens a popup with the whole table) is still
-nice-to-have; the story is *mostly* satisfied by the status bar.
+What shipped: the TUI renders a tab-aware shortcut bar
+(`src/tui_render/mod.rs` → `render_shortcuts`), documenting only the bindings
+that are live on the current tab, and
+[`KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) is the full reference.
+
+What is missing: a modal `?` overlay showing the whole table at once. The
+status bar covers the common case; the overlay is nice-to-have, and it would
+have to share the popup slot with the device-binding and group-leave prompts
+(see the popup-precedence rule in `AGENTS.md`).
 
 ---
 
@@ -192,7 +196,7 @@ here so they are not mistaken for unfinished work.
 | Calls are signaling-only | Media transport is not implemented; see US-044 above. |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
-| `cargo outdated` reports four direct rows | Two are routine bumps (see the dependency lane above). The other two are held on purpose: `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
+| `cargo outdated` reports three direct rows | One is a routine bump (see the dependency lane above). The other two are held on purpose: `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
 
 ---
 
@@ -200,6 +204,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-29 | `deps: take tower-http 0.7` |
 | `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-29 | `deps: move the libp2p pin to 0.57.1` |
 | `libsqlite3-sys` 0.36 → 0.38 via diesel 2.3.14; `ctutils`/`tokio` advisory bumps | 2026-10-29 | `deps: take libsqlite3-sys 0.38 and clear two advisories` |
 | Human-readable attachment sizes (`2 KiB`, `64 MiB`) | 2026-10-26 | [`archive/2026-10-26_attachment_size_labels.md`](archive/2026-10-26_attachment_size_labels.md) |

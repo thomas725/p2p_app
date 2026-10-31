@@ -144,7 +144,7 @@ sha2 = "0.10"
 # surface + attachment upload/download routes + static serving of the Flutter
 # web build.
 axum = { version = "0.8", optional = true, features = ["ws", "json", "query", "tokio", "http1", "macros"] }
-tower-http = { version = "0.6", optional = true, features = ["cors", "fs"] }
+tower-http = { version = "0.7", optional = true, features = ["cors", "fs"] }
 # Stream/Sink combinators for splitting the axum WebSocket in the web server.
 futures-util = { version = "0.3", optional = true }
 

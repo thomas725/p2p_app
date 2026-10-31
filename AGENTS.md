@@ -6,7 +6,7 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 
 ## Constraints & Preferences
 - **Prefer nix tooling for anything not already installed as a system tool**: use `nix-shell` and similar nix tools (e.g. `nix-shell -p python3Packages.pyyaml`) whenever something isn't installed as a system tool. Do **not** reach for `podman`/`docker` for this — only use them if there is no nixpkgs package available for what's needed.
-- Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`).
+- Toolchain: **nightly** (`rustup override set nightly` in `/home/user/project`). Every GitHub Actions workflow installs **stable** (`dtolnay/rust-toolchain@stable`) — the crate uses no `#![feature]`, so only the clippy/rustfmt lint sets can differ between CI and a dev box; treat the local nightly `cargo ct` as the stricter gate.
 - All code must be clippy-clean with the project's strict pedantic config: `cargo ct` (alias for `cargo clippy --all-targets --all-features`) must exit 0 with no warnings.
 - **Clippy allowance policy (post-2026-09-28 cleanup)**: hand-written code carries exactly **one** clippy allow — `src/api/mod.rs` `accept_device_binding`'s `needless_pass_by_value` (FRB 2.13 has no `&[u8]` codegen input; a Dart `List<int>` must land as owned `Vec<u8>`, so the wrapper's `&device_pubkey` is irreducible). Test modules keep scaffolding headers (the restriction set + `used_underscore_binding`/`significant_drop_tightening` where guards are held across async blocks). Don't add new allows without this distinction; prefer the idiom patterns the campaigns used: `String`→`&str` at the FRB boundary only where codegen accepts it, `i64::try_from`/`usize::try_from(...).unwrap_or(_)` / `num_traits::ToPrimitive` for casts, `saturating_*` for arithmetic.
 - `usize_limit_to_i64` (`src/types.rs`, `crate::usize_limit_to_i64`) is the single clamp for diesel `LIMIT` clauses (messages/groups load fns); `num-traits = "0.2"` is a direct Rust dep used only for `ToPrimitive` in mobile_node/settings timestamp truncation.
@@ -55,10 +55,10 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 ## Next Steps
 - Tracked in **`docs/backlog.md`** (live, open work only — completed items live in
   `docs/archive/`). None urgent.
-- `cargo outdated --depth 1` now reports **4 direct rows** (was 9 before the
+- `cargo outdated --depth 1` now reports **3 direct rows** (was 9 before the
   2026-10-29 lockfile round, which also moved the deliberate `libp2p` pin to
-  0.57.1). Two are actionable (`sha2` 0.10→0.11, `tower-http` 0.6→0.7); two are
-  **held on purpose** and should not be "fixed" casually:
+  0.57.1 and took `tower-http` 0.7). One is actionable (`sha2` 0.10→0.11); two
+  are **held on purpose** and should not be "fixed" casually:
   - `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`,
     so 0.38.2 is the ceiling until diesel widens it (same upstream-blocker class
     the old 0.36 pin had — do not restructure to `sqlite-bundled`).

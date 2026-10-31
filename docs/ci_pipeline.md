@@ -21,6 +21,14 @@ For the contributor-facing checklist see
 One job, `pipeline`. It installs the Rust toolchain, `libsqlite3-dev` and
 `pkg-config`, then runs, in order:
 
+> **Toolchain mismatch, by design:** every workflow uses
+> `dtolnay/rust-toolchain@stable`, while a dev box has `rustup override set
+> nightly` in the repo root (`AGENTS.md`). The crate uses no `#![feature]`, so
+> both compile the same code; what can differ is the clippy/rustfmt lint set,
+> which moves between releases. A lint that only exists on nightly will not be
+> seen by CI, and vice versa — treat the local nightly `cargo ct` as the
+> stricter gate.
+
 1. `cargo fmt -- --check`
 2. `cargo clippy --all-targets --all-features`
 3. `cargo test --all-features`
