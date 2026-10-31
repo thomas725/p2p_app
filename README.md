@@ -87,6 +87,19 @@ flutter pub get
 flutter run        # needs the Rust .so on the target platform
 ```
 
+`flake.nix` provides Flutter (plus the Android SDK and JDK) via `nix develop`.
+Where nix is not an option, the official SDK tarball needs no root and is enough
+for `flutter analyze`, `flutter test` and `flutter build web` (Linux *desktop*
+builds additionally need `clang`, `cmake`, `ninja-build`, `gtk3-devel` and
+`pkgconf-pkg-config` from the distro):
+
+```bash
+curl -fLO https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.47.9-stable.tar.xz
+tar xf flutter_linux_3.47.9-stable.tar.xz -C ~ && rm flutter_linux_3.47.9-stable.tar.xz
+export PATH="$HOME/flutter/bin:$PATH"     # add to ~/.bashrc to persist
+flutter config --no-analytics && flutter precache --web
+```
+
 ### Web frontend (Flutter Web, Rust node server)
 
 The browser app is a **display client**: the node stays native inside the Rust
