@@ -33,8 +33,13 @@ jobs:
       # default branch since this workflow last succeeded. Commits authored by the
       # CI pipeline itself are ignored, so the nightly metrics push to main does
       # not count as new work. Manual workflow_dispatch always forces a full run.
+      # GITHUB_TOKEN has to be in the step environment: the script reads it
+      # from there, and its fail-closed default turns a missing token into
+      # `skip=true` on every scheduled run.
       - name: Check for new human commits since last run
         id: skip-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci-skip-no-new-commits.sh dependencies.yml
 
       - name: Install Rust toolchain

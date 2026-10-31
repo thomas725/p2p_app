@@ -53,8 +53,13 @@ jobs:
       # stores as the branch NAME ("main"), not the commit SHA — so it could
       # never match a 40-char HEAD and the build ran every night, piling up
       # nightly tags on the latest commit.
+      # GITHUB_TOKEN has to be in the step environment: the script reads it
+      # from there, and its fail-closed default turns a missing token into
+      # `skip=true` on every scheduled run.
       - name: Check for new human commits since last run
         id: skip-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci-skip-no-new-commits.sh nightly-apk.yml
 
       - name: Set up JDK 17
@@ -148,10 +153,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Collect nightly tags (excluding the stable "nightly-latest" pointer),
-          # newest first (tag format is date-sortable).
+          # Collect date-stamped nightly tags, newest first (the tag format is
+          # date-sortable). The `[0-9]{8}-` guard keeps this from matching the
+          # separate "Nightly Desktop (Ubuntu)" releases (`nightly-desktop-*`)
+          # or the `nightly-latest` pointer.
           mapfile -t TAGS < <(gh release list --limit 100 --json tagName \
-            --jq '.[] | select((.tagName | startswith("nightly-")) and .tagName != "nightly-latest") | .tagName' | sort -r)
+            --jq '.[] | select(.tagName | test("^nightly-[0-9]{8}-")) | .tagName' | sort -r)
           echo "Found ${#TAGS[@]} nightly release(s)"
           if [ "${#TAGS[@]}" -gt 15 ]; then
             for t in "${TAGS[@]:15}"; do
@@ -169,7 +176,9 @@ jobs:
           name: Nightly APK (latest)
           prerelease: true
           make_latest: false
-          overwrite: true
+          # Re-publishing the fixed `nightly-latest` tag replaces the assets
+          # from the previous run (the action's default, stated explicitly).
+          overwrite_files: true
           files: |
             apps/flutter_app/build/app/outputs/flutter-apk/p2p_app.apk
             apps/flutter_app/build/app/outputs/flutter-apk/p2p_app.apk.sha256

@@ -35,7 +35,8 @@ without following that policy.
 | `dependencies.yml` | daily 02:00 UTC | `cargo outdated` (informational), `cargo audit` (**gates**) |
 | `metrics.yml` | daily 02:30 UTC | Rust/Dart/Kotlin coverage + codebase metrics → commits to `main` |
 | `nightly-apk.yml` | daily 03:17 UTC | Android APK → rolling nightly GitHub release |
-| `release.yml` | tag `v*.*.*` | Cross-platform binaries → GitHub Release |
+| `nightly-desktop.yml` | daily 03:47 UTC | Ubuntu desktop build (TUI, minimal CLI, GTK app, web bundle) → rolling nightly release |
+| `release.yml` | tag `v*.*.*` (or dispatch + `tag`) | Cross-platform binaries → GitHub Release |
 
 **Nothing gates a push.** Every step in `main.yml` is `continue-on-error`, so
 the workflow stays green even when a test fails; the results are the artifact.
@@ -75,6 +76,11 @@ The release workflow then builds `p2p_chat_tui` for Linux x86-64, Linux
 aarch64, macOS x86-64, and macOS aarch64, plus a minimal headless `p2p_chat`
 binary, and publishes them with SHA-256 checksums.
 
+You can also publish from the Actions tab: **Run workflow** on `release.yml`
+with a `tag` input (e.g. `v0.2.0`). The tag is validated first and the run
+then behaves exactly like a tag push. Nightly desktop builds additionally ship
+the Flutter Linux app and the web frontend — see `nightly-desktop.yml`.
+
 To check a published binary:
 
 ```bash
@@ -83,7 +89,7 @@ sha256sum -c p2p_chat_tui-x86_64-unknown-linux-gnu.sha256
 
 ## Scheduled runs
 
-The three scheduled workflows skip themselves when no new human commit has
+The four scheduled workflows skip themselves when no new human commit has
 landed on the default branch since they last succeeded — the nightly APK
 build takes ~25 minutes and the coverage run ~13, so there is no point paying
 for them when nothing changed. CI's own commits (the metrics push) do not
@@ -106,10 +112,13 @@ but if it happens, check that the `ci-skip-no-new-commits.sh` call still has
 `--commit-baseline="ci: refresh coverage and codebase metrics"` and that the
 workflow's `permissions` block still contains `actions: read`.
 
-**The dependency workflow runs every night despite no changes.** The token is
-missing `actions: read`, so the runs API returns 403 and the check cannot
-tell whether anything landed. Add `actions: read` to the workflow's
-`permissions`.
+**A scheduled workflow never runs.** The skip check is fail-closed, so it
+returns `skip=true` whenever it cannot query the runs API. Two things must
+both be present on the check step: `actions: read` in the workflow's
+`permissions`, **and** `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` —
+GitHub does not export `GITHUB_TOKEN` to `run:` steps on its own. The step log
+names whichever one is missing. A manual **Run workflow** bypasses the check
+entirely.
 
 ## Local pre-commit hook
 

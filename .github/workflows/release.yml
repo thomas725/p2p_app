@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g., v0.1.0)'
-        required: false
+        description: 'Release tag (e.g., v0.1.0) — published as a release'
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,8 +16,42 @@ env:
   CARGO_INCREMENTAL: 1
 
 jobs:
+  # Resolves the tag the release is published under and validates it before any
+  # build machine is spent. A tag push uses its own ref; a manual dispatch must
+  # supply `tag` (the input used to be declared but never read, so dispatching
+  # built artifacts that no release ever referenced).
+  prepare:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve and validate the tag
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+            if [ -z "$tag" ]; then
+              echo "::error::workflow_dispatch requires the 'tag' input (e.g. v0.1.0)"
+              exit 1
+            fi
+          else
+            tag="${REF#refs/tags/}"
+          fi
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+            echo "::error::release tag '$tag' must look like v1.2.3 (optionally -rc1)"
+            exit 1
+          fi
+          echo "Publishing release $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   build-release:
     name: Build Release (${{ matrix.target }})
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -98,9 +132,12 @@ jobs:
 
   create-release:
     name: Create Release
-    needs: build-release
+    # The minimal job must finish too: `download-artifact` only sees artifacts
+    # that have already been uploaded, so without this `needs` the minimal
+    # `p2p_chat` binary raced the release and was usually missing from it.
+    needs: [prepare, build-release, build-minimal-release]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     steps:
@@ -125,23 +162,30 @@ jobs:
               cp "$f" release-files/
             done
           done
+          # actions/upload-artifact does not preserve file modes (every file
+          # comes back 644), so restore the executable bit on the binaries.
+          # Checksums are unaffected: sha256sum hashes content, not permissions.
+          find release-files -type f ! -name '*.sha256' -exec chmod +x {} +
           ls -la release-files/
       
       - name: Get release notes from CHANGELOG
         id: release-notes
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           if [ -f CHANGELOG.md ]; then
-            # Extract release notes for current tag
-            TAG=${GITHUB_REF#refs/tags/}
+            # Extract release notes for the resolved tag (not $GITHUB_REF: on a
+            # manual dispatch that is a branch ref, not a tag).
             sed -n "/^## \[$TAG\]/,/^## \[/p" CHANGELOG.md | sed '$d' > RELEASE_NOTES.txt || echo "Release of $TAG" > RELEASE_NOTES.txt
           else
-            echo "Release of ${GITHUB_REF#refs/tags/}" > RELEASE_NOTES.txt
+            echo "Release of $TAG" > RELEASE_NOTES.txt
           fi
           cat RELEASE_NOTES.txt
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
           files: release-files/*
           body_path: RELEASE_NOTES.txt
           draft: false
@@ -151,6 +195,7 @@ jobs:
 
   build-minimal-release:
     name: Build Minimal Release (Embedded Linux)
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

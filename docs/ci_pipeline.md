@@ -1,6 +1,6 @@
 # CI/CD pipeline
 
-The five GitHub Actions workflows, what each one does, and which of them can
+The six GitHub Actions workflows, what each one does, and which of them can
 actually fail a build.
 
 For the contributor-facing checklist see
@@ -14,7 +14,8 @@ For the contributor-facing checklist see
 | [`dependencies.yml`](../.github/workflows/dependencies.yml) | daily 02:00 UTC + dispatch | `cargo outdated` (informational) + `cargo audit` | **Yes** — the audit is a hard gate |
 | [`metrics.yml`](../.github/workflows/metrics.yml) | daily 02:30 UTC + dispatch | Rust/Dart/Kotlin coverage + codebase metrics, pushed to `main` | No (all steps are `continue-on-error`) |
 | [`nightly-apk.yml`](../.github/workflows/nightly-apk.yml) | daily 03:17 UTC + dispatch | Builds the Android APK and publishes a rolling nightly release | No |
-| [`release.yml`](../.github/workflows/release.yml) | tag `v*.*.*` + dispatch | Cross-platform release binaries + a GitHub Release | Yes |
+| [`nightly-desktop.yml`](../.github/workflows/nightly-desktop.yml) | daily 03:47 UTC + dispatch | Builds the Ubuntu desktop set (TUI, minimal CLI, GTK app, web bundle) and publishes a rolling nightly release | No |
+| [`release.yml`](../.github/workflows/release.yml) | tag `v*.*.*` + dispatch (`tag`) | Cross-platform release binaries + a GitHub Release | Yes |
 
 ### `main.yml` — the push pipeline
 
@@ -81,7 +82,41 @@ and publishes it as a rolling prerelease tagged `nightly-<timestamp>`. A
 `nightly-latest` tag always points at the most recent build, and the 15 most
 recent nightlies are kept; older ones are deleted.
 
+The prune step matches only `^nightly-[0-9]{8}-`, so it cannot delete the
+desktop nightly's `nightly-desktop-*` releases or the `nightly-latest` pointer.
+
+### `nightly-desktop.yml` — the Ubuntu desktop nightly
+
+One `gate` job runs the skip check once; the build jobs hang off it so the
+expensive work happens at most once per new commit. It produces:
+
+| Artifact | What it is |
+|---|---|
+| `p2p_chat_tui-x86_64-unknown-linux-gnu` | Terminal frontend (`cargo build --release`) |
+| `p2p_chat` | Minimal headless CLI (`--no-default-features --features basic,mdns,sqlite_bundled`) |
+| `p2p_app_flutter-linux-x64.tar.gz` | Flutter Linux desktop app (GTK), built with `flutter build linux --release` |
+| `p2p-web-linux-x64.tar.gz` | `p2p_chat_server` + the `flutter build web` bundle, plus a `RUN.txt` |
+
+`build-rust` compiles once and hands two extra artifacts to the Flutter jobs so
+they can run in parallel: the `libp2p_app.so` cdylib (which
+`apps/flutter_app/linux/CMakeLists.txt` installs into the bundle's `lib/`) and
+the `p2p_chat_server` binary (packaged with the web assets).
+
+Releases are tagged `nightly-desktop-<timestamp>`, with a
+`nightly-desktop-latest` pointer and the same keep-15 retention. The prune step
+matches only `^nightly-desktop-[0-9]{8}-`, which excludes its own pointer and
+the APK releases.
+
+Targets are x86_64 only: the desktop bundle is a native GTK build. The aarch64
+TUI binary stays in tagged releases, where `cross` builds it.
+
 ### `release.yml` — tagged releases
+
+A `prepare` job resolves the release tag and validates it (`v1.2.3`, optionally
+with a `-rc1`-style suffix) before any build machine is spent. On a tag push it
+uses the pushed ref; on a manual **Run workflow** it uses the required `tag`
+input, so dispatching publishes a real release instead of uploading artifacts
+nobody can find.
 
 A four-target matrix (`x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`,
 `aarch64-apple-darwin`, `aarch64-unknown-linux-gnu`; the last through
@@ -89,6 +124,10 @@ A four-target matrix (`x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`,
 second job publishes a GitHub Release with the binaries; a third builds a
 *minimal* headless binary (`--no-default-features --features
 basic,mdns,sqlite_bundled`).
+
+`create-release` needs **both** build jobs: `download-artifact` only sees
+artifacts that have already been uploaded, so without that dependency the
+minimal binary raced the release and was usually missing from it.
 
 Because `p2p_chat_tui` and `p2p_chat_server` declare `required-features`, the
 minimal build produces only the headless `p2p_chat` CLI. Release binaries are
@@ -114,18 +153,25 @@ have one yet, so the notes fall back to a single line naming the tag.
 
 ## The skip check
 
-`dependencies.yml`, `metrics.yml`, and `nightly-apk.yml` all call
-`scripts/ci-skip-no-new-commits.sh` before doing any expensive work. If no
-new human-authored commit has landed on the default branch since the workflow
-last succeeded, the run skips. Commits authored by CI itself are ignored, so
-the nightly metrics push does not count as new work.
+`dependencies.yml`, `metrics.yml`, `nightly-apk.yml`, and
+`nightly-desktop.yml` all call `scripts/ci-skip-no-new-commits.sh` before doing
+any expensive work. If no new human-authored commit has landed on the default
+branch since the workflow last succeeded, the run skips. Commits authored by CI
+itself are ignored, so the nightly metrics push does not count as new work.
 
-Two details matter:
+Three details matter:
 
+- The check step needs **`GITHUB_TOKEN` in its step environment**
+  (`env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`). GitHub does **not** export
+  `GITHUB_TOKEN` to `run:` steps on its own — `permissions:` alone grants the
+  token but does not put it in the environment. The script is **fail-closed**,
+  so a missing token reads as "cannot tell" and skips every scheduled run. Both
+  nightlies shipped without that `env:` line, which is why they never ran on
+  their cron.
 - The token needs **`actions: read`**. Without it the runs API returns 403 and
-  the check would silently run on every schedule, producing duplicate
-  `ci: refresh coverage and codebase metrics` commits on `main`. The script is
-  **fail-closed**: any API error results in a skip.
+  the check skips for the same reason. (Before the script was made fail-closed,
+  the failure mode was the opposite: every scheduled run executed, producing
+  duplicate `ci: refresh coverage and codebase metrics` commits on `main`.)
 - `metrics.yml` uses **commit-baseline mode**
   (`--commit-baseline="ci: refresh coverage and codebase metrics"`). The
   baseline is the newest CI-authored commit with that subject on the branch
@@ -154,4 +200,8 @@ Dependency runs write `.github/ci-results/dependency-check_<timestamp>_<run_id>.
   CI. The dependency workflow's `cargo audit` is the only hard gate.
 - **Flutter and Kotlin tests are nightly-only.** They run in `metrics.yml`,
   not on push.
+- **A tagged release is narrower than a nightly.** `release.yml` ships the TUI
+  (four targets) and the minimal CLI; the Flutter Linux app, the web frontend
+  and the Android APK only exist as nightly builds. A `v*.*.*` release
+  therefore does not contain the desktop or web deliverables yet.
 - **No `CHANGELOG.md`**, so release notes are placeholder text.

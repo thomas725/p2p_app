@@ -1,0 +1,331 @@
+name: Nightly Desktop (Ubuntu)
+
+# Builds the Ubuntu desktop deliverables and publishes them as a rolling
+# "nightly-desktop" GitHub release:
+#
+#   p2p_chat_tui-x86_64-unknown-linux-gnu   terminal frontend
+#   p2p_chat                               minimal headless CLI (embedded-friendly)
+#   p2p_app_flutter-linux-x64.tar.gz        Flutter Linux desktop app (GTK)
+#   p2p-web-linux-x64.tar.gz                p2p_chat_server + `flutter build web`
+#
+# The Android APK has its own nightly (nightly-apk.yml). Scheduled runs skip
+# when no new human-authored commit has landed since this workflow last
+# succeeded; manual "Run workflow" always builds. See docs/ci_pipeline.md.
+#
+# Targets are x86_64 only: the desktop bundle is a GTK build for the platform
+# it is published from, and the aarch64 TUI binary stays in tagged releases
+# (release.yml builds it through `cross`).
+on:
+  schedule:
+    # Nightly at 03:47 UTC, after the APK nightly (03:17).
+    - cron: "47 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  # contents: needed to publish the GitHub release + tags.
+  # actions: read lets the skip-check query this workflow's own run history
+  # (scripts/ci-skip-no-new-commits.sh); without it the token gets a 403.
+  contents: write
+  actions: read
+
+concurrency:
+  # Never build two desktop nightlies from the same commit (e.g. a manual
+  # dispatch racing the cron): a later run cancels the earlier one.
+  group: nightly-desktop
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # One gate for the whole workflow: every build job hangs off this so the
+  # expensive work runs at most once per new commit.
+  gate:
+    name: Check for new human commits
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.skip-check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # GITHUB_TOKEN has to be in the step environment: the script reads it
+      # from there, and its fail-closed default turns a missing token into
+      # `skip=true` on every scheduled run (which is how the nightly silently
+      # stopped running).
+      - name: Check for new human commits since last run
+        id: skip-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/ci-skip-no-new-commits.sh nightly-desktop.yml
+
+  build-rust:
+    name: Build Rust binaries
+    needs: gate
+    if: needs.gate.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev pkg-config
+
+      # Default features build the TUI, the web server, and the cdylib the
+      # Flutter desktop app links against.
+      - name: Build TUI + web server + cdylib
+        run: cargo build --release
+
+      - name: Stage publishable binaries
+        run: |
+          mkdir -p dist
+          cp target/release/p2p_chat_tui dist/p2p_chat_tui-x86_64-unknown-linux-gnu
+
+      # The minimal build recompiles the crate without `tui`/`web`, so it
+      # overwrites `target/release/p2p_chat`; run it after the copy above and
+      # stage it separately.
+      - name: Build minimal headless CLI
+        run: cargo build --release --no-default-features --features basic,mdns,sqlite_bundled
+
+      - name: Stage minimal CLI + checksums
+        run: |
+          cp target/release/p2p_chat dist/p2p_chat
+          cd dist
+          sha256sum p2p_chat_tui-x86_64-unknown-linux-gnu > p2p_chat_tui-x86_64-unknown-linux-gnu.sha256
+          sha256sum p2p_chat > p2p_chat.minimal.sha256
+          cat ./*.sha256
+
+      - name: Upload release binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-rust-binaries
+          path: dist/
+          retention-days: 7
+
+      # The Flutter desktop build picks the cdylib up from target/release, and
+      # the web bundle needs the server binary; both are handed over as their
+      # own artifacts so the two Flutter jobs can run in parallel.
+      - name: Upload Rust cdylib
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-cdylib
+          path: target/release/libp2p_app.so
+          retention-days: 7
+
+      - name: Upload web server binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-server
+          path: target/release/p2p_chat_server
+          retention-days: 7
+
+  flutter-linux:
+    name: Build Flutter Linux desktop app
+    needs: [gate, build-rust]
+    if: needs.gate.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-cdylib
+          path: rust-cdylib
+
+      # apps/flutter_app/linux/CMakeLists.txt installs
+      # `target/release/libp2p_app.so` into the bundle's lib/ directory, so the
+      # cdylib must be in place before the Flutter build runs.
+      - name: Place the Rust cdylib where CMake looks for it
+        run: |
+          mkdir -p target/release
+          cp rust-cdylib/libp2p_app.so target/release/
+
+      - name: Install GTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable the Linux desktop target
+        run: flutter config --enable-linux-desktop
+
+      - name: Flutter pub get
+        working-directory: apps/flutter_app
+        run: flutter pub get
+
+      - name: Build Linux bundle
+        working-directory: apps/flutter_app
+        run: flutter build linux --release
+
+      - name: Package bundle
+        run: |
+          cp -r apps/flutter_app/build/linux/x64/release/bundle p2p_app_flutter
+          tar -czf p2p_app_flutter-linux-x64.tar.gz p2p_app_flutter
+          sha256sum p2p_app_flutter-linux-x64.tar.gz > p2p_app_flutter-linux-x64.tar.gz.sha256
+          cat p2p_app_flutter-linux-x64.tar.gz.sha256
+          ls -la p2p_app_flutter-linux-x64.tar.gz
+
+      - name: Upload desktop bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-flutter-linux
+          path: |
+            p2p_app_flutter-linux-x64.tar.gz
+            p2p_app_flutter-linux-x64.tar.gz.sha256
+          retention-days: 7
+
+  web:
+    name: Build web frontend
+    needs: [gate, build-rust]
+    if: needs.gate.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rust-server
+          path: rust-server
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        working-directory: apps/flutter_app
+        run: flutter pub get
+
+      # --no-wasm-dry-run silences flutter_rust_bridge 2.13.0's benign
+      # "Wasm dry run failed" warning; the app compiles to JS.
+      - name: Build web bundle
+        working-directory: apps/flutter_app
+        run: flutter build web --release --no-wasm-dry-run
+
+      - name: Package server + bundle
+        run: |
+          mkdir -p p2p-web-linux-x64
+          # upload-artifact drops the executable bit, so restore it before the
+          # tarball is built (the archive must contain a runnable server).
+          cp rust-server/p2p_chat_server p2p-web-linux-x64/
+          chmod +x p2p-web-linux-x64/p2p_chat_server
+          cp -r apps/flutter_app/build/web p2p-web-linux-x64/web
+          cat > p2p-web-linux-x64/RUN.txt <<'RUN'
+          Web frontend: the node runs in p2p_chat_server, the browser is a display client.
+
+            P2P_WEB_PASSWORD='<secret>' ./p2p_chat_server --bind 0.0.0.0 --assets web
+
+          The browser prompts for HTTP Basic credentials (user defaults to `p2p`).
+          Without a password the server is open and binds loopback only.
+          RUN
+          tar -czf p2p-web-linux-x64.tar.gz p2p-web-linux-x64
+          sha256sum p2p-web-linux-x64.tar.gz > p2p-web-linux-x64.tar.gz.sha256
+          cat p2p-web-linux-x64.tar.gz.sha256
+
+      - name: Upload web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-web
+          path: |
+            p2p-web-linux-x64.tar.gz
+            p2p-web-linux-x64.tar.gz.sha256
+          retention-days: 7
+
+  publish:
+    name: Publish nightly desktop release
+    needs: [gate, build-rust, flutter-linux, web]
+    if: needs.gate.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download publishable artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          pattern: nightly-*
+          merge-multiple: true
+
+      - name: List release files
+        run: |
+          # upload-artifact returns every file as 644, so restore the
+          # executable bit on the two bare binaries before publishing.
+          # Checksums are content hashes and are unaffected.
+          chmod +x release-files/p2p_chat_tui-x86_64-unknown-linux-gnu release-files/p2p_chat
+          ls -la release-files
+
+      - name: Set nightly tag
+        id: tag
+        run: echo "tag=nightly-desktop-$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish nightly desktop release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Nightly desktop (Ubuntu) ${{ steps.tag.outputs.tag }}
+          prerelease: true
+          make_latest: false
+          files: release-files/*
+          body: |
+            Automated nightly Ubuntu desktop build from `${{ github.sha }}` (${{ github.ref_name }}).
+
+            | File | What it is |
+            |---|---|
+            | `p2p_chat_tui-x86_64-unknown-linux-gnu` | Terminal frontend |
+            | `p2p_chat` | Minimal headless CLI (`basic,mdns,sqlite_bundled`) |
+            | `p2p_app_flutter-linux-x64.tar.gz` | Flutter Linux desktop app (GTK) |
+            | `p2p-web-linux-x64.tar.gz` | `p2p_chat_server` + the Flutter web bundle |
+
+            Every file has a `.sha256` beside it, so `sha256sum -c` works on a download.
+            Android builds live in the separate "Nightly APK" workflow.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prune old nightly desktop releases (keep last 15)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Match only the date-stamped tags, so `nightly-desktop-latest` and
+          # the APK workflow's `nightly-<date>` releases are left alone.
+          mapfile -t TAGS < <(gh release list --limit 100 --json tagName \
+            --jq '.[] | select(.tagName | test("^nightly-desktop-[0-9]{8}-")) | .tagName' | sort -r)
+          echo "Found ${#TAGS[@]} nightly desktop release(s)"
+          if [ "${#TAGS[@]}" -gt 15 ]; then
+            for t in "${TAGS[@]:15}"; do
+              echo "Deleting old nightly desktop release: $t"
+              gh release delete "$t" --yes || true
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/$t" || true
+            done
+          fi
+
+      - name: Publish latest nightly desktop pointer
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-desktop-latest
+          name: Nightly desktop (Ubuntu, latest)
+          prerelease: true
+          make_latest: false
+          # Re-publishing the fixed `nightly-desktop-latest` tag replaces the
+          # assets from the previous run (this is the action's default; it is
+          # stated explicitly because the tag name never changes).
+          overwrite_files: true
+          files: release-files/*
+          body: |
+            Always points at the most recent nightly desktop build (`${{ github.sha }}`).
+            For earlier builds (up to 15 retained), see the other `nightly-desktop-*` releases.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

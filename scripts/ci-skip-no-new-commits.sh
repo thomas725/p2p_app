@@ -30,7 +30,10 @@
 #
 # RUNTIME REQUIREMENTS
 # --------------------
-# - Mode 1 needs the workflow permission `actions: read` (run-history query).
+# - Mode 1 needs `GITHUB_TOKEN` in the STEP ENVIRONMENT (GitHub does not export
+#   it by default) and the workflow permission `actions: read` (run-history
+#   query). Missing either one means skip=true — which is why the workflows
+#   pass `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}` on the check step.
 # - Mode 2 needs the checkout to carry full history (actions/checkout with
 #   fetch-depth: 0) so the baseline and the rev-list compare resolve locally.
 #
@@ -111,7 +114,8 @@ elif [ -n "$commit_baseline_grep" ]; then
     fi
   fi
 elif [ -z "$token" ]; then
-  echo "error: missing GITHUB_TOKEN; skipping conservatively (run-history mode)"
+  echo "error: missing GITHUB_TOKEN in the step env; skipping conservatively (run-history mode)"
+  echo '       Pass it on the check step: env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}'
   skip="true"
 else
   # ── Run-history mode: baseline = head of the last successful run. ──
