@@ -37,7 +37,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 |---|---|---|---|
 | `serde` | `1.0` | 1.0.229 | Derives for every wire and row type. Feature `derive`. |
 | `serde_json` | `1.0` | 1.0.154 | The JSON codec for the direct-message lane and the web server's request bodies. |
-| `sha2` | `0.10` | 0.10.9 | SHA-256 for content-addressed attachments: an attachment's `file_id` is the hex digest of its bytes. |
+| `sha2` | `0.11` | 0.11.1 | SHA-256 for content-addressed attachments: an attachment's `file_id` is the hex digest of its bytes. The lock also keeps `sha2 0.10.9` for `snow → libp2p-noise`, whose requirement has not moved. |
 
 ## Frontends
 
@@ -92,24 +92,24 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
   **rustls-webpki 0.103.15 → 0.103.16**, clearing five advisories
   (RUSTSEC-2026-0346/0347/0348/0349 and RUSTSEC-2026-0382).
 
-### `cargo outdated --depth 1` — three direct rows
+### `cargo outdated --depth 1` — two direct rows, both held
 
-The 2026-10-29 round cleared every lockfile-only row (`diesel 2.3.14`,
-`ratatui-textarea 0.9.3`, `serde_json 1.0.154`, `tokio 1.54.1`) and deliberately
-moved the pinned `libp2p` from 0.57.0 to 0.57.1 — a patch release that pulled no
-subcrate version changes, so the protocol code is untouched.
+The 2026-10-29 → 11-01 dependency round cleared every lockfile-only row
+(`diesel 2.3.14`, `ratatui-textarea 0.9.3`, `serde_json 1.0.154`,
+`tokio 1.54.1`), deliberately moved the pinned `libp2p` from 0.57.0 to 0.57.1
+(a patch release that pulled no subcrate version changes, so the protocol code
+is untouched), took `tower-http 0.6.11 → 0.7.1` (no code change —
+`ServeDir`/`ServeFile`/`CorsLayer` kept their shape — and no new transitives),
+and finally moved `sha2 0.10 → 0.11.1`.
 
-`tower-http` also moved, `0.6.11 → 0.7.1`: the bump needed no code change
-(`ServeDir`/`ServeFile`/`CorsLayer` kept their shape) and pulled no new
-transitives.
+That `sha2` bump needed **no source change**: `hash_bytes` in `src/files.rs`
+still compiles and the hex digest is byte-identical, which the existing
+`files::tests::hash_bytes_is_lowercase_hex_sha256` test pins down. The tree now
+carries two `sha2` lines on purpose: our direct `0.11.1` and `0.10.9` under
+`snow → libp2p-noise`, whose upstream range has not moved.
 
-**Actionable** (a manifest change in this repo):
-
-| Crate | Locked | Newer | Note |
-|---|---|---|---|
-| `sha2` | 0.10.9 | 0.11.1 | Major bump. The digest API changes, so `files::file_id` must keep producing the same hex — the existing `hash_bytes` test is the guard. |
-
-**Held on purpose** — do not "fix" these without revisiting the reason:
+Nothing actionable is left. Both remaining rows are **held on purpose** — do
+not "fix" these without revisiting the reason:
 
 | Crate | Locked | Newer | Why it is held |
 |---|---|---|---|

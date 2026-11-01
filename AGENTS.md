@@ -55,10 +55,10 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 ## Next Steps
 - Tracked in **`docs/backlog.md`** (live, open work only — completed items live in
   `docs/archive/`). None urgent.
-- `cargo outdated --depth 1` now reports **3 direct rows** (was 9 before the
-  2026-10-29 lockfile round, which also moved the deliberate `libp2p` pin to
-  0.57.1 and took `tower-http` 0.7). One is actionable (`sha2` 0.10→0.11); two
-  are **held on purpose** and should not be "fixed" casually:
+- `cargo outdated --depth 1` now reports **2 direct rows** (was 9 before the
+  2026-10-29 → 11-01 dependency round, which also moved the deliberate `libp2p`
+  pin to 0.57.1, took `tower-http` 0.7 and `sha2` 0.11). **No actionable rows
+  remain**; both are held on purpose and should not be "fixed" casually:
   - `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`,
     so 0.38.2 is the ceiling until diesel widens it (same upstream-blocker class
     the old 0.36 pin had — do not restructure to `sqlite-bundled`).

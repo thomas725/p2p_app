@@ -125,18 +125,10 @@ messages, don't dial it) rather than merely hidden in the UI.
 
 ## P2 — polish
 
-### Routine dependency bumps that need a manifest change
+### Dependency bumps — nothing actionable right now
 
-`cargo outdated --depth 1` reports one actionable row whose newer version is
-outside the current requirement, so the manifest has to move (the lockfile-only
-rows, the pinned `libp2p` 0.57.1 bump and `tower-http` 0.7.1 were cleared on
-2026-10-29 — see `dependencies.md`):
-
-| Crate | Locked | Newer | Note |
-|---|---|---|---|
-| `sha2` | 0.10.9 | 0.11.1 | Major bump — the attachment `file_id` digest must keep producing the same hex. |
-
-Two further rows are **held on purpose**, not work:
+Nothing actionable is left. `cargo outdated --depth 1` reports two direct rows,
+both **held on purpose**, not work:
 
 - `libsqlite3-sys` is at 0.38.2, the newest release diesel 2.3.14 accepts
   (`>=0.17.2, <0.39.0`); 0.39.1 needs another upstream diesel bump, so nothing
@@ -144,6 +136,11 @@ Two further rows are **held on purpose**, not work:
 - `tokio-tungstenite` stays at 0.29 to match axum's `ws` feature. 0.30 is
   dev-only but pulls a second `tungstenite` tree; the bump was built, verified
   green, and backed out because it buys nothing for a test-only client.
+
+The last actionable row, `sha2 0.10 → 0.11.1`, closed in the
+2026-10-29 → 11-01 dependency round with no source change (the digest stays
+byte-identical; see `dependencies.md`). Re-run `cargo outdated --depth 1` before
+assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
@@ -197,7 +194,7 @@ here so they are not mistaken for unfinished work.
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
 | The web frontend's HTTP Basic credentials are not encrypted on the wire | The server has no TLS of its own (it is a LAN display client). Put a TLS-terminating reverse proxy in front for any exposure beyond a trusted LAN; the browser-native credential dialog and the session cookie already keep the secret out of URLs, history and logs. |
-| `cargo outdated` reports three direct rows | One is a routine bump (see the dependency lane above). The other two are held on purpose: `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
+| `cargo outdated` reports two direct rows | Both are held on purpose (see the dependency lane above): `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
 
 ---
 
@@ -205,8 +202,9 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
-| `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-29 | `deps: take tower-http 0.7` |
-| `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-29 | `deps: move the libp2p pin to 0.57.1` |
+| `sha2` 0.10 → 0.11.1 (attachment `file_id` digest, no source change) | 2026-11-01 | `deps: take sha2 0.11` |
+| `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-31 | `deps: take tower-http 0.7` |
+| `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-30 | `deps: move the libp2p pin to 0.57.1` |
 | `libsqlite3-sys` 0.36 → 0.38 via diesel 2.3.14; `ctutils`/`tokio` advisory bumps | 2026-10-29 | `deps: take libsqlite3-sys 0.38 and clear two advisories` |
 | Human-readable attachment sizes (`2 KiB`, `64 MiB`) | 2026-10-26 | [`archive/2026-10-26_attachment_size_labels.md`](archive/2026-10-26_attachment_size_labels.md) |
 | Live-reference accuracy pass (identity, architecture, files, web, README) | 2026-10-26 | `docs: correct the live references against the code` |

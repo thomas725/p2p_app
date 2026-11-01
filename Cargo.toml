@@ -140,7 +140,7 @@ unicode-width = "0.2"
 # SHA-256 hashing for content-addressed file attachments (files lane §12): the
 # `file_id` of every attachment is the hex digest of its bytes, so storage is
 # deduplicated and transfer integrity is verified on finalize.
-sha2 = "0.10"
+sha2 = "0.11"
 
 # Web frontend server (feature `web`): JSON-over-WebSocket mirror of the FRB
 # surface + attachment upload/download routes + static serving of the Flutter
