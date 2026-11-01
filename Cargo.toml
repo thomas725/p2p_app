@@ -142,6 +142,18 @@ unicode-width = "0.2"
 # deduplicated and transfer integrity is verified on finalize.
 sha2 = "0.11"
 
+# End-to-end encryption for DMs (US-042). Every install derives a static
+# X25519 key from its Ed25519 identity key, the recipient's static public key is
+# recovered from its peer ID, and each message is sealed with an ephemeral
+# X25519 key + HKDF-SHA256 + ChaCha20-Poly1305. All five crates are already in
+# the tree (ed25519/curve25519/hkdf via `libp2p-identity`, chacha20poly1305 via
+# `libp2p-noise`, getrandom via libp2p), so this adds no new transitive surface.
+ed25519-dalek = "3.0"
+x25519-dalek = { version = "3.0", features = ["static_secrets"] }
+hkdf = "0.13"
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+getrandom = "0.4"
+
 # Web frontend server (feature `web`): JSON-over-WebSocket mirror of the FRB
 # surface + attachment upload/download routes + static serving of the Flutter
 # web build.

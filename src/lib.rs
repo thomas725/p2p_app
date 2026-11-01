@@ -54,6 +54,7 @@ pub mod calls;
 pub mod connected;
 pub mod contacts;
 pub mod db;
+pub mod e2e;
 pub mod files;
 pub mod fmt;
 pub mod groups;
@@ -107,6 +108,10 @@ pub use db::{
     sqlite_connect,
 };
 pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
+pub use e2e::{
+    ENVELOPE_VERSION, EncryptedDm, HKDF_INFO, SealedDmBody, TUI_ENCRYPTED_MARKER, can_encrypt_to,
+    open_incoming, seal_for_peer,
+};
 pub use fmt::{
     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,

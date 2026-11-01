@@ -3287,13 +3287,17 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "chacha20poly1305",
  "chrono",
  "color-eyre",
  "crossterm",
  "diesel",
  "diesel_migrations",
+ "ed25519-dalek",
  "flutter_rust_bridge",
  "futures-util",
+ "getrandom 0.4.3",
+ "hkdf",
  "libp2p",
  "libp2p-identity",
  "libsqlite3-sys",
@@ -3314,6 +3318,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "unicode-width",
+ "x25519-dalek",
 ]
 
 [[package]]
