@@ -2,10 +2,10 @@
 CI/CD Pipeline Results
 ============================================================
 
-Timestamp: 2026-11-01 19:55:37 UTC
-Commit: 4f1abc873991e7ee7051524420bd1a2c9d416d16
+Timestamp: 2026-11-01 20:37:15 UTC
+Commit: 005df2cf8110fa7eb0ba4e21c1725dab92bf2884
 Branch: refs/heads/main
-Run ID: 41343925104
+Run ID: 41347488645
 
 ============================================================
 Detailed Logs
@@ -17,12 +17,77 @@ Phase 1 - Code Quality
 ============================================================
 
 --- fmt ---
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_e2e.rs:174:
+         body("hi")
+     );
+ 
+-    assert!(seal_for_peer("not-a-peer-id", None, &body("hi")).expect("fallback").is_none());
++    assert!(
++        seal_for_peer("not-a-peer-id", None, &body("hi"))
++            .expect("fallback")
++            .is_none()
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:164:
+ 
+ /// Build the AAD for an envelope: `HKDF_INFO ‖ 0x00 ‖ msg_id`.
+ fn aad(msg_id: Option<&str>) -> Vec<u8> {
+-    let mut out = Vec::with_capacity(HKDF_INFO.len().saturating_add(1).saturating_add(
+-        msg_id.map_or(0, str::len),
+-    ));
++    let mut out = Vec::with_capacity(
++        HKDF_INFO
++            .len()
++            .saturating_add(1)
++            .saturating_add(msg_id.map_or(0, str::len)),
++    );
+     out.extend_from_slice(HKDF_INFO);
+     out.push(0);
+     if let Some(msg_id) = msg_id {
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:271:
+         .as_slice()
+         .try_into()
+         .map_err(|_| eyre!("dm-e2e: nonce is not {NONCE_LEN} bytes"))?;
+-    let ciphertext = from_hex(&envelope.ciphertext)
+-        .ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
++    let ciphertext =
++        from_hex(&envelope.ciphertext).ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
+ 
+     let ephemeral_public = PublicKey::from(ephemeral_array);
+     let our_public = PublicKey::from(secret);
+Diff in /home/runner/work/p2p_app/p2p_app/src/lib.rs:107:
+     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
+     sqlite_connect,
+ };
+-pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
+ pub use e2e::{
+     ENVELOPE_VERSION, EncryptedDm, HKDF_INFO, SealedDmBody, TUI_ENCRYPTED_MARKER, can_encrypt_to,
+     open_incoming, seal_for_peer,
+Diff in /home/runner/work/p2p_app/p2p_app/src/lib.rs:114:
+ };
++pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
+ pub use fmt::{
+     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
+     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,
 Exit code: 0
 
 --- clippy ---
 [1m[92m    Updating[0m crates.io index
+[1m[92m    Checking[0m inout v0.1.4
+[1m[92m    Checking[0m universal-hash v0.5.1
+[1m[92m    Checking[0m x25519-dalek v3.0.0
+[1m[92m    Checking[0m opaque-debug v0.3.1
+[1m[92m    Checking[0m aead v0.5.2
+[1m[92m    Checking[0m poly1305 v0.8.0
+[1m[92m    Checking[0m cipher v0.4.4
 [1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
-[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 17.77s
+[1m[92m    Checking[0m libp2p-noise v0.47.0
+[1m[92m    Checking[0m chacha20 v0.9.1
+[1m[92m    Checking[0m chacha20poly1305 v0.10.1
+[1m[92m    Checking[0m libp2p v0.57.1
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 17.08s
 Exit code: 0
 
 
@@ -31,21 +96,31 @@ Phase 2 - Test & Build
 ============================================================
 
 --- test ---
+[1m[92m   Compiling[0m inout v0.1.4
+[1m[92m   Compiling[0m universal-hash v0.5.1
+[1m[92m   Compiling[0m x25519-dalek v3.0.0
+[1m[92m   Compiling[0m opaque-debug v0.3.1
+[1m[92m   Compiling[0m libp2p-noise v0.47.0
+[1m[92m   Compiling[0m cipher v0.4.4
+[1m[92m   Compiling[0m poly1305 v0.8.0
+[1m[92m   Compiling[0m aead v0.5.2
 [1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 36.55s
-[1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/p2p_app-70961dc927dc2e47)
+[1m[92m   Compiling[0m chacha20 v0.9.1
+[1m[92m   Compiling[0m chacha20poly1305 v0.10.1
+[1m[92m   Compiling[0m libp2p v0.57.1
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 38.75s
+[1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/p2p_app-2cd21a6bd98432ac)
 
-running 371 tests
+running 383 tests
 test behavior::tests::broadcast_message_default_is_empty ... ok
 test behavior::tests::call_protocol_name_is_stable ... ok
 test behavior::tests::call_signal_ack_default_is_not_ok ... ok
 test behavior::tests::call_signal_builder_and_json_roundtrip ... ok
-test behavior::tests::build_behaviour_for_all_network_sizes ... ok
 test behavior::tests::constants_are_stable ... ok
 test behavior::tests::direct_message_default_is_empty ... ok
 test behavior::tests::direct_message_json_roundtrip ... ok
-test calls::tests::default_session_is_the_no_call_sentinel ... ok
 test calls::tests::accept_lands_the_call ... ok
+test calls::tests::default_session_is_the_no_call_sentinel ... ok
 test calls::tests::end_tears_down_an_active_call ... ok
 test calls::tests::ending_already_ended_is_idempotent ... ok
 test calls::tests::equal_sessions_are_equal ... ok
@@ -55,12 +130,13 @@ test calls::tests::invite_is_handled_by_incoming_never_on_signal ... ok
 test calls::tests::outgoing_session_starts_calling ... ok
 test calls::tests::reject_ends_the_call ... ok
 test connected::tests::connected_peer_ids_iterates_current_set ... ok
+test behavior::tests::build_behaviour_for_all_network_sizes ... ok
 test connected::tests::duplicate_connect_is_idempotent ... ok
 test connected::tests::last_disconnection_is_overwritten ... ok
 test connected::tests::reconnecting_does_not_record_new_last_disconnection ... ok
 test connected::tests::records_connections_and_disconnections ... ok
-test connected::tests::starts_empty ... ok
 test contacts::tests::build_contact_rows_is_pure_and_groups_live_inputs ... ok
+test connected::tests::starts_empty ... ok
 test api::tests::delete_group_removes_group_and_membership ... ok
 test api::tests::set_peer_local_nickname_validates_and_persists ... ok
 test contacts::tests::contact_row_aggregates_stats_across_devices ... ok
@@ -76,10 +152,22 @@ test db::tests::test_libp2p_identity_is_valid ... ok
 test db::tests::test_local_peer_id_is_valid ... ok
 test db::tests::test_release_db_lock ... ok
 test db::tests::test_reset_db_url_multiple_times ... ok
+test e2e::tests::attachment_descriptor_survives_the_envelope ... ok
+test e2e::tests::deterministic_seal_with_pinned_randomness ... ok
+test contacts::tests::own_device_is_not_a_contact ... ok
+test e2e::tests::device_secret_matches_the_derived_public_key ... ok
+test e2e::tests::hex_round_trips_and_rejects_junk ... ok
+test e2e::tests::each_message_uses_fresh_randomness ... ok
+test e2e::tests::non_ed25519_peer_ids_are_not_encryptable ... ok
+test e2e::tests::peer_messaging_key_is_recoverable_from_peer_id ... ok
+test e2e::tests::message_id_is_bound_into_the_aad ... ok
+test e2e::tests::seal_for_peer_needs_an_ed25519_peer_id ... ok
+test e2e::tests::seal_and_open_round_trip ... ok
+test e2e::tests::unknown_version_and_malformed_fields_are_rejected ... ok
 test files::tests::attachment_json_roundtrips ... ok
 test files::tests::file_chip_renders_name_and_size ... ok
 test files::tests::format_file_size_uses_binary_units_with_one_decimal ... ok
-test contacts::tests::own_device_is_not_a_contact ... ok
+test e2e::tests::tampered_ciphertext_is_rejected ... ok
 test files::tests::gc_keeps_parts_younger_than_grace ... ok
 test files::tests::gc_removes_orphans_and_broken_rows_keeps_referenced ... ok
 test files::tests::hash_bytes_is_lowercase_hex_sha256 ... ok
@@ -135,8 +223,11 @@ test logging::tests::test_tracing_filter_has_default_warn ... ok
 test logging::tests::test_tracing_filter_not_empty ... ok
 test logging::tests::test_tracing_filter_returns_targets ... ok
 test logging::tests::test_tracing_layer_keeps_max_capacity ... ok
+test identity::tests::set_my_user_nickname_updates_the_announced_users_row ... ok
 test messages::tests::confirmed_message_ids_matches_receipts ... ok
 test messages::tests::direct_message_roundtrip ... ok
+test identity::tests::shared_claim_message_helper_agrees_with_verify ... ok
+test identity::tests::user_roundtrip_and_hostile_device_invariant ... ok
 test messages::tests::dm_stats_count_inbound_dm_once_even_with_both_columns_set ... ok
 test messages::tests::get_all_peer_stats_aggregates_across_peers_in_one_pass ... ok
 test messages::tests::load_direct_messages_filters_correctly ... ok
@@ -151,9 +242,6 @@ test messages::tests::save_receipt_backfills_broadcast_recipient_confirmation ..
 test messages::tests::save_receipt_upserts_same_key ... ok
 test mobile_api::tests::get_contacts_with_stats_collapses_user_devices ... ok
 test mobile_api::tests::get_mobile_peer_status_returns_current_state ... ok
-test mobile_api::tests::get_peers_with_stats_returns_peers_and_counts ... ok
-test mobile_api::tests::init_mobile_database_creates_missing_parent_dirs ... ok
-test mobile_api::tests::init_mobile_database_uses_supplied_path ... ok
 test mobile_api::tests::parse_last_seen_ms_delegates_to_canonical ... ok
 test mobile_api::tests::sort_contacts_count_columns_unchanged_by_unrelated_columns ... ok
 test mobile_api::tests::sort_contacts_last_seen_desc_with_contact_id_tiebreak ... ok
@@ -185,32 +273,32 @@ test mobile_node::tests::test_is_nickname_only_dm_empty_content_with_nickname ..
 test mobile_node::tests::test_is_nickname_only_dm_empty_without_nickname_is_regular_dm ... ok
 test mobile_node::tests::test_is_nickname_only_dm_ignores_empty_broadcasts ... ok
 test mobile_node::tests::test_is_nickname_only_dm_real_content_with_nickname_is_regular_dm ... ok
+test mobile_api::tests::get_peers_with_stats_returns_peers_and_counts ... ok
+test mobile_api::tests::init_mobile_database_creates_missing_parent_dirs ... ok
+test mobile_api::tests::init_mobile_database_uses_supplied_path ... ok
 test mobile_node::tests::test_load_broadcast_messages_empty_db ... ok
 test mobile_node::tests::test_load_broadcast_messages_marks_confirmed_receipts ... ok
+test mobile_node::tests::test_message_to_chat_broadcast ... ok
 test mobile_node::tests::test_load_dm_messages_empty_db ... ok
-test identity::tests::shared_claim_message_helper_agrees_with_verify ... ok
+test mobile_node::tests::test_message_to_chat_empty_content ... ok
+test mobile_node::tests::test_message_to_chat_none_sent_at ... ok
 test mobile_node::tests::test_load_dm_messages_marks_confirmed_receipts ... ok
 test mobile_node::tests::test_message_to_chat_announced_nickname_gets_suffix ... ok
-test mobile_node::tests::test_message_to_chat_broadcast ... ok
-test mobile_node::tests::test_message_to_chat_empty_content ... ok
-test identity::tests::user_roundtrip_and_hostile_device_invariant ... ok
-test mobile_node::tests::test_message_to_chat_none_sent_at ... ok
 test mobile_node::tests::test_mobile_peer_record_clone_debug ... ok
 test mobile_node::tests::test_poll_event_without_start_fails ... ok
-test mobile_node::tests::test_message_to_chat_dm ... ok
+test mobile_node::tests::test_process_event_ignored_variants ... ok
 test mobile_node::tests::test_process_event_broadcast_with_nickname ... ok
 test mobile_node::tests::test_process_event_logs_file_received ... ok
 test mobile_node::tests::test_process_event_logs_peer_expired ... ok
-test mobile_node::tests::test_process_event_ignored_variants ... ok
-test identity::tests::set_my_user_nickname_updates_the_announced_users_row ... ok
-test mobile_node::tests::test_process_event_peer_discovered ... ok
+test mobile_node::tests::test_message_to_chat_dm ... ok
+test mobile_node::tests::test_message_to_chat_own_message_uses_nickname ... ok
 test mobile_node::tests::test_stop_node_without_start_is_noop ... ok
 test mobile_node::tests::test_swarm_event_json_clone_debug ... ok
 test network::tests::display_outputs_expected_labels ... ok
+test mobile_node::tests::test_process_event_peer_discovered ... ok
 test mobile_node::tests::test_process_event_peer_connected_no_sender ... ok
 test mobile_node::tests::test_process_event_stores_nickname_from_dm ... ok
 test network::tests::get_network_size_defaults_small_when_no_sessions ... ok
-test mobile_node::tests::test_message_to_chat_own_message_uses_nickname ... ok
 test nickname::tests::ensure_self_nickname_returns_existing ... ok
 test nickname::tests::ensure_self_nickname_sets_if_missing ... ok
 test nickname::tests::peer_display_name_received_then_fallback ... ok
@@ -305,21 +393,21 @@ test tui_render_state::tests::test_get_tab_content_peers ... ok
 test tui_render_state::tests::test_list_item_lines ... ok
 test tui_render_state::tests::test_list_item_lines_differentiates_from_wrapped_count ... ok
 test tui_render_state::tests::test_max_list_scroll_offset_content_exactly_fills_pane ... ok
+test tui_helpers::tests::peer_table_sorts_by_first_seen_column ... ok
 test tui_render_state::tests::test_max_list_scroll_offset_content_exceeds_pane ... ok
 test tui_render_state::tests::test_max_list_scroll_offset_content_shorter_than_pane ... ok
 test tui_render_state::tests::test_max_list_scroll_offset_empty ... ok
 test tui_render_state::tests::test_max_list_scroll_offset_zero_usable_height ... ok
 test tui_render_state::tests::test_row_to_visible_index_at_first_content_row ... ok
 test tui_render_state::tests::test_row_to_visible_index_before_first_content ... ok
-test tui_render_state::tests::test_row_to_visible_index_beyond_all_messages ... ok
 test tui_render_state::tests::test_row_to_visible_index_empty ... ok
-test tui_render_state::tests::test_row_to_visible_index_first_content_row_nonzero ... ok
+test tui_render_state::tests::test_row_to_visible_index_beyond_all_messages ... ok
 test tui_render_state::tests::test_row_to_visible_index_within_first_message ... ok
+test tui_render_state::tests::test_row_to_visible_index_first_content_row_nonzero ... ok
 test tui_render_state::tests::test_row_to_visible_index_within_second_message ... ok
 test tui_render_state::tests::test_row_to_visible_index_within_third_message ... ok
 test tui_render_state::tests::test_tui_render_state_add_dm_message ... ok
 test tui_render_state::tests::test_tui_render_state_add_message ... ok
-test tui_helpers::tests::peer_table_sorts_by_first_seen_column ... ok
 test tui_render_state::tests::test_tui_render_state_clone ... ok
 test tui_render_state::tests::test_tui_render_state_debug_format ... ok
 test tui_render_state::tests::test_tui_render_state_default ... ok
@@ -329,14 +417,14 @@ test tui_render_state::tests::test_tui_tab_content_clone ... ok
 test tui_render_state::tests::test_tui_tab_content_debug_format ... ok
 test tui_render_state::tests::test_tui_tab_content_is_input_enabled ... ok
 test tui_tabs::tests::test_add_dm_tab_existing_peer ... ok
-test tui_tabs::tests::test_all_titles_with_dms ... ok
+test tui_render_state::tests::test_tui_render_state_add_peer ... ok
 test tui_tabs::tests::test_all_titles_with_group_chat ... ok
 test tui_tabs::tests::test_dynamic_tabs_add_dm_after_group_tab ... ok
 test tui_tabs::tests::test_dynamic_tabs_add_dm_tab ... ok
 test tui_tabs::tests::test_dynamic_tabs_add_group_tab ... ok
 test tui_tabs::tests::test_dynamic_tabs_add_group_tab_dedup ... ok
 test tui_tabs::tests::test_dynamic_tabs_default_is_empty ... ok
-test tui_render_state::tests::test_tui_render_state_add_peer ... ok
+test tui_tabs::tests::test_all_titles_with_dms ... ok
 test tui_tabs::tests::test_dynamic_tabs_get_dm_tab ... ok
 test tui_tabs::tests::test_dynamic_tabs_get_group_tab ... ok
 test tui_tabs::tests::test_dynamic_tabs_group_tab_titles ... ok
@@ -401,60 +489,60 @@ test web::tests::static_assets_are_gated_too ... ok
 test web::tests::status_is_open_without_credentials_and_gated_with_them ... ok
 test tui_tabs::tests::test_dynamic_tabs_dm_tab_titles ... ok
 test web::tests::unknown_method_is_an_error ... ok
-test web::tests::oversized_upload_is_rejected_with_bad_request ... ok
 test tui_helpers::tests::sort_peers_by_column_keeps_every_peer_when_deque_wraps ... ok
+test web::tests::oversized_upload_is_rejected_with_bad_request ... ok
 test web::tests::websocket_upgrade_requires_credentials ... ok
 test web::tests::websocket_answers_requests_and_pushes_events ... ok
 test web::tests::unknown_file_is_not_found ... ok
 test web::tests::upload_then_download_round_trips_the_blob ... ok
 
-test result: ok. 371 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.23s
+test result: ok. 383 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.48s
 
-[1m[92m     Running[0m unittests src/bin/p2p_chat.rs (target/debug/deps/p2p_chat-e03db2e7756f4e93)
-
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-
-[1m[92m     Running[0m unittests src/bin/p2p_chat_server.rs (target/debug/deps/p2p_chat_server-b779d182d461f3b6)
+[1m[92m     Running[0m unittests src/bin/p2p_chat.rs (target/debug/deps/p2p_chat-2f3a659821e87279)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m unittests src/bin/p2p_chat_tui.rs (target/debug/deps/p2p_chat_tui-6a60f6c9cce5e19f)
+[1m[92m     Running[0m unittests src/bin/p2p_chat_server.rs (target/debug/deps/p2p_chat_server-ef4a03115b0f3883)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[92m     Running[0m unittests src/bin/p2p_chat_tui.rs (target/debug/deps/p2p_chat_tui-53d49d8bd258d312)
 
 running 293 tests
 test tui::click_handlers::tests::test_format_dm_messages_from_db_empty ... ok
+test tui::click_handlers::tests::test_format_dm_messages_from_db_renders_attachment_chip ... ok
 test tui::click_handlers::tests::test_format_dm_messages_from_db_outgoing ... ok
 test tui::click_handlers::tests::test_format_dm_messages_from_db_incoming_uses_display_name ... ok
-test tui::click_handlers::tests::test_format_dm_messages_from_db_renders_attachment_chip ... ok
 test tui::click_handlers::tests::test_format_dm_messages_from_db_reverses_newest_first ... ok
 test tui::click_handlers::tests::test_format_dm_messages_from_db_self_nick_override ... ok
-test tui::click_handlers::tests::test_groups_bottom_border_click_does_not_open_phantom_row ... ok
 test tui::click_handlers::tests::test_message_click_autoscroll_maps_to_first_visible_peer ... ok
 test tui::click_handlers::tests::test_load_dm_messages_existing_no_scroll_state_initializes_scroll ... ok
 test tui::click_handlers::tests::test_message_click_each_message_is_one_row ... ok
+test tui::click_handlers::tests::test_groups_bottom_border_click_does_not_open_phantom_row ... ok
 test tui::click_handlers::tests::test_message_click_on_own_message_is_noop ... ok
-test tui::click_handlers::tests::test_message_click_opens_peer_info_tab ... ok
 test tui::click_handlers::tests::test_mouse_left_click_below_max_row_is_noop ... ok
+test tui::click_handlers::tests::test_message_click_opens_peer_info_tab ... ok
 test tui::click_handlers::tests::test_mouse_left_click_outside_content_area_is_noop ... ok
 test tui::click_handlers::tests::test_mouse_left_click_row_zero_routes_to_tab_click ... ok
 test tui::click_handlers::tests::test_mouse_left_click_peers_header_toggles_sort ... ok
-test tui::click_handlers::tests::test_mouse_left_click_peers_tab_routes_to_peer_row_click ... ok
 test tui::click_handlers::tests::test_peer_row_click_out_of_bounds ... ok
+test tui::click_handlers::tests::test_mouse_left_click_peers_tab_routes_to_peer_row_click ... ok
 test tui::click_handlers::tests::test_peer_header_click_maps_each_column ... ok
 test tui::click_handlers::tests::test_peers_bottom_border_click_does_not_open_phantom_row ... ok
 test tui::click_handlers::tests::test_peer_row_click_opens_dm_tab ... ok
 test tui::click_handlers::tests::test_tab_click_close_active_tab_moves_focus_left ... ok
 test tui::click_handlers::tests::test_tab_click_close_button_on_dm_tab ... ok
 test tui::click_handlers::tests::test_tab_click_close_button_on_peer_info_tab ... ok
-test tui::click_handlers::tests::test_peer_row_click_selects_correct_peer ... ok
 test tui::click_handlers::tests::test_tab_click_divider_between_tabs_does_nothing ... ok
-test tui::click_handlers::tests::test_peer_row_click_respects_scrolled_viewport ... ok
+test tui::click_handlers::tests::test_peer_row_click_selects_correct_peer ... ok
 test tui::click_handlers::tests::test_tab_click_out_of_bounds ... ok
 test tui::click_handlers::tests::test_tab_click_same_tab_noop ... ok
 test tui::click_handlers::tests::test_tab_click_just_past_close_button_switches_instead ... ok
+test tui::click_handlers::tests::test_peer_row_click_respects_scrolled_viewport ... ok
 test tui::click_handlers::tests::test_tab_click_switches_tab ... ok
 test tui::command_processor::tests::test_add_peer_to_state_list_skips_local_peer ... ok
 test tui::command_processor::tests::test_apply_broadcast_increments_unread_when_scrolled_up ... ok
@@ -473,9 +561,9 @@ test tui::command_processor::tests::test_apply_peer_discovered_state_skips_dupli
 test tui::command_processor::tests::test_apply_peer_discovered_state_adds_peer ... ok
 test tui::command_processor::tests::test_apply_receipt_to_state_broadcast ... ok
 test tui::command_processor::tests::test_apply_receipt_to_state_dm ... ok
+test tui::command_processor::tests::test_call_accept_ignores_foreign_call_id ... ok
 test tui::command_processor::tests::test_apply_receipt_to_state_multiple_peers ... ok
 test tui::command_processor::tests::test_call_accept_upgrades_outgoing_to_incall ... ok
-test tui::command_processor::tests::test_call_accept_ignores_foreign_call_id ... ok
 test tui::command_processor::tests::test_call_end_clears_session ... ok
 test tui::command_processor::tests::test_call_invite_adopted_after_settled_session ... ok
 test tui::command_processor::tests::test_call_invite_adopts_ringing_session ... ok
@@ -501,8 +589,8 @@ test tui::command_processor::tests::test_process_swarm_event_broadcast_adds_mess
 test tui::command_processor::tests::test_process_swarm_event_peer_expired ... ok
 test tui::command_processor::tests::test_process_swarm_event_dm_adds_message ... ok
 test tui::command_processor::tests::test_process_swarm_event_peer_discovered_adds_peer ... ok
-test tui::command_processor::tests::test_sort_peers_empty ... ok
 test tui::command_processor::tests::test_sort_peers_same_last_seen ... ok
+test tui::command_processor::tests::test_sort_peers_empty ... ok
 test tui::command_processor::tests::test_process_swarm_event_peer_connected_increments_and_sends_dm ... ok
 test tui::command_processor::tests::test_sort_peers_sorts_by_last_seen_desc ... ok
 test tui::command_processor::tests::test_upsert_peer_adds_new_peer ... ok
@@ -517,15 +605,15 @@ test tui::command_processor::tests::test_upsert_peer_updates_existing ... ok
 test tui::command_processor::tests::test_upsert_peer_updates_peer_selection ... ok
 test tui::input_processor::tests::test_backtab_in_direct_tab_still_navigates_backward ... ok
 test tui::input_processor::tests::test_bare_tab_in_direct_tab_navigates_on_kitty_and_nonkitty ... ok
-test tui::input_processor::tests::test_bare_tab_in_direct_tab_navigates_when_kitty_active ... ok
 test tui::input_processor::tests::test_bare_tab_on_chat_tab_still_navigates ... ok
+test tui::input_processor::tests::test_bare_tab_in_direct_tab_navigates_when_kitty_active ... ok
 test tui::input_processor::tests::test_c_key_on_contacts_starts_outgoing_call ... ok
 test tui::input_processor::tests::test_c_key_on_peer_info_starts_outgoing_call ... ok
-test tui::input_processor::tests::test_call_overlay_a_accepts_ringing ... ok
 test tui::input_processor::tests::test_call_overlay_any_key_declines_ringing ... ok
+test tui::input_processor::tests::test_call_overlay_a_accepts_ringing ... ok
 test tui::input_processor::tests::test_call_overlay_c_cancels_calling ... ok
-test tui::input_processor::tests::test_call_overlay_ctrl_q_quits_during_call ... ok
 test tui::input_processor::tests::test_call_overlay_esc_cancels_calling ... ok
+test tui::input_processor::tests::test_call_overlay_ctrl_q_quits_during_call ... ok
 test tui::input_processor::tests::test_call_overlay_esc_declines_ringing ... ok
 test tui::input_processor::tests::test_call_overlay_esc_hangs_up_incall ... ok
 test tui::input_processor::tests::test_call_overlay_typing_ignored_while_calling ... ok
@@ -541,22 +629,22 @@ test tui::input_processor::tests::test_ctrl_p_is_noop_on_non_direct_tabs ... ok
 test tui::input_processor::tests::test_ctrl_q_returns_exit_signal ... ok
 test tui::input_processor::tests::test_ctrl_tab_is_noop_on_chat_tab ... ok
 test tui::input_processor::tests::test_ctrl_tab_is_noop_on_direct_tab ... ok
-test tui::input_processor::tests::test_ctrl_tab_is_noop_on_peers_tab ... ok
 test tui::input_processor::tests::test_ctrl_w_closes_peer_info_tab ... ok
+test tui::input_processor::tests::test_ctrl_tab_is_noop_on_peers_tab ... ok
 test tui::input_processor::tests::test_ctrl_tab_on_peers_tab_is_noop ... ok
 test tui::input_processor::tests::test_device_binding_any_non_accept_key_declines_prompt ... ok
-test tui::input_processor::tests::test_device_binding_d_key_declines_prompt ... ok
 test tui::input_processor::tests::test_device_binding_esc_declines_prompt ... ok
-test tui::input_processor::tests::test_device_binding_accept_mints_and_queues_claim ... ok
+test tui::input_processor::tests::test_device_binding_d_key_declines_prompt ... ok
 test tui::input_processor::tests::test_e_key_toggles_selected_contact_expansion ... ok
+test tui::input_processor::tests::test_device_binding_accept_mints_and_queues_claim ... ok
 test tui::input_processor::tests::test_enter_key_in_peers_tab_empty_list_is_noop ... ok
 test tui::input_processor::tests::test_enter_during_nickname_edit_submits_nickname ... ok
 test tui::input_processor::tests::test_enter_without_text_does_not_send ... ok
 test tui::input_processor::tests::test_enter_key_keeps_the_contacts_search_filter ... ok
 test tui::input_processor::tests::test_esc_cancels_local_nickname_edit ... ok
-test tui::input_processor::tests::test_enter_key_in_peers_tab_opens_dm ... ok
-test tui::input_processor::tests::test_enter_key_in_peer_info_tab_opens_dm ... ok
 test tui::input_processor::tests::test_esc_cancels_nickname_edit ... ok
+test tui::input_processor::tests::test_enter_key_in_peer_info_tab_opens_dm ... ok
+test tui::input_processor::tests::test_enter_key_in_peers_tab_opens_dm ... ok
 test tui::input_processor::tests::test_esc_dismisses_popup ... ok
 test tui::input_processor::tests::test_esc_returns_to_chat_tab ... ok
 test tui::input_processor::tests::test_flip_mouse_capture_returns_new_state ... ok
@@ -565,19 +653,19 @@ test tui::input_processor::tests::test_flip_mouse_capture_toggles_on ... ok
 test tui::input_processor::tests::test_group_d_key_arms_leave_confirmation ... ok
 test tui::input_processor::tests::test_group_leave_any_other_key_cancels ... ok
 test tui::input_processor::tests::test_group_leave_esc_cancels_without_returning_to_chat ... ok
-test tui::input_processor::tests::test_i_key_in_direct_tab_types_into_input ... ok
 test tui::input_processor::tests::test_group_leave_confirmation_deletes_and_unsubscribes ... ok
+test tui::input_processor::tests::test_i_key_in_direct_tab_types_into_input ... ok
 test tui::input_processor::tests::test_i_key_on_device_row_opens_peer_info_for_exact_device ... ok
-test tui::input_processor::tests::test_i_key_in_peers_tab_opens_peer_info ... ok
 test tui::input_processor::tests::test_legacy_bare_tab_on_chat_tab_still_navigates ... ok
 test tui::input_processor::tests::test_legacy_plain_i_on_direct_tab_still_types ... ok
+test tui::input_processor::tests::test_i_key_in_peers_tab_opens_peer_info ... ok
 test tui::input_processor::tests::test_local_nickname_submission_empty_cancels ... ok
 test tui::input_processor::tests::test_local_nickname_submission_rejects_invalid_and_keeps_open ... ok
 test tui::input_processor::tests::test_mouse_click_noop_does_not_redraw ... ok
 test tui::input_processor::tests::test_local_nickname_submission_persists_and_updates_maps ... ok
 test tui::input_processor::tests::test_mouse_drag_is_ignored_for_layout_but_tracks_hover_row ... ok
-test tui::input_processor::tests::test_mouse_scroll_noop_does_not_redraw ... ok
 test tui::input_processor::tests::test_mouse_move_is_ignored_for_layout_but_tracks_hover_row ... ok
+test tui::input_processor::tests::test_mouse_scroll_noop_does_not_redraw ... ok
 test tui::input_processor::tests::test_n_key_on_peer_info_starts_local_nickname_edit ... ok
 test tui::input_processor::tests::test_n_key_outside_nickname_tabs_stays_plain_input ... ok
 test tui::input_processor::tests::test_nickname_submission_empty_clears_edit ... ok
@@ -587,9 +675,9 @@ test tui::input_processor::tests::test_nickname_submission_global_updates_own_ni
 test tui::input_processor::tests::test_nickname_key_branches_by_tab ... ok
 test tui::input_processor::tests::test_prepare_nickname_update_falls_back_to_own_nickname ... ok
 test tui::input_processor::tests::test_prepare_nickname_update_global_nick ... ok
-test tui::input_processor::tests::test_nickname_submission_per_peer_sends_dm ... ok
 test tui::input_processor::tests::test_prepare_nickname_update_per_peer ... ok
 test tui::input_processor::tests::test_prepare_nickname_update_returns_none_when_empty ... ok
+test tui::input_processor::tests::test_nickname_submission_per_peer_sends_dm ... ok
 test tui::input_processor::tests::test_shift_enter_inserts_newline ... ok
 test tui::input_processor::tests::test_update_dm_transcript_labels_changes_nick ... ok
 test tui::input_processor::tests::test_update_dm_transcript_labels_no_match_does_nothing ... ok
@@ -609,8 +697,8 @@ test tui::main_loop::tests::test_recent_tui_logs_handles_short_lists ... ok
 test tui::main_loop::tests::test_recent_tui_logs_returns_last_100_in_order ... ok
 [?1000h[?1002h[?1003h[?1015h[?1006h[?1006l[?1015l[?1003l[?1002l[?1000ltest tui::input_processor::tests::test_toggle_mouse_capture_toggles_state ... ok
 test tui::input_processor::tests::test_shift_enter_in_peers_tab_is_noop ... ok
-test tui::input_processor::tests::test_slash_key_on_contacts_starts_a_search_and_filters ... ok
 test tui::message_handlers::tests::test_push_outgoing_broadcast_adds_message ... ok
+test tui::input_processor::tests::test_slash_key_on_contacts_starts_a_search_and_filters ... ok
 test tui::message_handlers::tests::test_push_outgoing_broadcast_peer_id_is_none ... ok
 test tui::message_handlers::tests::test_push_outgoing_broadcast_trims_history ... ok
 test tui::message_handlers::tests::test_push_outgoing_dm_adds_message ... ok
@@ -622,18 +710,18 @@ test tui::message_handlers::tests::test_send_broadcast_updates_state_and_sends_c
 test tui::render_loop::tests::test_app_state_to_render_state_connected_peer_ids ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_defaults ... ok
 test tui::message_handlers::tests::test_send_dm_saves_to_db ... ok
-test tui::render_loop::tests::test_app_state_to_render_state_dm_messages ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_editing_nickname ... ok
+test tui::render_loop::tests::test_app_state_to_render_state_dm_messages ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_input_text ... ok
 test tui::message_handlers::tests::test_send_dm_updates_state_and_sends_command ... ok
-test tui::render_loop::tests::test_app_state_to_render_state_last_disconnection ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_log_messages ... ok
+test tui::render_loop::tests::test_app_state_to_render_state_last_disconnection ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_messages ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_own_user_identity ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_peers ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_popup ... ok
 test tui::render_loop::tests::test_app_state_to_render_state_scroll_and_selection ... ok
-test tui::render_loop::tests::test_device_binding_prompt_renders_and_wins_over_popup ... ok
+test tui::render_loop::tests::test_call_overlay_renders_each_state ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_down ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_down_clamps_at_max ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_down_on_empty_list ... ok
@@ -643,8 +731,8 @@ test tui::scroll_handlers::tests::test_compute_peer_selection_page_down ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_page_up ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_up ... ok
 test tui::scroll_handlers::tests::test_compute_peer_selection_up_clamps_at_zero ... ok
+test tui::render_loop::tests::test_device_binding_prompt_renders_and_wins_over_popup ... ok
 test tui::render_loop::tests::test_group_leave_prompt_renders_and_ranks_below_device_binding ... ok
-test tui::render_loop::tests::test_call_overlay_renders_each_state ... ok
 test tui::render_loop::tests::test_render_popup_text_call_overlay_beats_popup_and_loses_to_device_prompt ... ok
 test tui::scroll_handlers::tests::test_dm_pane_visible_lines_matches_dm_split ... ok
 test tui::scroll_handlers::tests::test_group_page_size_is_one_larger_than_peer_page ... ok
@@ -656,8 +744,8 @@ test tui::scroll_handlers::tests::test_handle_scroll_key_chat_tab ... ok
 test tui::scroll_handlers::tests::test_handle_scroll_key_dm_tab_broadcast_section ... ok
 test tui::scroll_handlers::tests::test_handle_scroll_key_dm_tab_dm_section ... ok
 test tui::scroll_handlers::tests::test_mouse_scroll_chat_down ... ok
-test tui::scroll_handlers::tests::test_mouse_scroll_chat_down_clamps ... ok
 test tui::scroll_handlers::tests::test_log_scroll_all ... ok
+test tui::scroll_handlers::tests::test_mouse_scroll_chat_down_clamps ... ok
 test tui::scroll_handlers::tests::test_handle_scroll_key_peers_tab ... ok
 test tui::scroll_handlers::tests::test_mouse_scroll_dm_section_clamps_at_zero ... ok
 test tui::scroll_handlers::tests::test_mouse_scroll_dm_section_down_to_bottom_reenables_auto_scroll ... ok
@@ -667,8 +755,8 @@ test tui::scroll_handlers::tests::test_mouse_scroll_dm_section_up_disables_auto_
 test tui::scroll_handlers::tests::test_mouse_scroll_chat_down_to_bottom_reenables_auto_and_clears_unread ... ok
 test tui::scroll_handlers::tests::test_mouse_scroll_chat_up_disables_auto_scroll ... ok
 test tui::scroll_handlers::tests::test_mouse_scroll_chat_up_from_auto_anchors_at_bottom ... ok
-test tui::scroll_handlers::tests::test_nav_back_tab_wraps_to_last ... ok
 test tui::scroll_handlers::tests::test_nav_back_tab_cycles_backward ... ok
+test tui::scroll_handlers::tests::test_nav_back_tab_wraps_to_last ... ok
 test tui::scroll_handlers::tests::test_nav_cancels_nickname_edit ... ok
 test tui::scroll_handlers::tests::test_nav_other_key_is_noop ... ok
 test tui::scroll_handlers::tests::test_nav_resets_scroll_offset ... ok
@@ -684,21 +772,21 @@ test tui::scroll_handlers::tests::test_scroll_chat_home ... ok
 test tui::scroll_handlers::tests::test_scroll_chat_no_scroll_when_no_messages ... ok
 test tui::scroll_handlers::tests::test_scroll_chat_pgdn ... ok
 test tui::scroll_handlers::tests::test_scroll_chat_up ... ok
-test tui::scroll_handlers::tests::test_scroll_chat_up_keeps_unread ... ok
 test tui::scroll_handlers::tests::test_scroll_chat_up_disables_auto_scroll ... ok
+test tui::scroll_handlers::tests::test_scroll_chat_up_keeps_unread ... ok
 test tui::scroll_handlers::tests::test_scroll_dm_section_down ... ok
 test tui::scroll_handlers::tests::test_scroll_dm_section_end_clamps_at_last_visible_line ... ok
 test tui::scroll_handlers::tests::test_scroll_dm_section_noop_when_no_state ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_down ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_empty_list ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_no_overflow_above_max ... ok
-test tui::scroll_handlers::tests::test_scroll_peers_noop_on_other_keys ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_no_overflow_below_zero ... ok
+test tui::scroll_handlers::tests::test_scroll_peers_noop_on_other_keys ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_home_end ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_page_down ... ok
+test tui::state::tests::selected_contact_helpers_resolve_device_rows ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_page_up ... ok
 test tui::scroll_handlers::tests::test_scroll_peers_up ... ok
-test tui::state::tests::selected_contact_helpers_resolve_device_rows ... ok
 test tui::state::tests::test_app_state_new_defaults ... ok
 test tui::state::tests::test_apply_contact_search_filters_and_restores ... ok
 test tui::state::tests::test_contact_matches_name_id_and_device ... ok
@@ -719,29 +807,29 @@ test tui::state::tests::test_load_and_format_messages_db_failure_returns_empty .
 test tui::state::tests::toggle_expand_contact_adds_and_removes_device_rows ... ok
 test tui::state::tests::toggle_expand_on_device_row_or_single_device_is_noop ... ok
 
-test result: ok. 293 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.63s
+test result: ok. 293 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.38s
 
-[1m[92m     Running[0m tests/additional_coverage.rs (target/debug/deps/additional_coverage-821a380d1dee4707)
+[1m[92m     Running[0m tests/additional_coverage.rs (target/debug/deps/additional_coverage-d42ddf3b5769489f)
 
 running 5 tests
 test test_broadcast_message_debug ... ok
-test test_direct_message_debug ... ok
-test test_network_size_classification ... ok
 test test_swarm_command_debug ... ok
+test test_direct_message_debug ... ok
 test test_swarm_event_debug ... ok
+test test_network_size_classification ... ok
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/behavior.rs (target/debug/deps/behavior-5857304e56c50e65)
+[1m[92m     Running[0m tests/behavior.rs (target/debug/deps/behavior-d188de3c5c20fa96)
 
 running 15 tests
 test test_behavior_constants ... ok
-test test_broadcast_message_fields ... ok
-test test_broadcast_message_default ... ok
 test test_broadcast_message_clone ... ok
+test test_broadcast_message_fields ... ok
 test test_broadcast_message_serialization ... ok
-test test_build_behaviour_creates_app_behaviour ... ok
+test test_broadcast_message_default ... ok
 test test_build_behaviour_large_network ... ok
+test test_build_behaviour_creates_app_behaviour ... ok
 test test_build_behaviour_medium_network ... ok
 test test_direct_message_default ... ok
 test test_direct_message_fields ... ok
@@ -751,19 +839,19 @@ test test_build_behaviour_returns_valid_behaviour ... ok
 test test_build_swarm_small_network ... ok
 test test_direct_message_clone ... ok
 
-test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
 
-[1m[92m     Running[0m tests/db.rs (target/debug/deps/db-364012fda99ff076)
+[1m[92m     Running[0m tests/db.rs (target/debug/deps/db-0547315f548acb3c)
 
 running 17 tests
 test test_concurrent_init_uses_isolated_databases ... ok
 test test_db_path_is_stable_and_isolated_per_thread ... ok
-test test_get_database_url_from_set_url ... ok
 test test_get_database_url_set_url ... ok
+test test_get_database_url_from_set_url ... ok
 test test_get_libp2p_identity_creates_keypair ... ok
+test test_get_libp2p_identity_format ... ok
 test test_get_libp2p_identity_is_stable ... ok
 test test_get_local_peer_id ... ok
-test test_get_libp2p_identity_format ... ok
 test test_get_local_peer_id_deterministic ... ok
 test test_get_local_peer_id_matches_keypair ... ok
 test test_init_database_succeeds ... ok
@@ -774,24 +862,24 @@ test test_reset_db_url_clears_set_url ... ok
 test test_reset_db_url_then_get_url_without_set_url ... ok
 test test_sqlite_connect_runs_migrations ... ok
 
-test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
 
-[1m[92m     Running[0m tests/db_selection.rs (target/debug/deps/db_selection-088b2afd439875e8)
+[1m[92m     Running[0m tests/db_selection.rs (target/debug/deps/db_selection-026a5b80477e7a48)
 
 running 1 test
 test test_two_instances_get_different_databases_parallel ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
 
-[1m[92m     Running[0m tests/fmt.rs (target/debug/deps/fmt-6c8fba80f412fb80)
+[1m[92m     Running[0m tests/fmt.rs (target/debug/deps/fmt-dcf03b9bfc1f11ad)
 
 running 27 tests
-test test_current_timestamp_within_range ... ok
 test test_current_timestamp_returns_positive ... ok
+test test_current_timestamp_within_range ... ok
 test test_format_latency_just_now ... ok
-test test_format_latency_under_1ms ... ok
 test test_format_latency_none ... ok
 test test_format_latency_over_1s ... ok
+test test_format_latency_under_1ms ... ok
 test test_format_latency_under_1s ... ok
 test test_format_peer_datetime ... ok
 test test_format_system_time_now ... ok
@@ -800,64 +888,64 @@ test test_gen_msg_id ... ok
 test test_gen_msg_id_multiple_unique ... ok
 test test_gen_msg_id_not_empty ... ok
 test test_now_timestamp ... ok
-test test_now_timestamp_reasonable ... ok
 test test_now_timestamp_positive ... ok
+test test_now_timestamp_reasonable ... ok
 test test_peer_display_name_empty ... ok
 test test_peer_display_name_fallback ... ok
-test test_current_timestamp_increases ... ok
-test test_peer_display_name_received_nickname ... ok
 test test_peer_display_name_local_nickname ... ok
+test test_current_timestamp_increases ... ok
+test test_peer_id_suffix_last_3_chars ... ok
+test test_peer_display_name_received_nickname ... ok
 test test_peer_display_name_with_nickname ... ok
 test test_short_peer_id_empty ... ok
-test test_short_peer_id_too_short ... ok
-test test_peer_id_suffix_last_3_chars ... ok
 test test_short_peer_id_exact_length ... ok
 test test_short_peer_id_short ... ok
+test test_short_peer_id_too_short ... ok
 
 test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/logging.rs (target/debug/deps/logging-5c18cbbae85d8aaf)
+[1m[92m     Running[0m tests/logging.rs (target/debug/deps/logging-92342f19c4e88337)
 
 running 29 tests
-test test_clear_tui_logs_empties_store ... ok
 test test_clear_tui_logs_clears_all ... ok
 test test_get_tui_logs_returns_vec ... ok
+test test_clear_tui_logs_empties_store ... ok
 test test_p2plog_debug_contains_level ... ok
 test test_push_log ... ok
 test test_p2plog_error_contains_level ... ok
-test test_p2plog_levels_all ... ok
-test test_push_log_multiple ... ok
-test test_push_log_appears_in_get_tui_logs ... ok
+test test_p2plog_info_contains_level ... ok
+test test_register_log_callback_receives_push_log ... ok
 test test_strip_ansi_codes ... ok
-test test_strip_ansi_codes_csi_clear_screen_keeps_following_text ... ok
+test test_push_log_appears_in_get_tui_logs ... ok
 test test_strip_ansi_codes_bold ... ok
+test test_strip_ansi_codes_csi_clear_screen_keeps_following_text ... ok
 test test_strip_ansi_codes_empty_string ... ok
 test test_strip_ansi_codes_incomplete_csi_dropped ... ok
-test test_strip_ansi_codes_mixed ... ok
+test test_push_log_multiple ... ok
 test test_strip_ansi_codes_multiple_sequences ... ok
-test test_register_log_callback_receives_push_log ... ok
-test test_p2plog_info_contains_level ... ok
-test test_strip_ansi_codes_nested ... ok
 test test_strip_ansi_codes_no_codes ... ok
-test test_strip_ansi_codes_osc_st_terminated ... ok
+test test_strip_ansi_codes_mixed ... ok
 test test_strip_ansi_codes_osc_bel_terminated ... ok
+test test_strip_ansi_codes_osc_st_terminated ... ok
+test test_p2plog_levels_all ... ok
+test test_strip_ansi_codes_nested ... ok
 test test_strip_ansi_codes_plain ... ok
-test test_strip_ansi_codes_only_codes ... ok
 test test_strip_ansi_codes_preserves_all_non_escape_chars ... ok
 test test_strip_ansi_codes_two_char_sequence ... ok
-test test_tracing_event_with_fields_captured ... ok
 test test_tracing_error_captured_in_logs ... ok
+test test_strip_ansi_codes_only_codes ... ok
+test test_tracing_event_with_fields_captured ... ok
 test test_tracing_warn_captured_in_logs ... ok
 
 test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
-[1m[92m     Running[0m tests/messages.rs (target/debug/deps/messages-7f01654122cc739e)
+[1m[92m     Running[0m tests/messages.rs (target/debug/deps/messages-4f4be88de4be5028)
 
 running 33 tests
-test test_incoming_message_from_silent_peer_shows_generated_name ... ok
-test test_load_direct_messages_empty ... ok
 test test_load_direct_messages_limit ... ok
+test test_incoming_message_from_silent_peer_shows_generated_name ... ok
 test test_load_direct_messages_limit_zero ... ok
+test test_load_direct_messages_empty ... ok
 test test_load_direct_messages_oldest_first ... ok
 test test_load_direct_messages_peer_isolation ... ok
 test test_load_messages_empty ... ok
@@ -873,10 +961,10 @@ test test_mark_message_sent ... ok
 test test_mark_message_sent_invalid_id ... ok
 test test_message_meta_default ... ok
 test test_message_meta_with_all_fields ... ok
-test test_save_broadcast_message ... ok
 test test_save_direct_message ... ok
-test test_save_direct_message_same_peer_different_topics ... ok
 test test_save_and_load_receipt ... ok
+test test_save_broadcast_message ... ok
+test test_save_direct_message_same_peer_different_topics ... ok
 test test_save_incoming_broadcast_message ... ok
 test test_save_message_boolean_variants ... ok
 test test_save_message_empty_content ... ok
@@ -888,32 +976,32 @@ test test_save_receipt_different_kinds ... ok
 test test_save_receipt_multiple_peers ... ok
 test test_save_receipt_upsert ... ok
 
-test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.13s
 
-[1m[92m     Running[0m tests/network.rs (target/debug/deps/network-4112fe753785de3a)
+[1m[92m     Running[0m tests/network.rs (target/debug/deps/network-6b64c01f0084a600)
 
 running 5 tests
 test test_network_size_boundaries ... ok
-test test_network_size_from_peer_count ... ok
+test test_network_size_equality ... ok
 test test_network_size_copy ... ok
 test test_network_size_display ... ok
-test test_network_size_equality ... ok
+test test_network_size_from_peer_count ... ok
 
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/nickname.rs (target/debug/deps/nickname-1318229dd13716f9)
+[1m[92m     Running[0m tests/nickname.rs (target/debug/deps/nickname-94cdcd1b647d918c)
 
 running 36 tests
 test test_ensure_self_nickname_generates_if_missing ... ok
-test test_ensure_self_nickname_returns_existing ... ok
 test test_ensure_self_nickname_idempotent ... ok
+test test_ensure_self_nickname_returns_existing ... ok
 test test_generate_nickname_deterministic ... ok
 test test_generate_self_nickname_contains_hyphen ... ok
 test test_generate_self_nickname_not_empty ... ok
-test test_generate_self_nickname_uniqueness ... ok
-test test_get_local_nickname_unset ... ok
 test test_generate_self_nickname_two_parts ... ok
+test test_generate_self_nickname_uniqueness ... ok
 test test_get_peer_display_name_assigns_generated_petname_for_silent_peer ... ok
+test test_get_local_nickname_unset ... ok
 test test_get_peer_display_name_all_none ... ok
 test test_get_peer_display_name_includes_short_id_suffix ... ok
 test test_get_peer_display_name_prefers_local_over_received ... ok
@@ -941,216 +1029,212 @@ test test_set_peer_self_nickname_for_peer_overwrite ... ok
 test test_set_received_nickname_idempotent ... ok
 test test_set_self_nickname_overwrite ... ok
 
-test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.22s
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
 
-[1m[92m     Running[0m tests/p2p_integration.rs (target/debug/deps/p2p_integration-48791fbd24a01110)
+[1m[92m     Running[0m tests/p2p_integration.rs (target/debug/deps/p2p_integration-fe4e8bced6b3350a)
 
 running 10 tests
-[2m2026-11-01T19:53:56.550597Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.550607Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWKMFQskFncsfYiwJLiT1HMTm8CmrRYFGBMFNK2uB6g2UM
-[2m2026-11-01T19:53:56.550599Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.550808Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
-[2m2026-11-01T19:53:56.551915Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44595
-[2m2026-11-01T19:53:56.551986Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(1) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44595
-[2m2026-11-01T19:53:56.552756Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWRj12LpKbYrKfJGFpCv9Dv9GLo2RexLfqGWKH7KdEUgcQ
-[2m2026-11-01T19:53:56.553512Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWNAhoBe6iTwdcSFEQp636tYraBtg86cNi1wczKg9RDvGu
-[2m2026-11-01T19:53:56.553524Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.553599Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.553602Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
-[2m2026-11-01T19:53:56.553679Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.553732Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
-[2m2026-11-01T19:53:56.553847Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(4) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/39089
-[2m2026-11-01T19:53:56.554018Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(2) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/43167
-[2m2026-11-01T19:53:56.554116Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:39089
-[2m2026-11-01T19:53:56.554806Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/36223
-[2m2026-11-01T19:53:56.554817Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/43167 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/39089
-[2m2026-11-01T19:53:56.554889Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(3) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/36223
-[2m2026-11-01T19:53:56.555429Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/45475
-[2m2026-11-01T19:53:56.555515Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/45475
-[2m2026-11-01T19:53:56.555665Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475
-[2m2026-11-01T19:53:56.555743Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475
-[2m2026-11-01T19:53:56.555804Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWAKnA9kFTq9XPgw5MwNKdaxdBSYnNWSRWhvVVbb937NRR
-[2m2026-11-01T19:53:56.555910Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.555892Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475
-[2m2026-11-01T19:53:56.556031Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.556006Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475
-[2m2026-11-01T19:53:56.556262Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(7) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44237
-[2m2026-11-01T19:53:56.556333Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223
-[2m2026-11-01T19:53:56.556411Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(3) [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223
-[2m2026-11-01T19:53:56.556451Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(6) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44603
-[2m2026-11-01T19:53:56.556566Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:44237
-[2m2026-11-01T19:53:56.556582Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223
-[2m2026-11-01T19:53:56.556657Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(3) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223
-[2m2026-11-01T19:53:56.557112Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/44603 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/44237
-[2m2026-11-01T19:53:56.562660Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.562854Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m5 [3mdiscarded_addresses_count[0m[2m=[0m1
-[2m2026-11-01T19:53:56.562909Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.57:45475
-[2m2026-11-01T19:53:56.563152Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.563259Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.563408Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m7 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.563461Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:36223
-[2m2026-11-01T19:53:56.563649Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m9 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.563720Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.57:36223
-[2m2026-11-01T19:53:56.566637Z[0m [34mDEBUG[0m [1mTransport::dial[0m: [2mlibp2p_tcp[0m[2m:[0m Failed to connect using existing socket because we already have a connection, re-dialing with new port [3mconnect_addr[0m[2m=[0m10.1.0.57:36223 [3mbind_addr[0m[2m=[0m0.0.0.0:45475 [2m[3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2[0m
-[2m2026-11-01T19:53:56.566950Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/36223 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.57/tcp/45475
-[2m2026-11-01T19:53:56.567191Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.567451Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/45475 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/36223
-[2m2026-11-01T19:53:56.567736Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/33368 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.57/tcp/36223
-[2m2026-11-01T19:53:56.574655Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNAhoBe6iTwdcSFEQp636tYraBtg86cNi1wczKg9RDvGu [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/39089, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.576625Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWAKnA9kFTq9XPgw5MwNKdaxdBSYnNWSRWhvVVbb937NRR [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/44237, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.592527Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.592675Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.610401Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.610551Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.610867Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWKMFQskFncsfYiwJLiT1HMTm8CmrRYFGBMFNK2uB6g2UM [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/39089, send_back_addr: /ip4/127.0.0.1/tcp/43167 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.616811Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWQCdL7EErM5aPQZ3RUS8WWEdoPBQkQRxwxhHvoEnDDCRU
-[2m2026-11-01T19:53:56.616940Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:45595
-[2m2026-11-01T19:53:56.617183Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595
-[2m2026-11-01T19:53:56.617265Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(1) [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595
-[2m2026-11-01T19:53:56.617401Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595
-[2m2026-11-01T19:53:56.617452Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(1) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595
-[2m2026-11-01T19:53:56.619506Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.619604Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.619705Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.619780Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.620060Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWRj12LpKbYrKfJGFpCv9Dv9GLo2RexLfqGWKH7KdEUgcQ [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/44237, send_back_addr: /ip4/127.0.0.1/tcp/44603 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.629866Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3mendpoint[0m[2m=[0mDialer { address: /ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.630208Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3mendpoint[0m[2m=[0mDialer { address: /ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m2
-[2m2026-11-01T19:53:56.630697Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3mendpoint[0m[2m=[0mDialer { address: /ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.633907Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.634034Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.634128Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.634296Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m16 [3mdiscarded_addresses_count[0m[2m=[0m1
-[2m2026-11-01T19:53:56.634357Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.57:45475
-[2m2026-11-01T19:53:56.634544Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m18 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.634598Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:36223
-[2m2026-11-01T19:53:56.634722Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m20 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.634754Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.57:36223
-[2m2026-11-01T19:53:56.635125Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection attempt to peer failed with Transport([(/ip4/127.0.0.1/tcp/45595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3, Other(Custom { kind: Other, error: Other(Left(Left(Left(Os { code: 111, kind: ConnectionRefused, message: "Connection refused" })))) }))]). [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.649873Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.650038Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m22 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.650117Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:45475
-[2m2026-11-01T19:53:56.650342Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.650448Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.650537Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.650619Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/45475/p2p/12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq
-[2m2026-11-01T19:53:56.650700Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.650861Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m24 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.650933Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:44595
-[2m2026-11-01T19:53:56.651125Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m26 [3mdiscarded_addresses_count[0m[2m=[0m2
-[2m2026-11-01T19:53:56.651197Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.57:44595
-[2m2026-11-01T19:53:56.658469Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/50202 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/44595
-[2m2026-11-01T19:53:56.658700Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/34594 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.57/tcp/44595
-[2m2026-11-01T19:53:56.658895Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:56.686665Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.686857Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/44595 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.57/tcp/45475
-[2m2026-11-01T19:53:56.687051Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/44595 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/45475
-[2m2026-11-01T19:53:56.687262Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/44595 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/36223
-[2m2026-11-01T19:53:56.687459Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.57/tcp/44595 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.57/tcp/36223
-[2m2026-11-01T19:53:56.688493Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3mendpoint[0m[2m=[0mDialer { address: /ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.158495Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWCJkzwG22pS4Gd5gvAbwHQvJzKSu3En8QJRAjMFxXN5y7
+[2m2026-11-01T20:35:24.158538Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.160240Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWNbyJdzoXWX7Yw7Qkkpvjs3xv6kDmZWR2EKtT742kf5QJ
+[2m2026-11-01T20:35:24.161309Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWQY3jEpxge5iHSPrzj6ggXNAWGZqJhJSxy1TUFUTBqYEH
+[2m2026-11-01T20:35:24.161434Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.161454Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:24.161538Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
+[2m2026-11-01T20:35:24.161557Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.161641Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.161714Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
+[2m2026-11-01T20:35:24.161751Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 0.0.0.0:0
+[2m2026-11-01T20:35:24.162417Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(1) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/39375
+[2m2026-11-01T20:35:24.162583Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(3) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/46013
+[2m2026-11-01T20:35:24.162755Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:39375
+[2m2026-11-01T20:35:24.162942Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/40701
+[2m2026-11-01T20:35:24.162994Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(2) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/40701
+[2m2026-11-01T20:35:24.163103Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701
+[2m2026-11-01T20:35:24.163145Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(2) [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701
+[2m2026-11-01T20:35:24.163240Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/46013 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/39375
+[2m2026-11-01T20:35:24.163247Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701
+[2m2026-11-01T20:35:24.163308Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(2) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701
+[2m2026-11-01T20:35:24.163879Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/37959
+[2m2026-11-01T20:35:24.163964Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(4) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/37959
+[2m2026-11-01T20:35:24.163958Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/42007
+[2m2026-11-01T20:35:24.164002Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/42007
+[2m2026-11-01T20:35:24.164119Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959
+[2m2026-11-01T20:35:24.164164Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(4) [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959
+[2m2026-11-01T20:35:24.164278Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959
+[2m2026-11-01T20:35:24.164326Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(4) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959
+[2m2026-11-01T20:35:24.167005Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWQzCQMZLRiKD8BwStCkRJKJtvRbfGDUGDFqAbngNB49eh
+[2m2026-11-01T20:35:24.167233Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.167375Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.167824Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(7) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/34157
+[2m2026-11-01T20:35:24.168172Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(6) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/40299
+[2m2026-11-01T20:35:24.168362Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:34157
+[2m2026-11-01T20:35:24.170455Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/40299 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/34157
+[2m2026-11-01T20:35:24.171266Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:24.171400Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:24.171666Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m5 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.171765Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:37959
+[2m2026-11-01T20:35:24.172024Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m7 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.172116Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.208:37959
+[2m2026-11-01T20:35:24.174768Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.174898Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.175090Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m9 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.175176Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:40701
+[2m2026-11-01T20:35:24.175400Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m11 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.175471Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.208:40701
+[2m2026-11-01T20:35:24.175885Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/40701 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/37959
+[2m2026-11-01T20:35:24.176158Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/40701 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.208/tcp/37959
+[2m2026-11-01T20:35:24.179525Z[0m [34mDEBUG[0m [1mTransport::dial[0m: [2mlibp2p_tcp[0m[2m:[0m Failed to connect using existing socket because we already have a connection, re-dialing with new port [3mconnect_addr[0m[2m=[0m10.1.0.208:40701 [3mbind_addr[0m[2m=[0m0.0.0.0:37959 [2m[3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu[0m
+[2m2026-11-01T20:35:24.185080Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/37959 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/40701
+[2m2026-11-01T20:35:24.185210Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWCJkzwG22pS4Gd5gvAbwHQvJzKSu3En8QJRAjMFxXN5y7 [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/39375, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.185386Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/60802 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.208/tcp/40701
+[2m2026-11-01T20:35:24.195423Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWQzCQMZLRiKD8BwStCkRJKJtvRbfGDUGDFqAbngNB49eh [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/34157, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.204702Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.204901Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.212349Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWQY3jEpxge5iHSPrzj6ggXNAWGZqJhJSxy1TUFUTBqYEH [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/39375, send_back_addr: /ip4/127.0.0.1/tcp/46013 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.218291Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNbyJdzoXWX7Yw7Qkkpvjs3xv6kDmZWR2EKtT742kf5QJ [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/34157, send_back_addr: /ip4/127.0.0.1/tcp/40299 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.221410Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3mendpoint[0m[2m=[0mDialer { address: /ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.221804Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3mendpoint[0m[2m=[0mDialer { address: /ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m2
+[2m2026-11-01T20:35:24.244570Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWQfrg1XA9J1U38Dws7pLMN4shLTsvg4ZzKUnFmSjFuoqu
+[2m2026-11-01T20:35:24.245228Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:43007
+[2m2026-11-01T20:35:24.245566Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007
+[2m2026-11-01T20:35:24.245659Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007
+[2m2026-11-01T20:35:24.245781Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m New listen address [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/42007
+[2m2026-11-01T20:35:24.245821Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(5) [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/42007
+[2m2026-11-01T20:35:24.262060Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:24.262165Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:24.262219Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.262325Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m19 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.262385Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:37959
+[2m2026-11-01T20:35:24.262584Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m21 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.262665Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.208:37959
+[2m2026-11-01T20:35:24.262816Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m23 [3mdiscarded_addresses_count[0m[2m=[0m1
+[2m2026-11-01T20:35:24.262861Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:40701
+[2m2026-11-01T20:35:24.263350Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection attempt to peer failed with Transport([(/ip4/127.0.0.1/tcp/43007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD, Other(Custom { kind: Other, error: Other(Left(Left(Left(Os { code: 111, kind: ConnectionRefused, message: "Connection refused" })))) }))]). [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.279699Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:24.279869Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m25 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.279927Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.208:40701
+[2m2026-11-01T20:35:24.280171Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.280244Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.280349Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m27 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.280393Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m172.17.0.1:42007
+[2m2026-11-01T20:35:24.280550Z[0m [34mDEBUG[0m [2mlibp2p_swarm[0m[2m:[0m discarding addresses from `NetworkBehaviour` because `DialOpts::extend_addresses_through_behaviour is `false` for connection [3mconnection[0m[2m=[0m29 [3mdiscarded_addresses_count[0m[2m=[0m2
+[2m2026-11-01T20:35:24.280591Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m10.1.0.208:42007
+[2m2026-11-01T20:35:24.285489Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/38550 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/42007
+[2m2026-11-01T20:35:24.285778Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/33154 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.208/tcp/42007
+[2m2026-11-01T20:35:24.295072Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3mendpoint[0m[2m=[0mDialer { address: /ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.295361Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/42007 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/40701
+[2m2026-11-01T20:35:24.295588Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/42007 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.208/tcp/40701
+[2m2026-11-01T20:35:24.296049Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3mendpoint[0m[2m=[0mDialer { address: /ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m2
+[2m2026-11-01T20:35:24.296323Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/42007 [3mlocal_address[0m[2m=[0m/ip4/172.17.0.1/tcp/37959
+[2m2026-11-01T20:35:24.296587Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/10.1.0.208/tcp/42007 [3mlocal_address[0m[2m=[0m/ip4/10.1.0.208/tcp/37959
+[2m2026-11-01T20:35:24.322758Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3mendpoint[0m[2m=[0mDialer { address: /ip4/172.17.0.1/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
 test test_connection_with_stale_db_address_and_mdns_recovery ... ok
-[2m2026-11-01T19:53:56.693943Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWSfsmtZPVqqtNfNvMKr3AEWVfEcmLRtNpZEpZouduSMPR
-[2m2026-11-01T19:53:56.695692Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.695825Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.696124Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/172.17.0.1/tcp/36223, send_back_addr: /ip4/10.1.0.57/tcp/45475 } [3mtotal_peers[0m[2m=[0m2
-[2m2026-11-01T19:53:56.696462Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWPDYUSFWKu4UKjRro63q8jZteTpbmDqBiSomXUwAKj8Jq [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/10.1.0.57/tcp/36223, send_back_addr: /ip4/10.1.0.57/tcp/33368 } [3mtotal_peers[0m[2m=[0m3
-[2m2026-11-01T19:53:56.696766Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/10.1.0.57/tcp/45475, send_back_addr: /ip4/10.1.0.57/tcp/36223 } [3mtotal_peers[0m[2m=[0m3
-[2m2026-11-01T19:53:56.696965Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWRZSkFXA9KfREoVFSrv7XDxa7TtQeGGyAgmxgWsTa7u3H
-[2m2026-11-01T19:53:56.696974Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
-[2m2026-11-01T19:53:56.697099Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.697168Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
-[2m2026-11-01T19:53:56.697246Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.697338Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
-[2m2026-11-01T19:53:56.697443Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(9) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/33907
-[2m2026-11-01T19:53:56.697508Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
-[2m2026-11-01T19:53:56.697602Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(8) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/36225
-[2m2026-11-01T19:53:56.697714Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:33907
-[2m2026-11-01T19:53:56.698327Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/36225 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/33907
-[2m2026-11-01T19:53:56.700003Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:56.717167Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWRZSkFXA9KfREoVFSrv7XDxa7TtQeGGyAgmxgWsTa7u3H [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/33907, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.327806Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWPY4k69D7KYVeouEMoRfpaCapx7ioyEKNSMJDAjhzxT9a
+[2m2026-11-01T20:35:24.330401Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWNmiaywwrWmmkvvomZpXur6r2DuKRZo54JWNPn3vQSJKV
+[2m2026-11-01T20:35:24.330503Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.330694Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.330884Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(9) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44565
+[2m2026-11-01T20:35:24.331035Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(8) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/38181
+[2m2026-11-01T20:35:24.331143Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:44565
+[2m2026-11-01T20:35:24.331666Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/38181 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/44565
+[2m2026-11-01T20:35:24.345520Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/172.17.0.1/tcp/37959, send_back_addr: /ip4/10.1.0.208/tcp/40701 } [3mtotal_peers[0m[2m=[0m3
+[2m2026-11-01T20:35:24.345896Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/10.1.0.208/tcp/37959, send_back_addr: /ip4/10.1.0.208/tcp/40701 } [3mtotal_peers[0m[2m=[0m4
+[2m2026-11-01T20:35:24.346083Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
+[2m2026-11-01T20:35:24.346196Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.346386Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
+[2m2026-11-01T20:35:24.346562Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
+[2m2026-11-01T20:35:24.346752Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Incoming connection failed: Transport(Other(Custom { kind: Other, error: Other(Left(Left(Right(Select(ProtocolError(IoError(Os { code: 32, kind: BrokenPipe, message: "Broken pipe" }))))))) }))
+[2m2026-11-01T20:35:24.350743Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.350905Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.350996Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWNmiaywwrWmmkvvomZpXur6r2DuKRZo54JWNPn3vQSJKV [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/44565, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.351303Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/172.17.0.1/tcp/40701, send_back_addr: /ip4/10.1.0.208/tcp/37959 } [3mtotal_peers[0m[2m=[0m3
+[2m2026-11-01T20:35:24.351670Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/10.1.0.208/tcp/40701, send_back_addr: /ip4/10.1.0.208/tcp/60802 } [3mtotal_peers[0m[2m=[0m4
+[2m2026-11-01T20:35:24.354524Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:24.366947Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWPY4k69D7KYVeouEMoRfpaCapx7ioyEKNSMJDAjhzxT9a [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/44565, send_back_addr: /ip4/127.0.0.1/tcp/38181 } [3mtotal_peers[0m[2m=[0m1
 test test_auto_discovery_via_mdns ... ok
-[2m2026-11-01T19:53:56.720361Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWMYLpC67v4jFqKBipWMPmVxzVPk1j34Pz99uoJn3bLEEY
-[2m2026-11-01T19:53:56.722163Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWH9DmrPo6wz7ruTBKmBN6LPGxAvPVgJgKytwyr6TeUPQQ
-[2m2026-11-01T19:53:56.722281Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.722371Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:56.722501Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(10) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/34795
-[2m2026-11-01T19:53:56.722649Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(11) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/38699
-[2m2026-11-01T19:53:56.722707Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:34795
-[2m2026-11-01T19:53:56.723032Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/38699 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/34795
-[2m2026-11-01T19:53:56.733669Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSfsmtZPVqqtNfNvMKr3AEWVfEcmLRtNpZEpZouduSMPR [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/33907, send_back_addr: /ip4/127.0.0.1/tcp/36225 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.740860Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWMYLpC67v4jFqKBipWMPmVxzVPk1j34Pz99uoJn3bLEEY [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/34795, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:56.765087Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWH9DmrPo6wz7ruTBKmBN6LPGxAvPVgJgKytwyr6TeUPQQ [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/34795, send_back_addr: /ip4/127.0.0.1/tcp/38699 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:57.611545Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:57.611769Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:57.621412Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:57.621577Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:59.614872Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:59.615004Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:59.615170Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:59.615303Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:59.624371Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/36223/p2p/12D3KooWNdYf3Rzz2PfQu28NCohj1heNcvSzhuktVzFNk2tEJba2
-[2m2026-11-01T19:53:59.624472Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/10.1.0.57/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:59.635695Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
+[2m2026-11-01T20:35:24.374815Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWBEDU4R8YZujqkwq2EQhSArDa63dvukbL8cwMmijdeFjr
+[2m2026-11-01T20:35:24.376857Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWN1YzojwzjZnG1fF3Gz6jDLThggJpuu61kx8CfBCBCrVZ
+[2m2026-11-01T20:35:24.376958Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.377055Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:24.377226Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(11) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/43573
+[2m2026-11-01T20:35:24.377396Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(10) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/35495
+[2m2026-11-01T20:35:24.377501Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:43573
+[2m2026-11-01T20:35:24.378028Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/35495 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/43573
+[2m2026-11-01T20:35:24.393461Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWN1YzojwzjZnG1fF3Gz6jDLThggJpuu61kx8CfBCBCrVZ [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/43573, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:24.411265Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWBEDU4R8YZujqkwq2EQhSArDa63dvukbL8cwMmijdeFjr [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/43573, send_back_addr: /ip4/127.0.0.1/tcp/35495 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:25.213241Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:25.213461Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:25.219385Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:25.219544Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:27.215716Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:27.215835Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:27.215933Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:27.216031Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:27.222082Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/37959/p2p/12D3KooWSxMuBfpQLV38ZpKqpv9t4iCiKn8Z3zoWSw4Rb6drtwnE
+[2m2026-11-01T20:35:27.222183Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:27.222749Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/40701/p2p/12D3KooWJZV5PDNniNRVCYzVMZHH8qFpbSa5AKLwmZxCC9vnLjHu
+[2m2026-11-01T20:35:27.233534Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
 test test_broadcast_flow_from_sender_to_receiver ... ok
-[2m2026-11-01T19:53:59.637380Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
-[2m2026-11-01T19:53:59.637518Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3 [3maddress[0m[2m=[0m/ip4/172.17.0.1/tcp/44595/p2p/12D3KooWCjQia66LdRshbRp55Fi1h3VYexVZDRNe5NjUgePHdmA3
+[2m2026-11-01T20:35:27.236944Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWCs5Bas9jj1nkRnJdEjKDdgRgPEWCAt85zsXvTdrNS4MJ
+[2m2026-11-01T20:35:27.238635Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:27.238778Z[0m [32m INFO[0m [1mSwarm::poll[0m: [2mlibp2p_mdns::behaviour[0m[2m:[0m discovered peer on address [3mpeer[0m[2m=[0m12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD [3maddress[0m[2m=[0m/ip4/10.1.0.208/tcp/42007/p2p/12D3KooWAFGSyxxRbLcsoFnnB3Fx9EgMkFCHsP3mCdW31QpFk8uD
+[2m2026-11-01T20:35:27.238875Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWPAAtJtg1edgVgCxgUL8yZLbpTfD4GjWjtZu5wE8qFieK
+[2m2026-11-01T20:35:27.238961Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.239056Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.239201Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(12) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/46851
+[2m2026-11-01T20:35:27.239334Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(13) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/37005
+[2m2026-11-01T20:35:27.239402Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:46851
 test test_bidirectional_messages ... ok
-[2m2026-11-01T19:53:59.639676Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWBgFNy2MjfmQ3k5p5T4LHA5YhoiJ1ubL23ba3Sfv1WojZ
-[2m2026-11-01T19:53:59.640945Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWHK9Z29jKwGzbqMkQABQdm1WQzNDXPQTxR4MpQv2or76V
-[2m2026-11-01T19:53:59.641503Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWAHS35yfxP9BdBV965N3WFXmpLWPDkjBMhXznDokESztd
-[2m2026-11-01T19:53:59.641603Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.641707Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.641884Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(13) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/34019
-[2m2026-11-01T19:53:59.642018Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(12) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/41719
-[2m2026-11-01T19:53:59.642106Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:34019
-[2m2026-11-01T19:53:59.642616Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/41719 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/34019
-[2m2026-11-01T19:53:59.643495Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWSjMxDHQLo4tQWGihvq9NFdVrNzW6SDUdaUjWeqEV3EaN
-[2m2026-11-01T19:53:59.643590Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.643675Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.643811Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(14) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44597
-[2m2026-11-01T19:53:59.643910Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(15) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/43031
-[2m2026-11-01T19:53:59.643973Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:44597
-[2m2026-11-01T19:53:59.644410Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/43031 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/44597
-[2m2026-11-01T19:53:59.658033Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWAHS35yfxP9BdBV965N3WFXmpLWPDkjBMhXznDokESztd [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/34019, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:59.659519Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWHK9Z29jKwGzbqMkQABQdm1WQzNDXPQTxR4MpQv2or76V [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/44597, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:59.677461Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWBgFNy2MjfmQ3k5p5T4LHA5YhoiJ1ubL23ba3Sfv1WojZ [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/34019, send_back_addr: /ip4/127.0.0.1/tcp/41719 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:59.682248Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWSjMxDHQLo4tQWGihvq9NFdVrNzW6SDUdaUjWeqEV3EaN [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/44597, send_back_addr: /ip4/127.0.0.1/tcp/43031 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.239885Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/37005 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/46851
+[2m2026-11-01T20:35:27.242733Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWCHtpQ3CcshMk3qaNJdE55oaHY1ttFqck8qeudTMWBTy9
+[2m2026-11-01T20:35:27.244528Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWF44LZhCdkqk6jZ5dK4wg69Jhx8fnoKY9agVxBDv417nV
+[2m2026-11-01T20:35:27.244635Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.244734Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.244862Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(15) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/39029
+[2m2026-11-01T20:35:27.244954Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(14) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/38747
+[2m2026-11-01T20:35:27.245010Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:39029
+[2m2026-11-01T20:35:27.245399Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/38747 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/39029
+[2m2026-11-01T20:35:27.255245Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWCs5Bas9jj1nkRnJdEjKDdgRgPEWCAt85zsXvTdrNS4MJ [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/46851, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.260383Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWF44LZhCdkqk6jZ5dK4wg69Jhx8fnoKY9agVxBDv417nV [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/39029, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.271852Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWPAAtJtg1edgVgCxgUL8yZLbpTfD4GjWjtZu5wE8qFieK [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/46851, send_back_addr: /ip4/127.0.0.1/tcp/37005 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.285074Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWCHtpQ3CcshMk3qaNJdE55oaHY1ttFqck8qeudTMWBTy9 [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/39029, send_back_addr: /ip4/127.0.0.1/tcp/38747 } [3mtotal_peers[0m[2m=[0m1
 test test_gossipsub_deduplication ... ok
-[2m2026-11-01T19:53:59.752506Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWKqkdxQksW1VZvRgsCHgDveNeBpvSKt1RMyMTgtzrRxfB
-[2m2026-11-01T19:53:59.754248Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWDvUogw3nFMgQmWa8FiMCyHsXkTGtnAiFfsvB9BB3t5Yt
-[2m2026-11-01T19:53:59.754338Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.754437Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.754588Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(17) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/37241
-[2m2026-11-01T19:53:59.754714Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(16) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/44187
-[2m2026-11-01T19:53:59.754799Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:37241
-[2m2026-11-01T19:53:59.755174Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/44187 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/37241
-[2m2026-11-01T19:53:59.769750Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWDvUogw3nFMgQmWa8FiMCyHsXkTGtnAiFfsvB9BB3t5Yt [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/37241, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.388513Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWECSbY5pn7rEazqWak1vcSJL2Rxqh4jgEX4Cnk6LqkRXy
+[2m2026-11-01T20:35:27.390425Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWRcmzQXgqrHQC5U3TSyBoxFHPFAJFbVJMobLFbkGbCzdF
+[2m2026-11-01T20:35:27.390527Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.390664Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.390834Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(16) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/34631
+[2m2026-11-01T20:35:27.390966Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(17) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/41479
+[2m2026-11-01T20:35:27.391054Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:34631
+[2m2026-11-01T20:35:27.391552Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/41479 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/34631
+[2m2026-11-01T20:35:27.406385Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWECSbY5pn7rEazqWak1vcSJL2Rxqh4jgEX4Cnk6LqkRXy [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/34631, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.422645Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWRcmzQXgqrHQC5U3TSyBoxFHPFAJFbVJMobLFbkGbCzdF [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/34631, send_back_addr: /ip4/127.0.0.1/tcp/41479 } [3mtotal_peers[0m[2m=[0m1
 test test_headless_tui_message_format_compatibility ... ok
-[2m2026-11-01T19:53:59.782405Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWAqGwm3Wr5oe3Diyq3S79sbAzkXb2Gr6kfJkA5G7iU5jQ
-[2m2026-11-01T19:53:59.785274Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWKuZwdL1ALLZ6XyHEei3XGUSPo4tz4vCS9vAat7y4H5Dc
-[2m2026-11-01T19:53:59.785388Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.785498Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
-[2m2026-11-01T19:53:59.785681Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(19) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/38661
-[2m2026-11-01T19:53:59.785853Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(18) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/35279
-[2m2026-11-01T19:53:59.785964Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:38661
-[2m2026-11-01T19:53:59.786552Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/35279 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/38661
-[2m2026-11-01T19:53:59.786629Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWKqkdxQksW1VZvRgsCHgDveNeBpvSKt1RMyMTgtzrRxfB [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/37241, send_back_addr: /ip4/127.0.0.1/tcp/44187 } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:59.802518Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWKuZwdL1ALLZ6XyHEei3XGUSPo4tz4vCS9vAat7y4H5Dc [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/38661, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
-[2m2026-11-01T19:53:59.819788Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWAqGwm3Wr5oe3Diyq3S79sbAzkXb2Gr6kfJkA5G7iU5jQ [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/38661, send_back_addr: /ip4/127.0.0.1/tcp/35279 } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.431917Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWFdxp3gKETwgzwQWtszEmMA3GZDLTVYLSFREoPdfCfpd3
+[2m2026-11-01T20:35:27.433696Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWCJfSSX5WQ9M4jfgoXfoB6cGQxkL6LPF3e6TRNZCVS9XU
+[2m2026-11-01T20:35:27.433792Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.433900Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m listening on 127.0.0.1:0
+[2m2026-11-01T20:35:27.434071Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(18) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/39493
+[2m2026-11-01T20:35:27.434228Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m New listener address [3mlistener[0m[2m=[0mListenerId(19) [3maddress[0m[2m=[0m/ip4/127.0.0.1/tcp/36425
+[2m2026-11-01T20:35:27.434346Z[0m [34mDEBUG[0m [2mlibp2p_tcp[0m[2m:[0m dialing address [3maddress[0m[2m=[0m127.0.0.1:39493
+[2m2026-11-01T20:35:27.434874Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_tcp[0m[2m:[0m Incoming connection from remote at local [3mremote_address[0m[2m=[0m/ip4/127.0.0.1/tcp/36425 [3mlocal_address[0m[2m=[0m/ip4/127.0.0.1/tcp/39493
+[2m2026-11-01T20:35:27.450042Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWFdxp3gKETwgzwQWtszEmMA3GZDLTVYLSFREoPdfCfpd3 [3mendpoint[0m[2m=[0mDialer { address: /ip4/127.0.0.1/tcp/39493, role_override: Dialer, port_use: Reuse } [3mtotal_peers[0m[2m=[0m1
+[2m2026-11-01T20:35:27.471959Z[0m [34mDEBUG[0m [1mSwarm::poll[0m: [2mlibp2p_swarm[0m[2m:[0m Connection established [3mpeer[0m[2m=[0m12D3KooWCJfSSX5WQ9M4jfgoXfoB6cGQxkL6LPF3e6TRNZCVS9XU [3mendpoint[0m[2m=[0mListener { local_addr: /ip4/127.0.0.1/tcp/39493, send_back_addr: /ip4/127.0.0.1/tcp/36425 } [3mtotal_peers[0m[2m=[0m1
 test test_mdns_peer_discovery ... ok
 test test_nickname_in_message_flow ... ok
 test test_p2p_message_transfer ... ok
 test test_two_peers_exchange_broadcast ... ok
 
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.29s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.33s
 
-[1m[92m     Running[0m tests/peers.rs (target/debug/deps/peers-40c105c9e371a52d)
+[1m[92m     Running[0m tests/peers.rs (target/debug/deps/peers-b302d1b67150eec0)
 
 running 23 tests
 test test_existing_local_peer_id_does_not_provision ... ok
-test test_get_network_size_small_when_empty ... ok
-test test_get_average_peer_count_zero_when_empty ... ok
 test test_get_average_peer_count_with_data ... ok
+test test_get_average_peer_count_zero_when_empty ... ok
+test test_get_network_size_small_when_empty ... ok
 test test_get_network_size_thresholds ... ok
 test test_load_known_peers_deduplicates ... ok
 test test_load_known_peers_empty ... ok
@@ -1173,138 +1257,138 @@ test test_save_peer_upserts_on_conflict ... ok
 
 test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
 
-[1m[92m     Running[0m tests/swarm_handler.rs (target/debug/deps/swarm_handler-6b27e0d25be435e4)
+[1m[92m     Running[0m tests/swarm_handler.rs (target/debug/deps/swarm_handler-45b5df7071352f9a)
 
 running 18 tests
 test test_build_broadcast_message ... ok
-test test_build_broadcast_message_empty_content ... ok
-test test_build_broadcast_message_all_none ... ok
 test test_build_broadcast_message_long_content ... ok
-test test_build_broadcast_message_no_metadata ... ok
+test test_build_broadcast_message_all_none ... ok
+test test_build_broadcast_message_empty_content ... ok
 test test_build_broadcast_message_only_msg_id ... ok
 test test_build_broadcast_message_only_nickname ... ok
 test test_build_broadcast_message_special_chars ... ok
+test test_build_broadcast_message_no_metadata ... ok
 test test_serialize_broadcast_message_none ... ok
 test test_serialize_broadcast_message_some ... ok
 test test_spawn_handler_broadcast_message ... ok
-test test_publish_with_no_peers_logs_error_and_continues ... ok
 test test_send_dm_invalid_peer_id_is_ignored ... ok
+test test_publish_with_no_peers_logs_error_and_continues ... ok
 test test_spawn_handler_broadcast_receipt ... ok
+test test_spawn_handler_direct_message_receipt ... ok
 test test_spawn_handler_direct_message ... ok
 test test_spawn_handler_nickname_only_dm_surfaces ... ok
-test test_spawn_handler_direct_message_receipt ... ok
 test test_handler_survives_command_sender_drop ... ok
 
 test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
 
-[1m[92m     Running[0m tests/test_utils.rs (target/debug/deps/test_utils-48fcaecb7df9fb4f)
+[1m[92m     Running[0m tests/test_utils.rs (target/debug/deps/test_utils-856bbaab9166045e)
 
 running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/tui_binary_integration.rs (target/debug/deps/tui_binary_integration-92b9cb68151e418b)
+[1m[92m     Running[0m tests/tui_binary_integration.rs (target/debug/deps/tui_binary_integration-611e118af01782f7)
 
 running 11 tests
-test test_direct_message_struct ... ok
 test test_broadcast_message_struct ... ok
+test test_direct_message_struct ... ok
 test test_dm_tab_creation ... ok
 test test_dynamic_tabs_operations ... ok
 test test_message_meta_serialization ... ok
-test test_peer_display_name_precedence ... ok
 test test_network_size_classification ... ok
 test test_swarm_command_variants ... ok
-test test_swarm_event_variants ... ok
 test test_tab_content_variants ... ok
 test test_tui_test_state ... ok
+test test_peer_display_name_precedence ... ok
+test test_swarm_event_variants ... ok
 
 test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/tui_chat.rs (target/debug/deps/tui_chat-115f82f04d308bf3)
+[1m[92m     Running[0m tests/tui_chat.rs (target/debug/deps/tui_chat-f0f3013189ffbb22)
 
 running 63 tests
 test test_first_message_row_equals_header_plus_two ... ok
-test test_calculate_content_start_row_equals_first_message_row ... ok
 test test_formatted_dm_messages_unknown_peer ... ok
+test test_calculate_content_start_row_equals_first_message_row ... ok
 test test_formatted_logs_empty ... ok
-test test_formatted_messages_with_content ... ok
-test test_handle_mouse_click_before_first_row_returns_none ... ok
-test test_handle_mouse_click_past_last_message_returns_none ... ok
 test test_formatted_messages_empty ... ok
+test test_handle_mouse_click_before_first_row_returns_none ... ok
+test test_formatted_messages_with_content ... ok
 test test_formatted_peers_empty ... ok
-test test_handle_notification_click_dm_col ... ok
+test test_handle_mouse_click_past_last_message_returns_none ... ok
 test test_handle_mouse_click_returns_peer_for_message ... ok
 test test_handle_notification_click_broadcasts_col ... ok
+test test_handle_notification_click_dm_col ... ok
 test test_handle_notification_click_none_when_no_unread ... ok
-test test_handle_tab_click_chat ... ok
 test test_list_header_start_row_no_unread ... ok
-test test_peer_info_returns_string ... ok
-test test_input_text_empty_initially ... ok
 test test_list_header_start_row_with_unread_broadcasts ... ok
+test test_handle_tab_click_chat ... ok
+test test_input_text_empty_initially ... ok
 test test_list_header_start_row_with_unread_dms ... ok
 test test_status_text ... ok
 test test_tab_content_chat ... ok
-test test_tab_content_log ... ok
 test test_tab_content_peers ... ok
-test test_tui_test_state_default_equals_new ... ok
-test test_with_messages_and_width ... ok
-test tests::test_dm_notification_tracking ... ok
 test test_tab_titles ... ok
+test test_peer_info_returns_string ... ok
+test test_tab_content_log ... ok
+test test_tui_test_state_default_equals_new ... ok
 test tests::test_calculate_content_start_row ... ok
+test tests::test_dm_notification_tracking ... ok
+test tests::test_dm_tab_new ... ok
+test test_with_messages_and_width ... ok
 test tests::test_dm_tab_clone ... ok
 test tests::test_dm_tab_debug_format ... ok
-test tests::test_dm_tab_new ... ok
 test tests::test_dm_tab_partial_eq ... ok
-test tests::test_dynamic_tabs_add_remove ... ok
-test tests::test_dm_tab_short_id ... ok
 test tests::test_dm_tab_short_id_consistency ... ok
+test tests::test_dynamic_tabs_add_remove ... ok
 test tests::test_dynamic_tabs_get_dm_tab ... ok
-test tests::test_dynamic_tabs_total_tab_count ... ok
-test tests::test_dynamic_tabs_all_titles_empty ... ok
 test tests::test_dynamic_tabs_remove_nonexistent ... ok
-test tests::test_handle_mouse_click_empty_messages ... ok
+test tests::test_dm_tab_short_id ... ok
+test tests::test_dynamic_tabs_all_titles_empty ... ok
 test tests::test_empty_messages_handling ... ok
-test tests::test_handle_mouse_click_first_message ... ok
+test tests::test_dynamic_tabs_total_tab_count ... ok
+test tests::test_handle_mouse_click_empty_messages ... ok
 test tests::test_handle_mouse_click_multiline_message ... ok
-test tests::test_handle_mouse_click_second_message ... ok
+test tests::test_handle_mouse_click_first_message ... ok
 test tests::test_handle_mouse_click_outside_bounds ... ok
 test tests::test_handle_mouse_click_with_different_terminal_width ... ok
-test tests::test_handle_mouse_click_with_scroll_offset ... ok
+test tests::test_handle_mouse_click_second_message ... ok
 test tests::test_handle_mouse_click_with_notification_shifts_messages ... ok
+test tests::test_handle_mouse_click_with_scroll_offset ... ok
 test tests::test_handle_notification_click_boundary ... ok
+test tests::test_handle_tab_click ... ok
 test tests::test_handle_notification_click_no_notifications ... ok
 test tests::test_layout_rows_no_notification ... ok
-test tests::test_handle_tab_click ... ok
 test tests::test_layout_rows_with_notification ... ok
 test tests::test_notification_click_broadcasts ... ok
 test tests::test_notification_click_dm ... ok
-test tests::test_notification_target_clone ... ok
 test tests::test_notification_with_multiple_dms ... ok
-test tests::test_tab_content_is_input_enabled ... ok
-test tests::test_tab_content_mapping ... ok
+test tests::test_notification_target_clone ... ok
 test tests::test_peer_extraction_no_brackets ... ok
 test tests::test_tab_content_peer_id ... ok
+test tests::test_tab_content_is_input_enabled ... ok
+test tests::test_tab_content_mapping ... ok
 test tests::test_tui_test_state_custom_messages ... ok
 test tests::test_dynamic_tabs_titles ... ok
 
 test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
 
-[1m[92m     Running[0m tests/tui_helpers.rs (target/debug/deps/tui_helpers-758e62a90ffe762f)
+[1m[92m     Running[0m tests/tui_helpers.rs (target/debug/deps/tui_helpers-b9b495ce7384eeee)
 
 running 36 tests
-test test_format_latency_milliseconds_boundary ... ok
 test test_disable_auto_scroll_to_max ... ok
 test test_format_latency_near_one_second ... ok
+test test_handle_scroll_home_clears_auto_scroll ... ok
 test test_handle_scroll_end_sets_auto_scroll ... ok
 test test_handle_scroll_key_for_section ... ok
-test test_handle_scroll_page_down_clamps_at_max ... ok
-test test_handle_scroll_home_clears_auto_scroll ... ok
-test test_handle_scroll_up_from_auto_jumps_to_bottom_first ... ok
+test test_format_latency_milliseconds_boundary ... ok
 test test_handle_scroll_key_invalid_action ... ok
+test test_handle_scroll_page_down_clamps_at_max ... ok
+test test_handle_scroll_up_from_auto_jumps_to_bottom_first ... ok
 test test_key_code_to_scroll_action_invalid ... ok
+test test_key_code_to_scroll_action_home ... ok
 test test_key_code_to_scroll_action_down ... ok
 test test_key_code_to_scroll_action_end ... ok
-test test_key_code_to_scroll_action_home ... ok
 test test_key_code_to_scroll_action_page_down ... ok
 test test_message_line_count ... ok
 test test_key_code_to_scroll_action_page_up ... ok
@@ -1312,69 +1396,70 @@ test test_key_code_to_scroll_action_up ... ok
 test test_message_line_count_all_newlines ... ok
 test test_message_line_count_single_short_line ... ok
 test test_message_line_count_empty_string ... ok
-test test_message_line_count_multiline_with_empty_line ... ok
 test test_message_line_count_wraps_long_line ... ok
+test test_message_line_count_multiline_with_empty_line ... ok
 test test_message_line_count_zero_width_returns_one ... ok
+test test_relabel_dm_transcript_empty ... ok
 test test_relabel_dm_transcript_no_match ... ok
 test test_relabel_dm_transcript_replaces_matching_lines ... ok
 test test_scroll_down_with_auto_scroll_already_active ... ok
 test test_scroll_up_lines ... ok
-test test_relabel_dm_transcript_empty ... ok
-test test_scroll_down_lines ... ok
+test test_sort_peers_by_last_seen ... ok
 test test_sort_peers_empty ... ok
-test test_sort_peers_preserves_selection ... ok
 test test_sort_peers_with_same_timestamp ... ok
+test test_scroll_down_lines ... ok
+test test_upsert_adds_new_peer ... ok
+test test_sort_peers_preserves_selection ... ok
 test test_upsert_peer_last_seen ... ok
 test test_upsert_updates_existing_peer ... ok
-test test_sort_peers_by_last_seen ... ok
-test test_upsert_adds_new_peer ... ok
 
 test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-[1m[92m     Running[0m tests/tui_integration.rs (target/debug/deps/tui_integration-97dc859a16b98124)
+[1m[92m     Running[0m tests/tui_integration.rs (target/debug/deps/tui_integration-09d6d6aa39a0fda2)
 
 running 16 tests
 test test_nickname_display_consistency ... ok
 test test_tui_dm_tab_creation_on_peer_connection ... ok
-test test_tui_input_clearing_after_send ... ok
 test test_tui_dm_history_per_peer_bounded ... ok
+test test_tui_input_clearing_after_send ... ok
 test test_tui_input_enabled_only_on_chat_tabs ... ok
 test test_tui_message_sending_broadcast ... ok
-test test_tui_message_history_bounded ... ok
 test test_tui_no_duplicate_peers_on_reconnect ... ok
+test test_tui_message_history_bounded ... ok
 test test_tui_message_sending_dm ... ok
 test test_tui_peer_deduplication_with_limit ... ok
 test test_tui_mouse_capture_toggle ... ok
 test test_tui_scroll_state_management ... ok
 test test_tui_tab_navigation ... ok
-test test_tui_whitespace_message_not_sent ... ok
 test test_tui_tab_navigation_backward ... ok
+test test_tui_whitespace_message_not_sent ... ok
 test test_tui_peer_display_limit ... ok
 
-test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 
-[1m[92m     Running[0m tests/tui_render_integration.rs (target/debug/deps/tui_render_integration-a5a626ff80e810b3)
+[1m[92m     Running[0m tests/tui_render_integration.rs (target/debug/deps/tui_render_integration-97fb91e254e082b7)
 
 running 76 tests
 test render_tests::test_popup_rendering ... ok
 test render_tests::test_render_chat_content_library ... ok
 test render_tests::test_render_chat_shows_unread_banner ... ok
-test render_tests::test_render_chat_no_unread_banner_when_zero ... ok
 test render_tests::test_full_frame_all_tabs ... ok
+test render_tests::test_render_chat_no_unread_banner_when_zero ... ok
 test render_tests::test_render_input_section_library ... ok
 test render_tests::test_render_input_section_titles_contacts_search ... ok
 test render_tests::test_render_frame_with_library ... ok
-test render_tests::test_interactive_state_changes ... ok
-test render_tests::test_render_input_section_titles_nickname_flavors ... ok
 test render_tests::test_render_log_content_library ... ok
+test render_tests::test_render_input_section_titles_nickname_flavors ... ok
 test render_tests::test_render_peer_info_shows_contact_message_stats ... ok
-test render_tests::test_render_peers_expands_device_subrows ... ok
+test render_tests::test_interactive_state_changes ... ok
 test render_tests::test_render_peers_content_library ... ok
+test render_tests::test_render_peers_expands_device_subrows ... ok
 test render_tests::test_render_dm_content_library ... ok
 test render_tests::test_render_popup_library ... ok
 test render_tests::test_render_settings_content_connected_peers_shown ... ok
 test render_tests::test_render_settings_content_known_but_not_connected_is_not_listed ... ok
 test render_tests::test_render_settings_content_no_connections_shows_last_connected ... ok
+test render_tests::test_render_peer_info_omits_stats_for_peer_without_a_contact_row ... ok
 test render_tests::test_render_settings_content_own_user_identity ... ok
 test render_tests::test_render_settings_content_own_user_unprovisioned ... ok
 test render_tests::test_render_settings_content_single_fallback_uses_recent_peer ... ok
@@ -1384,15 +1469,14 @@ test render_tests::test_render_tabs_library ... ok
 test render_tests::test_shortcuts_direct_tab_documents_ctrl_i_and_ctrl_p_on_kitty ... ok
 test render_tests::test_shortcuts_direct_tab_documents_ctrl_p_on_nonkitty ... ok
 test render_tests::test_shortcuts_peer_info_tab_documents_call ... ok
-test render_tests::test_shortcuts_peers_tab_documents_dm_and_info ... ok
 test render_tests::test_shortcuts_plain_tabs_have_no_peer_info_hint ... ok
+test render_tests::test_shortcuts_peers_tab_documents_dm_and_info ... ok
 test test_add_dm_message ... ok
 test test_add_dm_message_creates_peer_entry ... ok
 test test_add_dm_message_multiple_peers ... ok
 test test_add_message ... ok
 test test_add_message_empty_string ... ok
 test test_add_message_multiple_calls ... ok
-test render_tests::test_render_peer_info_omits_stats_for_peer_without_a_contact_row ... ok
 test test_add_peer ... ok
 test test_broadcast_receipt_prefix_no_receipts ... ok
 test test_broadcast_receipt_prefix_with_receipt ... ok
@@ -1429,29 +1513,29 @@ test test_state_with_sample_data_extra ... ok
 test test_tui_render_state_with_sample_data ... ok
 test test_tui_tab_content_is_input_enabled ... ok
 test test_with_sample_data_contains_content ... ok
-test test_add_peer_multiple ... ok
 test render_tests::test_render_peers_shows_total_count_in_title ... ok
+test test_add_peer_multiple ... ok
 test render_tests::test_render_peers_scrolls_viewport_but_keeps_selection_visible ... ok
 
 test result: ok. 76 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
 
-[1m[92m     Running[0m tests/tui_state.rs (target/debug/deps/tui_state-28290d405fd3e6fd)
+[1m[92m     Running[0m tests/tui_state.rs (target/debug/deps/tui_state-ffe6d9b15757b7a8)
 
 running 26 tests
-test test_dm_tab_count ... ok
 test test_add_dm_tab_returns_index_and_deduplicates ... ok
 test test_dm_tab_new ... ok
-test test_dm_tab_short_id ... ok
 test test_dm_tab_count_after_remove ... ok
+test test_dm_tab_short_id ... ok
+test test_dm_tab_count ... ok
+test test_dynamic_tabs_add_existing_dm_returns_existing_index ... ok
 test test_dm_tab_short_id_long_peer ... ok
 test test_dynamic_tabs_add_dm ... ok
-test test_dynamic_tabs_add_existing_dm_returns_existing_index ... ok
 test test_dynamic_tabs_add_dm_returns_index ... ok
 test test_dynamic_tabs_new ... ok
 test test_dynamic_tabs_remove_dm ... ok
 test test_dynamic_tabs_tab_index_to_content ... ok
-test test_notification_target_broadcasts ... ok
 test test_dynamic_tabs_total_tab_count ... ok
+test test_notification_target_broadcasts ... ok
 test test_notification_target_dm ... ok
 test test_remove_dm_tab_by_peer_id ... ok
 test test_remove_dm_tab_nonexistent ... ok
@@ -1462,101 +1546,101 @@ test test_tab_content_peer_id ... ok
 test test_tui_test_state_new ... ok
 test test_tui_test_state_with_messages ... ok
 test test_tui_test_state_with_width ... ok
-test test_dynamic_tabs_dm_tab_titles ... ok
 test test_dynamic_tabs_all_titles ... ok
+test test_dynamic_tabs_dm_tab_titles ... ok
 
 test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
 
-[1m[92m     Running[0m tests/tui_tasks.rs (target/debug/deps/tui_tasks-21983f57cc15467d)
+[1m[92m     Running[0m tests/tui_tasks.rs (target/debug/deps/tui_tasks-7bd1345d5d184348)
 
 running 10 tests
 test tui_architecture_tests::test_appstate_no_duplicate_peers ... ok
 test tui_architecture_tests::test_appstate_message_history_bounded ... ok
+test tui_architecture_tests::test_appstate_dm_history_per_peer_bounded ... ok
 test tui_architecture_tests::test_appstate_peer_removal ... ok
 test tui_architecture_tests::test_message_with_peer_id ... ok
-test tui_architecture_tests::test_message_without_peer_id ... ok
-test tui_architecture_tests::test_appstate_dm_history_per_peer_bounded ... ok
-test tui_architecture_tests::test_saturating_peer_counter ... ok
-test tui_architecture_tests::test_multiple_peers_same_dm_conversation ... ok
 test tui_architecture_tests::test_appstate_concurrent_access ... ok
+test tui_architecture_tests::test_multiple_peers_same_dm_conversation ... ok
+test tui_architecture_tests::test_saturating_peer_counter ... ok
+test tui_architecture_tests::test_message_without_peer_id ... ok
 test tui_architecture_tests::test_appstate_peer_list_bounded ... ok
 
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
 
-[1m[92m     Running[0m tests/types.rs (target/debug/deps/types-8138ac3132f5a887)
+[1m[92m     Running[0m tests/types.rs (target/debug/deps/types-2b603661820269b1)
 
 running 69 tests
 test broadcast_message_default ... ok
+test broadcast_message_fields ... ok
 test build_broadcast_message_sets_sent_at ... ok
 test build_broadcast_message_with_all_fields ... ok
-test current_timestamp_is_positive ... ok
 test direct_message_default ... ok
 test direct_message_fields ... ok
-test format_latency_unknown ... ok
+test current_timestamp_is_positive ... ok
 test format_latency_sub_ms ... ok
-test broadcast_message_fields ... ok
-test gen_msg_id_is_non_empty ... ok
 test gen_msg_ids_are_unique ... ok
-test network_size_display ... ok
+test format_latency_unknown ... ok
 test format_system_time_contains_time_separators ... ok
-test network_size_equality ... ok
+test gen_msg_id_is_non_empty ... ok
 test network_size_from_peer_count_classifications ... ok
+test network_size_display ... ok
+test network_size_equality ... ok
 test now_timestamp_is_19_chars ... ok
+test short_peer_id_last_8_chars ... ok
 test peer_display_name_falls_back_to_received ... ok
 test peer_display_name_falls_back_to_short_id ... ok
 test peer_display_name_prefers_local_nickname ... ok
-test short_peer_id_last_8_chars ... ok
 test short_peer_id_shorter_than_8 ... ok
 test swarm_command_publish ... ok
+test swarm_command_send_dm ... ok
+test swarm_event_broadcast_message ... ok
+test swarm_event_peer_disconnected ... ok
 test swarm_event_direct_message ... ok
 test swarm_event_listen_addr_established ... ok
-test swarm_command_send_dm ... ok
 test swarm_event_peer_connected ... ok
-test swarm_event_broadcast_message ... ok
-test swarm_event_peer_expired ... ok
-test swarm_event_peer_discovered ... ok
-test swarm_event_peer_disconnected ... ok
-test swarm_event_receipt ... ok
 test tui_tests::broadcast_receipt_prefix_none ... ok
+test swarm_event_peer_discovered ... ok
+test swarm_event_peer_expired ... ok
+test swarm_event_receipt ... ok
+test tui_tests::calc_visible_strings_empty ... ok
 test tui_tests::broadcast_receipt_prefix_with_receipts ... ok
 test tui_tests::calc_visible_strings_with_content ... ok
 test tui_tests::broadcast_receipt_prefix_without_receipts ... ok
-test tui_tests::calc_visible_strings_empty ... ok
 test tui_tests::count_lines_empty ... ok
-test tui_tests::count_lines_wrapped ... ok
-test tui_tests::dm_receipt_prefix_none ... ok
 test tui_tests::count_lines_single ... ok
+test tui_tests::count_lines_wrapped ... ok
 test tui_tests::count_lines_zero_width ... ok
-test tui_tests::dm_receipt_prefix_with_receipt ... ok
 test tui_tests::dm_receipt_prefix_without_receipt ... ok
-test tui_tests::dynamic_tabs_add_and_remove ... ok
+test tui_tests::dm_receipt_prefix_none ... ok
+test tui_tests::dm_receipt_prefix_with_receipt ... ok
 test tui_tests::dm_tab_new ... ok
-test tui_tests::dm_tab_short_id ... ok
-test tui_tests::dynamic_tabs_remove_nonexistent ... ok
 test tui_tests::dynamic_tabs_add_duplicate_returns_same ... ok
+test tui_tests::dm_tab_short_id ... ok
+test tui_tests::dynamic_tabs_add_and_remove ... ok
 test tui_tests::dynamic_tabs_get ... ok
 test tui_tests::dynamic_tabs_new_is_empty ... ok
+test tui_tests::dynamic_tabs_remove_nonexistent ... ok
 test tui_tests::dynamic_tabs_tab_index_to_content ... ok
-test tui_tests::dynamic_tabs_total_tab_count ... ok
-test tui_tests::get_tab_content_chat ... ok
-test tui_tests::get_tab_content_dm ... ok
 test tui_tests::dynamic_tabs_titles_without_dms ... ok
-test tui_tests::get_tab_content_peers ... ok
+test tui_tests::get_tab_content_dm ... ok
 test tui_tests::get_tab_content_log ... ok
+test tui_tests::get_tab_content_peers ... ok
 test tui_tests::row_to_visible_index_before_content ... ok
 test tui_tests::row_to_visible_index_first ... ok
+test tui_tests::dynamic_tabs_total_tab_count ... ok
+test tui_tests::get_tab_content_chat ... ok
 test tui_tests::row_to_visible_index_out_of_range ... ok
-test tui_tests::row_to_visible_index_second ... ok
 test tui_tests::tab_content_is_input_enabled ... ok
+test tui_tests::row_to_visible_index_second ... ok
 test tui_tests::tui_render_state_add_dm_message ... ok
 test tui_tests::tab_content_peer_id ... ok
 test tui_tests::tui_render_state_add_message ... ok
 test tui_tests::tui_render_state_new ... ok
-test tui_tests::tui_render_state_add_peer ... ok
 test tui_tests::dynamic_tabs_titles_with_dm ... ok
+test tui_tests::tui_render_state_add_peer ... ok
 test tui_tests::tui_render_state_with_sample_data ... ok
 
-test result: ok. 69 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+test result: ok. 69 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
 
 [1m[92m   Doc-tests[0m p2p_app
 
@@ -1567,8 +1651,19 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 Exit code: 0
 
 --- build ---
+[1m[92m   Compiling[0m inout v0.1.4
+[1m[92m   Compiling[0m universal-hash v0.5.1
+[1m[92m   Compiling[0m x25519-dalek v3.0.0
+[1m[92m   Compiling[0m opaque-debug v0.3.1
+[1m[92m   Compiling[0m cipher v0.4.4
+[1m[92m   Compiling[0m libp2p-noise v0.47.0
+[1m[92m   Compiling[0m poly1305 v0.8.0
+[1m[92m   Compiling[0m aead v0.5.2
+[1m[92m   Compiling[0m chacha20 v0.9.1
 [1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 22s
+[1m[92m   Compiling[0m chacha20poly1305 v0.10.1
+[1m[92m   Compiling[0m libp2p v0.57.1
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1m 31s
 Exit code: 0
 
 
@@ -2280,7 +2375,7 @@ Exit code: 0
    [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::invalid_html_tags)]` on by default
 
 [1m[33mwarning[0m: `p2p_app` (lib doc) generated 109 warnings
-[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 4.70s
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 5.41s
 [1m[92m   Generated[0m /home/runner/work/p2p_app/p2p_app/target/doc/p2p_app/index.html and 3 other files
 Exit code: 0
 
