@@ -104,9 +104,16 @@ and finally moved `sha2 0.10 → 0.11.1`.
 
 That `sha2` bump needed **no source change**: `hash_bytes` in `src/files.rs`
 still compiles and the hex digest is byte-identical, which the existing
-`files::tests::hash_bytes_is_lowercase_hex_sha256` test pins down. The tree now
-carries two `sha2` lines on purpose: our direct `0.11.1` and `0.10.9` under
-`snow → libp2p-noise`, whose upstream range has not moved.
+`files::tests::hash_bytes_is_lowercase_hex_sha256` test pins down.
+
+The tree carries two `sha2` lines — our direct `0.11.1`, and `0.10.9` under
+`snow 0.10 → libp2p-noise`. That duplicate cannot be removed from this repo:
+`snow` 0.10 (still the newest release) requires `sha2 ^0.10`, while
+`libp2p-identity`/`ed25519-dalek` already require `^0.11`, and Cargo never
+unifies across semver-incompatible majors. Downgrading our own requirement to
+`0.10` would not help either — the `0.11` line would stay for the identity
+stack — so the repo stays on the newer line and the lock collapses to a single
+`sha2` on the next `cargo update` after a `snow` release moves to 0.11.
 
 Nothing actionable is left. Both remaining rows are **held on purpose** — do
 not "fix" these without revisiting the reason:
