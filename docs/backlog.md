@@ -24,17 +24,41 @@ work) and the product stories from the original user-stories doc.
 
 ## P0 — correctness and release blockers
 
-### Sibling-device claim authority (identity lane)
+### Sibling-device claim authority (identity lane) — **decided, implementation pending**
 
-Decide **who may add a device to a user's device set** without re-provisioning:
-only the account key (today's rule), or any already-bound device of that user?
+**Decision (2026-11-01): any already-bound device of the same user may add another
+device to that user's set.** The account key keeps working; this only widens the
+set of authorized signers.
 
-- The hostile-device invariant is **not** in question — a device can never bind
-  into a *foreign* user's set, because that needs the foreign account key. This
-  question is only about the *same* user's set.
-- Today `mint_device_binding` is account-holder-only.
-- Affects the Contacts tab (a user's devices collapse into one contact row) and
-  the multi-device story in [`identity.md`](identity.md).
+The hostile-device invariant is unchanged: a device can never bind into a
+*foreign* user's set, because a claim is only accepted when it verifies against
+the claimed user's account key **or** against the device key of the sender, and
+that sender must already be bound to the claimed `user_id`.
+
+Implementation sketch:
+
+- `identity::verify_device_binding_claim` checks the signature against
+  `users.account_pubkey` only. Extend it (or add a sibling variant) to also try
+  the **sender's** `device_bindings.device_pubkey`, gated on
+  `find_user_id_for_peer(sender_peer_id) == Some(user_id)`. Trying every bound
+  key of the user would work too but is broader than necessary.
+- `swarm_handler::handle_device_binding` has the request sender's `peer_id` in
+  hand and must pass it through to the verifier.
+- `identity::mint_device_binding` currently errors without a stored account key
+  (`get_stored_account_key`). Fall back to signing with the local install key;
+  this needs a local-keypair accessor next to `get_local_peer_id`.
+- The wire claim (`user_id ‖ device_pubkey ‖ claim_id`) does **not** need to name
+  the signer — the receiver learns it from the request's sender.
+- Tests: a claim signed by an already-bound sibling is accepted; a claim signed
+  by an unbound key is rejected; a claim signed by a device bound to a *different*
+  user is rejected; an account-key claim still works.
+- Note the residual risk this accepts: a compromised bound device can add further
+  devices (persistence). It already has the user's message history, so the
+  usability trade is deliberate. Unbinding a device does not retroactively
+  invalidate claims it signed.
+
+Affects the Contacts tab (a user's devices collapse into one contact row) and the
+multi-device story in [`identity.md`](identity.md).
 
 ---
 
