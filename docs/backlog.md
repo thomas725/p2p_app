@@ -64,21 +64,30 @@ multi-device story in [`identity.md`](identity.md).
 
 ## P1 — planned work
 
-### Make CI gate a push (CI lane)
+### Gate CI properly (CI lane) — **deferred, report-then-fail shipped**
 
-Every step in `.github/workflows/main.yml` is `continue-on-error: true`, so a
-failing test, a clippy warning or a broken doc link does **not** turn the
-workflow red — the consolidated results file is the artifact, not the exit
-status. The policy in `AGENTS.md` ("`cargo ct` must exit 0 with no warnings")
-is enforced by convention and by the local checklist, not by CI. The only
-hard gate in the repo is `cargo audit` in `dependencies.yml`.
+**Decision (2026-11-01): keep CI advisory for now.** The project is early-stage
+and exploratory, there is no PR workflow, and the `ci-results` branch is how an
+agent without GitHub credentials reads results — a *complete* report from one
+push matters more than a red X. Branch protection and a required status check
+would be premature.
 
-- **Decision needed**: hard-fail on push, or keep the advisory model and
-  rely on branch protection + a required status check that does not exist.
-- **Cost**: the workflow currently also collects results for *informational*
-  steps; a hard gate means picking which steps are blocking.
-- **Note**: `cargo test --all-features` now runs on push (added 2026-10-21);
-  it is advisory like the rest.
+What shipped instead (`main.yml`):
+
+- every check stays `continue-on-error: true`, so a failing check never skips
+  the later ones;
+- the results step reads each log's `Exit code:`, leads the timestamped file
+  with a `SUMMARY` block, labels sections `[PASS]` / `[FAIL (exit N)]`, and
+  writes the fixed-name `.github/ci-results/summary.txt`;
+- a final step fails the run when `overall: FAIL`, **after** the results push,
+  so the report is on `ci-results` before the run goes red.
+
+Still open when the project moves to a PR flow:
+
+- branch protection + a required `pipeline` status check (nothing blocks a push
+  today — a red run is a signal only);
+- pin the CI toolchain to the dev toolchain, or the stable/nightly clippy drift
+  will produce false reds the moment the check becomes required.
 
 ### End-to-end encryption for direct messages (US-042)
 

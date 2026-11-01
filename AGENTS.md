@@ -118,6 +118,17 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   `yoke-derive` 0.8.3. CI dependency job gates on `cargo audit` (hard fail) + artifact upload;
   `cargo outdated` is informational.
 
+- **`main.yml` is report-then-fail, not advisory-green**: every check keeps
+  `continue-on-error: true` so one push yields a *complete* report (a hard failure would
+  skip every later check), and the **last** step fails the run when
+  `.github/ci-results/summary.txt` says `overall: FAIL`. That step must stay *after*
+  "Push pipeline results to ci-results branch" — an agent without GitHub credentials
+  reads the results from that branch, so the report must land before the run goes red.
+  The results step also leads the timestamped file with a `SUMMARY` block and writes the
+  fixed-name `summary.txt`; a missing log/exit code counts as `FAIL (exit ?)` on purpose.
+  Nothing blocks a push yet (no branch protection, no PR workflow) — that is a deliberate
+  early-stage decision recorded in `docs/backlog.md`, don't "fix" it by gating.
+
 - **Scheduled-workflow skip checks need `actions: read` AND `GITHUB_TOKEN` in the step env**: `.github/workflows/dependencies.yml`, `nightly-apk.yml`, and `nightly-desktop.yml` run `scripts/ci-skip-no-new-commits.sh`, which queries the Actions runs API with the GITHUB_TOKEN. GitHub does **not** export `GITHUB_TOKEN` to `run:` steps — `permissions:` grants it but does not put it in the environment, so the check step must carry `env: GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`. The token must also carry `actions: read`, or that endpoint returns 403. The script is fail-closed now: a missing token or a 403 both mean `skip=true` (a manual `workflow_dispatch` overrides) — so dropping either one silently stops the nightly from ever running. Don't drop that `env:` line or permission when editing the workflows.
 - **Metrics skip-check uses commit-baseline mode**: `.github/workflows/metrics.yml` calls `scripts/ci-skip-no-new-commits.sh metrics.yml --commit-baseline="ci: refresh coverage and codebase metrics"`. The baseline is the newest CI-authored commit matching that subject on the branch (resolved by local git, no API call), NOT the last workflow run — so a skipped run can never become the baseline and reseed the "no commits at all" skip loop. Only the metrics workflow uses this mode; the other two stay on run-history mode.
 - `handle_mouse_left_click(state, mouse_row, mouse_column, is_peers_tab)` keeps its 4-arg signature (tests depend on it).

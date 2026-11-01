@@ -31,25 +31,30 @@ without following that policy.
 
 | Workflow | Trigger | Runs |
 |---|---|---|
-| `main.yml` | push to `main`/`develop` | fmt, clippy, tests, build, audit, rustdoc |
+| `main.yml` | push to `main`/`develop` | fmt, clippy, tests, build, audit, doc links, rustdoc → results + a final verdict |
 | `dependencies.yml` | daily 02:00 UTC | `cargo outdated` (informational), `cargo audit` (**gates**) |
 | `metrics.yml` | daily 02:30 UTC | Rust/Dart/Kotlin coverage + codebase metrics → commits to `main` |
 | `nightly-apk.yml` | daily 03:17 UTC | Android APK → rolling nightly GitHub release |
 | `nightly-desktop.yml` | daily 03:47 UTC | Ubuntu desktop build (TUI, minimal CLI, GTK app, web bundle) → rolling nightly release |
 | `release.yml` | tag `v*.*.*` (or dispatch + `tag`) | Cross-platform binaries → GitHub Release |
 
-**Nothing gates a push.** Every step in `main.yml` is `continue-on-error`, so
-the workflow stays green even when a test fails; the results are the artifact.
-The one hard gate in the repo is `cargo audit` in `dependencies.yml`. This is
-a known gap — see "Known gaps" in
-[`docs/ci_pipeline.md`](../docs/ci_pipeline.md).
+**A failing check turns the run red, but blocks nothing.** Every check in
+`main.yml` is `continue-on-error` so one push still produces a complete report;
+a final step then fails the run if any check failed — *after* the results have
+already been pushed to `ci-results`. There is no branch protection and no PR
+workflow yet, so a red run is a signal, not a gate. The one hard gate in the
+repo is `cargo audit` in `dependencies.yml` (a scheduled run). See "Known gaps"
+in [`docs/ci_pipeline.md`](../docs/ci_pipeline.md).
 
 ## Where to read the results
 
 - **Actions tab** → pick a run → expand the step for the full log.
-- **Push-pipeline runs** also write a consolidated file to the **`ci-results`
-  branch** (`.github/ci-results/results_<timestamp>_<run_id>.txt`). That branch
-  is machine-generated and force-pushed; never branch work off it.
+- **Push-pipeline runs** also write to the **`ci-results` branch**:
+  `.github/ci-results/summary.txt` is the one-line-per-check verdict for the
+  latest run (read this first), and
+  `.github/ci-results/results_<timestamp>_<run_id>.txt` is the same summary
+  plus every log. That branch is machine-generated and force-pushed; never
+  branch work off it.
 - **Dependency runs** write `.github/ci-results/dependency-check_<timestamp>_<run_id>.txt`.
 
 ## Making a release

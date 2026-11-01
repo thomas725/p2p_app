@@ -10,7 +10,7 @@ For the contributor-facing checklist see
 
 | Workflow | Trigger | What it does | Can it fail? |
 |---|---|---|---|
-| [`main.yml`](../.github/workflows/main.yml) | push to `main` / `develop` | fmt, clippy, tests, build, audit, rustdoc → a consolidated results file | **No** — every step is `continue-on-error` |
+| [`main.yml`](../.github/workflows/main.yml) | push to `main` / `develop` | fmt, clippy, tests, build, audit, doc links, rustdoc → a consolidated results file | **Yes, at the end** — every check is `continue-on-error` so the report is complete, then a final verdict step fails the run; nothing blocks the push |
 | [`dependencies.yml`](../.github/workflows/dependencies.yml) | daily 02:00 UTC + dispatch | `cargo outdated` (informational) + `cargo audit` | **Yes** — the audit is a hard gate |
 | [`metrics.yml`](../.github/workflows/metrics.yml) | daily 02:30 UTC + dispatch | Rust/Dart/Kotlin coverage + codebase metrics, pushed to `main` | No (all steps are `continue-on-error`) |
 | [`nightly-apk.yml`](../.github/workflows/nightly-apk.yml) | daily 03:17 UTC + dispatch | Builds the Android APK and publishes a rolling nightly release | No |
@@ -35,13 +35,33 @@ One job, `pipeline`. It installs the Rust toolchain, `libsqlite3-dev` and
 3. `cargo test --all-features`
 4. `cargo build --release --all-features`
 5. `cargo audit`
-6. `cargo doc --no-deps --all-features` (with `RUSTDOCFLAGS="-W missing-docs"`)
+6. `python3 scripts/check_docs_links.py`
+7. `cargo doc --no-deps --all-features` (with `RUSTDOCFLAGS="-W missing-docs"`)
 
-Each step tees its output to `.github/ci-logs/<name>.log`. The steps are
-all `continue-on-error: true`, so **the workflow never turns red** — the
-results are the artifact, not the exit status. A final step concatenates the
-logs into one timestamped file and pushes it to the **`ci-results` branch**
-(via `scripts/push-ci-results.sh`), never to `main`.
+Each check tees its output to `.github/ci-logs/<name>.log` and appends its own
+`Exit code: N`. The checks are all `continue-on-error: true` on purpose:
+**one push always yields a complete report**, because a hard failure would skip
+every later check and you would need one push per failure to see them all.
+
+The results step then reads the recorded exit code from each log and:
+
+- writes a `SUMMARY` block (`check` / `exit` / `result` plus an `overall:` line)
+  at the top of `results_<timestamp>_<run_id>.txt` **and** to the fixed-name
+  `.github/ci-results/summary.txt`;
+- labels each section header `--- clippy [PASS] ---` or
+  `--- clippy [FAIL (exit 101)] ---`;
+- concatenates the logs and pushes the lot to the **`ci-results` branch**
+  (via `scripts/push-ci-results.sh`), never to `main`.
+
+A check whose log is missing (or has no exit code) counts as failed
+(`FAIL (exit ?)`), so a crashed step can never read as green.
+
+The **last** step, *Fail the run if any check failed*, exits 1 when
+`summary.txt` is missing or says `overall: FAIL`. It runs **after** the results
+push, so the full report is already on `ci-results` before the run goes red:
+an agent without GitHub credentials loses nothing, and humans get a red run
+instead of a silently-green one. Nothing blocks a push yet (no branch
+protection, no PR workflow) — see the backlog.
 
 > The `ci-results` branch is a rolling "latest run" record that CI force-pushes.
 > Do not branch work off it.
@@ -184,20 +204,27 @@ A manual `workflow_dispatch` always forces a full run.
 
 ## Reading the results
 
-The newest `.github/ci-results/results_<timestamp>_<run_id>.txt` file is the
-most recent push-pipeline run. It contains, in order: the formatting check,
-clippy output, the test suite, the build output, the security audit, and the
-doc-build warnings.
+The fastest read is the fixed-name `.github/ci-results/summary.txt`: one line
+per check plus `overall: PASS (7/7 checks green)` or
+`overall: FAIL (N/7 checks failed)`. It always describes the latest push run.
+
+The newest `.github/ci-results/results_<timestamp>_<run_id>.txt` holds the same
+summary block followed by the full logs, in order: formatting, clippy, tests,
+build, security audit, doc links, and rustdoc warnings. Each section is headed
+`--- <check> [PASS] ---` or `--- <check> [FAIL (exit N)] ---`, so a failing
+section is findable without reading the whole file.
 
 Dependency runs write `.github/ci-results/dependency-check_<timestamp>_<run_id>.txt`.
 
 ## Known gaps
 
-- **Nothing gates a push.** Every step in `main.yml` is
-  `continue-on-error: true`, so a failing test or a clippy warning does not
-  block a merge. The policy in `AGENTS.md` ("`cargo ct` must exit 0 with no
-  warnings") is enforced by convention and by the local checklist, not by
-  CI. The dependency workflow's `cargo audit` is the only hard gate.
+- **Nothing gates a push.** Every check in `main.yml` is
+  `continue-on-error: true`, and the final verdict step only turns the run red
+  — with no branch protection and no PR workflow, a failing push to `main`
+  lands regardless. The policy in `AGENTS.md` ("`cargo ct` must exit 0 with no
+  warnings") is enforced by convention and by the local checklist, not by CI.
+  The dependency workflow's `cargo audit` is the only *hard* gate, and it is a
+  scheduled run, not a push check.
 - **Flutter and Kotlin tests are nightly-only.** They run in `metrics.yml`,
   not on push.
 - **A tagged release is narrower than a nightly.** `release.yml` ships the TUI
