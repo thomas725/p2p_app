@@ -120,7 +120,20 @@ pub fn record_peer_session(concurrent_peers: i32) -> color_eyre::Result<()> {
     Ok(())
 }
 
+/// This install's own peer ID as a string, or `None` when no identity is stored.
+///
+/// The local device has a `peers` row (the `device_bindings` foreign key needs
+/// it) but it is never a peer of itself, so the roster loaders filter it out and
+/// the TUI's live add path skips `state.local_peer_id`.
+#[must_use]
+pub fn local_peer_id_string() -> Option<String> {
+    crate::db::existing_local_peer_id().map(|id| id.to_string())
+}
+
 /// Load all known peers, ordered by most recently seen first.
+///
+/// This install's own device is excluded: its row exists only so the
+/// device-binding foreign key can reference it.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
@@ -130,13 +143,22 @@ pub fn load_peers() -> color_eyre::Result<Vec<Peer>> {
         .order(crate::generated::schema::peers::last_seen.desc())
         .select(Peer::as_select())
         .load(conn)?;
-    Ok(peers_list)
+    let local_peer = local_peer_id_string();
+    Ok(peers_list
+        .into_iter()
+        .filter(|p| {
+            local_peer
+                .as_deref()
+                .is_none_or(|local| local != p.peer_id.as_str())
+        })
+        .collect())
 }
 
 /// Load all known peers, combining both the `peers` table and any peer IDs present in `messages`.
 ///
 /// This fixes older databases where messages may exist but the `peers` table is empty.
 /// Ordering is by most-recently-seen first (max of `peer.last_seen` and latest message timestamp).
+/// This install's own device is excluded (see [`load_peers`]).
 ///
 /// # Errors
 /// Returns an error if the database query fails.
@@ -176,7 +198,15 @@ ORDER BY last_seen DESC
     ";
 
     let rows = sql_query(sql).load::<KnownPeer>(conn)?;
-    Ok(rows)
+    let local_peer = local_peer_id_string();
+    Ok(rows
+        .into_iter()
+        .filter(|p| {
+            local_peer
+                .as_deref()
+                .is_none_or(|local| local != p.peer_id.as_str())
+        })
+        .collect())
 }
 
 /// Save the last used TCP and QUIC ports to the database.

@@ -354,6 +354,22 @@ fn test_add_peer_to_state_list_appends_and_sorts() {
     assert_eq!(state.contacts[0].contact_id, "new"); // newest first
 }
 
+#[test]
+fn test_add_peer_to_state_list_skips_local_peer() {
+    let mut state = test_app_state();
+    let local = state.local_peer_id.clone();
+    add_peer_to_state_list(
+        &mut state,
+        &local,
+        "2024-06-01 12:00:00",
+        "2024-06-01 12:00:00",
+    );
+    assert!(
+        state.peers.is_empty(),
+        "this install's own device is not a roster row"
+    );
+}
+
 // ── handle_incoming_message ───────────────────────────────────────────
 
 #[test]

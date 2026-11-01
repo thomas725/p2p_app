@@ -81,6 +81,51 @@ fn test_load_peers_ordered_by_last_seen_desc() {
     });
 }
 
+#[serial]
+#[test]
+fn test_existing_local_peer_id_does_not_provision() {
+    with_test_db(|| {
+        // `init_database` provisions an identity, so drop it to model a read
+        // against a database that has none.
+        {
+            use diesel::RunQueryDsl as _;
+            let mut conn = p2p_app::sqlite_connect().unwrap();
+            diesel::sql_query("DELETE FROM identities")
+                .execute(&mut conn)
+                .unwrap();
+        }
+        assert!(
+            p2p_app::db::existing_local_peer_id().is_none(),
+            "a read must not generate an identity"
+        );
+        assert!(
+            p2p_app::db::existing_local_peer_id().is_none(),
+            "repeated reads must still not generate one"
+        );
+
+        // Generating one explicitly is visible to the read helper afterwards.
+        let local = p2p_app::get_local_peer_id().unwrap();
+        assert_eq!(p2p_app::db::existing_local_peer_id(), Some(local));
+    });
+}
+
+#[serial]
+#[test]
+fn test_load_peers_excludes_local_peer() {
+    with_test_db(|| {
+        let local = p2p_app::get_local_peer_id().unwrap().to_string();
+        p2p_app::save_peer(&local, &[]).unwrap();
+        p2p_app::save_peer("peer-remote", &[]).unwrap();
+
+        let peers = p2p_app::load_peers().unwrap();
+        assert!(
+            peers.iter().all(|p| p.peer_id != local),
+            "the local device must never be listed as a peer"
+        );
+        assert!(peers.iter().any(|p| p.peer_id == "peer-remote"));
+    });
+}
+
 // ── load_known_peers ──────────────────────────────────────────────────────────
 
 #[serial]
@@ -136,6 +181,21 @@ fn test_load_known_peers_deduplicates() {
         let peers = p2p_app::load_known_peers().unwrap();
         let count = peers.iter().filter(|p| p.peer_id == "peer-dup").count();
         assert_eq!(count, 1);
+    });
+}
+
+#[serial]
+#[test]
+fn test_load_known_peers_excludes_local_peer() {
+    with_test_db(|| {
+        let local = p2p_app::get_local_peer_id().unwrap().to_string();
+        p2p_app::save_peer(&local, &[]).unwrap();
+
+        let peers = p2p_app::load_known_peers().unwrap();
+        assert!(
+            peers.iter().all(|p| p.peer_id != local),
+            "the local device must never be listed as a known peer"
+        );
     });
 }
 

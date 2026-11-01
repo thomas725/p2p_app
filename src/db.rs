@@ -623,6 +623,25 @@ pub fn get_local_peer_id() -> color_eyre::Result<libp2p::PeerId> {
     Ok(keypair.public().to_peer_id())
 }
 
+/// The local peer ID when an identity is already stored, without generating one.
+///
+/// Read paths that must recognise (and skip) this install's own device use this
+/// instead of [`get_local_peer_id`]: listing peers must never provision an
+/// identity as a side effect.
+#[must_use]
+pub fn existing_local_peer_id() -> Option<libp2p::PeerId> {
+    let mut conn = sqlite_connect().ok()?;
+    let rows = identities
+        .select(Identity::as_select())
+        .load::<Identity>(&mut conn)
+        .ok()?;
+    rows.into_iter().find_map(|row| {
+        libp2p_identity::Keypair::from_protobuf_encoding(&row.key)
+            .ok()
+            .map(|keypair| keypair.public().to_peer_id())
+    })
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_db.rs"]
 mod tests;

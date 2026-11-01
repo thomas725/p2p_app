@@ -68,6 +68,50 @@ fn unbound_peers_are_single_device_contacts() {
 
 #[test]
 #[serial]
+fn own_device_is_not_a_contact() {
+    with_test_db(|| {
+        // Provisioning self-binds this install's device to its own account and
+        // leaves a `peers` row for the binding FK — that row must not surface as
+        // a contact (it would open a DM with ourselves).
+        let user_id = crate::identity::provision_my_user(None, Some("untiring-taipan"))
+            .expect("provision user");
+        let local_peer = crate::get_local_peer_id()
+            .expect("local peer id")
+            .to_string();
+        assert_eq!(
+            crate::identity::find_user_id_for_peer(&local_peer)
+                .expect("resolve local peer")
+                .as_deref(),
+            Some(user_id.as_str()),
+            "precondition: our own device is bound to our user"
+        );
+
+        bind_device(
+            &make_account("alice"),
+            "alice",
+            "12D3Kooodevice-1",
+            &[0xAB; 32],
+            "claim-1",
+        );
+
+        let rows = crate::contacts::load_contacts().expect("load contacts");
+        assert!(
+            rows.iter().all(|r| r.contact_id != user_id),
+            "our own user must not be a contact: {:?}",
+            rows.iter().map(|r| &r.contact_id).collect::<Vec<_>>()
+        );
+        assert!(
+            rows.iter()
+                .all(|r| r.device_rows.iter().all(|d| d.peer_id != local_peer)),
+            "our own device must not appear in any contact's device rows"
+        );
+        assert_eq!(rows.len(), 1, "only alice remains");
+        assert_eq!(rows[0].contact_id, "alice");
+    });
+}
+
+#[test]
+#[serial]
 fn multi_device_user_collapses_into_single_contact() {
     with_test_db(|| {
         let account_key = make_account("alice");

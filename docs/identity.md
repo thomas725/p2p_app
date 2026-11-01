@@ -134,6 +134,14 @@ TUI/Flutter sort parity).
 - **Replace the Peers tab with a Contacts tab.** The tab's rows become *contacts*: unbound peers
   still appear (as single-device rows, exactly today's behavior), and peers that resolve to a user
   via `device_bindings` are grouped under that user.
+- **This install's own device is never a contact.** Provisioning self-binds our peer and keeps its
+  `peers` row (the `device_bindings` foreign key needs it), so the roster loaders
+  (`peers::load_peers` / `peers::load_known_peers`) filter the local peer ID out through
+  `db::existing_local_peer_id` (a non-generating read: listing peers must not provision an
+  identity), and the TUI's live `add_peer_to_state_list` skips it too. Without that filter a
+  provisioned install listed *itself* as a contact — the row showed the account-level name
+  (`untiring-taipan (xoa)`), while clicking it opened a DM titled with the device-level name of
+  our own peer (`smart-lacewing (4io)`).
 - **Single-device contact ≈ today's peer row.** Minimal behavior change; click/selection/message
   flows stay as they are (peer click → DM, message click → sender's PeerInfo).
 - **Multi-device contact = one row.** A user with several bound devices shows a single contact row

@@ -188,8 +188,14 @@ fn apply_peer_connected_state(state: &mut AppState, peer_id: &str) {
     state.connected.on_peer_connected(peer_id.to_string());
 }
 
-/// State mutation: add peer to peer list and re-sort
+/// State mutation: add peer to peer list and re-sort.
+///
+/// This install's own device is never a row: its `peers` record exists only for
+/// the device-binding foreign key.
 fn add_peer_to_state_list(state: &mut AppState, peer_id: &str, first_seen: &str, last_seen: &str) {
+    if peer_id == state.local_peer_id {
+        return;
+    }
     state.peers.push_back(PeerRecord {
         peer_id: peer_id.to_string(),
         first_seen: first_seen.to_string(),
@@ -208,12 +214,7 @@ const fn apply_peer_disconnected_count(state: &mut AppState) -> usize {
 fn apply_peer_discovered_state(state: &mut AppState, peer_id: &str) {
     if !state.peers.iter().any(|p| p.peer_id == peer_id) {
         let now = p2p_app::now_timestamp();
-        state.peers.push_back(PeerRecord {
-            peer_id: peer_id.to_string(),
-            first_seen: now.clone(),
-            last_seen: now,
-        });
-        state.resort_peers();
+        add_peer_to_state_list(state, peer_id, &now, &now);
     }
 }
 
