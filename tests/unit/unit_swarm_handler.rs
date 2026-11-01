@@ -16,7 +16,7 @@ fn test_build_broadcast_message() {
 #[test]
 fn test_build_broadcast_message_empty_content() {
     let msg = build_broadcast_message(String::new(), None, None);
-    assert!(msg.content.is_empty());
+    assert_eq!(msg.content, "");
     assert!(msg.nickname.is_none());
     assert!(msg.msg_id.is_none());
 }

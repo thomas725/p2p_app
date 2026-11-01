@@ -44,15 +44,15 @@ fn test_format_system_time() {
 fn test_gen_msg_id() {
     let id1 = p2p_app::fmt::gen_msg_id();
     let id2 = p2p_app::fmt::gen_msg_id();
-    assert!(!id1.is_empty());
-    assert!(!id2.is_empty());
+    assert_ne!(id1, "");
+    assert_ne!(id2, "");
     assert_ne!(id1, id2);
 }
 
 #[test]
 fn test_short_peer_id_empty() {
     let short = p2p_app::fmt::short_peer_id("");
-    assert!(short.is_empty());
+    assert_eq!(short, "");
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn test_peer_display_name_fallback() {
 
     // Use a longer peer ID to test fallback
     let name = p2p_app::fmt::peer_display_name("12D3KooWSkP1pEPy2", &local, &received);
-    assert!(!name.is_empty());
+    assert_ne!(name, "");
 }
 
 #[test]
@@ -174,14 +174,14 @@ fn test_short_peer_id_too_short() {
     let id = "short";
     let short = short_peer_id(id);
     // Should still work, returning what's available
-    assert!(!short.is_empty());
+    assert_ne!(short, "");
 }
 
 #[test]
 fn test_gen_msg_id_not_empty() {
     use p2p_app::gen_msg_id;
     let id = gen_msg_id();
-    assert!(!id.is_empty());
+    assert_ne!(id, "");
 }
 
 #[test]
@@ -226,7 +226,7 @@ fn test_peer_display_name_empty() {
     let local = HashMap::new();
     let received = HashMap::new();
     let name = peer_display_name("", &local, &received);
-    assert!(name.is_empty());
+    assert_eq!(name, "");
 }
 
 #[test]
@@ -237,7 +237,7 @@ fn test_peer_display_name_with_nickname() {
     let local = HashMap::new();
     let received = HashMap::new();
     let name = peer_display_name("Alice", &local, &received);
-    assert!(!name.is_empty());
+    assert_ne!(name, "");
 }
 
 #[test]

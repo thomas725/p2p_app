@@ -1414,7 +1414,7 @@ mod tests {
     #[test]
     fn test_default_event_fields() {
         let j = default_event();
-        assert!(j.event_type.is_empty());
+        assert_eq!(j.event_type, "");
         assert!(j.peer_id.is_none());
         assert!(j.content.is_none());
         assert!(j.latency.is_none());
@@ -1561,7 +1561,7 @@ mod tests {
             attachment_json: None,
         };
         let chat = message_to_chat(msg);
-        assert!(chat.content.is_empty());
+        assert_eq!(chat.content, "");
     }
 
     #[test]
@@ -1744,7 +1744,7 @@ mod tests {
     fn test_swarm_event_json_clone_debug() {
         let j = default_event();
         let cloned = j.clone();
-        assert!(cloned.event_type.is_empty());
+        assert_eq!(cloned.event_type, "");
         let _ = format!("{j:?}");
     }
 

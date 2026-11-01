@@ -517,7 +517,7 @@ mod tests {
             init_mobile_database(db_path.to_string_lossy().into_owned()).expect("mobile init");
 
         assert_eq!(status.database_url, db_path.to_string_lossy());
-        assert!(!status.local_peer_id.is_empty());
+        assert_ne!(status.local_peer_id, "");
         assert!(db_path.exists());
     }
 
@@ -550,7 +550,7 @@ mod tests {
 
         let status = get_mobile_peer_status().expect("peer status");
         assert_eq!(status.database_url, db_path.to_string_lossy());
-        assert!(!status.local_peer_id.is_empty());
+        assert_ne!(status.local_peer_id, "");
     }
 
     #[test]
@@ -915,7 +915,7 @@ mod tests {
         assert_eq!(rows[0].dm_count, 1);
         assert_eq!(rows[0].nickname.as_deref(), Some("Announced"));
         assert_eq!(rows[0].local_nickname.as_deref(), Some("Local"));
-        assert!(!rows[0].display_name.is_empty());
+        assert_ne!(rows[0].display_name, "");
     }
 
     #[test]

@@ -332,7 +332,7 @@ fn test_message_event_empty_content() {
     });
     match event {
         SwarmEvent::BroadcastMessage(me) => {
-            assert!(me.content.is_empty());
+            assert_eq!(me.content, "");
             assert!(me.latency.is_none());
             assert!(me.nickname.is_none());
             assert!(me.msg_id.is_none());

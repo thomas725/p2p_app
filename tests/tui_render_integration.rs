@@ -1061,7 +1061,7 @@ fn test_state_popup() {
 #[test]
 fn test_state_input_text() {
     let mut state = p2p_app::tui_render_state::TuiRenderState::new();
-    assert!(state.input_text.is_empty());
+    assert_eq!(state.input_text, "");
     state.input_text = "hello".to_string();
     assert_eq!(state.input_text, "hello");
 }

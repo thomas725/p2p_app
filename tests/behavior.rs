@@ -24,14 +24,14 @@ fn test_behavior_constants() {
 #[test]
 fn test_direct_message_default() {
     let dm = p2p_app::behavior::DirectMessage::default();
-    assert!(dm.content.is_empty());
+    assert_eq!(dm.content, "");
     assert_eq!(dm.timestamp, 0);
 }
 
 #[test]
 fn test_broadcast_message_default() {
     let bm = p2p_app::behavior::BroadcastMessage::default();
-    assert!(bm.content.is_empty());
+    assert_eq!(bm.content, "");
 }
 
 #[test]

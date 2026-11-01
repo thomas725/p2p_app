@@ -206,7 +206,7 @@ fn get_database_url_falls_back_when_no_set_url() {
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("db"))
     );
-    assert!(!url.is_empty());
+    assert_ne!(url, "");
 
     std::env::set_current_dir(old).expect("restore cwd");
     release_db_lock();
@@ -231,7 +231,7 @@ fn test_local_peer_id_is_valid() {
 
     if let Ok(peer_id) = get_local_peer_id() {
         let peer_str = peer_id.to_string();
-        assert!(!peer_str.is_empty());
+        assert_ne!(peer_str, "");
     }
 }
 

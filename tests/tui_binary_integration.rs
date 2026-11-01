@@ -279,7 +279,7 @@ fn test_direct_message_struct() {
 
     // Test default
     let default = DirectMessage::default();
-    assert!(default.content.is_empty());
+    assert_eq!(default.content, "");
     assert_eq!(default.timestamp, 0);
 }
 
@@ -300,5 +300,5 @@ fn test_broadcast_message_struct() {
     assert!(debug.contains("BcastNick"));
 
     let default = BroadcastMessage::default();
-    assert!(default.content.is_empty());
+    assert_eq!(default.content, "");
 }

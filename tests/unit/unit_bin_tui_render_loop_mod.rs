@@ -23,7 +23,7 @@ fn test_app_state_to_render_state_defaults() {
     assert_eq!(rs.tab_titles.len(), 5); // Chat, Peers, Groups, Log, Settings
     assert_eq!(rs.active_tab, 0);
     assert!(rs.messages.is_empty());
-    assert!(rs.peers.is_empty());
+    assert_eq!(rs.peers.len(), 0);
     assert_eq!(rs.input_text, "");
     assert!(!rs.is_editing_nickname());
     assert!(rs.runtime.connected);
@@ -341,11 +341,7 @@ fn test_render_popup_text_call_overlay_beats_popup_and_loses_to_device_prompt() 
 fn test_app_state_to_render_state_own_user_identity() {
     let mut state = app_state();
     assert_eq!(app_state_to_render_state(&state).own_user_id, None);
-    assert!(
-        app_state_to_render_state(&state)
-            .own_user_devices
-            .is_empty()
-    );
+    assert_eq!(app_state_to_render_state(&state).own_user_devices.len(), 0);
 
     state.own_user_id = Some("user-abc".to_string());
     state.own_user_devices = vec![("dev-1".to_string(), "2026-09-25 10:00:00".to_string())];

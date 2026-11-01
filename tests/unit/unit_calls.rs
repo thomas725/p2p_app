@@ -4,7 +4,7 @@ use crate::behavior::CallSignal;
 #[test]
 fn outgoing_session_starts_calling() {
     let s = CallSession::outgoing("peer-1");
-    assert!(!s.call_id.is_empty());
+    assert_ne!(s.call_id, "");
     assert_eq!(s.peer_id, "peer-1");
     assert_eq!(s.state, CallState::Calling);
     assert!(s.is_active());

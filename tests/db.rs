@@ -64,7 +64,7 @@ fn test_init_database_succeeds() {
 fn test_get_libp2p_identity_creates_keypair() {
     with_test_db(|| {
         let peer_id = p2p_app::db::get_local_peer_id().expect("should derive peer ID from keypair");
-        assert!(!peer_id.to_string().is_empty());
+        assert_ne!(peer_id.to_string(), "");
     });
 }
 
@@ -84,7 +84,7 @@ fn test_get_local_peer_id() {
     with_test_db(|| {
         let peer_id = p2p_app::db::get_local_peer_id().expect("should return local peer ID");
         let s = peer_id.to_string();
-        assert!(!s.is_empty());
+        assert_ne!(s, "");
         assert!(s.starts_with("12D3KooW"), "unexpected peer ID format: {s}");
     });
 }
@@ -123,7 +123,7 @@ fn test_reset_db_url_clears_set_url() {
 
     p2p_app::db::set_db_url("/tmp/other.db");
     let url2 = p2p_app::get_database_url();
-    assert!(!url2.is_empty());
+    assert_ne!(url2, "");
 
     p2p_app::db::reset_db_url();
     let url3 = p2p_app::db::get_database_url();
@@ -153,7 +153,7 @@ fn test_get_libp2p_identity_format() {
     with_test_db(|| {
         let keypair = p2p_app::get_libp2p_identity().unwrap();
         let peer_id = libp2p::PeerId::from_public_key(&keypair.public());
-        assert!(!peer_id.to_string().is_empty());
+        assert_ne!(peer_id.to_string(), "");
     });
 }
 
@@ -185,7 +185,7 @@ fn test_reset_db_url_then_get_url_without_set_url() {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     p2p_app::db::reset_db_url();
     let url = p2p_app::db::get_database_url();
-    assert!(!url.is_empty());
+    assert_ne!(url, "");
     p2p_app::db::release_db_lock();
 }
 

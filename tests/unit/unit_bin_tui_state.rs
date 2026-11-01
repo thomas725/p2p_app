@@ -181,7 +181,7 @@ fn test_cancel_nickname_edit_when_active() {
 
     assert!(!state.is_editing_nickname());
     assert_eq!(state.editing_nickname_peer, None);
-    assert!(state.chat_input.lines().join("").is_empty());
+    assert_eq!(state.chat_input.lines().join(""), "");
 }
 
 #[test]

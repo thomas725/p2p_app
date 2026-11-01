@@ -193,7 +193,7 @@ fn build_broadcast_message_with_all_fields() {
 
 #[test]
 fn gen_msg_id_is_non_empty() {
-    assert!(!gen_msg_id().is_empty());
+    assert_ne!(gen_msg_id(), "");
 }
 
 #[test]
@@ -465,7 +465,7 @@ mod tui_tests {
         let state = TuiRenderState::new();
         assert_eq!(state.active_tab, 0);
         assert!(state.messages.is_empty());
-        assert!(state.peers.is_empty());
+        assert_eq!(state.peers.len(), 0);
         assert!(state.runtime.connected);
     }
 

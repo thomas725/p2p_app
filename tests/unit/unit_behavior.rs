@@ -34,7 +34,7 @@ fn call_signal_ack_default_is_not_ok() {
 #[test]
 fn direct_message_default_is_empty() {
     let dm = DirectMessage::default();
-    assert!(dm.content.is_empty());
+    assert_eq!(dm.content, "");
     assert_eq!(dm.timestamp, 0);
     assert!(dm.sent_at.is_none());
     assert!(dm.nickname.is_none());
@@ -46,7 +46,7 @@ fn direct_message_default_is_empty() {
 #[test]
 fn broadcast_message_default_is_empty() {
     let msg = BroadcastMessage::default();
-    assert!(msg.content.is_empty());
+    assert_eq!(msg.content, "");
     assert!(msg.sent_at.is_none());
     assert!(msg.nickname.is_none());
     assert!(msg.msg_id.is_none());

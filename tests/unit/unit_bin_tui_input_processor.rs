@@ -685,7 +685,7 @@ async fn test_ctrl_p_is_noop_on_non_direct_tabs() {
 
     let s = state.lock().await;
     assert_eq!(s.active_tab, 0);
-    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.chat_input.lines().join(""), "");
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -755,7 +755,7 @@ async fn test_ctrl_i_is_noop_on_non_direct_tabs() {
 
     let s = state.lock().await;
     assert_eq!(s.active_tab, 0);
-    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.chat_input.lines().join(""), "");
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 
@@ -773,7 +773,7 @@ async fn test_ctrl_tab_is_noop_on_chat_tab() {
 
     let s = state.lock().await;
     assert_eq!(s.active_tab, 0);
-    assert!(s.chat_input.lines().join("").is_empty());
+    assert_eq!(s.chat_input.lines().join(""), "");
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }
 

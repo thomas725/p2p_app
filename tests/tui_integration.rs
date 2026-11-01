@@ -331,7 +331,7 @@ fn test_tui_input_clearing_after_send() {
 
     // Verify it's cleared
     let text: String = text_area.lines().join("\n");
-    assert!(text.trim().is_empty());
+    assert_eq!(text.trim(), "");
 }
 
 #[test]

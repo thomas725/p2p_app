@@ -208,7 +208,7 @@ fn test_gen_msg_id_uniqueness() {
 #[test]
 fn test_gen_msg_id_format() {
     let id = fmt::gen_msg_id();
-    assert!(!id.is_empty());
+    assert_ne!(id, "");
 }
 
 #[test]

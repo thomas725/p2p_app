@@ -216,7 +216,7 @@ mod tests {
         let state = TuiTestState::with_messages(empty);
 
         assert!(state.messages.is_empty());
-        assert!(state.chat_message_peers.is_empty());
+        assert_eq!(state.chat_message_peers.len(), 0);
     }
 
     #[test]
@@ -225,7 +225,7 @@ mod tests {
         let state = TuiTestState::with_messages(no_bracket);
 
         assert_eq!(state.chat_message_peers.len(), 1);
-        assert!(state.chat_message_peers[0].is_empty());
+        assert_eq!(state.chat_message_peers[0], "");
     }
 
     #[test]
@@ -575,7 +575,7 @@ fn test_formatted_messages_with_content() {
     let msgs = VecDeque::from(["[Alice] hello".to_string(), "[Bob] hi".to_string()]);
     let state = p2p_app::TuiTestState::with_messages(msgs);
     let formatted = state.formatted_messages();
-    assert!(!formatted.is_empty());
+    assert_ne!(formatted, Vec::<String>::new());
 }
 
 #[test]

@@ -63,7 +63,7 @@ fn set_self_nickname_propagates_to_the_announced_users_row() {
 fn ensure_self_nickname_sets_if_missing() {
     with_test_db(|| {
         let nick = ensure_self_nickname().expect("ensure");
-        assert!(!nick.is_empty());
+        assert_ne!(nick, "");
         let loaded = get_self_nickname().expect("get");
         assert_eq!(loaded.as_deref(), Some(nick.as_str()));
     });

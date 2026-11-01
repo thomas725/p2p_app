@@ -42,7 +42,7 @@ fn with_test_db(f: impl FnOnce()) {
 #[test]
 fn test_generate_self_nickname_not_empty() {
     let nick = p2p_app::nickname::generate_self_nickname();
-    assert!(!nick.is_empty());
+    assert_ne!(nick, "");
 }
 
 #[serial]
@@ -111,7 +111,7 @@ fn test_set_self_nickname_overwrite() {
 fn test_ensure_self_nickname_generates_if_missing() {
     with_test_db(|| {
         let nick = p2p_app::nickname::ensure_self_nickname().unwrap();
-        assert!(!nick.is_empty());
+        assert_ne!(nick, "");
         assert!(nick.contains('-'));
     });
 }
@@ -426,8 +426,8 @@ fn test_generate_nickname_deterministic() {
     with_test_db(|| {
         let nick1 = p2p_app::nickname::generate_self_nickname();
         let nick2 = p2p_app::nickname::generate_self_nickname();
-        assert!(!nick1.is_empty());
-        assert!(!nick2.is_empty());
+        assert_ne!(nick1, "");
+        assert_ne!(nick2, "");
     });
 }
 
@@ -473,7 +473,7 @@ fn test_get_peer_display_name_all_none() {
     with_test_db(|| {
         let peer = "peer-noinfo";
         let display = p2p_app::nickname::get_peer_display_name(peer).unwrap();
-        assert!(!display.is_empty());
+        assert_ne!(display, "");
     });
 }
 

@@ -108,24 +108,24 @@ impl Visit for FormatVisitor<'_> {
         if field.name() == "message" {
             self.0.push_str(value);
         } else {
-            let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
+            let _ = std::fmt::write(&mut *self.0, format_args!(" {}={value}", field.name()));
         }
     }
 
     fn record_i64(&mut self, field: &tracing::field::Field, value: i64) {
-        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut *self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_u64(&mut self, field: &tracing::field::Field, value: u64) {
-        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut *self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
-        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value}", field.name()));
+        let _ = std::fmt::write(&mut *self.0, format_args!(" {}={value}", field.name()));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        let _ = std::fmt::write(&mut self.0, format_args!(" {}={value:?}", field.name()));
+        let _ = std::fmt::write(&mut *self.0, format_args!(" {}={value:?}", field.name()));
     }
 }
 

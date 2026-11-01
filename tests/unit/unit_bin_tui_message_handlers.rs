@@ -143,7 +143,7 @@ fn test_send_broadcast_updates_state_and_sends_command() {
 
         assert_eq!(state.messages.len(), 1);
         assert!(state.messages[0].text.contains("hello"));
-        assert!(state.chat_input.lines().join("").is_empty());
+        assert_eq!(state.chat_input.lines().join(""), "");
 
         let cmd = swarm_cmd_rx.try_recv().unwrap();
         match cmd {
@@ -181,7 +181,7 @@ fn test_send_dm_updates_state_and_sends_command() {
 
         assert!(state.dm_messages.contains_key(peer_id));
         assert!(state.dm_messages[peer_id][0].contains("secret"));
-        assert!(state.chat_input.lines().join("").is_empty());
+        assert_eq!(state.chat_input.lines().join(""), "");
 
         let cmd = swarm_cmd_rx.try_recv().unwrap();
         match cmd {

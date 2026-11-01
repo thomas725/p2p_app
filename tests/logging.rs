@@ -327,9 +327,9 @@ fn test_clear_tui_logs_clears_all() {
     p2p_app::logging::push_log("log to be cleared");
 
     let before = p2p_app::logging::get_tui_logs();
-    assert!(!before.is_empty());
+    assert_ne!(before.len(), 0);
 
     p2p_app::clear_tui_logs();
     let after = p2p_app::logging::get_tui_logs();
-    assert!(after.is_empty());
+    assert_eq!(after.len(), 0);
 }

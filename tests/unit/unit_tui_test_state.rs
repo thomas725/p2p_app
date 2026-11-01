@@ -74,9 +74,9 @@ fn formatting_helpers_and_tab_content() {
     let mut state = TuiTestState::new();
     assert_eq!(state.tab_titles(), vec!["Chat", "Contacts", "Log"]);
     assert!(state.peer_info().contains("Peers:"));
-    assert!(!state.formatted_messages().is_empty());
+    assert_ne!(state.formatted_messages(), Vec::<String>::new());
     assert_eq!(state.formatted_peers().len(), 2);
-    assert!(!state.formatted_dm_messages("x").is_empty());
+    assert_ne!(state.formatted_dm_messages("x"), Vec::<String>::new());
     assert_eq!(state.formatted_logs().len(), 2);
     assert_eq!(state.input_text(), "");
     assert!(state.status_text().contains("Ready"));

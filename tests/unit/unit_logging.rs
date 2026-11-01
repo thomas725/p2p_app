@@ -9,7 +9,7 @@ use tracing::Level;
 #[cfg(feature = "tracing")]
 fn test_tracing_filter_returns_targets() {
     let filter = tracing_filter();
-    assert!(!format!("{filter:?}").is_empty());
+    assert_ne!(format!("{filter:?}"), "");
 }
 
 #[test]
