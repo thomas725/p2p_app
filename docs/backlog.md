@@ -195,11 +195,22 @@ A per-message reaction set. Needs a new table plus a wire type; reactions are
 small, so a gossipsub topic is viable, but the DM lane is the simpler first
 step.
 
-### Public bootstrap nodes (US-050)
+### Public bootstrap nodes (US-050) — **stage 1 shipped (Kademlia + Identify)**
 
-Discovery is mDNS only, so the network is LAN-scoped by construction. A
-bootstrap node would need a Kademlia or rendezvous behaviour — a new libp2p
-behaviour and a config surface for the node address.
+Discovery was mDNS only, so the network was LAN-scoped by construction. Stage 1
+adds internet-wide discovery via a Kademlia DHT:
+
+- New `kad` feature (default + mobile) enabling `libp2p/kad` + `libp2p/identify`.
+- `AppBehaviour` gains `kad` (MemoryStore) and `identify` behaviours.
+- `handle_swarm_event` feeds Identify-received listen addresses into the DHT
+  and persists them (so they can be re-dialed later).
+- On connection, `kad.bootstrap()` is invoked.
+- On startup, peers listed in the `P2P_BOOTSTRAP` env var (comma-separated
+  multiaddrs, ideally with `/p2p/<peerid>`) are dialed.
+
+Still to do (later stages): hosted relay nodes (circuit relay v2) for NAT
+traversal, AutoNAT reachability detection, DCUtR hole punching, and a config
+surface for bootstrap peers beyond the env var.
 
 ### Manual peer address entry (US-053)
 

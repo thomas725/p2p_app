@@ -2400,6 +2400,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-dns",
  "libp2p-gossipsub",
+ "libp2p-identify",
  "libp2p-identity",
  "libp2p-kad",
  "libp2p-mdns",
@@ -2512,6 +2513,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "libp2p-identify"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2dd130b2cbbcecb55e923c5ba4183e6b9af542b4251680017300c693a6e183c"
+dependencies = [
+ "asynchronous-codec",
+ "either",
+ "futures",
+ "futures-bounded",
+ "futures-timer",
+ "libp2p-core",
+ "libp2p-identity",
+ "libp2p-swarm",
+ "prost",
+ "prost-codec",
+ "smallvec",
+ "thiserror 2.0.20",
+ "tracing",
+]
+
+[[package]]
 name = "libp2p-identity"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2586,7 +2608,9 @@ dependencies = [
  "futures",
  "libp2p-core",
  "libp2p-gossipsub",
+ "libp2p-identify",
  "libp2p-identity",
+ "libp2p-kad",
  "libp2p-ping",
  "libp2p-swarm",
  "pin-project",

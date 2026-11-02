@@ -83,6 +83,7 @@ mod tui {
 }
 
 #[tokio::main]
+#[allow(clippy::large_futures)]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();

@@ -59,6 +59,23 @@ async fn handle_broadcast_message(
     }
 }
 
+#[cfg(feature = "kad")]
+fn handle_identify_received(
+    peer_id: libp2p::PeerId,
+    info: &libp2p::identify::Info,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    for addr in &info.listen_addrs {
+        swarm.behaviour_mut().kad.add_address(&peer_id, addr.clone());
+    }
+    let addrs: Vec<String> = info.listen_addrs.iter().map(ToString::to_string).collect();
+    if let Err(e) = crate::save_peer(&peer_id.to_string(), &addrs) {
+        p2plog_debug(format!("Failed to save peer on identify: {e}"));
+    }
+    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+}
+
+#[allow(clippy::too_many_lines)]
 async fn handle_swarm_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
@@ -139,10 +156,26 @@ async fn handle_swarm_event(
         // Ping results drive connection liveness; the resulting close is
         // handled by the ConnectionClosed arm below, so nothing to do here.
         Libp2pSwarmEvent::Behaviour(AppEv::Ping(_)) => {}
+        #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Identify(libp2p::identify::Event::Received {
+            peer_id,
+            info,
+            ..
+        })) => {
+            handle_identify_received(peer_id, &info, swarm);
+        }
+        #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Identify(_)) => {}
+        #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Kad(_)) => {}
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             let _ = event_tx
                 .send(SwarmEvent::PeerConnected(peer_id.to_string()))
                 .await;
+            #[cfg(feature = "kad")]
+            {
+                let _ = swarm.behaviour_mut().kad.bootstrap();
+            }
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
             let _ = event_tx
@@ -1277,6 +1310,25 @@ pub fn spawn_swarm_handler(
     let (cmd_tx, mut cmd_rx) = mpsc::channel::<SwarmCommand>(100);
 
     let handle = tokio::spawn(async move {
+        // Bootstrap (US-050, stage 1): dial any peers listed in P2P_BOOTSTRAP
+        // (comma-separated multiaddrs, ideally with /p2p/<peerid> suffix) so
+        // the node can join the public network instead of staying LAN-only.
+        #[cfg(feature = "kad")]
+        {
+            if let Ok(list) = std::env::var("P2P_BOOTSTRAP") {
+                for addr in list.split(',') {
+                    let addr = addr.trim();
+                    if addr.is_empty() {
+                        continue;
+                    }
+                    if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
+                        let _ = swarm.dial(ma);
+                    } else {
+                        p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
+                    }
+                }
+            }
+        }
         loop {
             let event = tokio::select! {
                 swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),

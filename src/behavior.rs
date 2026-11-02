@@ -298,6 +298,12 @@ pub struct AppBehaviour {
     /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
+    /// Kademlia DHT for internet-wide peer discovery (when kad feature is enabled)
+    #[cfg(feature = "kad")]
+    pub kad: libp2p::kad::Behaviour<libp2p::kad::store::MemoryStore>,
+    /// Identify protocol: exchanges peer info + listen addresses (needed by kad)
+    #[cfg(feature = "kad")]
+    pub identify: libp2p::identify::Behaviour,
     /// Ping protocol for connection liveness: detects dead peers (e.g. a node
     /// that was killed without closing the connection) and closes the
     /// connection so `ConnectionClosed` fires and the peer is marked offline.
@@ -394,6 +400,17 @@ pub fn build_behaviour(
     )
     .map_err(|e| format!("invalid mdns: {e}"))?;
 
+    #[cfg(feature = "kad")]
+    let kad = {
+        let store = libp2p::kad::store::MemoryStore::new(key.public().to_peer_id());
+        libp2p::kad::Behaviour::new(key.public().to_peer_id(), store)
+    };
+    #[cfg(feature = "kad")]
+    let identify = libp2p::identify::Behaviour::new(libp2p::identify::Config::new(
+        "/p2p-chat/identify/1.0.0".to_string(),
+        key.public(),
+    ));
+
     Ok(AppBehaviour {
         gossipsub,
         request_response,
@@ -402,6 +419,10 @@ pub fn build_behaviour(
         file_transfer,
         #[cfg(feature = "mdns")]
         mdns,
+        #[cfg(feature = "kad")]
+        kad,
+        #[cfg(feature = "kad")]
+        identify,
         ping,
     })
 }

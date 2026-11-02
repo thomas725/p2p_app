@@ -91,6 +91,8 @@ Seven libp2p behaviours (`src/behavior.rs`):
 | `call_signaling` | `/p2p-chat/call/1.0.0` | call setup/accept/decline/end |
 | `file_transfer` | `/p2p-chat/files/1.0.0` | attachment meta / chunk / error (cbor) |
 | `mdns` | — | peer discovery on the LAN |
+| `identify` | — | peer info + listen addresses (feeds Kademlia) |
+| `kad` | — | internet-wide peer discovery over the DHT |
 | `ping` | — | liveness |
 
 Transport is TCP+QUIC with yamux multiplexing; libp2p `noise` provides
