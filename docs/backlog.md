@@ -106,17 +106,52 @@ the `messages.encrypted` column, `ChatMessage.encrypted` (mobile) and the TUI
 `handle_request_response` never opens an envelope, so no DM is encrypted end to
 end today. See `docs/e2e_encryption.md`.
 
-- **Open question:** libp2p Noise already encrypts every hop; there is no relay
-  or offline-delivery path, so the only protection this adds is against a node
-  reading its own database — which the receiving device is allowed to do. The
-  scheme also has no forward secrecy or post-compromise security. Decide whether
-  to finish the wiring or drop the scaffolding before investing (~1 day across
-  the DM lane, both frontends and the web client).
+- **Rationale (updated 2026-11-02):** at-rest protection for message bodies is
+  **not** a goal of this lane — it should be achieved at the **database level**
+  (encrypted SQLite / SQLCipher-style), not per message. The remaining
+  justification for the per-recipient envelope is **store-and-forward / offline
+  caching**: a third node holding and forwarding a sealed blob it must not be
+  able to read. That use case is tracked separately (see the new backlog item
+  below); until it is implemented, this lane's value is limited to defense in
+  depth. The scheme also has no forward secrecy or post-compromise security.
 - **Scope sketch (if pursued):** reuse the per-install Ed25519 identity (not
   the account key — sibling devices don't hold it); seal in `send_dm`; open in
   `handle_request_response`; persist the flag; surface a lock marker in Flutter.
 
-### Voice/video call media (US-044)
+### Database-level at-rest encryption
+
+Message bodies, peer data and group state currently live in plaintext SQLite.
+At-rest protection should be provided at the **database level** (encrypted
+SQLite / SQLCipher-style), not per message — per-message envelopes only protect
+individual fields and leave metadata, indexes and the rest of the schema
+readable. This is the intended home for "data at rest" protection; the
+per-message E2E lane (US-042) is not it.
+
+- **Scope**: choose an encryption approach compatible with the existing
+  `sqlite`/`sqlite_bundled` features and the Android/iOS targets; key
+  derivation from the install's identity (or a user passphrase); migration of
+  existing plaintext databases; interaction with `ensure_columns` and the
+  migrations runner.
+- **Blast radius**: `db.rs` connection setup, all four cfg variants, the
+  `p2p_chat_server`/TUI startup paths, the Flutter/Android DB open path.
+- **Blocked on**: a decision on key management (identity-derived vs.
+  passphrase) and whether to ship SQLCipher as a bundled dep.
+
+### Store-and-forward / offline caching for direct messages
+
+A peer that is offline cannot receive a DM. Store-and-forward would let a
+mutually-trusted (or untrusted) intermediate node hold a sealed blob and
+deliver it when the recipient reconnects — the use case the per-recipient
+envelope in `src/e2e.rs` (US-042) was designed for: the holder must not be
+able to read the body.
+
+- **Scope**: a relay/holder protocol (request_response or gossipsub-backed),
+  retention/expiry policy, dedup on delivery, and the recipient-side open path
+  (`e2e::open_incoming`) once US-042 is wired.
+- **Depends on**: US-042 being completed (seal in `send_dm`, open in
+  `handle_request_response`) so the forwarded bytes are actually sealed.
+- **Trust model**: holders see only routing fields (`msg_id`, `sent_at`) and
+  the ciphertext; a compromised holder can drop or delay, not read.
 
 Call **signaling** shipped (un-gated, mirroring device binding). The media
 transport is still to come.

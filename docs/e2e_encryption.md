@@ -8,14 +8,22 @@ messages. No DM is encrypted end to end today. See "What is still missing" below
 
 libp2p already encrypts every hop with Noise (see `docs/architecture.md`), so a
 passive observer between two peers cannot read a DM. What Noise does **not**
-cover is anything that stores or relays the body in the clear: the receiving
-node's database, a future offline-delivery/relay path, or a backup. This lane
-adds a second, payload-level envelope sealed for the recipient's device, so the
+cover is anything that stores or relays the body in the clear: a future
+offline-delivery/relay path (store-and-forward), or a backup. This lane adds a
+second, payload-level envelope sealed for the recipient's device, so the
 plaintext never leaves the sender's process.
 
-Whether that is worth the complexity is an open question (see below) — the
-lane was started on the "relay/offline delivery may come later" assumption, and
-no such path exists yet.
+**At-rest protection is deliberately *not* a goal of this lane.** Protecting
+message bodies, peer data and group state on disk should be done at the
+**database level** (encrypted SQLite / SQLCipher-style), not per message —
+per-message envelopes only protect individual fields and leave metadata,
+indexes and the rest of the schema readable. See the backlog item
+"Database-level at-rest encryption".
+
+So the remaining justification for this per-recipient envelope is
+**store-and-forward / offline caching**: a third node can hold and forward a
+sealed blob it must not be able to read. That use case is tracked separately
+(see backlog "Store-and-forward / offline caching for direct messages").
 
 ## What is in the tree today
 
@@ -58,16 +66,23 @@ no such path exists yet.
    flag (it is hardcoded `false`).
 4. Flutter has no lock marker in `MessageBubble` (the `ChatMessage.encrypted`
    field exists but is always false).
-5. `docs/e2e_encryption.md` is new; `architecture.md` still says there is no
-   E2E layer.
 
 ## The open question
 
-libp2p Noise already gives transport encryption, and there is no relay or
-offline-delivery path today, so the only thing this lane would protect against
-is a node reading its own database — which the receiving device is allowed to
-do. Completing the wiring is roughly a day of careful work across the DM lane,
+libp2p Noise already gives transport encryption, so on the wire this envelope
+is double encryption. The lane's value is therefore limited to:
+
+- **Store-and-forward / offline caching** (the only remaining justification) —
+  a third node holding and forwarding a sealed blob it must not read. Tracked
+  as backlog "Store-and-forward / offline caching for direct messages"; that
+  item depends on this lane being wired up.
+- Defense in depth.
+
+At-rest protection is **not** a goal here — it belongs at the database level
+(see backlog "Database-level at-rest encryption").
+
+Completing the wiring is roughly a day of careful work across the DM lane,
 both frontends and the web client, plus key-rotation/forward-secrecy questions
 that are not answered here (the current scheme has no forward secrecy and no
-post-compromise security). Revisit before investing if offline delivery or a
-relay is added.
+post-compromise security). Revisit before investing if store-and-forward is
+added.
