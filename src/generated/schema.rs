@@ -39,6 +39,7 @@ diesel::table! {
         sent_at -> Nullable<Double>,
         sender_nickname -> Nullable<Text>,
         attachment_json -> Nullable<Text>,
+        encrypted -> Integer,
     }
 }
 

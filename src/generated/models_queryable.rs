@@ -79,6 +79,8 @@ pub struct Message {
     pub sender_nickname: Option<String>,
     /// Serialized attachment descriptor (`None` = no attachment)
     pub attachment_json: Option<String>,
+    /// Whether the message body arrived end to end encrypted (US-042)
+    pub encrypted: i32,
 }
 
 /// Queryable struct for the `groups` table

@@ -21,6 +21,7 @@ extension ChatMessageExt on ChatMessage {
     createdAt: createdAt,
     senderNickname: senderNickname,
     attachment: attachment,
+    encrypted: encrypted,
     confirmed: value,
   );
 }

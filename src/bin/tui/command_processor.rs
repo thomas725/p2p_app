@@ -237,6 +237,7 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         nickname,
         msg_id,
         attachment,
+        encrypted,
     } = msg;
     if let Some(n) = nickname.as_deref() {
         s.received_nicknames.insert(peer_id.clone(), n.to_string());
@@ -249,7 +250,7 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
     }
     let sender_display =
         p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-    let body = render_message_body(&content, attachment.as_ref());
+    let body = p2p_app::e2e::mark_encrypted(render_message_body(&content, attachment.as_ref()), encrypted);
     if is_direct {
         apply_dm_to_state(s, &body, &peer_id, latency.as_deref(), msg_id);
     } else {
@@ -264,6 +265,7 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         msg_id: None,
         sent_at: None,
         attachment,
+        encrypted,
     };
     if let Err(e) = p2p_app::save_message_with_meta(
         &content,

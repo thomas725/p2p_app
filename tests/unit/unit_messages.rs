@@ -57,6 +57,7 @@ fn save_message_with_meta_persists_fields() {
             msg_id: Some("msg-1".to_string()),
             sent_at: Some(123.5),
             attachment: None,
+            encrypted: false,
         };
         let saved = save_message_with_meta("payload", Some("peer-x"), "topic-x", false, None, meta)
             .expect("save with meta");

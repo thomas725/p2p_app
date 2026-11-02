@@ -67,6 +67,8 @@ pub struct NewMessage {
     pub sender_nickname: Option<String>,
     /// Serialized attachment descriptor (`None` = no attachment)
     pub attachment_json: Option<String>,
+    /// Whether the message body arrived end to end encrypted (US-042)
+    pub encrypted: i32,
 }
 
 /// Insertable struct for the `peer_sessions` table

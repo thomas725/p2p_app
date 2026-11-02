@@ -49,8 +49,9 @@ fn push_outgoing_dm_to_state(
     content: &str,
     attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
+    encrypted: bool,
 ) {
-    let body = render_outgoing_body(content, attachment);
+    let body = p2p_app::e2e::mark_encrypted(render_outgoing_body(content, attachment), encrypted);
     let msg = format!("{ts} [{dm_self_nickname}] {body}");
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);
@@ -195,6 +196,8 @@ async fn send_dm_message(
     let msg_id_for_db = msg_id.clone();
     let sent_at = p2p_app::current_timestamp();
 
+    let encrypted = p2p_app::e2e::can_encrypt_to_str(&peer_id);
+
     push_outgoing_dm_to_state(
         state,
         &peer_id,
@@ -203,6 +206,7 @@ async fn send_dm_message(
         &text,
         attachment.as_ref(),
         msg_id.clone(),
+        encrypted,
     );
     p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
 
@@ -224,6 +228,7 @@ async fn send_dm_message(
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
         attachment,
+        encrypted,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, true, Some(&peer_id), meta)
@@ -323,6 +328,7 @@ async fn send_broadcast_message(
         msg_id: Some(msg_id_for_db.clone()),
         sent_at: Some(sent_at),
         attachment,
+        encrypted: false,
     };
     if let Err(e) =
         p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta)

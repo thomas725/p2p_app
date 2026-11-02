@@ -89,17 +89,32 @@ Still open when the project moves to a PR flow:
 - pin the CI toolchain to the dev toolchain, or the stable/nightly clippy drift
   will produce false reds the moment the check becomes required.
 
-### End-to-end encryption for direct messages (US-042)
+### End-to-end encryption for direct messages (US-042) — **partial: scaffolding only**
 
 Transport encryption exists (libp2p `noise`), but a relay or the receiving
 node sees plaintext message bodies. E2E would need a per-user key, a key
 exchange over the existing DM lane, and a per-message envelope.
 
-- **Scope sketch**: reuse the `users.account_pubkey` row; derive a messaging
-  keypair; encrypt the DM payload before it hits the wire; surface
-  "encrypted" in both frontends.
-- **Blast radius**: the DM protocol codec, the `messages` table (ciphertext vs
-  plaintext), and every frontend's message rendering.
+**What landed (2026-11-02, commit pending):** the crypto module
+(`src/e2e.rs`: X25519 from the Ed25519 identity, recipient key recovered from
+the peer ID, HKDF-SHA256 + ChaCha20-Poly1305 envelope, `msg_id` in the AAD),
+the `DirectMessage.encrypted` wire field, the `MessageEvent.encrypted` flag,
+the `messages.encrypted` column, `ChatMessage.encrypted` (mobile) and the TUI
+`[e2e] ` marker plumbing. All of it compiles and the tests pass.
+
+**What is NOT wired:** `swarm_handler::send_dm` still sends plaintext and
+`handle_request_response` never opens an envelope, so no DM is encrypted end to
+end today. See `docs/e2e_encryption.md`.
+
+- **Open question:** libp2p Noise already encrypts every hop; there is no relay
+  or offline-delivery path, so the only protection this adds is against a node
+  reading its own database — which the receiving device is allowed to do. The
+  scheme also has no forward secrecy or post-compromise security. Decide whether
+  to finish the wiring or drop the scaffolding before investing (~1 day across
+  the DM lane, both frontends and the web client).
+- **Scope sketch (if pursued):** reuse the per-install Ed25519 identity (not
+  the account key — sibling devices don't hold it); seal in `send_dm`; open in
+  `handle_request_response`; persist the flag; surface a lock marker in Flutter.
 
 ### Voice/video call media (US-044)
 

@@ -308,6 +308,7 @@ fn insert_message_with_attachment(file_id: &str, json: &str) {
         sent_at: None,
         sender_nickname: None,
         attachment_json: Some(json.to_string()),
+        encrypted: 0,
     };
     diesel::insert_into(messages)
         .values(&row)

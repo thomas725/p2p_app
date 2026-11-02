@@ -16,7 +16,7 @@ Start here if you do not know which file to open.
 | [ci_pipeline.md](ci_pipeline.md) | The GitHub Actions workflows and what each gate means | yes |
 | [web_frontend.md](web_frontend.md) | The Flutter Web display client over a Rust node server | yes |
 | [identity.md](identity.md) | Users, devices, signed claims, and the contacts roster | yes |
-| [files_attachments.md](files_attachments.md) | The content-addressed attachment lane | yes |
+| [e2e_encryption.md](e2e_encryption.md) | The (partial) end-to-end encryption lane for DMs | yes |
 | [android_sqlite.md](android_sqlite.md) | Why Android embeds its own SQLite | yes |
 | [codebase_metrics.md](codebase_metrics.md) | Generated line/char/nesting metrics per source file | generated — do not hand-edit |
 

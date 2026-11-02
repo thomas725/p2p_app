@@ -78,6 +78,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     createdAt: m.createdAt,
     senderNickname: m.senderNickname,
     attachment: m.attachment,
+    // Group messages are never end-to-end encrypted (multi-recipient).
+    encrypted: false,
     // Group messages carry no per-recipient receipt tracking, so they never
     // show a delivery tick.
     confirmed: false,

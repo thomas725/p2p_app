@@ -9,6 +9,7 @@ fn test_swarm_event_broadcast_message() {
         nickname: Some("Alice".to_string()),
         msg_id: Some("msg-1".to_string()),
         attachment: None,
+        encrypted: false,
     });
     match event {
         SwarmEvent::BroadcastMessage(MessageEvent {
@@ -30,6 +31,7 @@ fn test_swarm_event_direct_message() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        encrypted: false,
     });
     match event {
         SwarmEvent::DirectMessage(MessageEvent {
@@ -329,6 +331,7 @@ fn test_message_event_empty_content() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        encrypted: false,
     });
     match event {
         SwarmEvent::BroadcastMessage(me) => {

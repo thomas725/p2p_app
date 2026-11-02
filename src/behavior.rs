@@ -65,6 +65,10 @@ pub struct DirectMessage {
     /// Optional attachment descriptor (files lane §12); the bytes are fetched
     /// separately over the file lane by the receiver.
     pub attachment: Option<MessageAttachment>,
+    /// Optional end-to-end sealed body (US-042). When present the receiver
+    /// opens it and uses the decrypted `content`/`nickname`/`attachment`
+    /// instead of the (empty) plaintext fields above.
+    pub encrypted: Option<crate::e2e::EncryptedDm>,
 }
 
 /// Broadcast message content with timestamp and sender info

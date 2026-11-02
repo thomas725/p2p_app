@@ -37,6 +37,7 @@ async fn handle_broadcast_message(
             nickname: bcast.nickname.clone(),
             msg_id: bcast.msg_id.clone(),
             attachment: bcast.attachment.clone(),
+            encrypted: false,
         }))
         .await;
 
@@ -341,6 +342,7 @@ async fn handle_request_response(
                             nickname: request.nickname,
                             msg_id: None,
                             attachment: None,
+                            encrypted: false,
                         }))
                         .await;
                 } else {
@@ -380,6 +382,7 @@ async fn handle_request_response(
                             nickname: request.nickname,
                             msg_id,
                             attachment: request.attachment.clone(),
+                            encrypted: false,
                         }))
                         .await;
                 }
@@ -422,6 +425,7 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
         received_at: Some(current_timestamp()),
         group_id: None,
         attachment: None,
+        encrypted: None,
     }
 }
 
@@ -1132,6 +1136,7 @@ fn send_dm(
             received_at: None,
             group_id: None,
             attachment,
+        encrypted: None,
         };
         swarm
             .behaviour_mut()

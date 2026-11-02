@@ -446,6 +446,7 @@ fn dm_msg(
         sent_at: None,
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
+        encrypted: 0,
     }
 }
 

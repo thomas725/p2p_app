@@ -24,6 +24,7 @@ ChatMessage chatMessage({
   String? msgId = 'm1',
   bool sent = true,
   bool confirmed = false,
+  bool encrypted = false,
   String? senderNickname,
   String? latency,
 }) => ChatMessage(
@@ -38,6 +39,7 @@ ChatMessage chatMessage({
   createdAt: '2026-01-01 10:00:00',
   senderNickname: senderNickname,
   attachment: null,
+  encrypted: encrypted,
   confirmed: confirmed,
   latency: latency,
 );

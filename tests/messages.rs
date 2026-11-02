@@ -55,6 +55,7 @@ fn test_message_meta_with_all_fields() {
         msg_id: Some("msg-001".into()),
         sent_at: Some(1_700_000_000.0),
         attachment: None,
+        encrypted: false,
     };
     assert_eq!(meta.sender_nickname.as_deref(), Some("alice"));
     assert_eq!(meta.msg_id.as_deref(), Some("msg-001"));
@@ -108,6 +109,7 @@ fn test_save_message_with_meta() {
             msg_id: Some("msg-42".into()),
             sent_at: Some(9999.0),
             attachment: None,
+            encrypted: false,
         };
         let msg =
             p2p_app::save_message_with_meta("meta msg", None, "topic", false, None, meta).unwrap();

@@ -25,6 +25,7 @@ fn msg(
         sent_at,
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
+        encrypted: 0,
     }
 }
 

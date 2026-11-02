@@ -44,6 +44,7 @@ pub const SCHEMA_ENTRIES: &[(&str, &str, &str)] = &[
     ("messages", "attachment_json", "TEXT"),
     ("messages", "content", "TEXT"),
     ("messages", "created_at", "TIMESTAMP"),
+    ("messages", "encrypted", "INTEGER"),
     ("messages", "id", "INTEGER"),
     ("messages", "is_direct", "INTEGER"),
     ("messages", "msg_id", "TEXT"),

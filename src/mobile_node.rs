@@ -418,6 +418,9 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+// Four independent boolean flags on a serialized DTO; a state machine would
+// only obscure the wire shape (US-042).
+#[allow(clippy::struct_excessive_bools)]
 pub struct ChatMessage {
     pub id: i32,
     pub content: String,
@@ -430,6 +433,9 @@ pub struct ChatMessage {
     pub created_at: String,
     pub sender_nickname: Option<String>,
     pub attachment: Option<MobileAttachment>,
+    /// True when the body arrived sealed end to end (US-042) — surfaced in
+    /// the UI as a lock marker. Always false for outgoing rows and broadcasts.
+    pub encrypted: bool,
     /// True once a recipient acknowledged this (outgoing) message — a delivery
     /// tick in the UI. Always false for incoming messages and for the value
     /// returned right after sending; [`load_broadcast_messages`] /
@@ -522,6 +528,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
             .to_string(),
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
+        encrypted: msg.encrypted != 0,
         confirmed: false,
         latency: None,
     }
@@ -616,6 +623,7 @@ pub(crate) fn save_outgoing_broadcast_attached(
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
         attachment: attachment.clone(),
+        encrypted: false,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, false, None, meta)
         .map_err(|e| e.to_string())?;
@@ -684,6 +692,7 @@ pub(crate) fn save_outgoing_dm_attached(
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
         attachment: attachment.clone(),
+        encrypted: false,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, true, Some(&peer_id), meta)
         .map_err(|e| e.to_string())?;
@@ -738,6 +747,7 @@ pub fn save_incoming_message(
         msg_id: None,
         sent_at: None,
         attachment: None,
+        encrypted: false,
     };
     let msg = save_message_with_meta(
         &content,
@@ -1277,6 +1287,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: Some("m1".into()),
             attachment: None,
+        encrypted: false,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "broadcast");
@@ -1297,6 +1308,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "dm");
@@ -1440,6 +1452,7 @@ mod tests {
             sent_at: Some(1_718_455_800.0),
             sender_nickname: Some("Alice".into()),
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 1);
@@ -1481,6 +1494,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 2);
@@ -1511,6 +1525,7 @@ mod tests {
             sent_at: None,
             sender_nickname: Some("Bob".into()),
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         let suffix = crate::fmt::peer_id_suffix("peer-bob");
@@ -1538,6 +1553,7 @@ mod tests {
             sent_at: None,
             sender_nickname: Some("Me".into()),
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
@@ -1559,6 +1575,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.content, "");
@@ -1579,6 +1596,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         assert!(chat.sent_at.is_none());
@@ -1595,6 +1613,7 @@ mod tests {
             nickname: Some("Bob".into()),
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1608,6 +1627,7 @@ mod tests {
             nickname: Some("Charlie".into()),
             msg_id: Some("msg-b1".into()),
             attachment: None,
+        encrypted: false,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1695,6 +1715,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         assert!(is_nickname_only_dm(&ev));
     }
@@ -1708,6 +1729,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1721,6 +1743,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1734,6 +1757,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+        encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1763,6 +1787,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            encrypted: 0,
         };
         let chat = message_to_chat(msg);
         let cloned = chat.clone();

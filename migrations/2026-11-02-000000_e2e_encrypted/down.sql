@@ -1,0 +1,1 @@
+-- The column is NOT NULL with a default, so leaving it on downgrade is harmless.

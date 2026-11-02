@@ -28,6 +28,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
     sizeLabel: '12 B',
     mime: 'text/plain',
   ),
+  encrypted: false,
   confirmed: false,
 );
 
@@ -99,6 +100,7 @@ void main() {
         createdAt: '2026-10-19 10:00:00',
         senderNickname: null,
         attachment: null,
+        encrypted: false,
         confirmed: false,
       );
 

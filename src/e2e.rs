@@ -162,6 +162,75 @@ pub fn can_encrypt_to(peer_id: &libp2p::PeerId) -> bool {
     peer_messaging_key(peer_id).is_some()
 }
 
+/// [`can_encrypt_to`] for a peer ID in the string form the DB and wire carry.
+#[must_use]
+pub fn can_encrypt_to_str(peer_id: &str) -> bool {
+    peer_id.parse::<libp2p::PeerId>().is_ok_and(|p| can_encrypt_to(&p))
+}
+
+/// Split an outgoing DM into its wire fields, sealing the body when possible.
+///
+/// Returns `(content, nickname, attachment, envelope)`. When the envelope is
+/// `Some`, the three plaintext fields are emptied — the receiver must open the
+/// envelope instead, and must not read the empty content as a control message.
+///
+/// Control traffic deliberately stays in the clear:
+///
+/// * delivery acks (`ack_for` set) carry no user content, and a peer must be
+///   able to answer a message it could not open;
+/// * the nickname-only exchange (empty content, no attachment) is how a peer
+///   announces its name on connect, and every peer must understand it.
+///
+/// A peer whose identity is not Ed25519, or a sealing failure, also falls back
+/// to plaintext so the lane keeps working with builds that predate it.
+#[must_use]
+pub fn seal_dm_payload(
+    content: String,
+    nickname: Option<String>,
+    attachment: Option<MessageAttachment>,
+    ack_for: Option<&str>,
+    msg_id: Option<&str>,
+    peer: &libp2p::PeerId,
+) -> (String, Option<String>, Option<MessageAttachment>, Option<EncryptedDm>) {
+    let is_control = ack_for.is_some() || (content.trim().is_empty() && attachment.is_none());
+    if is_control {
+        return (content, nickname, attachment, None);
+    }
+    let Some(recipient) = peer_messaging_key(peer) else {
+        return (content, nickname, attachment, None);
+    };
+    let body = SealedDmBody {
+        content,
+        nickname,
+        attachment,
+    };
+    match seal_body(&body, &recipient, msg_id) {
+        Ok(envelope) => (String::new(), None, None, Some(envelope)),
+        Err(e) => {
+            crate::p2plog_debug(format!("dm-e2e: falling back to plaintext: {e}"));
+            (
+                body.content,
+                body.nickname,
+                body.attachment,
+                None,
+            )
+        }
+    }
+}
+
+/// Prefix [`TUI_ENCRYPTED_MARKER`] onto a rendered body when it arrived sealed.
+///
+/// The TUI keeps formatted message lines, not message structs, so the marker is
+/// folded into the line at both render points (live event and DB reload).
+#[must_use]
+pub fn mark_encrypted(body: String, encrypted: bool) -> String {
+    if encrypted {
+        format!("{TUI_ENCRYPTED_MARKER}{body}")
+    } else {
+        body
+    }
+}
+
 /// Build the AAD for an envelope: `HKDF_INFO ‖ 0x00 ‖ msg_id`.
 fn aad(msg_id: Option<&str>) -> Vec<u8> {
     let mut out = Vec::with_capacity(HKDF_INFO.len().saturating_add(1).saturating_add(

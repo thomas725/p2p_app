@@ -47,6 +47,7 @@ fn test_direct_message_serialization() {
         received_at: None,
         group_id: None,
         attachment: None,
+    encrypted: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     assert!(json.contains("hello"));
@@ -126,6 +127,7 @@ fn test_direct_message_fields() {
         received_at: Some(2.0),
         group_id: None,
         attachment: None,
+    encrypted: None,
     };
     assert_eq!(dm.content, "test");
     assert_eq!(dm.timestamp, 99);
@@ -159,6 +161,7 @@ fn test_direct_message_clone() {
         received_at: Some(2.0),
         group_id: None,
         attachment: None,
+    encrypted: None,
     };
     let cloned = dm.clone();
     assert_eq!(dm.content, cloned.content);
@@ -219,6 +222,7 @@ fn test_direct_message_serialization_roundtrip() {
         received_at: Some(3.0),
         group_id: None,
         attachment: None,
+    encrypted: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     let parsed: DirectMessage = serde_json::from_str(&json).unwrap();

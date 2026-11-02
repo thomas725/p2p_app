@@ -53,6 +53,10 @@ class ChatMessage {
   final String? senderNickname;
   final MobileAttachment? attachment;
 
+  /// True when the body arrived sealed end to end (US-042) — surfaced in
+  /// the UI as a lock marker. Always false for outgoing rows and broadcasts.
+  final bool encrypted;
+
   /// True once a recipient acknowledged this (outgoing) message — a delivery
   /// tick in the UI. Always false for incoming messages and for the value
   /// returned right after sending; [`load_broadcast_messages`] /
@@ -77,6 +81,7 @@ class ChatMessage {
     required this.createdAt,
     this.senderNickname,
     this.attachment,
+    required this.encrypted,
     required this.confirmed,
     this.latency,
   });
@@ -94,6 +99,7 @@ class ChatMessage {
       createdAt.hashCode ^
       senderNickname.hashCode ^
       attachment.hashCode ^
+      encrypted.hashCode ^
       confirmed.hashCode ^
       latency.hashCode;
 
@@ -113,6 +119,7 @@ class ChatMessage {
           createdAt == other.createdAt &&
           senderNickname == other.senderNickname &&
           attachment == other.attachment &&
+          encrypted == other.encrypted &&
           confirmed == other.confirmed &&
           latency == other.latency;
 }

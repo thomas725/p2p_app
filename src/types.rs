@@ -105,6 +105,9 @@ pub struct MessageEvent {
     pub msg_id: Option<String>,
     /// Attachment descriptor, if the message carries a file (files lane §12)
     pub attachment: Option<crate::files::MessageAttachment>,
+    /// True when the body arrived inside an end-to-end envelope (US-042) and
+    /// was opened locally; the frontends mark such messages.
+    pub encrypted: bool,
 }
 
 /// A group message received from a peer over a per-group gossipsub topic

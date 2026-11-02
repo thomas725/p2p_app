@@ -22,6 +22,9 @@ pub struct MessageMeta {
     pub sent_at: Option<f64>,
     /// Optional attachment descriptor (files lane §12)
     pub attachment: Option<crate::files::MessageAttachment>,
+    /// Whether the message body was end-to-end encrypted (US-042); persisted
+    /// so the marker survives a reload.
+    pub encrypted: bool,
 }
 
 /// Save a message to the database.
@@ -99,6 +102,7 @@ pub fn save_message_with_meta(
             .attachment
             .as_ref()
             .and_then(crate::files::attachment_to_json),
+        encrypted: i32::from(meta.encrypted),
     };
     diesel::insert_into(crate::generated::schema::messages::table)
         .values(&new_msg)

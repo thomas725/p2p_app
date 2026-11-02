@@ -69,6 +69,7 @@ fn test_push_outgoing_dm_adds_message() {
         "secret",
         None,
         "dm1".into(),
+        false,
     );
     assert!(state.dm_messages.contains_key("peer-1"));
     assert_eq!(state.dm_messages["peer-1"].len(), 1);
@@ -89,6 +90,7 @@ fn test_push_outgoing_dm_trims_history() {
             &format!("msg-{i}"),
             None,
             format!("m{i}"),
+        false,
         );
     }
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
@@ -100,6 +102,7 @@ fn test_push_outgoing_dm_trims_history() {
         "newest",
         None,
         "m-last".into(),
+        false,
     );
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
     assert!(state.dm_messages["p1"][MAX_DM_HISTORY - 1].contains("newest"));
@@ -109,8 +112,8 @@ fn test_push_outgoing_dm_trims_history() {
 #[test]
 fn test_push_outgoing_dm_separate_peers() {
     let mut state = test_app_state();
-    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", None, "m1".into());
-    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", None, "m2".into());
+    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", None, "m1".into(), false);
+    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", None, "m2".into(), false);
     assert_eq!(state.dm_messages.len(), 2);
     assert_eq!(state.dm_messages["pa"].len(), 1);
     assert_eq!(state.dm_messages["pb"].len(), 1);

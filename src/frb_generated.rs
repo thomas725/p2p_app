@@ -32,7 +32,7 @@
 // Section: imports
 
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
 
 // Section: boilerplate
@@ -1650,6 +1650,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
         let mut var_senderNickname = <Option<String>>::sse_decode(deserializer);
         let mut var_attachment =
             <Option<crate::mobile_node::MobileAttachment>>::sse_decode(deserializer);
+        let mut var_encrypted = <bool>::sse_decode(deserializer);
         let mut var_confirmed = <bool>::sse_decode(deserializer);
         let mut var_latency = <Option<String>>::sse_decode(deserializer);
         return crate::mobile_node::ChatMessage {
@@ -1664,6 +1665,7 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             created_at: var_createdAt,
             sender_nickname: var_senderNickname,
             attachment: var_attachment,
+            encrypted: var_encrypted,
             confirmed: var_confirmed,
             latency: var_latency,
         };
@@ -2301,6 +2303,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessage {
             self.created_at.into_into_dart().into_dart(),
             self.sender_nickname.into_into_dart().into_dart(),
             self.attachment.into_into_dart().into_dart(),
+            self.encrypted.into_into_dart().into_dart(),
             self.confirmed.into_into_dart().into_dart(),
             self.latency.into_into_dart().into_dart(),
         ]
@@ -2695,6 +2698,7 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <String>::sse_encode(self.created_at, serializer);
         <Option<String>>::sse_encode(self.sender_nickname, serializer);
         <Option<crate::mobile_node::MobileAttachment>>::sse_encode(self.attachment, serializer);
+        <bool>::sse_encode(self.encrypted, serializer);
         <bool>::sse_encode(self.confirmed, serializer);
         <Option<String>>::sse_encode(self.latency, serializer);
     }
@@ -3097,7 +3101,7 @@ mod io {
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
-    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate
@@ -3121,7 +3125,7 @@ mod web {
     };
     use flutter_rust_bridge::for_generated::wasm_bindgen;
     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate

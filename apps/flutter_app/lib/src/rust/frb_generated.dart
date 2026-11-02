@@ -1698,8 +1698,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChatMessage dco_decode_chat_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 13)
-      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    if (arr.length != 14)
+      throw Exception('unexpected arr length: expect 14 but see ${arr.length}');
     return ChatMessage(
       id: dco_decode_i_32(arr[0]),
       content: dco_decode_String(arr[1]),
@@ -1712,8 +1712,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       createdAt: dco_decode_String(arr[8]),
       senderNickname: dco_decode_opt_String(arr[9]),
       attachment: dco_decode_opt_box_autoadd_mobile_attachment(arr[10]),
-      confirmed: dco_decode_bool(arr[11]),
-      latency: dco_decode_opt_String(arr[12]),
+      encrypted: dco_decode_bool(arr[11]),
+      confirmed: dco_decode_bool(arr[12]),
+      latency: dco_decode_opt_String(arr[13]),
     );
   }
 
@@ -2150,6 +2151,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_attachment = sse_decode_opt_box_autoadd_mobile_attachment(
       deserializer,
     );
+    var var_encrypted = sse_decode_bool(deserializer);
     var var_confirmed = sse_decode_bool(deserializer);
     var var_latency = sse_decode_opt_String(deserializer);
     return ChatMessage(
@@ -2164,6 +2166,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       createdAt: var_createdAt,
       senderNickname: var_senderNickname,
       attachment: var_attachment,
+      encrypted: var_encrypted,
       confirmed: var_confirmed,
       latency: var_latency,
     );
@@ -2760,6 +2763,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.createdAt, serializer);
     sse_encode_opt_String(self.senderNickname, serializer);
     sse_encode_opt_box_autoadd_mobile_attachment(self.attachment, serializer);
+    sse_encode_bool(self.encrypted, serializer);
     sse_encode_bool(self.confirmed, serializer);
     sse_encode_opt_String(self.latency, serializer);
   }

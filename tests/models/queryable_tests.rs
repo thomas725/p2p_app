@@ -13,6 +13,7 @@ fn create_test_message(sent: i32, is_direct: i32, peer_id: Option<&str>) -> Mess
         sent,
         is_direct,
         target_peer: None,
+        encrypted: 0,
     }
 }
 
