@@ -168,6 +168,14 @@ async fn handle_swarm_event(
         Libp2pSwarmEvent::Behaviour(AppEv::Identify(_)) => {}
         #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Kad(_)) => {}
+        #[cfg(feature = "relay")]
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayServer(_)) => {}
+        #[cfg(feature = "relay")]
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(_)) => {}
+        #[cfg(feature = "nat")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(_)) => {}
+        #[cfg(feature = "nat")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Dcutr(_)) => {}
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             let _ = event_tx
                 .send(SwarmEvent::PeerConnected(peer_id.to_string()))

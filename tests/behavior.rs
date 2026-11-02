@@ -78,7 +78,7 @@ fn test_build_behaviour_creates_app_behaviour() {
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
                 let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
             });
     });
 }
@@ -94,7 +94,7 @@ fn test_build_behaviour_medium_network() {
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
                 let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium);
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
             });
     });
 }
@@ -110,7 +110,7 @@ fn test_build_behaviour_large_network() {
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
                 let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large);
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
             });
     });
 }
@@ -193,7 +193,7 @@ fn test_build_behaviour_returns_valid_behaviour() {
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
                 let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small);
+                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
             });
     });
 }

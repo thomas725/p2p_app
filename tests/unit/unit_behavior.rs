@@ -79,8 +79,8 @@ fn build_behaviour_for_all_network_sizes() {
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
         let key = libp2p_identity::Keypair::generate_ed25519();
-        let _small = build_behaviour(&key, NetworkSize::Small);
-        let _medium = build_behaviour(&key, NetworkSize::Medium);
-        let _large = build_behaviour(&key, NetworkSize::Large);
+        let _small = build_behaviour(&key, NetworkSize::Small, libp2p::relay::client::new(key.public().to_peer_id()).1);
+        let _medium = build_behaviour(&key, NetworkSize::Medium, libp2p::relay::client::new(key.public().to_peer_id()).1);
+        let _large = build_behaviour(&key, NetworkSize::Large, libp2p::relay::client::new(key.public().to_peer_id()).1);
     });
 }

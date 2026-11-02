@@ -130,6 +130,38 @@ use p2p_app::{
 use std::time::Duration;
 use tokio::time::timeout;
 
+#[cfg(not(feature = "relay"))]
+#[cfg(feature = "relay")]
+fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    let keypair = Keypair::generate_ed25519();
+    let peer_id = keypair.public().to_peer_id();
+
+    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default().nodelay(true),
+            libp2p::noise::Config::new,
+            yamux::Config::default,
+        )
+        .unwrap()
+        .with_quic()
+        .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)
+        .unwrap()
+        .with_behaviour(|key, relay_client| {
+            build_behaviour(key, NetworkSize::Small, relay_client).map_err(
+                |e| -> Box<dyn std::error::Error + Send + Sync> {
+                    Box::new(std::io::Error::other(e))
+                },
+            )
+        })
+        .unwrap()
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+        .build();
+
+    (swarm, peer_id)
+}
+
+#[cfg(not(feature = "relay"))]
 fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
     let keypair = Keypair::generate_ed25519();
     let peer_id = keypair.public().to_peer_id();
@@ -177,6 +209,7 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
 
     (swarm, peer_id)
 }
+
 
 /// Connect two swarms, subscribe to the chat topic, and wait for the gossipsub
 /// subscription handshake to complete.
@@ -592,4 +625,34 @@ async fn test_handler_survives_command_sender_drop() {
     if let Ok(join_result) = timeout(Duration::from_millis(500), handle).await {
         assert!(join_result.is_ok(), "handler task panicked");
     }
+}
+
+#[cfg(feature = "relay")]
+fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    let keypair = Keypair::generate_ed25519();
+    let peer_id = keypair.public().to_peer_id();
+
+    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default().nodelay(true),
+            libp2p::noise::Config::new,
+            yamux::Config::default,
+        )
+        .unwrap()
+        .with_quic()
+        .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)
+        .unwrap()
+        .with_behaviour(|key, relay_client| {
+            build_behaviour(key, NetworkSize::Small, relay_client).map_err(
+                |e| -> Box<dyn std::error::Error + Send + Sync> {
+                    Box::new(std::io::Error::other(e))
+                },
+            )
+        })
+        .unwrap()
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+        .build();
+
+    (swarm, peer_id)
 }

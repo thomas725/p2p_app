@@ -304,6 +304,21 @@ pub struct AppBehaviour {
     /// Identify protocol: exchanges peer info + listen addresses (needed by kad)
     #[cfg(feature = "kad")]
     pub identify: libp2p::identify::Behaviour,
+    /// Circuit-relay server (when relay feature is enabled): lets this node
+    /// relay connections for peers behind NAT.
+    #[cfg(feature = "relay")]
+    pub relay_server: libp2p::relay::Behaviour,
+    /// Circuit-relay client (when relay feature is enabled): lets this node
+    /// use relay servers to become reachable from behind NAT.
+    #[cfg(feature = "relay")]
+    pub relay_client: libp2p::relay::client::Behaviour,
+    /// `AutoNAT` (when nat feature is enabled): detects whether this node is
+    /// publicly reachable.
+    #[cfg(feature = "nat")]
+    pub autonat: libp2p::autonat::Behaviour,
+    /// `DCUtR` (when nat feature is enabled): hole punching through relays.
+    #[cfg(feature = "nat")]
+    pub dcutr: libp2p::dcutr::Behaviour,
     /// Ping protocol for connection liveness: detects dead peers (e.g. a node
     /// that was killed without closing the connection) and closes the
     /// connection so `ConnectionClosed` fires and the peer is marked offline.
@@ -324,6 +339,7 @@ pub struct AppBehaviour {
 pub fn build_behaviour(
     key: &libp2p_identity::Keypair,
     network_size: NetworkSize,
+    #[cfg(feature = "relay")] relay_client: libp2p::relay::client::Behaviour,
 ) -> Result<AppBehaviour, String> {
     p2plog_debug(format!(
         "Building behavior for network size: {network_size:?}"
@@ -411,6 +427,15 @@ pub fn build_behaviour(
         key.public(),
     ));
 
+    #[cfg(feature = "relay")]
+    let relay_server = libp2p::relay::Behaviour::new(key.public().to_peer_id(), libp2p::relay::Config::default());
+
+    #[cfg(feature = "nat")]
+    let autonat = libp2p::autonat::Behaviour::new(key.public().to_peer_id(), libp2p::autonat::Config::default());
+
+    #[cfg(feature = "nat")]
+    let dcutr = libp2p::dcutr::Behaviour::new(key.public().to_peer_id());
+
     Ok(AppBehaviour {
         gossipsub,
         request_response,
@@ -423,6 +448,14 @@ pub fn build_behaviour(
         kad,
         #[cfg(feature = "kad")]
         identify,
+        #[cfg(feature = "relay")]
+        relay_server,
+        #[cfg(feature = "relay")]
+        relay_client,
+        #[cfg(feature = "nat")]
+        autonat,
+        #[cfg(feature = "nat")]
+        dcutr,
         ping,
     })
 }
@@ -453,6 +486,22 @@ pub fn build_swarm(
     #[cfg(feature = "quic")]
     let base = base.with_quic();
 
+    #[cfg(feature = "relay")]
+    let swarm = base
+        .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)?
+        .with_behaviour(
+            |key, relay_client| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {
+                build_behaviour(key, network_size, relay_client).map_err(
+                    |e| -> Box<dyn std::error::Error + Send + Sync> {
+                        Box::new(std::io::Error::other(e))
+                    },
+                )
+            },
+        )?
+        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
+        .build();
+
+    #[cfg(not(feature = "relay"))]
     let swarm = base
         .with_behaviour(
             |key| -> Result<AppBehaviour, Box<dyn std::error::Error + Send + Sync>> {

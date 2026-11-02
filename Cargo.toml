@@ -48,15 +48,17 @@ strip = false
 panic = 'unwind'
 
 [features]
-default = [ "mdns", "kad", "tracing", "quic", "tui", "attachment-gc", "web" ]
+default = [ "mdns", "kad", "relay", "nat", "tracing", "quic", "tui", "attachment-gc", "web" ]
 basic = [ "dep:libp2p" ]
 mdns = [ "dep:libp2p", "libp2p/mdns" ]
 kad = [ "dep:libp2p", "libp2p/kad", "libp2p/identify" ]
+relay = [ "dep:libp2p", "libp2p/relay" ]
+nat = [ "dep:libp2p", "libp2p/autonat", "libp2p/dcutr" ]
 sqlite_bundled = [ "dep:libp2p", "dep:libsqlite3-sys" ]
 quic = [ "dep:libp2p" ]
 tracing = [ "dep:libp2p", "dep:tracing", "dep:tracing-subscriber", "tracing-subscriber/env-filter" ]
 tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
-mobile = [ "basic", "sqlite_bundled", "quic", "kad", "flutter_rust_bridge", "attachment-gc" ]
+mobile = [ "basic", "sqlite_bundled", "quic", "kad", "relay", "nat", "flutter_rust_bridge", "attachment-gc" ]
 test-utils = []
 calls = []
 # Blob lifecycle (files lane §12): on-by-default switch for attachment GC —
