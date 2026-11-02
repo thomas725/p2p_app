@@ -116,6 +116,8 @@ pub struct TuiRenderState {
     pub network_size: String,
     /// Listen addresses reported by the swarm
     pub listen_addrs: Vec<String>,
+    /// Live network diagnostics snapshot (interfaces, reachability, DHT/relay).
+    pub network: crate::net_diag::NetworkDetails,
     /// Epoch seconds of last peer disconnect, if any (for Settings tab)
     pub last_connection_lost: Option<f64>,
     /// Peer ID we last disconnected from, if any (for Settings tab)
@@ -195,6 +197,7 @@ impl TuiRenderState {
             platform: String::new(),
             network_size: String::new(),
             listen_addrs: Vec::new(),
+            network: crate::net_diag::NetworkDetails::default(),
             last_connection_lost: None,
             last_connection_peer: None,
             own_user_id: None,

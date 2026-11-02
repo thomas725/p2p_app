@@ -26,7 +26,7 @@ fn test_direct_message_debug() {
         received_at: None,
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
 
     let debug = format!("{dm:?}");
@@ -101,7 +101,7 @@ fn test_swarm_event_debug() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
     let bcast_debug = format!("{bcast:?}");
     assert!(bcast_debug.contains("msg"));
@@ -113,7 +113,7 @@ fn test_swarm_event_debug() {
         nickname: None,
         msg_id: None,
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
     let direct_debug = format!("{direct:?}");
     assert!(direct_debug.contains("direct"));

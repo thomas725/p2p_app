@@ -393,7 +393,7 @@ fn test_handle_incoming_broadcast_adds_message() {
                 nickname: None,
                 msg_id: Some("m1".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             false,
         );
@@ -426,7 +426,7 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
                 nickname: None,
                 msg_id: Some("dm1".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             true,
         );
@@ -459,7 +459,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
                 nickname: Some("Nickname".to_string()),
                 msg_id: None,
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             false,
         );
@@ -495,7 +495,7 @@ fn test_handle_incoming_sets_received_nickname() {
                 nickname: Some("Alice".to_string()),
                 msg_id: None,
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             false,
         );
@@ -530,7 +530,7 @@ fn test_handle_incoming_broadcast_with_latency() {
                 nickname: None,
                 msg_id: None,
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             false,
         );
@@ -564,7 +564,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
                 nickname: Some("Bob".to_string()),
                 msg_id: Some("dm-5".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             },
             true,
         );
@@ -600,7 +600,7 @@ fn test_process_swarm_event_broadcast_adds_message() {
                 nickname: None,
                 msg_id: Some("m1".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             }),
             &state,
             &swarm_cmd_tx,
@@ -637,7 +637,7 @@ fn test_process_swarm_event_dm_adds_message() {
                 nickname: None,
                 msg_id: Some("dm1".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             }),
             &state,
             &swarm_cmd_tx,
@@ -743,7 +743,7 @@ fn test_command_processor_processes_swarm_events() {
                 nickname: None,
                 msg_id: Some("m-loop".to_string()),
                 attachment: None,
-            encrypted: false,
+                encrypted: false,
             }))
             .await
             .unwrap();

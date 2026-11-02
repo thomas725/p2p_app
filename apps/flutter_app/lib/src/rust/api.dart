@@ -6,6 +6,7 @@
 import 'frb_generated.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
+import 'net_diag.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -21,6 +22,13 @@ Future<MobileInitStatus> initMobileDatabase({required String dbPath}) =>
 /// Returns an error if the status cannot be retrieved.
 Future<MobilePeerStatus> getMobilePeerStatus() =>
     RustLib.instance.api.crateApiGetMobilePeerStatus();
+
+/// Live network diagnostics: interfaces (name/MAC/IPv4/IPv6), reachability,
+/// relay reservations, and DHT connectivity/announcement state.
+///
+/// Both frontends poll this single snapshot; see [`crate::net_diag`].
+Future<NetworkDetails> getNetworkDetails() =>
+    RustLib.instance.api.crateApiGetNetworkDetails();
 
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///

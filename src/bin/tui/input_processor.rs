@@ -658,7 +658,11 @@ async fn handle_dial_peer_submission(
     if address.is_empty() {
         return;
     }
-    let _ = swarm_cmd_tx.send(SwarmCommand::Dial { address: address.clone() }).await;
+    let _ = swarm_cmd_tx
+        .send(SwarmCommand::Dial {
+            address: address.clone(),
+        })
+        .await;
     p2plog_debug(format!("Dialing peer: {address}"));
 }
 
@@ -959,7 +963,11 @@ async fn handle_key_dispatch(
             handle_contacts_tab_key(key_event, is_ctrl, s);
         }
         _ => {
-            if input_enabled || s.is_editing_nickname() || s.is_creating_group() || s.is_dialing_peer() {
+            if input_enabled
+                || s.is_editing_nickname()
+                || s.is_creating_group()
+                || s.is_dialing_peer()
+            {
                 s.chat_input.input(key_event);
             }
         }

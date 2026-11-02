@@ -574,7 +574,14 @@ pub fn mint_device_binding(
     // The device-binding FK requires the peer row to exist: ensure the target
     // does (it normally does — it sent us the intro — but be safe).
     crate::peers::save_peer(peer_id, &[])?;
-    save_device_binding(&user_id, peer_id, device_pubkey, &claim_id, &claim, Some(&local_peer))?;
+    save_device_binding(
+        &user_id,
+        peer_id,
+        device_pubkey,
+        &claim_id,
+        &claim,
+        Some(&local_peer),
+    )?;
     Ok(crate::behavior::DeviceBindingRequest {
         kind: "claim".to_string(),
         user_id: Some(user_id),

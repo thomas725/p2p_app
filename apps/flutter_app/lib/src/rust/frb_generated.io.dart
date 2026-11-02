@@ -10,6 +10,7 @@ import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
+import 'net_diag.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -33,6 +34,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw);
+
+  @protected
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
 
   @protected
@@ -43,6 +47,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContactSortInput dco_decode_contact_sort_input(dynamic raw);
+
+  @protected
+  double dco_decode_f_64(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -79,6 +86,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw);
+
+  @protected
+  List<NetworkInterfaceInfo> dco_decode_list_network_interface_info(
+    dynamic raw,
+  );
 
   @protected
   List<PeerSortInput> dco_decode_list_peer_sort_input(dynamic raw);
@@ -123,7 +135,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobilePeerStatus dco_decode_mobile_peer_status(dynamic raw);
 
   @protected
+  NetworkDetails dco_decode_network_details(dynamic raw);
+
+  @protected
+  NetworkInterfaceInfo dco_decode_network_interface_info(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
 
   @protected
   MobileAttachment? dco_decode_opt_box_autoadd_mobile_attachment(dynamic raw);
@@ -171,6 +192,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
+
+  @protected
   MobileAttachment sse_decode_box_autoadd_mobile_attachment(
     SseDeserializer deserializer,
   );
@@ -185,6 +209,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContactSortInput sse_decode_contact_sort_input(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -233,6 +260,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<MobilePeerRecord> sse_decode_list_mobile_peer_record(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<NetworkInterfaceInfo> sse_decode_list_network_interface_info(
     SseDeserializer deserializer,
   );
 
@@ -289,7 +321,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobilePeerStatus sse_decode_mobile_peer_status(SseDeserializer deserializer);
 
   @protected
+  NetworkDetails sse_decode_network_details(SseDeserializer deserializer);
+
+  @protected
+  NetworkInterfaceInfo sse_decode_network_interface_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
 
   @protected
   MobileAttachment? sse_decode_opt_box_autoadd_mobile_attachment(
@@ -341,6 +384,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_box_autoadd_mobile_attachment(
     MobileAttachment self,
     SseSerializer serializer,
@@ -360,6 +406,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     ContactSortInput self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -421,6 +470,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_mobile_peer_record(
     List<MobilePeerRecord> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_network_interface_info(
+    List<NetworkInterfaceInfo> self,
     SseSerializer serializer,
   );
 
@@ -503,7 +558,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_network_details(
+    NetworkDetails self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_network_interface_info(
+    NetworkInterfaceInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_box_autoadd_mobile_attachment(

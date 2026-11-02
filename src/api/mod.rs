@@ -26,6 +26,15 @@ pub fn get_mobile_peer_status() -> Result<MobilePeerStatus, String> {
     crate::mobile_api::get_mobile_peer_status()
 }
 
+/// Live network diagnostics: interfaces (name/MAC/IPv4/IPv6), reachability,
+/// relay reservations, and DHT connectivity/announcement state.
+///
+/// Both frontends poll this single snapshot; see [`crate::net_diag`].
+#[must_use]
+pub fn get_network_details() -> crate::net_diag::NetworkDetails {
+    crate::mobile_api::get_network_details()
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

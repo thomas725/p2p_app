@@ -63,13 +63,15 @@ fn test_push_outgoing_dm_adds_message() {
     let mut state = test_app_state();
     push_outgoing_dm_to_state(
         &mut state,
-        "peer-1",
-        "12:00",
-        "Me",
-        "secret",
-        None,
-        "dm1".into(),
-        false,
+        OutgoingDm {
+            peer_id: "peer-1",
+            ts: "12:00",
+            self_nickname: "Me",
+            content: "secret",
+            attachment: None,
+            msg_id: "dm1".into(),
+            encrypted: false,
+        },
     );
     assert!(state.dm_messages.contains_key("peer-1"));
     assert_eq!(state.dm_messages["peer-1"].len(), 1);
@@ -84,25 +86,29 @@ fn test_push_outgoing_dm_trims_history() {
     for i in 0..MAX_DM_HISTORY {
         push_outgoing_dm_to_state(
             &mut state,
-            "p1",
-            "12:00",
-            "Me",
-            &format!("msg-{i}"),
-            None,
-            format!("m{i}"),
-        false,
+            OutgoingDm {
+                peer_id: "p1",
+                ts: "12:00",
+                self_nickname: "Me",
+                content: &format!("msg-{i}"),
+                attachment: None,
+                msg_id: format!("m{i}"),
+                encrypted: false,
+            },
         );
     }
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
     push_outgoing_dm_to_state(
         &mut state,
-        "p1",
-        "12:00",
-        "Me",
-        "newest",
-        None,
-        "m-last".into(),
-        false,
+        OutgoingDm {
+            peer_id: "p1",
+            ts: "12:00",
+            self_nickname: "Me",
+            content: "newest",
+            attachment: None,
+            msg_id: "m-last".into(),
+            encrypted: false,
+        },
     );
     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
     assert!(state.dm_messages["p1"][MAX_DM_HISTORY - 1].contains("newest"));
@@ -112,8 +118,30 @@ fn test_push_outgoing_dm_trims_history() {
 #[test]
 fn test_push_outgoing_dm_separate_peers() {
     let mut state = test_app_state();
-    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", None, "m1".into(), false);
-    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", None, "m2".into(), false);
+    push_outgoing_dm_to_state(
+        &mut state,
+        OutgoingDm {
+            peer_id: "pa",
+            ts: "12:00",
+            self_nickname: "Me",
+            content: "hi",
+            attachment: None,
+            msg_id: "m1".into(),
+            encrypted: false,
+        },
+    );
+    push_outgoing_dm_to_state(
+        &mut state,
+        OutgoingDm {
+            peer_id: "pb",
+            ts: "12:00",
+            self_nickname: "Me",
+            content: "ho",
+            attachment: None,
+            msg_id: "m2".into(),
+            encrypted: false,
+        },
+    );
     assert_eq!(state.dm_messages.len(), 2);
     assert_eq!(state.dm_messages["pa"].len(), 1);
     assert_eq!(state.dm_messages["pb"].len(), 1);

@@ -47,7 +47,7 @@ fn test_direct_message_serialization() {
         received_at: None,
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     assert!(json.contains("hello"));
@@ -77,8 +77,11 @@ fn test_build_behaviour_creates_app_behaviour() {
             .unwrap()
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
-                let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
+                let _behaviour = p2p_app::build_behaviour(
+                    &keypair,
+                    p2p_app::network::NetworkSize::Small,
+                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
+                );
             });
     });
 }
@@ -93,8 +96,11 @@ fn test_build_behaviour_medium_network() {
             .unwrap()
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
-                let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
+                let _behaviour = p2p_app::build_behaviour(
+                    &keypair,
+                    p2p_app::network::NetworkSize::Medium,
+                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
+                );
             });
     });
 }
@@ -109,8 +115,11 @@ fn test_build_behaviour_large_network() {
             .unwrap()
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
-                let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
+                let _behaviour = p2p_app::build_behaviour(
+                    &keypair,
+                    p2p_app::network::NetworkSize::Large,
+                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
+                );
             });
     });
 }
@@ -127,7 +136,7 @@ fn test_direct_message_fields() {
         received_at: Some(2.0),
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
     assert_eq!(dm.content, "test");
     assert_eq!(dm.timestamp, 99);
@@ -161,7 +170,7 @@ fn test_direct_message_clone() {
         received_at: Some(2.0),
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
     let cloned = dm.clone();
     assert_eq!(dm.content, cloned.content);
@@ -192,8 +201,11 @@ fn test_build_behaviour_returns_valid_behaviour() {
             .unwrap()
             .block_on(async {
                 let keypair = p2p_app::get_libp2p_identity().unwrap();
-                let _behaviour =
-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
+                let _behaviour = p2p_app::build_behaviour(
+                    &keypair,
+                    p2p_app::network::NetworkSize::Small,
+                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
+                );
             });
     });
 }
@@ -222,7 +234,7 @@ fn test_direct_message_serialization_roundtrip() {
         received_at: Some(3.0),
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
     let parsed: DirectMessage = serde_json::from_str(&json).unwrap();

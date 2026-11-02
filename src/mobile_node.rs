@@ -99,6 +99,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
 
     // Create a dedicated tokio runtime — FRB may call us from a non-tokio thread,
     // but mDNS/swarm need a reactor.
+    crate::net_diag::reset();
     let runtime =
         tokio::runtime::Runtime::new().map_err(|e| format!("Failed to create runtime: {e}"))?;
 
@@ -201,6 +202,7 @@ pub fn stop_node() -> Result<(), String> {
         }
         p2plog_debug("Mobile node stopped".to_string());
     }
+    crate::net_diag::reset();
     // Release DB lock so subsequent starts can acquire the same database
     crate::logging::p2plog_debug("[stop_node] releasing database lock".to_string());
     crate::db::release_db_lock();
@@ -458,9 +460,7 @@ pub fn dial_peer(address: String) -> Result<(), String> {
     if let Some(m) = NODE.get() {
         let node = lock_node_mutex(m);
         if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::Dial { address })
-                .is_ok();
+            queued = tx.blocking_send(SwarmCommand::Dial { address }).is_ok();
         }
     }
     if !queued {
@@ -1164,6 +1164,8 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             content: Some(status),
             ..default_event()
         },
+        #[cfg(feature = "nat")]
+        SwarmEvent::HolePunchResult { peer_id, success } => hole_punch_event_json(peer_id, success),
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
         } => SwarmEventJson {
@@ -1228,6 +1230,17 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             nickname: Some(name),
             ..default_event()
         },
+    }
+}
+
+/// JSON envelope for a `DCUtR` hole-punch result: `content` is `"ok"`/`"failed"`.
+#[cfg(feature = "nat")]
+fn hole_punch_event_json(peer_id: String, success: bool) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: "hole_punch".into(),
+        peer_id: Some(peer_id),
+        content: Some(if success { "ok" } else { "failed" }.to_string()),
+        ..default_event()
     }
 }
 
@@ -1319,7 +1332,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: Some("m1".into()),
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "broadcast");
@@ -1340,7 +1353,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         let j = event_to_json(ev);
         assert_eq!(j.event_type, "dm");
@@ -1645,7 +1658,7 @@ mod tests {
             nickname: Some("Bob".into()),
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1659,7 +1672,7 @@ mod tests {
             nickname: Some("Charlie".into()),
             msg_id: Some("msg-b1".into()),
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         process_event_for_mobile(&ev, None);
     }
@@ -1747,7 +1760,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         assert!(is_nickname_only_dm(&ev));
     }
@@ -1761,7 +1774,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1775,7 +1788,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }
@@ -1789,7 +1802,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
-        encrypted: false,
+            encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
     }

@@ -15,6 +15,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart' as mobile;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
 /// bindings (the historical mobile behavior). This is the default transport
@@ -34,6 +35,9 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<MobilePeerStatus> getMobilePeerStatus() =>
       bridge.getMobilePeerStatus();
+
+  @override
+  Future<NetworkDetails> getNetworkDetails() => bridge.getNetworkDetails();
 
   @override
   Future<String> startNode({required String dbPath}) =>

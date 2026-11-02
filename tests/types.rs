@@ -20,7 +20,7 @@ fn swarm_event_broadcast_message() {
         nickname: Some("alice".into()),
         msg_id: Some("id1".into()),
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
     assert!(format!("{ev:?}").contains("BroadcastMessage"));
 }
@@ -34,7 +34,7 @@ fn swarm_event_direct_message() {
         nickname: None,
         msg_id: None,
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
     assert!(format!("{ev:?}").contains("DirectMessage"));
 }
@@ -157,7 +157,7 @@ fn direct_message_fields() {
         received_at: Some(2000.0),
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
     assert_eq!(msg.content, "hi");
     assert_eq!(msg.timestamp, 12345);

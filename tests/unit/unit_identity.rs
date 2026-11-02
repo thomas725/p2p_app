@@ -77,8 +77,14 @@ fn shared_claim_message_helper_agrees_with_verify() {
         crate::identity::save_user(user_id, &account_pubkey, None, None).expect("save user");
         let claim = account_key.sign(&message).expect("sign");
         assert!(
-            crate::identity::verify_device_binding_claim(user_id, &device_pubkey, claim_id, &claim, None)
-                .expect("verify clean")
+            crate::identity::verify_device_binding_claim(
+                user_id,
+                &device_pubkey,
+                claim_id,
+                &claim,
+                None
+            )
+            .expect("verify clean")
         );
         // And the helper-built message is byte-identical to the one the
         // verifier recomputes internally.
@@ -337,7 +343,8 @@ fn sibling_device_can_mint_and_verify_claim() {
         let sibling_pubkey = sibling_key.public().encode_protobuf();
         crate::peers::save_peer("sibling-peer", &[]).expect("save sibling peer");
         let sib_claim_id = "sib-claim";
-        let sib_msg = crate::identity::device_binding_claim_message(&user_id, &sibling_pubkey, sib_claim_id);
+        let sib_msg =
+            crate::identity::device_binding_claim_message(&user_id, &sibling_pubkey, sib_claim_id);
         let sib_sig = account_key.sign(&sib_msg).expect("sign sibling claim");
         crate::identity::save_device_binding(
             &user_id,
@@ -352,7 +359,11 @@ fn sibling_device_can_mint_and_verify_claim() {
         // A new device's claim signed by the sibling verifies via the sibling path.
         let new_device_pubkey = [0x77u8; 32];
         let new_claim_id = "new-claim";
-        let new_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, new_claim_id);
+        let new_msg = crate::identity::device_binding_claim_message(
+            &user_id,
+            &new_device_pubkey,
+            new_claim_id,
+        );
         let sibling_sig = sibling_key.sign(&new_msg).expect("sign by sibling");
         assert!(
             crate::identity::verify_device_binding_claim(
@@ -396,11 +407,16 @@ fn sibling_device_can_mint_and_verify_claim() {
         let other_account_key = libp2p_identity::Keypair::generate_ed25519();
         let other_account_pubkey = other_account_key.public().encode_protobuf();
         let other_user = "other-user";
-        crate::identity::save_user(other_user, &other_account_pubkey, None, None).expect("save other user");
+        crate::identity::save_user(other_user, &other_account_pubkey, None, None)
+            .expect("save other user");
         let other_sibling_pubkey = [0x33u8; 32];
         crate::peers::save_peer("other-sibling-peer", &[]).expect("save other sibling peer");
         let other_cid = "other-sib-claim";
-        let other_msg = crate::identity::device_binding_claim_message(other_user, &other_sibling_pubkey, other_cid);
+        let other_msg = crate::identity::device_binding_claim_message(
+            other_user,
+            &other_sibling_pubkey,
+            other_cid,
+        );
         let other_sig = other_account_key.sign(&other_msg).expect("sign");
         crate::identity::save_device_binding(
             other_user,
@@ -425,7 +441,11 @@ fn sibling_device_can_mint_and_verify_claim() {
 
         // An account-key claim still verifies (path 1).
         let acct_claim_id = "acct-claim";
-        let acct_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, acct_claim_id);
+        let acct_msg = crate::identity::device_binding_claim_message(
+            &user_id,
+            &new_device_pubkey,
+            acct_claim_id,
+        );
         let acct_sig = account_key.sign(&acct_msg).expect("sign acct");
         assert!(
             crate::identity::verify_device_binding_claim(
@@ -453,10 +473,14 @@ fn sibling_device_can_mint_claim_without_account_key() {
         let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
         crate::identity::save_user(&user_id, &account_pubkey, None, None).expect("save user");
         let local_peer = crate::get_local_peer_id().unwrap().to_string();
-        let local_pubkey = crate::get_libp2p_identity().unwrap().public().encode_protobuf();
+        let local_pubkey = crate::get_libp2p_identity()
+            .unwrap()
+            .public()
+            .encode_protobuf();
         crate::peers::save_peer(&local_peer, &[]).expect("save local peer");
         let self_cid = "self-bind";
-        let self_msg = crate::identity::device_binding_claim_message(&user_id, &local_pubkey, self_cid);
+        let self_msg =
+            crate::identity::device_binding_claim_message(&user_id, &local_pubkey, self_cid);
         let self_sig = account_key.sign(&self_msg).expect("sign self bind");
         crate::identity::save_device_binding(
             &user_id,
@@ -482,7 +506,8 @@ fn sibling_device_can_mint_claim_without_account_key() {
         assert_eq!(request.user_id.as_deref(), Some(user_id.as_str()));
         let claim = request.signature.expect("claim signed");
         let claim_id = request.claim_id.expect("claim id");
-        let msg = crate::identity::device_binding_claim_message(&user_id, &target_pubkey, &claim_id);
+        let msg =
+            crate::identity::device_binding_claim_message(&user_id, &target_pubkey, &claim_id);
         // Signed by the install key, NOT the account key.
         let install_key = crate::get_libp2p_identity().expect("install key");
         assert!(install_key.public().verify(&msg, &claim));

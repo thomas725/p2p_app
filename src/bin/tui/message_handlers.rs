@@ -40,19 +40,30 @@ fn render_outgoing_body(
     }
 }
 
-/// Pure: format and push an outgoing DM to state, trimming history
-fn push_outgoing_dm_to_state(
-    state: &mut AppState,
-    peer_id: &str,
-    ts: &str,
-    dm_self_nickname: &str,
-    content: &str,
-    attachment: Option<&p2p_app::files::MessageAttachment>,
+/// Inputs for appending an outgoing DM to the in-memory chat log.
+struct OutgoingDm<'a> {
+    peer_id: &'a str,
+    ts: &'a str,
+    self_nickname: &'a str,
+    content: &'a str,
+    attachment: Option<&'a p2p_app::files::MessageAttachment>,
     msg_id: String,
     encrypted: bool,
-) {
+}
+
+/// Pure: format and push an outgoing DM to state, trimming history
+fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) {
+    let OutgoingDm {
+        peer_id,
+        ts,
+        self_nickname,
+        content,
+        attachment,
+        msg_id,
+        encrypted,
+    } = dm;
     let body = p2p_app::e2e::mark_encrypted(render_outgoing_body(content, attachment), encrypted);
-    let msg = format!("{ts} [{dm_self_nickname}] {body}");
+    let msg = format!("{ts} [{self_nickname}] {body}");
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);
     state
@@ -200,13 +211,15 @@ async fn send_dm_message(
 
     push_outgoing_dm_to_state(
         state,
-        &peer_id,
-        &ts,
-        &dm_self_nickname,
-        &text,
-        attachment.as_ref(),
-        msg_id.clone(),
-        encrypted,
+        OutgoingDm {
+            peer_id: &peer_id,
+            ts: &ts,
+            self_nickname: &dm_self_nickname,
+            content: &text,
+            attachment: attachment.as_ref(),
+            msg_id: msg_id.clone(),
+            encrypted,
+        },
     );
     p2plog_debug(format!("Sent DM to {peer_id}: {text}"));
 

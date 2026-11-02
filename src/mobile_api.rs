@@ -399,9 +399,16 @@ pub fn add_device(
     claim_id: String,
     claim: Vec<u8>,
 ) -> Result<MobileDeviceInfo, String> {
-    crate::identity::save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim, None)
-        .map(device_info_from)
-        .map_err(|e| e.to_string())
+    crate::identity::save_device_binding(
+        &user_id,
+        &peer_id,
+        &device_pubkey,
+        &claim_id,
+        &claim,
+        None,
+    )
+    .map(device_info_from)
+    .map_err(|e| e.to_string())
 }
 
 /// List the live devices bound to a user, most recent first.
@@ -498,6 +505,16 @@ pub fn get_mobile_peer_status() -> Result<MobilePeerStatus, String> {
         local_peer_id: local_peer_id.to_string(),
         self_nickname,
     })
+}
+
+/// Live network diagnostics (interfaces, reachability, relay + DHT state).
+///
+/// Delegates to the single authoritative snapshot in [`crate::net_diag`], which
+/// the swarm event loop keeps current; both frontends render the same values.
+#[flutter_rust_bridge::frb(ignore)]
+#[must_use]
+pub fn get_network_details() -> crate::net_diag::NetworkDetails {
+    crate::net_diag::snapshot()
 }
 
 #[cfg(test)]

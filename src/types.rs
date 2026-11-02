@@ -160,12 +160,20 @@ pub enum SwarmEvent {
     PeerDisconnected(String),
     /// Local address established for listening
     ListenAddrEstablished(String),
-    /// An externally observed address (from AutoNAT/identify) — means we may be
+    /// An externally observed address (from `AutoNAT`/identify) — means we may be
     /// reachable from the public internet.
     ExternalAddressAdded(String),
-    /// NAT reachability status change (from AutoNAT).
+    /// NAT reachability status change (from `AutoNAT`).
     #[cfg(feature = "nat")]
     NatStatusChanged(String),
+    /// A hole-punch attempt (`DCUtR`) finished.
+    #[cfg(feature = "nat")]
+    HolePunchResult {
+        /// Peer the hole-punch was attempted with
+        peer_id: String,
+        /// Whether a direct connection was established
+        success: bool,
+    },
     /// Peer discovered via mDNS
     #[cfg(feature = "mdns")]
     PeerDiscovered {

@@ -13,6 +13,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
 /// request frame on the WebSocket (`{id, method, params}` answered by
@@ -250,6 +251,47 @@ class HttpNodeApi implements NodeApi {
     );
   }
 
+  static NetworkInterfaceInfo networkInterfaceFromJson(dynamic raw) {
+    final m = raw as Map<String, dynamic>;
+    return NetworkInterfaceInfo(
+      name: m['name'] as String,
+      mac: m['mac'] as String?,
+      ipv4: _list(m['ipv4'], (item) => item as String),
+      ipv6: _list(m['ipv6'], (item) => item as String),
+      internal: m['internal'] as bool,
+    );
+  }
+
+  static NetworkDetails networkDetailsFromJson(dynamic raw) {
+    final m = raw as Map<String, dynamic>;
+    return NetworkDetails(
+      interfaces: _list(m['interfaces'], networkInterfaceFromJson),
+      listenAddrs: _list(m['listenAddrs'], (item) => item as String),
+      externalAddrs: _list(m['externalAddrs'], (item) => item as String),
+      externalCandidates: _list(
+        m['externalCandidates'],
+        (item) => item as String,
+      ),
+      reachability: m['reachability'] as String,
+      natStatus: m['natStatus'] as String,
+      natPublicAddr: m['natPublicAddr'] as String?,
+      natProbeSuccesses: m['natProbeSuccesses'] as int,
+      natProbeFailures: m['natProbeFailures'] as int,
+      holePunchAttempts: m['holePunchAttempts'] as int,
+      holePunchSuccesses: m['holePunchSuccesses'] as int,
+      relayReservations: _list(m['relayReservations'], (item) => item as String),
+      relayStatus: m['relayStatus'] as String,
+      dhtMode: m['dhtMode'] as String,
+      dhtConnected: m['dhtConnected'] as bool,
+      dhtRoutingPeers: m['dhtRoutingPeers'] as int,
+      dhtBootstrapSuccesses: m['dhtBootstrapSuccesses'] as int,
+      dhtBootstrapFailures: m['dhtBootstrapFailures'] as int,
+      dhtAnnounced: m['dhtAnnounced'] as bool,
+      dhtAnnounceStatus: m['dhtAnnounceStatus'] as String,
+      dhtAnnounceAt: (m['dhtAnnounceAt'] as num?)?.toDouble(),
+    );
+  }
+
   static MobileDeviceInfo deviceInfoFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return MobileDeviceInfo(
@@ -365,6 +407,10 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<MobilePeerStatus> getMobilePeerStatus() async =>
       peerStatusFromJson(await _call('getMobilePeerStatus'));
+
+  @override
+  Future<NetworkDetails> getNetworkDetails() async =>
+      networkDetailsFromJson(await _call('getNetworkDetails'));
 
   @override
   Future<String> startNode({required String dbPath}) async =>

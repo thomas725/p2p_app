@@ -38,7 +38,11 @@ pub fn render_input_section(
         "Input".to_string()
     };
     let input_block = Block::default().title(title).borders(Borders::ALL);
-    if tab_content.is_input_enabled() || state.is_editing_nickname() || state.is_creating_group() || state.is_dialing_peer() {
+    if tab_content.is_input_enabled()
+        || state.is_editing_nickname()
+        || state.is_creating_group()
+        || state.is_dialing_peer()
+    {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);
         let mut textarea = state.chat_input.clone();

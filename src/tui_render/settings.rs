@@ -30,6 +30,65 @@ fn last_connected_info(state: &TuiRenderState) -> Option<(String, String)> {
         .map(|p| (p.peer_id.clone(), p.last_seen.clone()))
 }
 
+/// Append the network-diagnostics block (interfaces, reachability, DHT/relay).
+fn render_network_details(lines: &mut Vec<String>, net: &crate::net_diag::NetworkDetails) {
+    lines.push("Network details:".to_string());
+    lines.push(format!("  Reachability: {}", net.reachability));
+
+    let mut nat = net.nat_status.clone();
+    if let Some(addr) = &net.nat_public_addr {
+        nat.push_str(" (");
+        nat.push_str(addr);
+        nat.push(')');
+    }
+    lines.push(format!(
+        "  AutoNAT: {nat} — probes {} ok / {} failed",
+        net.nat_probe_successes, net.nat_probe_failures
+    ));
+    lines.push(format!(
+        "  Hole punching: {}/{} attempts succeeded",
+        net.hole_punch_successes, net.hole_punch_attempts
+    ));
+    lines.push(format!("  Relay: {}", net.relay_status));
+
+    let dht_state = if net.dht_connected {
+        "connected"
+    } else {
+        "not connected"
+    };
+    lines.push(format!(
+        "  DHT: {dht_state} ({}, {} routing peers; bootstrap {} ok / {} failed)",
+        net.dht_mode,
+        net.dht_routing_peers,
+        net.dht_bootstrap_successes,
+        net.dht_bootstrap_failures
+    ));
+    lines.push(format!("  DHT announcement: {}", net.dht_announce_status));
+
+    if !net.external_addrs.is_empty() {
+        lines.push("  External addresses:".to_string());
+        for addr in &net.external_addrs {
+            lines.push(format!("    {addr}"));
+        }
+    }
+
+    lines.push("  Interfaces:".to_string());
+    if net.interfaces.is_empty() {
+        lines.push("    —".to_string());
+    }
+    for iface in &net.interfaces {
+        let mac = iface.mac.as_deref().unwrap_or("no MAC");
+        let loopback = if iface.internal { " (loopback)" } else { "" };
+        lines.push(format!("    {} — {mac}{loopback}", iface.name));
+        if !iface.ipv4.is_empty() {
+            lines.push(format!("      IPv4: {}", iface.ipv4.join(", ")));
+        }
+        if !iface.ipv6.is_empty() {
+            lines.push(format!("      IPv6: {}", iface.ipv6.join(", ")));
+        }
+    }
+}
+
 /// Render the Settings tab (mirrors the Flutter `_Settings` screen).
 pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let connected = state.peer_count;
@@ -87,6 +146,8 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
             lines.push(format!("  {addr}"));
         }
     }
+
+    render_network_details(&mut lines, &state.network);
 
     let para = Paragraph::new(lines.join("\n"))
         .block(Block::default().title("Settings").borders(Borders::ALL))

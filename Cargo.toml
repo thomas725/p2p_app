@@ -140,6 +140,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 petname = "3.0"
 unicode-width = "0.2"
+# OS network-interface enumeration (name, MAC, IPv4/IPv6) for the network
+# details views in both frontends (US-050). Supports Linux/Android/macOS/Windows.
+network-interface = "=2.0.5"
 # SHA-256 hashing for content-addressed file attachments (files lane §12): the
 # `file_id` of every attachment is the hex digest of its bytes, so storage is
 # deduplicated and transfer integrity is verified on finalize.

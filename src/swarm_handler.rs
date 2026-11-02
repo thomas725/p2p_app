@@ -66,13 +66,78 @@ fn handle_identify_received(
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     for addr in &info.listen_addrs {
-        swarm.behaviour_mut().kad.add_address(&peer_id, addr.clone());
+        swarm
+            .behaviour_mut()
+            .kad
+            .add_address(&peer_id, addr.clone());
     }
     let addrs: Vec<String> = info.listen_addrs.iter().map(ToString::to_string).collect();
     if let Err(e) = crate::save_peer(&peer_id.to_string(), &addrs) {
         p2plog_debug(format!("Failed to save peer on identify: {e}"));
     }
     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+}
+
+/// Refresh the cached DHT routing-table size from Kademlia's k-buckets.
+#[cfg(feature = "kad")]
+fn refresh_dht_routing(swarm: &mut Swarm<AppBehaviour>) {
+    let peers: usize = swarm
+        .behaviour_mut()
+        .kad
+        .kbuckets()
+        .map(|bucket| libp2p::kad::KBucketRef::num_entries(&bucket))
+        .sum();
+    crate::net_diag::record_dht_routing_peers(u32::try_from(peers).unwrap_or(u32::MAX));
+}
+
+/// Translate a Kademlia query result into the diagnostics snapshot.
+#[cfg(feature = "kad")]
+fn handle_kad_query(result: libp2p::kad::QueryResult) {
+    match result {
+        libp2p::kad::QueryResult::Bootstrap(Ok(_)) => crate::net_diag::record_dht_bootstrap(true),
+        libp2p::kad::QueryResult::Bootstrap(Err(_)) => crate::net_diag::record_dht_bootstrap(false),
+        libp2p::kad::QueryResult::PutRecord(Ok(_)) => {
+            crate::net_diag::record_dht_announce_result(true, "Announced to the DHT");
+        }
+        libp2p::kad::QueryResult::PutRecord(Err(e)) => {
+            crate::net_diag::record_dht_announce_result(false, &format!("Announce failed: {e}"));
+        }
+        _ => {}
+    }
+}
+
+/// Publish our peer record to the DHT (rate-limited), so other nodes can find
+/// and reach us. The record is keyed by our peer ID and carries the addresses
+/// we believe are reachable (confirmed external addresses first).
+#[cfg(feature = "kad")]
+fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
+    if !crate::net_diag::announce_due() {
+        return;
+    }
+    let details = crate::net_diag::snapshot();
+    if details.dht_routing_peers == 0 {
+        return;
+    }
+    let addresses = details.reachable_addresses();
+    if addresses.is_empty() {
+        return;
+    }
+    let peer_id = swarm.local_peer_id().to_string();
+    let key = libp2p::kad::RecordKey::new(&format!("/p2p-chat/peer/{peer_id}"));
+    let Some(value) =
+        crate::net_diag::announce_record_json(&peer_id, &addresses, details.nat_status == "Public")
+    else {
+        return;
+    };
+    let record = libp2p::kad::Record::new(key, value);
+    crate::net_diag::record_dht_announce_attempt();
+    if let Err(e) = swarm
+        .behaviour_mut()
+        .kad
+        .put_record(record, libp2p::kad::Quorum::One)
+    {
+        crate::net_diag::record_dht_announce_result(false, &format!("Announce failed: {e}"));
+    }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -167,15 +232,98 @@ async fn handle_swarm_event(
         #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Identify(_)) => {}
         #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Kad(libp2p::kad::Event::RoutingUpdated { .. })) => {
+            refresh_dht_routing(swarm);
+            maybe_announce(swarm);
+        }
+        #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Kad(libp2p::kad::Event::ModeChanged { new_mode })) => {
+            crate::net_diag::record_dht_mode(&format!("{new_mode:?}"));
+            refresh_dht_routing(swarm);
+            maybe_announce(swarm);
+        }
+        #[cfg(feature = "kad")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Kad(libp2p::kad::Event::OutboundQueryProgressed {
+            result,
+            ..
+        })) => {
+            handle_kad_query(result);
+        }
+        #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Kad(_)) => {}
         #[cfg(feature = "relay")]
         Libp2pSwarmEvent::Behaviour(AppEv::RelayServer(_)) => {}
         #[cfg(feature = "relay")]
-        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(_)) => {}
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
+            libp2p::relay::client::Event::ReservationReqAccepted {
+                relay_peer_id,
+                renewal,
+                ..
+            },
+        )) => {
+            crate::net_diag::record_relay_reservation(&relay_peer_id.to_string());
+            if renewal {
+                crate::net_diag::record_relay_status(&format!(
+                    "Reservation renewed via {relay_peer_id}"
+                ));
+            }
+        }
+        #[cfg(feature = "relay")]
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
+            libp2p::relay::client::Event::OutboundCircuitEstablished { relay_peer_id, .. },
+        )) => {
+            crate::net_diag::record_relay_status(&format!("Outbound circuit via {relay_peer_id}"));
+        }
+        #[cfg(feature = "relay")]
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
+            libp2p::relay::client::Event::InboundCircuitEstablished { src_peer_id, .. },
+        )) => {
+            crate::net_diag::record_relay_status(&format!("Inbound circuit from {src_peer_id}"));
+        }
+        #[cfg(feature = "nat")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged {
+            new,
+            ..
+        })) => {
+            let (label, public_addr) = match new {
+                libp2p::autonat::NatStatus::Public(addr) => ("Public", Some(addr.to_string())),
+                libp2p::autonat::NatStatus::Private => ("Private", None),
+                libp2p::autonat::NatStatus::Unknown => ("Unknown", None),
+            };
+            crate::net_diag::record_nat_status(label, public_addr.as_deref());
+            let _ = event_tx
+                .send(SwarmEvent::NatStatusChanged(label.to_string()))
+                .await;
+            maybe_announce(swarm);
+        }
+        #[cfg(feature = "nat")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::OutboundProbe(
+            event,
+        ))) => match event {
+            libp2p::autonat::OutboundProbeEvent::Response { .. } => {
+                crate::net_diag::record_nat_probe(true);
+            }
+            libp2p::autonat::OutboundProbeEvent::Error { .. } => {
+                crate::net_diag::record_nat_probe(false);
+            }
+            libp2p::autonat::OutboundProbeEvent::Request { .. } => {}
+        },
         #[cfg(feature = "nat")]
         Libp2pSwarmEvent::Behaviour(AppEv::Autonat(_)) => {}
         #[cfg(feature = "nat")]
-        Libp2pSwarmEvent::Behaviour(AppEv::Dcutr(_)) => {}
+        Libp2pSwarmEvent::Behaviour(AppEv::Dcutr(libp2p::dcutr::Event {
+            remote_peer_id,
+            result,
+        })) => {
+            let success = result.is_ok();
+            crate::net_diag::record_hole_punch(success);
+            let _ = event_tx
+                .send(SwarmEvent::HolePunchResult {
+                    peer_id: remote_peer_id.to_string(),
+                    success,
+                })
+                .await;
+        }
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             let _ = event_tx
                 .send(SwarmEvent::PeerConnected(peer_id.to_string()))
@@ -183,29 +331,35 @@ async fn handle_swarm_event(
             #[cfg(feature = "kad")]
             {
                 let _ = swarm.behaviour_mut().kad.bootstrap();
+                refresh_dht_routing(swarm);
+                maybe_announce(swarm);
             }
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
             let _ = event_tx
                 .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
                 .await;
+            #[cfg(feature = "kad")]
+            refresh_dht_routing(swarm);
         }
         Libp2pSwarmEvent::NewListenAddr { address, .. } => {
+            crate::net_diag::record_listen_addr(&address.to_string());
             let _ = event_tx
                 .send(SwarmEvent::ListenAddrEstablished(address.to_string()))
                 .await;
         }
-        Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+        Libp2pSwarmEvent::NewExternalAddrCandidate { address } => {
+            crate::net_diag::record_external_candidate(&address.to_string());
+        }
+        Libp2pSwarmEvent::ExternalAddrConfirmed { address } => {
+            crate::net_diag::record_external_addr(&address.to_string());
             let _ = event_tx
                 .send(SwarmEvent::ExternalAddressAdded(address.to_string()))
                 .await;
+            maybe_announce(swarm);
         }
-        #[cfg(feature = "nat")]
-        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged { new, .. })) => {
-            let status = format!("{new:?}");
-            let _ = event_tx
-                .send(SwarmEvent::NatStatusChanged(status))
-                .await;
+        Libp2pSwarmEvent::ExternalAddrExpired { address } => {
+            crate::net_diag::expire_external_addr(&address.to_string());
         }
         _ => {}
     }
@@ -1203,7 +1357,7 @@ fn send_dm(
             received_at: None,
             group_id: None,
             attachment,
-        encrypted: None,
+            encrypted: None,
         };
         swarm
             .behaviour_mut()

@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
 /// swaps in [HttpNodeApi] for the web build. Tests may replace it with a
@@ -39,6 +40,11 @@ abstract class NodeApi {
   Future<MobileInitStatus> initMobileDatabase({required String dbPath});
 
   Future<MobilePeerStatus> getMobilePeerStatus();
+
+  /// Live network diagnostics: OS interfaces (name/MAC/IPv4/IPv6), AutoNAT/
+  /// DCUtR reachability, relay reservations, and DHT connectivity/announcement
+  /// state. One polled snapshot shared by the Settings views.
+  Future<NetworkDetails> getNetworkDetails();
 
   Future<String> startNode({required String dbPath});
 

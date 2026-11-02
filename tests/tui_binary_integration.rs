@@ -110,7 +110,7 @@ fn test_swarm_event_variants() {
         nickname: Some("EventNick".to_string()),
         msg_id: Some("evt-1".to_string()),
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
 
     let debug = format!("{bcast:?}");
@@ -125,7 +125,7 @@ fn test_swarm_event_variants() {
         nickname: None,
         msg_id: None,
         attachment: None,
-    encrypted: false,
+        encrypted: false,
     });
 
     let direct_debug = format!("{direct:?}");
@@ -274,7 +274,7 @@ fn test_direct_message_struct() {
         received_at: Some(1_234_567_891.0),
         group_id: None,
         attachment: None,
-    encrypted: None,
+        encrypted: None,
     };
 
     // Test Debug format

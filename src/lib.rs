@@ -65,6 +65,7 @@ pub mod messages;
 pub mod mobile_api;
 #[cfg(feature = "mobile")]
 pub mod mobile_node;
+pub mod net_diag;
 pub mod network;
 pub mod nickname;
 pub mod peers;
@@ -107,11 +108,11 @@ pub use db::{
     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
     sqlite_connect,
 };
-pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
 pub use e2e::{
     ENVELOPE_VERSION, EncryptedDm, HKDF_INFO, SealedDmBody, TUI_ENCRYPTED_MARKER, can_encrypt_to,
     open_incoming, seal_for_peer,
 };
+pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
 pub use fmt::{
     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,

@@ -8,7 +8,9 @@ use tokio::sync::mpsc;
 
 enum Event {
     Input(InputEvent),
-    SwarmEvent(SwarmEvent),
+    // Boxed: `SwarmEvent` is much larger than `InputEvent` and the enum is
+    // stored on every loop iteration.
+    SwarmEvent(Box<SwarmEvent>),
 }
 
 #[cfg(test)]
@@ -250,7 +252,10 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
     }
     let sender_display =
         p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
-    let body = p2p_app::e2e::mark_encrypted(render_message_body(&content, attachment.as_ref()), encrypted);
+    let body = p2p_app::e2e::mark_encrypted(
+        render_message_body(&content, attachment.as_ref()),
+        encrypted,
+    );
     if is_direct {
         apply_dm_to_state(s, &body, &peer_id, latency.as_deref(), msg_id);
     } else {
@@ -319,19 +324,18 @@ async fn process_swarm_event(
             drop(s);
         }
         SwarmEvent::ExternalAddressAdded(addr) => {
-            let mut s = state.lock().await;
-            if !s.external_addresses.contains(&addr) {
-                s.external_addresses.push(addr.clone());
-            }
             p2plog_debug(format!("External address: {addr}"));
-            drop(s);
         }
         #[cfg(feature = "nat")]
         SwarmEvent::NatStatusChanged(status) => {
-            let mut s = state.lock().await;
-            s.nat_status = Some(status.clone());
             p2plog_debug(format!("NAT status: {status}"));
-            drop(s);
+        }
+        #[cfg(feature = "nat")]
+        SwarmEvent::HolePunchResult { peer_id, success } => {
+            p2plog_debug(format!(
+                "Hole punch with {peer_id}: {}",
+                if success { "established" } else { "failed" }
+            ));
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
@@ -564,7 +568,9 @@ pub fn spawn_command_processor(
         loop {
             let event = tokio::select! {
                 Some(input_event) = input_rx.recv() => Some(Event::Input(input_event)),
-                Some(swarm_event) = swarm_event_rx.recv() => Some(Event::SwarmEvent(swarm_event)),
+                Some(swarm_event) = swarm_event_rx.recv() => {
+                    Some(Event::SwarmEvent(Box::new(swarm_event)))
+                },
                 else => None,
             };
 
@@ -575,7 +581,7 @@ pub fn spawn_command_processor(
                     }
                 }
                 Some(Event::SwarmEvent(swarm_event)) => {
-                    process_swarm_event(swarm_event, &state, &swarm_cmd_tx).await;
+                    process_swarm_event(*swarm_event, &state, &swarm_cmd_tx).await;
                     let _ = render_tx.send(RenderEvent).await;
                 }
                 None => break,

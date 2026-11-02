@@ -210,7 +210,6 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
     (swarm, peer_id)
 }
 
-
 /// Connect two swarms, subscribe to the chat topic, and wait for the gossipsub
 /// subscription handshake to complete.
 async fn connect_swarms(

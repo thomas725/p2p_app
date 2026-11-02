@@ -751,6 +751,7 @@ mod tests {
             "getContacts",
             "getContactsWithStats",
             "getPeersWithStats",
+            "getNetworkDetails",
             "getMyUserId",
         ] {
             assert!(

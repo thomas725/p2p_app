@@ -32,6 +32,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "clearLogs"
         | "getKnownPeers"
         | "getPeersWithStats"
+        | "getNetworkDetails"
         | "sortPeers"
         | "dialPeer") => node_state(m, params),
         m @ ("loadBroadcastMessages"
@@ -80,6 +81,7 @@ fn node_state(method: &str, params: Value) -> Result<Value, String> {
         }
         "getKnownPeers" => json(api::get_known_peers()),
         "getPeersWithStats" => json(mobile_api::get_peers_with_stats()),
+        "getNetworkDetails" => ok(api::get_network_details()),
         "sortPeers" => {
             let p: SortPeersParams = parse(params)?;
             ok(mobile_api::sort_peers(p.rows, p.sort_column, p.ascending))

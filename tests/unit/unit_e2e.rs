@@ -174,7 +174,11 @@ fn seal_for_peer_needs_an_ed25519_peer_id() {
         body("hi")
     );
 
-    assert!(seal_for_peer("not-a-peer-id", None, &body("hi")).expect("fallback").is_none());
+    assert!(
+        seal_for_peer("not-a-peer-id", None, &body("hi"))
+            .expect("fallback")
+            .is_none()
+    );
 }
 
 #[test]

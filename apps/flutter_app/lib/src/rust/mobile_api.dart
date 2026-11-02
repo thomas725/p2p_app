@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 // These functions are ignored because they are not marked as `pub`: `contact_device_from`, `contact_info_from`, `contact_row_from`, `device_info_from`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_user_devices`, `init_mobile_database`, `provision_my_user`, `remove_contact`, `verify_device_binding_claim`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `add_contact`, `add_device`, `get_contacts_with_stats`, `get_contacts`, `get_mobile_peer_status`, `get_my_user_id`, `get_network_details`, `get_user_devices`, `init_mobile_database`, `provision_my_user`, `remove_contact`, `verify_device_binding_claim`
 
 /// Format an ISO timestamp string ("YYYY-MM-DD HH:MM:SS") to "HH:MM".
 ///

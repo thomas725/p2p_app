@@ -165,7 +165,9 @@ pub fn can_encrypt_to(peer_id: &libp2p::PeerId) -> bool {
 /// [`can_encrypt_to`] for a peer ID in the string form the DB and wire carry.
 #[must_use]
 pub fn can_encrypt_to_str(peer_id: &str) -> bool {
-    peer_id.parse::<libp2p::PeerId>().is_ok_and(|p| can_encrypt_to(&p))
+    peer_id
+        .parse::<libp2p::PeerId>()
+        .is_ok_and(|p| can_encrypt_to(&p))
 }
 
 /// Split an outgoing DM into its wire fields, sealing the body when possible.
@@ -191,7 +193,12 @@ pub fn seal_dm_payload(
     ack_for: Option<&str>,
     msg_id: Option<&str>,
     peer: &libp2p::PeerId,
-) -> (String, Option<String>, Option<MessageAttachment>, Option<EncryptedDm>) {
+) -> (
+    String,
+    Option<String>,
+    Option<MessageAttachment>,
+    Option<EncryptedDm>,
+) {
     let is_control = ack_for.is_some() || (content.trim().is_empty() && attachment.is_none());
     if is_control {
         return (content, nickname, attachment, None);
@@ -208,12 +215,7 @@ pub fn seal_dm_payload(
         Ok(envelope) => (String::new(), None, None, Some(envelope)),
         Err(e) => {
             crate::p2plog_debug(format!("dm-e2e: falling back to plaintext: {e}"));
-            (
-                body.content,
-                body.nickname,
-                body.attachment,
-                None,
-            )
+            (body.content, body.nickname, body.attachment, None)
         }
     }
 }
@@ -233,9 +235,12 @@ pub fn mark_encrypted(body: String, encrypted: bool) -> String {
 
 /// Build the AAD for an envelope: `HKDF_INFO ‖ 0x00 ‖ msg_id`.
 fn aad(msg_id: Option<&str>) -> Vec<u8> {
-    let mut out = Vec::with_capacity(HKDF_INFO.len().saturating_add(1).saturating_add(
-        msg_id.map_or(0, str::len),
-    ));
+    let mut out = Vec::with_capacity(
+        HKDF_INFO
+            .len()
+            .saturating_add(1)
+            .saturating_add(msg_id.map_or(0, str::len)),
+    );
     out.extend_from_slice(HKDF_INFO);
     out.push(0);
     if let Some(msg_id) = msg_id {
@@ -340,8 +345,8 @@ pub fn open_body(
         .as_slice()
         .try_into()
         .map_err(|_| eyre!("dm-e2e: nonce is not {NONCE_LEN} bytes"))?;
-    let ciphertext = from_hex(&envelope.ciphertext)
-        .ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
+    let ciphertext =
+        from_hex(&envelope.ciphertext).ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
 
     let ephemeral_public = PublicKey::from(ephemeral_array);
     let our_public = PublicKey::from(secret);
