@@ -1,0 +1,1747 @@
+============================================================
+CI/CD Pipeline Results
+============================================================
+
+Timestamp: 2026-11-02 15:38:23 UTC
+Commit: 61024680dd93fd4ad024352d70763f029a73d30b
+Branch: refs/heads/main
+Run ID: 41473258850
+
+============================================================
+SUMMARY
+============================================================
+check      exit  result
+fmt        0     PASS
+clippy     0     PASS
+test       0     PASS
+build      0     PASS
+audit      0     PASS
+doclinks   0     PASS
+docs       0     PASS
+overall: PASS (7/7 checks green)
+============================================================
+
+============================================================
+Detailed Logs
+============================================================
+
+
+============================================================
+Phase 1 - Code Quality
+============================================================
+
+--- fmt [PASS] ---
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:393:
+                 nickname: None,
+                 msg_id: Some("m1".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             false,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:426:
+                 nickname: None,
+                 msg_id: Some("dm1".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             true,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:459:
+                 nickname: Some("Nickname".to_string()),
+                 msg_id: None,
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             false,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:495:
+                 nickname: Some("Alice".to_string()),
+                 msg_id: None,
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             false,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:530:
+                 nickname: None,
+                 msg_id: None,
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             false,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:564:
+                 nickname: Some("Bob".to_string()),
+                 msg_id: Some("dm-5".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             },
+             true,
+         );
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:600:
+                 nickname: None,
+                 msg_id: Some("m1".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             }),
+             &state,
+             &swarm_cmd_tx,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:637:
+                 nickname: None,
+                 msg_id: Some("dm1".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             }),
+             &state,
+             &swarm_cmd_tx,
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_command_processor.rs:743:
+                 nickname: None,
+                 msg_id: Some("m-loop".to_string()),
+                 attachment: None,
+-            encrypted: false,
++                encrypted: false,
+             }))
+             .await
+             .unwrap();
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_message_handlers.rs:90:
+             &format!("msg-{i}"),
+             None,
+             format!("m{i}"),
+-        false,
++            false,
+         );
+     }
+     assert_eq!(state.dm_messages["p1"].len(), MAX_DM_HISTORY);
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/../../../tests/unit/unit_bin_tui_message_handlers.rs:112:
+ #[test]
+ fn test_push_outgoing_dm_separate_peers() {
+     let mut state = test_app_state();
+-    push_outgoing_dm_to_state(&mut state, "pa", "12:00", "Me", "hi", None, "m1".into(), false);
+-    push_outgoing_dm_to_state(&mut state, "pb", "12:00", "Me", "ho", None, "m2".into(), false);
++    push_outgoing_dm_to_state(
++        &mut state,
++        "pa",
++        "12:00",
++        "Me",
++        "hi",
++        None,
++        "m1".into(),
++        false,
++    );
++    push_outgoing_dm_to_state(
++        &mut state,
++        "pb",
++        "12:00",
++        "Me",
++        "ho",
++        None,
++        "m2".into(),
++        false,
++    );
+     assert_eq!(state.dm_messages.len(), 2);
+     assert_eq!(state.dm_messages["pa"].len(), 1);
+     assert_eq!(state.dm_messages["pb"].len(), 1);
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/command_processor.rs:250:
+     }
+     let sender_display =
+         p2p_app::peer_display_name(&peer_id, &s.local_nicknames, &s.received_nicknames);
+-    let body = p2p_app::e2e::mark_encrypted(render_message_body(&content, attachment.as_ref()), encrypted);
++    let body = p2p_app::e2e::mark_encrypted(
++        render_message_body(&content, attachment.as_ref()),
++        encrypted,
++    );
+     if is_direct {
+         apply_dm_to_state(s, &body, &peer_id, latency.as_deref(), msg_id);
+     } else {
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:658:
+     if address.is_empty() {
+         return;
+     }
+-    let _ = swarm_cmd_tx.send(SwarmCommand::Dial { address: address.clone() }).await;
++    let _ = swarm_cmd_tx
++        .send(SwarmCommand::Dial {
++            address: address.clone(),
++        })
++        .await;
+     p2plog_debug(format!("Dialing peer: {address}"));
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/input_processor.rs:959:
+             handle_contacts_tab_key(key_event, is_ctrl, s);
+         }
+         _ => {
+-            if input_enabled || s.is_editing_nickname() || s.is_creating_group() || s.is_dialing_peer() {
++            if input_enabled
++                || s.is_editing_nickname()
++                || s.is_creating_group()
++                || s.is_dialing_peer()
++            {
+                 s.chat_input.input(key_event);
+             }
+         }
+Diff in /home/runner/work/p2p_app/p2p_app/src/bin/tui/render_loop/layout.rs:38:
+         "Input".to_string()
+     };
+     let input_block = Block::default().title(title).borders(Borders::ALL);
+-    if tab_content.is_input_enabled() || state.is_editing_nickname() || state.is_creating_group() || state.is_dialing_peer() {
++    if tab_content.is_input_enabled()
++        || state.is_editing_nickname()
++        || state.is_creating_group()
++        || state.is_dialing_peer()
++    {
+         let inner_area = input_block.inner(input_area);
+         f.render_widget(input_block, input_area);
+         let mut textarea = state.chat_input.clone();
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_behavior.rs:64:
+         received_at: Some(3.4),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     let json = serde_json::to_string(&dm).expect("serialize");
+     let parsed: DirectMessage = serde_json::from_str(&json).expect("deserialize");
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_behavior.rs:79:
+     let rt = tokio::runtime::Runtime::new().expect("runtime");
+     rt.block_on(async {
+         let key = libp2p_identity::Keypair::generate_ed25519();
+-        let _small = build_behaviour(&key, NetworkSize::Small, libp2p::relay::client::new(key.public().to_peer_id()).1);
+-        let _medium = build_behaviour(&key, NetworkSize::Medium, libp2p::relay::client::new(key.public().to_peer_id()).1);
+-        let _large = build_behaviour(&key, NetworkSize::Large, libp2p::relay::client::new(key.public().to_peer_id()).1);
++        let _small = build_behaviour(
++            &key,
++            NetworkSize::Small,
++            libp2p::relay::client::new(key.public().to_peer_id()).1,
++        );
++        let _medium = build_behaviour(
++            &key,
++            NetworkSize::Medium,
++            libp2p::relay::client::new(key.public().to_peer_id()).1,
++        );
++        let _large = build_behaviour(
++            &key,
++            NetworkSize::Large,
++            libp2p::relay::client::new(key.public().to_peer_id()).1,
++        );
+     });
+ }
+ 
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_e2e.rs:174:
+         body("hi")
+     );
+ 
+-    assert!(seal_for_peer("not-a-peer-id", None, &body("hi")).expect("fallback").is_none());
++    assert!(
++        seal_for_peer("not-a-peer-id", None, &body("hi"))
++            .expect("fallback")
++            .is_none()
++    );
+ }
+ 
+ #[test]
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:77:
+         crate::identity::save_user(user_id, &account_pubkey, None, None).expect("save user");
+         let claim = account_key.sign(&message).expect("sign");
+         assert!(
+-            crate::identity::verify_device_binding_claim(user_id, &device_pubkey, claim_id, &claim, None)
+-                .expect("verify clean")
++            crate::identity::verify_device_binding_claim(
++                user_id,
++                &device_pubkey,
++                claim_id,
++                &claim,
++                None
++            )
++            .expect("verify clean")
+         );
+         // And the helper-built message is byte-identical to the one the
+         // verifier recomputes internally.
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:337:
+         let sibling_pubkey = sibling_key.public().encode_protobuf();
+         crate::peers::save_peer("sibling-peer", &[]).expect("save sibling peer");
+         let sib_claim_id = "sib-claim";
+-        let sib_msg = crate::identity::device_binding_claim_message(&user_id, &sibling_pubkey, sib_claim_id);
++        let sib_msg =
++            crate::identity::device_binding_claim_message(&user_id, &sibling_pubkey, sib_claim_id);
+         let sib_sig = account_key.sign(&sib_msg).expect("sign sibling claim");
+         crate::identity::save_device_binding(
+             &user_id,
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:352:
+         // A new device's claim signed by the sibling verifies via the sibling path.
+         let new_device_pubkey = [0x77u8; 32];
+         let new_claim_id = "new-claim";
+-        let new_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, new_claim_id);
++        let new_msg = crate::identity::device_binding_claim_message(
++            &user_id,
++            &new_device_pubkey,
++            new_claim_id,
++        );
+         let sibling_sig = sibling_key.sign(&new_msg).expect("sign by sibling");
+         assert!(
+             crate::identity::verify_device_binding_claim(
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:396:
+         let other_account_key = libp2p_identity::Keypair::generate_ed25519();
+         let other_account_pubkey = other_account_key.public().encode_protobuf();
+         let other_user = "other-user";
+-        crate::identity::save_user(other_user, &other_account_pubkey, None, None).expect("save other user");
++        crate::identity::save_user(other_user, &other_account_pubkey, None, None)
++            .expect("save other user");
+         let other_sibling_pubkey = [0x33u8; 32];
+         crate::peers::save_peer("other-sibling-peer", &[]).expect("save other sibling peer");
+         let other_cid = "other-sib-claim";
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:403:
+-        let other_msg = crate::identity::device_binding_claim_message(other_user, &other_sibling_pubkey, other_cid);
++        let other_msg = crate::identity::device_binding_claim_message(
++            other_user,
++            &other_sibling_pubkey,
++            other_cid,
++        );
+         let other_sig = other_account_key.sign(&other_msg).expect("sign");
+         crate::identity::save_device_binding(
+             other_user,
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:425:
+ 
+         // An account-key claim still verifies (path 1).
+         let acct_claim_id = "acct-claim";
+-        let acct_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, acct_claim_id);
++        let acct_msg = crate::identity::device_binding_claim_message(
++            &user_id,
++            &new_device_pubkey,
++            acct_claim_id,
++        );
+         let acct_sig = account_key.sign(&acct_msg).expect("sign acct");
+         assert!(
+             crate::identity::verify_device_binding_claim(
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:453:
+         let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+         crate::identity::save_user(&user_id, &account_pubkey, None, None).expect("save user");
+         let local_peer = crate::get_local_peer_id().unwrap().to_string();
+-        let local_pubkey = crate::get_libp2p_identity().unwrap().public().encode_protobuf();
++        let local_pubkey = crate::get_libp2p_identity()
++            .unwrap()
++            .public()
++            .encode_protobuf();
+         crate::peers::save_peer(&local_peer, &[]).expect("save local peer");
+         let self_cid = "self-bind";
+-        let self_msg = crate::identity::device_binding_claim_message(&user_id, &local_pubkey, self_cid);
++        let self_msg =
++            crate::identity::device_binding_claim_message(&user_id, &local_pubkey, self_cid);
+         let self_sig = account_key.sign(&self_msg).expect("sign self bind");
+         crate::identity::save_device_binding(
+             &user_id,
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_identity.rs:482:
+         assert_eq!(request.user_id.as_deref(), Some(user_id.as_str()));
+         let claim = request.signature.expect("claim signed");
+         let claim_id = request.claim_id.expect("claim id");
+-        let msg = crate::identity::device_binding_claim_message(&user_id, &target_pubkey, &claim_id);
++        let msg =
++            crate::identity::device_binding_claim_message(&user_id, &target_pubkey, &claim_id);
+         // Signed by the install key, NOT the account key.
+         let install_key = crate::get_libp2p_identity().expect("install key");
+         assert!(install_key.public().verify(&msg, &claim));
+Diff in /home/runner/work/p2p_app/p2p_app/src/../tests/unit/unit_lib.rs:120:
+         received_at: None,
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     let json = serde_json::to_string(&dm).unwrap();
+     assert!(json.contains("Hello"));
+Diff in /home/runner/work/p2p_app/p2p_app/src/behavior.rs:428:
+     ));
+ 
+     #[cfg(feature = "relay")]
+-    let relay_server = libp2p::relay::Behaviour::new(key.public().to_peer_id(), libp2p::relay::Config::default());
++    let relay_server =
++        libp2p::relay::Behaviour::new(key.public().to_peer_id(), libp2p::relay::Config::default());
+ 
+     #[cfg(feature = "nat")]
+-    let autonat = libp2p::autonat::Behaviour::new(key.public().to_peer_id(), libp2p::autonat::Config::default());
++    let autonat = libp2p::autonat::Behaviour::new(
++        key.public().to_peer_id(),
++        libp2p::autonat::Config::default(),
++    );
+ 
+     #[cfg(feature = "nat")]
+     let dcutr = libp2p::dcutr::Behaviour::new(key.public().to_peer_id());
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:165:
+ /// [`can_encrypt_to`] for a peer ID in the string form the DB and wire carry.
+ #[must_use]
+ pub fn can_encrypt_to_str(peer_id: &str) -> bool {
+-    peer_id.parse::<libp2p::PeerId>().is_ok_and(|p| can_encrypt_to(&p))
++    peer_id
++        .parse::<libp2p::PeerId>()
++        .is_ok_and(|p| can_encrypt_to(&p))
+ }
+ 
+ /// Split an outgoing DM into its wire fields, sealing the body when possible.
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:191:
+     ack_for: Option<&str>,
+     msg_id: Option<&str>,
+     peer: &libp2p::PeerId,
+-) -> (String, Option<String>, Option<MessageAttachment>, Option<EncryptedDm>) {
++) -> (
++    String,
++    Option<String>,
++    Option<MessageAttachment>,
++    Option<EncryptedDm>,
++) {
+     let is_control = ack_for.is_some() || (content.trim().is_empty() && attachment.is_none());
+     if is_control {
+         return (content, nickname, attachment, None);
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:208:
+         Ok(envelope) => (String::new(), None, None, Some(envelope)),
+         Err(e) => {
+             crate::p2plog_debug(format!("dm-e2e: falling back to plaintext: {e}"));
+-            (
+-                body.content,
+-                body.nickname,
+-                body.attachment,
+-                None,
+-            )
++            (body.content, body.nickname, body.attachment, None)
+         }
+     }
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:233:
+ 
+ /// Build the AAD for an envelope: `HKDF_INFO ‖ 0x00 ‖ msg_id`.
+ fn aad(msg_id: Option<&str>) -> Vec<u8> {
+-    let mut out = Vec::with_capacity(HKDF_INFO.len().saturating_add(1).saturating_add(
+-        msg_id.map_or(0, str::len),
+-    ));
++    let mut out = Vec::with_capacity(
++        HKDF_INFO
++            .len()
++            .saturating_add(1)
++            .saturating_add(msg_id.map_or(0, str::len)),
++    );
+     out.extend_from_slice(HKDF_INFO);
+     out.push(0);
+     if let Some(msg_id) = msg_id {
+Diff in /home/runner/work/p2p_app/p2p_app/src/e2e.rs:340:
+         .as_slice()
+         .try_into()
+         .map_err(|_| eyre!("dm-e2e: nonce is not {NONCE_LEN} bytes"))?;
+-    let ciphertext = from_hex(&envelope.ciphertext)
+-        .ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
++    let ciphertext =
++        from_hex(&envelope.ciphertext).ok_or_else(|| eyre!("dm-e2e: malformed ciphertext"))?;
+ 
+     let ephemeral_public = PublicKey::from(ephemeral_array);
+     let our_public = PublicKey::from(secret);
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:32:
+ // Section: imports
+ 
+ use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+-use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+ use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+ // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:3135:
+     use flutter_rust_bridge::for_generated::byteorder::{
+         NativeEndian, ReadBytesExt, WriteBytesExt,
+     };
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/frb_generated.rs:3159:
+     };
+     use flutter_rust_bridge::for_generated::wasm_bindgen;
+     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
+-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
++    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+     use flutter_rust_bridge::{Handler, IntoIntoDart};
+ 
+     // Section: boilerplate
+Diff in /home/runner/work/p2p_app/p2p_app/src/identity.rs:574:
+     // The device-binding FK requires the peer row to exist: ensure the target
+     // does (it normally does — it sent us the intro — but be safe).
+     crate::peers::save_peer(peer_id, &[])?;
+-    save_device_binding(&user_id, peer_id, device_pubkey, &claim_id, &claim, Some(&local_peer))?;
++    save_device_binding(
++        &user_id,
++        peer_id,
++        device_pubkey,
++        &claim_id,
++        &claim,
++        Some(&local_peer),
++    )?;
+     Ok(crate::behavior::DeviceBindingRequest {
+         kind: "claim".to_string(),
+         user_id: Some(user_id),
+Diff in /home/runner/work/p2p_app/p2p_app/src/lib.rs:107:
+     get_database_url, get_libp2p_identity, get_local_peer_id, init_database, release_db_lock,
+     sqlite_connect,
+ };
+-pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
+ pub use e2e::{
+     ENVELOPE_VERSION, EncryptedDm, HKDF_INFO, SealedDmBody, TUI_ENCRYPTED_MARKER, can_encrypt_to,
+     open_incoming, seal_for_peer,
+Diff in /home/runner/work/p2p_app/p2p_app/src/lib.rs:114:
+ };
++pub use files::{GC_GRACE, GcStats, MessageAttachment, file_path, gc, store_outgoing_file};
+ pub use fmt::{
+     current_timestamp, format_latency, format_now, format_peer_datetime, format_system_time,
+     gen_msg_id, now_timestamp, parse_last_seen_ms, peer_display_name, short_peer_id,
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_api.rs:399:
+     claim_id: String,
+     claim: Vec<u8>,
+ ) -> Result<MobileDeviceInfo, String> {
+-    crate::identity::save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim, None)
+-        .map(device_info_from)
+-        .map_err(|e| e.to_string())
++    crate::identity::save_device_binding(
++        &user_id,
++        &peer_id,
++        &device_pubkey,
++        &claim_id,
++        &claim,
++        None,
++    )
++    .map(device_info_from)
++    .map_err(|e| e.to_string())
+ }
+ 
+ /// List the live devices bound to a user, most recent first.
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:458:
+     if let Some(m) = NODE.get() {
+         let node = lock_node_mutex(m);
+         if let Some(tx) = node.cmd_tx.as_ref() {
+-            queued = tx
+-                .blocking_send(SwarmCommand::Dial { address })
+-                .is_ok();
++            queued = tx.blocking_send(SwarmCommand::Dial { address }).is_ok();
+         }
+     }
+     if !queued {
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1319:
+             nickname: Some("Alice".into()),
+             msg_id: Some("m1".into()),
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         let j = event_to_json(ev);
+         assert_eq!(j.event_type, "broadcast");
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1340:
+             nickname: None,
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         let j = event_to_json(ev);
+         assert_eq!(j.event_type, "dm");
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1645:
+             nickname: Some("Bob".into()),
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         process_event_for_mobile(&ev, None);
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1659:
+             nickname: Some("Charlie".into()),
+             msg_id: Some("msg-b1".into()),
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         process_event_for_mobile(&ev, None);
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1747:
+             nickname: Some("Alice".into()),
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         assert!(is_nickname_only_dm(&ev));
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1761:
+             nickname: None,
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         assert!(!is_nickname_only_dm(&ev));
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1775:
+             nickname: Some("Alice".into()),
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         assert!(!is_nickname_only_dm(&ev));
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/mobile_node.rs:1789:
+             nickname: Some("Alice".into()),
+             msg_id: None,
+             attachment: None,
+-        encrypted: false,
++            encrypted: false,
+         });
+         assert!(!is_nickname_only_dm(&ev));
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/swarm_handler.rs:66:
+     swarm: &mut Swarm<AppBehaviour>,
+ ) {
+     for addr in &info.listen_addrs {
+-        swarm.behaviour_mut().kad.add_address(&peer_id, addr.clone());
++        swarm
++            .behaviour_mut()
++            .kad
++            .add_address(&peer_id, addr.clone());
+     }
+     let addrs: Vec<String> = info.listen_addrs.iter().map(ToString::to_string).collect();
+     if let Err(e) = crate::save_peer(&peer_id.to_string(), &addrs) {
+Diff in /home/runner/work/p2p_app/p2p_app/src/swarm_handler.rs:201:
+                 .await;
+         }
+         #[cfg(feature = "nat")]
+-        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged { new, .. })) => {
++        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged {
++            new,
++            ..
++        })) => {
+             let status = format!("{new:?}");
+-            let _ = event_tx
+-                .send(SwarmEvent::NatStatusChanged(status))
+-                .await;
++            let _ = event_tx.send(SwarmEvent::NatStatusChanged(status)).await;
+         }
+         _ => {}
+     }
+Diff in /home/runner/work/p2p_app/p2p_app/src/swarm_handler.rs:1203:
+             received_at: None,
+             group_id: None,
+             attachment,
+-        encrypted: None,
++            encrypted: None,
+         };
+         swarm
+             .behaviour_mut()
+Diff in /home/runner/work/p2p_app/p2p_app/tests/additional_coverage.rs:26:
+         received_at: None,
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+ 
+     let debug = format!("{dm:?}");
+Diff in /home/runner/work/p2p_app/p2p_app/tests/additional_coverage.rs:101:
+         nickname: Some("nick".to_string()),
+         msg_id: Some("id".to_string()),
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+     let bcast_debug = format!("{bcast:?}");
+     assert!(bcast_debug.contains("msg"));
+Diff in /home/runner/work/p2p_app/p2p_app/tests/additional_coverage.rs:113:
+         nickname: None,
+         msg_id: None,
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+     let direct_debug = format!("{direct:?}");
+     assert!(direct_debug.contains("direct"));
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:47:
+         received_at: None,
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     let json = serde_json::to_string(&dm).unwrap();
+     assert!(json.contains("hello"));
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:77:
+             .unwrap()
+             .block_on(async {
+                 let keypair = p2p_app::get_libp2p_identity().unwrap();
+-                let _behaviour =
+-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
++                let _behaviour = p2p_app::build_behaviour(
++                    &keypair,
++                    p2p_app::network::NetworkSize::Small,
++                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
++                );
+             });
+     });
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:93:
+             .unwrap()
+             .block_on(async {
+                 let keypair = p2p_app::get_libp2p_identity().unwrap();
+-                let _behaviour =
+-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Medium, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
++                let _behaviour = p2p_app::build_behaviour(
++                    &keypair,
++                    p2p_app::network::NetworkSize::Medium,
++                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
++                );
+             });
+     });
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:109:
+             .unwrap()
+             .block_on(async {
+                 let keypair = p2p_app::get_libp2p_identity().unwrap();
+-                let _behaviour =
+-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Large, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
++                let _behaviour = p2p_app::build_behaviour(
++                    &keypair,
++                    p2p_app::network::NetworkSize::Large,
++                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
++                );
+             });
+     });
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:127:
+         received_at: Some(2.0),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     assert_eq!(dm.content, "test");
+     assert_eq!(dm.timestamp, 99);
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:161:
+         received_at: Some(2.0),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     let cloned = dm.clone();
+     assert_eq!(dm.content, cloned.content);
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:192:
+             .unwrap()
+             .block_on(async {
+                 let keypair = p2p_app::get_libp2p_identity().unwrap();
+-                let _behaviour =
+-                    p2p_app::build_behaviour(&keypair, p2p_app::network::NetworkSize::Small, libp2p::relay::client::new(keypair.public().to_peer_id()).1);
++                let _behaviour = p2p_app::build_behaviour(
++                    &keypair,
++                    p2p_app::network::NetworkSize::Small,
++                    libp2p::relay::client::new(keypair.public().to_peer_id()).1,
++                );
+             });
+     });
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/behavior.rs:222:
+         received_at: Some(3.0),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     let json = serde_json::to_string(&dm).unwrap();
+     let parsed: DirectMessage = serde_json::from_str(&json).unwrap();
+Diff in /home/runner/work/p2p_app/p2p_app/tests/swarm_handler.rs:210:
+     (swarm, peer_id)
+ }
+ 
+-
+ /// Connect two swarms, subscribe to the chat topic, and wait for the gossipsub
+ /// subscription handshake to complete.
+ async fn connect_swarms(
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_binary_integration.rs:110:
+         nickname: Some("EventNick".to_string()),
+         msg_id: Some("evt-1".to_string()),
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+ 
+     let debug = format!("{bcast:?}");
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_binary_integration.rs:125:
+         nickname: None,
+         msg_id: None,
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+ 
+     let direct_debug = format!("{direct:?}");
+Diff in /home/runner/work/p2p_app/p2p_app/tests/tui_binary_integration.rs:274:
+         received_at: Some(1_234_567_891.0),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+ 
+     // Test Debug format
+Diff in /home/runner/work/p2p_app/p2p_app/tests/types.rs:20:
+         nickname: Some("alice".into()),
+         msg_id: Some("id1".into()),
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+     assert!(format!("{ev:?}").contains("BroadcastMessage"));
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/types.rs:34:
+         nickname: None,
+         msg_id: None,
+         attachment: None,
+-    encrypted: false,
++        encrypted: false,
+     });
+     assert!(format!("{ev:?}").contains("DirectMessage"));
+ }
+Diff in /home/runner/work/p2p_app/p2p_app/tests/types.rs:157:
+         received_at: Some(2000.0),
+         group_id: None,
+         attachment: None,
+-    encrypted: None,
++        encrypted: None,
+     };
+     assert_eq!(msg.content, "hi");
+     assert_eq!(msg.timestamp, 12345);
+Exit code: 0
+
+--- clippy [PASS] ---
+[1m[92m    Updating[0m crates.io index
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m libp2p-autonat v0.16.0
+[1m[92m  Downloaded[0m libp2p-dcutr v0.15.0
+[1m[92m  Downloaded[0m libp2p-relay v0.22.0
+[1m[92m  Downloaded[0m libp2p-identify v0.48.0
+[1m[92m    Checking[0m bytes v1.12.1
+[1m[92m   Compiling[0m crunchy v0.2.4
+[1m[92m    Checking[0m hex v0.4.3
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m tokio v1.54.1
+[1m[92m    Checking[0m prost v0.14.4
+[1m[92m    Checking[0m libp2p-identity v0.3.0
+[1m[92m    Checking[0m multiaddr v0.19.0
+[1m[92m    Checking[0m multistream-select v0.14.0
+[1m[92m    Checking[0m libp2p-core v0.44.0
+[1m[92m    Checking[0m asynchronous-codec v0.7.0
+[1m[92m    Checking[0m http v1.5.0
+[1m[92m    Checking[0m prost-codec v0.4.0
+[1m[92m    Checking[0m http-body v1.1.0
+[1m[92m    Checking[0m http-body-util v0.1.5
+[1m[92m    Checking[0m quinn-proto v0.11.18
+[1m[92m    Checking[0m tungstenite v0.29.0
+[1m[92m    Checking[0m uint v0.10.1
+[1m[92m    Checking[0m libp2p-tls v0.7.0
+[1m[92m    Checking[0m libp2p-swarm v0.48.0
+[1m[92m    Checking[0m netlink-sys v0.8.8
+[1m[92m    Checking[0m netlink-proto v0.12.2
+[1m[92m    Checking[0m hyper v1.11.1
+[1m[92m    Checking[0m rtnetlink v0.20.0
+[1m[92m    Checking[0m if-watch v3.2.2
+[1m[92m    Checking[0m hyper-util v0.1.20
+[1m[92m    Checking[0m libp2p-tcp v0.45.0
+[1m[92m    Checking[0m tokio-tungstenite v0.29.0
+[1m[92m    Checking[0m libp2p-request-response v0.30.0
+[1m[92m    Checking[0m libp2p-kad v0.49.0
+[1m[92m    Checking[0m libp2p-dcutr v0.15.0
+[1m[92m    Checking[0m libp2p-autonat v0.16.0
+[1m[92m    Checking[0m quinn v0.11.12
+[1m[92m    Checking[0m libp2p-gossipsub v0.50.0
+[1m[92m    Checking[0m libp2p-quic v0.14.0
+[1m[92m    Checking[0m libp2p-relay v0.22.0
+[1m[92m    Checking[0m libp2p-identify v0.48.0
+[1m[92m    Checking[0m libp2p-ping v0.48.0
+[1m[92m    Checking[0m libp2p-allow-block-list v0.7.0
+[1m[92m    Checking[0m libp2p-connection-limits v0.7.0
+[1m[92m    Checking[0m libp2p-mdns v0.49.0
+[1m[92m    Checking[0m tokio-util v0.7.19
+[1m[92m    Checking[0m tower v0.5.3
+[1m[92m    Checking[0m axum-core v0.5.6
+[1m[92m    Checking[0m libp2p-noise v0.47.0
+[1m[92m    Checking[0m libp2p-yamux v0.48.0
+[1m[92m    Checking[0m tower-http v0.7.1
+[1m[92m    Checking[0m flutter_rust_bridge v2.13.0
+[1m[92m    Checking[0m libp2p v0.57.1
+[1m[92m    Checking[0m axum v0.8.9
+[1m[91merror[E0599][0m[1m: no variant named `NewExternalAddr` found for enum `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+   [1m[94m--> [0msrc/swarm_handler.rs:198:27
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m         Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+    [1m[94m|[0m                           [1m[91m^^^^^^^^^^^^^^^[0m [1m[91mvariant not found in `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[0m: could not compile `p2p_app` (lib test) due to 1 previous error
+Exit code: 0
+
+
+============================================================
+Phase 2 - Test & Build
+============================================================
+
+--- test [PASS] ---
+[1m[92m   Compiling[0m bytes v1.12.1
+[1m[92m   Compiling[0m crunchy v0.2.4
+[1m[92m   Compiling[0m hex v0.4.3
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m   Compiling[0m uint v0.10.1
+[1m[92m   Compiling[0m tokio v1.54.1
+[1m[92m   Compiling[0m prost v0.14.4
+[1m[92m   Compiling[0m multistream-select v0.14.0
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m libp2p-identity v0.3.0
+[1m[92m   Compiling[0m asynchronous-codec v0.7.0
+[1m[92m   Compiling[0m multiaddr v0.19.0
+[1m[92m   Compiling[0m prost-codec v0.4.0
+[1m[92m   Compiling[0m quinn-proto v0.11.18
+[1m[92m   Compiling[0m libp2p-core v0.44.0
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m tungstenite v0.29.0
+[1m[92m   Compiling[0m libp2p-tls v0.7.0
+[1m[92m   Compiling[0m libp2p-yamux v0.48.0
+[1m[92m   Compiling[0m libp2p-noise v0.47.0
+[1m[92m   Compiling[0m axum-core v0.5.6
+[1m[92m   Compiling[0m libp2p-swarm v0.48.0
+[1m[92m   Compiling[0m netlink-sys v0.8.8
+[1m[92m   Compiling[0m netlink-proto v0.12.2
+[1m[92m   Compiling[0m rtnetlink v0.20.0
+[1m[92m   Compiling[0m libp2p-request-response v0.30.0
+[1m[92m   Compiling[0m quinn v0.11.12
+[1m[92m   Compiling[0m hyper v1.11.1
+[1m[92m   Compiling[0m libp2p-autonat v0.16.0
+[1m[92m   Compiling[0m if-watch v3.2.2
+[1m[92m   Compiling[0m libp2p-tcp v0.45.0
+[1m[92m   Compiling[0m hyper-util v0.1.20
+[1m[92m   Compiling[0m libp2p-quic v0.14.0
+[1m[92m   Compiling[0m libp2p-mdns v0.49.0
+[1m[92m   Compiling[0m libp2p-connection-limits v0.7.0
+[1m[92m   Compiling[0m libp2p-kad v0.49.0
+[1m[92m   Compiling[0m libp2p-relay v0.22.0
+[1m[92m   Compiling[0m libp2p-gossipsub v0.50.0
+[1m[92m   Compiling[0m libp2p-allow-block-list v0.7.0
+[1m[92m   Compiling[0m libp2p-dcutr v0.15.0
+[1m[92m   Compiling[0m libp2p-identify v0.48.0
+[1m[92m   Compiling[0m libp2p-ping v0.48.0
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m tokio-tungstenite v0.29.0
+[1m[92m   Compiling[0m tokio-util v0.7.19
+[1m[92m   Compiling[0m libp2p v0.57.1
+[1m[92m   Compiling[0m axum v0.8.9
+[1m[92m   Compiling[0m tower-http v0.7.1
+[1m[92m   Compiling[0m flutter_rust_bridge v2.13.0
+[1m[91merror[E0599][0m[1m: no variant named `NewExternalAddr` found for enum `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+   [1m[94m--> [0msrc/swarm_handler.rs:198:27
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m         Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+    [1m[94m|[0m                           [1m[91m^^^^^^^^^^^^^^^[0m [1m[91mvariant not found in `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[91merror[0m: could not compile `p2p_app` (lib test) due to 1 previous error
+Exit code: 0
+
+--- build [PASS] ---
+[1m[92m   Compiling[0m bytes v1.12.1
+[1m[92m   Compiling[0m crunchy v0.2.4
+[1m[92m   Compiling[0m hex v0.4.3
+[1m[92m   Compiling[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m   Compiling[0m uint v0.10.1
+[1m[92m   Compiling[0m tokio v1.54.1
+[1m[92m   Compiling[0m prost v0.14.4
+[1m[92m   Compiling[0m multistream-select v0.14.0
+[1m[92m   Compiling[0m libp2p-identity v0.3.0
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m asynchronous-codec v0.7.0
+[1m[92m   Compiling[0m multiaddr v0.19.0
+[1m[92m   Compiling[0m libp2p-core v0.44.0
+[1m[92m   Compiling[0m prost-codec v0.4.0
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m quinn-proto v0.11.18
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m libp2p-tls v0.7.0
+[1m[92m   Compiling[0m tungstenite v0.29.0
+[1m[92m   Compiling[0m axum-core v0.5.6
+[1m[92m   Compiling[0m libp2p-yamux v0.48.0
+[1m[92m   Compiling[0m libp2p-noise v0.47.0
+[1m[92m   Compiling[0m libp2p-swarm v0.48.0
+[1m[92m   Compiling[0m netlink-sys v0.8.8
+[1m[92m   Compiling[0m netlink-proto v0.12.2
+[1m[92m   Compiling[0m rtnetlink v0.20.0
+[1m[92m   Compiling[0m libp2p-request-response v0.30.0
+[1m[92m   Compiling[0m quinn v0.11.12
+[1m[92m   Compiling[0m hyper v1.11.1
+[1m[92m   Compiling[0m if-watch v3.2.2
+[1m[92m   Compiling[0m libp2p-quic v0.14.0
+[1m[92m   Compiling[0m libp2p-tcp v0.45.0
+[1m[92m   Compiling[0m libp2p-mdns v0.49.0
+[1m[92m   Compiling[0m hyper-util v0.1.20
+[1m[92m   Compiling[0m libp2p-autonat v0.16.0
+[1m[92m   Compiling[0m libp2p-kad v0.49.0
+[1m[92m   Compiling[0m libp2p-dcutr v0.15.0
+[1m[92m   Compiling[0m libp2p-relay v0.22.0
+[1m[92m   Compiling[0m libp2p-gossipsub v0.50.0
+[1m[92m   Compiling[0m libp2p-identify v0.48.0
+[1m[92m   Compiling[0m libp2p-ping v0.48.0
+[1m[92m   Compiling[0m libp2p-allow-block-list v0.7.0
+[1m[92m   Compiling[0m libp2p-connection-limits v0.7.0
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m tokio-tungstenite v0.29.0
+[1m[92m   Compiling[0m tokio-util v0.7.19
+[1m[92m   Compiling[0m axum v0.8.9
+[1m[92m   Compiling[0m libp2p v0.57.1
+[1m[92m   Compiling[0m tower-http v0.7.1
+[1m[92m   Compiling[0m flutter_rust_bridge v2.13.0
+[1m[91merror[E0599][0m[1m: no variant named `NewExternalAddr` found for enum `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+   [1m[94m--> [0msrc/swarm_handler.rs:198:27
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m         Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+    [1m[94m|[0m                           [1m[91m^^^^^^^^^^^^^^^[0m [1m[91mvariant not found in `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (lib) due to 1 previous error
+Exit code: 0
+
+
+============================================================
+Phase 3 - Security & Documentation
+============================================================
+
+--- audit [PASS] ---
+[0m[0m[1m[32m    Fetching[0m advisory database from `https://github.com/RustSec/advisory-db.git`
+[0m[0m[1m[32m      Loaded[0m 1402 security advisories (from /home/runner/.cargo/advisory-db)
+[0m[0m[1m[32m    Updating[0m crates.io index
+[0m[0m[1m[32m    Scanning[0m Cargo.lock for vulnerabilities (560 crate dependencies)
+[0m[0m[1m[33mCrate:    [0m paste
+[0m[0m[1m[33mVersion:  [0m 1.0.15
+[0m[0m[1m[33mWarning:  [0m unmaintained
+[0m[0m[1m[33mTitle:    [0m paste - no longer maintained
+[0m[0m[1m[33mDate:     [0m 2024-10-07
+[0m[0m[1m[33mID:       [0m RUSTSEC-2024-0436
+[0m[0m[1m[33mURL:      [0m https://rustsec.org/advisories/RUSTSEC-2024-0436
+
+[0m[0m[1m[33mCrate:    [0m yoke-derive
+[0m[0m[1m[33mVersion:  [0m 0.8.3
+[0m[0m[1m[33mWarning:  [0m yanked
+
+[0m[0m[1m[33mwarning:[0m 2 allowed warnings found
+Exit code: 0
+
+--- doclinks [PASS] ---
+ok: 134 relative link(s) across 47 Markdown file(s) resolve
+Exit code: 0
+
+--- docs [PASS] ---
+[1m[92m Documenting[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[92m    Checking[0m p2p_app v0.1.0 (/home/runner/work/p2p_app/p2p_app)
+[1m[91merror[E0599][0m[1m: no variant named `NewExternalAddr` found for enum `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+   [1m[94m--> [0msrc/swarm_handler.rs:198:27
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m         Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+    [1m[94m|[0m                           [1m[91m^^^^^^^^^^^^^^^[0m [1m[91mvariant not found in `libp2p::libp2p_swarm::SwarmEvent<_>`[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a variant[0m
+   [1m[94m--> [0msrc/behavior.rs:282:10
+    [1m[94m|[0m
+[1m[94m282[0m [1m[94m|[0m #[derive(NetworkBehaviour)]
+    [1m[94m|[0m          [1m[33m^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: requested on the command line with `-W missing-docs`
+    [1m[94m= [0m[1mnote[0m: this warning originates in the derive macro `NetworkBehaviour` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/contacts.rs:50:5
+   [1m[94m|[0m
+[1m[94m50[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/contacts.rs:51:5
+   [1m[94m|[0m
+[1m[94m51[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/contacts.rs:52:5
+   [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/contacts.rs:53:5
+   [1m[94m|[0m
+[1m[94m53[0m [1m[94m|[0m     pub received_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/contacts.rs:54:5
+   [1m[94m|[0m
+[1m[94m54[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+  [1m[94m--> [0msrc/db.rs:84:1
+   [1m[94m|[0m
+[1m[94m84[0m [1m[94m|[0m pub fn reset_db_url() {
+   [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:48:5
+   [1m[94m|[0m
+[1m[94m48[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:49:5
+   [1m[94m|[0m
+[1m[94m49[0m [1m[94m|[0m     pub display_name: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:50:5
+   [1m[94m|[0m
+[1m[94m50[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:51:5
+   [1m[94m|[0m
+[1m[94m51[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:52:5
+   [1m[94m|[0m
+[1m[94m52[0m [1m[94m|[0m     pub dm_count: u32,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:53:5
+   [1m[94m|[0m
+[1m[94m53[0m [1m[94m|[0m     pub broadcast_count: u32,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:64:5
+   [1m[94m|[0m
+[1m[94m64[0m [1m[94m|[0m     pub peer_id: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:65:5
+   [1m[94m|[0m
+[1m[94m65[0m [1m[94m|[0m     pub display_name: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:66:5
+   [1m[94m|[0m
+[1m[94m66[0m [1m[94m|[0m     pub first_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:67:5
+   [1m[94m|[0m
+[1m[94m67[0m [1m[94m|[0m     pub last_seen: String,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:68:5
+   [1m[94m|[0m
+[1m[94m68[0m [1m[94m|[0m     pub nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:69:5
+   [1m[94m|[0m
+[1m[94m69[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:70:5
+   [1m[94m|[0m
+[1m[94m70[0m [1m[94m|[0m     pub dm_count: i64,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+  [1m[94m--> [0msrc/mobile_api.rs:71:5
+   [1m[94m|[0m
+[1m[94m71[0m [1m[94m|[0m     pub broadcast_sent_to_peer: i64,
+   [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:107:5
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:108:5
+    [1m[94m|[0m
+[1m[94m108[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:109:5
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:110:5
+    [1m[94m|[0m
+[1m[94m110[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:111:5
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m     pub received_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:112:5
+    [1m[94m|[0m
+[1m[94m112[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:125:5
+    [1m[94m|[0m
+[1m[94m125[0m [1m[94m|[0m     pub is_user: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:126:5
+    [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:127:5
+    [1m[94m|[0m
+[1m[94m127[0m [1m[94m|[0m     pub device_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:128:5
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m     pub device_rows: Vec<MobileContactDevice>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:129:5
+    [1m[94m|[0m
+[1m[94m129[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:130:5
+    [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:131:5
+    [1m[94m|[0m
+[1m[94m131[0m [1m[94m|[0m     pub dm_count: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:132:5
+    [1m[94m|[0m
+[1m[94m132[0m [1m[94m|[0m     pub broadcast_sent_to_peer: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:229:5
+    [1m[94m|[0m
+[1m[94m229[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:230:5
+    [1m[94m|[0m
+[1m[94m230[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:231:5
+    [1m[94m|[0m
+[1m[94m231[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:232:5
+    [1m[94m|[0m
+[1m[94m232[0m [1m[94m|[0m     pub dm_count: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:233:5
+    [1m[94m|[0m
+[1m[94m233[0m [1m[94m|[0m     pub broadcast_sent_to_peer: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_api.rs:466:1
+    [1m[94m|[0m
+[1m[94m466[0m [1m[94m|[0m pub struct MobileInitStatus {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:467:5
+    [1m[94m|[0m
+[1m[94m467[0m [1m[94m|[0m     pub database_url: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:468:5
+    [1m[94m|[0m
+[1m[94m468[0m [1m[94m|[0m     pub local_peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_api.rs:473:1
+    [1m[94m|[0m
+[1m[94m473[0m [1m[94m|[0m pub struct MobilePeerStatus {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:474:5
+    [1m[94m|[0m
+[1m[94m474[0m [1m[94m|[0m     pub database_url: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:475:5
+    [1m[94m|[0m
+[1m[94m475[0m [1m[94m|[0m     pub local_peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_api.rs:476:5
+    [1m[94m|[0m
+[1m[94m476[0m [1m[94m|[0m     pub self_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/mobile_api.rs:479:1
+    [1m[94m|[0m
+[1m[94m479[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a function[0m
+   [1m[94m--> [0msrc/mobile_api.rs:491:1
+    [1m[94m|[0m
+[1m[94m491[0m [1m[94m|[0m #[flutter_rust_bridge::frb(ignore)]
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: this warning originates in the attribute macro `flutter_rust_bridge::frb` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:379:1
+    [1m[94m|[0m
+[1m[94m379[0m [1m[94m|[0m pub struct MobilePeerRecord {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:380:5
+    [1m[94m|[0m
+[1m[94m380[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:381:5
+    [1m[94m|[0m
+[1m[94m381[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:382:5
+    [1m[94m|[0m
+[1m[94m382[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:383:5
+    [1m[94m|[0m
+[1m[94m383[0m [1m[94m|[0m     pub nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:384:5
+    [1m[94m|[0m
+[1m[94m384[0m [1m[94m|[0m     pub local_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:385:5
+    [1m[94m|[0m
+[1m[94m385[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:424:1
+    [1m[94m|[0m
+[1m[94m424[0m [1m[94m|[0m pub struct ChatMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:425:5
+    [1m[94m|[0m
+[1m[94m425[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:426:5
+    [1m[94m|[0m
+[1m[94m426[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:427:5
+    [1m[94m|[0m
+[1m[94m427[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:428:5
+    [1m[94m|[0m
+[1m[94m428[0m [1m[94m|[0m     pub is_broadcast: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:429:5
+    [1m[94m|[0m
+[1m[94m429[0m [1m[94m|[0m     pub target_peer: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:430:5
+    [1m[94m|[0m
+[1m[94m430[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:431:5
+    [1m[94m|[0m
+[1m[94m431[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:432:5
+    [1m[94m|[0m
+[1m[94m432[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:433:5
+    [1m[94m|[0m
+[1m[94m433[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:434:5
+    [1m[94m|[0m
+[1m[94m434[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:435:5
+    [1m[94m|[0m
+[1m[94m435[0m [1m[94m|[0m     pub attachment: Option<MobileAttachment>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:888:1
+    [1m[94m|[0m
+[1m[94m888[0m [1m[94m|[0m pub struct MobileGroup {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:889:5
+    [1m[94m|[0m
+[1m[94m889[0m [1m[94m|[0m     pub group_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:890:5
+    [1m[94m|[0m
+[1m[94m890[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:891:5
+    [1m[94m|[0m
+[1m[94m891[0m [1m[94m|[0m     pub member_count: i64,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:892:5
+    [1m[94m|[0m
+[1m[94m892[0m [1m[94m|[0m     pub is_private: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+   [1m[94m--> [0msrc/mobile_node.rs:897:1
+    [1m[94m|[0m
+[1m[94m897[0m [1m[94m|[0m pub struct MobileGroupMessage {
+    [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:898:5
+    [1m[94m|[0m
+[1m[94m898[0m [1m[94m|[0m     pub id: i32,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:899:5
+    [1m[94m|[0m
+[1m[94m899[0m [1m[94m|[0m     pub content: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:900:5
+    [1m[94m|[0m
+[1m[94m900[0m [1m[94m|[0m     pub peer_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:901:5
+    [1m[94m|[0m
+[1m[94m901[0m [1m[94m|[0m     pub sent: bool,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:902:5
+    [1m[94m|[0m
+[1m[94m902[0m [1m[94m|[0m     pub msg_id: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:903:5
+    [1m[94m|[0m
+[1m[94m903[0m [1m[94m|[0m     pub sent_at: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:904:5
+    [1m[94m|[0m
+[1m[94m904[0m [1m[94m|[0m     pub created_at: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:905:5
+    [1m[94m|[0m
+[1m[94m905[0m [1m[94m|[0m     pub sender_nickname: Option<String>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/mobile_node.rs:906:5
+    [1m[94m|[0m
+[1m[94m906[0m [1m[94m|[0m     pub attachment: Option<MobileAttachment>,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1120:1
+     [1m[94m|[0m
+[1m[94m1120[0m [1m[94m|[0m pub struct SwarmEventJson {
+     [1m[94m|[0m [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1121:5
+     [1m[94m|[0m
+[1m[94m1121[0m [1m[94m|[0m     pub event_type: String,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1122:5
+     [1m[94m|[0m
+[1m[94m1122[0m [1m[94m|[0m     pub peer_id: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1123:5
+     [1m[94m|[0m
+[1m[94m1123[0m [1m[94m|[0m     pub content: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1124:5
+     [1m[94m|[0m
+[1m[94m1124[0m [1m[94m|[0m     pub latency: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1125:5
+     [1m[94m|[0m
+[1m[94m1125[0m [1m[94m|[0m     pub nickname: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1126:5
+     [1m[94m|[0m
+[1m[94m1126[0m [1m[94m|[0m     pub msg_id: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1127:5
+     [1m[94m|[0m
+[1m[94m1127[0m [1m[94m|[0m     pub address: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1128:5
+     [1m[94m|[0m
+[1m[94m1128[0m [1m[94m|[0m     pub group_id: Option<String>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+    [1m[94m--> [0msrc/mobile_node.rs:1129:5
+     [1m[94m|[0m
+[1m[94m1129[0m [1m[94m|[0m     pub device_pubkey: Option<Vec<u8>>,
+     [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:174:5
+    [1m[94m|[0m
+[1m[94m174[0m [1m[94m|[0m     pub name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:175:5
+    [1m[94m|[0m
+[1m[94m175[0m [1m[94m|[0m     pub name_kind: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/nickname.rs:176:5
+    [1m[94m|[0m
+[1m[94m176[0m [1m[94m|[0m     pub set_at: chrono::NaiveDateTime,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:193:5
+    [1m[94m|[0m
+[1m[94m193[0m [1m[94m|[0m     pub peer_id: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:194:5
+    [1m[94m|[0m
+[1m[94m194[0m [1m[94m|[0m     pub display_name: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:195:5
+    [1m[94m|[0m
+[1m[94m195[0m [1m[94m|[0m     pub dm_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:196:5
+    [1m[94m|[0m
+[1m[94m196[0m [1m[94m|[0m     pub broadcast_count: usize,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:197:5
+    [1m[94m|[0m
+[1m[94m197[0m [1m[94m|[0m     pub last_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:198:5
+    [1m[94m|[0m
+[1m[94m198[0m [1m[94m|[0m     pub first_seen: String,
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for an associated function[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:219:5
+    [1m[94m|[0m
+[1m[94m219[0m [1m[94m|[0m [1m[33m/[0m     pub fn new(
+[1m[94m220[0m [1m[94m|[0m [1m[33m|[0m         peer_id: &str,
+[1m[94m221[0m [1m[94m|[0m [1m[33m|[0m         display_name: &str,
+[1m[94m222[0m [1m[94m|[0m [1m[33m|[0m         dm_count: usize,
+[1m[94m...[0m   [1m[33m|[0m
+[1m[94m225[0m [1m[94m|[0m [1m[33m|[0m         first_seen: &str,
+[1m[94m226[0m [1m[94m|[0m [1m[33m|[0m     ) -> Self {
+    [1m[94m|[0m [1m[33m|_____________^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:384:9
+    [1m[94m|[0m
+[1m[94m384[0m [1m[94m|[0m         contact_idx: usize,
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a struct field[0m
+   [1m[94m--> [0msrc/tui_helpers.rs:385:9
+    [1m[94m|[0m
+[1m[94m385[0m [1m[94m|[0m         device_idx: usize,
+    [1m[94m|[0m         [1m[33m^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: missing documentation for a method[0m
+   [1m[94m--> [0msrc/tui_render_state.rs:229:5
+    [1m[94m|[0m
+[1m[94m229[0m [1m[94m|[0m     pub const fn is_dialing_peer(&self) -> bool {
+    [1m[94m|[0m     [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[33mwarning[0m[1m: unresolved link to `crate::identity::DeviceBinding`[0m
+   [1m[94m--> [0msrc/api/mod.rs:270:19
+    [1m[94m|[0m
+[1m[94m270[0m [1m[94m|[0m /// device-set ([`crate::identity::DeviceBinding`]).
+    [1m[94m|[0m                   [1m[33m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[33mno item named `DeviceBinding` in module `identity`[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+[1m[33mwarning[0m[1m: unresolved link to `CallSignalAck`[0m
+ [1m[94m--> [0msrc/calls.rs:3:41
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m //! The wire protocol ([`CallSignal`]/[`CallSignalAck`], plus the transport
+  [1m[94m|[0m                                         [1m[33m^^^^^^^^^^^^^[0m [1m[33mno item named `CallSignalAck` in scope[0m
+  [1m[94m|[0m
+  [1m[94m= [0m[1mhelp[0m: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+[1m[33mwarning[0m[1m: public documentation for `Credentials` links to private item `auth_middleware`[0m
+  [1m[94m--> [0msrc/web/mod.rs:50:60
+   [1m[94m|[0m
+[1m[94m50[0m [1m[94m|[0m /// The same secret keys the browser session cookie (see [`auth_middleware`]),
+   [1m[94m|[0m                                                            [1m[33m^^^^^^^^^^^^^^^[0m [1m[33mthis item is private[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: this link will resolve properly if you pass `--document-private-items`
+   [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::private_intra_doc_links)]` on by default
+
+[1m[33mwarning[0m[1m: unclosed HTML tag `peer`[0m
+  [1m[94m--> [0msrc/connected.rs:12:72
+   [1m[94m|[0m
+[1m[94m12[0m [1m[94m|[0m /// most recent disconnection so frontends can show "last connected to <peer>".
+   [1m[94m|[0m                                                                        [1m[33m^^^^^^[0m
+   [1m[94m|[0m
+   [1m[94m= [0m[1mnote[0m: `#[warn(rustdoc::invalid_html_tags)]` on by default
+
+[1mFor more information about this error, try `rustc --explain E0599`.[0m
+[1m[91merror[0m: could not compile `p2p_app` (lib) due to 1 previous error
+[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
+[1m[33mwarning[0m: `p2p_app` (lib doc) generated 110 warnings
+Exit code: 0
+
