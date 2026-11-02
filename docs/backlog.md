@@ -208,9 +208,13 @@ adds internet-wide discovery via a Kademlia DHT:
 - On startup, peers listed in the `P2P_BOOTSTRAP` env var (comma-separated
   multiaddrs, ideally with `/p2p/<peerid>`) are dialed.
 
-Still to do (later stages): hosted relay nodes (circuit relay v2) for NAT
-traversal, AutoNAT reachability detection, DCUtR hole punching, and a config
-surface for bootstrap peers beyond the env var.
+**Stages 2-4 (deferred):** NAT traversal requires circuit-relay v2 (relay
+server + client transport wrapping), AutoNAT reachability detection, and DCUtR
+hole punching. These are a larger, riskier effort — the relay client transport
+must be wired into `build_swarm` via `with_relay_client`, and the behaviours
+need event handling and reservation logic. Deferred until stage 1 is exercised
+against real (non-LAN) peers. A config surface for bootstrap/relay peers
+(beyond the env var) is also still open.
 
 ### Manual peer address entry (US-053)
 
