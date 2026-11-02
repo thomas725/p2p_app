@@ -196,6 +196,9 @@ class FakeNodeApi implements NodeApi {
   )? saveIncomingMessageOverride;
 
   @override
+  Future<void> dialPeer({required String address}) async {}
+
+  @override
   Future<MobileGroup> createGroup({required String name}) =>
       throw UnimplementedError();
 

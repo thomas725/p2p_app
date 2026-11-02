@@ -80,7 +80,8 @@ fn test_swarm_command_variants() {
         | SwarmCommand::SubscribeGroup { .. }
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
-        | SwarmCommand::SendCallSignal { .. } => panic!("Expected Publish"),
+        | SwarmCommand::SendCallSignal { .. }
+        | SwarmCommand::Dial { .. } => panic!("Expected Publish"),
     }
 
     // Test SendDm

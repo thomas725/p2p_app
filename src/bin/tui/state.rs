@@ -248,6 +248,10 @@ impl AppState {
     pub const fn is_creating_group(&self) -> bool {
         matches!(self.input_mode, p2p_app::InputMode::CreatingGroup)
     }
+    #[must_use]
+    pub const fn is_dialing_peer(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::DialingPeer)
+    }
 
     pub fn cancel_nickname_edit(&mut self) {
         if !self.is_editing_nickname() {
@@ -277,6 +281,21 @@ impl AppState {
     /// Cancel an in-progress "create/join group" name entry.
     pub fn cancel_group_create(&mut self) {
         if !self.is_creating_group() {
+            return;
+        }
+        self.input_mode = p2p_app::InputMode::Chat;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Begin capturing a peer multiaddr to dial (manual peer address entry).
+    pub fn begin_dial_peer(&mut self) {
+        self.input_mode = p2p_app::InputMode::DialingPeer;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Cancel an in-progress dial entry.
+    pub fn cancel_dial_peer(&mut self) {
+        if !self.is_dialing_peer() {
             return;
         }
         self.input_mode = p2p_app::InputMode::Chat;

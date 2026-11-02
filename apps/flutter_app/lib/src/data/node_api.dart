@@ -95,6 +95,8 @@ abstract class NodeApi {
     String? latency,
   });
 
+  Future<void> dialPeer({required String address});
+
   // --- Groups ---
 
   Future<MobileGroup> createGroup({required String name});

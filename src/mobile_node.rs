@@ -448,6 +448,27 @@ pub struct ChatMessage {
     pub latency: Option<String>,
 }
 
+/// Dial a peer by multiaddr (manual peer address entry, US-053).
+///
+/// # Errors
+/// Returns an error if the address is invalid or the node is not running.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn dial_peer(address: String) -> Result<(), String> {
+    let mut queued = false;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            queued = tx
+                .blocking_send(SwarmCommand::Dial { address })
+                .is_ok();
+        }
+    }
+    if !queued {
+        return Err("Failed to queue dial: node not running".into());
+    }
+    Ok(())
+}
+
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

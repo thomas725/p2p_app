@@ -139,6 +139,10 @@ class FrbNodeApi implements NodeApi {
     latency: latency,
   );
 
+  @override
+  Future<void> dialPeer({required String address}) =>
+      bridge.dialPeer(address: address);
+
   // ── Groups ────────────────────────────────────────────────────────────────
 
   @override

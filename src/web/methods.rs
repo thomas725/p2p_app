@@ -32,7 +32,8 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "clearLogs"
         | "getKnownPeers"
         | "getPeersWithStats"
-        | "sortPeers") => node_state(m, params),
+        | "sortPeers"
+        | "dialPeer") => node_state(m, params),
         m @ ("loadBroadcastMessages"
         | "loadDmMessages"
         | "saveOutgoingBroadcast"
@@ -82,6 +83,10 @@ fn node_state(method: &str, params: Value) -> Result<Value, String> {
         "sortPeers" => {
             let p: SortPeersParams = parse(params)?;
             ok(mobile_api::sort_peers(p.rows, p.sort_column, p.ascending))
+        }
+        "dialPeer" => {
+            let p: DialParams = parse(params)?;
+            ok(api::dial_peer(p.address))
         }
         other => Err(format!("method not routed to node_state: {other}")),
     }
@@ -404,6 +409,12 @@ struct SaveIncomingParams {
     /// Live round-trip latency of the event (decorates the reply only).
     #[serde(default)]
     latency: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DialParams {
+    address: String,
 }
 
 #[derive(serde::Deserialize)]

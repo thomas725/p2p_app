@@ -225,6 +225,10 @@ impl TuiRenderState {
     pub const fn is_creating_group(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::CreatingGroup)
     }
+    #[must_use]
+    pub const fn is_dialing_peer(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::DialingPeer)
+    }
 
     /// True while the shared text input captures a Contacts search query.
     #[must_use]

@@ -102,7 +102,9 @@ pub fn render_input_section(
     state: &TuiRenderState,
     tab_content: &TabContent,
 ) {
-    let title = if state.is_searching_contacts() {
+    let title = if state.is_dialing_peer() {
+        "Dial peer address".to_string()
+    } else if state.is_searching_contacts() {
         "Search Contacts".to_string()
     } else if state.is_editing_nickname() {
         let label = if state.is_editing_local_nickname() {
@@ -120,6 +122,7 @@ pub fn render_input_section(
     if tab_content.is_input_enabled()
         || state.is_editing_nickname()
         || state.is_searching_contacts()
+        || state.is_dialing_peer()
     {
         let inner_area = input_block.inner(area);
         f.render_widget(input_block, area);

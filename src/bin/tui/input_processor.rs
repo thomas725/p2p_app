@@ -440,6 +440,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     } else if s.is_creating_group() {
         s.cancel_group_create();
         p2plog_debug("Cancelled group create/join".to_string());
+    } else if s.is_dialing_peer() {
+        s.cancel_dial_peer();
+        p2plog_debug("Cancelled peer dial".to_string());
     } else {
         s.active_tab = 0;
         s.chat_scroll_offset = 0;
@@ -645,6 +648,33 @@ fn handle_peer_info_control_chord(
 /// Early-out handling (Esc, Ctrl+Q, the device-binding prompt, popup
 /// dismissal) happens here before the key is dispatched; the actual dispatch
 /// against the active tab lives in [`handle_key_dispatch`].
+/// Submit a peer multiaddr entered in the dial prompt (Settings tab).
+async fn handle_dial_peer_submission(
+    state: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let address = state.chat_input.lines().join("\n").trim().to_string();
+    state.cancel_dial_peer();
+    if address.is_empty() {
+        return;
+    }
+    let _ = swarm_cmd_tx.send(SwarmCommand::Dial { address: address.clone() }).await;
+    p2plog_debug(format!("Dialing peer: {address}"));
+}
+
+/// Settings-tab single-key shortcuts: `n` edits this install's nickname,
+/// `d` begins a peer dial. Other chars fall through to the input box.
+fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
+    match c {
+        'n' => handle_nickname_key(s, &p2p_app::tui_tabs::TabContent::Settings),
+        'd' if !s.is_dialing_peer() => {
+            s.begin_dial_peer();
+            p2plog_debug("Started peer dial".to_string());
+        }
+        _ => {}
+    }
+}
+
 async fn process_key_event(
     key_event: crossterm::event::KeyEvent,
     state: &SharedState,
@@ -812,6 +842,7 @@ fn sync_contact_search(s: &mut super::state::AppState) {
 /// Tab lookups and modifier flags are computed once up front; shared
 /// terminal-key semantics (Ctrl+I / Ctrl+P vs bare Tab) live with
 /// [`handle_peer_info_control_chord`].
+#[allow(clippy::too_many_lines)]
 async fn handle_key_dispatch(
     key_event: crossterm::event::KeyEvent,
     s: &mut super::state::AppState,
@@ -875,6 +906,8 @@ async fn handle_key_dispatch(
                 p2plog_debug("Applied Contacts search".to_string());
             } else if s.is_editing_nickname() {
                 handle_nickname_submission(s, swarm_cmd_tx).await;
+            } else if s.is_dialing_peer() {
+                handle_dial_peer_submission(s, swarm_cmd_tx).await;
             } else {
                 handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
             }
@@ -903,9 +936,14 @@ async fn handle_key_dispatch(
         crossterm::event::KeyCode::Char('n')
             if !is_ctrl
                 && !s.is_editing_nickname()
-                && (on_settings || matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_))) =>
+                && matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
         {
             handle_nickname_key(s, &tab);
+        }
+        crossterm::event::KeyCode::Char(c)
+            if !is_ctrl && !s.is_editing_nickname() && on_settings =>
+        {
+            handle_settings_shortcut(c, s);
         }
         crossterm::event::KeyCode::Char(c)
             if !is_ctrl && on_groups && !s.is_editing_nickname() && !s.is_creating_group() =>
@@ -921,7 +959,7 @@ async fn handle_key_dispatch(
             handle_contacts_tab_key(key_event, is_ctrl, s);
         }
         _ => {
-            if input_enabled || s.is_editing_nickname() || s.is_creating_group() {
+            if input_enabled || s.is_editing_nickname() || s.is_creating_group() || s.is_dialing_peer() {
                 s.chat_input.input(key_event);
             }
         }

@@ -135,6 +135,13 @@ Future<ChatMessage> saveIncomingMessage({
   latency: latency,
 );
 
+/// Dial a peer by multiaddr (manual peer address entry, US-053).
+///
+/// # Errors
+/// Returns an error if the address is invalid or the node is not running.
+Future<void> dialPeer({required String address}) =>
+    RustLib.instance.api.crateApiDialPeer(address: address);
+
 /// Create (or join) a public group by name and subscribe to its topic.
 ///
 /// # Errors

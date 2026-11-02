@@ -146,6 +146,14 @@ pub fn save_incoming_message(
     crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname, latency)
 }
 
+/// Dial a peer by multiaddr (manual peer address entry, US-053).
+///
+/// # Errors
+/// Returns an error if the address is invalid or the node is not running.
+pub fn dial_peer(address: String) -> Result<(), String> {
+    crate::mobile_node::dial_peer(address)
+}
+
 // --- Groups ---
 
 /// Create (or join) a public group by name and subscribe to its topic.

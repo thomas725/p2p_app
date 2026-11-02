@@ -217,6 +217,16 @@ class _SettingsState extends State<Settings> {
             ),
           ),
         ],
+        const SizedBox(height: 8),
+        // Manual peer address entry (US-053)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.add_link),
+            title: const Text('Connect to address'),
+            subtitle: const Text('Dial a peer by multiaddr'),
+            onTap: _dialPeer,
+          ),
+        ),
         const SizedBox(height: 16),
         // Service control
         Card(
@@ -376,6 +386,40 @@ class _SettingsState extends State<Settings> {
   }
 
   String? _nicknameError;
+
+  Future<void> _dialPeer() async {
+    final ctrl = TextEditingController();
+    final address = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Connect to peer'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '/ip4/1.2.3.4/tcp/4001',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Dial'),
+          ),
+        ],
+      ),
+    );
+    if (address == null || address.isEmpty) return;
+    try {
+      await nodeApi.dialPeer(address: address);
+    } catch (e) {
+      debugPrint('Failed to dial $address: $e');
+    }
+  }
 
   void _editNickname() {
     final ctrl = TextEditingController(text: _nickname ?? '');

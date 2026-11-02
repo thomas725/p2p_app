@@ -1087,6 +1087,7 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             send_call_signal(&peer_id, *signal, swarm);
         }
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
+        SwarmCommand::Dial { address } => dial_peer(&address, swarm),
     }
 }
 
@@ -1115,6 +1116,17 @@ fn publish_broadcast(
                 p2plog_error(format!("Failed to publish: {e:?}"));
             }
         }
+    }
+}
+
+/// Dial a peer by multiaddr (manual peer address entry, US-053).
+fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
+    match address.trim().parse::<libp2p::Multiaddr>() {
+        Ok(addr) => match swarm.dial(addr.clone()) {
+            Ok(()) => p2plog_debug(format!("Dialing {addr}")),
+            Err(e) => p2plog_error(format!("Failed to dial {addr}: {e}")),
+        },
+        Err(e) => p2plog_error(format!("Invalid multiaddr {address}: {e}")),
     }
 }
 

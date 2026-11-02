@@ -37,6 +37,8 @@ pub enum InputMode {
     CreatingGroup,
     /// Capturing a Contacts-tab search query (filters the contact table).
     SearchingContacts,
+    /// Capturing a peer multiaddr to dial (manual peer address entry, US-053).
+    DialingPeer,
 }
 
 /// Per-tab "keep scrolled to the newest message" toggles.
@@ -285,6 +287,11 @@ pub enum SwarmCommand {
     UnsubscribeGroup {
         /// The group to leave
         group_id: String,
+    },
+    /// Dial a peer by multiaddr (manual peer address entry, US-053).
+    Dial {
+        /// The multiaddr to dial (e.g. /ip4/1.2.3.4/tcp/4001)
+        address: String,
     },
     /// Send a device-binding request (intro or signed claim) to a peer over the
     /// dedicated request-response protocol (identity lane §11).

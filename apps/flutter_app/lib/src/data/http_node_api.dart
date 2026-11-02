@@ -465,6 +465,11 @@ class HttpNodeApi implements NodeApi {
     }),
   );
 
+  @override
+  Future<void> dialPeer({required String address}) async {
+    await _call('dialPeer', {'address': address});
+  }
+
   // ── Groups ────────────────────────────────────────────────────────────────
 
   @override
