@@ -160,6 +160,12 @@ pub enum SwarmEvent {
     PeerDisconnected(String),
     /// Local address established for listening
     ListenAddrEstablished(String),
+    /// An externally observed address (from AutoNAT/identify) — means we may be
+    /// reachable from the public internet.
+    ExternalAddressAdded(String),
+    /// NAT reachability status change (from AutoNAT).
+    #[cfg(feature = "nat")]
+    NatStatusChanged(String),
     /// Peer discovered via mDNS
     #[cfg(feature = "mdns")]
     PeerDiscovered {

@@ -1153,6 +1153,17 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             address: Some(addr),
             ..default_event()
         },
+        SwarmEvent::ExternalAddressAdded(addr) => SwarmEventJson {
+            event_type: "external_address".into(),
+            address: Some(addr),
+            ..default_event()
+        },
+        #[cfg(feature = "nat")]
+        SwarmEvent::NatStatusChanged(status) => SwarmEventJson {
+            event_type: "nat_status".into(),
+            content: Some(status),
+            ..default_event()
+        },
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
         } => SwarmEventJson {

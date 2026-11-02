@@ -318,6 +318,21 @@ async fn process_swarm_event(
             p2plog_debug(format!("Listening on: {addr}"));
             drop(s);
         }
+        SwarmEvent::ExternalAddressAdded(addr) => {
+            let mut s = state.lock().await;
+            if !s.external_addresses.contains(&addr) {
+                s.external_addresses.push(addr.clone());
+            }
+            p2plog_debug(format!("External address: {addr}"));
+            drop(s);
+        }
+        #[cfg(feature = "nat")]
+        SwarmEvent::NatStatusChanged(status) => {
+            let mut s = state.lock().await;
+            s.nat_status = Some(status.clone());
+            p2plog_debug(format!("NAT status: {status}"));
+            drop(s);
+        }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, .. } => {
             let mut s = state.lock().await;

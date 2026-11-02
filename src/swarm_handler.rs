@@ -195,6 +195,18 @@ async fn handle_swarm_event(
                 .send(SwarmEvent::ListenAddrEstablished(address.to_string()))
                 .await;
         }
+        Libp2pSwarmEvent::NewExternalAddr { address, .. } => {
+            let _ = event_tx
+                .send(SwarmEvent::ExternalAddressAdded(address.to_string()))
+                .await;
+        }
+        #[cfg(feature = "nat")]
+        Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged { new, .. })) => {
+            let status = format!("{new:?}");
+            let _ = event_tx
+                .send(SwarmEvent::NatStatusChanged(status))
+                .await;
+        }
         _ => {}
     }
 }

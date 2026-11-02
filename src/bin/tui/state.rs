@@ -206,6 +206,8 @@ pub struct AppState {
     pub platform: String,
     pub network_size: String,
     pub listen_addrs: Vec<String>,
+    pub external_addresses: Vec<String>,
+    pub nat_status: Option<String>,
 
     /// This install's user ID (None before provisioning) — Settings tab.
     pub own_user_id: Option<String>,
@@ -650,6 +652,8 @@ impl AppState {
             platform: String::new(),
             network_size: String::new(),
             listen_addrs: Vec::new(),
+            external_addresses: Vec::new(),
+            nat_status: None,
             own_user_id: None,
             own_user_devices: Vec::new(),
         };
