@@ -383,7 +383,7 @@ pub fn verify_device_binding_claim(
     claim_id: String,
     claim: Vec<u8>,
 ) -> Result<bool, String> {
-    crate::identity::verify_device_binding_claim(&user_id, &device_pubkey, &claim_id, &claim)
+    crate::identity::verify_device_binding_claim(&user_id, &device_pubkey, &claim_id, &claim, None)
         .map_err(|e| e.to_string())
 }
 
@@ -399,7 +399,7 @@ pub fn add_device(
     claim_id: String,
     claim: Vec<u8>,
 ) -> Result<MobileDeviceInfo, String> {
-    crate::identity::save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim)
+    crate::identity::save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim, None)
         .map(device_info_from)
         .map_err(|e| e.to_string())
 }
@@ -951,6 +951,7 @@ mod tests {
                 &device_pubkey,
                 claim_id,
                 &claim,
+                None,
             )
             .expect("save binding");
         }

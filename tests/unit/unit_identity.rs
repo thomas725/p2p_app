@@ -49,6 +49,7 @@ fn peer_resolves_to_bound_user() {
             &[0x13, 0x37],
             "device1",
             &claim,
+            None,
         )
         .expect("save device binding");
         let resolved = crate::identity::find_user_id_for_peer("12D3Kooodevice-peer-1")
@@ -76,7 +77,7 @@ fn shared_claim_message_helper_agrees_with_verify() {
         crate::identity::save_user(user_id, &account_pubkey, None, None).expect("save user");
         let claim = account_key.sign(&message).expect("sign");
         assert!(
-            crate::identity::verify_device_binding_claim(user_id, &device_pubkey, claim_id, &claim)
+            crate::identity::verify_device_binding_claim(user_id, &device_pubkey, claim_id, &claim, None)
                 .expect("verify clean")
         );
         // And the helper-built message is byte-identical to the one the
@@ -125,6 +126,7 @@ fn provisioning_creates_user_self_binds_and_stores_account_key() {
                 &binding.device_pubkey,
                 &binding.claim_id,
                 &binding.claim,
+                None,
             )
             .expect("verify clean")
         );
@@ -182,6 +184,7 @@ fn mint_device_binding_signs_claim_for_foreign_device() {
                 &target_pubkey,
                 request.claim_id.as_deref().expect("claim id"),
                 &claim,
+                None,
             )
             .expect("verify clean")
         );
@@ -217,6 +220,7 @@ fn hostiles_cannot_mint_a_binding_into_a_foreign_user() {
             &[0x0au8; 32],
             "spoofed-claim",
             &claim,
+            None,
         );
         assert!(refused.is_err(), "hostile claim must be rejected");
     });
@@ -315,5 +319,173 @@ fn set_my_user_nickname_updates_the_announced_users_row() {
             crate::identity::my_user_id().expect("resolve").as_deref(),
             Some(user_id.as_str())
         );
+    });
+}
+
+#[test]
+#[serial]
+fn sibling_device_can_mint_and_verify_claim() {
+    with_test_db(|| {
+        // Account holder's user + key.
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let account_pubkey = account_key.public().encode_protobuf();
+        let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+        crate::identity::save_user(&user_id, &account_pubkey, None, None).expect("save user");
+
+        // Sibling device already bound into the user (via the account key).
+        let sibling_key = libp2p_identity::Keypair::generate_ed25519();
+        let sibling_pubkey = sibling_key.public().encode_protobuf();
+        crate::peers::save_peer("sibling-peer", &[]).expect("save sibling peer");
+        let sib_claim_id = "sib-claim";
+        let sib_msg = crate::identity::device_binding_claim_message(&user_id, &sibling_pubkey, sib_claim_id);
+        let sib_sig = account_key.sign(&sib_msg).expect("sign sibling claim");
+        crate::identity::save_device_binding(
+            &user_id,
+            "sibling-peer",
+            &sibling_pubkey,
+            sib_claim_id,
+            &sib_sig,
+            None,
+        )
+        .expect("bind sibling");
+
+        // A new device's claim signed by the sibling verifies via the sibling path.
+        let new_device_pubkey = [0x77u8; 32];
+        let new_claim_id = "new-claim";
+        let new_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, new_claim_id);
+        let sibling_sig = sibling_key.sign(&new_msg).expect("sign by sibling");
+        assert!(
+            crate::identity::verify_device_binding_claim(
+                &user_id,
+                &new_device_pubkey,
+                new_claim_id,
+                &sibling_sig,
+                Some("sibling-peer"),
+            )
+            .expect("verify clean"),
+            "sibling-signed claim must be accepted"
+        );
+
+        // Without a sender (or with an unbound sender) the sibling path is
+        // unavailable and the account-key path fails -> rejected.
+        assert!(
+            !crate::identity::verify_device_binding_claim(
+                &user_id,
+                &new_device_pubkey,
+                new_claim_id,
+                &sibling_sig,
+                None,
+            )
+            .expect("verify clean"),
+            "no sender => sibling path unavailable"
+        );
+        crate::peers::save_peer("stranger-peer", &[]).expect("save stranger peer");
+        assert!(
+            !crate::identity::verify_device_binding_claim(
+                &user_id,
+                &new_device_pubkey,
+                new_claim_id,
+                &sibling_sig,
+                Some("stranger-peer"),
+            )
+            .expect("verify clean"),
+            "unbound sender must not authorize"
+        );
+
+        // A device bound to a *different* user cannot authorize for this user.
+        let other_account_key = libp2p_identity::Keypair::generate_ed25519();
+        let other_account_pubkey = other_account_key.public().encode_protobuf();
+        let other_user = "other-user";
+        crate::identity::save_user(other_user, &other_account_pubkey, None, None).expect("save other user");
+        let other_sibling_pubkey = [0x33u8; 32];
+        crate::peers::save_peer("other-sibling-peer", &[]).expect("save other sibling peer");
+        let other_cid = "other-sib-claim";
+        let other_msg = crate::identity::device_binding_claim_message(other_user, &other_sibling_pubkey, other_cid);
+        let other_sig = other_account_key.sign(&other_msg).expect("sign");
+        crate::identity::save_device_binding(
+            other_user,
+            "other-sibling-peer",
+            &other_sibling_pubkey,
+            other_cid,
+            &other_sig,
+            None,
+        )
+        .expect("bind other sibling");
+        assert!(
+            !crate::identity::verify_device_binding_claim(
+                &user_id,
+                &new_device_pubkey,
+                new_claim_id,
+                &sibling_sig,
+                Some("other-sibling-peer"),
+            )
+            .expect("verify clean"),
+            "sibling bound to a different user must not authorize"
+        );
+
+        // An account-key claim still verifies (path 1).
+        let acct_claim_id = "acct-claim";
+        let acct_msg = crate::identity::device_binding_claim_message(&user_id, &new_device_pubkey, acct_claim_id);
+        let acct_sig = account_key.sign(&acct_msg).expect("sign acct");
+        assert!(
+            crate::identity::verify_device_binding_claim(
+                &user_id,
+                &new_device_pubkey,
+                acct_claim_id,
+                &acct_sig,
+                None,
+            )
+            .expect("verify clean"),
+            "account-key claim must still verify"
+        );
+    });
+}
+
+#[test]
+#[serial]
+fn sibling_device_can_mint_claim_without_account_key() {
+    with_test_db(|| {
+        // Provision a user via a separate account key, then bind the local peer
+        // into that user WITHOUT storing the account key (simulating a sibling
+        // device that was bound earlier).
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let account_pubkey = account_key.public().encode_protobuf();
+        let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+        crate::identity::save_user(&user_id, &account_pubkey, None, None).expect("save user");
+        let local_peer = crate::get_local_peer_id().unwrap().to_string();
+        let local_pubkey = crate::get_libp2p_identity().unwrap().public().encode_protobuf();
+        crate::peers::save_peer(&local_peer, &[]).expect("save local peer");
+        let self_cid = "self-bind";
+        let self_msg = crate::identity::device_binding_claim_message(&user_id, &local_pubkey, self_cid);
+        let self_sig = account_key.sign(&self_msg).expect("sign self bind");
+        crate::identity::save_device_binding(
+            &user_id,
+            &local_peer,
+            &local_pubkey,
+            self_cid,
+            &self_sig,
+            None,
+        )
+        .expect("bind local as sibling");
+        // No account key stored -> mint must fall back to the install key.
+        assert!(
+            crate::identity::get_stored_account_key()
+                .expect("read account key")
+                .is_none()
+        );
+
+        let target_peer = "12D3Koosibling-target";
+        let target_pubkey = [0x55u8; 32];
+        let request = crate::identity::mint_device_binding(target_peer, &target_pubkey)
+            .expect("mint as sibling");
+        assert_eq!(request.kind, "claim");
+        assert_eq!(request.user_id.as_deref(), Some(user_id.as_str()));
+        let claim = request.signature.expect("claim signed");
+        let claim_id = request.claim_id.expect("claim id");
+        let msg = crate::identity::device_binding_claim_message(&user_id, &target_pubkey, &claim_id);
+        // Signed by the install key, NOT the account key.
+        let install_key = crate::get_libp2p_identity().expect("install key");
+        assert!(install_key.public().verify(&msg, &claim));
+        assert!(!account_key.public().verify(&msg, &claim));
     });
 }

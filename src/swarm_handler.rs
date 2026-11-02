@@ -449,6 +449,7 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
 /// device is treated as accepted.
 fn verify_and_bind_claim(
     request: &crate::behavior::DeviceBindingRequest,
+    sender: &libp2p::PeerId,
     swarm: &Swarm<AppBehaviour>,
 ) -> color_eyre::Result<String> {
     let user_id = request
@@ -493,6 +494,7 @@ fn verify_and_bind_claim(
         &request.device_pubkey,
         &claim_id,
         &signature,
+        Some(&sender.to_string()),
     ) {
         Ok(_) => Ok(user_id),
         Err(_)
@@ -539,7 +541,7 @@ async fn handle_device_binding(
                         reason: None,
                     }
                 }
-                "claim" => match verify_and_bind_claim(&request, swarm) {
+                "claim" => match verify_and_bind_claim(&request, &peer, swarm) {
                     Ok(user_id) => {
                         let _ = event_tx
                             .send(SwarmEvent::DeviceBindingReceived { user_id })

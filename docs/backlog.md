@@ -24,11 +24,18 @@ work) and the product stories from the original user-stories doc.
 
 ## P0 — correctness and release blockers
 
-### Sibling-device claim authority (identity lane) — **decided, implementation pending**
+### Sibling-device claim authority (identity lane) — **implemented (2026-11-02)**
 
 **Decision (2026-11-01): any already-bound device of the same user may add another
 device to that user's set.** The account key keeps working; this only widens the
 set of authorized signers.
+
+Shipped: `verify_device_binding_claim` now accepts an optional sender peer ID and
+tries the account key first, then the sender's stored device key when the sender
+is already bound to the same user. `mint_device_binding` falls back to signing
+with the local install key when no account key is stored (sibling device). Tests
+cover sibling mint/verify, unbound signer rejection, cross-user rejection and
+the account-key path.
 
 The hostile-device invariant is unchanged: a device can never bind into a
 *foreign* user's set, because a claim is only accepted when it verifies against

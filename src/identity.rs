@@ -106,30 +106,69 @@ pub fn device_binding_claim_message(
     message
 }
 
-/// Verify a signed device-binding claim against the target user's account key.
+/// Verify a signed device-binding claim.
 ///
-/// The claim signs `user_id ‖ device_pubkey ‖ claim_id` ([`device_binding_claim_message`]).
-/// Verification only succeeds when the signature checks out against the account
-/// pubkey stored on that user's row — the byte that enforces the hostile-device
-/// invariant.
+/// Two signers are accepted (hostile-device invariant preserved):
+///
+/// 1. The target user's **account key** — the root of trust. A claim signed by
+///    it always verifies.
+/// 2. An **already-bound sibling device** of the same user: the sender's
+///    `peer_id` must resolve (via [`find_user_id_for_peer`]) to the same
+///    `user_id`, and the signature must check out against that device's stored
+///    pubkey. This widens the set of devices that may add further devices
+///    without handing out the account private key.
+///
+/// `sender_peer_id` is the peer that transmitted the claim (the minting
+/// device). It is `None` for locally minted claims that were signed with the
+/// account key, in which case only path 1 applies.
+///
+/// The claim signs `user_id ‖ device_pubkey ‖ claim_id`
+/// ([`device_binding_claim_message`]).
 ///
 /// # Errors
-/// Returns an error if the user is unknown or verification fails.
+/// Returns an error if the user is unknown or a database lookup fails.
 pub fn verify_device_binding_claim(
     user_id: &str,
     device_pubkey: &[u8],
     claim_id: &str,
     claim: &[u8],
+    sender_peer_id: Option<&str>,
 ) -> color_eyre::Result<bool> {
     let Some(user) = find_user(user_id)? else {
         return Ok(false);
     };
-    let account_pubkey = libp2p_identity::PublicKey::try_decode_protobuf(&user.account_pubkey)
-        .wrap_err("stored account pubkey is not a valid libp2p key")?;
-    Ok(account_pubkey.verify(
-        &device_binding_claim_message(user_id, device_pubkey, claim_id),
-        claim,
-    ))
+    let message = device_binding_claim_message(user_id, device_pubkey, claim_id);
+
+    // Path 1: the account key (root of trust).
+    if let Ok(account_pubkey) =
+        libp2p_identity::PublicKey::try_decode_protobuf(&user.account_pubkey)
+        && account_pubkey.verify(&message, claim)
+    {
+        return Ok(true);
+    }
+
+    // Path 2: an already-bound sibling device of the same user.
+    if let Some(sender) = sender_peer_id
+        && find_user_id_for_peer(sender)?.as_deref() == Some(user_id)
+    {
+        // Look up the sender's stored device pubkey.
+        let conn = &mut crate::sqlite_connect()?;
+        let sender_pubkey_bytes: Option<Vec<u8>> = device_bindings::table
+            .filter(device_bindings::peer_id.eq(sender))
+            .filter(device_bindings::revoked_at.is_null())
+            .select(device_bindings::device_pubkey)
+            .first(conn)
+            .optional()
+            .wrap_err("failed to look up sender device pubkey")?;
+        if let Some(bytes) = sender_pubkey_bytes
+            && let Ok(sender_pubkey) = libp2p_identity::PublicKey::try_decode_protobuf(&bytes)
+            && sender_pubkey.verify(&message, claim)
+        {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 /// Bind a device into a user's device-set, **only after its claim verifies**
@@ -143,8 +182,9 @@ pub fn save_device_binding(
     device_pubkey: &[u8],
     claim_id: &str,
     claim: &[u8],
+    sender_peer_id: Option<&str>,
 ) -> color_eyre::Result<DeviceBinding> {
-    if !verify_device_binding_claim(user_id, device_pubkey, claim_id, claim)? {
+    if !verify_device_binding_claim(user_id, device_pubkey, claim_id, claim, sender_peer_id)? {
         return Err(color_eyre::eyre::eyre!(
             "device-binding claim failed verification for user {user_id}"
         ));
@@ -442,7 +482,7 @@ pub fn provision_my_user(
     let device_pubkey = crate::get_libp2p_identity()?.public().encode_protobuf();
     let claim_id = crate::gen_msg_id();
     let claim = sign_device_binding_claim(&account_key, &user_id, &device_pubkey, &claim_id)?;
-    save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim)?;
+    save_device_binding(&user_id, &peer_id, &device_pubkey, &claim_id, &claim, None)?;
     Ok(user_id)
 }
 
@@ -505,27 +545,40 @@ pub fn mint_device_binding(
             "this install has no user yet; provision one first"
         ));
     };
-    let Some(account_key) = get_stored_account_key()? else {
-        return Err(color_eyre::eyre::eyre!(
-            "account key missing; re-provision this install"
-        ));
-    };
     let Some(user) = find_user(&user_id)? else {
         return Err(color_eyre::eyre::eyre!(
             "user {user_id} missing its account row"
         ));
     };
+
+    // Signer selection: the account key when this install holds it (the
+    // account holder), otherwise the local install key (a sibling device that
+    // was bound into the user earlier). The latter widens the set of devices
+    // that may add further devices without handing out the account private key.
+    let account_key = get_stored_account_key()?;
+    let signer: libp2p_identity::Keypair = match &account_key {
+        Some(key) => key.clone(),
+        None => crate::get_libp2p_identity()?,
+    };
+    let has_account_key = account_key.is_some();
+
+    let account_pubkey_bytes = if has_account_key {
+        signer.public().encode_protobuf()
+    } else {
+        user.account_pubkey.clone()
+    };
+
     let claim_id = crate::gen_msg_id();
     let bound_at = crate::current_timestamp();
-    let claim = sign_device_binding_claim(&account_key, &user_id, device_pubkey, &claim_id)?;
+    let claim = sign_device_binding_claim(&signer, &user_id, device_pubkey, &claim_id)?;
     // The device-binding FK requires the peer row to exist: ensure the target
     // does (it normally does — it sent us the intro — but be safe).
     crate::peers::save_peer(peer_id, &[])?;
-    save_device_binding(&user_id, peer_id, device_pubkey, &claim_id, &claim)?;
+    save_device_binding(&user_id, peer_id, device_pubkey, &claim_id, &claim, Some(&local_peer))?;
     Ok(crate::behavior::DeviceBindingRequest {
         kind: "claim".to_string(),
         user_id: Some(user_id),
-        account_pubkey: Some(account_key.public().encode_protobuf()),
+        account_pubkey: Some(account_pubkey_bytes),
         self_username: user.self_username,
         self_nickname: user.self_nickname,
         peer_id: peer_id.to_string(),

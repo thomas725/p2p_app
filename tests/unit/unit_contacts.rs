@@ -44,7 +44,7 @@ fn bind_device(
     message.extend_from_slice(claim_id.as_bytes());
     let claim = account_key.sign(&message).expect("sign claim");
     crate::peers::save_peer(peer_id, &[]).expect("save peer");
-    crate::identity::save_device_binding(user_id, peer_id, device_pubkey, claim_id, &claim)
+    crate::identity::save_device_binding(user_id, peer_id, device_pubkey, claim_id, &claim, None)
         .expect("save binding");
 }
 
