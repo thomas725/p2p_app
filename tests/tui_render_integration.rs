@@ -624,6 +624,7 @@ mod render_tests {
                 ipv6: vec!["fe80::1".to_string()],
                 internal: false,
             }],
+            listen_addrs: vec!["/ip4/192.168.1.2/tcp/4001".to_string()],
             external_addrs: vec!["/ip4/203.0.113.7/tcp/4001".to_string()],
             reachability: "Public (directly reachable)".to_string(),
             nat_status: "Public".to_string(),

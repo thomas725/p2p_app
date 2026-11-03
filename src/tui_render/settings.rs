@@ -81,6 +81,13 @@ fn render_network_details(lines: &mut Vec<String>, net: &crate::net_diag::Networ
         }
     }
 
+    if !net.listen_addrs.is_empty() {
+        lines.push("  Listen addresses:".to_string());
+        for addr in &net.listen_addrs {
+            lines.push(format!("    {addr}"));
+        }
+    }
+
     lines.push("  Interfaces:".to_string());
     if net.interfaces.is_empty() {
         lines.push("    —".to_string());
