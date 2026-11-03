@@ -294,6 +294,7 @@ async fn handle_swarm_event(
             let _ = event_tx
                 .send(SwarmEvent::NatStatusChanged(label.to_string()))
                 .await;
+            #[cfg(feature = "kad")]
             maybe_announce(swarm);
         }
         #[cfg(feature = "nat")]
@@ -356,6 +357,7 @@ async fn handle_swarm_event(
             let _ = event_tx
                 .send(SwarmEvent::ExternalAddressAdded(address.to_string()))
                 .await;
+            #[cfg(feature = "kad")]
             maybe_announce(swarm);
         }
         Libp2pSwarmEvent::ExternalAddrExpired { address } => {
