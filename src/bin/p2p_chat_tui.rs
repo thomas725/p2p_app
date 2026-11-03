@@ -77,7 +77,7 @@ mod tui {
     pub mod render_loop;
     pub mod scroll_handlers;
     pub mod state;
-    #[cfg(test)]
+    #[cfg(all(test, not(feature = "unified")))]
     #[path = "../../../tests/unit/unit_bin_tui_test_helpers.rs"]
     pub mod test_helpers;
 }
@@ -88,6 +88,10 @@ async fn main() -> color_eyre::Result<()> {
     run_tui().await
 }
 
+/// Run the TUI frontend.
+///
+/// # Errors
+/// Returns an error if terminal/database/swarm setup fails.
 #[allow(clippy::large_futures)]
 pub async fn run_tui() -> color_eyre::Result<()> {
     color_eyre::install()?;

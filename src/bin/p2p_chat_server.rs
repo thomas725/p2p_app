@@ -77,6 +77,10 @@ fn main() -> color_eyre::Result<()> {
     run_server()
 }
 
+/// Run the web server frontend.
+///
+/// # Errors
+/// Returns an error if argument parsing or serving fails.
 pub fn run_server() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();

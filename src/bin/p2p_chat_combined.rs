@@ -18,11 +18,11 @@ fn main() {
     let mode = std::env::var("P2P_MODE").unwrap_or_else(|_| {
         #[cfg(feature = "tui")]
         {
-            return "tui".to_string();
+            "tui".to_string()
         }
         #[cfg(all(not(feature = "tui"), feature = "web"))]
         {
-            return "server".to_string();
+            "server".to_string()
         }
         #[cfg(all(not(feature = "tui"), not(feature = "web")))]
         {
@@ -33,7 +33,13 @@ fn main() {
     match mode.as_str() {
         #[cfg(feature = "tui")]
         "tui" => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    eprintln!("Failed to create runtime: {e}");
+                    std::process::exit(1);
+                }
+            };
             if let Err(e) = rt.block_on(tui_bin::run_tui()) {
                 eprintln!("{e}");
                 std::process::exit(1);

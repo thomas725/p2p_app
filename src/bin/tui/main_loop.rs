@@ -441,6 +441,6 @@ pub async fn run_new_tui(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 #[path = "../../../tests/unit/unit_bin_tui_main_loop.rs"]
 mod tests;

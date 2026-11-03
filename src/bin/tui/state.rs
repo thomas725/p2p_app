@@ -728,6 +728,6 @@ pub fn contact_matches(contact: &p2p_app::contacts::ContactRow, query_lower: &st
         })
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 #[path = "../../../tests/unit/unit_bin_tui_state.rs"]
 mod tests;

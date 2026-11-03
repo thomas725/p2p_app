@@ -18,7 +18,6 @@ use serde::Serialize;
 use std::sync::Arc;
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
 
 static NODE: OnceLock<Mutex<MobileNode>> = OnceLock::new();
 
@@ -31,7 +30,12 @@ static CONNECTED_PEERS: LazyLock<Mutex<crate::connected::ConnectedTracker>> =
     LazyLock::new(|| Mutex::new(crate::connected::ConnectedTracker::new()));
 
 struct MobileNode {
-    event_rx: Option<mpsc::Receiver<SwarmEvent>>,
+    /// Broadcast fan-out of swarm events so multiple frontends (web poller,
+    /// TUI, ...) can all receive every event instead of fighting over a
+    /// single `mpsc` receiver.
+    event_broadcast: Option<tokio::sync::broadcast::Sender<SwarmEvent>>,
+    /// Receiver handed to [`poll_event`] (the web/Flutter consumer).
+    poll_receiver: Option<tokio::sync::broadcast::Receiver<SwarmEvent>>,
     cmd_tx: Option<mpsc::Sender<SwarmCommand>>,
     peer_id: String,
     runtime: Option<tokio::runtime::Runtime>,
@@ -155,8 +159,23 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         Ok::<_, String>((event_rx, cmd_tx, pid))
     })?;
 
+    // Fan out swarm events to multiple consumers (web poller, TUI, ...) via a
+    // broadcast channel. Side effects (saving peers, nickname exchange, ...)
+    // run exactly once in the forwarder task so consumers stay read-only.
+    let (broadcast_tx, _) = tokio::sync::broadcast::channel::<SwarmEvent>(256);
+    let mut rx = event_rx;
+    let cmd_for_forwarder = cmd_tx.clone();
+    let broadcast_for_forwarder = broadcast_tx.clone();
+    runtime.spawn(async move {
+        while let Some(ev) = rx.recv().await {
+            process_event_for_mobile(&ev, Some(&cmd_for_forwarder));
+            let _ = broadcast_for_forwarder.send(ev);
+        }
+    });
+
     let new_node = MobileNode {
-        event_rx: Some(event_rx),
+        event_broadcast: Some(broadcast_tx.clone()),
+        poll_receiver: Some(broadcast_tx.subscribe()),
         cmd_tx: Some(cmd_tx),
         peer_id: peer_id.clone(),
         runtime: Some(runtime),
@@ -187,7 +206,8 @@ pub fn stop_node() -> Result<(), String> {
     if let Some(m) = NODE.get() {
         let mut node = lock_node_mutex(m);
         node.cmd_tx.take();
-        node.event_rx.take();
+        node.event_broadcast.take();
+        node.poll_receiver.take();
         // The swarm-handler task (and the swarm itself) lives on our runtime.
         // Shut it down so the old swarm stops listening and no longer keeps
         // routing/responding to traffic while the node is stopped; a fresh
@@ -214,37 +234,56 @@ pub fn stop_node() -> Result<(), String> {
 #[flutter_rust_bridge::frb(ignore)]
 pub fn poll_event() -> Result<Option<SwarmEventJson>, String> {
     let m = NODE.get().ok_or("Node not started")?;
-    // Clone the sender once so the loop body can call
-    // `process_event_for_mobile` (a stateful routine that must never run while
-    // the node guard is held) without keeping the lock across iterations.
-    let cmd_tx = {
-        let node = lock_node_mutex(m);
-        node.cmd_tx.clone()
-    };
-
     loop {
-        let ev = {
+        let recv_result = {
             let mut node = lock_node_mutex(m);
-            match node.event_rx.as_mut().ok_or("Node stopped")?.try_recv() {
-                Ok(ev) => ev,
-                Err(TryRecvError::Empty) => return Ok(None),
-                Err(TryRecvError::Disconnected) => return Err("Swarm task ended".into()),
+            let mut rx = node.poll_receiver.take().ok_or("Node stopped")?;
+            let r = rx.try_recv();
+            node.poll_receiver = Some(rx);
+            drop(node);
+            r
+        };
+        let ev = match recv_result {
+            Ok(ev) => ev,
+            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => return Ok(None),
+            Err(tokio::sync::broadcast::error::TryRecvError::Closed) => {
+                return Err("Swarm task ended".into());
+            }
+            Err(tokio::sync::broadcast::error::TryRecvError::Lagged(_)) => {
+                // Dropped some events under backpressure; keep going.
+                continue;
             }
         };
 
-        // Process events like the TUI does (save peers, exchange nicknames)
-        process_event_for_mobile(&ev, cmd_tx.as_ref());
+        // Side effects already ran in the forwarder task.
         // A nickname-only DM is the name-exchange side channel, not a
-        // message: its side effects (storing the announced nickname)
-        // were already applied above, so skip it before it can reach
-        // Dart — whose `content != null` guard would happily persist an
-        // empty-content DM. Keep draining so a run of pure name
-        // exchanges cannot stall the queue.
+        // message: skip it so it never reaches Dart.
         if is_nickname_only_dm(&ev) {
             continue;
         }
         return Ok(Some(event_to_json(ev)));
     }
+}
+
+/// Subscribe to the node's event broadcast. Multiple frontends can subscribe
+/// and each receives every event (fan-out). Side effects have already run in
+/// the forwarder task.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn subscribe_events() -> Result<tokio::sync::broadcast::Receiver<SwarmEvent>, String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let node = lock_node_mutex(m);
+    node.event_broadcast
+        .as_ref()
+        .ok_or_else(|| "Node stopped".to_string())
+        .map(tokio::sync::broadcast::Sender::subscribe)
+}
+
+/// Clone of the node's command sender (for frontends that drive the node).
+#[flutter_rust_bridge::frb(ignore)]
+pub fn command_sender() -> Result<mpsc::Sender<SwarmCommand>, String> {
+    let m = NODE.get().ok_or("Node not started")?;
+    let node = lock_node_mutex(m);
+    node.cmd_tx.clone().ok_or_else(|| "Node stopped".to_string())
 }
 
 /// True for `DirectMessage` events whose empty content carries only a

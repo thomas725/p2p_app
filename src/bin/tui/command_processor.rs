@@ -13,7 +13,7 @@ enum Event {
     SwarmEvent(Box<SwarmEvent>),
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 fn sort_peers_by_last_seen(state: &mut AppState) {
     state.peer_selection =
         p2p_app::tui_helpers::sort_peers_by_last_seen(&mut state.peers, state.peer_selection);
@@ -586,6 +586,6 @@ pub fn spawn_command_processor(
     (handle, cmd_tx_for_return)
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 #[path = "../../../tests/unit/unit_bin_tui_command_processor.rs"]
 mod tests;

@@ -1097,6 +1097,6 @@ pub async fn process_input_event(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 #[path = "../../../tests/unit/unit_bin_tui_input_processor.rs"]
 mod tests;

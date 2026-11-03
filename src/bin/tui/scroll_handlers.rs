@@ -417,6 +417,6 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "unified")))]
 #[path = "../../../tests/unit/unit_bin_tui_scroll_handlers.rs"]
 mod tests;
