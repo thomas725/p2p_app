@@ -613,6 +613,78 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_settings_content_network_details() {
+        let mut terminal = Terminal::new(TestBackend::new(120, 80)).unwrap();
+        let mut state = TuiRenderState::new();
+        state.network = p2p_app::net_diag::NetworkDetails {
+            interfaces: vec![p2p_app::net_diag::NetworkInterfaceInfo {
+                name: "eth0".to_string(),
+                mac: Some("aa:bb:cc:dd:ee:ff".to_string()),
+                ipv4: vec!["192.168.1.2".to_string()],
+                ipv6: vec!["fe80::1".to_string()],
+                internal: false,
+            }],
+            external_addrs: vec!["/ip4/203.0.113.7/tcp/4001".to_string()],
+            reachability: "Public (directly reachable)".to_string(),
+            nat_status: "Public".to_string(),
+            nat_public_addr: Some("/ip4/203.0.113.7/tcp/4001".to_string()),
+            nat_probe_successes: 2,
+            nat_probe_failures: 1,
+            hole_punch_attempts: 3,
+            hole_punch_successes: 1,
+            relay_reservations: vec!["12D3KooWRelay".to_string()],
+            relay_status: "Reserved via 12D3KooWRelay".to_string(),
+            dht_mode: "Server".to_string(),
+            dht_connected: true,
+            dht_routing_peers: 7,
+            dht_bootstrap_successes: 2,
+            dht_bootstrap_failures: 0,
+            dht_announced: true,
+            dht_announce_status: "Announced to the DHT".to_string(),
+            ..p2p_app::net_diag::NetworkDetails::default()
+        };
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Network details:"), "got: {text:?}");
+        assert!(
+            text.contains("Reachability: Public (directly reachable)"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("AutoNAT: Public (/ip4/203.0.113.7/tcp/4001) — probes 2 ok / 1 failed"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("Hole punching: 1/3 attempts succeeded"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("Relay: Reserved via 12D3KooWRelay (12D3KooWRelay)"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("DHT: connected (Server, 7 routing peers; bootstrap 2 ok / 0 failed)"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("DHT announcement: Announced to the DHT"),
+            "got: {text:?}"
+        );
+        assert!(text.contains("External addresses:"), "got: {text:?}");
+        assert!(text.contains("eth0 — aa:bb:cc:dd:ee:ff"), "got: {text:?}");
+        assert!(text.contains("IPv4: 192.168.1.2"), "got: {text:?}");
+        assert!(text.contains("IPv6: fe80::1"), "got: {text:?}");
+    }
+
+    #[test]
     fn test_render_peer_info_shows_contact_message_stats() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::with_sample_data();

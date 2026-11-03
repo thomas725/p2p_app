@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 
 class FakeNodeApi implements NodeApi {
   FakeNodeApi({this.isRemoteTransport = false});
@@ -105,6 +106,19 @@ class FakeNodeApi implements NodeApi {
 
   /// Returned by [getMobilePeerStatus] when set; otherwise the call throws.
   MobilePeerStatus? mobilePeerStatus;
+
+  @override
+  Future<NetworkDetails> getNetworkDetails() async {
+    _record('getNetworkDetails');
+    final details = networkDetails;
+    if (details == null) {
+      throw UnimplementedError('set networkDetails in this test');
+    }
+    return details;
+  }
+
+  /// Returned by [getNetworkDetails] when set; otherwise the call throws.
+  NetworkDetails? networkDetails;
 
   @override
   Future<String> startNode({required String dbPath}) =>

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Immutable snapshot of the live connection state shown on the Settings page.
@@ -40,6 +41,7 @@ class Settings extends StatefulWidget {
     required this.onOpenPeerInfo,
     required this.userId,
     required this.devices,
+    this.networkDetails,
   });
 
   final ValueNotifier<LiveStatus> liveStatus;
@@ -54,6 +56,11 @@ class Settings extends StatefulWidget {
   final String? userId;
   final List<MobileDeviceInfo> devices;
 
+  /// Live network diagnostics pushed by [HomeScreen] (interfaces, AutoNAT/
+  /// DCUtR reachability, relay reservations, DHT state). Optional so widget
+  /// tests without a node keep compiling; when null the card is hidden.
+  final ValueNotifier<NetworkDetails?>? networkDetails;
+
   @override
   State<Settings> createState() => _SettingsState();
 }
@@ -63,6 +70,7 @@ class _SettingsState extends State<Settings> {
   late LiveStatus _live;
   MobilePeerStatus? _statusData;
   String _networkSize = '';
+  NetworkDetails? _network;
 
   @override
   void initState() {
@@ -70,8 +78,10 @@ class _SettingsState extends State<Settings> {
     _live = widget.liveStatus.value;
     _statusData = widget.status.value;
     _nickname = _statusData?.selfNickname;
+    _network = widget.networkDetails?.value;
     widget.liveStatus.addListener(_onLive);
     widget.status.addListener(_onStatus);
+    widget.networkDetails?.addListener(_onNetwork);
     _refreshNetworkSize();
   }
 
@@ -79,8 +89,12 @@ class _SettingsState extends State<Settings> {
   void dispose() {
     widget.liveStatus.removeListener(_onLive);
     widget.status.removeListener(_onStatus);
+    widget.networkDetails?.removeListener(_onNetwork);
     super.dispose();
   }
+
+  void _onNetwork() =>
+      setState(() => _network = widget.networkDetails?.value);
 
   void _onLive() {
     setState(() => _live = widget.liveStatus.value);
@@ -328,6 +342,10 @@ class _SettingsState extends State<Settings> {
             ),
           ),
         ),
+        if (_network != null) ...[
+          const SizedBox(height: 8),
+          _networkDetailsCard(_network!),
+        ],
         if (widget.isAndroid) ...[
           const SizedBox(height: 8),
           Card(
@@ -343,8 +361,122 @@ class _SettingsState extends State<Settings> {
     );
   }
 
-  Widget _statusRow(IconData icon, String label, String value) {
+  Widget _networkDetailsCard(NetworkDetails net) {
+    final dhtState = net.dhtConnected ? 'connected' : 'not connected';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Network details',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 12),
+            _statusRow(
+              Icons.public,
+              'Reachability',
+              net.reachability,
+              key: const Key('network-reachability'),
+            ),
+            _statusRow(
+              Icons.router,
+              'AutoNAT',
+              '${net.natStatus} — probes '
+                  '${net.natProbeSuccesses} ok / ${net.natProbeFailures} failed',
+              key: const Key('network-autonat'),
+            ),
+            _statusRow(
+              Icons.swap_horiz,
+              'Hole punching',
+              '${net.holePunchSuccesses}/${net.holePunchAttempts} succeeded',
+              key: const Key('network-hole-punching'),
+            ),
+            _statusRow(
+              Icons.alt_route,
+              'Relay',
+              net.relayReservations.isEmpty
+                  ? net.relayStatus
+                  : '${net.relayStatus} '
+                        '(${net.relayReservations.join(', ')})',
+              key: const Key('network-relay'),
+            ),
+            _statusRow(
+              Icons.hub,
+              'DHT',
+              '$dhtState (${net.dhtMode}, '
+                  '${net.dhtRoutingPeers} routing peers; bootstrap '
+                  '${net.dhtBootstrapSuccesses} ok / '
+                  '${net.dhtBootstrapFailures} failed)',
+              key: const Key('network-dht'),
+            ),
+            _statusRow(
+              Icons.campaign,
+              'DHT announcement',
+              net.dhtAnnounced
+                  ? 'Announced (${net.dhtAnnounceStatus})'
+                  : net.dhtAnnounceStatus,
+              key: const Key('network-dht-announcement'),
+            ),
+            if (net.externalAddrs.isNotEmpty) ...[
+              Text(
+                'External addresses',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(height: 4),
+              for (final addr in net.externalAddrs)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: SelectableText(addr),
+                ),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              'Interfaces',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            if (net.interfaces.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text('—', style: TextStyle(color: Colors.grey)),
+              )
+            else
+              for (final iface in net.interfaces)
+                Padding(
+                  key: Key('network-interface-${iface.name}'),
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${iface.name} — ${iface.mac ?? 'no MAC'}'
+                        '${iface.internal ? ' (loopback)' : ''}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (iface.ipv4.isNotEmpty)
+                        Text('IPv4: ${iface.ipv4.join(', ')}'),
+                      if (iface.ipv6.isNotEmpty)
+                        Text('IPv6: ${iface.ipv6.join(', ')}'),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusRow(
+    IconData icon,
+    String label,
+    String value, {
+    Key? key,
+  }) {
     return Padding(
+      key: key,
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [

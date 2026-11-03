@@ -49,7 +49,16 @@ fn render_network_details(lines: &mut Vec<String>, net: &crate::net_diag::Networ
         "  Hole punching: {}/{} attempts succeeded",
         net.hole_punch_successes, net.hole_punch_attempts
     ));
-    lines.push(format!("  Relay: {}", net.relay_status));
+    let relay = if net.relay_reservations.is_empty() {
+        net.relay_status.clone()
+    } else {
+        format!(
+            "{} ({})",
+            net.relay_status,
+            net.relay_reservations.join(", ")
+        )
+    };
+    lines.push(format!("  Relay: {relay}"));
 
     let dht_state = if net.dht_connected {
         "connected"

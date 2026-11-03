@@ -216,6 +216,20 @@ adds internet-wide discovery via a Kademlia DHT:
 - All four behaviours are in `AppBehaviour` (cfg-gated) and have catch-all
   arms in `handle_swarm_event`.
 
+**Stage 5 (shipped 2026-11-03): view network details.** Both frontends now
+show where the node stands on the network:
+- `src/net_diag.rs` records live listen/external addresses, AutoNAT status and
+  probe outcomes, DCUtR hole punches, relay reservations/circuits, Kademlia
+  mode/routing size/bootstrap results, and DHT announcement state.
+- OS interfaces (name, MAC, IPv4/IPv6) are enumerated via `network-interface`
+  and cached 5 s.
+- The node publishes a rate-limited (60 s) `/p2p-chat/peer/<peer_id>` DHT
+  record once it has routing peers + reachable addresses; `PutRecord`'s result
+  is the announced/failed status.
+- TUI: Settings-tab "Network details" block; Flutter: Settings "Network
+  details" card, refreshed on open/events and every 5 s while visible. Web
+  mirrors it as the `getNetworkDetails` JSON method.
+
 Remaining: a config surface for bootstrap/relay peers beyond `P2P_BOOTSTRAP`,
 relay reservation triggering, and AutoNAT-driven behaviour (e.g. advertising
 relay addresses). These are follow-ups once exercised against real peers.

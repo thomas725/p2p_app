@@ -18,6 +18,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | `futures-util` | `0.3` | 0.3.34 | `Stream`/`Sink` combinators, used to split the axum WebSocket. Optional — behind `web`. |
 | `base64` | `0.22` | 0.22.1 | RFC 7617 `Authorization: Basic` decoding and the session-cookie MAC encoding for the web frontend's auth. Optional — behind `web`. Already in the tree via libp2p (0.22.1 and 0.23.1), so this adds no new crate. |
 | `subtle` | `2` | 2.6.1 | Constant-time comparison of the Basic password and the session-cookie MAC, so auth cannot be probed byte-by-byte by timing. Optional — behind `web`. Already in the tree. |
+| `network-interface` | `=2.0.5` | 2.0.5 | OS network-interface enumeration (name, MAC, IPv4/IPv6) for the Settings network-details view on desktop and Android. Pinned: the `show()` shape (`Vec<NetworkInterface>` with per-address `Addr::V4/V6`) is what `net_diag::group_interfaces` folds. |
 
 > The old `futures` umbrella crate was replaced by `futures-util` — the
 > project only needs the stream/sink traits, not the executor.

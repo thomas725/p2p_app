@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/contact_list.dart';
 import 'package:p2p_app_flutter/src/screens/call_screen.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
@@ -115,6 +117,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final ValueNotifier<MobilePeerStatus?> _statusNotifier =
       ValueNotifier<MobilePeerStatus?>(null);
 
+  /// Latest network-diagnostics snapshot (interfaces, reachability, relay, DHT)
+  /// for the Settings page. Polled on open + on the events that change it.
+  final ValueNotifier<NetworkDetails?> _networkNotifier =
+      ValueNotifier<NetworkDetails?>(null);
+
+  /// Periodic refresh while the Settings tab is visible.
+  Timer? _networkRefreshTimer;
+
+  Future<void> _refreshNetworkDetails() async {
+    try {
+      final details = await nodeApi.getNetworkDetails();
+      if (mounted) _networkNotifier.value = details;
+    } catch (_) {}
+  }
+
+  void _stopNetworkRefresh() {
+    _networkRefreshTimer?.cancel();
+    _networkRefreshTimer = null;
+  }
+
   void _syncLiveStatus() {
     _liveStatus.value = LiveStatus(
       connectedCount: _connectedCount,
@@ -131,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Re-fetch the node status when the Settings tab is (re)opened so it always
   /// shows current data even if it was offscreen when something changed.
   Future<void> _refreshSettingsOnOpen() async {
+    await _refreshNetworkDetails();
     if (!_serviceRunning) return;
     try {
       final status = await nodeApi.getMobilePeerStatus();
@@ -173,8 +196,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _scrollController.removeListener(_onScroll);
     setEventSink(null);
     _scrollController.dispose();
+    _stopNetworkRefresh();
     _liveStatus.dispose();
     _statusNotifier.dispose();
+    _networkNotifier.dispose();
     super.dispose();
   }
 
@@ -485,6 +510,14 @@ class _HomeScreenState extends State<HomeScreen> {
             !_listenAddresses.contains(event.address)) {
           setState(() => _listenAddresses.add(event.address!));
         }
+        _refreshNetworkDetails();
+        break;
+      // AutoNAT / DCUtR / relay reachability changed: the Rust snapshot is
+      // authoritative, so just re-poll it for the Settings view.
+      case 'external_address':
+      case 'nat_status':
+      case 'hole_punch':
+        _refreshNetworkDetails();
         break;
       case 'call_invite':
         // An incoming call ring: open the call screen (or implicitly decline
@@ -980,6 +1013,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenPeerInfo: _openPeerInfoForPeerId,
         userId: _ownUserId,
         devices: _ownDevices,
+        networkDetails: _networkNotifier,
       ),
     ];
 
@@ -989,7 +1023,14 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _tabIndex,
         onDestinationSelected: (i) {
           setState(() => _tabIndex = i);
-          if (i == 4) _refreshSettingsOnOpen();
+          _stopNetworkRefresh();
+          if (i == 4) {
+            _refreshSettingsOnOpen();
+            _networkRefreshTimer = Timer.periodic(
+              const Duration(seconds: 5),
+              (_) => _refreshNetworkDetails(),
+            );
+          }
         },
         destinations: kMainTabDestinations,
       ),

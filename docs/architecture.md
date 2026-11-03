@@ -48,6 +48,7 @@ src/
 ├── behavior.rs         libp2p behaviours: gossipsub, request_response, mdns, ping
 ├── swarm_handler.rs    libp2p events -> app events; inbound persistence
 ├── network.rs          network-size classification (Small/Medium/Large)
+├── net_diag.rs         live network diagnostics snapshot (interfaces, NAT, relay, DHT)
 ├── types.rs            shared constants and enums (SwarmEvent, SwarmCommand, InputMode)
 ├── db.rs               connection handling, multi-instance DB resolution, ensure_columns
 ├── messages.rs         message + receipt persistence, per-peer stats
@@ -105,6 +106,23 @@ Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the
 bytes move over the separate `file_transfer` lane.
 
+### Network diagnostics
+
+`src/net_diag.rs` is the single live-state store behind the Settings-tab
+network details in **both** frontends. The swarm handler records every
+transport/reachability event there (listen + external addresses, AutoNAT
+verdict and probe outcomes, DCUtR hole-punch results, relay reservations and
+circuits, Kademlia mode/routing size/bootstrap results, DHT announcements), and
+both frontends render the same polled snapshot — the TUI reads it per frame,
+Flutter through the `getNetworkDetails` FRB/JSON method (Settings polls it every
+5 s while visible). OS interfaces (name, MAC, IPv4/IPv6) come from
+`network-interface` and are cached for 5 s.
+
+DHT presence is real, not inferred: the node publishes a
+`/p2p-chat/peer/<peer_id>` record (value `{peerId, addresses, public}`) after
+it has routing peers and reachable addresses, rate-limited to one attempt per
+60 s; `PutRecord`'s result drives the "announced" status.
+
 ## The identity model
 
 Two layers, described in full in [identity.md](identity.md):
@@ -147,14 +165,17 @@ API sets the path per thread with `db::set_db_url`.
 
 | Feature | Effect |
 |---|---|
-| `default` | `mdns`, `tracing`, `quic`, `tui`, `attachment-gc`, `web` |
+| `default` | `mdns`, `kad`, `relay`, `nat`, `tracing`, `quic`, `tui`, `attachment-gc`, `web` |
 | `web` | the axum server; **implies `mobile`** |
 | `mobile` | FRB surface, bundled sqlite; implies `basic`, `sqlite_bundled`, `quic`, `attachment-gc` |
 | `tui` | ratatui + crossterm + ratatui-textarea |
 | `basic` | libp2p only |
 | `sqlite_bundled` | compile sqlite in (required for Android) |
 | `attachment-gc` | sweep orphaned attachment blobs at startup; disabling it means the store never deletes anything |
-| `mdns`, `tracing`, `quic` | discovery, logging, QUIC transport |
+| `mdns`, `tracing`, `quic` | LAN discovery, logging, QUIC transport |
+| `kad` | Kademlia DHT + Identify (internet-wide discovery, DHT announcements) |
+| `relay` | circuit-relay v2 server + client |
+| `nat` | AutoNAT reachability detection + DCUtR hole punching |
 | `calls` | **empty placeholder** reserved for future call-media dependencies. Call *signaling* is un-gated and ships in the default build. |
 | `test-utils` | test-only helpers |
 

@@ -286,7 +286,6 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
 }
 
 /// Processes network (swarm) events and updates application state
-/// Processes network (swarm) events and updates application state
 async fn process_swarm_event(
     swarm_event: SwarmEvent,
     state: &SharedState,
