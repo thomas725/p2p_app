@@ -270,17 +270,7 @@ async fn handle_swarm_event(
             new,
             ..
         })) => {
-            let (label, public_addr) = match new {
-                libp2p::autonat::NatStatus::Public(addr) => ("Public", Some(addr.to_string())),
-                libp2p::autonat::NatStatus::Private => ("Private", None),
-                libp2p::autonat::NatStatus::Unknown => ("Unknown", None),
-            };
-            crate::net_diag::record_nat_status(label, public_addr.as_deref());
-            let _ = event_tx
-                .send(SwarmEvent::NatStatusChanged(label.to_string()))
-                .await;
-            #[cfg(feature = "kad")]
-            maybe_announce(swarm);
+            handle_autonat_status_changed(new, event_tx, swarm).await;
         }
         #[cfg(feature = "nat")]
         Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::OutboundProbe(
@@ -422,6 +412,25 @@ async fn handle_mdns_expired(
             })
             .await;
     }
+}
+
+#[cfg(feature = "nat")]
+async fn handle_autonat_status_changed(
+    new: libp2p::autonat::NatStatus,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let (label, public_addr) = match new {
+        libp2p::autonat::NatStatus::Public(addr) => ("Public", Some(addr.to_string())),
+        libp2p::autonat::NatStatus::Private => ("Private", None),
+        libp2p::autonat::NatStatus::Unknown => ("Unknown", None),
+    };
+    crate::net_diag::record_nat_status(label, public_addr.as_deref());
+    let _ = event_tx
+        .send(SwarmEvent::NatStatusChanged(label.to_string()))
+        .await;
+    #[cfg(feature = "kad")]
+    maybe_announce(swarm);
 }
 
 async fn handle_group_message(
