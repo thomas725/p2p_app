@@ -28,7 +28,13 @@ the smallest footprint (reads stdin, prints to stderr).
 * **Identity and device binding** — an account key per user, signed claims
   binding devices, and a Contacts roster that collapses one user's devices
   into a single row.
-* **Peer discovery** — mDNS for automatic local-network discovery.
+* **Peer discovery** — mDNS on the LAN plus Kademlia DHT bootstrap for
+  internet-wide discovery.
+* **NAT traversal** — circuit-relay v2 reservations, AutoNAT reachability
+  detection, and DCUtR hole punching.
+* **Network diagnostics** — live OS interfaces, listen/external addresses,
+  reachability, relay reservations, and DHT state on Settings in both
+  frontends.
 * **Transports** — TCP, with optional QUIC.
 * **Nicknames** — per-peer and self nicknames, with auto-generated petnames for
   silent peers. Validation lives in Rust (`crate::nickname::validate_nickname`).
@@ -134,7 +140,7 @@ checklist is in [`AGENTS.md`](AGENTS.md) ("FRB regeneration protocol").
 ## Architecture
 
 * **`libp2p`** — networking (gossipsub, four request-response protocols, mDNS,
-  TCP/QUIC, ping).
+  Kademlia, relay/AutoNAT/DCUtR, TCP/QUIC, ping).
 * **Diesel + SQLite** — persistent storage of messages, peers, identities,
   receipts, groups, and contacts.
 * **`ratatui`** — terminal UI (binaries under `src/bin/tui`).
@@ -157,6 +163,7 @@ src/
 ├── calls.rs                   # call session model (signaling only)
 ├── files.rs                   # content-addressed attachment store
 ├── network.rs                 # adaptive NetworkSize classification
+├── net_diag.rs                # live diagnostics (interfaces, NAT, relay, DHT)
 ├── fmt.rs / types.rs          # formatting + shared event/command types
 ├── logging.rs                 # logging + TUI log buffer
 ├── api/mod.rs                 # FRB entry surface (mobile + web)

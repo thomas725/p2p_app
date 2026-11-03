@@ -81,8 +81,10 @@ fn render_network_details(lines: &mut Vec<String>, net: &crate::net_diag::Networ
         }
     }
 
-    if !net.listen_addrs.is_empty() {
-        lines.push("  Listen addresses:".to_string());
+    lines.push("  Listen addresses:".to_string());
+    if net.listen_addrs.is_empty() {
+        lines.push("    —".to_string());
+    } else {
         for addr in &net.listen_addrs {
             lines.push(format!("    {addr}"));
         }
@@ -154,15 +156,6 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
             lines.push(format!("  {display}"));
         }
     }
-    lines.push("Listen addresses:".to_string());
-    if state.listen_addrs.is_empty() {
-        lines.push("  —".to_string());
-    } else {
-        for addr in &state.listen_addrs {
-            lines.push(format!("  {addr}"));
-        }
-    }
-
     render_network_details(&mut lines, &state.network);
 
     let para = Paragraph::new(lines.join("\n"))

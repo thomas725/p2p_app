@@ -192,7 +192,6 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         db_url: state.db_url.clone(),
         platform: state.platform.clone(),
         network_size: state.network_size.clone(),
-        listen_addrs: state.listen_addrs.clone(),
         network: p2p_app::net_diag::snapshot(),
         last_connection_lost,
         last_connection_peer,

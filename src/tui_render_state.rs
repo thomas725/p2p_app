@@ -114,8 +114,6 @@ pub struct TuiRenderState {
     pub platform: String,
     /// Network size classification, e.g. "Small" (for Settings tab)
     pub network_size: String,
-    /// Listen addresses reported by the swarm
-    pub listen_addrs: Vec<String>,
     /// Live network diagnostics snapshot (interfaces, reachability, DHT/relay).
     pub network: crate::net_diag::NetworkDetails,
     /// Epoch seconds of last peer disconnect, if any (for Settings tab)
@@ -196,7 +194,6 @@ impl TuiRenderState {
             db_url: String::new(),
             platform: String::new(),
             network_size: String::new(),
-            listen_addrs: Vec::new(),
             network: crate::net_diag::NetworkDetails::default(),
             last_connection_lost: None,
             last_connection_peer: None,

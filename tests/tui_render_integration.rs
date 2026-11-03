@@ -680,6 +680,10 @@ mod render_tests {
             "got: {text:?}"
         );
         assert!(text.contains("External addresses:"), "got: {text:?}");
+        assert!(
+            text.contains("Listen addresses:") && text.contains("/ip4/192.168.1.2/tcp/4001"),
+            "got: {text:?}"
+        );
         assert!(text.contains("eth0 — aa:bb:cc:dd:ee:ff"), "got: {text:?}");
         assert!(text.contains("IPv4: 192.168.1.2"), "got: {text:?}");
         assert!(text.contains("IPv6: fe80::1"), "got: {text:?}");

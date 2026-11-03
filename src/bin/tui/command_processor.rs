@@ -315,12 +315,7 @@ async fn process_swarm_event(
         }
         SwarmEvent::PeerDisconnected(peer_id) => handle_peer_disconnected(state, peer_id).await,
         SwarmEvent::ListenAddrEstablished(addr) => {
-            let mut s = state.lock().await;
-            if !s.listen_addrs.contains(&addr) {
-                s.listen_addrs.push(addr.clone());
-            }
             p2plog_debug(format!("Listening on: {addr}"));
-            drop(s);
         }
         SwarmEvent::ExternalAddressAdded(addr) => {
             p2plog_debug(format!("External address: {addr}"));
