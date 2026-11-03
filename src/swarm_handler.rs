@@ -332,21 +332,13 @@ async fn handle_swarm_event(
             handle_connection_closed(peer_id, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::NewListenAddr { address, .. } => {
-            crate::net_diag::record_listen_addr(&address.to_string());
-            let _ = event_tx
-                .send(SwarmEvent::ListenAddrEstablished(address.to_string()))
-                .await;
+            handle_new_listen_addr(address, event_tx).await;
         }
         Libp2pSwarmEvent::NewExternalAddrCandidate { address } => {
             crate::net_diag::record_external_candidate(&address.to_string());
         }
         Libp2pSwarmEvent::ExternalAddrConfirmed { address } => {
-            crate::net_diag::record_external_addr(&address.to_string());
-            let _ = event_tx
-                .send(SwarmEvent::ExternalAddressAdded(address.to_string()))
-                .await;
-            #[cfg(feature = "kad")]
-            maybe_announce(swarm);
+            handle_external_addr_confirmed(address, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::ExternalAddrExpired { address } => {
             crate::net_diag::expire_external_addr(&address.to_string());
@@ -390,6 +382,29 @@ async fn handle_connection_closed(
         .await;
     #[cfg(feature = "kad")]
     refresh_dht_routing(swarm);
+}
+
+async fn handle_new_listen_addr(
+    address: libp2p::Multiaddr,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    crate::net_diag::record_listen_addr(&address.to_string());
+    let _ = event_tx
+        .send(SwarmEvent::ListenAddrEstablished(address.to_string()))
+        .await;
+}
+
+async fn handle_external_addr_confirmed(
+    address: libp2p::Multiaddr,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    crate::net_diag::record_external_addr(&address.to_string());
+    let _ = event_tx
+        .send(SwarmEvent::ExternalAddressAdded(address.to_string()))
+        .await;
+    #[cfg(feature = "kad")]
+    maybe_announce(swarm);
 }
 
 async fn handle_group_message(
