@@ -326,22 +326,10 @@ async fn handle_swarm_event(
                 .await;
         }
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
-            let _ = event_tx
-                .send(SwarmEvent::PeerConnected(peer_id.to_string()))
-                .await;
-            #[cfg(feature = "kad")]
-            {
-                let _ = swarm.behaviour_mut().kad.bootstrap();
-                refresh_dht_routing(swarm);
-                maybe_announce(swarm);
-            }
+            handle_connection_established(peer_id, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
-            let _ = event_tx
-                .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
-                .await;
-            #[cfg(feature = "kad")]
-            refresh_dht_routing(swarm);
+            handle_connection_closed(peer_id, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::NewListenAddr { address, .. } => {
             crate::net_diag::record_listen_addr(&address.to_string());
@@ -365,6 +353,43 @@ async fn handle_swarm_event(
         }
         _ => {}
     }
+}
+
+#[cfg(feature = "kad")]
+async fn handle_connection_established(
+    peer_id: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let _ = event_tx
+        .send(SwarmEvent::PeerConnected(peer_id.to_string()))
+        .await;
+    let _ = swarm.behaviour_mut().kad.bootstrap();
+    refresh_dht_routing(swarm);
+    maybe_announce(swarm);
+}
+
+#[cfg(not(feature = "kad"))]
+async fn handle_connection_established(
+    peer_id: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    _swarm: &mut Swarm<AppBehaviour>,
+) {
+    let _ = event_tx
+        .send(SwarmEvent::PeerConnected(peer_id.to_string()))
+        .await;
+}
+
+async fn handle_connection_closed(
+    peer_id: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let _ = event_tx
+        .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
+        .await;
+    #[cfg(feature = "kad")]
+    refresh_dht_routing(swarm);
 }
 
 async fn handle_group_message(
