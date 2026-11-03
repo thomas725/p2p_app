@@ -230,9 +230,33 @@ show where the node stands on the network:
   details" card, refreshed on open/events and every 5 s while visible. Web
   mirrors it as the `getNetworkDetails` JSON method.
 
-Remaining: a config surface for bootstrap/relay peers beyond `P2P_BOOTSTRAP`,
-relay reservation triggering, and AutoNAT-driven behaviour (e.g. advertising
-relay addresses). These are follow-ups once exercised against real peers.
+Remaining follow-ups (detailed 2026-11-03):
+
+1. **Config surface for bootstrap/relay peers** (beyond the `P2P_BOOTSTRAP`
+   env var). Today peers are read once from the env in `swarm_handler::
+   spawn_swarm_handler` and dialed at startup; there is no CLI flag, DB column,
+   Settings input, or web method. Needed: a persisted list of multiaddrs
+   (tagged bootstrap/relay), loaded at node start in all three entry points
+   (TUI `main_loop`, mobile `start_node_impl`, `p2p_chat_server`), editable in
+   TUI/Flutter/web Settings, validated as `Multiaddr` (ideally with
+   `/p2p/<peerid>`), and dialable on demand (overlaps US-053 manual dial).
+2. **Relay reservation triggering.** The relay client behaviour and the
+   `ReservationReqAccepted`/circuit event handlers exist, but nothing calls the
+   relay-client reserve API, so reservations never actually get requested by a
+   NAT'd node. Needed: on connecting to a known relay peer, call reserve;
+   handle expiry/renewal (the "Renewed via …" status line already anticipates
+   this). Without this, a node behind NAT has no relay slot to advertise.
+3. **AutoNAT-driven addressing.** `maybe_announce` builds the DHT record from
+   `reachable_addresses()` (`external_addrs` then `listen_addrs`); behind NAT
+   that yields unreachable LAN addresses even though `reachability_label`
+   already says "Relayed". Needed: when `nat_status == "Private"` and a relay
+   reservation exists, announce (and Identify with) the relayed circuit address
+   `/p2p/<relay>/p2p-circuit/p2p/<self>` instead, so remote peers found via the
+   DHT can actually dial us and DCUtR can attempt a hole punch.
+
+Items 2 and 3 are coupled (a reservation is required before there is anything
+to advertise); item 1 is the prerequisite for both outside a dev shell. None
+are blocked on external decisions.
 
 ### Manual peer address entry (US-053)
 
