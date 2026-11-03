@@ -103,6 +103,7 @@ diesel_migrations = { version = "^2.3" }
 # safe f64 -> integer conversions (ToPrimitive) for timestamp formatting
 # without `as` casts; already in the tree via libp2p/gossipsub.
 num-traits = "0.2"
+clap = { version = "4", features = ["derive", "env"] }
 
 # feature set copied from chat example
 libp2p = { version = "=0.57.1", features = [
