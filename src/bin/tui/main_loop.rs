@@ -251,7 +251,7 @@ fn initialize_state(
     );
     state.env.kitty_keyboard_active = keyboard_enhanced;
     state.db_url.clone_from(&db_info);
-    state.platform = format!("Desktop ({})", std::env::consts::OS);
+    state.platform = format!("Terminal ({})", std::env::consts::OS);
     state.network_size =
         p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
     (state, db_info, initial_groups)

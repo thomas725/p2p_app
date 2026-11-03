@@ -110,7 +110,7 @@ pub struct TuiRenderState {
     pub local_peer_id: String,
     /// Database URL (for Settings tab)
     pub db_url: String,
-    /// Platform label, e.g. "Desktop (linux)" (for Settings tab)
+    /// Platform label, e.g. "Terminal (linux)" (for Settings tab)
     pub platform: String,
     /// Network size classification, e.g. "Small" (for Settings tab)
     pub network_size: String,
