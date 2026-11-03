@@ -140,8 +140,23 @@ fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 async fn handle_swarm_event(
+    swarm_event: Libp2pSwarmEvent<AppEv>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    match swarm_event {
+        Libp2pSwarmEvent::Behaviour(_) => {
+            handle_behaviour_event(swarm_event, event_tx, swarm).await;
+        }
+        _ => {
+            handle_connection_event(swarm_event, event_tx, swarm).await;
+        }
+    }
+}
+
+#[allow(clippy::too_many_lines)]
+async fn handle_behaviour_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
@@ -300,6 +315,16 @@ async fn handle_swarm_event(
                 })
                 .await;
         }
+        _ => {}
+    }
+}
+
+async fn handle_connection_event(
+    swarm_event: Libp2pSwarmEvent<AppEv>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    match swarm_event {
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             handle_connection_established(peer_id, event_tx, swarm).await;
         }
