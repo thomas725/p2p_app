@@ -197,26 +197,11 @@ async fn handle_swarm_event(
         }
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
-            for (peer_id, multiaddr) in list {
-                let _ = event_tx
-                    .send(SwarmEvent::PeerDiscovered {
-                        peer_id: peer_id.to_string(),
-                        addresses: vec![multiaddr.clone()],
-                    })
-                    .await;
-                swarm.dial(multiaddr.clone()).ok();
-                swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-            }
+            handle_mdns_discovered(list, event_tx, swarm).await;
         }
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Expired(list))) => {
-            for (peer_id, _multiaddr) in list {
-                let _ = event_tx
-                    .send(SwarmEvent::PeerExpired {
-                        peer_id: peer_id.to_string(),
-                    })
-                    .await;
-            }
+            handle_mdns_expired(list, event_tx).await;
         }
         // Ping results drive connection liveness; the resulting close is
         // handled by the ConnectionClosed arm below, so nothing to do here.
@@ -405,6 +390,38 @@ async fn handle_external_addr_confirmed(
         .await;
     #[cfg(feature = "kad")]
     maybe_announce(swarm);
+}
+
+#[cfg(feature = "mdns")]
+async fn handle_mdns_discovered(
+    list: Vec<(libp2p::PeerId, libp2p::Multiaddr)>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    for (peer_id, multiaddr) in list {
+        let _ = event_tx
+            .send(SwarmEvent::PeerDiscovered {
+                peer_id: peer_id.to_string(),
+                addresses: vec![multiaddr.clone()],
+            })
+            .await;
+        swarm.dial(multiaddr.clone()).ok();
+        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+    }
+}
+
+#[cfg(feature = "mdns")]
+async fn handle_mdns_expired(
+    list: Vec<(libp2p::PeerId, libp2p::Multiaddr)>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    for (peer_id, _multiaddr) in list {
+        let _ = event_tx
+            .send(SwarmEvent::PeerExpired {
+                peer_id: peer_id.to_string(),
+            })
+            .await;
+    }
 }
 
 async fn handle_group_message(
