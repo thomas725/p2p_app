@@ -123,6 +123,47 @@ pub async fn run_tui() -> color_eyre::Result<()> {
         .map_err(|e| color_eyre::eyre::eyre!(e))?;
     p2plog_info(format!("Node started: peer_id={peer_id}"));
 
+    // Optional: also serve the web frontend on the same node.
+    let mut web_enabled = std::env::var("P2P_WEB")
+        .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
+    let mut web_port: u16 = std::env::var("P2P_WEB_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(8080);
+    for arg in std::env::args().skip(1) {
+        if arg == "--web" {
+            web_enabled = true;
+        }
+    }
+    // parse --web-port value
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--web-port")
+        && let Some(v) = args.get(i.saturating_add(1))
+        && let Ok(p) = v.parse()
+    {
+        web_port = p;
+    }
+    #[cfg(feature = "web")]
+    if web_enabled {
+        let addr: std::net::SocketAddr = format!("127.0.0.1:{web_port}")
+            .parse::<std::net::SocketAddr>()
+            .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        tokio::spawn(async move {
+            if let Err(e) = p2p_app::web::serve(p2p_app::web::WebConfig {
+                bind: addr,
+                credentials: None,
+                assets: None,
+            })
+            .await
+            {
+                p2p_app::logging::p2plog_info(format!("web server error: {e}"));
+            }
+        });
+        p2plog_info(format!("Web frontend listening on http://127.0.0.1:{web_port}"));
+    }
+    #[cfg(not(feature = "web"))]
+    let _ = (web_enabled, web_port);
+
     // Use new 4-task architecture instead of monolithic tokio::select!
     tui::main_loop::run_new_tui().await
 }
