@@ -1,10 +1,7 @@
 use super::state::CHANNEL_CAPACITY;
-use p2p_app::SwarmCommand;
 use p2p_app::generated::models_queryable::{MessageReceipt, Peer};
-use p2p_app::get_tui_logs;
 use p2p_app::p2plog_debug;
 use p2p_app::peers::KnownPeer;
-use p2p_app::release_db_lock;
 use p2p_app::set_tui_redraw_hook;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -98,13 +95,6 @@ fn organize_receipts(receipts: &[MessageReceipt]) -> (BroadcastReceipts, DmRecei
 /// Signal to trigger a render (instead of busy-polling)
 #[derive(Debug, Clone, Copy)]
 pub struct RenderEvent;
-
-/// Returns the last `limit` logs in original order.
-fn recent_tui_logs(logs: &[String], limit: usize) -> Vec<String> {
-    let start = logs.len().saturating_sub(limit);
-    logs.get(start..).unwrap_or(&[]).to_vec()
-}
-
 /// Bring up the raw-mode terminal and push the minimal keyboard-enhancement
 /// flag.
 ///
@@ -272,74 +262,6 @@ async fn provision_account(state: &super::state::SharedState) {
     state.lock().await.refresh_my_user();
 }
 
-/// Re-join every group persisted in the local database: the swarm only receives
-/// group traffic for topics it is subscribed to, so saved groups must be
-/// re-subscribed on every startup.
-async fn resubscribe_saved_groups(
-    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
-    groups: &[p2p_app::groups::GroupSummary],
-) {
-    for summary in groups {
-        p2plog_debug(format!(
-            "Subscribing to saved group {} ({})",
-            summary.group.display_name, summary.group.group_id
-        ));
-        let _ = swarm_cmd_tx
-            .send(SwarmCommand::SubscribeGroup {
-                group_id: summary.group.group_id.clone(),
-            })
-            .await;
-    }
-}
-
-/// Wait for any of the four tasks to complete (indicating error or exit) and
-/// log which one it was.
-async fn await_first_task_exit(
-    swarm_handler: tokio::task::JoinHandle<()>,
-    event_source: tokio::task::JoinHandle<()>,
-    command_processor: tokio::task::JoinHandle<()>,
-    render_loop: tokio::task::JoinHandle<()>,
-) -> &'static str {
-    tokio::select! {
-        result = swarm_handler => {
-            if result.is_err() {
-                p2plog_debug( "SwarmHandler panicked".to_string());
-                "SwarmHandler task error"
-            } else {
-                p2plog_debug( "SwarmHandler exited".to_string());
-                "SwarmHandler completed"
-            }
-        }
-        result = event_source => {
-            if result.is_err() {
-                p2plog_debug( "EventSource panicked".to_string());
-                "EventSource task error"
-            } else {
-                p2plog_debug( "EventSource exited".to_string());
-                "EventSource completed"
-            }
-        }
-        result = command_processor => {
-            if result.is_err() {
-                p2plog_debug( "CommandProcessor panicked".to_string());
-                "CommandProcessor task error"
-            } else {
-                p2plog_debug( "CommandProcessor exited".to_string());
-                "CommandProcessor completed"
-            }
-        }
-        result = render_loop => {
-            if result.is_err() {
-                p2plog_debug( "RenderLoop panicked".to_string());
-                "RenderLoop task error"
-            } else {
-                p2plog_debug( "RenderLoop exited".to_string());
-                "RenderLoop completed"
-            }
-        }
-    }
-}
-
 /// Restore the terminal after shutdown: pop the keyboard-enhancement flag and
 /// defensively clear every keyboard mode while raw mode is still on (so the
 /// escape sequences transmit cleanly), then leave the alternate screen and
@@ -371,16 +293,15 @@ fn restore_terminal(mut stdout: std::io::Stdout) {
 ///
 /// Signal to trigger a render (instead of busy-polling) is carried by the
 /// [`RenderEvent`] unit struct.
-pub async fn run_new_tui(
-    swarm: libp2p::swarm::Swarm<p2p_app::AppBehaviour>,
-    topic_str: String,
-) -> color_eyre::Result<()> {
+pub async fn run_new_tui() -> color_eyre::Result<()> {
     let (mut terminal, keyboard_enhanced) = setup_terminal()?;
     terminal.clear()?;
 
+    let topic_str = p2p_app::CHAT_TOPIC.to_string();
+
     // Initialize state
     let own_nickname = p2p_app::ensure_self_nickname().unwrap_or_else(|_| "Anonymous".to_string());
-    let (state, _db_info, initial_groups) =
+    let (state, _db_info, _initial_groups) =
         initialize_state(&topic_str, own_nickname, keyboard_enhanced);
     let state = Arc::new(Mutex::new(state));
 
@@ -393,17 +314,38 @@ pub async fn run_new_tui(
     });
     let _ = render_tx.send(RenderEvent).await;
 
-    // Spawn tasks: SwarmHandler returns handle, event receiver, command sender
-    let (swarm_handler, swarm_event_rx, swarm_cmd_tx) =
-        p2p_app::spawn_swarm_handler(swarm, topic_str.clone());
+    // Use the mobile_node backend (single shared node) instead of owning a
+    // swarm directly. This is step 2 of the Option A refactor: the TUI now
+    // consumes events from the shared node's broadcast fan-out.
+    let swarm_event_rx = p2p_app::mobile_node::subscribe_events()
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    let swarm_cmd_tx = p2p_app::mobile_node::command_sender()
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+
+    // Wrap the broadcast receiver in an mpsc channel adapter so the existing
+    // CommandProcessor (which expects mpsc::Receiver<SwarmEvent>) keeps
+    // working. A small task forwards events.
+    let (fwd_tx, fwd_rx) = mpsc::channel(CHANNEL_CAPACITY);
+    let mut bc_rx = swarm_event_rx;
+    tokio::spawn(async move {
+        loop {
+            match bc_rx.recv().await {
+                Ok(ev) => {
+                    if fwd_tx.send(ev).await.is_err() {
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+            }
+        }
+    });
 
     provision_account(&state).await;
 
-    resubscribe_saved_groups(&swarm_cmd_tx, &initial_groups).await;
+    // Groups are re-subscribed by mobile_node::start_node_impl already.
 
-    // Sweep dead attachment blobs (files lane §12): `.part` partials from
-    // interrupted pulls plus orphaned blobs nothing references any more. No-op
-    // unless the `attachment-gc` Cargo feature is on (the enable/disable knob).
+    // Sweep dead attachment blobs (files lane §12).
     if let Err(e) = p2p_app::swarm_handler::gc_stale_attachments() {
         p2plog_debug(format!("attachment GC failed: {e}"));
     }
@@ -415,7 +357,7 @@ pub async fn run_new_tui(
     let (command_processor, _) = super::command_processor::spawn_command_processor(
         state.clone(),
         input_rx,
-        swarm_event_rx,
+        fwd_rx,
         render_tx,
         swarm_cmd_tx,
     );
@@ -423,21 +365,25 @@ pub async fn run_new_tui(
     // RenderLoop reads state and renders
     let render_loop = super::render_loop::spawn_render_loop(state.clone(), terminal, render_rx);
 
-    p2plog_debug("Started 4-task TUI architecture".to_string());
+    p2plog_debug("Started TUI on mobile_node backend".to_string());
 
-    // Wait for any task to complete (indicates error or exit)
-    let exit_reason =
-        await_first_task_exit(swarm_handler, event_source, command_processor, render_loop).await;
-    p2plog_debug(format!("Initiating shutdown: {exit_reason}"));
+    // Wait for any task to complete (indicates error or exit). The swarm
+    // handler lives inside mobile_node now, so we only watch the TUI tasks.
+    let exit_reason = tokio::select! {
+        result = event_source => {
+            if result.is_err() { "EventSource task error" } else { "EventSource completed" }
+        }
+        result = command_processor => {
+            if result.is_err() { "CommandProcessor task error" } else { "CommandProcessor completed" }
+        }
+        result = render_loop => {
+            if result.is_err() { "RenderLoop task error" } else { "RenderLoop completed" }
+        }
+    };
+    p2plog_debug(format!("TUI exited: {exit_reason}"));
 
-    // Cleanup terminal state, then print cached logs after restoring the
-    // terminal, then release the database lock file.
-    restore_terminal(std::io::stdout());
-    for log in recent_tui_logs(&get_tui_logs(), 100) {
-        println!("{log}");
-    }
-    release_db_lock();
-
+    // Restore terminal
+    let () = restore_terminal(std::io::stdout());
     Ok(())
 }
 

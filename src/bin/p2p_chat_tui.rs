@@ -2,8 +2,6 @@
 
 use std::sync::Arc;
 
-use libp2p::gossipsub;
-use p2p_app::build_swarm;
 use p2p_app::logging::{init_logging, p2plog_info};
 
 #[cfg(feature = "tui")]
@@ -119,28 +117,12 @@ pub async fn run_tui() -> color_eyre::Result<()> {
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;
 
-    let topic = gossipsub::IdentTopic::new(p2p_app::CHAT_TOPIC);
-
-    let network_size = match p2p_app::get_network_size() {
-        Ok(size) => {
-            p2plog_info(format!("Network size detected: {size:?}"));
-            size
-        }
-        Err(e) => {
-            p2plog_info(format!(
-                "Could not determine network size, defaulting to Small: {e}"
-            ));
-            p2p_app::NetworkSize::Small
-        }
-    };
-
-    let mut swarm = build_swarm(network_size)?;
-
-    let listen_addr: libp2p::Multiaddr = "/ip4/0.0.0.0/tcp/0".parse()?;
-    swarm.listen_on(listen_addr)?;
-
-    swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
+    // Start the shared mobile_node backend (single node) so the TUI and any
+    // web frontend share one swarm. (Option A step 2.)
+    let peer_id = p2p_app::mobile_node::start_node_auto()
+        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    p2plog_info(format!("Node started: peer_id={peer_id}"));
 
     // Use new 4-task architecture instead of monolithic tokio::select!
-    tui::main_loop::run_new_tui(swarm, p2p_app::CHAT_TOPIC.to_string()).await
+    tui::main_loop::run_new_tui().await
 }
