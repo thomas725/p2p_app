@@ -61,7 +61,7 @@ tui = [ "dep:ratatui", "dep:ratatui-textarea", "dep:crossterm" ]
 mobile = [ "basic", "sqlite_bundled", "quic", "kad", "relay", "nat", "flutter_rust_bridge", "attachment-gc" ]
 test-utils = []
 calls = []
-# Blob lifecycle (files lane §12): on-by-default switch for attachment GC —
+unified = []# Blob lifecycle (files lane §12): on-by-default switch for attachment GC —
 # remove stale `.part` partials (incomplete pulls) and orphaned blobs/rows
 # ("overwritten"/superseded attachments). Disable to never delete blob state:
 # `--no-default-features --features <the rest you need>`.
@@ -203,6 +203,10 @@ required-features = ["tui"]
 name = "p2p_chat_server"
 path = "src/bin/p2p_chat_server.rs"
 required-features = ["web"]
+
+[[bin]]
+name = "p2p_chat_combined"
+path = "src/bin/p2p_chat_combined.rs"
 
 # [patch.crates-io]
 # rustls-webpki = { version = ">=0.103.13" }

@@ -1,5 +1,6 @@
 //! Core type definitions for application events and commands
 
+#[cfg(feature = "mdns")]
 use libp2p::Multiaddr;
 
 /// String-keyed map with the standard [`RandomState`] hasher.

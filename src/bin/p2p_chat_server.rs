@@ -1,18 +1,32 @@
-//! Node server for the web frontend (`docs/web_frontend.md`).
-//!
-//! Starts the p2p node with the same headless lifecycle as the mobile path
-//! (DB selection, identity provisioning, group re-subscription, attachment
-//! GC) and then serves the JSON-over-WebSocket API — plus, with `--assets`,
-//! the `flutter build web` output — until Ctrl-C.
-//!
-//! ```text
-//! p2p_chat_server [--bind <ip>] [--port <u16>] [--user <name>] \
-//!                 [--password <secret>] [--assets <dir>] [--db <sqlite path>]
-//! ```
-//!
-//! Defaults to loopback-only with no credentials (the TUI's trust model).
-//! Expose `--bind 0.0.0.0` to other devices only together with HTTP Basic
-//! credentials (`--password`, preferably `P2P_WEB_PASSWORD`).
+// Node server for the web frontend (`docs/web_frontend.md`).
+//
+
+// Starts the p2p node with the same headless lifecycle as the mobile path
+
+// (DB selection, identity provisioning, group re-subscription, attachment
+
+// GC) and then serves the JSON-over-WebSocket API — plus, with `--assets`,
+
+// the `flutter build web` output — until Ctrl-C.
+
+//
+
+// ```text
+
+// p2p_chat_server [--bind <ip>] [--port <u16>] [--user <name>] \
+
+//                 [--password <secret>] [--assets <dir>] [--db <sqlite path>]
+
+// ```
+
+//
+
+// Defaults to loopback-only with no credentials (the TUI's trust model).
+
+// Expose `--bind 0.0.0.0` to other devices only together with HTTP Basic
+
+// credentials (`--password`, preferably `P2P_WEB_PASSWORD`).
+
 
 use clap::Parser;
 use p2p_app::web::{Credentials, WebConfig};
@@ -60,6 +74,10 @@ fn validate(cli: &Cli) -> Result<(), String> {
 }
 
 fn main() -> color_eyre::Result<()> {
+    run_server()
+}
+
+pub fn run_server() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let cli = Cli::parse();
     validate(&cli).map_err(|e| color_eyre::eyre::eyre!("{e}"))?;

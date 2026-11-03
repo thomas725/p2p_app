@@ -1,4 +1,4 @@
-//! TUI binary — ratatui-based terminal interface and headless fallback entry point.
+// TUI binary — ratatui-based terminal interface and headless fallback entry point.
 
 use std::sync::Arc;
 
@@ -85,6 +85,11 @@ mod tui {
 #[tokio::main]
 #[allow(clippy::large_futures)]
 async fn main() -> color_eyre::Result<()> {
+    run_tui().await
+}
+
+#[allow(clippy::large_futures)]
+pub async fn run_tui() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();
     p2p_app::logging::register_log_callback(Arc::new(|_| p2p_app::logging::request_tui_redraw()));

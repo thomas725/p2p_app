@@ -1,4 +1,4 @@
-use crate::tui::state::AppState;
+use super::super::state::AppState;
 use p2p_app::tui_tabs::TabContent;
 use ratatui::{
     Frame,

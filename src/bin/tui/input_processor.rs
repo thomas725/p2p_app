@@ -4,8 +4,8 @@ use super::state::SharedState;
 use p2p_app::{SwarmCommand, p2plog_debug};
 use tokio::sync::mpsc;
 
-use crate::tui::click_handlers::{handle_mouse_left_click, load_dm_messages};
-use crate::tui::scroll_handlers::{handle_mouse_scroll, handle_navigation_key, handle_scroll_key};
+use super::click_handlers::{handle_mouse_left_click, load_dm_messages};
+use super::scroll_handlers::{handle_mouse_scroll, handle_navigation_key, handle_scroll_key};
 
 fn update_dm_transcript_labels(
     dm_messages: &mut std::collections::HashMap<String, std::collections::VecDeque<String>>,
