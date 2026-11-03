@@ -4,11 +4,11 @@
 
 | Metric                |   Value |
 |:----------------------|:--------|
-| Total Rust Files      |      55 |
-| Total Rust Lines      |  25,241 |
-| Total Rust Chars      | 940,876 |
-| Avg Lines/Rust File   |     458 |
-| Avg Chars/Rust File   |  17,106 |
+| Total Rust Files      |      56 |
+| Total Rust Lines      |  25,353 |
+| Total Rust Chars      | 945,290 |
+| Avg Lines/Rust File   |     452 |
+| Avg Chars/Rust File   |  16,880 |
 | Total Dart Files      |      28 |
 | Total Dart Lines      |  12,151 |
 | Total Dart Chars      | 383,597 |
@@ -20,14 +20,14 @@
 | Avg Lines/Kotlin File |     104 |
 | Avg Chars/Kotlin File |   3,580 |
 
-**Grand Total:** 85 files, 37,601 lines, 1,331,634 characters
+**Grand Total:** 86 files, 37,713 lines, 1,336,048 characters
 
 ## Rust Source Files
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                                |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                           |
-| src                     | behavior.rs          |     6 | 21368 |   531 |        - |       - | Network behavior definitions           |
+| src                     | behavior.rs          |     6 | 22241 |   548 |        - |       - | Network behavior definitions           |
 | src                     | calls.rs             |     3 |  3204 |    90 |        - |       - | Call session state machine (signaling) |
 | src                     | chat.rs              |     5 |  6015 |   169 |        - |       - | TUI chat & DM pane renderer            |
 | src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
@@ -46,7 +46,7 @@
 | src                     | messages.rs          |     5 | 13384 |   370 |        - |       - | Message persistence & retrieval        |
 | src                     | methods.rs           |     5 | 15493 |   506 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 33732 |   989 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 72528 |  2003 |        - |       - | Mobile node lifecycle & swarm          |
+| src                     | mobile_node.rs       |     5 | 74267 |  2042 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     4 | 16928 |   500 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 |  7291 |   206 |        - |       - | TUI render chrome & dispatch           |
 | src                     | mod.rs               |     7 | 48662 |  1283 |        - |       - | Web server (axum HTTP+WS)              |
@@ -57,32 +57,33 @@
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
 | src                     | peers.rs             |     4 |  4053 |    95 |        - |       - | TUI peers-table renderer               |
 | src                     | settings.rs          |     4 |  6146 |   165 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     8 | 58206 |  1530 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     8 | 60056 |  1566 |        - |       - | Network event translation              |
 | src                     | tui_helpers.rs       |     5 | 21381 |   654 |        - |       - | TUI helper functions & utilities       |
-| src                     | tui_render_state.rs  |     4 | 21795 |   604 |        - |       - | TUI render state & tab content         |
+| src                     | tui_render_state.rs  |     4 | 21796 |   604 |        - |       - | TUI render state & tab content         |
 | src                     | tui_tabs.rs          |     6 | 11922 |   348 |        - |       - | Tab management & navigation            |
-| src                     | types.rs             |     2 | 12190 |   332 |        - |       - | Event & command type defs              |
+| src                     | types.rs             |     2 | 12215 |   333 |        - |       - | Event & command type defs              |
 | src/bin                 | p2p_chat.rs          |     7 |  4996 |   135 |        - |       - | CLI chat application                   |
-| src/bin                 | p2p_chat_server.rs   |     5 |  6828 |   182 |        - |       - | Headless node + web server entry point |
-| src/bin                 | p2p_chat_tui.rs      |     4 |  4868 |   125 |        - |       - | Main TUI application entry point       |
-| src/bin/tui             | click_handlers.rs    |     7 | 19604 |   474 |        - |       - | Click handlers & index mapping         |
-| src/bin/tui             | command_processor.rs |     6 | 21832 |   591 |        - |       - | Event routing & state updates          |
-| src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
-| src/bin/tui             | input_processor.rs   |     6 | 41570 |  1102 |        - |       - | Input event routing & processing       |
+| src/bin                 | p2p_chat_combined.rs |     5 |  1557 |    60 |        - |       - | Source file                            |
+| src/bin                 | p2p_chat_server.rs   |     4 |  4824 |   151 |        - |       - | Headless node + web server entry point |
+| src/bin                 | p2p_chat_tui.rs      |     4 |  6649 |   169 |        - |       - | Main TUI application entry point       |
+| src/bin/tui             | click_handlers.rs    |     7 | 19635 |   474 |        - |       - | Click handlers & index mapping         |
+| src/bin/tui             | command_processor.rs |     6 | 21894 |   591 |        - |       - | Event routing & state updates          |
+| src/bin/tui             | event_source.rs      |     4 |  1258 |    40 |        - |       - | Terminal event polling (60 FPS)        |
+| src/bin/tui             | input_processor.rs   |     6 | 41591 |  1102 |        - |       - | Input event routing & processing       |
 | src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |        - |       - | Keyboard enhancement probe             |
-| src/bin/tui             | main_loop.rs         |     4 | 17144 |   446 |        - |       - | Task orchestration & async             |
-| src/bin/tui             | message_handlers.rs  |     4 | 11418 |   364 |        - |       - | Message sending logic                  |
-| src/bin/tui             | scroll_handlers.rs   |     5 | 16078 |   422 |        - |       - | Scroll & hover-aware navigation        |
-| src/bin/tui             | state.rs             |     8 | 30752 |   733 |        - |       - | Shared application state               |
-| src/bin/tui/render_loop | layout.rs            |     5 |  2276 |    67 |        - |       - | UI layout component rendering          |
-| src/bin/tui/render_loop | mod.rs               |     6 | 12308 |   351 |        - |       - | Render loop orchestration (60 FPS)     |
+| src/bin/tui             | main_loop.rs         |     6 | 15465 |   392 |        - |       - | Task orchestration & async             |
+| src/bin/tui             | message_handlers.rs  |     4 | 11449 |   364 |        - |       - | Message sending logic                  |
+| src/bin/tui             | scroll_handlers.rs   |     5 | 16109 |   422 |        - |       - | Scroll & hover-aware navigation        |
+| src/bin/tui             | state.rs             |     8 | 30783 |   733 |        - |       - | Shared application state               |
+| src/bin/tui/render_loop | layout.rs            |     5 |  2278 |    67 |        - |       - | UI layout component rendering          |
+| src/bin/tui/render_loop | mod.rs               |     6 | 12339 |   351 |        - |       - | Render loop orchestration (60 FPS)     |
 | src/generated           | columns.rs           |     1 |  3132 |    75 |        - |       - | Auto-generated column definitions      |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
 | src/generated           | models_insertable.rs |     1 |  7497 |   208 |        - |       - | Insertable data models                 |
 | src/generated           | models_queryable.rs  |     1 |  9183 |   250 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  6385 |   215 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 55 files, 25,241 lines, 940,876 characters
+**Total:** 56 files, 25,353 lines, 945,290 characters
 
 ## Rust Test Files
 
