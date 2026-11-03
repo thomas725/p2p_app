@@ -423,17 +423,34 @@ pub fn build_behaviour(
     #[cfg(feature = "kad")]
     let kad = {
         let store = libp2p::kad::store::MemoryStore::new(key.public().to_peer_id());
-        libp2p::kad::Behaviour::new(key.public().to_peer_id(), store)
+        // Join the public (IPFS) Kademlia DHT for peer discovery, but stay in
+        // client mode so we never store/serve records for other networks' peers
+        // (avoids holding the global DHT's record set in memory).
+        let mut kad = libp2p::kad::Behaviour::new(key.public().to_peer_id(), store);
+        kad.set_mode(Some(libp2p::kad::Mode::Client));
+        kad
     };
     #[cfg(feature = "kad")]
     let identify = libp2p::identify::Behaviour::new(libp2p::identify::Config::new(
-        "/p2p-chat/identify/1.0.0".to_string(),
+        // Use the IPFS identify protocol name so public bootstrap nodes can
+        // exchange addresses with us; our own nodes still identify fine.
+        "/ipfs/id/1.0.0".to_string(),
         key.public(),
     ));
 
     #[cfg(feature = "relay")]
-    let relay_server =
-        libp2p::relay::Behaviour::new(key.public().to_peer_id(), libp2p::relay::Config::default());
+    let relay_server = {
+        // Do not act as an open relay for the public internet by default: only
+        // accept reservations when explicitly opted in via P2P_RELAY_SERVER=1.
+        let mut cfg = libp2p::relay::Config::default();
+        if std::env::var("P2P_RELAY_SERVER").is_err() {
+            cfg.max_reservations = 0;
+            cfg.max_reservations_per_peer = 0;
+            cfg.max_circuits = 0;
+            cfg.max_circuits_per_peer = 0;
+        }
+        libp2p::relay::Behaviour::new(key.public().to_peer_id(), cfg)
+    };
 
     #[cfg(feature = "nat")]
     let autonat = libp2p::autonat::Behaviour::new(

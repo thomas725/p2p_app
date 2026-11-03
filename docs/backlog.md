@@ -230,6 +230,18 @@ show where the node stands on the network:
   details" card, refreshed on open/events and every 5 s while visible. Web
   mirrors it as the `getNetworkDetails` JSON method.
 
+Progress (2026-11-03): joined the public IPFS Kademlia DHT for discovery without
+hosting our own bootstrap nodes:
+
+- Default bootstrap list now falls back to the public IPFS bootstrap nodes when
+  `P2P_BOOTSTRAP` is unset (set it to empty to disable).
+- Kademlia is forced into `Mode::Client` so we route through the public DHT
+  without storing/serving its record set.
+- Identify protocol renamed to `/ipfs/id/1.0.0` for interoperability with
+  public bootstrap nodes.
+- Relay server no longer accepts reservations unless `P2P_RELAY_SERVER=1`, so
+  we don't become an open relay on the public internet.
+
 Remaining follow-ups (detailed 2026-11-03):
 
 1. **Config surface for bootstrap/relay peers** (beyond the `P2P_BOOTSTRAP`

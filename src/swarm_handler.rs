@@ -1486,22 +1486,36 @@ pub fn spawn_swarm_handler(
     let (cmd_tx, mut cmd_rx) = mpsc::channel::<SwarmCommand>(100);
 
     let handle = tokio::spawn(async move {
-        // Bootstrap (US-050, stage 1): dial any peers listed in P2P_BOOTSTRAP
-        // (comma-separated multiaddrs, ideally with /p2p/<peerid> suffix) so
-        // the node can join the public network instead of staying LAN-only.
+        // Bootstrap (US-050): dial peers so the node can join a public network
+        // instead of staying LAN-only. Source of the list:
+        //   1. P2P_BOOTSTRAP env var (comma-separated multiaddrs), if set.
+        //   2. Otherwise the public IPFS bootstrap nodes, so discovery works
+        //      out of the box without hosting our own. Set P2P_BOOTSTRAP to an
+        //      empty string to disable bootstrapping entirely.
+        // The Kademlia behaviour is forced into client mode (see behavior.rs),
+        // so we route through the public DHT without storing/serving its
+        // records.
         #[cfg(feature = "kad")]
         {
-            if let Ok(list) = std::env::var("P2P_BOOTSTRAP") {
-                for addr in list.split(',') {
-                    let addr = addr.trim();
-                    if addr.is_empty() {
-                        continue;
-                    }
-                    if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
-                        let _ = swarm.dial(ma);
-                    } else {
-                        p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
-                    }
+            let list = std::env::var("P2P_BOOTSTRAP").unwrap_or_else(|_| {
+                // Public IPFS bootstrap nodes (Kademlia, /ipfs/kad/1.0.0).
+                [
+                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfu53Fn2A9xSfDMGcR6fYSdrNj4HgjCZNnTE5",
+                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJ9GD89Nm3HLQQpXePmCRp",
+                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+                ]
+                .join(",")
+            });
+            for addr in list.split(',') {
+                let addr = addr.trim();
+                if addr.is_empty() {
+                    continue;
+                }
+                if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
+                    let _ = swarm.dial(ma);
+                } else {
+                    p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
                 }
             }
         }
