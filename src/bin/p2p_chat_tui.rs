@@ -95,6 +95,18 @@ async fn main() -> color_eyre::Result<()> {
         return tui::key_probe::run();
     }
 
+    // Public DHT (IPFS) opt-in flags. --public-dht enables joining the
+    // public IPFS Kademlia DHT for peer discovery; --no-public-dht forces
+    // LAN-only mode. Defaults to off (LAN-only) unless P2P_PUBLIC_DHT or
+    // P2P_BOOTSTRAP is set.
+    for arg in std::env::args().skip(1) {
+        match arg.as_str() {
+            "--public-dht" => unsafe { std::env::set_var("P2P_PUBLIC_DHT", "1") },
+            "--no-public-dht" => unsafe { std::env::set_var("P2P_PUBLIC_DHT", "0") },
+            _ => {}
+        }
+    }
+
     // Initialize database once at startup (logs database path and peer ID)
     let _db = p2p_app::init_database()?;
 

@@ -39,6 +39,9 @@ OPTIONS:
     --assets <dir>     Serve a `flutter build web` output directory
     --db <path>        SQLite database path (default: auto-select, same
                        lock-based behavior as the TUI)
+    --public-dht       Join the public IPFS Kademlia DHT for peer discovery
+                       (opt-in; default off / LAN-only)
+    --no-public-dht    Force LAN-only mode (disable public DHT)
     -h, --help         Show this help
 ";
 
@@ -49,6 +52,7 @@ struct Cli {
     password: Option<String>,
     assets: Option<PathBuf>,
     db: Option<String>,
+    public_dht: Option<bool>,
 }
 
 /// Parse argv into a [`Cli`]. `Ok(None)` = help was printed.
@@ -65,6 +69,7 @@ fn parse_args() -> Result<Option<Cli>, String> {
             .filter(|password| !password.is_empty()),
         assets: None,
         db: None,
+        public_dht: None,
     };
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -84,6 +89,8 @@ fn parse_args() -> Result<Option<Cli>, String> {
             "--password" => cli.password = Some(value_of(&arg, &mut args)?),
             "--assets" => cli.assets = Some(PathBuf::from(value_of(&arg, &mut args)?)),
             "--db" => cli.db = Some(value_of(&arg, &mut args)?),
+            "--public-dht" => cli.public_dht = Some(true),
+            "--no-public-dht" => cli.public_dht = Some(false),
             other => return Err(format!("unknown argument {other:?}\n\n{USAGE}")),
         }
     }
@@ -123,6 +130,11 @@ fn main() -> color_eyre::Result<()> {
             return Err(color_eyre::eyre::eyre!("invalid arguments"));
         }
     };
+
+    // Public DHT opt-in override.
+    if let Some(enabled) = cli.public_dht {
+        unsafe { std::env::set_var("P2P_PUBLIC_DHT", if enabled { "1" } else { "0" }) };
+    }
 
     let addr: std::net::SocketAddr = format!("{}:{}", cli.bind, cli.port)
         .parse()

@@ -1497,25 +1497,45 @@ pub fn spawn_swarm_handler(
         // records.
         #[cfg(feature = "kad")]
         {
-            let list = std::env::var("P2P_BOOTSTRAP").unwrap_or_else(|_| {
-                // Public IPFS bootstrap nodes (Kademlia, /ipfs/kad/1.0.0).
-                [
-                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfu53Fn2A9xSfDMGcR6fYSdrNj4HgjCZNnTE5",
-                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJ9GD89Nm3HLQQpXePmCRp",
-                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-                    "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-                ]
-                .join(",")
-            });
-            for addr in list.split(',') {
-                let addr = addr.trim();
-                if addr.is_empty() {
-                    continue;
-                }
-                if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
-                    let _ = swarm.dial(ma);
-                } else {
-                    p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
+            // Public IPFS bootstrap is opt-in: only fall back to it when the user
+            // explicitly enables it (P2P_PUBLIC_DHT=1/true) or sets P2P_BOOTSTRAP.
+            // Otherwise we stay LAN-only (mDNS), avoiding global DHT traffic.
+            let env_bootstrap = std::env::var("P2P_BOOTSTRAP").ok();
+            let public_enabled = std::env::var("P2P_PUBLIC_DHT")
+                .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
+            let list = env_bootstrap.map_or_else(
+                || {
+                    if public_enabled {
+                        [
+                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfu53Fn2A9xSfDMGcR6fYSdrNj4HgjCZNnTE5",
+                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJ9GD89Nm3HLQQpXePmCRp",
+                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
+                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
+                        ]
+                        .join(",")
+                    } else {
+                        String::new()
+                    }
+                },
+                |v| {
+                    if v.trim().is_empty() {
+                        String::new()
+                    } else {
+                        v
+                    }
+                },
+            );
+            if !list.is_empty() {
+                for addr in list.split(',') {
+                    let addr = addr.trim();
+                    if addr.is_empty() {
+                        continue;
+                    }
+                    if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
+                        let _ = swarm.dial(ma);
+                    } else {
+                        p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
+                    }
                 }
             }
         }
