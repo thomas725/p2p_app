@@ -119,13 +119,13 @@ pub async fn run_tui() -> color_eyre::Result<()> {
 
     // Start the shared mobile_node backend (single node) so the TUI and any
     // web frontend share one swarm. (Option A step 2.)
-    let peer_id = p2p_app::mobile_node::start_node_auto()
-        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    let peer_id =
+        p2p_app::mobile_node::start_node_auto().map_err(|e| color_eyre::eyre::eyre!(e))?;
     p2plog_info(format!("Node started: peer_id={peer_id}"));
 
     // Optional: also serve the web frontend on the same node.
-    let mut web_enabled = std::env::var("P2P_WEB")
-        .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
+    let mut web_enabled =
+        std::env::var("P2P_WEB").is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
     let mut web_port: u16 = std::env::var("P2P_WEB_PORT")
         .ok()
         .and_then(|v| v.parse().ok())
@@ -159,7 +159,9 @@ pub async fn run_tui() -> color_eyre::Result<()> {
                 p2p_app::logging::p2plog_info(format!("web server error: {e}"));
             }
         });
-        p2plog_info(format!("Web frontend listening on http://127.0.0.1:{web_port}"));
+        p2plog_info(format!(
+            "Web frontend listening on http://127.0.0.1:{web_port}"
+        ));
     }
     #[cfg(not(feature = "web"))]
     let _ = (web_enabled, web_port);

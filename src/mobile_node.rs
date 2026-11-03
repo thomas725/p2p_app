@@ -283,7 +283,9 @@ pub fn subscribe_events() -> Result<tokio::sync::broadcast::Receiver<SwarmEvent>
 pub fn command_sender() -> Result<mpsc::Sender<SwarmCommand>, String> {
     let m = NODE.get().ok_or("Node not started")?;
     let node = lock_node_mutex(m);
-    node.cmd_tx.clone().ok_or_else(|| "Node stopped".to_string())
+    node.cmd_tx
+        .clone()
+        .ok_or_else(|| "Node stopped".to_string())
 }
 
 /// True for `DirectMessage` events whose empty content carries only a

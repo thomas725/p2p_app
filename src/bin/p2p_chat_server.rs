@@ -27,16 +27,16 @@
 
 // credentials (`--password`, preferably `P2P_WEB_PASSWORD`).
 
-
 use clap::Parser;
 use p2p_app::web::{Credentials, WebConfig};
 use std::path::PathBuf;
 
-
-
-
 #[derive(Parser, Debug)]
-#[command(name = "p2p_chat_server", version, about = "p2p chat node + web frontend API")]
+#[command(
+    name = "p2p_chat_server",
+    version,
+    about = "p2p chat node + web frontend API"
+)]
 struct Cli {
     #[arg(long, default_value = "127.0.0.1")]
     bind: String,

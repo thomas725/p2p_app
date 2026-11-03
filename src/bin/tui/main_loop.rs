@@ -317,10 +317,10 @@ pub async fn run_new_tui() -> color_eyre::Result<()> {
     // Use the mobile_node backend (single shared node) instead of owning a
     // swarm directly. This is step 2 of the Option A refactor: the TUI now
     // consumes events from the shared node's broadcast fan-out.
-    let swarm_event_rx = p2p_app::mobile_node::subscribe_events()
-        .map_err(|e| color_eyre::eyre::eyre!(e))?;
-    let swarm_cmd_tx = p2p_app::mobile_node::command_sender()
-        .map_err(|e| color_eyre::eyre::eyre!(e))?;
+    let swarm_event_rx =
+        p2p_app::mobile_node::subscribe_events().map_err(|e| color_eyre::eyre::eyre!(e))?;
+    let swarm_cmd_tx =
+        p2p_app::mobile_node::command_sender().map_err(|e| color_eyre::eyre::eyre!(e))?;
 
     // Wrap the broadcast receiver in an mpsc channel adapter so the existing
     // CommandProcessor (which expects mpsc::Receiver<SwarmEvent>) keeps
