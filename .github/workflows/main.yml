@@ -99,6 +99,20 @@ jobs:
           echo "Exit code: $BUILD_EXIT" >> .github/ci-logs/build.log
           exit $BUILD_EXIT
         continue-on-error: true
+
+      # The minimal headless CLI (shipped by nightly-desktop.yml) builds with a
+      # reduced feature set, so it is the check that catches cfg-gating breaks
+      # the all-features build cannot see (e.g. a `#[cfg(feature = "kad")]` fn
+      # called from an ungated arm, or code assuming the `tracing` feature).
+      - name: Build minimal feature set
+        run: |
+          set +e
+          cargo build --no-default-features --features basic,mdns,sqlite_bundled 2>&1 | tee .github/ci-logs/minimal.log
+          MINIMAL_EXIT=$?
+          set -e
+          echo "Exit code: $MINIMAL_EXIT" >> .github/ci-logs/minimal.log
+          exit $MINIMAL_EXIT
+        continue-on-error: true
       
       # ============================================================
       # PHASE 3: Security & Documentation
@@ -152,7 +166,7 @@ jobs:
           # Every check above appends its own `Exit code: N` to its log. Collect
           # those here so the report leads with a verdict instead of making the
           # reader grep ~2k lines of output for the outcome.
-          CHECKS=(fmt clippy test build audit doclinks docs)
+          CHECKS=(fmt clippy test build minimal audit doclinks docs)
           declare -A EXIT_CODES STATUS
           FAILED=0
           for name in "${CHECKS[@]}"; do
@@ -234,6 +248,7 @@ jobs:
           phase_header "Phase 2 - Test & Build"
           append_log test
           append_log build
+          append_log minimal
 
           phase_header "Phase 3 - Security & Documentation"
           append_log audit

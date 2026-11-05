@@ -9,6 +9,7 @@
 use std::collections::VecDeque;
 use std::io::Write;
 use std::sync::{Arc, Mutex, OnceLock};
+#[cfg(feature = "tracing")]
 use tracing::field::Visit;
 
 /// Direct-to-logcat sink for Android.
@@ -75,9 +76,15 @@ static LOG_CALLBACKS: Mutex<Vec<LogCallback>> = Mutex::new(vec![]);
 /// Optional hook that requests a TUI redraw when new logs arrive.
 static TUI_REDRAW_HOOK: OnceLock<Mutex<Option<RedrawHook>>> = OnceLock::new();
 
-/// Custom tracing layer that sends log events through `push_log`
+/// Custom tracing layer that sends log events through `push_log`.
+///
+/// Only compiled with the `tracing` feature: the minimal headless CLI builds
+/// without it (see `init_logging`), and `push_log` still logs to stderr/the
+/// file/buffer there.
+#[cfg(feature = "tracing")]
 struct TuiTracingLayer;
 
+#[cfg(feature = "tracing")]
 impl<S> tracing_subscriber::layer::Layer<S> for TuiTracingLayer
 where
     S: tracing::Subscriber + 'static,
@@ -101,8 +108,10 @@ where
 }
 
 /// Visitor that formats event fields into a string
+#[cfg(feature = "tracing")]
 struct FormatVisitor<'a>(&'a mut String);
 
+#[cfg(feature = "tracing")]
 impl Visit for FormatVisitor<'_> {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         if field.name() == "message" {

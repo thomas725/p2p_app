@@ -34,9 +34,12 @@ One job, `pipeline`. It installs the Rust toolchain, `libsqlite3-dev` and
 2. `cargo clippy --all-targets --all-features`
 3. `cargo test --all-features`
 4. `cargo build --release --all-features`
-5. `cargo audit`
-6. `python3 scripts/check_docs_links.py`
-7. `cargo doc --no-deps --all-features` (with `RUSTDOCFLAGS="-W missing-docs"`)
+5. `cargo build --no-default-features --features basic,mdns,sqlite_bundled`
+   (the minimal headless CLI's feature set, so cfg-gating breaks the
+   all-features build cannot see are caught on push instead of by the nightly)
+6. `cargo audit`
+7. `python3 scripts/check_docs_links.py`
+8. `cargo doc --no-deps --all-features` (with `RUSTDOCFLAGS="-W missing-docs"`)
 
 Each check tees its output to `.github/ci-logs/<name>.log` and appends its own
 `Exit code: N`. The checks are all `continue-on-error: true` on purpose:
@@ -101,6 +104,12 @@ Builds the Rust native library for Android
 and publishes it as a rolling prerelease tagged `nightly-<timestamp>`. A
 `nightly-latest` tag always points at the most recent build, and the 15 most
 recent nightlies are kept; older ones are deleted.
+
+The build uses **JDK 21**, not 17: AGP 9.3.1's release lint
+(`lintVitalAnalyzeRelease`) runs against Java 21's `SequencedCollection` API
+and crashes with `NoSuchMethodError: java.util.List.removeLast()` inside its
+`CommentDetector` on JDK 17, failing every dependency lint task.
+`android/app/build.gradle.kts` still compiles to JVM 17 bytecode.
 
 The prune step matches only `^nightly-[0-9]{8}-`, so it cannot delete the
 desktop nightly's `nightly-desktop-*` releases or the `nightly-latest` pointer.
