@@ -62,12 +62,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/ci-skip-no-new-commits.sh nightly-apk.yml
 
-      - name: Set up JDK 17
+      # JDK 21, not 17: AGP 9.3.1's release lint (lintVitalAnalyzeRelease) is
+      # compiled against Java 21's SequencedCollection API (List.removeLast),
+      # so running it on JDK 17 dies with a NoSuchMethodError inside
+      # CommentDetector and fails every dependency lint task. The Kotlin
+      # toolchain still targets JVM 17 bytecode (android/app/build.gradle.kts).
+      - name: Set up JDK 21
         if: steps.skip-check.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Set up Android SDK and NDK
         if: steps.skip-check.outputs.skip != 'true'
