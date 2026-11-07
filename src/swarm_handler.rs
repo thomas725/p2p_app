@@ -254,31 +254,8 @@ async fn handle_behaviour_event(
         #[cfg(feature = "relay")]
         Libp2pSwarmEvent::Behaviour(AppEv::RelayServer(_)) => {}
         #[cfg(feature = "relay")]
-        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
-            libp2p::relay::client::Event::ReservationReqAccepted {
-                relay_peer_id,
-                renewal,
-                ..
-            },
-        )) => {
-            crate::net_diag::record_relay_reservation(&relay_peer_id.to_string());
-            if renewal {
-                crate::net_diag::record_relay_status(&format!(
-                    "Reservation renewed via {relay_peer_id}"
-                ));
-            }
-        }
-        #[cfg(feature = "relay")]
-        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
-            libp2p::relay::client::Event::OutboundCircuitEstablished { relay_peer_id, .. },
-        )) => {
-            crate::net_diag::record_relay_status(&format!("Outbound circuit via {relay_peer_id}"));
-        }
-        #[cfg(feature = "relay")]
-        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(
-            libp2p::relay::client::Event::InboundCircuitEstablished { src_peer_id, .. },
-        )) => {
-            crate::net_diag::record_relay_status(&format!("Inbound circuit from {src_peer_id}"));
+        Libp2pSwarmEvent::Behaviour(AppEv::RelayClient(event)) => {
+            handle_relay_client_event(&event);
         }
         #[cfg(feature = "nat")]
         Libp2pSwarmEvent::Behaviour(AppEv::Autonat(libp2p::autonat::Event::StatusChanged {
@@ -384,10 +361,7 @@ async fn handle_connection_closed(
     refresh_dht_routing(swarm);
 }
 
-async fn handle_new_listen_addr(
-    address: libp2p::Multiaddr,
-    event_tx: &mpsc::Sender<SwarmEvent>,
-) {
+async fn handle_new_listen_addr(address: libp2p::Multiaddr, event_tx: &mpsc::Sender<SwarmEvent>) {
     crate::net_diag::record_listen_addr(&address.to_string());
     let _ = event_tx
         .send(SwarmEvent::ListenAddrEstablished(address.to_string()))
@@ -456,6 +430,30 @@ async fn handle_autonat_status_changed(
         .await;
     #[cfg(feature = "kad")]
     maybe_announce(swarm);
+}
+
+#[cfg(feature = "relay")]
+fn handle_relay_client_event(event: &libp2p::relay::client::Event) {
+    match event {
+        libp2p::relay::client::Event::ReservationReqAccepted {
+            relay_peer_id,
+            renewal,
+            ..
+        } => {
+            crate::net_diag::record_relay_reservation(&relay_peer_id.to_string());
+            if *renewal {
+                crate::net_diag::record_relay_status(&format!(
+                    "Reservation renewed via {relay_peer_id}"
+                ));
+            }
+        }
+        libp2p::relay::client::Event::OutboundCircuitEstablished { relay_peer_id, .. } => {
+            crate::net_diag::record_relay_status(&format!("Outbound circuit via {relay_peer_id}"));
+        }
+        libp2p::relay::client::Event::InboundCircuitEstablished { src_peer_id, .. } => {
+            crate::net_diag::record_relay_status(&format!("Inbound circuit from {src_peer_id}"));
+        }
+    }
 }
 
 async fn handle_group_message(
