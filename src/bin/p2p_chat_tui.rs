@@ -75,7 +75,7 @@ mod tui {
     pub mod render_loop;
     pub mod scroll_handlers;
     pub mod state;
-    #[cfg(all(test, not(feature = "unified")))]
+    #[cfg(test)]
     #[path = "../../../tests/unit/unit_bin_tui_test_helpers.rs"]
     pub mod test_helpers;
 }

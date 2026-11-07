@@ -359,6 +359,6 @@ async fn send_broadcast_message(
     }
 }
 
-#[cfg(all(test, not(feature = "unified")))]
+#[cfg(test)]
 #[path = "../../../tests/unit/unit_bin_tui_message_handlers.rs"]
 mod tests;

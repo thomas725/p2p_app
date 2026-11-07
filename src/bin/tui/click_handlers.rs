@@ -469,6 +469,6 @@ fn handle_peer_header_click(state: &mut AppState, column: u16) -> bool {
     true
 }
 
-#[cfg(all(test, not(feature = "unified")))]
+#[cfg(test)]
 #[path = "../../../tests/unit/unit_bin_tui_click_handlers.rs"]
 mod tests;

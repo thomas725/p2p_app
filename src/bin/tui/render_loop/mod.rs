@@ -346,6 +346,6 @@ pub fn spawn_render_loop(
     })
 }
 
-#[cfg(all(test, not(feature = "unified")))]
+#[cfg(test)]
 #[path = "../../../../tests/unit/unit_bin_tui_render_loop_mod.rs"]
 mod tests;
