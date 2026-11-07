@@ -244,31 +244,34 @@ hosting our own bootstrap nodes:
 
 Remaining follow-ups (detailed 2026-11-03):
 
-1. **Config surface for bootstrap/relay peers** (beyond the `P2P_BOOTSTRAP`
-   env var). Today peers are read once from the env in `swarm_handler::
-   spawn_swarm_handler` and dialed at startup; there is no CLI flag, DB column,
-   Settings input, or web method. Needed: a persisted list of multiaddrs
-   (tagged bootstrap/relay), loaded at node start in all three entry points
-   (TUI `main_loop`, mobile `start_node_impl`, `p2p_chat_server`), editable in
-   TUI/Flutter/web Settings, validated as `Multiaddr` (ideally with
+1. **Config surface for bootstrap/relay peers** (partially shipped 2026-11-08).
+   Relay peers are now configurable with the `P2P_RELAY` env var (comma-
+   separated multiaddrs, each needing `/p2p/<peer-id>`); bootstrap peers stay
+   on `P2P_BOOTSTRAP`. Still missing: a persisted list (DB column / Settings
+   input / CLI flag / web method) loaded in all three entry points and editable
+   in TUI/Flutter/web Settings, validated as `Multiaddr` (ideally with
    `/p2p/<peerid>`), and dialable on demand (overlaps US-053 manual dial).
-2. **Relay reservation triggering.** The relay client behaviour and the
-   `ReservationReqAccepted`/circuit event handlers exist, but nothing calls the
-   relay-client reserve API, so reservations never actually get requested by a
-   NAT'd node. Needed: on connecting to a known relay peer, call reserve;
-   handle expiry/renewal (the "Renewed via …" status line already anticipates
-   this). Without this, a node behind NAT has no relay slot to advertise.
-3. **AutoNAT-driven addressing.** `maybe_announce` builds the DHT record from
-   `reachable_addresses()` (`external_addrs` then `listen_addrs`); behind NAT
-   that yields unreachable LAN addresses even though `reachability_label`
-   already says "Relayed". Needed: when `nat_status == "Private"` and a relay
-   reservation exists, announce (and Identify with) the relayed circuit address
-   `/p2p/<relay>/p2p-circuit/p2p/<self>` instead, so remote peers found via the
-   DHT can actually dial us and DCUtR can attempt a hole punch.
+2. **Relay reservation triggering — shipped 2026-11-08.** `src/relay.rs` parses
+   `P2P_RELAY` and builds the `/p2p-circuit` listen address; `swarm_handler`
+   listens on every configured relay at node start (which dials the relay and
+   requests the reservation) and again when a configured relay connects.
+   `ListenerClosed`/`ListenerError` drop the reservation and free the relay for
+   a later retry, so the "Reserved via …" / "Reservation via … ended" status
+   lines are accurate. Renewal is the relay client's own (the listener stays
+   open), so no extra renewal code is needed.
+3. **AutoNAT-driven addressing — shipped 2026-11-08.**
+   `NetworkDetails::announce_addresses(self_peer_id)` replaces the old
+   `reachable_addresses()` call in `maybe_announce`: when AutoNAT says
+   `Private` and a reservation is held it advertises only the completed
+   `/p2p/<relay>/p2p-circuit/p2p/<self>` circuit addresses (raw circuit
+   listeners without the self id are dropped); otherwise the normal external
+   list comes first with completed circuit addresses appended. Identify
+   advertises the circuit listener automatically, so DHT peers and Identify
+   peers see the same dialable address.
 
 Items 2 and 3 are coupled (a reservation is required before there is anything
-to advertise); item 1 is the prerequisite for both outside a dev shell. None
-are blocked on external decisions.
+to advertise); item 1's env-var half is now in place, the persisted UI half is
+not. None are blocked on external decisions.
 
 ### Manual peer address entry (US-053)
 

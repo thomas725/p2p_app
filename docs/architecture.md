@@ -49,6 +49,7 @@ src/
 ├── swarm_handler.rs    libp2p events -> app events; inbound persistence
 ├── network.rs          network-size classification (Small/Medium/Large)
 ├── net_diag.rs         live network diagnostics snapshot (interfaces, NAT, relay, DHT)
+├── relay.rs            circuit-relay config + relayed listen address (P2P_RELAY)
 ├── types.rs            shared constants and enums (SwarmEvent, SwarmCommand, InputMode)
 ├── db.rs               connection handling, multi-instance DB resolution, ensure_columns
 ├── messages.rs         message + receipt persistence, per-peer stats
@@ -122,6 +123,17 @@ DHT presence is real, not inferred: the node publishes a
 `/p2p-chat/peer/<peer_id>` record (value `{peerId, addresses, public}`) after
 it has routing peers and reachable addresses, rate-limited to one attempt per
 60 s; `PutRecord`'s result drives the "announced" status.
+
+NAT'd nodes get relayed reachability. `P2P_RELAY` (comma-separated relay
+multiaddrs, each carrying `/p2p/<relay-peer-id>`) makes the swarm handler
+*listen* on each relayed address (`/…/p2p/<relay>/p2p-circuit`) — that is how
+libp2p-relay 0.22 requests a reservation, and the client behaviour renews it
+while the listener stays open. A closed listener frees its relay so a later
+connection retries. Once AutoNAT reports `Private` and a reservation is held,
+the DHT announcement (and the circuit listener address Identify advertises)
+narrow to the dialable `/…/p2p/<relay>/p2p-circuit/p2p/<self>` form instead of
+the unreachable LAN addresses; otherwise external/listen addresses stay first
+with any completed circuit address appended.
 
 ## The identity model
 

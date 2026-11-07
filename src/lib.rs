@@ -69,6 +69,8 @@ pub mod net_diag;
 pub mod network;
 pub mod nickname;
 pub mod peers;
+#[cfg(feature = "relay")]
+pub mod relay;
 pub mod swarm_handler;
 pub mod tui_tabs;
 pub mod types;

@@ -101,6 +101,61 @@ impl NetworkDetails {
         }
         addrs
     }
+
+    /// Addresses to advertise in the DHT peer record.
+    ///
+    /// Behind NAT the only dialable addresses are the relayed circuits, so
+    /// when `AutoNAT` says `Private` **and** we hold a relay reservation this
+    /// narrows to those (announcing `LAN` addresses would produce a record
+    /// remote peers cannot dial). Otherwise the normal external/listen list is
+    /// used, with any circuit addresses appended — they are reachable for
+    /// peers able to use the relay.
+    #[must_use]
+    pub fn announce_addresses(&self, self_peer_id: &str) -> Vec<String> {
+        let circuits = self.relay_circuit_addresses(self_peer_id);
+        if self.nat_status == "Private" && !self.relay_reservations.is_empty() {
+            return circuits;
+        }
+        let mut addrs: Vec<String> = self
+            .reachable_addresses()
+            .into_iter()
+            .filter(|addr| !addr.contains("/p2p-circuit"))
+            .collect();
+        for circuit in circuits {
+            if !addrs.contains(&circuit) {
+                addrs.push(circuit);
+            }
+        }
+        addrs
+    }
+
+    /// Relay circuit addresses we can be reached on, completed with
+    /// `/p2p/<self>`.
+    ///
+    /// The relay client confirms a reservation with the full
+    /// `/…/p2p/<relay>/p2p-circuit/p2p/<self>` address (as an external
+    /// address), while a raw circuit listener address can omit the trailing
+    /// self id — every entry is completed here so the advertised form is
+    /// always dialable.
+    #[must_use]
+    pub fn relay_circuit_addresses(&self, self_peer_id: &str) -> Vec<String> {
+        let suffix = format!("/p2p/{self_peer_id}");
+        let mut circuits: Vec<String> = Vec::new();
+        for addr in self.external_addrs.iter().chain(&self.listen_addrs) {
+            if !addr.contains("/p2p-circuit") {
+                continue;
+            }
+            let full = if addr.ends_with(&suffix) {
+                addr.clone()
+            } else {
+                format!("{addr}{suffix}")
+            };
+            if !circuits.contains(&full) {
+                circuits.push(full);
+            }
+        }
+        circuits
+    }
 }
 
 /// Return the live network diagnostics snapshot.
@@ -260,6 +315,16 @@ pub fn record_relay_reservation(relay_peer_id: &str) {
     with_live(|live| {
         push_unique(&mut live.relay_reservations, relay_peer_id);
         live.relay_status = format!("Reserved via {relay_peer_id}");
+    });
+}
+
+/// Drop a relay reservation that is no longer held (its listener closed).
+pub fn expire_relay_reservation(relay_peer_id: &str) {
+    with_live(|live| {
+        live.relay_reservations.retain(|id| id != relay_peer_id);
+        if live.relay_reservations.is_empty() {
+            live.relay_status = "No relay reservation".to_string();
+        }
     });
 }
 

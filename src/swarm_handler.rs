@@ -118,7 +118,7 @@ fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
     if details.dht_routing_peers == 0 {
         return;
     }
-    let addresses = details.reachable_addresses();
+    let addresses = details.announce_addresses(&swarm.local_peer_id().to_string());
     if addresses.is_empty() {
         return;
     }
@@ -140,17 +140,108 @@ fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
+/// Circuit-relay reservation bookkeeping for one running node.
+///
+/// A reservation is requested by listening on the relayed address (see
+/// `crate::relay`); this tracks the configured relays, which ones we already
+/// asked, and the listeners we opened so a closed listener can free the relay
+/// for a retry.
+#[cfg_attr(not(feature = "relay"), allow(dead_code))]
+struct RelayState {
+    /// Relay multiaddrs from `P2P_RELAY` (each with `/p2p/<relay-id>`).
+    addrs: Vec<libp2p::Multiaddr>,
+    /// Relays we have already asked for a reservation.
+    requested: std::collections::HashSet<libp2p::PeerId>,
+    /// Open relay listeners, so a close can clear its relay's reservation.
+    listeners: std::collections::HashMap<libp2p::core::transport::ListenerId, libp2p::PeerId>,
+}
+
+impl RelayState {
+    fn new() -> Self {
+        Self {
+            addrs: Vec::new(),
+            requested: std::collections::HashSet::new(),
+            listeners: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Load the configured relays and request a reservation with each.
+    #[cfg(feature = "relay")]
+    fn configure(&mut self, swarm: &mut Swarm<AppBehaviour>) {
+        self.addrs = crate::relay::configured_relay_addrs();
+        let peers: Vec<libp2p::PeerId> = self
+            .addrs
+            .iter()
+            .filter_map(crate::relay::relay_peer_id)
+            .collect();
+        for peer_id in peers {
+            self.request_reservation(peer_id, swarm);
+        }
+    }
+
+    #[cfg(not(feature = "relay"))]
+    fn configure(&mut self, _swarm: &mut Swarm<AppBehaviour>) {}
+
+    /// Request a reservation if `peer_id` is one of the configured relays.
+    #[cfg(feature = "relay")]
+    fn request_reservation(&mut self, peer_id: libp2p::PeerId, swarm: &mut Swarm<AppBehaviour>) {
+        if self.requested.contains(&peer_id) {
+            return;
+        }
+        let Some(addr) = self
+            .addrs
+            .iter()
+            .find(|addr| crate::relay::relay_peer_id(addr) == Some(peer_id))
+        else {
+            return;
+        };
+        let Some(listen_addr) = crate::relay::relayed_listen_addr(addr) else {
+            return;
+        };
+        match swarm.listen_on(listen_addr) {
+            Ok(listener_id) => {
+                self.requested.insert(peer_id);
+                self.listeners.insert(listener_id, peer_id);
+                crate::net_diag::record_relay_status(&format!(
+                    "Requesting reservation via {peer_id}"
+                ));
+            }
+            Err(e) => crate::net_diag::record_relay_status(&format!(
+                "Reservation request via {peer_id} failed: {e}"
+            )),
+        }
+    }
+
+    #[cfg(not(feature = "relay"))]
+    fn request_reservation(&mut self, _peer_id: libp2p::PeerId, _swarm: &mut Swarm<AppBehaviour>) {}
+
+    /// A relay listener closed: drop the reservation and allow a retry.
+    fn on_listener_closed(
+        &mut self,
+        listener_id: libp2p::core::transport::ListenerId,
+        reason: &str,
+    ) {
+        let Some(peer_id) = self.listeners.remove(&listener_id) else {
+            return;
+        };
+        self.requested.remove(&peer_id);
+        crate::net_diag::expire_relay_reservation(&peer_id.to_string());
+        crate::net_diag::record_relay_status(&format!("Reservation via {peer_id} ended: {reason}"));
+    }
+}
+
 async fn handle_swarm_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    relays: &mut RelayState,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::Behaviour(_) => {
             handle_behaviour_event(swarm_event, event_tx, swarm).await;
         }
         _ => {
-            handle_connection_event(swarm_event, event_tx, swarm).await;
+            handle_connection_event(swarm_event, event_tx, swarm, relays).await;
         }
     }
 }
@@ -300,10 +391,11 @@ async fn handle_connection_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    relays: &mut RelayState,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
-            handle_connection_established(peer_id, event_tx, swarm).await;
+            handle_connection_established(peer_id, event_tx, swarm, relays).await;
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
             handle_connection_closed(peer_id, event_tx, swarm).await;
@@ -320,6 +412,17 @@ async fn handle_connection_event(
         Libp2pSwarmEvent::ExternalAddrExpired { address } => {
             crate::net_diag::expire_external_addr(&address.to_string());
         }
+        Libp2pSwarmEvent::ListenerClosed {
+            listener_id,
+            reason,
+            ..
+        } => {
+            let reason = reason.map_or_else(|e| e.to_string(), |()| "closed".to_string());
+            relays.on_listener_closed(listener_id, &reason);
+        }
+        Libp2pSwarmEvent::ListenerError { listener_id, error } => {
+            relays.on_listener_closed(listener_id, &error.to_string());
+        }
         _ => {}
     }
 }
@@ -329,12 +432,14 @@ async fn handle_connection_established(
     peer_id: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    relays: &mut RelayState,
 ) {
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
     let _ = swarm.behaviour_mut().kad.bootstrap();
     refresh_dht_routing(swarm);
+    relays.request_reservation(peer_id, swarm);
     maybe_announce(swarm);
 }
 
@@ -342,11 +447,13 @@ async fn handle_connection_established(
 async fn handle_connection_established(
     peer_id: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
-    _swarm: &mut Swarm<AppBehaviour>,
+    swarm: &mut Swarm<AppBehaviour>,
+    relays: &mut RelayState,
 ) {
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
+    relays.request_reservation(peer_id, swarm);
 }
 
 async fn handle_connection_closed(
@@ -1628,6 +1735,13 @@ pub fn spawn_swarm_handler(
                 }
             }
         }
+        // Circuit-relay reservations (US-050 follow-up 2): listen on the
+        // relayed address of every relay configured in `P2P_RELAY`. That both
+        // dials the relay (the relay transport dials it if not connected) and
+        // requests a reservation; the listener renews it until it closes.
+        let mut relays = RelayState::new();
+        relays.configure(&mut swarm);
+
         loop {
             let event = tokio::select! {
                 swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
@@ -1637,7 +1751,7 @@ pub fn spawn_swarm_handler(
 
             match event {
                 Some(Event::Swarm(swarm_event)) => {
-                    handle_swarm_event(*swarm_event, &event_tx, &mut swarm).await;
+                    handle_swarm_event(*swarm_event, &event_tx, &mut swarm, &mut relays).await;
                 }
                 Some(Event::Command(cmd)) => {
                     handle_command(cmd, &mut swarm, &topic);

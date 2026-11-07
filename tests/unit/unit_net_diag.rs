@@ -356,3 +356,80 @@ fn grouped_addresses_are_copied_from_the_crate_types() {
     });
     assert_eq!(addr.ip().to_string(), "::1");
 }
+
+#[test]
+#[serial(net_diag)]
+fn relay_circuit_addresses_complete_the_self_peer_id() {
+    reset();
+    // Confirmed form (what the relay client places in `external_addrs`).
+    record_external_addr("/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1");
+    // Raw listener form can omit the trailing self id.
+    record_listen_addr("/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit");
+
+    let details = snapshot();
+    assert_eq!(
+        details.relay_circuit_addresses("self-1"),
+        vec!["/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1".to_string()]
+    );
+}
+
+#[test]
+#[serial(net_diag)]
+fn announce_addresses_prefers_circuits_behind_nat() {
+    reset();
+    record_nat_status("Private", None);
+    record_listen_addr("/ip4/192.168.1.9/tcp/4001");
+    record_external_addr("/ip4/203.0.113.7/tcp/4001");
+    record_external_addr("/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1");
+    record_relay_reservation("relay-a");
+
+    let details = snapshot();
+    assert_eq!(
+        details.announce_addresses("self-1"),
+        vec!["/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1".to_string()],
+        "behind NAT only the relayed circuit is dialable"
+    );
+
+    // A private node without a reservation has nothing better than the normal
+    // reachable list, so it keeps the old behaviour (mDNS peers can still
+    // dial it); circuit addresses found there are appended unchanged.
+    expire_relay_reservation("relay-a");
+    let details = snapshot();
+    assert_eq!(
+        details.announce_addresses("self-1"),
+        vec![
+            "/ip4/203.0.113.7/tcp/4001".to_string(),
+            "/ip4/192.168.1.9/tcp/4001".to_string(),
+            "/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1".to_string(),
+        ]
+    );
+}
+
+#[test]
+#[serial(net_diag)]
+fn announce_addresses_appends_circuits_when_not_private() {
+    reset();
+    record_nat_status("Public", Some("/ip4/203.0.113.7/tcp/4001"));
+    record_external_addr("/ip4/203.0.113.7/tcp/4001");
+    record_listen_addr("/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit");
+
+    let details = snapshot();
+    assert_eq!(
+        details.announce_addresses("self-1"),
+        vec![
+            "/ip4/203.0.113.7/tcp/4001".to_string(),
+            "/ip4/198.51.100.9/tcp/7000/p2p/relay-a/p2p-circuit/p2p/self-1".to_string(),
+        ]
+    );
+}
+
+#[test]
+#[serial(net_diag)]
+fn expire_relay_reservation_clears_the_last_status() {
+    reset();
+    record_relay_reservation("relay-a");
+    expire_relay_reservation("relay-a");
+    let details = snapshot();
+    assert!(details.relay_reservations.is_empty());
+    assert_eq!(details.relay_status, "No relay reservation");
+}
