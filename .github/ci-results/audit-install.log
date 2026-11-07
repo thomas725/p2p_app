@@ -1,4 +1,0 @@
-[1m[92m    Updating[0m crates.io index
-[1m[92m Downloading[0m crates ...
-[1m[92m  Downloaded[0m cargo-audit v0.22.2
-[1m[92m     Ignored[0m package `cargo-audit v0.22.2` is already installed, use --force to override
