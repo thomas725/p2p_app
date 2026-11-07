@@ -260,3 +260,22 @@ fn test_current_timestamp_within_range() {
     assert!(ts > 1_000_000_000.0); // After year 2001
     assert!(ts < 100_000_000_000.0); // Before year 5138
 }
+
+#[test]
+fn test_format_rtt_units() {
+    use p2p_app::fmt::format_rtt;
+    assert_eq!(format_rtt(None), "n/a");
+    assert_eq!(format_rtt(Some(0.4)), "<1 ms");
+    assert_eq!(format_rtt(Some(12.4)), "12 ms");
+    assert_eq!(format_rtt(Some(999.4)), "999 ms");
+    assert_eq!(format_rtt(Some(1234.0)), "1.2 s");
+}
+
+#[test]
+fn test_format_ping_loss() {
+    use p2p_app::fmt::format_ping_loss;
+    assert_eq!(format_ping_loss(0, 0), "n/a");
+    assert_eq!(format_ping_loss(0, 13), "0% (0/13)");
+    assert_eq!(format_ping_loss(1, 3), "33% (1/3)");
+    assert_eq!(format_ping_loss(8, 8), "100% (8/8)");
+}

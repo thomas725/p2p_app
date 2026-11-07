@@ -292,6 +292,19 @@ class HttpNodeApi implements NodeApi {
     );
   }
 
+  static PeerQuality peerQualityFromJson(dynamic raw) {
+    final m = raw as Map<String, dynamic>;
+    return PeerQuality(
+      peerId: m['peerId'] as String,
+      rttMs: (m['rttMs'] as num?)?.toDouble(),
+      pingSuccesses: m['pingSuccesses'] as int,
+      pingFailures: m['pingFailures'] as int,
+      pingLoss: (m['pingLoss'] as num).toDouble(),
+      rttLabel: m['rttLabel'] as String,
+      lossLabel: m['lossLabel'] as String,
+    );
+  }
+
   static MobileDeviceInfo deviceInfoFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return MobileDeviceInfo(
@@ -411,6 +424,12 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<NetworkDetails> getNetworkDetails() async =>
       networkDetailsFromJson(await _call('getNetworkDetails'));
+
+  @override
+  Future<PeerQuality> getPeerQuality(String peerId) async =>
+      peerQualityFromJson(
+        await _call('getPeerQuality', {'peerId': peerId}),
+      );
 
   @override
   Future<String> startNode({required String dbPath}) async =>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
@@ -19,6 +20,7 @@ class PeerInfoScreen extends StatefulWidget {
     this.onCall,
     this.onEditLocalNickname,
     this.contact,
+    this.loadQuality,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
@@ -41,6 +43,11 @@ class PeerInfoScreen extends StatefulWidget {
   final Future<MobilePeerRecord?> Function(MobilePeerRecord peer, String nickname)?
   onEditLocalNickname;
 
+  /// Loads the live ping-based connection quality (round-trip time + loss) for
+  /// a peer. Optional: when null, no "Connection quality" card is rendered, so
+  /// the screen stays free of node dependencies for widget tests.
+  final Future<PeerQuality> Function(String peerId)? loadQuality;
+
   @override
   State<PeerInfoScreen> createState() => _PeerInfoScreenState();
 }
@@ -50,6 +57,29 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
   /// answered — so the page reflects the edit without being reopened.
   String? _localNickname;
   MobilePeerRecord? _refreshed;
+
+  /// Live ping sample fetched when the page opens (null until it arrives, or
+  /// when [PeerInfoScreen.loadQuality] is not supplied).
+  PeerQuality? _quality;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadQuality();
+  }
+
+  Future<void> _loadQuality() async {
+    final load = widget.loadQuality;
+    if (load == null) return;
+    try {
+      final quality = await load(widget.peer.peerId);
+      if (!mounted) return;
+      setState(() => _quality = quality);
+    } catch (e) {
+      // Quality is a live extra, never a reason to fail the page.
+      debugPrint('Failed to load peer quality for ${widget.peer.peerId}: $e');
+    }
+  }
 
   MobilePeerRecord get _peer => _refreshed ?? widget.peer;
 
@@ -102,6 +132,7 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
     final peer = _peer;
     final localNickname = _effectiveLocalNickname;
     final contact = widget.contact;
+    final quality = _quality;
     final (origin, originDetail) = _origin(
       MobilePeerRecord(
         peerId: peer.peerId,
@@ -230,6 +261,26 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          if (quality != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connection quality',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    _infoRow('Round-trip time', quality.rttLabel),
+                    const SizedBox(height: 8),
+                    _infoRow('Ping loss', quality.lossLabel),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 16),
           FilledButton.icon(
             icon: const Icon(Icons.chat),

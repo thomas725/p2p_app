@@ -191,3 +191,66 @@ class NetworkInterfaceInfo {
           ipv6 == other.ipv6 &&
           internal == other.internal;
 }
+
+/// Live ping-based connection quality for one peer.
+///
+/// Fed by the swarm handler from the ping behaviour's events (one outbound
+/// ping every 10 s per connection), so — unlike the per-message round-trip
+/// time — it exists even when no message has been exchanged. Both frontends
+/// show it on the Peer Info page; the display strings come from Rust so the
+/// two views cannot format the numbers differently.
+class PeerQuality {
+  /// The peer this sample belongs to.
+  final String peerId;
+
+  /// Most recent successful ping round-trip time, in milliseconds.
+  final double? rttMs;
+
+  /// Successful pings since the last connection was established.
+  final int pingSuccesses;
+
+  /// Failed pings (timeout / unsupported / transport error).
+  final int pingFailures;
+
+  /// Failed pings divided by all pings; 0.0 when none have run.
+  final double pingLoss;
+
+  /// Canonical RTT label (`fmt::format_rtt`), e.g. `12 ms`.
+  final String rttLabel;
+
+  /// Canonical loss label, e.g. `0% (0/13)`; `n/a` before the first ping.
+  final String lossLabel;
+
+  const PeerQuality({
+    required this.peerId,
+    this.rttMs,
+    required this.pingSuccesses,
+    required this.pingFailures,
+    required this.pingLoss,
+    required this.rttLabel,
+    required this.lossLabel,
+  });
+
+  @override
+  int get hashCode =>
+      peerId.hashCode ^
+      rttMs.hashCode ^
+      pingSuccesses.hashCode ^
+      pingFailures.hashCode ^
+      pingLoss.hashCode ^
+      rttLabel.hashCode ^
+      lossLabel.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PeerQuality &&
+          runtimeType == other.runtimeType &&
+          peerId == other.peerId &&
+          rttMs == other.rttMs &&
+          pingSuccesses == other.pingSuccesses &&
+          pingFailures == other.pingFailures &&
+          pingLoss == other.pingLoss &&
+          rttLabel == other.rttLabel &&
+          lossLabel == other.lossLabel;
+}

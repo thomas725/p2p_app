@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
+import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 
@@ -161,5 +162,41 @@ void main() {
     );
     expect(find.text('Direct messages'), findsNothing);
     expect(find.text('Broadcasts sent'), findsNothing);
+  });
+
+  testWidgets('renders the connection-quality card with Rust labels', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(),
+          serviceRunning: true,
+          loadQuality: (peerId) async => PeerQuality(
+            peerId: peerId,
+            rttMs: 12,
+            pingSuccesses: 12,
+            pingFailures: 0,
+            pingLoss: 0,
+            rttLabel: '12 ms',
+            lossLabel: '0% (0/12)',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Connection quality'), findsOneWidget);
+    expect(find.text('12 ms'), findsOneWidget);
+    expect(find.text('0% (0/12)'), findsOneWidget);
+  });
+
+  testWidgets('renders no connection-quality card without loadQuality', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PeerInfoScreen(peer: peer(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Connection quality'), findsNothing);
   });
 }

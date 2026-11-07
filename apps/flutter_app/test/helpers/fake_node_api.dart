@@ -121,6 +121,19 @@ class FakeNodeApi implements NodeApi {
   NetworkDetails? networkDetails;
 
   @override
+  Future<PeerQuality> getPeerQuality(String peerId) async {
+    _record('getPeerQuality', peerId);
+    final quality = peerQuality;
+    if (quality == null) {
+      throw UnimplementedError('set peerQuality in this test');
+    }
+    return quality;
+  }
+
+  /// Returned by [getPeerQuality] when set; otherwise the call throws.
+  PeerQuality? peerQuality;
+
+  @override
   Future<String> startNode({required String dbPath}) =>
       throw UnimplementedError();
 

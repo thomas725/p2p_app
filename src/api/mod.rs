@@ -35,6 +35,16 @@ pub fn get_network_details() -> crate::net_diag::NetworkDetails {
     crate::mobile_api::get_network_details()
 }
 
+/// Live ping-based connection quality for one peer (round-trip time, ping
+/// successes/failures, loss fraction, canonical display labels).
+///
+/// Zeroed with `n/a` labels when the peer is not connected; both frontends
+/// show the same Rust-formatted strings on the Peer Info page.
+#[must_use]
+pub fn get_peer_quality(peer_id: &str) -> crate::net_diag::PeerQuality {
+    crate::mobile_api::get_peer_quality(peer_id)
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

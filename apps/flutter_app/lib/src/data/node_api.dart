@@ -46,6 +46,11 @@ abstract class NodeApi {
   /// state. One polled snapshot shared by the Settings views.
   Future<NetworkDetails> getNetworkDetails();
 
+  /// Live ping-based connection quality for [peerId] (RTT, ping counts, loss),
+  /// with the Rust-formatted display labels. Zeroed/`n/a` when the peer is not
+  /// connected or no ping has completed yet.
+  Future<PeerQuality> getPeerQuality(String peerId);
+
   Future<String> startNode({required String dbPath});
 
   Future<String> startNodeAuto();

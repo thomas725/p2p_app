@@ -12,6 +12,7 @@
 
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 
 /// How long the OS interface list is cached, in seconds.
@@ -158,6 +159,40 @@ impl NetworkDetails {
     }
 }
 
+/// Live ping-based connection quality for one peer.
+///
+/// Fed by the swarm handler from the ping behaviour's events (one outbound
+/// ping every 10 s per connection), so — unlike the per-message round-trip
+/// time — it exists even when no message has been exchanged. Both frontends
+/// show it on the Peer Info page; the display strings come from Rust so the
+/// two views cannot format the numbers differently.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PeerQuality {
+    /// The peer this sample belongs to.
+    pub peer_id: String,
+    /// Most recent successful ping round-trip time, in milliseconds.
+    pub rtt_ms: Option<f64>,
+    /// Successful pings since the last connection was established.
+    pub ping_successes: u32,
+    /// Failed pings (timeout / unsupported / transport error).
+    pub ping_failures: u32,
+    /// Failed pings divided by all pings; 0.0 when none have run.
+    pub ping_loss: f64,
+    /// Canonical RTT label (`fmt::format_rtt`), e.g. `12 ms`.
+    pub rtt_label: String,
+    /// Canonical loss label, e.g. `0% (0/13)`; `n/a` before the first ping.
+    pub loss_label: String,
+}
+
+/// Accumulated ping outcomes for one peer.
+#[derive(Debug, Default, Clone, Copy)]
+struct PeerQualityEntry {
+    rtt_ms: Option<f64>,
+    successes: u32,
+    failures: u32,
+}
+
 /// Return the live network diagnostics snapshot.
 ///
 /// Enumerating OS interfaces is cached for [`INTERFACE_CACHE_TTL_SECS`] so it
@@ -220,6 +255,8 @@ struct LiveState {
     dht_announce_status: String,
     dht_announce_at: Option<f64>,
     last_announce_attempt: Option<f64>,
+    /// Per-peer ping samples, keyed by peer id.
+    peer_quality: HashMap<String, PeerQualityEntry>,
 }
 
 impl Default for LiveState {
@@ -245,6 +282,7 @@ impl Default for LiveState {
             dht_announce_status: "Not announced yet".to_string(),
             dht_announce_at: None,
             last_announce_attempt: None,
+            peer_quality: HashMap::new(),
         }
     }
 }
@@ -307,6 +345,60 @@ pub fn record_hole_punch(success: bool) {
         if success {
             live.hole_punch_successes = live.hole_punch_successes.saturating_add(1);
         }
+    });
+}
+
+/// Record a successful ping (`rtt_ms` round-trip time in milliseconds).
+pub fn record_ping_rtt(peer_id: &str, rtt_ms: f64) {
+    with_live(|live| {
+        let entry = live.peer_quality.entry(peer_id.to_string()).or_default();
+        entry.rtt_ms = Some(rtt_ms);
+        entry.successes = entry.successes.saturating_add(1);
+    });
+}
+
+/// Record a failed ping (timeout, unsupported protocol or transport error).
+pub fn record_ping_failure(peer_id: &str) {
+    with_live(|live| {
+        let entry = live.peer_quality.entry(peer_id.to_string()).or_default();
+        entry.failures = entry.failures.saturating_add(1);
+    });
+}
+
+/// Live ping quality for one peer.
+///
+/// Zeroed (no RTT, no counts, `n/a` labels) when the peer is not connected or
+/// no ping has completed yet — the sample is cleared when the last connection
+/// to the peer closes, so a stale RTT is never shown as current.
+#[must_use]
+pub fn peer_quality(peer_id: &str) -> PeerQuality {
+    let entry = {
+        let live = live_state().lock().unwrap_or_else(PoisonError::into_inner);
+        live.peer_quality.get(peer_id).copied()
+    };
+    let rtt_ms = entry.and_then(|e| e.rtt_ms);
+    let successes = entry.map_or(0, |e| e.successes);
+    let failures = entry.map_or(0, |e| e.failures);
+    let total = successes.saturating_add(failures);
+    PeerQuality {
+        peer_id: peer_id.to_string(),
+        rtt_ms,
+        ping_successes: successes,
+        ping_failures: failures,
+        ping_loss: if total == 0 {
+            0.0
+        } else {
+            f64::from(failures) / f64::from(total)
+        },
+        rtt_label: crate::fmt::format_rtt(rtt_ms),
+        loss_label: crate::fmt::format_ping_loss(failures, total),
+    }
+}
+
+/// Forget the live ping sample for a peer (its last connection closed).
+pub fn clear_peer_quality(peer_id: &str) {
+    with_live(|live| {
+        live.peer_quality.remove(peer_id);
     });
 }
 

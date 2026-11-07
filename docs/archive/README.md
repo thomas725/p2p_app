@@ -23,6 +23,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-10-20_peerinfo_stats_rows.md](2026-10-20_peerinfo_stats_rows.md) | DM/broadcast counts on the Peer Info page | 2026-10-20 |
 | [2026-10-21_contacts_search.md](2026-10-21_contacts_search.md) | The Contacts search affordance in both frontends | 2026-10-21 |
 | [2026-10-26_attachment_size_labels.md](2026-10-26_attachment_size_labels.md) | Human-readable `(2 KiB)` attachment chips from one Rust formatter | 2026-10-26 |
+| [2026-11-08_connection_quality.md](2026-11-08_connection_quality.md) | Per-peer ping RTT/loss on the Peer Info page (live-only samples) | 2026-11-08 |
 
 ### Completed planning
 

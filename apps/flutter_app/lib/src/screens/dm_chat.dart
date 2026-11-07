@@ -199,6 +199,7 @@ class _DmChatScreenState extends State<DmChatScreen>
                   serviceRunning: widget.serviceRunning,
                   onNavigate: widget.onNavigate,
                   currentTab: widget.currentTab,
+                  loadQuality: nodeApi.getPeerQuality,
                 ),
               ),
             ),

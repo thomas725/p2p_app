@@ -303,12 +303,6 @@ assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
-### Connection quality indicators (US-052)
-
-The TUI already has a `ConnectedTracker` and records per-peer sessions, so the
-data exists. What is missing is a per-peer quality read (packet loss / RTT) and
-its display.
-
 ### LAN-only mode toggle (US-051)
 
 A switch that disables any non-LAN transport. Cheap in principle, but it needs
@@ -362,6 +356,7 @@ here so they are not mistaken for unfinished work.
 | Item | When | Where |
 |---|---|---|
 | Manual peer address entry (US-053) | 2026-11-02 | `efa5e46` |
+| Connection quality indicators (US-052) | 2026-11-08 | [`archive/2026-11-08_connection_quality.md`](archive/2026-11-08_connection_quality.md) |
 | `sha2` 0.10 → 0.11.1 (attachment `file_id` digest, no source change) | 2026-11-01 | `deps: take sha2 0.11` |
 | `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-31 | `deps: take tower-http 0.7` |
 | `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-30 | `deps: move the libp2p pin to 0.57.1` |

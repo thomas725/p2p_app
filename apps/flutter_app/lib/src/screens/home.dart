@@ -820,6 +820,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
           onEditLocalNickname: _setPeerNickname,
           contact: contact,
+          loadQuality: nodeApi.getPeerQuality,
         ),
       ),
     );
@@ -944,6 +945,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onCall: (p) => _startCallTo(p.peerId, p.displayName),
           onEditLocalNickname: _setPeerNickname,
           contact: _contactForPeer(peerId),
+          loadQuality: nodeApi.getPeerQuality,
         ),
       ),
     );

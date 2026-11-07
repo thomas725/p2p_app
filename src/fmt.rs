@@ -105,6 +105,42 @@ pub fn peer_display_name(
         .unwrap_or_else(|| short_peer_id(peer_id))
 }
 
+/// Format a ping round-trip time for display: `<1 ms`, `12 ms`, `1.2 s`.
+///
+/// This is the canonical formatting for the Peer Info quality rows in **both**
+/// frontends (the TUI prints the string, Flutter renders
+/// `PeerQuality.rttLabel`), so neither does its own unit math. `None` (no
+/// completed ping yet) renders as `n/a`.
+#[must_use]
+pub fn format_rtt(rtt_ms: Option<f64>) -> String {
+    rtt_ms.map_or_else(
+        || "n/a".to_string(),
+        |ms| {
+            if ms < 1.0 {
+                "<1 ms".to_string()
+            } else if ms < 1000.0 {
+                format!("{ms:.0} ms")
+            } else {
+                format!("{:.1} s", ms / 1000.0)
+            }
+        },
+    )
+}
+
+/// Format a ping loss fraction for display: `0% (0/13)`, `8% (1/13)`.
+///
+/// `total` is the number of pings (successes + failures); 0 renders `n/a`
+/// because no sample exists yet. Rounded to whole percent so a one-off failure
+/// on a long-lived link stays readable.
+#[must_use]
+pub fn format_ping_loss(failures: u32, total: u32) -> String {
+    if total == 0 {
+        return "n/a".to_string();
+    }
+    let percent = (f64::from(failures) / f64::from(total) * 100.0).round();
+    format!("{percent:.0}% ({failures}/{total})")
+}
+
 /// Calculate the latency in milliseconds between sent and received times
 #[must_use]
 pub fn format_latency(sent_at: Option<f64>, received_at: SystemTime) -> String {

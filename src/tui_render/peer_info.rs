@@ -61,6 +61,11 @@ pub fn render_peer_info_content(
     }
     lines.push(format!("First seen: {first_seen}"));
     lines.push(format!("Last seen: {last_seen}"));
+    // Live ping sample for this peer (fed by the swarm handler). `n/a` when the
+    // peer is not connected or no ping has completed yet.
+    let quality = crate::net_diag::peer_quality(peer_id);
+    lines.push(format!("Round-trip time: {}", quality.rtt_label));
+    lines.push(format!("Ping loss: {}", quality.loss_label));
     if let Some(contact) = contact {
         lines.push(format!("Direct messages: {}", contact.dm_count));
         lines.push(format!(

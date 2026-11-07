@@ -517,6 +517,17 @@ pub fn get_network_details() -> crate::net_diag::NetworkDetails {
     crate::net_diag::snapshot()
 }
 
+/// Live ping-based connection quality for one peer (round-trip time, ping
+/// successes/failures, loss fraction) with the canonical display labels.
+///
+/// Zeroed with `n/a` labels when the peer is not connected or no ping has
+/// completed yet; the swarm event loop keeps the sample current.
+#[flutter_rust_bridge::frb(ignore)]
+#[must_use]
+pub fn get_peer_quality(peer_id: &str) -> crate::net_diag::PeerQuality {
+    crate::net_diag::peer_quality(peer_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

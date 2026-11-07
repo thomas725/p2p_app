@@ -309,9 +309,12 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Expired(list))) => {
             handle_mdns_expired(list, event_tx).await;
         }
-        // Ping results drive connection liveness; the resulting close is
-        // handled by the ConnectionClosed arm below, so nothing to do here.
-        Libp2pSwarmEvent::Behaviour(AppEv::Ping(_)) => {}
+        // Ping results drive connection liveness and the per-peer connection
+        // quality shown on the Peer Info page (RTT + loss). The close a ping
+        // failure can cause is handled by the ConnectionClosed arm below.
+        Libp2pSwarmEvent::Behaviour(AppEv::Ping(libp2p::ping::Event { peer, result, .. })) => {
+            record_ping(peer, &result);
+        }
         #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Identify(libp2p::identify::Event::Received {
             peer_id,
@@ -464,8 +467,23 @@ async fn handle_connection_closed(
     let _ = event_tx
         .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
         .await;
+    // Ping samples only describe a live connection: drop the peer's once its
+    // last connection is gone so Peer Info never shows a stale RTT.
+    if !swarm.is_connected(&peer_id) {
+        crate::net_diag::clear_peer_quality(&peer_id.to_string());
+    }
     #[cfg(feature = "kad")]
     refresh_dht_routing(swarm);
+}
+
+/// Feed one ping outcome into the per-peer connection-quality sample.
+fn record_ping(peer: libp2p::PeerId, result: &Result<std::time::Duration, libp2p::ping::Failure>) {
+    match result {
+        Ok(rtt) => {
+            crate::net_diag::record_ping_rtt(&peer.to_string(), rtt.as_secs_f64() * 1000.0);
+        }
+        Err(_) => crate::net_diag::record_ping_failure(&peer.to_string()),
+    }
 }
 
 async fn handle_new_listen_addr(address: libp2p::Multiaddr, event_tx: &mpsc::Sender<SwarmEvent>) {

@@ -735,6 +735,28 @@ mod render_tests {
         assert!(!text.contains("Direct messages"), "got: {text:?}");
         assert!(!text.contains("Broadcasts sent"), "got: {text:?}");
     }
+
+    #[test]
+    fn test_render_peer_info_shows_ping_quality() {
+        // Unique peer id so the global net_diag sample cannot collide with a
+        // concurrently running test.
+        let peer_id = "peer-quality-render-test";
+        p2p_app::net_diag::record_ping_rtt(peer_id, 12.4);
+
+        let mut terminal = create_test_terminal();
+        let state = TuiRenderState::with_sample_data();
+        terminal
+            .draw(|f| render_peer_info_content(f, f.area(), peer_id, &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Round-trip time: 12 ms"), "got: {text:?}");
+        assert!(text.contains("Ping loss: 0% (0/1)"), "got: {text:?}");
+    }
 }
 
 // ── TuiRenderState builder methods + get_tab_content ─────────────────────────

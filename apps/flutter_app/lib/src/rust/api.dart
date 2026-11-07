@@ -30,6 +30,14 @@ Future<MobilePeerStatus> getMobilePeerStatus() =>
 Future<NetworkDetails> getNetworkDetails() =>
     RustLib.instance.api.crateApiGetNetworkDetails();
 
+/// Live ping-based connection quality for one peer (round-trip time, ping
+/// successes/failures, loss fraction, canonical display labels).
+///
+/// Zeroed with `n/a` labels when the peer is not connected; both frontends
+/// show the same Rust-formatted strings on the Peer Info page.
+Future<PeerQuality> getPeerQuality({required String peerId}) =>
+    RustLib.instance.api.crateApiGetPeerQuality(peerId: peerId);
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

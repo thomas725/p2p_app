@@ -699,6 +699,7 @@ mod tests {
             "setPeerLocalNickname",
             "validateNickname",
             "networkSizeLabel",
+            "getPeerQuality",
             "provisionMyUser",
             "sendDeviceBindingIntro",
             "acceptDeviceBinding",

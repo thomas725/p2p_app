@@ -48,7 +48,8 @@ src/
 ├── behavior.rs         libp2p behaviours: gossipsub, request_response, mdns, ping
 ├── swarm_handler.rs    libp2p events -> app events; inbound persistence
 ├── network.rs          network-size classification (Small/Medium/Large)
-├── net_diag.rs         live network diagnostics snapshot (interfaces, NAT, relay, DHT)
+├── net_diag.rs         live network diagnostics snapshot (interfaces, NAT, relay, DHT,
+│                       per-peer ping quality)
 ├── relay.rs            circuit-relay config + relayed listen address (P2P_RELAY)
 ├── types.rs            shared constants and enums (SwarmEvent, SwarmCommand, InputMode)
 ├── db.rs               connection handling, multi-instance DB resolution, ensure_columns
@@ -134,6 +135,17 @@ the DHT announcement (and the circuit listener address Identify advertises)
 narrow to the dialable `/…/p2p/<relay>/p2p-circuit/p2p/<self>` form instead of
 the unreachable LAN addresses; otherwise external/listen addresses stay first
 with any completed circuit address appended.
+
+Per-peer connection quality comes from the libp2p ping behaviour: every
+`ping::Event` with an outbound result feeds `net_diag::record_ping_rtt` /
+`record_ping_failure`, and `PeerQuality` (latest RTT, success/failure counts,
+loss fraction) is read back with `peer_quality(peer_id)`. The sample is
+**live-only**: `handle_connection_closed` clears it when the peer's last
+connection goes away, so a stale RTT is never shown as current, and nothing is
+persisted. Rust owns the display strings (`fmt::format_rtt` → `12 ms`,
+`fmt::format_ping_loss` → `3% (1/32)`, `n/a` before the first ping) so the TUI
+Peer Info tab and Flutter's `getPeerQuality` card cannot format numbers
+differently.
 
 ## The identity model
 

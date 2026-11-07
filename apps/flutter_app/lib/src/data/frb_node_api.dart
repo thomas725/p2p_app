@@ -40,6 +40,10 @@ class FrbNodeApi implements NodeApi {
   Future<NetworkDetails> getNetworkDetails() => bridge.getNetworkDetails();
 
   @override
+  Future<PeerQuality> getPeerQuality(String peerId) =>
+      bridge.getPeerQuality(peerId: peerId);
+
+  @override
   Future<String> startNode({required String dbPath}) =>
       bridge.startNode(dbPath: dbPath);
 

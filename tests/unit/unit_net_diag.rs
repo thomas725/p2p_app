@@ -433,3 +433,47 @@ fn expire_relay_reservation_clears_the_last_status() {
     assert!(details.relay_reservations.is_empty());
     assert_eq!(details.relay_status, "No relay reservation");
 }
+
+#[test]
+#[serial(net_diag)]
+fn peer_quality_records_latest_rtt_and_loss() {
+    reset();
+    let fresh = peer_quality("peer-a");
+    assert!(fresh.rtt_ms.is_none());
+    assert_eq!(fresh.rtt_label, "n/a");
+    assert_eq!(fresh.loss_label, "n/a");
+    assert_eq!((fresh.ping_successes, fresh.ping_failures), (0, 0));
+
+    record_ping_rtt("peer-a", 12.4);
+    record_ping_rtt("peer-a", 8.0);
+    record_ping_failure("peer-a");
+
+    let quality = peer_quality("peer-a");
+    assert_eq!(quality.rtt_ms, Some(8.0), "the latest successful RTT wins");
+    assert_eq!(quality.ping_successes, 2);
+    assert_eq!(quality.ping_failures, 1);
+    assert!((quality.ping_loss - 1.0 / 3.0).abs() < 1e-9);
+    assert_eq!(quality.rtt_label, "8 ms");
+    assert_eq!(quality.loss_label, "33% (1/3)");
+}
+
+#[test]
+#[serial(net_diag)]
+fn peer_quality_is_per_peer_and_cleared_on_disconnect() {
+    reset();
+    record_ping_rtt("peer-a", 4.0);
+    record_ping_rtt("peer-b", 30.0);
+    assert_eq!(peer_quality("peer-a").rtt_ms, Some(4.0));
+    assert_eq!(peer_quality("peer-b").rtt_ms, Some(30.0));
+
+    clear_peer_quality("peer-a");
+    assert!(peer_quality("peer-a").rtt_ms.is_none());
+    assert_eq!(
+        peer_quality("peer-b").rtt_ms,
+        Some(30.0),
+        "clearing one peer must not touch another"
+    );
+
+    reset();
+    assert!(peer_quality("peer-b").rtt_ms.is_none());
+}

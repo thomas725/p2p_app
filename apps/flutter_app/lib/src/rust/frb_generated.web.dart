@@ -158,6 +158,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  PeerQuality dco_decode_peer_quality(dynamic raw);
+
+  @protected
   PeerSortInput dco_decode_peer_sort_input(dynamic raw);
 
   @protected
@@ -348,6 +351,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  PeerQuality sse_decode_peer_quality(SseDeserializer deserializer);
 
   @protected
   PeerSortInput sse_decode_peer_sort_input(SseDeserializer deserializer);
@@ -594,6 +600,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     Uint8List? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_peer_quality(PeerQuality self, SseSerializer serializer);
 
   @protected
   void sse_encode_peer_sort_input(PeerSortInput self, SseSerializer serializer);
