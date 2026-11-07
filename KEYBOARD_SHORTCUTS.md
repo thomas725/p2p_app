@@ -154,6 +154,9 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 | Key | Action |
 |-----|--------|
 | `n` | Edit your own nickname |
+| `d` | Open the "Dial peer" prompt — type a multiaddr (`/ip4/1.2.3.4/tcp/4001/p2p/<peer-id>`) and press `Enter` to dial it |
+
+The dial prompt uses the shared input box; `Esc` cancels it without dialing.
 
 ## Input and editing
 
@@ -183,8 +186,8 @@ lane. Both frontends render the result as a chip:
 
 `Esc` unwinds one level at a time, in this order: dismiss the popup →
 decline the device-binding prompt → cancel a group leave → clear the contacts
-search → cancel a nickname edit → cancel the group create/join prompt →
-return to the Chat tab.
+search → cancel a nickname edit → cancel the group create/join prompt → cancel
+a peer dial → return to the Chat tab.
 
 ### Device-binding prompt
 

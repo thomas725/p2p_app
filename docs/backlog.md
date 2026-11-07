@@ -250,7 +250,9 @@ Remaining follow-ups (detailed 2026-11-03):
    on `P2P_BOOTSTRAP`. Still missing: a persisted list (DB column / Settings
    input / CLI flag / web method) loaded in all three entry points and editable
    in TUI/Flutter/web Settings, validated as `Multiaddr` (ideally with
-   `/p2p/<peerid>`), and dialable on demand (overlaps US-053 manual dial).
+   `/p2p/<peerid>`), and reachable on demand (the manual dial that can do that
+   already shipped as US-053: Settings `d` / the Flutter "Connect to address"
+   card / the `dialPeer` web method).
 2. **Relay reservation triggering — shipped 2026-11-08.** `src/relay.rs` parses
    `P2P_RELAY` and builds the `/p2p-circuit` listen address; `swarm_handler`
    listens on every configured relay at node start (which dials the relay and
@@ -272,11 +274,6 @@ Remaining follow-ups (detailed 2026-11-03):
 Items 2 and 3 are coupled (a reservation is required before there is anything
 to advertise); item 1's env-var half is now in place, the persisted UI half is
 not. None are blocked on external decisions.
-
-### Manual peer address entry (US-053)
-
-No way to dial a peer by multiaddr today. A "connect to address" input on the
-Settings tab would need a `SwarmCommand::Dial` and a peer address field.
 
 ### Peer blocklist / mute (US-054)
 
@@ -364,6 +361,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Manual peer address entry (US-053) | 2026-11-02 | `efa5e46` |
 | `sha2` 0.10 → 0.11.1 (attachment `file_id` digest, no source change) | 2026-11-01 | `deps: take sha2 0.11` |
 | `tower-http` 0.6 → 0.7 (web server static files + CORS) | 2026-10-31 | `deps: take tower-http 0.7` |
 | `libp2p` 0.57.0 → 0.57.1 (deliberate pin bump) | 2026-10-30 | `deps: move the libp2p pin to 0.57.1` |
