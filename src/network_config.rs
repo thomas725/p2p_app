@@ -59,7 +59,7 @@ impl NetworkPeerKind {
 }
 
 /// One persisted network peer, as both frontends render it.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkPeer {
     /// Row id, used to remove the entry.
@@ -200,10 +200,10 @@ fn stored_addrs(kind: NetworkPeerKind) -> Vec<Multiaddr> {
         if peer.kind != kind.as_str() {
             continue;
         }
-        if let Ok(addr) = peer.multiaddr.parse::<Multiaddr>() {
-            if !addrs.contains(&addr) {
-                addrs.push(addr);
-            }
+        if let Ok(addr) = peer.multiaddr.parse::<Multiaddr>()
+            && !addrs.contains(&addr)
+        {
+            addrs.push(addr);
         }
     }
     addrs

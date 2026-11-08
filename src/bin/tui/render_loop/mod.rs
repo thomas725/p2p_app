@@ -141,7 +141,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         input_text: state.chat_input.lines().join("\n"),
         log_messages: get_tui_logs().into_iter().collect(),
         input_mode: state.input_mode,
-        nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),        peer_count: state.connected.len(),
+        nickname_peer_id: state.editing_nickname_peer.clone().unwrap_or_default(),
+        peer_count: state.connected.len(),
         mouse_capture: state.env.mouse_capture,
         kitty_keyboard_active: state.env.kitty_keyboard_active,
         popup: render_popup_text(state),
@@ -194,7 +195,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         network: p2p_app::net_diag::snapshot(),
         network_peers: state.network_peers.clone(),
         network_peer_selection: state.network_peer_selection,
-        network_peer_kind: state.network_peer_kind.map(|kind| kind.as_str().to_string()),
+        network_peer_kind: state.network_peer_kind.map(|kind| kind.as_str().to_owned()),
         last_connection_lost,
         last_connection_peer,
         runtime: p2p_app::tui_render_state::RuntimeStatus {

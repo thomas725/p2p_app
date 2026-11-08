@@ -19,9 +19,10 @@ pub fn render_input_section(
     } else if state.is_adding_network_peer() {
         format!(
             "Add {} multiaddr - Enter to save, Esc to cancel",
-            state
-                .network_peer_kind
-                .map_or("network peer", p2p_app::network_config::NetworkPeerKind::as_str)
+            state.network_peer_kind.map_or(
+                "network peer",
+                p2p_app::network_config::NetworkPeerKind::as_str
+            )
         )
     } else if state.is_creating_group() {
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()

@@ -111,3 +111,17 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::Dial { .. } => panic!("expected SendDm"),
     }
 }
+
+#[cfg(feature = "kad")]
+#[test]
+fn test_parse_bootstrap_addrs_trims_dedupes_and_skips_garbage() {
+    let parsed = parse_bootstrap_addrs(
+        " /ip4/1.2.3.4/tcp/4001 ,, /ip4/1.2.3.4/tcp/4001 , not-a-multiaddr , /ip4/5.6.7.8/tcp/4001 ",
+    );
+    let expected: Vec<libp2p::Multiaddr> = vec![
+        "/ip4/1.2.3.4/tcp/4001".parse().expect("parse"),
+        "/ip4/5.6.7.8/tcp/4001".parse().expect("parse"),
+    ];
+    assert_eq!(parsed, expected);
+    assert!(parse_bootstrap_addrs("  ,  ").is_empty());
+}

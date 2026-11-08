@@ -352,3 +352,24 @@ fn test_app_state_to_render_state_own_user_identity() {
         vec![("dev-1".to_string(), "2026-09-25 10:00:00".to_string())]
     );
 }
+
+#[test]
+fn test_app_state_to_render_state_network_peers() {
+    let mut state = app_state();
+    state.network_peers = vec![p2p_app::network_config::NetworkPeer {
+        id: 7,
+        kind: "relay".to_string(),
+        multiaddr: "/ip4/5.6.7.8/tcp/4001/p2p/relay".to_string(),
+        created_at: "2026-11-08 12:00:00".to_string(),
+    }];
+    state.network_peer_selection = 0;
+    state.network_peer_kind = Some(p2p_app::network_config::NetworkPeerKind::Relay);
+    state.input_mode = p2p_app::InputMode::AddingNetworkPeer;
+
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.network_peers.len(), 1);
+    assert_eq!(rs.network_peers[0].id, 7);
+    assert_eq!(rs.network_peer_selection, 0);
+    assert_eq!(rs.network_peer_kind.as_deref(), Some("relay"));
+    assert!(rs.is_adding_network_peer());
+}

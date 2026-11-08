@@ -1989,3 +1989,120 @@ fn test_group_leave_confirmation_deletes_and_unsubscribes() {
         );
     });
 }
+
+// ── persisted network peers (Settings b/r/x) ─────────────────────────────
+
+#[test]
+fn test_settings_shortcut_begins_network_peer_prompts() {
+    let mut state = test_app_state();
+
+    handle_settings_shortcut('b', &mut state);
+    assert!(state.is_adding_network_peer());
+    assert_eq!(
+        state.network_peer_kind,
+        Some(p2p_app::network_config::NetworkPeerKind::Bootstrap)
+    );
+    state.cancel_add_network_peer();
+
+    handle_settings_shortcut('r', &mut state);
+    assert!(state.is_adding_network_peer());
+    assert_eq!(
+        state.network_peer_kind,
+        Some(p2p_app::network_config::NetworkPeerKind::Relay)
+    );
+}
+
+#[test]
+fn test_settings_shortcut_x_without_a_selection_is_a_noop() {
+    let mut state = test_app_state();
+    handle_settings_shortcut('x', &mut state);
+    assert!(state.network_peers.is_empty());
+    assert!(state.popup.is_none());
+}
+
+#[test]
+fn test_network_peer_submission_ignores_empty_input() {
+    let mut state = test_app_state();
+    state.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Bootstrap);
+    handle_add_network_peer_submission(&mut state);
+    assert!(!state.is_adding_network_peer());
+    assert!(state.network_peers.is_empty());
+    assert!(state.popup.is_none());
+}
+
+#[test]
+#[serial]
+fn test_network_peer_submission_persists_and_removes() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let mut state = test_app_state();
+    state.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Bootstrap);
+    state.chat_input.insert_str(" /ip4/1.2.3.4/tcp/4001 ");
+    handle_add_network_peer_submission(&mut state);
+
+    assert!(!state.is_adding_network_peer(), "prompt closes on submit");
+    assert!(state.popup.is_none(), "valid input has no error popup");
+    assert_eq!(state.network_peers.len(), 1);
+    assert_eq!(state.network_peers[0].multiaddr, "/ip4/1.2.3.4/tcp/4001");
+    assert_eq!(
+        state.network_peer_selection, 0,
+        "the saved row is highlighted"
+    );
+    assert_eq!(
+        p2p_app::network_config::list_network_peers()
+            .expect("list")
+            .len(),
+        1
+    );
+
+    remove_selected_network_peer(&mut state);
+    assert!(state.network_peers.is_empty());
+    assert!(
+        p2p_app::network_config::list_network_peers()
+            .expect("list")
+            .is_empty()
+    );
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+#[serial]
+fn test_network_peer_submission_reports_validation_errors() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    let mut state = test_app_state();
+    state.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Relay);
+    // A relay needs a /p2p/<peer-id> suffix.
+    state.chat_input.insert_str("/ip4/1.2.3.4/tcp/4001");
+    handle_add_network_peer_submission(&mut state);
+
+    assert!(!state.is_adding_network_peer());
+    assert!(state.network_peers.is_empty(), "nothing persisted");
+    assert!(
+        p2p_app::network_config::list_network_peers()
+            .expect("list")
+            .is_empty()
+    );
+    let popup = state.popup.expect("validation popup");
+    assert!(
+        popup.contains("relay address needs a /p2p/<peer-id> suffix"),
+        "got: {popup}"
+    );
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}

@@ -354,10 +354,12 @@ impl AppState {
             self.network_peer_selection = 0;
             return;
         }
-        let last = len - 1;
+        let last = len.saturating_sub(1);
         self.network_peer_selection = match key {
             crossterm::event::KeyCode::Up => self.network_peer_selection.saturating_sub(1),
-            crossterm::event::KeyCode::Down => (self.network_peer_selection + 1).min(last),
+            crossterm::event::KeyCode::Down => {
+                self.network_peer_selection.saturating_add(1).min(last)
+            }
             crossterm::event::KeyCode::Home | crossterm::event::KeyCode::PageUp => 0,
             crossterm::event::KeyCode::End | crossterm::event::KeyCode::PageDown => last,
             _ => self.network_peer_selection,

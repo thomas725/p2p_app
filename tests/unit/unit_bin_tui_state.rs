@@ -421,3 +421,73 @@ fn test_load_and_format_messages_db_failure_returns_empty() {
     p2p_app::db::reset_db_url();
     drop(dir);
 }
+
+// ── persisted network peers (US-050 follow-up 1) ─────────────────────────
+
+fn network_peer(id: i32, kind: &str, addr: &str) -> p2p_app::network_config::NetworkPeer {
+    p2p_app::network_config::NetworkPeer {
+        id,
+        kind: kind.to_string(),
+        multiaddr: addr.to_string(),
+        created_at: "2026-11-08 12:00:00".to_string(),
+    }
+}
+
+#[test]
+fn test_network_peer_add_prompt_transitions() {
+    let mut state = test_app_state();
+    assert!(!state.is_adding_network_peer());
+    state.chat_input.insert_str("leftover");
+
+    state.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Relay);
+    assert!(state.is_adding_network_peer());
+    assert_eq!(
+        state.network_peer_kind,
+        Some(p2p_app::network_config::NetworkPeerKind::Relay)
+    );
+    assert_eq!(
+        state.chat_input.lines().join(""),
+        "",
+        "the prompt must start empty"
+    );
+
+    state.cancel_add_network_peer();
+    assert!(!state.is_adding_network_peer());
+    assert_eq!(state.network_peer_kind, None);
+
+    // Cancelling when no prompt is open is a no-op.
+    state.cancel_add_network_peer();
+    assert!(!state.is_adding_network_peer());
+}
+
+#[test]
+fn test_move_network_peer_selection_clamps() {
+    use crossterm::event::KeyCode;
+
+    let mut state = test_app_state();
+    state.move_network_peer_selection(KeyCode::Down);
+    assert_eq!(state.network_peer_selection, 0, "empty list stays at 0");
+
+    state.network_peers = vec![
+        network_peer(1, "bootstrap", "/ip4/1.1.1.1/tcp/4001"),
+        network_peer(2, "relay", "/ip4/2.2.2.2/tcp/4001/p2p/relay"),
+        network_peer(3, "bootstrap", "/ip4/3.3.3.3/tcp/4001"),
+    ];
+
+    state.move_network_peer_selection(KeyCode::Down);
+    assert_eq!(state.network_peer_selection, 1);
+    state.move_network_peer_selection(KeyCode::End);
+    assert_eq!(state.network_peer_selection, 2);
+    state.move_network_peer_selection(KeyCode::Down);
+    assert_eq!(state.network_peer_selection, 2, "clamped at the last row");
+    state.move_network_peer_selection(KeyCode::Up);
+    assert_eq!(state.network_peer_selection, 1);
+    state.move_network_peer_selection(KeyCode::Home);
+    assert_eq!(state.network_peer_selection, 0);
+    state.move_network_peer_selection(KeyCode::Up);
+    assert_eq!(state.network_peer_selection, 0, "clamped at the first row");
+    state.move_network_peer_selection(KeyCode::PageDown);
+    assert_eq!(state.network_peer_selection, 2);
+    state.move_network_peer_selection(KeyCode::PageUp);
+    assert_eq!(state.network_peer_selection, 0);
+}

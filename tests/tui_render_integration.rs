@@ -690,6 +690,68 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_settings_content_network_peers() {
+        let mut terminal = Terminal::new(TestBackend::new(120, 80)).unwrap();
+        let mut state = TuiRenderState::new();
+        state.network_peers = vec![
+            p2p_app::network_config::NetworkPeer {
+                id: 1,
+                kind: "bootstrap".to_string(),
+                multiaddr: "/ip4/1.2.3.4/tcp/4001".to_string(),
+                created_at: "2026-11-08 12:00:00".to_string(),
+            },
+            p2p_app::network_config::NetworkPeer {
+                id: 2,
+                kind: "relay".to_string(),
+                multiaddr: "/ip4/5.6.7.8/tcp/4001/p2p/12D3KooWRelay".to_string(),
+                created_at: "2026-11-08 12:00:00".to_string(),
+            },
+        ];
+        state.network_peer_selection = 1;
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Network peers (2)"), "got: {text:?}");
+        assert!(
+            text.contains("bootstrap /ip4/1.2.3.4/tcp/4001"),
+            "got: {text:?}"
+        );
+        assert!(
+            text.contains("> relay /ip4/5.6.7.8/tcp/4001/p2p/12D3KooWRelay"),
+            "the highlighted row is marked: {text:?}"
+        );
+        assert!(
+            text.contains("b: add bootstrap | r: add relay | x: remove"),
+            "got: {text:?}"
+        );
+    }
+
+    #[test]
+    fn test_render_settings_content_network_peers_empty() {
+        let mut terminal = Terminal::new(TestBackend::new(120, 80)).unwrap();
+        let state = TuiRenderState::new();
+
+        terminal
+            .draw(|f| render_settings_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Network peers (0)"), "got: {text:?}");
+        assert!(text.contains("— none configured"), "got: {text:?}");
+    }
+
+    #[test]
     fn test_render_peer_info_shows_contact_message_stats() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::with_sample_data();

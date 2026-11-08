@@ -732,7 +732,10 @@ fn remove_selected_network_peer(s: &mut super::state::AppState) {
     };
     match p2p_app::network_config::remove_network_peer(peer.id) {
         Ok(true) => {
-            p2plog_debug(format!("Removed {} network peer: {}", peer.kind, peer.multiaddr));
+            p2plog_debug(format!(
+                "Removed {} network peer: {}",
+                peer.kind, peer.multiaddr
+            ));
             s.reload_network_peers();
         }
         Ok(false) => {}
