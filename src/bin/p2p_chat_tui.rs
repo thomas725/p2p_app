@@ -80,6 +80,72 @@ mod tui {
     pub mod test_helpers;
 }
 
+/// Options for the optional in-process web frontend ("both frontends, one
+/// node" mode — the replacement for the removed combined selector binary).
+#[derive(Debug, PartialEq, Eq)]
+struct WebOptions {
+    /// Serve the web frontend alongside the TUI.
+    enabled: bool,
+    /// TCP port on `127.0.0.1`.
+    port: u16,
+    /// `flutter build web` output directory, when serving the SPA.
+    assets: Option<std::path::PathBuf>,
+}
+
+impl Default for WebOptions {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            port: 8080,
+            assets: None,
+        }
+    }
+}
+
+impl WebOptions {
+    /// Environment defaults: `P2P_WEB` (truthy), `P2P_WEB_PORT`, `P2P_WEB_ASSETS`.
+    fn from_env() -> Self {
+        Self {
+            enabled: std::env::var("P2P_WEB")
+                .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on")),
+            port: std::env::var("P2P_WEB_PORT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(8080),
+            assets: std::env::var_os("P2P_WEB_ASSETS").map(std::path::PathBuf::from),
+        }
+    }
+
+    /// Apply command-line overrides. `--web-assets` implies `--web`.
+    fn apply_args<I, S>(mut self, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut args = args.into_iter().map(Into::into);
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--web" => self.enabled = true,
+                "--web-port" => {
+                    if let Some(value) = args.next()
+                        && let Ok(port) = value.parse()
+                    {
+                        self.port = port;
+                    }
+                }
+                "--web-assets" => {
+                    if let Some(value) = args.next() {
+                        self.assets = Some(std::path::PathBuf::from(value));
+                        self.enabled = true;
+                    }
+                }
+                _ => {}
+            }
+        }
+        self
+    }
+}
+
 #[tokio::main]
 #[allow(clippy::large_futures)]
 async fn main() -> color_eyre::Result<()> {
@@ -123,36 +189,21 @@ pub async fn run_tui() -> color_eyre::Result<()> {
         p2p_app::mobile_node::start_node_auto().map_err(|e| color_eyre::eyre::eyre!(e))?;
     p2plog_info(format!("Node started: peer_id={peer_id}"));
 
-    // Optional: also serve the web frontend on the same node.
-    let mut web_enabled =
-        std::env::var("P2P_WEB").is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
-    let mut web_port: u16 = std::env::var("P2P_WEB_PORT")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(8080);
-    for arg in std::env::args().skip(1) {
-        if arg == "--web" {
-            web_enabled = true;
-        }
-    }
-    // parse --web-port value
-    let args: Vec<String> = std::env::args().collect();
-    if let Some(i) = args.iter().position(|a| a == "--web-port")
-        && let Some(v) = args.get(i.saturating_add(1))
-        && let Ok(p) = v.parse()
-    {
-        web_port = p;
-    }
+    // Optional: also serve the web frontend on the same node. This is the
+    // "both frontends, one node" mode: the TUI and the browser drive one swarm.
+    let web = WebOptions::from_env().apply_args(std::env::args().skip(1));
     #[cfg(feature = "web")]
-    if web_enabled {
-        let addr: std::net::SocketAddr = format!("127.0.0.1:{web_port}")
+    if web.enabled {
+        let addr: std::net::SocketAddr = format!("127.0.0.1:{}", web.port)
             .parse::<std::net::SocketAddr>()
             .map_err(|e| color_eyre::eyre::eyre!(e))?;
+        let serving_assets = web.assets.is_some();
+        let assets = web.assets;
         tokio::spawn(async move {
             if let Err(e) = p2p_app::web::serve(p2p_app::web::WebConfig {
                 bind: addr,
                 credentials: None,
-                assets: None,
+                assets,
             })
             .await
             {
@@ -160,12 +211,68 @@ pub async fn run_tui() -> color_eyre::Result<()> {
             }
         });
         p2plog_info(format!(
-            "Web frontend listening on http://127.0.0.1:{web_port}"
+            "Web frontend listening on http://127.0.0.1:{}{}",
+            web.port,
+            if serving_assets {
+                " (serving Flutter web assets)"
+            } else {
+                " (API only; pass --web-assets <dir> to serve the Flutter bundle)"
+            }
         ));
     }
     #[cfg(not(feature = "web"))]
-    let _ = (web_enabled, web_port);
+    let _ = web;
 
     // Use new 4-task architecture instead of monolithic tokio::select!
     tui::main_loop::run_new_tui().await
+}
+
+#[cfg(test)]
+mod web_options_tests {
+    use super::WebOptions;
+    use std::path::PathBuf;
+
+    fn parse(args: &[&str]) -> WebOptions {
+        WebOptions::default().apply_args(args.iter().copied())
+    }
+
+    #[test]
+    fn defaults_are_off_loopback_8080_without_assets() {
+        let options = parse(&[]);
+        assert!(!options.enabled);
+        assert_eq!(options.port, 8080);
+        assert_eq!(options.assets, None);
+    }
+
+    #[test]
+    fn web_flag_enables_the_frontend() {
+        assert!(parse(&["--web"]).enabled);
+    }
+
+    #[test]
+    fn web_port_overrides_the_default_and_rejects_garbage() {
+        assert_eq!(parse(&["--web-port", "9000"]).port, 9000);
+        // A non-numeric value leaves the previous port in place.
+        assert_eq!(parse(&["--web-port", "nope"]).port, 8080);
+        // The last flag wins.
+        assert_eq!(
+            parse(&["--web-port", "9000", "--web-port", "9100"]).port,
+            9100
+        );
+    }
+
+    #[test]
+    fn web_assets_implies_web_and_keeps_the_path() {
+        let options = parse(&["--web-assets", "apps/flutter_app/build/web"]);
+        assert!(options.enabled);
+        assert_eq!(
+            options.assets,
+            Some(PathBuf::from("apps/flutter_app/build/web"))
+        );
+    }
+
+    #[test]
+    fn unknown_args_are_ignored() {
+        assert_eq!(parse(&["--public-dht", "key-probe"]), WebOptions::default());
+    }
 }

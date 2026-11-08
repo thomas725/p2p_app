@@ -5,10 +5,10 @@
 | Metric                |   Value |
 |:----------------------|:--------|
 | Total Rust Files      |      56 |
-| Total Rust Lines      |  25,926 |
-| Total Rust Chars      | 966,603 |
-| Avg Lines/Rust File   |     462 |
-| Avg Chars/Rust File   |  17,260 |
+| Total Rust Lines      |  26,033 |
+| Total Rust Chars      | 969,875 |
+| Avg Lines/Rust File   |     464 |
+| Avg Chars/Rust File   |  17,319 |
 | Total Dart Files      |      28 |
 | Total Dart Lines      |  12,402 |
 | Total Dart Chars      | 392,302 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |     104 |
 | Avg Chars/Kotlin File |   3,580 |
 
-**Grand Total:** 86 files, 38,537 lines, 1,366,066 characters
+**Grand Total:** 86 files, 38,644 lines, 1,369,338 characters
 
 ## Rust Source Files
 
@@ -65,7 +65,7 @@
 | src                     | types.rs             |     2 | 12215 |   333 |        - |       - | Event & command type defs              |
 | src/bin                 | p2p_chat.rs          |     7 |  4996 |   135 |        - |       - | CLI chat application                   |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4834 |   151 |        - |       - | Headless node + web server entry point |
-| src/bin                 | p2p_chat_tui.rs      |     4 |  6638 |   171 |        - |       - | Main TUI application entry point       |
+| src/bin                 | p2p_chat_tui.rs      |     6 |  9910 |   278 |        - |       - | Main TUI application entry point       |
 | src/bin/tui             | click_handlers.rs    |     7 | 19604 |   474 |        - |       - | Click handlers & index mapping         |
 | src/bin/tui             | command_processor.rs |     6 | 21832 |   591 |        - |       - | Event routing & state updates          |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
@@ -83,7 +83,7 @@
 | src/generated           | models_queryable.rs  |     1 |  9183 |   250 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  6385 |   215 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 56 files, 25,926 lines, 966,603 characters
+**Total:** 56 files, 26,033 lines, 969,875 characters
 
 ## Rust Test Files
 

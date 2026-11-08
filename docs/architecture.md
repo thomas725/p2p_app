@@ -214,7 +214,14 @@ frontend cannot drift apart.
 scripts/build-all.sh            # TUI + web frontend (one command)
 ./target/release/p2p_chat_tui   # the terminal frontend
 ./target/release/p2p_chat_server --assets apps/flutter_app/build/web
+# Both frontends on one node (the replacement for p2p_chat_combined):
+./target/release/p2p_chat_tui --web --web-assets apps/flutter_app/build/web
 ```
+
+`p2p_chat_tui --web` (optionally `--web-assets <dir>` / `P2P_WEB_ASSETS`) runs
+the TUI and the web frontend against the same swarm. See
+[web_frontend.md](web_frontend.md#building-and-running) for the three modes
+and their feature sets.
 
 The Flutter app's own toolchain lives in `apps/flutter_app`; see
 [../README.md](../README.md) for the mobile and desktop paths, and
