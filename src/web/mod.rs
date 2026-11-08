@@ -711,6 +711,8 @@ mod tests {
             "sortContacts",
             "startCall",
             "sendCallSignal",
+            "addNetworkPeer",
+            "removeNetworkPeer",
             "formatTimeHhmm",
             "isAtBottom",
             "parseLastSeenMs",
@@ -754,6 +756,7 @@ mod tests {
             "getPeersWithStats",
             "getNetworkDetails",
             "getMyUserId",
+            "listNetworkPeers",
         ] {
             assert!(
                 source.contains(&format!("\"{method}\"")),

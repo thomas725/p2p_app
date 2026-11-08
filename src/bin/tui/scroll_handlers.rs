@@ -284,7 +284,10 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
         p2p_app::tui_tabs::TabContent::Chat => {
             scroll_chat_tab(key_code, state);
         }
-        p2p_app::tui_tabs::TabContent::PeerInfo(_) | p2p_app::tui_tabs::TabContent::Settings => {}
+        p2p_app::tui_tabs::TabContent::Settings => {
+            state.move_network_peer_selection(key_code);
+        }
+        p2p_app::tui_tabs::TabContent::PeerInfo(_) => {}
     }
 }
 

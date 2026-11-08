@@ -116,6 +116,13 @@ pub struct TuiRenderState {
     pub network_size: String,
     /// Live network diagnostics snapshot (interfaces, reachability, DHT/relay).
     pub network: crate::net_diag::NetworkDetails,
+    /// Persisted bootstrap/relay multiaddrs (Settings tab).
+    pub network_peers: Vec<crate::network_config::NetworkPeer>,
+    /// Highlighted row in the Settings network-peers list.
+    pub network_peer_selection: usize,
+    /// Kind captured by the active add prompt (`None` = not adding), used by
+    /// the input-section title.
+    pub network_peer_kind: Option<String>,
     /// Epoch seconds of last peer disconnect, if any (for Settings tab)
     pub last_connection_lost: Option<f64>,
     /// Peer ID we last disconnected from, if any (for Settings tab)
@@ -195,6 +202,9 @@ impl TuiRenderState {
             platform: String::new(),
             network_size: String::new(),
             network: crate::net_diag::NetworkDetails::default(),
+            network_peers: Vec::new(),
+            network_peer_selection: 0,
+            network_peer_kind: None,
             last_connection_lost: None,
             last_connection_peer: None,
             own_user_id: None,
@@ -228,6 +238,12 @@ impl TuiRenderState {
     #[must_use]
     pub const fn is_dialing_peer(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::DialingPeer)
+    }
+
+    /// True while the shared input captures a bootstrap/relay multiaddr.
+    #[must_use]
+    pub const fn is_adding_network_peer(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::AddingNetworkPeer)
     }
 
     /// True while the shared text input captures a Contacts search query.

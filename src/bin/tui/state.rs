@@ -206,6 +206,16 @@ pub struct AppState {
     pub platform: String,
     pub network_size: String,
 
+    /// Persisted bootstrap/relay multiaddrs (Settings tab), loaded at startup
+    /// and after every add/remove. The node reads this list once at start.
+    pub network_peers: Vec<p2p_app::network_config::NetworkPeer>,
+    /// Highlighted row in the Settings network-peers list (`b`/`r` add,
+    /// `x` removes the highlighted entry).
+    pub network_peer_selection: usize,
+    /// Kind captured by the active add prompt
+    /// ([`p2p_app::InputMode::AddingNetworkPeer`]); `None` otherwise.
+    pub network_peer_kind: Option<p2p_app::network_config::NetworkPeerKind>,
+
     /// This install's user ID (None before provisioning) — Settings tab.
     pub own_user_id: Option<String>,
     /// Devices bound into this install's user: `(peer_id, bound_at)` —
@@ -299,6 +309,59 @@ impl AppState {
         }
         self.input_mode = p2p_app::InputMode::Chat;
         self.chat_input = TextArea::default();
+    }
+
+    /// True while the shared input captures a bootstrap/relay multiaddr.
+    #[must_use]
+    pub const fn is_adding_network_peer(&self) -> bool {
+        matches!(self.input_mode, p2p_app::InputMode::AddingNetworkPeer)
+    }
+
+    /// Begin the Settings "add network peer" prompt for `kind`.
+    pub fn begin_add_network_peer(&mut self, kind: p2p_app::network_config::NetworkPeerKind) {
+        self.input_mode = p2p_app::InputMode::AddingNetworkPeer;
+        self.network_peer_kind = Some(kind);
+        self.chat_input = TextArea::default();
+    }
+
+    /// Cancel an in-progress network-peer entry.
+    pub fn cancel_add_network_peer(&mut self) {
+        if !self.is_adding_network_peer() {
+            return;
+        }
+        self.input_mode = p2p_app::InputMode::Chat;
+        self.network_peer_kind = None;
+        self.chat_input = TextArea::default();
+    }
+
+    /// Reload the persisted network-peer list, clamping the selection.
+    ///
+    /// Best-effort: a DB error leaves the last known list in place (the node
+    /// still starts with the env-var fallbacks).
+    pub fn reload_network_peers(&mut self) {
+        if let Ok(peers) = p2p_app::network_config::list_network_peers() {
+            self.network_peers = peers;
+        }
+        self.network_peer_selection = self
+            .network_peer_selection
+            .min(self.network_peers.len().saturating_sub(1));
+    }
+
+    /// Move the network-peers highlight with the Settings Up/Down/Home/End keys.
+    pub fn move_network_peer_selection(&mut self, key: crossterm::event::KeyCode) {
+        let len = self.network_peers.len();
+        if len == 0 {
+            self.network_peer_selection = 0;
+            return;
+        }
+        let last = len - 1;
+        self.network_peer_selection = match key {
+            crossterm::event::KeyCode::Up => self.network_peer_selection.saturating_sub(1),
+            crossterm::event::KeyCode::Down => (self.network_peer_selection + 1).min(last),
+            crossterm::event::KeyCode::Home | crossterm::event::KeyCode::PageUp => 0,
+            crossterm::event::KeyCode::End | crossterm::event::KeyCode::PageDown => last,
+            _ => self.network_peer_selection,
+        };
     }
 
     /// Arm the leave-group confirmation for `group_id` (single slot: an
@@ -648,6 +711,9 @@ impl AppState {
             db_url: String::new(),
             platform: String::new(),
             network_size: String::new(),
+            network_peers: Vec::new(),
+            network_peer_selection: 0,
+            network_peer_kind: None,
             own_user_id: None,
             own_user_devices: Vec::new(),
         };

@@ -9,6 +9,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/network_config.dart';
 
 class FakeNodeApi implements NodeApi {
   FakeNodeApi({this.isRemoteTransport = false});
@@ -224,6 +225,59 @@ class FakeNodeApi implements NodeApi {
 
   @override
   Future<void> dialPeer({required String address}) async {}
+
+  // --- persisted network configuration ---
+
+  /// Persisted network peers returned by [listNetworkPeers]; [addNetworkPeer]
+  /// appends to it so a test can add + list without stubbing.
+  List<NetworkPeer> networkPeers = [];
+
+  /// Overrides the value [addNetworkPeer] returns (e.g. to simulate Rust-side
+  /// validation/normalisation of the address).
+  NetworkPeer Function(String kind, String multiaddr)? addNetworkPeerOverride;
+
+  /// Error thrown by [addNetworkPeer] when set (validation failures).
+  String? addNetworkPeerError;
+
+  @override
+  Future<List<NetworkPeer>> listNetworkPeers() async {
+    _record('listNetworkPeers');
+    return List.of(networkPeers);
+  }
+
+  @override
+  Future<NetworkPeer> addNetworkPeer({
+    required String kind,
+    required String multiaddr,
+  }) async {
+    _record('addNetworkPeer', '$kind $multiaddr');
+    final error = addNetworkPeerError;
+    if (error != null) {
+      throw error;
+    }
+    final override = addNetworkPeerOverride;
+    if (override != null) {
+      final row = override(kind, multiaddr);
+      networkPeers.add(row);
+      return row;
+    }
+    final row = NetworkPeer(
+      id: networkPeers.length + 1,
+      kind: kind,
+      multiaddr: multiaddr,
+      createdAt: '2026-11-08 12:00:00',
+    );
+    networkPeers.add(row);
+    return row;
+  }
+
+  @override
+  Future<bool> removeNetworkPeer({required int id}) async {
+    _record('removeNetworkPeer', id);
+    final before = networkPeers.length;
+    networkPeers.removeWhere((peer) => peer.id == id);
+    return networkPeers.length != before;
+  }
 
   @override
   Future<MobileGroup> createGroup({required String name}) =>

@@ -4,6 +4,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Immutable snapshot of the live connection state shown on the Settings page.
@@ -71,6 +72,8 @@ class _SettingsState extends State<Settings> {
   MobilePeerStatus? _statusData;
   String _networkSize = '';
   NetworkDetails? _network;
+  List<NetworkPeer>? _networkPeers;
+  String? _networkPeersError;
 
   @override
   void initState() {
@@ -83,6 +86,7 @@ class _SettingsState extends State<Settings> {
     widget.status.addListener(_onStatus);
     widget.networkDetails?.addListener(_onNetwork);
     _refreshNetworkSize();
+    _refreshNetworkPeers();
   }
 
   @override
@@ -118,6 +122,65 @@ class _SettingsState extends State<Settings> {
       debugPrint('Failed to resolve network size: $e');
     }
   }
+
+  /// Load the persisted bootstrap/relay list. Best-effort: a transport or DB
+  /// error is rendered in the card instead of failing the page.
+  Future<void> _refreshNetworkPeers() async {
+    try {
+      final peers = await nodeApi.listNetworkPeers();
+      if (mounted) {
+        setState(() {
+          _networkPeers = peers;
+          _networkPeersError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _networkPeersError = '$e';
+        });
+      }
+    }
+  }
+
+  Future<void> _addNetworkPeer() async {
+    final result = await showDialog<_NewNetworkPeer>(
+      context: context,
+      builder: (_) => const _NetworkPeerDialog(),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await nodeApi.addNetworkPeer(
+        kind: result.kind,
+        multiaddr: result.multiaddr,
+      );
+      await _refreshNetworkPeers();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Network peer saved — applies on the next node start'),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(_errorText(e))));
+    }
+  }
+
+  Future<void> _removeNetworkPeer(NetworkPeer peer) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await nodeApi.removeNetworkPeer(id: peer.id);
+      await _refreshNetworkPeers();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(_errorText(e))));
+    }
+  }
+
+  /// Rust returns plain Strings as errors; strip Dart's `Exception:` wrapper.
+  static String _errorText(Object error) =>
+      error is String ? error : '$error'.replaceFirst('Exception: ', '');
 
   @override
   Widget build(BuildContext context) {
@@ -239,6 +302,74 @@ class _SettingsState extends State<Settings> {
             title: const Text('Connect to address'),
             subtitle: const Text('Dial a peer by multiaddr'),
             onTap: _dialPeer,
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Persisted bootstrap/relay configuration (US-050 follow-up 1)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Network peers',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      key: const Key('network-peers-add'),
+                      tooltip: 'Add a bootstrap or relay multiaddr',
+                      onPressed: _addNetworkPeer,
+                      icon: const Icon(Icons.add),
+                    ),
+                  ],
+                ),
+                const Text(
+                  'Bootstrap and relay multiaddrs. Changes apply on the next '
+                  'node start.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                if (_networkPeersError != null)
+                  Text(
+                    _networkPeersError!,
+                    key: const Key('network-peers-error'),
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  )
+                else if (_networkPeers == null)
+                  const Text('Loading…', style: TextStyle(color: Colors.grey))
+                else if (_networkPeers!.isEmpty)
+                  const Text(
+                    'None configured (LAN discovery only)',
+                    key: Key('network-peers-empty'),
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else
+                  for (final peer in _networkPeers!)
+                    Row(
+                      key: ValueKey('network-peer-${peer.id}'),
+                      children: [
+                        Chip(label: Text(peer.kind)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            peer.multiaddr,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                        IconButton(
+                          key: Key('network-peer-remove-${peer.id}'),
+                          tooltip: 'Remove',
+                          onPressed: () => _removeNetworkPeer(peer),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                        ),
+                      ],
+                    ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -608,5 +739,87 @@ class _SettingsState extends State<Settings> {
     } catch (e) {
       debugPrint('Failed to set nickname: $e');
     }
+  }
+}
+
+/// Result of [_NetworkPeerDialog]: the chosen kind + raw multiaddr text.
+class _NewNetworkPeer {
+  const _NewNetworkPeer(this.kind, this.multiaddr);
+
+  final String kind;
+  final String multiaddr;
+}
+
+/// Add-a-network-peer dialog: kind selector (bootstrap/relay) + multiaddr.
+///
+/// Validation happens in Rust ([NodeApi.addNetworkPeer]) exactly like the TUI
+/// path, so the dialog only checks that the field is non-empty; a validation
+/// error comes back to the Settings page as a SnackBar.
+class _NetworkPeerDialog extends StatefulWidget {
+  const _NetworkPeerDialog();
+
+  @override
+  State<_NetworkPeerDialog> createState() => _NetworkPeerDialogState();
+}
+
+class _NetworkPeerDialogState extends State<_NetworkPeerDialog> {
+  String _kind = 'bootstrap';
+  final TextEditingController _addr = TextEditingController();
+
+  @override
+  void dispose() {
+    _addr.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add network peer'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<String>(
+            key: const Key('network-peer-kind'),
+            initialValue: _kind,
+            decoration: const InputDecoration(labelText: 'Kind'),
+            items: const [
+              DropdownMenuItem(value: 'bootstrap', child: Text('Bootstrap')),
+              DropdownMenuItem(value: 'relay', child: Text('Relay')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _kind = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('network-peer-multiaddr'),
+            controller: _addr,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Multiaddr',
+              hintText: _kind == 'relay'
+                  ? '/ip4/…/tcp/4001/p2p/<peer-id>'
+                  : '/ip4/…/tcp/4001',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('network-peer-save'),
+          onPressed: () {
+            final addr = _addr.text.trim();
+            if (addr.isEmpty) return;
+            Navigator.pop(context, _NewNetworkPeer(_kind, addr));
+          },
+          child: const Text('Add'),
+        ),
+      ],
+    );
   }
 }

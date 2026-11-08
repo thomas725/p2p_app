@@ -67,6 +67,7 @@ pub mod mobile_api;
 pub mod mobile_node;
 pub mod net_diag;
 pub mod network;
+pub mod network_config;
 pub mod nickname;
 pub mod peers;
 #[cfg(feature = "relay")]

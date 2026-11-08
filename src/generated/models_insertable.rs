@@ -7,7 +7,7 @@
 
 use crate::generated::schema::{
     broadcast_recipients, contacts, device_bindings, files, group_members, group_messages, groups,
-    identities, message_receipts, messages, peer_sessions, peers, users,
+    identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
 };
 use diesel::Insertable;
 
@@ -205,4 +205,14 @@ pub struct NewContact {
     pub contact_user_id: String,
     /// Nickname override this owner has assigned to the contact
     pub nickname_override: Option<String>,
+}
+
+/// Insertable struct for the `network_peers` table (persisted network config)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = network_peers)]
+pub struct NewNetworkPeer {
+    /// `bootstrap` (dialed at node start) or `relay` (reservation target)
+    pub kind: String,
+    /// Canonical text form of the peer multiaddr
+    pub multiaddr: String,
 }

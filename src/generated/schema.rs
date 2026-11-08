@@ -197,6 +197,21 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: persisted network configuration (US-050 follow-up 1), the
+// settings surface for the `P2P_BOOTSTRAP` / `P2P_RELAY` env vars. Each row is
+// one multiaddr of one kind (`bootstrap` = dialed at node start so the node can
+// join the DHT, `relay` = circuit-relay reservation target, needs
+// `/p2p/<relay-id>`). The unique index on (kind, multiaddr) makes a repeated
+// add a no-op. Lives here so diesel can query it and FRB ignores this module.
+diesel::table! {
+    network_peers (id) {
+        id -> Integer,
+        kind -> Text,
+        multiaddr -> Text,
+        created_at -> Timestamp,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     broadcast_recipients,
     contacts,
@@ -208,6 +223,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     identities,
     message_receipts,
     messages,
+    network_peers,
     peer_name_history,
     peer_sessions,
     peers,

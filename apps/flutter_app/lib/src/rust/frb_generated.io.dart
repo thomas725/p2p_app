@@ -11,6 +11,7 @@ import 'frb_generated.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
+import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -93,6 +94,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<NetworkPeer> dco_decode_list_network_peer(dynamic raw);
+
+  @protected
   List<PeerSortInput> dco_decode_list_peer_sort_input(dynamic raw);
 
   @protected
@@ -139,6 +143,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   NetworkInterfaceInfo dco_decode_network_interface_info(dynamic raw);
+
+  @protected
+  NetworkPeer dco_decode_network_peer(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -272,6 +279,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<NetworkPeer> sse_decode_list_network_peer(SseDeserializer deserializer);
+
+  @protected
   List<PeerSortInput> sse_decode_list_peer_sort_input(
     SseDeserializer deserializer,
   );
@@ -330,6 +340,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NetworkInterfaceInfo sse_decode_network_interface_info(
     SseDeserializer deserializer,
   );
+
+  @protected
+  NetworkPeer sse_decode_network_peer(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -486,6 +499,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_network_peer(
+    List<NetworkPeer> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_peer_sort_input(
     List<PeerSortInput> self,
     SseSerializer serializer,
@@ -574,6 +593,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     NetworkInterfaceInfo self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_network_peer(NetworkPeer self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);

@@ -443,6 +443,9 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     } else if s.is_dialing_peer() {
         s.cancel_dial_peer();
         p2plog_debug("Cancelled peer dial".to_string());
+    } else if s.is_adding_network_peer() {
+        s.cancel_add_network_peer();
+        p2plog_debug("Cancelled network peer entry".to_string());
     } else {
         s.active_tab = 0;
         s.chat_scroll_offset = 0;
@@ -667,7 +670,9 @@ async fn handle_dial_peer_submission(
 }
 
 /// Settings-tab single-key shortcuts: `n` edits this install's nickname,
-/// `d` begins a peer dial. Other chars fall through to the input box.
+/// `d` begins a peer dial, `b`/`r` open the network-peer add prompt for a
+/// bootstrap/relay multiaddr, `x` removes the highlighted entry. Other chars
+/// fall through to the input box.
 fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
     match c {
         'n' => handle_nickname_key(s, &p2p_app::tui_tabs::TabContent::Settings),
@@ -675,7 +680,65 @@ fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
             s.begin_dial_peer();
             p2plog_debug("Started peer dial".to_string());
         }
+        'b' => {
+            s.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Bootstrap);
+            p2plog_debug("Started bootstrap multiaddr entry".to_string());
+        }
+        'r' => {
+            s.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Relay);
+            p2plog_debug("Started relay multiaddr entry".to_string());
+        }
+        'x' => remove_selected_network_peer(s),
         _ => {}
+    }
+}
+
+/// Submit the Settings add-network-peer prompt: validate + persist via the
+/// canonical [`p2p_app::network_config::add_network_peer`] path, then reload
+/// the list. Validation failures surface in a popup (same as nickname errors).
+fn handle_add_network_peer_submission(s: &mut super::state::AppState) {
+    let kind = s.network_peer_kind;
+    let address = s.chat_input.lines().join("\n").trim().to_string();
+    s.cancel_add_network_peer();
+    let Some(kind) = kind else {
+        return;
+    };
+    if address.is_empty() {
+        return;
+    }
+    match p2p_app::network_config::add_network_peer(kind.as_str(), &address) {
+        Ok(peer) => {
+            p2plog_debug(format!(
+                "Saved {} network peer: {}",
+                peer.kind, peer.multiaddr
+            ));
+            s.reload_network_peers();
+            s.network_peer_selection = s
+                .network_peers
+                .iter()
+                .position(|row| row.id == peer.id)
+                .unwrap_or(s.network_peer_selection);
+        }
+        Err(error) => {
+            s.popup = Some(format!("Network peer not saved: {error}"));
+        }
+    }
+}
+
+/// Remove the highlighted persisted network peer (Settings `x`).
+fn remove_selected_network_peer(s: &mut super::state::AppState) {
+    let Some(peer) = s.network_peers.get(s.network_peer_selection).cloned() else {
+        return;
+    };
+    match p2p_app::network_config::remove_network_peer(peer.id) {
+        Ok(true) => {
+            p2plog_debug(format!("Removed {} network peer: {}", peer.kind, peer.multiaddr));
+            s.reload_network_peers();
+        }
+        Ok(false) => {}
+        Err(error) => {
+            s.popup = Some(format!("Network peer not removed: {error}"));
+        }
     }
 }
 
@@ -912,6 +975,8 @@ async fn handle_key_dispatch(
                 handle_nickname_submission(s, swarm_cmd_tx).await;
             } else if s.is_dialing_peer() {
                 handle_dial_peer_submission(s, swarm_cmd_tx).await;
+            } else if s.is_adding_network_peer() {
+                handle_add_network_peer_submission(s);
             } else {
                 handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
             }
@@ -945,7 +1010,11 @@ async fn handle_key_dispatch(
             handle_nickname_key(s, &tab);
         }
         crossterm::event::KeyCode::Char(c)
-            if !is_ctrl && !s.is_editing_nickname() && on_settings =>
+            if !is_ctrl
+                && !s.is_editing_nickname()
+                && !s.is_dialing_peer()
+                && !s.is_adding_network_peer()
+                && on_settings =>
         {
             handle_settings_shortcut(c, s);
         }
@@ -967,6 +1036,7 @@ async fn handle_key_dispatch(
                 || s.is_editing_nickname()
                 || s.is_creating_group()
                 || s.is_dialing_peer()
+                || s.is_adding_network_peer()
             {
                 s.chat_input.input(key_event);
             }

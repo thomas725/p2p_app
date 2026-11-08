@@ -7,10 +7,12 @@
 //! alive (the client behaviour renews it automatically and confirms the
 //! resulting `/p2p/<relay>/p2p-circuit/p2p/<self>` address as external).
 //!
-//! Relays are configured with the `P2P_RELAY` env var: comma-separated
-//! multiaddrs that each carry a `/p2p/<relay-peer-id>` suffix. We never request
-//! a slot from an unconfigured peer — our own nodes deny reservations unless
-//! `P2P_RELAY_SERVER=1`, and the public DHT is full of peers that would.
+//! Relays are configured two ways, unioned by [`effective_relay_addrs`]: the
+//! `P2P_RELAY` env var (comma-separated multiaddrs) and the persisted
+//! `network_peers` list of kind `relay`, editable from Settings in both
+//! frontends. Every entry must carry a `/p2p/<relay-peer-id>` suffix. We never
+//! request a slot from an unconfigured peer — our own nodes deny reservations
+//! unless `P2P_RELAY_SERVER=1`, and the public DHT is full of peers that would.
 
 use libp2p::Multiaddr;
 use libp2p::multiaddr::Protocol;
@@ -49,6 +51,24 @@ pub fn parse_relay_addrs(input: &str) -> Vec<Multiaddr> {
 #[must_use]
 pub fn configured_relay_addrs() -> Vec<Multiaddr> {
     std::env::var("P2P_RELAY").map_or_else(|_| Vec::new(), |value| parse_relay_addrs(&value))
+}
+
+/// Every relay the node should request a reservation from: the `P2P_RELAY`
+/// env var **plus** the persisted `network_peers` list of kind `relay`.
+///
+/// The two are unioned rather than overridden: a relay is an explicit opt-in,
+/// so adding one in Settings must not silently drop an operator-configured one
+/// (and vice versa). Entries are deduplicated; the persisted list is only read
+/// at node start, so a Settings change applies on the next start.
+#[must_use]
+pub fn effective_relay_addrs() -> Vec<Multiaddr> {
+    let mut addrs = configured_relay_addrs();
+    for addr in crate::network_config::stored_relay_addrs() {
+        if !addrs.contains(&addr) {
+            addrs.push(addr);
+        }
+    }
+    addrs
 }
 
 /// Peer id embedded in a multiaddr, if any.

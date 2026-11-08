@@ -148,7 +148,8 @@ fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
 /// for a retry.
 #[cfg_attr(not(feature = "relay"), allow(dead_code))]
 struct RelayState {
-    /// Relay multiaddrs from `P2P_RELAY` (each with `/p2p/<relay-id>`).
+    /// Configured relay multiaddrs (`P2P_RELAY` + the persisted list, each
+    /// with `/p2p/<relay-id>`).
     addrs: Vec<libp2p::Multiaddr>,
     /// Relays we have already asked for a reservation.
     requested: std::collections::HashSet<libp2p::PeerId>,
@@ -168,7 +169,7 @@ impl RelayState {
     /// Load the configured relays and request a reservation with each.
     #[cfg(feature = "relay")]
     fn configure(&mut self, swarm: &mut Swarm<AppBehaviour>) {
-        self.addrs = crate::relay::configured_relay_addrs();
+        self.addrs = crate::relay::effective_relay_addrs();
         let peers: Vec<libp2p::PeerId> = self
             .addrs
             .iter()
@@ -1684,6 +1685,64 @@ fn unsubscribe_from_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
+/// Public IPFS bootstrap nodes, used only when the operator opts in with
+/// `P2P_PUBLIC_DHT` (or lists their own peers).
+#[cfg(feature = "kad")]
+const PUBLIC_BOOTSTRAP_PEERS: &str = concat!(
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfu53Fn2A9xSfDMGcR6fYSdrNj4HgjCZNnTE5,",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJ9GD89Nm3HLQQpXePmCRp,",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb,",
+    "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt,"
+);
+
+/// Bootstrap multiaddrs to dial at node start.
+///
+/// Precedence, highest first:
+///
+/// 1. `P2P_BOOTSTRAP` — when the variable is **set** it wins outright, even
+///    when empty (that is the documented way to disable bootstrapping and
+///    ignore the persisted list).
+/// 2. The persisted `network_peers` list of kind `bootstrap`, editable from
+///    Settings in both frontends.
+/// 3. The public IPFS bootstrap nodes, only with `P2P_PUBLIC_DHT=1` — a
+///    default install stays LAN-only (mDNS) and generates no global DHT traffic.
+#[cfg(feature = "kad")]
+fn bootstrap_addrs() -> Vec<libp2p::Multiaddr> {
+    if let Ok(value) = std::env::var("P2P_BOOTSTRAP") {
+        return parse_bootstrap_addrs(&value);
+    }
+    let stored = crate::network_config::stored_bootstrap_addrs();
+    if !stored.is_empty() {
+        return stored;
+    }
+    let public_enabled = std::env::var("P2P_PUBLIC_DHT")
+        .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
+    if public_enabled {
+        return parse_bootstrap_addrs(PUBLIC_BOOTSTRAP_PEERS);
+    }
+    Vec::new()
+}
+
+/// Parse a comma-separated bootstrap list, dropping entries that do not parse.
+#[cfg(feature = "kad")]
+fn parse_bootstrap_addrs(list: &str) -> Vec<libp2p::Multiaddr> {
+    let mut addrs: Vec<libp2p::Multiaddr> = Vec::new();
+    for addr in list.split(',') {
+        let addr = addr.trim();
+        if addr.is_empty() {
+            continue;
+        }
+        if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
+            if !addrs.contains(&ma) {
+                addrs.push(ma);
+            }
+        } else {
+            p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
+        }
+    }
+    addrs
+}
+
 /// Spawns the swarm handler task that processes libp2p events
 /// and translates them to app-level `SwarmEvent` messages.
 ///
@@ -1701,56 +1760,15 @@ pub fn spawn_swarm_handler(
 
     let handle = tokio::spawn(async move {
         // Bootstrap (US-050): dial peers so the node can join a public network
-        // instead of staying LAN-only. Source of the list:
-        //   1. P2P_BOOTSTRAP env var (comma-separated multiaddrs), if set.
-        //   2. Otherwise the public IPFS bootstrap nodes, so discovery works
-        //      out of the box without hosting our own. Set P2P_BOOTSTRAP to an
-        //      empty string to disable bootstrapping entirely.
+        // instead of staying LAN-only. See `bootstrap_addrs` for the source
+        // precedence (env var → persisted list → opt-in public IPFS nodes).
         // The Kademlia behaviour is forced into client mode (see behavior.rs),
         // so we route through the public DHT without storing/serving its
         // records.
         #[cfg(feature = "kad")]
         {
-            // Public IPFS bootstrap is opt-in: only fall back to it when the user
-            // explicitly enables it (P2P_PUBLIC_DHT=1/true) or sets P2P_BOOTSTRAP.
-            // Otherwise we stay LAN-only (mDNS), avoiding global DHT traffic.
-            let env_bootstrap = std::env::var("P2P_BOOTSTRAP").ok();
-            let public_enabled = std::env::var("P2P_PUBLIC_DHT")
-                .is_ok_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"));
-            let list = env_bootstrap.map_or_else(
-                || {
-                    if public_enabled {
-                        [
-                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmNnooDu7bfu53Fn2A9xSfDMGcR6fYSdrNj4HgjCZNnTE5",
-                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJ9GD89Nm3HLQQpXePmCRp",
-                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb",
-                            "/dnsaddr/bootstrap.libp2p.io/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt",
-                        ]
-                        .join(",")
-                    } else {
-                        String::new()
-                    }
-                },
-                |v| {
-                    if v.trim().is_empty() {
-                        String::new()
-                    } else {
-                        v
-                    }
-                },
-            );
-            if !list.is_empty() {
-                for addr in list.split(',') {
-                    let addr = addr.trim();
-                    if addr.is_empty() {
-                        continue;
-                    }
-                    if let Ok(ma) = addr.parse::<libp2p::Multiaddr>() {
-                        let _ = swarm.dial(ma);
-                    } else {
-                        p2plog_debug(format!("Invalid bootstrap multiaddr: {addr}"));
-                    }
-                }
+            for addr in bootstrap_addrs() {
+                let _ = swarm.dial(addr);
             }
         }
         // Circuit-relay reservations (US-050 follow-up 2): listen on the

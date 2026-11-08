@@ -16,6 +16,13 @@ pub fn render_input_section(
 ) {
     let title = if state.is_dialing_peer() {
         "Dial peer address - Enter to dial, Esc to cancel".to_string()
+    } else if state.is_adding_network_peer() {
+        format!(
+            "Add {} multiaddr - Enter to save, Esc to cancel",
+            state
+                .network_peer_kind
+                .map_or("network peer", p2p_app::network_config::NetworkPeerKind::as_str)
+        )
     } else if state.is_creating_group() {
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()
     } else if state.is_editing_nickname() {
@@ -42,6 +49,7 @@ pub fn render_input_section(
         || state.is_editing_nickname()
         || state.is_creating_group()
         || state.is_dialing_peer()
+        || state.is_adding_network_peer()
     {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);

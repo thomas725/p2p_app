@@ -16,6 +16,32 @@ fn format_lost_at(ts: Option<f64>) -> String {
     .unwrap_or_else(|| "—".to_string())
 }
 
+/// Append the persisted bootstrap/relay list (US-050 follow-up 1).
+///
+/// The highlight moves with Up/Down/Home/End on the Settings tab; `b`/`r`
+/// open the add prompt for a bootstrap/relay multiaddr and `x` removes the
+/// highlighted entry. The node only reads the list at start, so the header
+/// says so.
+fn render_network_peers(lines: &mut Vec<String>, state: &TuiRenderState) {
+    lines.push(format!(
+        "Network peers ({}) — applies on next node start:",
+        state.network_peers.len()
+    ));
+    if state.network_peers.is_empty() {
+        lines.push("  — none configured".to_string());
+    } else {
+        for (index, peer) in state.network_peers.iter().enumerate() {
+            let marker = if index == state.network_peer_selection {
+                ">"
+            } else {
+                " "
+            };
+            lines.push(format!("{marker} {} {}", peer.kind, peer.multiaddr));
+        }
+    }
+    lines.push("  b: add bootstrap | r: add relay | x: remove | Up/Down: select".to_string());
+}
+
 /// The most recent connection we had to report on the Settings tab: this
 /// session's last disconnect if any, otherwise the known peer with the newest
 /// `last_seen`. Returns `(peer_id, formatted_timestamp)`.
@@ -133,6 +159,7 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
             lines.push(format!("  {display} (bound {bound_at})"));
         }
     }
+    render_network_peers(&mut lines, state);
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
     lines.push(format!("Node: {node_status}"));

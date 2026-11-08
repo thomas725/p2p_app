@@ -19,6 +19,7 @@ import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/network_config.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
 /// swaps in [HttpNodeApi] for the web build. Tests may replace it with a
@@ -107,6 +108,22 @@ abstract class NodeApi {
   });
 
   Future<void> dialPeer({required String address});
+
+  // --- Persisted network configuration (bootstrap + relay multiaddrs) ---
+
+  /// Every persisted network peer, oldest first. The node reads this list once
+  /// at start, so edits apply on the next start.
+  Future<List<NetworkPeer>> listNetworkPeers();
+
+  /// Persist one peer multiaddr (`kind` = `bootstrap` or `relay`). The address
+  /// is validated in Rust; relay entries need a `/p2p/<peer-id>` suffix.
+  Future<NetworkPeer> addNetworkPeer({
+    required String kind,
+    required String multiaddr,
+  });
+
+  /// Remove the persisted entry with [id]; true when a row was deleted.
+  Future<bool> removeNetworkPeer({required int id});
 
   // --- Groups ---
 

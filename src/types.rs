@@ -40,6 +40,9 @@ pub enum InputMode {
     SearchingContacts,
     /// Capturing a peer multiaddr to dial (manual peer address entry, US-053).
     DialingPeer,
+    /// Capturing a bootstrap/relay multiaddr to persist in `network_peers`
+    /// (Settings tab; the kind is held in `AppState::network_peer_kind`).
+    AddingNetworkPeer,
 }
 
 /// Per-tab "keep scrolled to the newest message" toggles.

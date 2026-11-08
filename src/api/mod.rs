@@ -45,6 +45,40 @@ pub fn get_peer_quality(peer_id: &str) -> crate::net_diag::PeerQuality {
     crate::mobile_api::get_peer_quality(peer_id)
 }
 
+/// Persisted network peers (bootstrap + relay multiaddrs): the Settings-editable
+/// replacement for the `P2P_BOOTSTRAP` / `P2P_RELAY` env vars.
+///
+/// Both frontends render the list; the node reads it once at start.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn list_network_peers() -> Result<Vec<crate::network_config::NetworkPeer>, String> {
+    crate::network_config::list_network_peers().map_err(|e| e.to_string())
+}
+
+/// Add one persisted network peer (`kind` = `bootstrap` or `relay`).
+///
+/// The address is validated by parsing it back into a libp2p multiaddr; relay
+/// entries must carry `/p2p/<peer-id>`. Adding an already-stored address is a
+/// no-op that returns the existing row. Takes effect on the next node start.
+///
+/// # Errors
+/// Returns a human-readable validation/persistence error.
+pub fn add_network_peer(
+    kind: &str,
+    multiaddr: &str,
+) -> Result<crate::network_config::NetworkPeer, String> {
+    crate::network_config::add_network_peer(kind, multiaddr)
+}
+
+/// Remove the persisted network peer with `id`; true when a row was deleted.
+///
+/// # Errors
+/// Returns an error if the database delete fails.
+pub fn remove_network_peer(id: i32) -> Result<bool, String> {
+    crate::network_config::remove_network_peer(id).map_err(|e| e.to_string())
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

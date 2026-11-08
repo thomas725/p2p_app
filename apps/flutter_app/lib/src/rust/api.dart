@@ -7,6 +7,7 @@ import 'frb_generated.dart';
 import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
+import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -37,6 +38,39 @@ Future<NetworkDetails> getNetworkDetails() =>
 /// show the same Rust-formatted strings on the Peer Info page.
 Future<PeerQuality> getPeerQuality({required String peerId}) =>
     RustLib.instance.api.crateApiGetPeerQuality(peerId: peerId);
+
+/// Persisted network peers (bootstrap + relay multiaddrs): the Settings-editable
+/// replacement for the `P2P_BOOTSTRAP` / `P2P_RELAY` env vars.
+///
+/// Both frontends render the list; the node reads it once at start.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+Future<List<NetworkPeer>> listNetworkPeers() =>
+    RustLib.instance.api.crateApiListNetworkPeers();
+
+/// Add one persisted network peer (`kind` = `bootstrap` or `relay`).
+///
+/// The address is validated by parsing it back into a libp2p multiaddr; relay
+/// entries must carry `/p2p/<peer-id>`. Adding an already-stored address is a
+/// no-op that returns the existing row. Takes effect on the next node start.
+///
+/// # Errors
+/// Returns a human-readable validation/persistence error.
+Future<NetworkPeer> addNetworkPeer({
+  required String kind,
+  required String multiaddr,
+}) => RustLib.instance.api.crateApiAddNetworkPeer(
+  kind: kind,
+  multiaddr: multiaddr,
+);
+
+/// Remove the persisted network peer with `id`; true when a row was deleted.
+///
+/// # Errors
+/// Returns an error if the database delete fails.
+Future<bool> removeNetworkPeer({required int id}) =>
+    RustLib.instance.api.crateApiRemoveNetworkPeer(id: id);
 
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///

@@ -16,6 +16,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/network_config.dart';
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
 /// bindings (the historical mobile behavior). This is the default transport
@@ -150,6 +151,21 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> dialPeer({required String address}) =>
       bridge.dialPeer(address: address);
+
+  // ── Persisted network configuration ──────────────────────────────────────
+
+  @override
+  Future<List<NetworkPeer>> listNetworkPeers() => bridge.listNetworkPeers();
+
+  @override
+  Future<NetworkPeer> addNetworkPeer({
+    required String kind,
+    required String multiaddr,
+  }) => bridge.addNetworkPeer(kind: kind, multiaddr: multiaddr);
+
+  @override
+  Future<bool> removeNetworkPeer({required int id}) =>
+      bridge.removeNetworkPeer(id: id);
 
   // ── Groups ────────────────────────────────────────────────────────────────
 

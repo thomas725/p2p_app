@@ -244,6 +244,7 @@ fn initialize_state(
     state.platform = format!("Terminal ({})", std::env::consts::OS);
     state.network_size =
         p2p_app::get_network_size().map_or_else(|_| "Unknown".to_string(), |n| n.to_string());
+    state.reload_network_peers();
     (state, db_info, initial_groups)
 }
 

@@ -61,6 +61,9 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "sortContacts"
         | "startCall"
         | "sendCallSignal") => contacts_calls(m, params),
+        m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer") => {
+            network_config(m, params)
+        }
         m @ ("formatTimeHhmm" | "isAtBottom" | "parseLastSeenMs") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
     }
@@ -96,6 +99,22 @@ fn node_state(method: &str, params: Value) -> Result<Value, String> {
             ok(api::dial_peer(p.address))
         }
         other => Err(format!("method not routed to node_state: {other}")),
+    }
+}
+
+/// Persisted network configuration (bootstrap + relay multiaddrs).
+fn network_config(method: &str, params: Value) -> Result<Value, String> {
+    match method {
+        "listNetworkPeers" => json(api::list_network_peers()),
+        "addNetworkPeer" => {
+            let p: NetworkPeerParams = parse(params)?;
+            json(api::add_network_peer(&p.kind, &p.multiaddr))
+        }
+        "removeNetworkPeer" => {
+            let p: IdParams = parse(params)?;
+            json(api::remove_network_peer(p.id))
+        }
+        other => Err(format!("method not routed to network_config: {other}")),
     }
 }
 
@@ -426,11 +445,23 @@ struct DialParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct NetworkPeerParams {
+    kind: String,
+    multiaddr: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IdParams {
+    id: i32,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ProvisionParams {
     self_username: Option<String>,
     self_nickname: Option<String>,
 }
-
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DeviceBindingParams {

@@ -14,6 +14,7 @@ import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/network_config.dart';
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
 /// request frame on the WebSocket (`{id, method, params}` answered by
@@ -305,6 +306,16 @@ class HttpNodeApi implements NodeApi {
     );
   }
 
+  static NetworkPeer networkPeerFromJson(dynamic raw) {
+    final m = raw as Map<String, dynamic>;
+    return NetworkPeer(
+      id: m['id'] as int,
+      kind: m['kind'] as String,
+      multiaddr: m['multiaddr'] as String,
+      createdAt: m['createdAt'] as String,
+    );
+  }
+
   static MobileDeviceInfo deviceInfoFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return MobileDeviceInfo(
@@ -534,6 +545,26 @@ class HttpNodeApi implements NodeApi {
   Future<void> dialPeer({required String address}) async {
     await _call('dialPeer', {'address': address});
   }
+
+  // ── Persisted network configuration ──────────────────────────────────────
+
+  @override
+  Future<List<NetworkPeer>> listNetworkPeers() async {
+    final raw = await _call('listNetworkPeers') as List<dynamic>;
+    return raw.map(HttpNodeApi.networkPeerFromJson).toList();
+  }
+
+  @override
+  Future<NetworkPeer> addNetworkPeer({
+    required String kind,
+    required String multiaddr,
+  }) async => HttpNodeApi.networkPeerFromJson(
+    await _call('addNetworkPeer', {'kind': kind, 'multiaddr': multiaddr}),
+  );
+
+  @override
+  Future<bool> removeNetworkPeer({required int id}) async =>
+      await _call('removeNetworkPeer', {'id': id}) as bool;
 
   // ── Groups ────────────────────────────────────────────────────────────────
 

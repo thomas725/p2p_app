@@ -7,7 +7,7 @@
 
 use crate::generated::schema::{
     contacts, device_bindings, files, group_members, group_messages, groups, identities,
-    message_receipts, messages, peer_sessions, peers, users,
+    message_receipts, messages, network_peers, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -247,4 +247,18 @@ pub struct Contact {
     pub added_at: NaiveDateTime,
     /// Timestamp when the contact was most recently observed
     pub last_seen: Option<NaiveDateTime>,
+}
+
+/// Queryable struct for the `network_peers` table (persisted network config)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = network_peers)]
+pub struct NetworkPeerRow {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// `bootstrap` (dialed at node start) or `relay` (reservation target)
+    pub kind: String,
+    /// Canonical text form of the peer multiaddr
+    pub multiaddr: String,
+    /// Timestamp when this peer was added
+    pub created_at: NaiveDateTime,
 }

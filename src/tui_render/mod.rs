@@ -104,6 +104,11 @@ pub fn render_input_section(
 ) {
     let title = if state.is_dialing_peer() {
         "Dial peer address".to_string()
+    } else if state.is_adding_network_peer() {
+        format!(
+            "Add {} multiaddr",
+            state.network_peer_kind.as_deref().unwrap_or("network peer")
+        )
     } else if state.is_searching_contacts() {
         "Search Contacts".to_string()
     } else if state.is_editing_nickname() {
@@ -123,6 +128,7 @@ pub fn render_input_section(
         || state.is_editing_nickname()
         || state.is_searching_contacts()
         || state.is_dialing_peer()
+        || state.is_adding_network_peer()
     {
         let inner_area = input_block.inner(area);
         f.render_widget(input_block, area);
@@ -149,6 +155,9 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
         }
         TabContent::Groups => {
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | Ctrl+Q: quit"
+        }
+        TabContent::Settings => {
+            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
