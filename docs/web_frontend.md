@@ -140,17 +140,18 @@ There are three modes:
 
 | Mode | Build | Run |
 |---|---|---|
-| TUI only | `cargo build --bin p2p_chat_tui` | `p2p_chat_tui` |
+| TUI only | `cargo build --bin p2p_chat_tui --no-default-features --features "tui,mobile,mdns,kad,relay,nat,quic,tracing,attachment-gc"` | `p2p_chat_tui` |
 | Web server only | `cargo build --bin p2p_chat_server` | `p2p_chat_server --assets apps/flutter_app/build/web` |
-| Both, one node | same `p2p_chat_tui` build (default features include `web`) | `p2p_chat_tui --web --web-assets apps/flutter_app/build/web` |
+| Both, one node | `cargo build --bin p2p_chat_tui` (default features include `web`) | `p2p_chat_tui --web --web-assets apps/flutter_app/build/web` |
 
-`p2p_chat_tui --web` serves the API on `127.0.0.1:8080` (`--web-port` or
-`P2P_WEB_PORT`) and, with `--web-assets` (or `P2P_WEB_ASSETS`), the Flutter
-bundle too, so the TUI and the browser share one swarm in one process.
-Without `--web` the same binary is TUI-only; for a web-free binary (no axum
-code) build with `--no-default-features --features
-"tui,mobile,mdns,kad,relay,nat,quic,tracing,attachment-gc"`. `run_tui.sh` in
-the repo root runs the default build and forwards its arguments.
+TUI-only means web-free: the TUI-only build above leaves out the `web`
+feature (and therefore the axum web server). The default feature set includes
+`web`, so a plain `cargo build --bin p2p_chat_tui` is the "both, one node"
+binary, not the TUI-only one. In that binary, `--web` serves the API on
+`127.0.0.1:8080` (`--web-port` or `P2P_WEB_PORT`) and, with `--web-assets`
+(or `P2P_WEB_ASSETS`), the Flutter bundle too, so the TUI and the browser
+share one swarm in one process. `run_tui.sh` in the repo root runs the
+web-free TUI-only build and forwards its arguments.
 
 `scripts/build-all.sh` builds **both** desktop frontends: the TUI binary and the Flutter web
 bundle, from a single `cargo build --bin p2p_chat_tui --bin p2p_chat_server` (one feature
