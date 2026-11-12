@@ -123,5 +123,5 @@ fn test_parse_bootstrap_addrs_trims_dedupes_and_skips_garbage() {
         "/ip4/5.6.7.8/tcp/4001".parse().expect("parse"),
     ];
     assert_eq!(parsed, expected);
-    assert!(parse_bootstrap_addrs("  ,  ").is_empty());
+    assert_eq!(parse_bootstrap_addrs("  ,  "), Vec::new());
 }

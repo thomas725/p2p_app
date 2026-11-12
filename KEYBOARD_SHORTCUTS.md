@@ -155,8 +155,16 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 |-----|--------|
 | `n` | Edit your own nickname |
 | `d` | Open the "Dial peer" prompt — type a multiaddr (`/ip4/1.2.3.4/tcp/4001/p2p/<peer-id>`) and press `Enter` to dial it |
+| `b` | Add a bootstrap multiaddr to the persisted network-peer list |
+| `r` | Add a relay multiaddr (must end in `/p2p/<peer-id>`) |
+| `x` | Remove the highlighted network peer |
+| `↑` / `↓`, `Home` / `End` | Move the network-peer highlight |
 
 The dial prompt uses the shared input box; `Esc` cancels it without dialing.
+The same box serves `b`/`r`; saved network peers are only read when the node
+starts, so an added or removed entry applies on the next start. Outside the
+add prompt these keys act immediately, so `b`/`r`/`x` cannot be typed into a
+message while the Settings tab is active.
 
 ## Input and editing
 

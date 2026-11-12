@@ -2016,7 +2016,7 @@ fn test_settings_shortcut_begins_network_peer_prompts() {
 fn test_settings_shortcut_x_without_a_selection_is_a_noop() {
     let mut state = test_app_state();
     handle_settings_shortcut('x', &mut state);
-    assert!(state.network_peers.is_empty());
+    assert_eq!(state.network_peers, Vec::new());
     assert!(state.popup.is_none());
 }
 
@@ -2026,7 +2026,7 @@ fn test_network_peer_submission_ignores_empty_input() {
     state.begin_add_network_peer(p2p_app::network_config::NetworkPeerKind::Bootstrap);
     handle_add_network_peer_submission(&mut state);
     assert!(!state.is_adding_network_peer());
-    assert!(state.network_peers.is_empty());
+    assert_eq!(state.network_peers, Vec::new());
     assert!(state.popup.is_none());
 }
 
@@ -2062,11 +2062,12 @@ fn test_network_peer_submission_persists_and_removes() {
     );
 
     remove_selected_network_peer(&mut state);
-    assert!(state.network_peers.is_empty());
-    assert!(
+    assert_eq!(state.network_peers, Vec::new());
+    assert_eq!(
         p2p_app::network_config::list_network_peers()
             .expect("list")
-            .is_empty()
+            .len(),
+        0
     );
 
     p2p_app::db::release_db_lock();
@@ -2091,11 +2092,12 @@ fn test_network_peer_submission_reports_validation_errors() {
     handle_add_network_peer_submission(&mut state);
 
     assert!(!state.is_adding_network_peer());
-    assert!(state.network_peers.is_empty(), "nothing persisted");
-    assert!(
+    assert_eq!(state.network_peers, Vec::new(), "nothing persisted");
+    assert_eq!(
         p2p_app::network_config::list_network_peers()
             .expect("list")
-            .is_empty()
+            .len(),
+        0
     );
     let popup = state.popup.expect("validation popup");
     assert!(
@@ -2105,4 +2107,39 @@ fn test_network_peer_submission_reports_validation_errors() {
 
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();
+}
+
+// ── persisted network peers: the add prompt owns printable keys ──────────
+
+fn settings_tab_index(state: &AppState) -> usize {
+    state.dynamic_tabs.total_tab_count().saturating_sub(1)
+}
+
+#[tokio::test]
+async fn test_settings_add_prompt_owns_printable_keys() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.active_tab = settings_tab_index(&s);
+    }
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    // `b` opens the bootstrap prompt. Each handled key renders once, so the
+    // single-slot render channel must be drained between presses or the
+    // second `send` blocks forever.
+    let key = KeyEvent::new(KeyCode::Char('b'), KeyModifiers::empty());
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+    while render_rx.try_recv().is_ok() {}
+
+    // A second `b` must be captured as text, not restart the prompt.
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+    while render_rx.try_recv().is_ok() {}
+
+    let s = state.lock().await;
+    assert_eq!(
+        s.network_peer_kind,
+        Some(p2p_app::network_config::NetworkPeerKind::Bootstrap)
+    );
+    assert_eq!(s.chat_input.lines().join("\n"), "b");
 }

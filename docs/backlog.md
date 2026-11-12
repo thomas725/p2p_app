@@ -244,15 +244,19 @@ hosting our own bootstrap nodes:
 
 Remaining follow-ups (detailed 2026-11-03):
 
-1. **Config surface for bootstrap/relay peers** (partially shipped 2026-11-08).
-   Relay peers are now configurable with the `P2P_RELAY` env var (comma-
-   separated multiaddrs, each needing `/p2p/<peer-id>`); bootstrap peers stay
-   on `P2P_BOOTSTRAP`. Still missing: a persisted list (DB column / Settings
-   input / CLI flag / web method) loaded in all three entry points and editable
-   in TUI/Flutter/web Settings, validated as `Multiaddr` (ideally with
-   `/p2p/<peerid>`), and reachable on demand (the manual dial that can do that
-   already shipped as US-053: Settings `d` / the Flutter "Connect to address"
-   card / the `dialPeer` web method).
+1. **Config surface for bootstrap/relay peers — shipped 2026-11-12**
+   (`b11d03a` + `61f9f2a`). Relay peers are configurable with the `P2P_RELAY`
+   env var (comma-separated multiaddrs, each needing `/p2p/<peer-id>`);
+   bootstrap peers stay on `P2P_BOOTSTRAP`. On top of that, both lists are now
+   persisted in the `network_peers` table and editable from Settings in the
+   TUI (`b` / `r` / `x`), Flutter (a "Network peers" card) and the web
+   frontend (the same JSON methods). Entries are validated as `Multiaddr`, relay
+   entries must carry `/p2p/<peerid>`, and both lists are read at node start
+   only. Bootstrap precedence: env var (set ⇒ wins, even empty) → persisted
+   rows → public IPFS nodes with `P2P_PUBLIC_DHT=1`; relays are the union of
+   env and persisted rows. The manual one-off dial is US-053 (Settings `d` /
+   Flutter "Connect to address" / `dialPeer`). Record:
+   [`archive/2026-11-12_network_peer_config_surface.md`](archive/2026-11-12_network_peer_config_surface.md).
 2. **Relay reservation triggering — shipped 2026-11-08.** `src/relay.rs` parses
    `P2P_RELAY` and builds the `/p2p-circuit` listen address; `swarm_handler`
    listens on every configured relay at node start (which dials the relay and
@@ -272,8 +276,8 @@ Remaining follow-ups (detailed 2026-11-03):
    peers see the same dialable address.
 
 Items 2 and 3 are coupled (a reservation is required before there is anything
-to advertise); item 1's env-var half is now in place, the persisted UI half is
-not. None are blocked on external decisions.
+to advertise). All three follow-ups have shipped; nothing here is blocked on an
+external decision.
 
 ### Peer blocklist / mute (US-054)
 

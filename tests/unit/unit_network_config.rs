@@ -80,7 +80,7 @@ fn add_list_dedupe_and_remove() {
         let added = add_network_peer("bootstrap", bootstrap).expect("add bootstrap");
         assert_eq!(added.kind, "bootstrap");
         assert_eq!(added.multiaddr, bootstrap);
-        assert!(!added.created_at.is_empty());
+        assert_ne!(added.created_at, "");
 
         let duplicate = add_network_peer("bootstrap", bootstrap).expect("re-add bootstrap");
         assert_eq!(duplicate.id, added.id, "duplicate add is a no-op");
@@ -109,7 +109,7 @@ fn add_rejects_unknown_kind_and_invalid_address() {
         assert!(add_network_peer("dht", "/ip4/1.2.3.4/tcp/4001").is_err());
         assert!(add_network_peer("bootstrap", "nope").is_err());
         assert!(add_network_peer("relay", "/ip4/1.2.3.4/tcp/4001").is_err());
-        assert!(list_network_peers().expect("list").is_empty());
+        assert_eq!(list_network_peers().expect("list"), Vec::new());
     });
 }
 

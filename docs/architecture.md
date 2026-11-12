@@ -136,6 +136,38 @@ narrow to the dialable `/…/p2p/<relay>/p2p-circuit/p2p/<self>` form instead of
 the unreachable LAN addresses; otherwise external/listen addresses stay first
 with any completed circuit address appended.
 
+### Network entry points (bootstrap + relays)
+
+The two multiaddr lists that decide how the node reaches the internet are
+persisted in the `network_peers` table (`kind` = `bootstrap` | `relay`, unique
+on `(kind, multiaddr)`) and editable from Settings in all three frontends —
+`src/network_config.rs` owns validation, listing, add and remove, and the FRB
+(`listNetworkPeers` / `addNetworkPeer` / `removeNetworkPeer`) and web JSON
+methods are 1:1 wrappers over it. Every frontend submits raw text; Rust parses
+it back into a `Multiaddr` and returns the canonical string, so no unparseable
+value is ever stored. Relay entries additionally require `/p2p/<peer-id>`,
+because a reservation is requested from a specific relay.
+
+Resolution precedence is deliberate and asymmetric:
+
+- **Bootstrap**: `P2P_BOOTSTRAP` wins outright when *set* (even to an empty
+  string, which is the documented way to disable bootstrapping and ignore the
+  persisted list) → persisted `bootstrap` rows → the public IPFS bootstrap
+  nodes, but only with `P2P_PUBLIC_DHT=1`. A default install stays LAN-only.
+- **Relay**: `P2P_RELAY` and the persisted `relay` rows are **unioned**
+  (`relay::effective_relay_addrs`), deduplicated. A relay is an explicit
+  opt-in, so adding one in Settings must not silently drop an operator's
+  env-configured one.
+
+Both lists are read **only at node start** — the Settings surface (and every
+saved-add toast) says "applies on next node start", and there is no live
+reload. The TUI edits the list on the Settings tab (`b` add bootstrap, `r` add
+relay through a shared prompt under `InputMode::AddingNetworkPeer`, `x` remove
+the highlighted row, Up/Down/Home/End to move the highlight); Flutter uses a
+"Network peers" card with an add dialog and a per-row delete.
+`stored_*_addrs()` is best-effort: a database error yields an empty list rather
+than failing startup.
+
 Per-peer connection quality comes from the libp2p ping behaviour: every
 `ping::Event` with an outbound result feeds `net_diag::record_ping_rtt` /
 `record_ping_failure`, and `PeerQuality` (latest RTT, success/failure counts,
@@ -163,7 +195,7 @@ single-device contact.
 
 ## Persistence
 
-SQLite via Diesel. Fourteen tables:
+SQLite via Diesel. Fifteen tables:
 
 | Table | Holds |
 |---|---|
@@ -177,8 +209,9 @@ SQLite via Diesel. Fourteen tables:
 | `groups` / `group_members` / `group_messages` | the group layer |
 | `users` / `device_bindings` / `contacts` | the identity + contact layer |
 | `files` | attachment descriptors (the bytes live on disk, never in SQLite) |
+| `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
 
-Sixteen migrations in `migrations/`. `db::ensure_columns()` also runs at
+Eighteen migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app
