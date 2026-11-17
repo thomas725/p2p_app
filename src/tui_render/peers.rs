@@ -7,8 +7,8 @@
 //! viewport index into the flattened `contact_table_plan`.
 
 use crate::tui_helpers::{
-    contact_table_plan, contact_table_row, peer_count_display, peer_table_column_widths,
-    peer_table_header_labels, peer_table_visible_range,
+    ContactTableRowRef, contact_table_plan, contact_table_row, peer_count_display,
+    peer_table_column_widths, peer_table_header_labels, peer_table_visible_range,
 };
 use crate::tui_render_state::TuiRenderState;
 use ratatui::{
@@ -36,7 +36,13 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
         .iter()
         .skip(start)
         .take(end.saturating_sub(start))
-        .map(|&row| contact_table_row(&state.contacts, &state.expanded_contact_ids, row))
+        .map(|&row| {
+            let mut built = contact_table_row(&state.contacts, &state.expanded_contact_ids, row);
+            if row_is_blocked(state, row) {
+                built.display_name = format!("\u{2298} {}", built.display_name);
+            }
+            built
+        })
         .collect();
 
     let header_cells: Vec<Cell> =
@@ -92,4 +98,29 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     )
     .style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(hint, hint_area);
+}
+
+/// Whether a flattened Contacts row is muted (US-054).
+///
+/// A contact row is marked only when *every* device under it is blocked — a
+/// partially muted contact shows the marker on its device sub-rows instead, so
+/// the row never claims more than is true.
+fn row_is_blocked(state: &TuiRenderState, row: ContactTableRowRef) -> bool {
+    match row {
+        ContactTableRowRef::Contact(idx) => state.contacts.get(idx).is_some_and(|contact| {
+            !contact.device_rows.is_empty()
+                && contact
+                    .device_rows
+                    .iter()
+                    .all(|device| state.blocked_peers.contains(&device.peer_id))
+        }),
+        ContactTableRowRef::Device {
+            contact_idx,
+            device_idx,
+        } => state
+            .contacts
+            .get(contact_idx)
+            .and_then(|contact| contact.device_rows.get(device_idx))
+            .is_some_and(|device| state.blocked_peers.contains(&device.peer_id)),
+    }
 }

@@ -29,6 +29,7 @@ class ContactList extends StatefulWidget {
     required this.onOpenDm,
     this.onLinkDevice,
     this.onCallDevice,
+    this.blockedPeerIds = const <String>{},
     this.sortOverride,
   });
   final List<MobileContactRow> rows;
@@ -45,6 +46,12 @@ class ContactList extends StatefulWidget {
   /// Device-scoped action that places an outgoing call to the device. Optional:
   /// when null, no call button is rendered.
   final void Function(MobileContactDevice device)? onCallDevice;
+
+  /// Peer ids that are muted (on the blocklist). A contact row is marked when
+  /// **every** one of its devices is muted; otherwise only the blocked device
+  /// sub-rows carry the marker — the same rule as the TUI's `⊘` marker.
+  /// Muted contacts stay listed; existing history is kept.
+  final Set<String> blockedPeerIds;
 
   /// Test-only seam: when set, replaces the FFI-backed `sortContacts` call so
   /// widget tests can exercise sorting without a loaded Rust library.
@@ -107,6 +114,25 @@ class ContactListState extends State<ContactList> {
   String _label(MobileContactRow c) => c.deviceCount.toInt() > 1
       ? '${c.displayName} \u00d7${c.deviceCount}'
       : c.displayName;
+
+  bool _isMuted(String peerId) => widget.blockedPeerIds.contains(peerId);
+
+  /// A contact row is muted only when **every** bound device is muted; a
+  /// partially muted contact marks its device sub-rows instead (TUI parity).
+  bool _contactIsMuted(MobileContactRow c) =>
+      c.deviceRows.isNotEmpty && c.deviceRows.every((d) => _isMuted(d.peerId));
+
+  /// The muted marker for a row (nothing when the row isn't muted).
+  Widget _mutedMarker(String keySuffix, bool muted) {
+    if (!muted) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: Tooltip(
+        message: 'Muted',
+        child: Icon(Icons.block, key: Key('muted-$keySuffix'), size: 16),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -195,6 +221,7 @@ class ContactListState extends State<ContactList> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _mutedMarker('contact-${c.contactId}', _contactIsMuted(c)),
               if (c.deviceCount.toInt() > 1) _expandButton(c),
               Text(_label(c)),
             ],
@@ -216,7 +243,11 @@ class ContactListState extends State<ContactList> {
         DataCell(
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: [const SizedBox(width: 24), Text(d.displayName)],
+            children: [
+              const SizedBox(width: 24),
+              _mutedMarker(d.peerId, _isMuted(d.peerId)),
+              Text(d.displayName),
+            ],
           ),
         ),
         const DataCell(Text(_kDeviceStatPlaceholder)),

@@ -96,6 +96,7 @@ Widget _app({
   void Function(MobileContactRow, MobileContactDevice)? onOpenDm,
   void Function(MobileContactDevice)? onLinkDevice,
   void Function(MobileContactDevice)? onCallDevice,
+  Set<String> blockedPeerIds = const <String>{},
 }) => MaterialApp(
   home: Scaffold(
     body: ContactList(
@@ -104,6 +105,7 @@ Widget _app({
       onOpenDm: onOpenDm ?? (_, _) {},
       onLinkDevice: onLinkDevice,
       onCallDevice: onCallDevice,
+      blockedPeerIds: blockedPeerIds,
       sortOverride: sortOverride,
     ),
   ),
@@ -580,5 +582,80 @@ void main() {
 
     expect(find.text('No contacts match.'), findsOneWidget);
     expect(find.text('Contacts (0/1)'), findsOneWidget);
+  });
+
+  _muteMarkerTests();
+}
+
+// ── Muted markers (US-054) ─────────────────────────────────────────────
+
+List<MobileContactRow> _muteRows() => [
+  contact(
+    id: 'multi',
+    name: 'Multi',
+    deviceCount: 2,
+    devices: [
+      MobileContactDevice(
+        peerId: 'multi-laptop',
+        displayName: 'Laptop',
+        firstSeen: '',
+        lastSeen: '',
+      ),
+      MobileContactDevice(
+        peerId: 'multi-phone',
+        displayName: 'Phone',
+        firstSeen: '',
+        lastSeen: '',
+      ),
+    ],
+  ),
+];
+
+void _muteMarkerTests() {
+  testWidgets('a fully muted contact marks the contact row only', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        rows: _muteRows(),
+        sortOverride: _sortLikeRust,
+        blockedPeerIds: {'multi-laptop', 'multi-phone'},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('muted-contact-multi')), findsOneWidget);
+    // Device sub-rows aren't expanded, so no device marker is on screen.
+    expect(find.byKey(const Key('muted-multi-laptop')), findsNothing);
+    // Muted contacts stay listed.
+    expect(find.text('Multi \u00d72'), findsOneWidget);
+  });
+
+  testWidgets('a partially muted contact marks only the blocked device row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        rows: _muteRows(),
+        sortOverride: _sortLikeRust,
+        blockedPeerIds: {'multi-phone'},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('muted-contact-multi')), findsNothing);
+    await tester.tap(find.byKey(const Key('expand-multi')));
+    await tester.pump();
+
+    expect(find.byKey(const Key('muted-multi-phone')), findsOneWidget);
+    expect(find.byKey(const Key('muted-multi-laptop')), findsNothing);
+  });
+
+  testWidgets('an unmuted roster renders no markers', (tester) async {
+    await tester.pumpWidget(
+      _app(rows: _muteRows(), sortOverride: _sortLikeRust),
+    );
+    await tester.pump();
+    expect(find.byIcon(Icons.block), findsNothing);
   });
 }

@@ -81,6 +81,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
   List<MobileContactRow> _contacts = [];
+
+  /// Peer ids currently muted (on the blocklist). Muted contacts stay in the
+  /// roster and keep their history; the Contacts table just marks them.
+  Set<String> _blockedPeerIds = <String>{};
   List<MobileGroup> _groups = [];
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
@@ -321,13 +325,24 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
       final contacts = await nodeApi.getContactsWithStats();
+      final blocked = await nodeApi.listBlockedPeers();
       if (mounted) {
         setState(() {
           _peers = peers;
           _contacts = contacts;
+          _blockedPeerIds = {...blocked};
         });
       }
     } catch (_) {}
+  }
+
+  /// Toggle this device's blocklist entry, then refresh the roster so the
+  /// Contacts marker reflects the new state. The toggle itself is Rust's
+  /// (shared `togglePeerBlock` helper); this only adds the marker refresh.
+  Future<bool> _togglePeerBlock(String peerId) async {
+    final blocked = await togglePeerBlock(peerId);
+    await _refreshRoster();
+    return blocked;
   }
 
   Future<void> _refreshGroups() async {
@@ -823,7 +838,7 @@ class _HomeScreenState extends State<HomeScreen> {
           contact: contact,
           loadQuality: nodeApi.getPeerQuality,
           loadBlocked: peerIsBlocked,
-          toggleBlock: togglePeerBlock,
+          toggleBlock: _togglePeerBlock,
         ),
       ),
     );
@@ -950,7 +965,7 @@ class _HomeScreenState extends State<HomeScreen> {
           contact: _contactForPeer(peerId),
           loadQuality: nodeApi.getPeerQuality,
           loadBlocked: peerIsBlocked,
-          toggleBlock: togglePeerBlock,
+          toggleBlock: _togglePeerBlock,
         ),
       ),
     );
@@ -1000,6 +1015,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenDm: _openDmChat,
         onLinkDevice: _sendIntro,
         onCallDevice: _startCall,
+        blockedPeerIds: _blockedPeerIds,
       ),
       GroupList(
         groups: _groups,

@@ -1308,3 +1308,94 @@ fn test_state_default_equals_new() {
     assert_eq!(a.active_tab, b.active_tab);
     assert_eq!(a.runtime.connected, b.runtime.connected);
 }
+
+// ── Contacts muted markers (US-054) ─────────────────────────────────────────
+
+#[cfg(feature = "tui")]
+mod contacts_blocklist_render_tests {
+    use p2p_app::{TuiRenderState, tui_render::render_peers_content};
+    use ratatui::{Terminal, backend::TestBackend};
+
+    fn contact(contact_id: &str, device_peer_ids: &[&str]) -> p2p_app::contacts::ContactRow {
+        p2p_app::contacts::ContactRow {
+            contact_id: contact_id.to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: device_peer_ids.len(),
+            device_rows: device_peer_ids
+                .iter()
+                .map(|peer_id| p2p_app::contacts::ContactDevice {
+                    peer_id: (*peer_id).to_string(),
+                    display_name: (*peer_id).to_string(),
+                    first_seen: "2026-08-01 10:00:00".to_string(),
+                    last_seen: "2026-08-28 15:26:41".to_string(),
+                    received_nickname: None,
+                    local_nickname: None,
+                })
+                .collect(),
+            first_seen: "2026-08-01 10:00:00".to_string(),
+            last_seen: "2026-08-28 15:26:41".to_string(),
+            dm_count: 0,
+            broadcast_sent_to_peer: 0,
+        }
+    }
+
+    /// Render the Contacts tab and return one string per terminal row.
+    fn render_rows(state: &TuiRenderState) -> Vec<String> {
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), state))
+            .unwrap();
+        let symbols: Vec<String> = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(|cell| cell.symbol().to_string())
+            .collect();
+        symbols.chunks(80).map(<[String]>::concat).collect()
+    }
+
+    fn marked_row_containing<'a>(rows: &'a [String], needle: &str) -> Option<&'a String> {
+        rows.iter()
+            .find(|row| row.contains('\u{2298}') && row.contains(needle))
+    }
+
+    #[test]
+    fn fully_muted_contact_rows_carry_the_marker() {
+        let mut state = TuiRenderState::new();
+        state.contacts = vec![contact("bob", &["bob-laptop", "bob-phone"])];
+        state.blocked_peers.insert("bob-laptop".to_string());
+        state.blocked_peers.insert("bob-phone".to_string());
+
+        let rows = render_rows(&state);
+        assert!(
+            marked_row_containing(&rows, "Bob").is_some(),
+            "got: {rows:?}"
+        );
+    }
+
+    #[test]
+    fn partially_muted_contact_marks_only_the_blocked_device_row() {
+        let mut state = TuiRenderState::new();
+        state.contacts = vec![contact("bob", &["bob-laptop", "bob-phone"])];
+        state.expanded_contact_ids.insert("bob".to_string());
+        state.blocked_peers.insert("bob-phone".to_string());
+
+        let rows = render_rows(&state);
+        // The contact row stays unmarked...
+        assert!(
+            marked_row_containing(&rows, "Bob").is_none(),
+            "got: {rows:?}"
+        );
+        // ...while the blocked device sub-row is marked.
+        assert!(
+            marked_row_containing(&rows, "bob-phone").is_some(),
+            "got: {rows:?}"
+        );
+        assert!(
+            marked_row_containing(&rows, "bob-laptop").is_none(),
+            "got: {rows:?}"
+        );
+    }
+}

@@ -209,6 +209,13 @@ same row. Both read/write through the FRB surface
 (`isPeerBlocked` / `blockPeer` / `unblockPeer` / `listBlockedPeers`), which
 `src/web/methods.rs` mirrors as JSON methods 1:1.
 
+Muted peers stay in the roster — blocking hides nothing, it only drops traffic.
+To make the state visible, the TUI Contacts table prefixes a fully muted contact
+with `⊘` (or marks just the blocked device sub-rows when only some devices are
+muted), and Flutter's `ContactList` renders the same marker from the
+`blockedPeerIds` set. The marker is presentational only; neither frontend
+filters the list by it.
+
 ## The identity model
 
 Two layers, described in full in [identity.md](identity.md):
