@@ -116,6 +116,8 @@ pub fn save_message_with_meta(
         .inspect(|msg| {
             #[cfg(feature = "tracing")]
             tracing::debug!(message_id = msg.id, "Message saved to database");
+            #[cfg(not(feature = "tracing"))]
+            let _ = msg;
         })
 }
 

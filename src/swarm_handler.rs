@@ -566,6 +566,8 @@ async fn handle_external_addr_confirmed(
         .await;
     #[cfg(feature = "kad")]
     maybe_announce(swarm);
+    #[cfg(not(feature = "kad"))]
+    let _ = swarm;
 }
 
 #[cfg(feature = "mdns")]

@@ -54,19 +54,20 @@ jobs:
         if: steps.skip-check.outputs.skip != 'true'
         run: mkdir -p .github/ci-results
 
-      # Informational only. cargo outdated exits non-zero whenever any row exists
-      # (including transitive pin rows that no repo change can move), so it must NOT
-      # gate the workflow. See docs/backlog.md and docs/dependencies.md for the expected rows.
+      # Informational only. cargo outdated exits 0 by default even when it prints
+      # rows (use --exit-code to change that), and those rows include transitive
+      # pins no repo change can move, so it must NOT gate the workflow.
+      # See docs/backlog.md and docs/dependencies.md for the expected rows.
       - name: Check for outdated dependencies
         if: steps.skip-check.outputs.skip != 'true'
         continue-on-error: true
         run: |
-          # pipefail so the logged exit code is cargo outdated's, not tee's; the
-          # step stays continue-on-error so an outdated row never fails CI.
-          set -o pipefail
+          # PIPESTATUS[0] is cargo outdated's status, not tee's; the step stays
+          # continue-on-error so an outdated row never fails CI either way.
           cargo install cargo-outdated --locked 2>&1 | tee .github/ci-results/outdated-install.log || true
           cargo outdated 2>&1 | tee .github/ci-results/outdated.log
-          echo "Exit code: $?" >> .github/ci-results/outdated.log
+          OUTDATED_EXIT=${PIPESTATUS[0]}
+          echo "Exit code: $OUTDATED_EXIT" >> .github/ci-results/outdated.log
 
       # HARD GATE: fail the workflow on any advisory not ignored in .cargo/audit.toml.
       # PIPESTATUS[0] is cargo-audit's status (Actions' default run: shell has no

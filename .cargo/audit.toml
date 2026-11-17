@@ -10,7 +10,12 @@
 # RUSTSEC-2026-0382 row were fixed on 2026-10-21 by the patch bumps rustls
 # 0.23.45 → 0.23.46 and rustls-webpki 0.103.15 → 0.103.16 (Cargo.lock).
 #
+# The 2026-11-17 round fixed RUSTSEC-2026-0459 (libsqlite3-sys 0.38.2 → 0.39.1,
+# unblocked by diesel 2.4.0), RUSTSEC-2026-0534 (libp2p-gossipsub 0.50.0 →
+# 0.50.1) and RUSTSEC-2026-0524 (quinn-proto 0.11.18 → 0.11.19).
+#
 # Remaining rows are allowed *warnings* (cargo audit still exits 0): the
+# unmaintained `chrono` 0.4.45 (RUSTSEC-2026-0543, no fixed upgrade), the
 # unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
 # libp2p-mdns → if-watch → netlink-packet-core) and the yanked `yoke-derive`
 # 0.8.3.

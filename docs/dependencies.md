@@ -27,9 +27,9 @@ version; `Cargo.toml` is the authority on the *requirement*.
 
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
-| `diesel` | `^2.3` | 2.3.14 | The ORM and query builder for SQLite. Features: `sqlite`, `returning_clauses_for_sqlite_3_35`, `chrono`. 2.3.14 is the first 2.x that accepts `libsqlite3-sys` 0.38 (it requires `>=0.17.2, <0.39.0`). |
-| `diesel_migrations` | `^2.3` | 2.3.2 | Embeds and runs the SQL migrations in `migrations/` at startup. |
-| `libsqlite3-sys` | `0.38` | 0.38.2 | Native SQLite FFI. Feature `bundled` compiles SQLite in, which Android needs. Optional — behind `sqlite_bundled`. The `0.38` requirement is diesel 2.3.14's ceiling; 0.39 is still outside its range. |
+| `diesel` | `^2.3` | 2.4.0 | The ORM and query builder for SQLite. Features: `sqlite`, `returning_clauses_for_sqlite_3_35`, `chrono`. 2.4.0 widened the `libsqlite3-sys` range to `>=0.17.2, <0.41.0`, unblocking the security-fixed 0.39 line. |
+| `diesel_migrations` | `^2.3` | 2.4.0 | Embeds and runs the SQL migrations in `migrations/` at startup. |
+| `libsqlite3-sys` | `0.39` | 0.39.1 | Native SQLite FFI. Feature `bundled` compiles SQLite in, which Android needs. Optional — behind `sqlite_bundled`. 0.39.1 carries the RUSTSEC-2026-0459 fix; 0.40.0 is out but is a semver-incompatible bump. |
 | `chrono` | `0.4.45` | 0.4.45 | Timestamps for the `TIMESTAMP` columns. Feature `clock`. |
 
 ## Serialization
@@ -74,15 +74,25 @@ version; `Cargo.toml` is the authority on the *requirement*.
 ### `cargo audit` — clean
 
 `cargo audit` exits 0. `.cargo/audit.toml` is **comment-only**: no advisory is
-silently ignored. Two rows remain, both allowed *warnings*:
+silently ignored. Three rows remain, all allowed *warnings*:
 
 | Crate | Advisory | Why it is acceptable |
 |---|---|---|
+| `chrono` 0.4.45 | RUSTSEC-2026-0543 (unmaintained) | No fixed upgrade is published. Replacing the `TIMESTAMP` column type would churn the diesel schema and every frontend for an advisory with no fix to take. |
 | `paste` 1.0.15 | RUSTSEC-2024-0436 (unmaintained) | A build-time proc-macro pulled in by `libp2p-mdns → if-watch → netlink-packet-core`. Benign, and it is core libp2p's dependency, not ours. |
 | `yoke-derive` 0.8.3 | yanked | A transitive yanked release with no fix published. |
 
 Everything else has been fixed upstream and pulled in. Recent rounds:
 
+- **2026-11-17** — `diesel 2.3.14 → 2.4.0` and `diesel_migrations 2.3.2 →
+  2.4.0` (diesel widened the `libsqlite3-sys` range to `<0.41.0`), then
+  `libsqlite3-sys 0.38.2 → 0.39.1` (RUSTSEC-2026-0459: C SQLite
+  CVE-2026-119375), `libp2p-gossipsub 0.50.0 → 0.50.1` (RUSTSEC-2026-0534:
+  unbounded backoff state from PRUNE messages for unknown topics) and
+  `quinn-proto 0.11.18 → 0.11.19` (RUSTSEC-2026-0524: long Retry token can
+  panic or exhaust memory). Lockfile-only companions: `quinn-udp 0.5.15 →
+  0.5.16` and `rustix 1.1.5 → 1.1.6`. The only manifest change was the
+  `libsqlite3-sys` requirement.
 - **2026-10-29** — `ctutils 0.4.2 → 0.4.7` (RUSTSEC-2026-0385: non-constant-time
   mask generation and `u128` comparisons; patched from 0.4.4) and
   `tokio 1.53.1 → 1.54.1` (RUSTSEC-2026-0386: `AsyncFd` constructors violate I/O
@@ -93,7 +103,7 @@ Everything else has been fixed upstream and pulled in. Recent rounds:
   **rustls-webpki 0.103.15 → 0.103.16**, clearing five advisories
   (RUSTSEC-2026-0346/0347/0348/0349 and RUSTSEC-2026-0382).
 
-### `cargo outdated --depth 1` — two direct rows, both held
+### `cargo outdated` — informational, rows expected
 
 The 2026-10-29 → 11-01 dependency round cleared every lockfile-only row
 (`diesel 2.3.14`, `ratatui-textarea 0.9.3`, `serde_json 1.0.154`,
@@ -116,28 +126,32 @@ unifies across semver-incompatible majors. Downgrading our own requirement to
 stack — so the repo stays on the newer line and the lock collapses to a single
 `sha2` on the next `cargo update` after a `snow` release moves to 0.11.
 
-Nothing actionable is left. Both remaining rows are **held on purpose** — do
-not "fix" these without revisiting the reason:
+`cargo outdated` prints a normal table again now that diesel 2.4.0 accepts
+`libsqlite3-sys <0.41.0` — the old dependency-resolution error is gone. It
+exits 0 by default (`--exit-code N` changes that), which is another reason the
+daily job keeps it informational. `cargo outdated --depth 1` currently reports
+these direct rows (none is a security advisory):
 
-| Crate | Locked | Newer | Why it is held |
+| Crate | Locked | Newer | Status |
 |---|---|---|---|
-| `libsqlite3-sys` | 0.38.2 | 0.39.1 | Diesel 2.3.14 accepts `>=0.17.2, <0.39.0`, so 0.38.2 is as far as the tree can go until a diesel release widens the range. Do not restructure to `sqlite-bundled` — that was evaluated and rejected; see [backlog.md](backlog.md). |
-| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Test-only client, kept in lockstep with axum's `ws` feature. Bumping it to 0.30 adds a *second* `tungstenite` tree (`0.29` from axum, `0.30` here, plus `sha1` 0.11 and `rand` 0.10) for no behavioural gain — verified by building the bump and backing it out. Revisit when axum moves. |
+| `base64` | 0.22.1 | 0.23.1 | Held: 0.22 matches libp2p's line; 0.23 is already in the tree via another dep. |
+| `chacha20poly1305` | 0.10.1 | 0.11.0 | E2E scaffolding dep; semver-incompatible bump, no advisory. |
+| `clap` | 4.6.7 | 4.6.8 | Compatible patch, not security-relevant. |
+| `libp2p-identity` | 0.3.0 | 0.3.1 | Pinned `=0.3.0` to keep a single `PeerId` type in the tree. |
+| `libsqlite3-sys` | 0.39.1 | 0.40.0 | Semver-incompatible; the security-fixed 0.39 line is in use. |
+| `ratatui-textarea` | 0.9.3 | 0.9.4 | Compatible patch, not security-relevant. |
+| `tokio-tungstenite` | 0.29.0 | 0.30.0 | Test-only client, held in lockstep with axum's `ws` feature — 0.30 adds a second `tungstenite` tree for no behavioural gain. Revisit when axum moves. |
+| `unicode-width` | 0.2.2 | 0.2.3 | Compatible patch, not security-relevant. |
 
 The full `cargo outdated` output also lists transitive rows. Those are not
-actionable here — they move when their parent moves. In practice `cargo
-outdated` cannot produce a row table at all right now: its probe bumps
-`libsqlite3-sys` to 0.39.1 and then dies on the diesel `<0.39.0` constraint
-plus the `links = "sqlite3"` conflict, so `outdated.log` holds that resolution
-error instead. That is expected until diesel widens the range; the daily job
-stays informational and green.
+actionable here — they move when their parent moves.
 
 ### `cargo audit` is the only hard dependency gate
 
 The dependency workflow (`dependencies.yml`) fails on any advisory that is
-not ignored in `.cargo/audit.toml`. `cargo outdated` is **informational**:
-it exits non-zero whenever any row exists, including transitive pins no
-repo change can move, so it must not gate the workflow.
+not ignored in `.cargo/audit.toml`. `cargo outdated` is **informational**: it
+exits 0 by default and its rows include transitive pins no repo change can
+move, so it must not gate the workflow.
 
 ## Conventions
 

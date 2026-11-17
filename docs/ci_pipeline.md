@@ -73,18 +73,18 @@ protection, no PR workflow) — see the backlog.
 
 ### `dependencies.yml` — the only hard dependency gate
 
-Runs `cargo outdated` (informational — it exits non-zero whenever *any* row
-exists, including transitive pins no repo change can move, so it must not
-gate) and `cargo audit`, which **does** gate: the workflow fails on any
-advisory not ignored in `.cargo/audit.toml`. The outdated step sets
-`pipefail` so the `Exit code: N` it appends to `outdated.log` is the tool's
-status, not `tee`'s — today that is a dependency-resolution error on
-`libsqlite3-sys` rather than a table of rows (see
-[dependencies.md](dependencies.md)).
+Runs `cargo outdated` (informational — it exits 0 by default and its rows
+include transitive pins no repo change can move, so it must not gate) and
+`cargo audit`, which **does** gate: the step captures `${PIPESTATUS[0]}` and
+exits with it, so any advisory not ignored in `.cargo/audit.toml` fails the
+workflow. The outdated step captures `PIPESTATUS[0]` so the `Exit code: N` it
+appends to `outdated.log` is the tool's status, not `tee`'s — since diesel 2.4.0
+widened the `libsqlite3-sys` range, that log holds a normal row table again
+rather than a resolution error (see [dependencies.md](dependencies.md)).
 
 `.cargo/audit.toml` is comment-only — nothing is silently ignored. `cargo
-audit` currently exits 0, with two allowed *warnings* (the unmaintained
-`paste` 1.0.15 and the yanked `yoke-derive` 0.8.3). See
+audit` currently exits 0, with three allowed *warnings* (the unmaintained
+`chrono` 0.4.45 and `paste` 1.0.15, and the yanked `yoke-derive` 0.8.3). See
 [dependencies.md](dependencies.md) for the full picture.
 
 ### `metrics.yml` — coverage and codebase metrics
@@ -220,8 +220,8 @@ A manual `workflow_dispatch` always forces a full run.
 ## Reading the results
 
 The fastest read is the fixed-name `.github/ci-results/summary.txt`: one line
-per check plus `overall: PASS (7/7 checks green)` or
-`overall: FAIL (N/7 checks failed)`. It always describes the latest push run.
+per check plus `overall: PASS (8/8 checks green)` or
+`overall: FAIL (N/8 checks failed)`. It always describes the latest push run.
 
 The newest `.github/ci-results/results_<timestamp>_<run_id>.txt` holds the same
 summary block followed by the full logs, in order: formatting, clippy, tests,

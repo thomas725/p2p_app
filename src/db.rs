@@ -588,6 +588,8 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
                 Err(e) => {
                     #[cfg(feature = "tracing")]
                     tracing::error!("invalid identity stored: {row:?} - {e}");
+                    #[cfg(not(feature = "tracing"))]
+                    let _ = e;
                 }
             }
         }
@@ -612,6 +614,8 @@ pub fn get_libp2p_identity() -> color_eyre::Result<libp2p_identity::Keypair> {
         .map_err(|e| color_eyre::eyre::eyre!("failed to persist new identity: {e}"))?;
     #[cfg(feature = "tracing")]
     tracing::info!("inserted new identity: {identity:?}");
+    #[cfg(not(feature = "tracing"))]
+    let _ = identity;
     Ok(keypair)
 }
 

@@ -58,16 +58,14 @@ indexes. This file keeps only instruction-type guidance for future tasks.
 ## Next Steps
 - Tracked in **`docs/backlog.md`** (live, open work only — completed items live in
   `docs/archive/`). None urgent.
-- `cargo outdated --depth 1` now reports **2 direct rows** (was 9 before the
-  2026-10-29 → 11-01 dependency round, which also moved the deliberate `libp2p`
-  pin to 0.57.1, took `tower-http` 0.7 and `sha2` 0.11). **No actionable rows
-  remain**; both are held on purpose and should not be "fixed" casually:
-  - `libsqlite3-sys` 0.38.2→0.39.1: diesel 2.3.14 accepts `>=0.17.2, <0.39.0`,
-    so 0.38.2 is the ceiling until diesel widens it (same upstream-blocker class
-    the old 0.36 pin had — do not restructure to `sqlite-bundled`).
-  - `tokio-tungstenite` 0.29→0.30: the dev-only test client is kept in lockstep
-    with axum's `ws` feature; 0.30 compiles a second `tungstenite` tree. Revisit
-    when axum moves. Details: `docs/dependencies.md`.
+- `cargo outdated` now prints rows again: the 2026-11-17 round moved diesel to
+  2.4.0 (which widened `libsqlite3-sys` to `<0.41.0`), so the old resolution
+  error is gone. `cargo outdated --depth 1` reports 8 direct rows, none a
+  security advisory. Two are deliberate pins (`libp2p-identity` =0.3.0 for a
+  single `PeerId` type; dev-only `tokio-tungstenite` 0.29 in lockstep with
+  axum's `ws` feature), a few are compatible patches, and the rest are
+  semver-incompatible majors. **No urgent rows**; details in
+  `docs/dependencies.md`.
 - Frontend parity is **complete** as of 2026-10-21 (per-message latency, Peer
   Info stats rows, and the Contacts search affordance all in both frontends —
   see `docs/archive/2026-10-20_message_latency_parity.md`,
@@ -114,11 +112,17 @@ indexes. This file keeps only instruction-type guidance for future tasks.
   **ctutils 0.4.2 → 0.4.7** (RUSTSEC-2026-0385, patched from 0.4.4 — transitive via
   `digest 0.11 → curve25519-dalek → ed25519-dalek → libp2p-identity`) and
   **tokio 1.53.1 → 1.54.1** (RUSTSEC-2026-0386 `AsyncFd` I/O safety, patched from 1.53.3).
-  The two remaining rows are *allowed warnings*, not
-  failures: the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
+  2026-11-17 cleared four more: `diesel 2.4.0` + `diesel_migrations 2.4.0`
+  widened the SQLite range so `libsqlite3-sys 0.38.2 → 0.39.1` could land
+  (RUSTSEC-2026-0459), plus `libp2p-gossipsub 0.50.0 → 0.50.1` (RUSTSEC-2026-0534)
+  and `quinn-proto 0.11.18 → 0.11.19` (RUSTSEC-2026-0524); `quinn-udp` and
+  `rustix` followed as lockfile-only bumps.
+  The three remaining rows are *allowed warnings*, not
+  failures: the unmaintained `chrono` 0.4.45 (RUSTSEC-2026-0543, no fixed upgrade),
+  the unmaintained `paste` 1.0.15 (RUSTSEC-2024-0436, a build-time proc-macro from
   `libp2p-mdns → if-watch → netlink-packet-core` — benign, core libp2p) and the yanked
   `yoke-derive` 0.8.3. CI dependency job gates on `cargo audit` (hard fail) + artifact upload;
-  `cargo outdated` is informational.
+  `cargo outdated` is informational (it exits 0 by default).
 
 - **`main.yml` is report-then-fail, not advisory-green**: every check keeps
   `continue-on-error: true` so one push yields a *complete* report (a hard failure would
