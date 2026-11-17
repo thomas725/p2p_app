@@ -4,7 +4,10 @@ Every binding in the TUI. Where a binding only exists on one tab, the table
 says so.
 
 The in-app shortcut bar at the bottom of the screen shows the active
-bindings for the current tab; this file is the complete reference.
+bindings for the current tab, and `?` opens a compact modal table anywhere
+outside a prompt. This file is the complete reference. The Flutter/Web app
+is touch-first and defines no custom keyboard bindings; its Settings tab has
+a **Help / controls** dialog describing the on-screen actions instead.
 
 ## Tab navigation
 
@@ -189,9 +192,17 @@ lane. Both frontends render the result as a chip:
 
 | Key | Action |
 |-----|--------|
+| `?` | Open the compact shortcut-help overlay |
 | `F12` | Toggle mouse capture |
 | `Esc` | Dismiss the popup / decline the device-binding prompt / cancel the current edit / return to the Chat tab |
 | `Ctrl+Q` | Exit the application |
+
+`?` is a plain key, so it opens the help overlay only when no input box owns
+the keyboard. It does nothing while an editor, the Contacts search, a dial or
+network-peer prompt, the device-binding/group-leave prompt, or a call overlay
+is active. The overlay uses the ordinary popup slot: press any key or click to
+dismiss it, which is why typing `?` inside a prompt still inserts a question
+mark.
 
 `Esc` unwinds one level at a time, in this order: dismiss the popup →
 decline the device-binding prompt → cancel a group leave → clear the contacts
@@ -246,6 +257,7 @@ Call **signaling** is implemented; audio/video media is not. See
 
 **Pro tips**
 
+- Press `?` for the compact table; this file remains the full reference.
 - `End` returns you to live mode when catching up on messages.
 - `Home` takes you to the very first message — that can be a long way back.
 - On a DM tab the pointer picks the pane that scrolls: hover the top half for

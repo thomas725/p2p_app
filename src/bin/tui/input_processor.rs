@@ -34,6 +34,15 @@ fn dismiss_popup(state: &mut super::state::AppState) -> bool {
     }
 }
 
+/// True for a bare `?`; Shift is expected (most layouts type `?` as
+/// `Shift+/`) but Ctrl/Alt variants must never steal input.
+fn is_shortcuts_help_key(key_event: &crossterm::event::KeyEvent) -> bool {
+    use crossterm::event::{KeyCode, KeyModifiers};
+    key_event.code == KeyCode::Char('?')
+        && !key_event.modifiers.contains(KeyModifiers::CONTROL)
+        && !key_event.modifiers.contains(KeyModifiers::ALT)
+}
+
 /// Pure: extract nickname update data from state. Returns None if the new nickname is empty.
 fn prepare_nickname_update(
     state: &super::state::AppState,
@@ -838,6 +847,16 @@ async fn process_key_event(
 
     // If a popup is open, any key dismisses it (except we still honor exit keys above).
     if dismiss_popup(&mut s) {
+        drop(s);
+        let _ = render_tx.send(RenderEvent).await;
+        return false;
+    }
+
+    // `?` opens the modal shortcut table. It is a plain key when no input box
+    // owns the keyboard, so prompts/editors/search keep their literal `?`.
+    if is_shortcuts_help_key(&key_event) && s.input_mode == p2p_app::InputMode::Chat {
+        s.popup = Some(p2p_app::tui_render::shortcuts_help_text().to_string());
+        p2plog_debug("Opened shortcut help".to_string());
         drop(s);
         let _ = render_tx.send(RenderEvent).await;
         return false;

@@ -113,19 +113,18 @@ void main() {
 
   testWidgets('Settings renders live network details', (tester) async {
     _useTallSurface(tester);
-    await tester.pumpWidget(_app(
-      userId: 'user-abc',
-      devices: const [],
-      networkDetails: ValueNotifier(_network),
-    ));
+    await tester.pumpWidget(
+      _app(
+        userId: 'user-abc',
+        devices: const [],
+        networkDetails: ValueNotifier(_network),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('Network details'), findsOneWidget);
     expect(find.text('Public (directly reachable)'), findsOneWidget);
-    expect(
-      find.text('Public — probes 2 ok / 1 failed'),
-      findsOneWidget,
-    );
+    expect(find.text('Public — probes 2 ok / 1 failed'), findsOneWidget);
     expect(find.text('1/3 succeeded'), findsOneWidget);
     expect(
       find.text('Reserved via 12D3KooWRelay (12D3KooWRelay)'),
@@ -152,11 +151,9 @@ void main() {
   ) async {
     _useTallSurface(tester);
     final notifier = ValueNotifier<NetworkDetails?>(null);
-    await tester.pumpWidget(_app(
-      userId: 'user-abc',
-      devices: const [],
-      networkDetails: notifier,
-    ));
+    await tester.pumpWidget(
+      _app(userId: 'user-abc', devices: const [], networkDetails: notifier),
+    );
     await tester.pump();
     expect(find.text('Network details'), findsNothing);
 
@@ -168,11 +165,9 @@ void main() {
 
   testWidgets('Bound devices listed and open PeerInfo on tap', (tester) async {
     final opened = <String>[];
-    await tester.pumpWidget(_app(
-      userId: 'user-abc',
-      devices: [_device],
-      peerInfoOpened: opened,
-    ));
+    await tester.pumpWidget(
+      _app(userId: 'user-abc', devices: [_device], peerInfoOpened: opened),
+    );
     await tester.pump();
     expect(find.text('Bound devices (1)'), findsOneWidget);
     expect(find.textContaining('12D3KooWpeer-1'), findsOneWidget);
@@ -180,5 +175,41 @@ void main() {
 
     await tester.tap(find.textContaining('12D3KooWpeer-1'));
     expect(opened, ['12D3KooWpeer-1']);
+  });
+
+  testWidgets('Help card opens and closes the controls dialog', (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(userId: 'user-abc', devices: const []));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('settings-help')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    final dialog = find.byType(AlertDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Navigate')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.textContaining('Double-tap a message'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: dialog,
+        matching: find.text(
+          'No custom letter or Ctrl shortcuts are installed here.',
+        ),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.descendant(of: dialog, matching: find.text('Close')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
   });
 }

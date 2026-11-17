@@ -446,6 +446,76 @@ fn test_blocklist_toggle_from_peer_info_tab() {
     p2p_app::db::reset_db_url();
 }
 
+// ── shortcut help overlay ────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_question_mark_opens_shortcut_help_without_typing() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(
+        s.popup.as_deref(),
+        Some(p2p_app::tui_render::shortcuts_help_text())
+    );
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_any_key_dismisses_shortcut_help() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, mut render_rx) = mpsc::channel(1);
+
+    let open = KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    let _ = process_key_event(open, &state, &swarm_cmd_tx, &render_tx).await;
+    while render_rx.try_recv().is_ok() {}
+
+    let dismiss = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::empty());
+    let _ = process_key_event(dismiss, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.popup.is_none());
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_question_mark_is_literal_while_editing_a_nickname() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    {
+        let mut s = state.lock().await;
+        s.input_mode = p2p_app::InputMode::EditingNickname;
+        s.chat_input.insert_str("nick");
+    }
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.popup.is_none());
+    assert_eq!(s.chat_input.lines().join(""), "nick?");
+}
+
+#[tokio::test]
+async fn test_ctrl_question_mark_does_not_open_shortcut_help() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('?'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.popup.is_none());
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
 // ── Contacts search key flow ─────────────────────────────────────────────
 
 /// Press one key and drain the render channel.

@@ -26,6 +26,38 @@ class LiveStatus {
   final DateTime? lastConnectionAt;
 }
 
+/// Honest controls reference for the touch-first Flutter/Web UI.
+///
+/// This app installs no custom keyboard handlers, so the dialog describes the
+/// on-screen actions that exist and the standard text-field Enter behavior.
+/// The desktop TUI's real key bindings live in `KEYBOARD_SHORTCUTS.md`.
+const Map<String, List<String>> _helpSections = {
+  'Navigate': [
+    'Tap a destination in the bottom navigation bar to switch tabs.',
+    'Full-screen pages keep that bar; use the AppBar back arrow or system back to return.',
+  ],
+  'Chat': [
+    'Type and press Enter to send. The paperclip attaches a file.',
+    'Double-tap a message to select it, then Copy from the toolbar.',
+    'Tap a sender name for Peer Info, an attachment chip to open the file, or the unread banner to jump to latest.',
+  ],
+  'Contacts': [
+    'Use the chevron to expand a contact’s devices.',
+    'Per-device buttons open Info, a direct message, device linking, or a call.',
+    'Tap a column header to sort; type in Search to filter and use Clear to reset.',
+  ],
+  'Groups & calls': [
+    'Tap a group to open its chat; use the overflow menu to leave.',
+    'Accept, Decline, Cancel and Hang up are on-screen buttons.',
+    'Device-binding requests show an explicit Allow / Decline dialog.',
+  ],
+  'Keyboard': [
+    'No custom letter or Ctrl shortcuts are installed here.',
+    'Standard text editing and clipboard keys work in text fields.',
+    'The desktop TUI has its own bindings; press ? there for a compact table.',
+  ],
+};
+
 /// Settings tab: node/service control, nickname editing, peer/network status,
 /// and (Android) APK sharing.
 class Settings extends StatefulWidget {
@@ -97,8 +129,7 @@ class _SettingsState extends State<Settings> {
     super.dispose();
   }
 
-  void _onNetwork() =>
-      setState(() => _network = widget.networkDetails?.value);
+  void _onNetwork() => setState(() => _network = widget.networkDetails?.value);
 
   void _onLive() {
     setState(() => _live = widget.liveStatus.value);
@@ -114,7 +145,9 @@ class _SettingsState extends State<Settings> {
   /// never re-derives the thresholds.
   Future<void> _refreshNetworkSize() async {
     try {
-      final label = await nodeApi.networkSizeLabel(peerCount: _live.connectedCount);
+      final label = await nodeApi.networkSizeLabel(
+        peerCount: _live.connectedCount,
+      );
       if (mounted && label != _networkSize) {
         setState(() => _networkSize = label);
       }
@@ -176,6 +209,55 @@ class _SettingsState extends State<Settings> {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(_errorText(e))));
     }
+  }
+
+  /// Show the in-app controls reference. Scrollable because the dialog is used
+  /// on small phone screens as well as desktop/web.
+  void _showHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Help / controls'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'This app is touch-first. The terminal TUI has keyboard shortcuts.',
+                ),
+                for (final section in _helpSections.entries) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    section.key,
+                    style: Theme.of(dialogContext).textTheme.titleSmall,
+                  ),
+                  for (final line in section.value)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• '),
+                          Expanded(child: Text(line)),
+                        ],
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Rust returns plain Strings as errors; strip Dart's `Exception:` wrapper.
@@ -337,7 +419,9 @@ class _SettingsState extends State<Settings> {
                   Text(
                     _networkPeersError!,
                     key: const Key('network-peers-error'),
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   )
                 else if (_networkPeers == null)
                   const Text('Loading…', style: TextStyle(color: Colors.grey))
@@ -477,6 +561,16 @@ class _SettingsState extends State<Settings> {
           const SizedBox(height: 8),
           _networkDetailsCard(_network!),
         ],
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            key: const Key('settings-help'),
+            leading: const Icon(Icons.help_outline),
+            title: const Text('Help / controls'),
+            subtitle: const Text('Gestures, buttons, and keyboard notes'),
+            onTap: _showHelp,
+          ),
+        ),
         if (widget.isAndroid) ...[
           const SizedBox(height: 8),
           Card(
@@ -563,10 +657,7 @@ class _SettingsState extends State<Settings> {
                 ),
               const SizedBox(height: 8),
             ],
-            Text(
-              'Interfaces',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
+            Text('Interfaces', style: Theme.of(context).textTheme.labelSmall),
             if (net.interfaces.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 4),
@@ -600,12 +691,7 @@ class _SettingsState extends State<Settings> {
     );
   }
 
-  Widget _statusRow(
-    IconData icon,
-    String label,
-    String value, {
-    Key? key,
-  }) {
+  Widget _statusRow(IconData icon, String label, String value, {Key? key}) {
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 8),

@@ -315,18 +315,6 @@ Neither frontend has a notification dependency today. Android already runs a
 foreground service, so a system notification is the smaller half; the TUI has
 no notification backend.
 
-### Keyboard shortcut help overlay (US-029)
-
-What shipped: the TUI renders a tab-aware shortcut bar
-(`src/tui_render/mod.rs` → `render_shortcuts`), documenting only the bindings
-that are live on the current tab, and
-[`KEYBOARD_SHORTCUTS.md`](../KEYBOARD_SHORTCUTS.md) is the full reference.
-
-What is missing: a modal `?` overlay showing the whole table at once. The
-status bar covers the common case; the overlay is nice-to-have, and it would
-have to share the popup slot with the device-binding and group-leave prompts
-(see the popup-precedence rule in `AGENTS.md`).
-
 ---
 
 ## Known limitations (by design — not backlog items)
@@ -350,6 +338,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Keyboard shortcut help overlay (US-029) + Flutter help dialog | 2026-11-17 | [`archive/2026-11-17_keyboard_shortcuts_help.md`](archive/2026-11-17_keyboard_shortcuts_help.md) |
 | Clear the remaining audit advisories (diesel 2.4.0, libsqlite3-sys 0.39.1, gossipsub, quinn-proto) | 2026-11-17 | `227f214` |
 | CI checks report the checked command's exit code (no `tee` false PASS) | 2026-11-17 | `1835967` |
 | Peer blocklist / mute (US-054) | 2026-11-12 | [`archive/2026-11-12_peer_blocklist.md`](archive/2026-11-12_peer_blocklist.md) |

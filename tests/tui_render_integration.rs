@@ -9,8 +9,8 @@ mod render_tests {
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_input_section,
             render_log_content, render_peer_info_content, render_peers_content, render_popup,
-            render_settings_content, render_shortcuts, render_status_bar, render_tabs,
-            shortcuts_text,
+            render_settings_content, render_shortcuts, render_shortcuts_help_popup,
+            render_status_bar, render_tabs, shortcuts_help_text, shortcuts_text,
         },
         tui_tabs::TabContent,
     };
@@ -383,6 +383,67 @@ mod render_tests {
             assert!(!shortcuts_text(&tab, false).contains("Peer Info"));
             assert!(!shortcuts_text(&tab, true).contains("Peer Info"));
         }
+    }
+
+    #[test]
+    fn test_every_shortcut_bar_advertises_the_help_key() {
+        for tab in [
+            TabContent::Chat,
+            TabContent::Contacts,
+            TabContent::Groups,
+            TabContent::Settings,
+            TabContent::Log,
+            TabContent::Direct("peer-1".to_string()),
+            TabContent::GroupChat("group-1".to_string()),
+            TabContent::PeerInfo("peer-1".to_string()),
+        ] {
+            assert!(
+                shortcuts_text(&tab, false).contains("?: help"),
+                "missing help hint for {tab:?}"
+            );
+            assert!(
+                shortcuts_text(&tab, true).contains("?: help"),
+                "missing help hint for {tab:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_shortcuts_help_text_covers_the_core_bindings() {
+        let help = shortcuts_help_text();
+        for expected in [
+            "Tab / Shift+Tab",
+            "Ctrl+W",
+            "PgUp/PgDn",
+            "Enter  Send",
+            "Ctrl+I (kitty) / Ctrl+P",
+            "i Info",
+            "g create/join",
+            "b block / unblock",
+            "Ctrl+Q",
+            "KEYBOARD_SHORTCUTS.md",
+        ] {
+            assert!(help.contains(expected), "missing {expected}");
+        }
+    }
+
+    #[test]
+    fn test_render_shortcuts_help_popup_library() {
+        let mut terminal = create_test_terminal();
+        let help = shortcuts_help_text().to_string();
+
+        terminal
+            .draw(|f| render_shortcuts_help_popup(f, help))
+            .unwrap();
+
+        let buffer = terminal.backend().buffer();
+        let text = buffer
+            .content()
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect::<String>();
+        assert!(text.contains("Keyboard shortcuts"), "buffer: {text}");
+        assert!(text.contains("Contacts:"), "buffer: {text}");
     }
 
     #[test]

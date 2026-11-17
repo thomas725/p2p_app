@@ -53,7 +53,11 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
     render_status_bar(f, *status_area, state);
 
     if let Some(ref text) = state.popup {
-        render_popup(f, text.clone());
+        if text.as_str() == shortcuts_help_text() {
+            render_shortcuts_help_popup(f, text.clone());
+        } else {
+            render_popup(f, text.clone());
+        }
     }
 }
 
@@ -148,27 +152,56 @@ pub fn render_input_section(
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Contacts => {
-            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | /: search | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | /: search | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
-            "Tab: next | Enter: open DM | c: call | b: block/unblock | n: set local nickname | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Enter: open DM | c: call | b: block/unblock | n: set local nickname | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Groups => {
-            "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Settings => {
-            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         _ => {
-            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
         }
     }
+}
+
+/// Compact modal table shown when the TUI receives `?`.
+///
+/// Kept here (rather than in the binary) so the exact payload is testable and
+/// the popup can be recognized when rendering. It deliberately names only
+/// bindings that are live somewhere in the TUI; the full per-tab reference is
+/// `KEYBOARD_SHORTCUTS.md`.
+#[must_use]
+pub const fn shortcuts_help_text() -> &'static str {
+    r"Tab / Shift+Tab  Next / previous tab      Ctrl+W  Close transient tab
+?  This help                             F12  Mouse   Ctrl+Q  Quit
+Up/Down  Move   PgUp/PgDn  Page   Home/End  First / last
+Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
+
+Chat / DM / Group: click a message -> sender's Peer Info
+DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
+
+Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse
+Groups: g create/join | d leave | y confirm leave
+Peer Info: n local nickname | b block / unblock
+Settings: n own nickname | d dial | b/r add peer | x remove
+
+Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
+}
+
+/// Render the dedicated, larger popup used by [`shortcuts_help_text`].
+pub fn render_shortcuts_help_popup(f: &mut ratatui::Frame, text: String) {
+    render_bordered_popup(f, text, 90, 80, "Keyboard shortcuts — any key to close");
 }
 
 /// Render shortcuts help, tailored to the active tab
@@ -189,11 +222,22 @@ pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSt
     f.render_widget(status, area);
 }
 
-/// Render popup
+/// Render an ordinary informational popup.
 pub fn render_popup(f: &mut ratatui::Frame, text: String) {
+    render_bordered_popup(f, text, 70, 40, "Details");
+}
+
+/// Shared centered popup geometry for notices and the shortcut-help overlay.
+fn render_bordered_popup(
+    f: &mut ratatui::Frame,
+    text: String,
+    width_percent: u16,
+    height_percent: u16,
+    title: &'static str,
+) {
     let area = f.area();
-    let w = area.width.saturating_mul(70) / 100;
-    let h = area.height.saturating_mul(40) / 100;
+    let w = area.width.saturating_mul(width_percent) / 100;
+    let h = area.height.saturating_mul(height_percent) / 100;
     let popup = Rect {
         x: area.x.saturating_add(area.width.saturating_sub(w) / 2),
         y: area.y.saturating_add(area.height.saturating_sub(h) / 2),
@@ -205,7 +249,7 @@ pub fn render_popup(f: &mut ratatui::Frame, text: String) {
     let p = Paragraph::new(text)
         .block(
             Block::default()
-                .title("Details")
+                .title(title)
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::Black)),
         )
