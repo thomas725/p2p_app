@@ -283,22 +283,18 @@ external decision.
 
 ## P2 — polish
 
-### Dependency bumps — nothing actionable right now
+### Dependency bumps — nothing urgent right now
 
-Nothing actionable is left. `cargo outdated --depth 1` reports two direct rows,
-both **held on purpose**, not work:
+The 2026-11-17 round cleared the last security advisories: diesel 2.4.0 widened
+the SQLite range so `libsqlite3-sys 0.39.1` could land, alongside
+`libp2p-gossipsub 0.50.1` and `quinn-proto 0.11.19`. `cargo audit` exits 0 with
+three unfixable allowed warnings (`chrono`, `paste`, `yoke-derive`).
 
-- `libsqlite3-sys` is at 0.38.2, the newest release diesel 2.3.14 accepts
-  (`>=0.17.2, <0.39.0`); 0.39.1 needs another upstream diesel bump, so nothing
-  in this repo can move it.
-- `tokio-tungstenite` stays at 0.29 to match axum's `ws` feature. 0.30 is
-  dev-only but pulls a second `tungstenite` tree; the bump was built, verified
-  green, and backed out because it buys nothing for a test-only client.
-
-The last actionable row, `sha2 0.10 → 0.11.1`, closed in the
-2026-10-29 → 11-01 dependency round with no source change (the digest stays
-byte-identical; see `dependencies.md`). Re-run `cargo outdated --depth 1` before
-assuming this lane is empty.
+`cargo outdated --depth 1` now prints a table again (diesel no longer blocks
+the probe) with eight direct rows. None is a security advisory: two are
+deliberate pins (`libp2p-identity` 0.3.0, dev-only `tokio-tungstenite` 0.29),
+a few are compatible patches, and the rest are semver-incompatible majors.
+Re-run `cargo outdated --depth 1` before assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
@@ -346,7 +342,7 @@ here so they are not mistaken for unfinished work.
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
 | The web frontend's HTTP Basic credentials are not encrypted on the wire | The server has no TLS of its own (it is a LAN display client). Put a TLS-terminating reverse proxy in front for any exposure beyond a trusted LAN; the browser-native credential dialog and the session cookie already keep the secret out of URLs, history and logs. |
-| `cargo outdated` reports two direct rows | Both are held on purpose (see the dependency lane above): `libsqlite3-sys` 0.38.2 → 0.39.1 is a tracker for a future diesel release, and `tokio-tungstenite` 0.29 → 0.30 is pinned to axum's copy so the tree keeps one `tungstenite`. |
+| `cargo outdated` reports eight direct rows | Informational (exit 0 by default); none is a security advisory. Two deliberate pins, a few compatible patches, and a few semver-incompatible majors — see the dependency lane above. |
 
 ---
 
@@ -354,6 +350,8 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Clear the remaining audit advisories (diesel 2.4.0, libsqlite3-sys 0.39.1, gossipsub, quinn-proto) | 2026-11-17 | `227f214` |
+| CI checks report the checked command's exit code (no `tee` false PASS) | 2026-11-17 | `1835967` |
 | Peer blocklist / mute (US-054) | 2026-11-12 | [`archive/2026-11-12_peer_blocklist.md`](archive/2026-11-12_peer_blocklist.md) |
 | Manual peer address entry (US-053) | 2026-11-02 | `efa5e46` |
 | Connection quality indicators (US-052) | 2026-11-08 | [`archive/2026-11-08_connection_quality.md`](archive/2026-11-08_connection_quality.md) |
