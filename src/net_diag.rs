@@ -195,8 +195,8 @@ struct PeerQualityEntry {
 
 /// Return the live network diagnostics snapshot.
 ///
-/// Enumerating OS interfaces is cached for [`INTERFACE_CACHE_TTL_SECS`] so it
-/// can be called from a render loop.
+/// Enumerating OS interfaces is cached for five seconds (the private
+/// `INTERFACE_CACHE_TTL_SECS`) so it can be called from a render loop.
 #[must_use]
 pub fn snapshot() -> NetworkDetails {
     let live = live_state().lock().unwrap_or_else(PoisonError::into_inner);

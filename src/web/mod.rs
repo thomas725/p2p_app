@@ -47,8 +47,8 @@ const UPLOAD_BODY_SLACK: usize = 1024;
 
 /// Single-user HTTP Basic credentials guarding the web frontend.
 ///
-/// The same secret keys the browser session cookie (see [`auth_middleware`]),
-/// so rotating the password invalidates every existing session.
+/// The same secret keys the browser session cookie, so rotating the password
+/// invalidates every existing session.
 #[derive(Clone, Debug)]
 pub struct Credentials {
     /// Username the browser's credential dialog must present. Cannot contain

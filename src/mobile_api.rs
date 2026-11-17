@@ -45,11 +45,17 @@ pub fn parse_last_seen_ms(last_seen: &str) -> u64 {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PeerSortInput {
+    /// Stable peer ID, also the sort tie-breaker.
     pub peer_id: String,
+    /// Cached display name used by the name column.
     pub display_name: String,
+    /// Last activity, parsed by the canonical `parse_last_seen_ms`.
     pub last_seen: String,
+    /// First contact, parsed by the canonical `parse_last_seen_ms`.
     pub first_seen: String,
+    /// Number of direct messages exchanged with the peer.
     pub dm_count: u32,
+    /// Number of broadcasts sent to the peer.
     pub broadcast_count: u32,
 }
 
@@ -61,13 +67,21 @@ pub struct PeerSortInput {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PeerWithStats {
+    /// Stable peer ID of the device.
     pub peer_id: String,
+    /// Resolved display name (local → received → generated petname).
     pub display_name: String,
+    /// First contact, formatted for display.
     pub first_seen: String,
+    /// Last activity, formatted for display.
     pub last_seen: String,
+    /// Nickname received from the peer, if any.
     pub nickname: Option<String>,
+    /// Nickname assigned locally to this device, if any.
     pub local_nickname: Option<String>,
+    /// Number of direct messages exchanged with this peer.
     pub dm_count: i64,
+    /// Number of broadcasts sent to this peer (the "Broadcast" column).
     pub broadcast_sent_to_peer: i64,
 }
 
@@ -104,11 +118,17 @@ pub fn get_peers_with_stats() -> Result<Vec<PeerWithStats>, String> {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileContactDevice {
+    /// libp2p peer ID of this device.
     pub peer_id: String,
+    /// Resolved display name of this device.
     pub display_name: String,
+    /// First contact, formatted for display.
     pub first_seen: String,
+    /// Last activity, formatted for display.
     pub last_seen: String,
+    /// Nickname received from the device, if any.
     pub received_nickname: Option<String>,
+    /// Nickname assigned locally to this device, if any.
     pub local_nickname: Option<String>,
 }
 
@@ -122,13 +142,21 @@ pub struct MobileContactDevice {
 pub struct MobileContactRow {
     /// Stable key: `user_id` when [`MobileContactRow::is_user`], else `peer_id`.
     pub contact_id: String,
+    /// True when this row represents a bound user (several devices).
     pub is_user: bool,
+    /// Display name used for the contact row.
     pub display_name: String,
+    /// Number of devices collapsed into this row.
     pub device_count: usize,
+    /// The collapsed devices, expanded into sub-rows in the UI.
     pub device_rows: Vec<MobileContactDevice>,
+    /// Earliest first-seen across the contact's devices, formatted.
     pub first_seen: String,
+    /// Latest last-seen across the contact's devices, formatted.
     pub last_seen: String,
+    /// Direct messages aggregated across all of the contact's devices.
     pub dm_count: i64,
+    /// Broadcasts sent across all of the contact's devices.
     pub broadcast_sent_to_peer: i64,
 }
 
@@ -226,10 +254,15 @@ pub fn sort_peers(
 pub struct ContactSortInput {
     /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
     pub contact_id: String,
+    /// Display name used by the name column.
     pub display_name: String,
+    /// Last activity, parsed by the canonical `parse_last_seen_ms`.
     pub last_seen: String,
+    /// First contact, parsed by the canonical `parse_last_seen_ms`.
     pub first_seen: String,
+    /// Direct messages aggregated across the contact's devices.
     pub dm_count: i64,
+    /// Broadcasts sent across the contact's devices.
     pub broadcast_sent_to_peer: i64,
 }
 
@@ -339,8 +372,9 @@ fn contact_info_from(contact: crate::generated::models_queryable::Contact) -> Mo
 
 /// Resolve this install's user ID from its stored identity and binding.
 ///
-/// A user is "this install's user" when a live [`crate::identity::DeviceBinding`]
-/// row binds our local peer ID into that user's device-set. Returns `None`
+/// A user is "this install's user" when a live
+/// [`crate::generated::models_queryable::DeviceBinding`] row binds our local
+/// peer ID into that user's device-set. Returns `None`
 /// before the install has been bound to any user.
 ///
 /// # Errors
@@ -468,21 +502,32 @@ pub fn remove_contact(contact_user_id: String) -> Result<(), String> {
     crate::identity::remove_contact(&owner_user_id, &contact_user_id).map_err(|e| e.to_string())
 }
 
+/// Result of opening/initializing the mobile database.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileInitStatus {
+    /// Effective database URL (may be a lock-diverted variant).
     pub database_url: String,
+    /// This install's libp2p peer ID.
     pub local_peer_id: String,
 }
 
+/// Current mobile install identity reported to the UI.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobilePeerStatus {
+    /// Effective database URL.
     pub database_url: String,
+    /// This install's libp2p peer ID.
     pub local_peer_id: String,
+    /// Our own nickname as announced to other users, if set.
     pub self_nickname: Option<String>,
 }
 
+/// Open (and migrate) the database at `db_path`, then report the local peer ID.
+///
+/// # Errors
+/// Returns an error if the database or the local identity cannot be loaded.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String> {
     crate::db::set_db_url(&db_path);
@@ -495,6 +540,10 @@ pub fn init_mobile_database(db_path: String) -> Result<MobileInitStatus, String>
     })
 }
 
+/// Report the effective database URL, local peer ID, and our own nickname.
+///
+/// # Errors
+/// Returns an error if the local identity or nickname cannot be read.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn get_mobile_peer_status() -> Result<MobilePeerStatus, String> {
     let local_peer_id = crate::get_local_peer_id().map_err(|e| e.to_string())?;

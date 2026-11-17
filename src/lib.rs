@@ -50,6 +50,10 @@
 
 #[cfg(feature = "mobile")]
 pub mod api;
+// `NetworkBehaviour` generates an undocumented `AppBehaviourEvent` enum whose
+// variants mirror AppBehaviour's fields; rustdoc's missing-docs warning
+// originates in the derive, not in a hand-written item.
+#[allow(missing_docs)]
 pub mod behavior;
 pub mod blocklist;
 pub mod calls;

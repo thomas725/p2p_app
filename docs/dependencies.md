@@ -125,7 +125,12 @@ not "fix" these without revisiting the reason:
 | `tokio-tungstenite` | 0.29.0 | 0.30.0 | Test-only client, kept in lockstep with axum's `ws` feature. Bumping it to 0.30 adds a *second* `tungstenite` tree (`0.29` from axum, `0.30` here, plus `sha1` 0.11 and `rand` 0.10) for no behavioural gain — verified by building the bump and backing it out. Revisit when axum moves. |
 
 The full `cargo outdated` output also lists transitive rows. Those are not
-actionable here — they move when their parent moves.
+actionable here — they move when their parent moves. In practice `cargo
+outdated` cannot produce a row table at all right now: its probe bumps
+`libsqlite3-sys` to 0.39.1 and then dies on the diesel `<0.39.0` constraint
+plus the `links = "sqlite3"` conflict, so `outdated.log` holds that resolution
+error instead. That is expected until diesel widens the range; the daily job
+stays informational and green.
 
 ### `cargo audit` is the only hard dependency gate
 

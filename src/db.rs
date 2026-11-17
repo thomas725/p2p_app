@@ -80,6 +80,7 @@ pub fn set_db_url(url: &str) {
     crate::nickname::clear_display_names();
 }
 
+/// Test-only reset: drop the thread-local URL and clear cached display names.
 #[cfg(any(test, feature = "test-utils"))]
 pub fn reset_db_url() {
     DB_URL.with(|u| *u.borrow_mut() = None);

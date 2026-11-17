@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 
 /// Tracks which peers are currently connected and, on disconnect, remembers the
-/// most recent disconnection so frontends can show "last connected to <peer>".
+/// most recent disconnection so frontends can show `last connected to <peer>`.
 ///
 /// A single instance must only be mutated from the task that processes swarm
 /// events (the TUI's command processor, or `mobile_node`'s event poller).

@@ -47,10 +47,15 @@ pub struct ContactDevice {
 /// connection or a clock.
 #[derive(Debug, Clone)]
 pub struct ContactDeviceInput {
+    /// libp2p peer ID of the device (a single-device contact is its own row).
     pub peer_id: String,
+    /// First time this device was seen, pre-formatted for display.
     pub first_seen: String,
+    /// Most recent time this device was seen, pre-formatted for display.
     pub last_seen: String,
+    /// Nickname received from the peer, if any.
     pub received_nickname: Option<String>,
+    /// Nickname assigned locally to this device, if any.
     pub local_nickname: Option<String>,
 }
 

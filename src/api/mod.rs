@@ -360,7 +360,7 @@ pub fn network_size_label(peer_count: i64) -> String {
 /// Resolve this install's user ID from its stored identity and binding.
 ///
 /// Returns `None` until this install's peer ID is bound into some user's
-/// device-set ([`crate::identity::DeviceBinding`]).
+/// device-set ([`crate::generated::models_queryable::DeviceBinding`]).
 ///
 /// # Errors
 /// Returns an error if the local peer ID cannot be resolved or the DB lookup

@@ -1,6 +1,6 @@
 //! Call session model (calls lane; signaling slice).
 //!
-//! The wire protocol ([`CallSignal`]/[`CallSignalAck`], plus the transport
+//! The wire protocol ([`CallSignal`]/[`crate::behavior::CallSignalAck`], plus the transport
 //! lane) lives in [`crate::behavior`]; this module holds the canonical
 //! per-session state machine both frontends evolve. Signals only *carry* the
 //! wire intent — a local session is updated here when a matching signal lands

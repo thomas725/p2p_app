@@ -238,6 +238,7 @@ impl TuiRenderState {
     pub const fn is_creating_group(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::CreatingGroup)
     }
+    /// True while the shared input captures a peer ID / multiaddr to dial.
     #[must_use]
     pub const fn is_dialing_peer(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::DialingPeer)

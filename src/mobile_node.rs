@@ -417,14 +417,21 @@ pub fn get_node_peer_id() -> Result<String, String> {
 
 // --- Mobile peer record with nicknames ---
 
+/// A known peer with the nickname fields needed by the mobile Peer Info page.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobilePeerRecord {
+    /// Stable libp2p peer ID.
     pub peer_id: String,
+    /// First contact, formatted for display.
     pub first_seen: String,
+    /// Last activity, formatted for display.
     pub last_seen: String,
+    /// Nickname received from the peer, if any.
     pub nickname: Option<String>,
+    /// Nickname assigned locally to this peer, if any.
     pub local_nickname: Option<String>,
+    /// Resolved display name (local → received → generated petname).
     pub display_name: String,
 }
 
@@ -459,22 +466,34 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
 
 // --- Message history types ---
 
+/// One chat message row shared by the broadcast, DM and group screens.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 // Four independent boolean flags on a serialized DTO; a state machine would
 // only obscure the wire shape (US-042).
 #[allow(clippy::struct_excessive_bools)]
 pub struct ChatMessage {
+    /// Database row ID (unique per message).
     pub id: i32,
+    /// Message body, or the canonical file chip for an attachment-only row.
     pub content: String,
+    /// Peer ID of the sender (incoming) or partner (outgoing DM), if known.
     pub peer_id: Option<String>,
+    /// True for a gossipsub broadcast, false for DMs and group messages.
     pub is_broadcast: bool,
+    /// Intended recipient of an outgoing DM, if any.
     pub target_peer: Option<String>,
+    /// True for messages we sent, false for incoming ones.
     pub sent: bool,
+    /// Stable wire message ID, used for dedup and delivery receipts.
     pub msg_id: Option<String>,
+    /// Send time as `HH:MM` (from the Unix-seconds wire value), if recorded.
     pub sent_at: Option<String>,
+    /// Time the row was stored, formatted for display.
     pub created_at: String,
+    /// Display label for the sender, when the nickname is known.
     pub sender_nickname: Option<String>,
+    /// Attachment descriptor, if the message carries a file.
     pub attachment: Option<MobileAttachment>,
     /// True when the body arrived sealed end to end (US-042) — surfaced in
     /// the UI as a lock marker. Always false for outgoing rows and broadcasts.
@@ -940,26 +959,41 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
 
 // --- Group chat types and functions ---
 
+/// A saved group shown in the group list.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileGroup {
+    /// Stable group topic identifier.
     pub group_id: String,
+    /// Human-readable group name.
     pub display_name: String,
+    /// Number of members recorded for this group.
     pub member_count: i64,
+    /// True for a private (invite-only) group.
     pub is_private: bool,
 }
 
+/// One message in a group's persisted history.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MobileGroupMessage {
+    /// Database row ID.
     pub id: i32,
+    /// Message body, or the canonical file chip for an attachment-only row.
     pub content: String,
+    /// Peer ID of the sender, when recorded.
     pub peer_id: Option<String>,
+    /// True for a message we sent.
     pub sent: bool,
+    /// Stable wire ID used for deduplication, if the sender supplied one.
     pub msg_id: Option<String>,
+    /// Send time as `HH:MM`, if recorded.
     pub sent_at: Option<String>,
+    /// Time the row was stored, formatted for display.
     pub created_at: String,
+    /// Display label for the sender, when the nickname is known.
     pub sender_nickname: Option<String>,
+    /// Attachment descriptor, if the message carries a file.
     pub attachment: Option<MobileAttachment>,
 }
 
@@ -1172,17 +1206,30 @@ pub fn attachment_file_path(file_id: &str) -> Result<String, String> {
 
 // --- JSON types for FRB ---
 
+/// A swarm event flattened into JSON for the Flutter event stream.
+///
+/// Only the fields relevant to the event's `event_type` are populated; the
+/// rest stay `None` (the constructors all start from `default_event`).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SwarmEventJson {
+    /// Event kind, e.g. `dm`, `broadcast`, `receipt`, `call_*`.
     pub event_type: String,
+    /// Peer the event concerns, when applicable.
     pub peer_id: Option<String>,
+    /// Event-specific payload (group name, user ID, call ID, NAT status…).
     pub content: Option<String>,
+    /// Round-trip time of a live message, in canonical display form.
     pub latency: Option<String>,
+    /// Nickname announced by the peer, when applicable.
     pub nickname: Option<String>,
+    /// Message ID of a receipt or delivered message, when applicable.
     pub msg_id: Option<String>,
+    /// Multiaddr of a listen/external-address/discovery event.
     pub address: Option<String>,
+    /// Group topic of a group message/invite event.
     pub group_id: Option<String>,
+    /// Raw device public key of a device-binding intro.
     pub device_pubkey: Option<Vec<u8>>,
 }
 

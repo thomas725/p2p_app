@@ -1,4 +1,4 @@
-// TUI binary — ratatui-based terminal interface and headless fallback entry point.
+//! TUI binary — ratatui-based terminal interface and headless fallback entry point.
 
 use std::sync::Arc;
 

@@ -190,11 +190,17 @@ impl PeerMessageMap for std::collections::BTreeMap<String, VecDeque<String>> {
 
 /// A single row of the peers table, mirroring Flutter's peer list.
 pub struct PeerTableRow {
+    /// Stable peer ID, also the sort tie-breaker.
     pub peer_id: String,
+    /// Cached display name (local → received → generated petname).
     pub display_name: String,
+    /// Number of direct messages exchanged with this peer.
     pub dm_count: usize,
+    /// Number of broadcasts sent to this peer.
     pub broadcast_count: usize,
+    /// Most recent activity, pre-formatted for display.
     pub last_seen: String,
+    /// First contact, pre-formatted for display.
     pub first_seen: String,
 }
 
@@ -215,6 +221,7 @@ pub fn peer_count_display(count: usize) -> String {
 }
 
 impl PeerTableRow {
+    /// Build a row from the display strings and counts held by the TUI state.
     #[must_use]
     pub fn new(
         peer_id: &str,
@@ -381,7 +388,9 @@ pub enum ContactTableRowRef {
     Contact(usize),
     /// The `device_idx`-th device of contact `contact_idx`.
     Device {
+        /// Index of the owning contact in the sorted contact list.
         contact_idx: usize,
+        /// Index of this device within that contact's `device_rows`.
         device_idx: usize,
     },
 }

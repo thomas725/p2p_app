@@ -74,7 +74,11 @@ protection, no PR workflow) — see the backlog.
 Runs `cargo outdated` (informational — it exits non-zero whenever *any* row
 exists, including transitive pins no repo change can move, so it must not
 gate) and `cargo audit`, which **does** gate: the workflow fails on any
-advisory not ignored in `.cargo/audit.toml`.
+advisory not ignored in `.cargo/audit.toml`. The outdated step sets
+`pipefail` so the `Exit code: N` it appends to `outdated.log` is the tool's
+status, not `tee`'s — today that is a dependency-resolution error on
+`libsqlite3-sys` rather than a table of rows (see
+[dependencies.md](dependencies.md)).
 
 `.cargo/audit.toml` is comment-only — nothing is silently ignored. `cargo
 audit` currently exits 0, with two allowed *warnings* (the unmaintained

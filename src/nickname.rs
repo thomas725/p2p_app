@@ -171,8 +171,11 @@ pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<St
 /// the names we knew them by before the current one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerNameHistoryEntry {
+    /// The nickname value that was superseded.
     pub name: String,
+    /// Origin of the superseded name (currently `received`).
     pub name_kind: String,
+    /// When this entry was archived.
     pub set_at: chrono::NaiveDateTime,
 }
 
