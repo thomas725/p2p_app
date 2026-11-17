@@ -61,6 +61,9 @@ jobs:
         if: steps.skip-check.outputs.skip != 'true'
         continue-on-error: true
         run: |
+          # pipefail so the logged exit code is cargo outdated's, not tee's; the
+          # step stays continue-on-error so an outdated row never fails CI.
+          set -o pipefail
           cargo install cargo-outdated --locked 2>&1 | tee .github/ci-results/outdated-install.log || true
           cargo outdated 2>&1 | tee .github/ci-results/outdated.log
           echo "Exit code: $?" >> .github/ci-results/outdated.log
