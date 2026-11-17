@@ -365,11 +365,9 @@ async fn handle_behaviour_event(
             peer_id,
             info,
             ..
-        })) => {
+        })) if !peer_is_blocked(&peer_id) => {
             // A blocked peer is not added to the DHT/roster either.
-            if !peer_is_blocked(&peer_id) {
-                handle_identify_received(peer_id, &info, swarm);
-            }
+            handle_identify_received(peer_id, &info, swarm);
         }
         #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Identify(_)) => {}
