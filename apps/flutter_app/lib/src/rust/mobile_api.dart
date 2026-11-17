@@ -89,10 +89,20 @@ List<ContactSortInput> sortContacts({
 class ContactSortInput {
   /// Stable key: `user_id` when the contact is a bound user, else `peer_id`.
   final String contactId;
+
+  /// Display name used by the name column.
   final String displayName;
+
+  /// Last activity, parsed by the canonical `parse_last_seen_ms`.
   final String lastSeen;
+
+  /// First contact, parsed by the canonical `parse_last_seen_ms`.
   final String firstSeen;
+
+  /// Direct messages aggregated across the contact's devices.
   final PlatformInt64 dmCount;
+
+  /// Broadcasts sent across the contact's devices.
   final PlatformInt64 broadcastSentToPeer;
 
   const ContactSortInput({
@@ -128,11 +138,22 @@ class ContactSortInput {
 
 /// One device row inside a contact's roster entry.
 class MobileContactDevice {
+  /// libp2p peer ID of this device.
   final String peerId;
+
+  /// Resolved display name of this device.
   final String displayName;
+
+  /// First contact, formatted for display.
   final String firstSeen;
+
+  /// Last activity, formatted for display.
   final String lastSeen;
+
+  /// Nickname received from the device, if any.
   final String? receivedNickname;
+
+  /// Nickname assigned locally to this device, if any.
   final String? localNickname;
 
   const MobileContactDevice({
@@ -213,13 +234,29 @@ class MobileContactInfo {
 class MobileContactRow {
   /// Stable key: `user_id` when [`MobileContactRow::is_user`], else `peer_id`.
   final String contactId;
+
+  /// True when this row represents a bound user (several devices).
   final bool isUser;
+
+  /// Display name used for the contact row.
   final String displayName;
+
+  /// Number of devices collapsed into this row.
   final BigInt deviceCount;
+
+  /// The collapsed devices, expanded into sub-rows in the UI.
   final List<MobileContactDevice> deviceRows;
+
+  /// Earliest first-seen across the contact's devices, formatted.
   final String firstSeen;
+
+  /// Latest last-seen across the contact's devices, formatted.
   final String lastSeen;
+
+  /// Direct messages aggregated across all of the contact's devices.
   final PlatformInt64 dmCount;
+
+  /// Broadcasts sent across all of the contact's devices.
   final PlatformInt64 broadcastSentToPeer;
 
   const MobileContactRow({
@@ -307,8 +344,12 @@ class MobileDeviceInfo {
           boundAt == other.boundAt;
 }
 
+/// Result of opening/initializing the mobile database.
 class MobileInitStatus {
+  /// Effective database URL (may be a lock-diverted variant).
   final String databaseUrl;
+
+  /// This install's libp2p peer ID.
   final String localPeerId;
 
   const MobileInitStatus({
@@ -328,9 +369,15 @@ class MobileInitStatus {
           localPeerId == other.localPeerId;
 }
 
+/// Current mobile install identity reported to the UI.
 class MobilePeerStatus {
+  /// Effective database URL.
   final String databaseUrl;
+
+  /// This install's libp2p peer ID.
   final String localPeerId;
+
+  /// Our own nickname as announced to other users, if set.
   final String? selfNickname;
 
   const MobilePeerStatus({
@@ -355,11 +402,22 @@ class MobilePeerStatus {
 
 /// One row of the peers table, as fed to [`sort_peers`].
 class PeerSortInput {
+  /// Stable peer ID, also the sort tie-breaker.
   final String peerId;
+
+  /// Cached display name used by the name column.
   final String displayName;
+
+  /// Last activity, parsed by the canonical `parse_last_seen_ms`.
   final String lastSeen;
+
+  /// First contact, parsed by the canonical `parse_last_seen_ms`.
   final String firstSeen;
+
+  /// Number of direct messages exchanged with the peer.
   final int dmCount;
+
+  /// Number of broadcasts sent to the peer.
   final int broadcastCount;
 
   const PeerSortInput({
@@ -399,13 +457,28 @@ class PeerSortInput {
 /// from this one response, avoiding the N+1 round trip over
 /// [`crate::messages::get_all_peer_stats`].
 class PeerWithStats {
+  /// Stable peer ID of the device.
   final String peerId;
+
+  /// Resolved display name (local → received → generated petname).
   final String displayName;
+
+  /// First contact, formatted for display.
   final String firstSeen;
+
+  /// Last activity, formatted for display.
   final String lastSeen;
+
+  /// Nickname received from the peer, if any.
   final String? nickname;
+
+  /// Nickname assigned locally to this device, if any.
   final String? localNickname;
+
+  /// Number of direct messages exchanged with this peer.
   final PlatformInt64 dmCount;
+
+  /// Number of broadcasts sent to this peer (the "Broadcast" column).
   final PlatformInt64 broadcastSentToPeer;
 
   const PeerWithStats({

@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 // These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`
 
 /// Get the local peer ID.
 ///
@@ -40,17 +40,39 @@ Future<void> deleteGroup({required String groupId}) =>
 Future<String> attachmentFilePath({required String fileId}) =>
     RustLib.instance.api.crateMobileNodeAttachmentFilePath(fileId: fileId);
 
+/// One chat message row shared by the broadcast, DM and group screens.
 class ChatMessage {
+  /// Database row ID (unique per message).
   final int id;
+
+  /// Message body, or the canonical file chip for an attachment-only row.
   final String content;
+
+  /// Peer ID of the sender (incoming) or partner (outgoing DM), if known.
   final String? peerId;
+
+  /// True for a gossipsub broadcast, false for DMs and group messages.
   final bool isBroadcast;
+
+  /// Intended recipient of an outgoing DM, if any.
   final String? targetPeer;
+
+  /// True for messages we sent, false for incoming ones.
   final bool sent;
+
+  /// Stable wire message ID, used for dedup and delivery receipts.
   final String? msgId;
+
+  /// Send time as `HH:MM` (from the Unix-seconds wire value), if recorded.
   final String? sentAt;
+
+  /// Time the row was stored, formatted for display.
   final String createdAt;
+
+  /// Display label for the sender, when the nickname is known.
   final String? senderNickname;
+
+  /// Attachment descriptor, if the message carries a file.
   final MobileAttachment? attachment;
 
   /// True when the body arrived sealed end to end (US-042) — surfaced in
@@ -171,10 +193,18 @@ class MobileAttachment {
           mime == other.mime;
 }
 
+/// A saved group shown in the group list.
 class MobileGroup {
+  /// Stable group topic identifier.
   final String groupId;
+
+  /// Human-readable group name.
   final String displayName;
+
+  /// Number of members recorded for this group.
   final PlatformInt64 memberCount;
+
+  /// True for a private (invite-only) group.
   final bool isPrivate;
 
   const MobileGroup({
@@ -202,15 +232,33 @@ class MobileGroup {
           isPrivate == other.isPrivate;
 }
 
+/// One message in a group's persisted history.
 class MobileGroupMessage {
+  /// Database row ID.
   final int id;
+
+  /// Message body, or the canonical file chip for an attachment-only row.
   final String content;
+
+  /// Peer ID of the sender, when recorded.
   final String? peerId;
+
+  /// True for a message we sent.
   final bool sent;
+
+  /// Stable wire ID used for deduplication, if the sender supplied one.
   final String? msgId;
+
+  /// Send time as `HH:MM`, if recorded.
   final String? sentAt;
+
+  /// Time the row was stored, formatted for display.
   final String createdAt;
+
+  /// Display label for the sender, when the nickname is known.
   final String? senderNickname;
+
+  /// Attachment descriptor, if the message carries a file.
   final MobileAttachment? attachment;
 
   const MobileGroupMessage({
@@ -253,12 +301,24 @@ class MobileGroupMessage {
           attachment == other.attachment;
 }
 
+/// A known peer with the nickname fields needed by the mobile Peer Info page.
 class MobilePeerRecord {
+  /// Stable libp2p peer ID.
   final String peerId;
+
+  /// First contact, formatted for display.
   final String firstSeen;
+
+  /// Last activity, formatted for display.
   final String lastSeen;
+
+  /// Nickname received from the peer, if any.
   final String? nickname;
+
+  /// Nickname assigned locally to this peer, if any.
   final String? localNickname;
+
+  /// Resolved display name (local → received → generated petname).
   final String displayName;
 
   const MobilePeerRecord({
@@ -292,15 +352,36 @@ class MobilePeerRecord {
           displayName == other.displayName;
 }
 
+/// A swarm event flattened into JSON for the Flutter event stream.
+///
+/// Only the fields relevant to the event's `event_type` are populated; the
+/// rest stay `None` (the constructors all start from `default_event`).
 class SwarmEventJson {
+  /// Event kind, e.g. `dm`, `broadcast`, `receipt`, `call_*`.
   final String eventType;
+
+  /// Peer the event concerns, when applicable.
   final String? peerId;
+
+  /// Event-specific payload (group name, user ID, call ID, NAT status…).
   final String? content;
+
+  /// Round-trip time of a live message, in canonical display form.
   final String? latency;
+
+  /// Nickname announced by the peer, when applicable.
   final String? nickname;
+
+  /// Message ID of a receipt or delivered message, when applicable.
   final String? msgId;
+
+  /// Multiaddr of a listen/external-address/discovery event.
   final String? address;
+
+  /// Group topic of a group message/invite event.
   final String? groupId;
+
+  /// Raw device public key of a device-binding intro.
   final Uint8List? devicePubkey;
 
   const SwarmEventJson({
