@@ -279,11 +279,6 @@ Items 2 and 3 are coupled (a reservation is required before there is anything
 to advertise). All three follow-ups have shipped; nothing here is blocked on an
 external decision.
 
-### Peer blocklist / mute (US-054)
-
-A muted peer should be ignored at the swarm boundary (don't persist its
-messages, don't dial it) rather than merely hidden in the UI.
-
 ---
 
 ## P2 — polish
@@ -359,6 +354,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Peer blocklist / mute (US-054) | 2026-11-12 | [`archive/2026-11-12_peer_blocklist.md`](archive/2026-11-12_peer_blocklist.md) |
 | Manual peer address entry (US-053) | 2026-11-02 | `efa5e46` |
 | Connection quality indicators (US-052) | 2026-11-08 | [`archive/2026-11-08_connection_quality.md`](archive/2026-11-08_connection_quality.md) |
 | `sha2` 0.10 → 0.11.1 (attachment `file_id` digest, no source change) | 2026-11-01 | `deps: take sha2 0.11` |

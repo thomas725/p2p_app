@@ -6,8 +6,8 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    contacts, device_bindings, files, group_members, group_messages, groups, identities,
-    message_receipts, messages, network_peers, peer_sessions, peers, users,
+    blocked_peers, contacts, device_bindings, files, group_members, group_messages, groups,
+    identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -247,6 +247,16 @@ pub struct Contact {
     pub added_at: NaiveDateTime,
     /// Timestamp when the contact was most recently observed
     pub last_seen: Option<NaiveDateTime>,
+}
+
+/// Queryable struct for the `blocked_peers` table (peer blocklist / mute)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = blocked_peers)]
+pub struct BlockedPeerRow {
+    /// libp2p peer id (canonical base58 text) of the muted peer
+    pub peer_id: String,
+    /// Timestamp when the peer was blocked
+    pub blocked_at: NaiveDateTime,
 }
 
 /// Queryable struct for the `network_peers` table (persisted network config)

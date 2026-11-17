@@ -391,6 +391,61 @@ fn test_enter_key_in_peers_tab_opens_dm() {
     p2p_app::db::reset_db_url();
 }
 
+// ── Peer blocklist toggle (US-054) ───────────────────────────────────────
+
+#[test]
+fn test_blocklist_toggle_from_peer_info_tab() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let peer_id = libp2p::identity::Keypair::generate_ed25519()
+        .public()
+        .to_peer_id()
+        .to_string();
+    let mut state = app_state_with_peers(0);
+    let tab_idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+    state.active_tab = tab_idx;
+    let tab = p2p_app::tui_tabs::TabContent::PeerInfo(peer_id.clone());
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    // First press mutes the peer: it is persisted, the UI set is refreshed, and
+    // the live connection is closed (the boundary only refuses new ones).
+    toggle_peer_block(&tab, &mut state, &swarm_cmd_tx);
+    assert!(matches!(
+        swarm_cmd_rx.try_recv(),
+        Ok(SwarmCommand::DisconnectPeer { .. })
+    ));
+    assert!(state.blocked_peers.contains(&peer_id));
+    assert!(p2p_app::blocklist::is_blocked(&peer_id));
+    assert!(
+        state
+            .popup
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Blocked")
+    );
+
+    // Second press unmutes it again (and queues no disconnect).
+    toggle_peer_block(&tab, &mut state, &swarm_cmd_tx);
+    assert!(swarm_cmd_rx.try_recv().is_err());
+    assert!(!state.blocked_peers.contains(&peer_id));
+    assert!(!p2p_app::blocklist::is_blocked(&peer_id));
+    assert!(
+        state
+            .popup
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Unblocked")
+    );
+
+    p2p_app::db::reset_db_url();
+}
+
 // ── Contacts search key flow ─────────────────────────────────────────────
 
 /// Press one key and drain the render channel.

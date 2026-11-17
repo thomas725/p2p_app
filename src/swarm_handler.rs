@@ -17,6 +17,22 @@ enum Event {
     Command(SwarmCommand),
 }
 
+/// Whether a peer is muted (US-054). Fail-open: an unreadable database never
+/// mutes anyone, so this can be called on every event without gating traffic
+/// behind a healthy DB.
+fn peer_is_blocked(peer_id: &libp2p::PeerId) -> bool {
+    crate::blocklist::is_blocked(&peer_id.to_string())
+}
+
+/// Peer id embedded in a multiaddr, if any (manual dial guard, US-054).
+fn multiaddr_peer_id(addr: &libp2p::Multiaddr) -> Option<libp2p::PeerId> {
+    use libp2p::multiaddr::Protocol;
+    addr.iter().find_map(|protocol| match protocol {
+        Protocol::P2p(peer_id) => Some(peer_id),
+        _ => None,
+    })
+}
+
 /// Dispatch a decoded broadcast: surface it as an event, pull its attachment
 /// from the propagation source (files lane §12), and send a best-effort
 /// receipt confirmation back.
@@ -261,6 +277,16 @@ async fn handle_behaviour_event(
         })) => {
             let peer_id_str = peer_id.to_string();
 
+            // Blocklist (US-054): a muted peer's traffic never reaches the
+            // parsers, so nothing it sends can be persisted — this covers
+            // broadcast, group and backfill topics alike.
+            if crate::blocklist::is_blocked(&peer_id_str) {
+                p2plog_debug(format!(
+                    "Dropped gossipsub traffic from blocked peer {peer_id_str}"
+                ));
+                return;
+            }
+
             // Route per-group control/chat topics (group:<group_id> and the
             // derived group:<group_id>:backfill) before the broadcast path.
             // Backfill goes first: `group:X:backfill` also starts with the
@@ -285,21 +311,39 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!("Dropped DM from blocked peer {peer}"));
+                return;
+            }
             handle_request_response(message, peer, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::Behaviour(AppEv::DeviceBinding(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!(
+                    "Dropped device-binding traffic from blocked peer {peer}"
+                ));
+                return;
+            }
             handle_device_binding(message, peer, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::Behaviour(AppEv::CallSignaling(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!("Dropped call signal from blocked peer {peer}"));
+                return;
+            }
             handle_call_signal(message, peer, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::Behaviour(AppEv::FileTransfer(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!("Dropped file transfer from blocked peer {peer}"));
+                return;
+            }
             handle_file_transfer(message, peer, event_tx, swarm).await;
         }
         #[cfg(feature = "mdns")]
@@ -322,7 +366,10 @@ async fn handle_behaviour_event(
             info,
             ..
         })) => {
-            handle_identify_received(peer_id, &info, swarm);
+            // A blocked peer is not added to the DHT/roster either.
+            if !peer_is_blocked(&peer_id) {
+                handle_identify_received(peer_id, &info, swarm);
+            }
         }
         #[cfg(feature = "kad")]
         Libp2pSwarmEvent::Behaviour(AppEv::Identify(_)) => {}
@@ -438,6 +485,14 @@ async fn handle_connection_established(
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
 ) {
+    // Blocklist (US-054): refuse the connection instead of tracking it. The
+    // peer can still resolve us via mDNS/DHT, so dropping the inbound dial is
+    // the only way to keep it from meshing with us.
+    if peer_is_blocked(&peer_id) {
+        p2plog_debug(format!("Disconnecting blocked peer {peer_id}"));
+        let _ = swarm.disconnect_peer_id(peer_id);
+        return;
+    }
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
@@ -454,6 +509,14 @@ async fn handle_connection_established(
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
 ) {
+    // Blocklist (US-054): refuse the connection instead of tracking it. The
+    // peer can still resolve us via mDNS/DHT, so dropping the inbound dial is
+    // the only way to keep it from meshing with us.
+    if peer_is_blocked(&peer_id) {
+        p2plog_debug(format!("Disconnecting blocked peer {peer_id}"));
+        let _ = swarm.disconnect_peer_id(peer_id);
+        return;
+    }
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
@@ -514,6 +577,11 @@ async fn handle_mdns_discovered(
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     for (peer_id, multiaddr) in list {
+        // Blocklist (US-054): never dial or announce a muted peer, even when
+        // it keeps advertising itself on the LAN.
+        if peer_is_blocked(&peer_id) {
+            continue;
+        }
         let _ = event_tx
             .send(SwarmEvent::PeerDiscovered {
                 peer_id: peer_id.to_string(),
@@ -1512,6 +1580,7 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         }
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
         SwarmCommand::Dial { address } => dial_peer(&address, swarm),
+        SwarmCommand::DisconnectPeer { peer_id } => disconnect_peer(&peer_id, swarm),
     }
 }
 
@@ -1543,13 +1612,29 @@ fn publish_broadcast(
     }
 }
 
+/// Close the live connection to a peer (blocklist toggle, US-054).
+fn disconnect_peer(peer_id: &str, swarm: &mut Swarm<AppBehaviour>) {
+    if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        let _ = swarm.disconnect_peer_id(peer);
+        p2plog_debug(format!("Disconnected blocked peer {peer_id}"));
+    }
+}
+
 /// Dial a peer by multiaddr (manual peer address entry, US-053).
 fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
     match address.trim().parse::<libp2p::Multiaddr>() {
-        Ok(addr) => match swarm.dial(addr.clone()) {
-            Ok(()) => p2plog_debug(format!("Dialing {addr}")),
-            Err(e) => p2plog_error(format!("Failed to dial {addr}: {e}")),
-        },
+        Ok(addr) => {
+            if multiaddr_peer_id(&addr)
+                .is_some_and(|peer| crate::blocklist::is_blocked(&peer.to_string()))
+            {
+                p2plog_debug(format!("Refusing to dial blocked peer in {addr}"));
+                return;
+            }
+            match swarm.dial(addr.clone()) {
+                Ok(()) => p2plog_debug(format!("Dialing {addr}")),
+                Err(e) => p2plog_error(format!("Failed to dial {addr}: {e}")),
+            }
+        }
         Err(e) => p2plog_error(format!("Invalid multiaddr {address}: {e}")),
     }
 }
@@ -1564,6 +1649,10 @@ fn send_dm(
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));
+            return;
+        }
         let msg = crate::DirectMessage {
             content,
             timestamp: chrono::Utc::now().timestamp(),
@@ -1651,6 +1740,10 @@ fn send_device_binding(
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));
+            return;
+        }
         // `send_request` returns the outbound request ID; failures surface as
         // `OutboundFailure` events on the behaviour, so a successful dispatch
         // is all we can assert here.
@@ -1667,6 +1760,10 @@ fn send_call_signal(
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));
+            return;
+        }
         // See `send_device_binding`: dispatch is fire-and-forget from here;
         // protocol failures surface as `OutboundFailure` behaviour events.
         let _ = swarm

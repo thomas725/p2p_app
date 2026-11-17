@@ -713,6 +713,8 @@ mod tests {
             "sendCallSignal",
             "addNetworkPeer",
             "removeNetworkPeer",
+            "blockPeer",
+            "unblockPeer",
             "formatTimeHhmm",
             "isAtBottom",
             "parseLastSeenMs",
@@ -757,6 +759,7 @@ mod tests {
             "getNetworkDetails",
             "getMyUserId",
             "listNetworkPeers",
+            "listBlockedPeers",
         ] {
             assert!(
                 source.contains(&format!("\"{method}\"")),

@@ -64,6 +64,9 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer") => {
             network_config(m, params)
         }
+        m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {
+            blocklist(m, params)
+        }
         m @ ("formatTimeHhmm" | "isAtBottom" | "parseLastSeenMs") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
     }
@@ -115,6 +118,27 @@ fn network_config(method: &str, params: Value) -> Result<Value, String> {
             json(api::remove_network_peer(p.id))
         }
         other => Err(format!("method not routed to network_config: {other}")),
+    }
+}
+
+/// Peer blocklist / mute (US-054): the swarm boundary drops blocked peers'
+/// traffic; these methods only read and edit the persisted list.
+fn blocklist(method: &str, params: Value) -> Result<Value, String> {
+    match method {
+        "isPeerBlocked" => {
+            let p: PeerIdParams = parse(params)?;
+            ok(api::is_peer_blocked(&p.peer_id))
+        }
+        "blockPeer" => {
+            let p: PeerIdParams = parse(params)?;
+            json(api::block_peer(&p.peer_id))
+        }
+        "unblockPeer" => {
+            let p: PeerIdParams = parse(params)?;
+            json(api::unblock_peer(&p.peer_id))
+        }
+        "listBlockedPeers" => json(api::list_blocked_peers()),
+        other => Err(format!("method not routed to blocklist: {other}")),
     }
 }
 

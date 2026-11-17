@@ -113,7 +113,8 @@ fn test_swarm_command_publish() {
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
         | SwarmCommand::SendCallSignal { .. }
-        | SwarmCommand::Dial { .. } => panic!("expected Publish"),
+        | SwarmCommand::Dial { .. }
+        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
     }
 }
 
@@ -144,7 +145,8 @@ fn test_swarm_command_send_dm() {
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
         | SwarmCommand::SendCallSignal { .. }
-        | SwarmCommand::Dial { .. } => panic!("expected SendDm"),
+        | SwarmCommand::Dial { .. }
+        | SwarmCommand::DisconnectPeer { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -206,7 +208,8 @@ fn test_swarm_command_clone() {
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
         | SwarmCommand::SendCallSignal { .. }
-        | SwarmCommand::Dial { .. } => panic!("expected Publish"),
+        | SwarmCommand::Dial { .. }
+        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
     }
 }
 

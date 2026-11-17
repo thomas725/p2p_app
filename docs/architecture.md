@@ -55,6 +55,7 @@ src/
 ├── db.rs               connection handling, multi-instance DB resolution, ensure_columns
 ├── messages.rs         message + receipt persistence, per-peer stats
 ├── peers.rs            peer rows, sessions, broadcast recipients
+├── blocklist.rs        peer blocklist / mute (swarm-boundary filtering)
 ├── nickname.rs         display-name resolution + memoization
 ├── fmt.rs              canonical formatting (parse_last_seen_ms, peer_id_suffix, ...)
 ├── groups.rs           groups, members, group messages, backfill watermark
@@ -179,6 +180,35 @@ persisted. Rust owns the display strings (`fmt::format_rtt` → `12 ms`,
 Peer Info tab and Flutter's `getPeerQuality` card cannot format numbers
 differently.
 
+### Peer blocklist / mute (US-054)
+
+A blocked peer is dropped at the **swarm boundary**, not merely hidden in a
+list. `blocked_peers` (primary key `peer_id`, canonical base58 text) is owned by
+`src/blocklist.rs`; `swarm_handler` consults `is_blocked` on every inbound and
+outbound path:
+
+- gossipsub messages (broadcast, group chat **and** group backfill topics) are
+  discarded before parsing, so nothing a muted peer sends is persisted;
+- DM, device-binding, call-signaling and file-transfer `request_response`
+  messages are discarded; Identify results are not applied (no DHT/roster
+  entry), mDNS discoveries are not dialed, and a connection from a blocked
+  peer is disconnected immediately;
+- outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` and manual dials
+  whose multiaddr carries `/p2p/<blocked-id>` are refused.
+
+Blocking also queues `SwarmCommand::DisconnectPeer`, so the connection that
+existed *before* the block is closed instead of waiting for its next message.
+The check is **fail-open**: an unreadable database returns "not blocked", so a
+broken DB can never act as a global mute. Blocking is per peer id on purpose —
+the account layer knows sibling devices, the blocklist deliberately does not, so
+blocking one device does not mute the rest of a contact's devices.
+
+The TUI toggles it on the Peer Info tab (`b`, with a `Blocked: yes/no` row);
+Flutter exposes the same action on `PeerInfoScreen`'s app bar and renders the
+same row. Both read/write through the FRB surface
+(`isPeerBlocked` / `blockPeer` / `unblockPeer` / `listBlockedPeers`), which
+`src/web/methods.rs` mirrors as JSON methods 1:1.
+
 ## The identity model
 
 Two layers, described in full in [identity.md](identity.md):
@@ -195,7 +225,7 @@ single-device contact.
 
 ## Persistence
 
-SQLite via Diesel. Fifteen tables:
+SQLite via Diesel. Sixteen tables:
 
 | Table | Holds |
 |---|---|
@@ -210,8 +240,9 @@ SQLite via Diesel. Fifteen tables:
 | `users` / `device_bindings` / `contacts` | the identity + contact layer |
 | `files` | attachment descriptors (the bytes live on disk, never in SQLite) |
 | `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
+| `blocked_peers` | muted peer ids; the swarm boundary drops their traffic |
 
-Eighteen migrations in `migrations/`. `db::ensure_columns()` also runs at
+Nineteen migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app

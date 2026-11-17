@@ -134,6 +134,7 @@ of the history.
 | `Enter` | Open a DM with that peer |
 | `n` | Edit the **local** nickname for that peer (the name only this install shows) |
 | `c` | Call that peer |
+| `b` | Block / unblock that peer (mute: its traffic is dropped at the network boundary) |
 | `Esc` | Return to the Chat tab |
 
 ## DM / Direct tab

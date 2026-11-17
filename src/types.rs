@@ -328,6 +328,13 @@ pub enum SwarmCommand {
         /// The call-signaling payload (boxed: keeps the command channel small)
         signal: Box<crate::behavior::CallSignal>,
     },
+    /// Drop the live connection to a peer (blocklist toggle, US-054). New
+    /// connections from a blocked peer are refused by the swarm handler anyway;
+    /// this closes the one that existed before the block.
+    DisconnectPeer {
+        /// The peer whose connection should be closed
+        peer_id: String,
+    },
 }
 
 /// Maximum broadcast messages to keep in memory (older messages are dropped).

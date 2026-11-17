@@ -1075,6 +1075,14 @@ async fn handle_contacts_action_key(
             p2plog_debug("Toggled contact expansion".to_string());
             true
         }
+        // `b` mutes/unmutes the peer shown on the Peer Info tab (US-054). The
+        // swarm boundary enforces it; this only edits the persisted list.
+        crossterm::event::KeyCode::Char('b')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
+        {
+            toggle_peer_block(tab, s, swarm_cmd_tx);
+            true
+        }
         // `c` places a call to the selected contact/device or the Peer Info
         // owner.
         crossterm::event::KeyCode::Char('c')
@@ -1084,6 +1092,45 @@ async fn handle_contacts_action_key(
             true
         }
         _ => false,
+    }
+}
+
+/// Toggle the persisted blocklist entry for the Peer Info tab's peer (US-054).
+///
+/// The reason is surfaced in a popup; enforcement itself lives in
+/// `swarm_handler`, so blocking takes effect on the very next event.
+fn toggle_peer_block(
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let p2p_app::tui_tabs::TabContent::PeerInfo(peer_id) = tab else {
+        return;
+    };
+    let was_blocked = s.blocked_peers.contains(peer_id);
+    let result = if was_blocked {
+        p2p_app::blocklist::unblock_peer(peer_id).map(|changed| (false, changed))
+    } else {
+        p2p_app::blocklist::block_peer(peer_id).map(|changed| (true, changed))
+    };
+    match result {
+        Ok((now_blocked, _changed)) => {
+            s.reload_blocked_peers();
+            if now_blocked {
+                // Close the live connection too: the boundary refuses new
+                // ones, but the existing one predates the block.
+                let _ = swarm_cmd_tx.try_send(SwarmCommand::DisconnectPeer {
+                    peer_id: peer_id.clone(),
+                });
+            }
+            let action = if now_blocked { "Blocked" } else { "Unblocked" };
+            s.popup = Some(format!("{action} {peer_id}"));
+            p2plog_debug(format!("{action} peer {peer_id}"));
+        }
+        Err(e) => {
+            s.popup = Some(format!("Blocklist error: {e}"));
+            p2plog_debug(format!("Blocklist error for {peer_id}: {e}"));
+        }
     }
 }
 

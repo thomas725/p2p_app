@@ -8,6 +8,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
+import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 
@@ -200,6 +201,8 @@ class _DmChatScreenState extends State<DmChatScreen>
                   onNavigate: widget.onNavigate,
                   currentTab: widget.currentTab,
                   loadQuality: nodeApi.getPeerQuality,
+                  loadBlocked: peerIsBlocked,
+                  toggleBlock: togglePeerBlock,
                 ),
               ),
             ),

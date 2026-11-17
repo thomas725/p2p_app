@@ -66,6 +66,12 @@ pub fn render_peer_info_content(
     let quality = crate::net_diag::peer_quality(peer_id);
     lines.push(format!("Round-trip time: {}", quality.rtt_label));
     lines.push(format!("Ping loss: {}", quality.loss_label));
+    let blocked = state.blocked_peers.contains(peer_id);
+    lines.push(format!(
+        "Blocked: {} (b: {})",
+        if blocked { "yes" } else { "no" },
+        if blocked { "unblock" } else { "block" }
+    ));
     if let Some(contact) = contact {
         lines.push(format!("Direct messages: {}", contact.dm_count));
         lines.push(format!(

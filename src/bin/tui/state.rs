@@ -117,6 +117,9 @@ pub struct AppState {
     pub contact_search: String,
     // Contact IDs expanded into their device sub-rows on the Contacts tab.
     pub expanded_contact_ids: HashSet<String>,
+    // Peers the operator muted (US-054). The swarm boundary drops their
+    // traffic and refuses to dial them; this set only drives the UI state.
+    pub blocked_peers: HashSet<String>,
     pub concurrent_peers: usize,
     // How many broadcasts *we* sent to each peer (bulk-loaded from the
     // `broadcast_recipients` table via `messages::get_all_peer_stats`, refreshed
@@ -665,6 +668,7 @@ impl AppState {
             contacts_all: Vec::new(),
             contact_search: String::new(),
             expanded_contact_ids: HashSet::new(),
+            blocked_peers: HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
             group_summaries: data.groups,
             group_messages: HashMap::new(),
@@ -719,9 +723,21 @@ impl AppState {
             own_user_id: None,
             own_user_devices: Vec::new(),
         };
+        state.reload_blocked_peers();
         state.rebuild_contacts();
         state.contacts_all.clone_from(&state.contacts);
         state
+    }
+
+    /// Refresh the muted-peer set from the `blocked_peers` table (US-054).
+    ///
+    /// Best-effort, like the blocklist itself: an unreadable database yields an
+    /// empty set, so a broken DB never makes the UI claim peers are muted.
+    pub fn reload_blocked_peers(&mut self) {
+        self.blocked_peers = p2p_app::blocklist::list_blocked_peers()
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
     }
 }
 

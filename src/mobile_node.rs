@@ -510,6 +510,22 @@ pub fn dial_peer(address: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Drop the live connection to a peer (blocklist toggle, US-054).
+///
+/// Best-effort: when the node is not running there is nothing to disconnect.
+/// `try_send` keeps this callable from the sync FRB surface.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn disconnect_peer(peer_id: &str) {
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.try_send(SwarmCommand::DisconnectPeer {
+                peer_id: peer_id.to_string(),
+            });
+        }
+    }
+}
+
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

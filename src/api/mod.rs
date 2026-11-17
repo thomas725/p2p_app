@@ -207,6 +207,46 @@ pub fn dial_peer(address: String) -> Result<(), String> {
     crate::mobile_node::dial_peer(address)
 }
 
+// --- Peer blocklist / mute (US-054) ---
+
+/// Whether a peer is muted. A blocked peer is ignored at the swarm boundary:
+/// its traffic is dropped, it is never dialed, and an incoming connection is
+/// refused — not merely hidden in the UI.
+#[must_use]
+pub fn is_peer_blocked(peer_id: &str) -> bool {
+    crate::blocklist::is_blocked(peer_id)
+}
+
+/// Block one peer; `true` when it was not already blocked.
+///
+/// # Errors
+/// Returns a human-readable error when the peer id does not parse or the
+/// database write fails.
+pub fn block_peer(peer_id: &str) -> Result<bool, String> {
+    let changed = crate::blocklist::block_peer(peer_id)?;
+    // Close any live connection: the swarm boundary refuses new ones, but this
+    // one predates the block.
+    crate::mobile_node::disconnect_peer(peer_id);
+    Ok(changed)
+}
+
+/// Unblock one peer; `true` when a row was removed.
+///
+/// # Errors
+/// Returns a human-readable error when the peer id does not parse or the
+/// database delete fails.
+pub fn unblock_peer(peer_id: &str) -> Result<bool, String> {
+    crate::blocklist::unblock_peer(peer_id)
+}
+
+/// All blocked peer ids, oldest first.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+pub fn list_blocked_peers() -> Result<Vec<String>, String> {
+    crate::blocklist::list_blocked_peers().map_err(|e| e.to_string())
+}
+
 // --- Groups ---
 
 /// Create (or join) a public group by name and subscribe to its topic.

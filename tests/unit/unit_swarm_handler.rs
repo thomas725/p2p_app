@@ -74,7 +74,8 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
         | SwarmCommand::SendCallSignal { .. }
-        | SwarmCommand::Dial { .. } => panic!("expected Publish"),
+        | SwarmCommand::Dial { .. }
+        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -108,7 +109,8 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::UnsubscribeGroup { .. }
         | SwarmCommand::SendDeviceBinding { .. }
         | SwarmCommand::SendCallSignal { .. }
-        | SwarmCommand::Dial { .. } => panic!("expected SendDm"),
+        | SwarmCommand::Dial { .. }
+        | SwarmCommand::DisconnectPeer { .. } => panic!("expected SendDm"),
     }
 }
 

@@ -6,8 +6,9 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    broadcast_recipients, contacts, device_bindings, files, group_members, group_messages, groups,
-    identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
+    blocked_peers, broadcast_recipients, contacts, device_bindings, files, group_members,
+    group_messages, groups, identities, message_receipts, messages, network_peers, peer_sessions,
+    peers, users,
 };
 use diesel::Insertable;
 
@@ -205,6 +206,14 @@ pub struct NewContact {
     pub contact_user_id: String,
     /// Nickname override this owner has assigned to the contact
     pub nickname_override: Option<String>,
+}
+
+/// Insertable struct for the `blocked_peers` table (peer blocklist / mute)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = blocked_peers)]
+pub struct NewBlockedPeer {
+    /// libp2p peer id (canonical base58 text) of the muted peer
+    pub peer_id: String,
 }
 
 /// Insertable struct for the `network_peers` table (persisted network config)

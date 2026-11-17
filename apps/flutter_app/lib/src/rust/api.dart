@@ -192,6 +192,35 @@ Future<ChatMessage> saveIncomingMessage({
 Future<void> dialPeer({required String address}) =>
     RustLib.instance.api.crateApiDialPeer(address: address);
 
+/// Whether a peer is muted. A blocked peer is ignored at the swarm boundary:
+/// its traffic is dropped, it is never dialed, and an incoming connection is
+/// refused — not merely hidden in the UI.
+Future<bool> isPeerBlocked({required String peerId}) =>
+    RustLib.instance.api.crateApiIsPeerBlocked(peerId: peerId);
+
+/// Block one peer; `true` when it was not already blocked.
+///
+/// # Errors
+/// Returns a human-readable error when the peer id does not parse or the
+/// database write fails.
+Future<bool> blockPeer({required String peerId}) =>
+    RustLib.instance.api.crateApiBlockPeer(peerId: peerId);
+
+/// Unblock one peer; `true` when a row was removed.
+///
+/// # Errors
+/// Returns a human-readable error when the peer id does not parse or the
+/// database delete fails.
+Future<bool> unblockPeer({required String peerId}) =>
+    RustLib.instance.api.crateApiUnblockPeer(peerId: peerId);
+
+/// All blocked peer ids, oldest first.
+///
+/// # Errors
+/// Returns an error if the database query fails.
+Future<List<String>> listBlockedPeers() =>
+    RustLib.instance.api.crateApiListBlockedPeers();
+
 /// Create (or join) a public group by name and subscribe to its topic.
 ///
 /// # Errors

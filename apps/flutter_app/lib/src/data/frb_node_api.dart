@@ -167,6 +167,23 @@ class FrbNodeApi implements NodeApi {
   Future<bool> removeNetworkPeer({required int id}) =>
       bridge.removeNetworkPeer(id: id);
 
+  // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
+
+  @override
+  Future<bool> isPeerBlocked({required String peerId}) =>
+      bridge.isPeerBlocked(peerId: peerId);
+
+  @override
+  Future<bool> blockPeer({required String peerId}) =>
+      bridge.blockPeer(peerId: peerId);
+
+  @override
+  Future<bool> unblockPeer({required String peerId}) =>
+      bridge.unblockPeer(peerId: peerId);
+
+  @override
+  Future<List<String>> listBlockedPeers() => bridge.listBlockedPeers();
+
   // ── Groups ────────────────────────────────────────────────────────────────
 
   @override

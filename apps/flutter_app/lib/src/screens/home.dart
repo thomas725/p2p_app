@@ -20,6 +20,7 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
+import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 
@@ -821,6 +822,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onEditLocalNickname: _setPeerNickname,
           contact: contact,
           loadQuality: nodeApi.getPeerQuality,
+          loadBlocked: peerIsBlocked,
+          toggleBlock: togglePeerBlock,
         ),
       ),
     );
@@ -946,6 +949,8 @@ class _HomeScreenState extends State<HomeScreen> {
           onEditLocalNickname: _setPeerNickname,
           contact: _contactForPeer(peerId),
           loadQuality: nodeApi.getPeerQuality,
+          loadBlocked: peerIsBlocked,
+          toggleBlock: togglePeerBlock,
         ),
       ),
     );

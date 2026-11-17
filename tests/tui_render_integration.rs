@@ -351,6 +351,7 @@ mod render_tests {
         let text = shortcuts_text(&TabContent::PeerInfo("peer-1".to_string()), false);
         assert!(text.contains("Enter: open DM"));
         assert!(text.contains("c: call"));
+        assert!(text.contains("b: block/unblock"));
         assert!(text.contains("n: set local nickname"));
         assert!(!text.contains("Peer Info"));
     }
@@ -818,6 +819,39 @@ mod render_tests {
             .collect();
         assert!(text.contains("Round-trip time: 12 ms"), "got: {text:?}");
         assert!(text.contains("Ping loss: 0% (0/1)"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peer_info_shows_the_blocked_state_and_toggle_hint() {
+        let peer_id = "peer-blocked-render-test";
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+
+        terminal
+            .draw(|f| render_peer_info_content(f, f.area(), peer_id, &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Blocked: no (b: block)"), "got: {text:?}");
+
+        // Muted peers say so, and the hint flips to unblock.
+        state.blocked_peers.insert(peer_id.to_string());
+        terminal
+            .draw(|f| render_peer_info_content(f, f.area(), peer_id, &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Blocked: yes (b: unblock)"), "got: {text:?}");
     }
 }
 

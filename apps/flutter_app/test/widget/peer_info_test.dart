@@ -199,4 +199,82 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Connection quality'), findsNothing);
   });
+
+  testWidgets('renders no block affordance without block callbacks', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PeerInfoScreen(peer: peer(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('block-peer-info')), findsNothing);
+    expect(find.text('Blocked'), findsNothing);
+  });
+
+  testWidgets('shows the blocked state and toggles it', (tester) async {
+    final calls = <(String, String)>[];
+    var blocked = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(),
+          serviceRunning: true,
+          loadBlocked: (peerId) async {
+            calls.add(('load', peerId));
+            return blocked;
+          },
+          toggleBlock: (peerId) async {
+            calls.add(('toggle', peerId));
+            blocked = !blocked;
+            return blocked;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(calls.single, ('load', 'peer-abc'));
+    expect(find.text('Blocked'), findsOneWidget);
+    expect(find.text('no'), findsOneWidget);
+    expect(find.byTooltip('Block peer'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('block-peer-info')));
+    await tester.pumpAndSettle();
+
+    expect(calls.last, ('toggle', 'peer-abc'));
+    expect(find.text('yes'), findsOneWidget);
+    expect(find.byTooltip('Unblock peer'), findsOneWidget);
+    expect(
+      find.text('Peer blocked: its traffic is now dropped.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('block-peer-info')));
+    await tester.pumpAndSettle();
+    expect(find.text('no'), findsOneWidget);
+    expect(find.byTooltip('Block peer'), findsOneWidget);
+  });
+
+  testWidgets('a failed block keeps the state and shows the error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(),
+          serviceRunning: true,
+          loadBlocked: (_) async => false,
+          toggleBlock: (_) async => throw Exception('bad id'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('block-peer-info')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('no'), findsOneWidget);
+    expect(find.text('Blocklist error: Exception: bad id'), findsOneWidget);
+  });
+
 }

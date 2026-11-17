@@ -279,6 +279,41 @@ class FakeNodeApi implements NodeApi {
     return networkPeers.length != before;
   }
 
+  // --- peer blocklist / mute ---
+
+  /// The persisted blocklist the fake serves; edits apply to it, so a test can
+  /// block then read back without stubbing.
+  final Set<String> blockedPeers = {};
+
+  /// Error thrown by [blockPeer] when set (an invalid peer id).
+  String? blockPeerError;
+
+  @override
+  Future<bool> isPeerBlocked({required String peerId}) async {
+    _record('isPeerBlocked', peerId);
+    return blockedPeers.contains(peerId);
+  }
+
+  @override
+  Future<bool> blockPeer({required String peerId}) async {
+    _record('blockPeer', peerId);
+    final error = blockPeerError;
+    if (error != null) throw error;
+    return blockedPeers.add(peerId);
+  }
+
+  @override
+  Future<bool> unblockPeer({required String peerId}) async {
+    _record('unblockPeer', peerId);
+    return blockedPeers.remove(peerId);
+  }
+
+  @override
+  Future<List<String>> listBlockedPeers() async {
+    _record('listBlockedPeers');
+    return List.of(blockedPeers);
+  }
+
   @override
   Future<MobileGroup> createGroup({required String name}) =>
       throw UnimplementedError();

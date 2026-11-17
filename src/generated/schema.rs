@@ -3,6 +3,13 @@
 #![allow(missing_docs)]
 
 diesel::table! {
+    blocked_peers (peer_id) {
+        peer_id -> Text,
+        blocked_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     identities (id) {
         id -> Integer,
         created_at -> Timestamp,
@@ -213,6 +220,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    blocked_peers,
     broadcast_recipients,
     contacts,
     device_bindings,

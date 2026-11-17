@@ -566,6 +566,24 @@ class HttpNodeApi implements NodeApi {
   Future<bool> removeNetworkPeer({required int id}) async =>
       await _call('removeNetworkPeer', {'id': id}) as bool;
 
+  // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
+
+  @override
+  Future<bool> isPeerBlocked({required String peerId}) async =>
+      await _call('isPeerBlocked', {'peerId': peerId}) as bool;
+
+  @override
+  Future<bool> blockPeer({required String peerId}) async =>
+      await _call('blockPeer', {'peerId': peerId}) as bool;
+
+  @override
+  Future<bool> unblockPeer({required String peerId}) async =>
+      await _call('unblockPeer', {'peerId': peerId}) as bool;
+
+  @override
+  Future<List<String>> listBlockedPeers() async =>
+      (await _call('listBlockedPeers') as List<dynamic>).cast<String>();
+
   // ── Groups ────────────────────────────────────────────────────────────────
 
   @override

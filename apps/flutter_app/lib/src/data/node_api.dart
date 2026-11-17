@@ -125,6 +125,21 @@ abstract class NodeApi {
   /// Remove the persisted entry with [id]; true when a row was deleted.
   Future<bool> removeNetworkPeer({required int id});
 
+  // --- Peer blocklist / mute (US-054) ---
+
+  /// Whether [peerId] is muted. Blocked peers are ignored at the swarm
+  /// boundary: their traffic is dropped and they are never dialed.
+  Future<bool> isPeerBlocked({required String peerId});
+
+  /// Block one peer; true when it was not already blocked.
+  Future<bool> blockPeer({required String peerId});
+
+  /// Unblock one peer; true when a row was removed.
+  Future<bool> unblockPeer({required String peerId});
+
+  /// Every blocked peer id, oldest first.
+  Future<List<String>> listBlockedPeers();
+
   // --- Groups ---
 
   Future<MobileGroup> createGroup({required String name});

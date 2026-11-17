@@ -21,6 +21,9 @@ class PeerInfoScreen extends StatefulWidget {
     this.onEditLocalNickname,
     this.contact,
     this.loadQuality,
+    this.isBlocked = false,
+    this.loadBlocked,
+    this.toggleBlock,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
@@ -48,6 +51,17 @@ class PeerInfoScreen extends StatefulWidget {
   /// the screen stays free of node dependencies for widget tests.
   final Future<PeerQuality> Function(String peerId)? loadQuality;
 
+  /// Initial blocklist state; [loadBlocked] refreshes it when the page opens.
+  final bool isBlocked;
+
+  /// Reads this install's blocklist entry for a peer. Optional: when null, the
+  /// "Blocked" row is only rendered if [toggleBlock] is supplied.
+  final Future<bool> Function(String peerId)? loadBlocked;
+
+  /// Toggles the persisted blocklist entry and returns the new state. Optional:
+  /// when null, no block/unblock action is rendered.
+  final Future<bool> Function(String peerId)? toggleBlock;
+
   @override
   State<PeerInfoScreen> createState() => _PeerInfoScreenState();
 }
@@ -62,10 +76,61 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
   /// when [PeerInfoScreen.loadQuality] is not supplied).
   PeerQuality? _quality;
 
+  /// Blocklist state fetched when the page opens (null until it arrives).
+  bool? _blocked;
+
+  /// True while a block/unblock call is in flight (disables the action).
+  bool _blocking = false;
+
+  bool get _isBlocked => _blocked ?? widget.isBlocked;
+
   @override
   void initState() {
     super.initState();
     _loadQuality();
+    _loadBlocked();
+  }
+
+  Future<void> _loadBlocked() async {
+    final load = widget.loadBlocked;
+    if (load == null) return;
+    try {
+      final blocked = await load(widget.peer.peerId);
+      if (!mounted) return;
+      setState(() => _blocked = blocked);
+    } catch (e) {
+      // Blocklist state is an extra, never a reason to fail the page.
+      debugPrint('Failed to load blocklist state for ${widget.peer.peerId}: $e');
+    }
+  }
+
+  Future<void> _toggleBlock() async {
+    final toggle = widget.toggleBlock;
+    if (toggle == null) return;
+    setState(() => _blocking = true);
+    try {
+      final blocked = await toggle(widget.peer.peerId);
+      if (!mounted) return;
+      setState(() {
+        _blocked = blocked;
+        _blocking = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            blocked
+                ? 'Peer blocked: its traffic is now dropped.'
+                : 'Peer unblocked.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _blocking = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Blocklist error: $e')));
+    }
   }
 
   Future<void> _loadQuality() async {
@@ -153,6 +218,13 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
               icon: const Icon(Icons.edit),
               tooltip: 'Set local nickname',
               onPressed: _editNickname,
+            ),
+          if (widget.toggleBlock != null)
+            IconButton(
+              key: const Key('block-peer-info'),
+              icon: Icon(_isBlocked ? Icons.undo : Icons.block),
+              tooltip: _isBlocked ? 'Unblock peer' : 'Block peer',
+              onPressed: _blocking ? null : _toggleBlock,
             ),
           if (widget.onCall != null)
             IconButton(
@@ -248,6 +320,14 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
                   _infoRow('First seen', formatSeenTimestamp(peer.firstSeen)),
                   const SizedBox(height: 8),
                   _infoRow('Last seen', formatSeenTimestamp(peer.lastSeen)),
+                  if (widget.loadBlocked != null ||
+                      widget.toggleBlock != null) ...[
+                    const SizedBox(height: 8),
+                    _infoRow(
+                      'Blocked',
+                      _blocked == null ? '…' : (_isBlocked ? 'yes' : 'no'),
+                    ),
+                  ],
                   if (contact != null) ...[
                     const SizedBox(height: 8),
                     _infoRow('Direct messages', '${contact.dmCount.toInt()}'),

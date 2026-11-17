@@ -151,7 +151,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | /: search | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
-            "Tab: next | Enter: open DM | c: call | n: set local nickname | F12: mouse | Ctrl+Q: quit"
+            "Tab: next | Enter: open DM | c: call | b: block/unblock | n: set local nickname | F12: mouse | Ctrl+Q: quit"
         }
         TabContent::Groups => {
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | Ctrl+Q: quit"

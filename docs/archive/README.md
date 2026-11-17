@@ -25,6 +25,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-10-26_attachment_size_labels.md](2026-10-26_attachment_size_labels.md) | Human-readable `(2 KiB)` attachment chips from one Rust formatter | 2026-10-26 |
 | [2026-11-08_connection_quality.md](2026-11-08_connection_quality.md) | Per-peer ping RTT/loss on the Peer Info page (live-only samples) | 2026-11-08 |
 | [2026-11-12_network_peer_config_surface.md](2026-11-12_network_peer_config_surface.md) | Persisted bootstrap/relay multiaddrs editable in all three frontends | 2026-11-12 |
+| [2026-11-12_peer_blocklist.md](2026-11-12_peer_blocklist.md) | Peer blocklist / mute enforced at the swarm boundary (US-054) | 2026-11-12 |
 
 ### Completed planning
 

@@ -43,6 +43,7 @@
 //! - [`messages`] - message persistence and retrieval
 //! - [`db`] - `SQLite` connection, identity, migrations
 //! - [`peers`] - peer and session tracking
+//! - [`blocklist`] - peer blocklist / mute (swarm-boundary filtering)
 //! - [`nickname`] - nickname management
 //! - [`fmt`] - formatting utilities
 //! - [`logging`] - tracing-based logging with TUI callback
@@ -50,6 +51,7 @@
 #[cfg(feature = "mobile")]
 pub mod api;
 pub mod behavior;
+pub mod blocklist;
 pub mod calls;
 pub mod connected;
 pub mod contacts;
