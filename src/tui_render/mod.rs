@@ -147,7 +147,7 @@ pub fn render_input_section(
 ///
 /// Bindings are documented only where they are active: Ctrl+I (kitty) and
 /// Ctrl+P (universal) on a Direct/DM tab, `i` on Contacts, `n` (local
-/// nickname) on a Peer Info tab.
+/// nickname) on a Peer Info tab, `Del` on the three chat tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -164,12 +164,15 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
-        _ => {
+        TabContent::Chat | TabContent::GroupChat(_) => {
+            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+        }
+        TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
         }
     }
@@ -189,6 +192,7 @@ Up/Down  Move   PgUp/PgDn  Page   Home/End  First / last
 Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 
 Chat / DM / Group: click a message -> sender's Peer Info
+Chat / DM / Group: Del -> delete newest sent message (local only)
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 
 Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse

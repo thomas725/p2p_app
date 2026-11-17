@@ -34,7 +34,8 @@ feature parity with TUI and mobile from day one.
   pushes; replaces Flutter's 200 ms `pollEvent` loop on web)
 
 Method names mirror the FRB function names 1:1 (`loadDmMessages`, `saveOutgoingDm`,
-`getContactsWithStats`, …) so the Dart `HttpNodeApi` is a mechanical mapping.
+`deleteMessage`, `getContactsWithStats`, …) so the Dart `HttpNodeApi` is a
+mechanical mapping.
 
 ## HTTP routes
 

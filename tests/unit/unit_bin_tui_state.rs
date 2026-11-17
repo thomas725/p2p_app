@@ -26,14 +26,16 @@ fn msg(
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
         encrypted: 0,
+        deleted_at: None,
     }
 }
 
 #[test]
 fn test_format_messages_from_db_empty() {
-    let (msgs, ids) = format_messages_from_db(&[], &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids, db_ids) = format_messages_from_db(&[], &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
+    assert!(db_ids.is_empty());
 }
 
 #[test]
@@ -46,11 +48,13 @@ fn test_format_outgoing_without_sender_nickname() {
         Some(1.0),
         "2024-01-01 12:00:00",
     )];
-    let (msgs, ids) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids, db_ids) =
+        format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 1);
     assert!(msgs[0].text.contains("[Me]"));
     assert!(msgs[0].text.contains("hello"));
     assert_eq!(ids[0], Some("m1".to_string()));
+    assert_eq!(db_ids[0], None); // `sent = 0` rows are never deletable
 }
 
 #[test]
@@ -63,7 +67,7 @@ fn test_format_outgoing_with_sender_nickname() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[OldNick]"));
     assert!(msgs[0].text.contains("hello"));
 }
@@ -79,7 +83,7 @@ fn test_format_incoming_without_sender_nickname_falls_back_to_display_name() {
         "2024-01-01 12:00:00",
     )];
     let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
-    let (msgs, _) = format_messages_from_db(&messages, &local, &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &local, &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[Alice]"));
     assert!(msgs[0].text.contains("hi there"));
 }
@@ -94,7 +98,7 @@ fn test_format_incoming_with_sender_nickname() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs[0].text.contains("[Bob]"));
     assert!(msgs[0].text.contains("hey"));
 }
@@ -112,7 +116,7 @@ fn test_format_messages_reverses_newest_first_to_oldest_first() {
         ),
         msg("first", Some("p1"), None, None, None, "2024-01-01 12:00:00"),
     ];
-    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 2);
     assert!(
         msgs[0].text.contains("first"),
@@ -134,7 +138,7 @@ fn test_format_messages_skipped_when_sent_at_none() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, ids) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs.len(), 1);
     assert_eq!(ids[0], Some("m1".to_string()));
 }
@@ -149,7 +153,7 @@ fn test_format_messages_peer_id_maps_correctly() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs[0].sender_peer_id, Some("p1".to_string()));
 }
 
@@ -163,8 +167,151 @@ fn test_format_messages_outgoing_peer_id_is_none() {
         None,
         "2024-01-01 12:00:00",
     )];
-    let (msgs, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, _, _) = format_messages_from_db(&messages, &HashMap::new(), &HashMap::new(), "Me");
     assert_eq!(msgs[0].sender_peer_id, None);
+}
+
+#[test]
+fn test_format_messages_records_db_ids_only_for_sent_rows() {
+    let mut outgoing = msg(
+        "mine",
+        None,
+        None,
+        Some("m1"),
+        Some(1.0),
+        "2024-01-01 12:00:00",
+    );
+    outgoing.id = 7;
+    outgoing.sent = 1;
+    let mut incoming = msg(
+        "theirs",
+        Some("p1"),
+        None,
+        None,
+        None,
+        "2024-01-01 12:00:01",
+    );
+    incoming.id = 8;
+
+    // DB rows are newest-first; the formatter reverses them chronologically.
+    let (msgs, _, db_ids) = format_messages_from_db(
+        &[incoming, outgoing],
+        &HashMap::new(),
+        &HashMap::new(),
+        "Me",
+    );
+    assert_eq!(msgs.len(), 2);
+    assert_eq!(db_ids, VecDeque::from([Some(7), None]));
+}
+
+// ── Local-only deletion queue helpers (US-005) ──────────────────────────
+
+#[test]
+fn test_delete_prompt_and_removal_target_newest_sent_broadcast() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut state = test_app_state();
+    for (text, msg_id, db_id) in [
+        ("old", Some("m-old"), Some(7)),
+        ("incoming", None, None),
+        ("newest", Some("m-new"), Some(9)),
+    ] {
+        state.messages.push_back(p2p_app::DisplayMessage {
+            text: text.to_string(),
+            sender_peer_id: None,
+        });
+        state.message_ids.push_back(msg_id.map(str::to_string));
+        state.message_db_ids.push_back(db_id);
+    }
+
+    assert_eq!(
+        state.last_sent_message(&TabContent::Chat),
+        Some((9, "newest".to_string()))
+    );
+    assert_eq!(
+        state.last_sent_message(&TabContent::Direct("p1".into())),
+        None
+    );
+
+    state.begin_delete_message(9, false, "newest".to_string(), TabContent::Chat);
+    let prompt = state.delete_message_prompt.clone().unwrap();
+    assert_eq!(prompt.message_id, 9);
+    assert!(!prompt.is_group);
+    assert!(state.remove_deleted_message(&prompt));
+    assert_eq!(state.messages.len(), 2);
+    assert_eq!(state.messages.back().unwrap().text, "incoming");
+    assert_eq!(state.message_db_ids, VecDeque::from([Some(7), None]));
+    assert!(!state.remove_deleted_message(&prompt));
+    assert!(state.cancel_delete_message());
+    assert!(state.delete_message_prompt.is_none());
+    assert!(!state.cancel_delete_message());
+}
+
+#[test]
+fn test_delete_prompt_removal_is_scoped_to_dm_and_group() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut state = test_app_state();
+    state
+        .dm_messages
+        .insert("p1".into(), VecDeque::from(["dm".to_string()]));
+    state
+        .dm_message_ids
+        .insert("p1".into(), VecDeque::from([Some("dm-1".to_string())]));
+    state
+        .dm_message_db_ids
+        .insert("p1".into(), VecDeque::from([Some(11)]));
+    state.group_messages.insert(
+        "g1".into(),
+        VecDeque::from(["group".to_string(), "later".to_string()]),
+    );
+    state
+        .group_message_ids
+        .insert("g1".into(), VecDeque::from([None, None]));
+    state
+        .group_message_db_ids
+        .insert("g1".into(), VecDeque::from([Some(13), None]));
+    state
+        .group_message_peer_ids
+        .insert("g1".into(), VecDeque::from([None, Some("p2".into())]));
+
+    assert_eq!(
+        state.last_sent_message(&TabContent::Direct("p1".into())),
+        Some((11, "dm".to_string()))
+    );
+    assert_eq!(
+        state.last_sent_message(&TabContent::GroupChat("g1".into())),
+        Some((13, "group".to_string()))
+    );
+    assert_eq!(state.last_sent_message(&TabContent::Chat), None);
+
+    let group_prompt = DeleteMessagePrompt {
+        message_id: 13,
+        is_group: true,
+        preview: "group".into(),
+        tab_content: TabContent::GroupChat("g1".into()),
+    };
+    assert!(state.remove_deleted_message(&group_prompt));
+    assert_eq!(
+        state.group_messages["g1"],
+        VecDeque::from(["later".to_string()])
+    );
+    assert_eq!(state.group_message_db_ids["g1"], VecDeque::from([None]));
+    assert_eq!(
+        state.group_message_peer_ids["g1"],
+        VecDeque::from([Some("p2".into())])
+    );
+    assert_eq!(state.dm_message_db_ids["p1"], VecDeque::from([Some(11)]));
+
+    let dm_prompt = DeleteMessagePrompt {
+        message_id: 11,
+        is_group: false,
+        preview: "dm".into(),
+        tab_content: TabContent::Direct("p1".into()),
+    };
+    assert!(state.remove_deleted_message(&dm_prompt));
+    assert!(state.dm_messages["p1"].is_empty());
+    assert!(state.dm_message_db_ids["p1"].is_empty());
 }
 
 // ── AppState ────────────────────────────────────────────────────────────
@@ -413,9 +560,11 @@ fn test_load_and_format_messages_db_failure_returns_empty() {
     p2p_app::db::set_db_url(&db_str);
     p2p_app::db::init_database().unwrap();
 
-    let (msgs, ids) = load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
+    let (msgs, ids, db_ids) =
+        load_and_format_messages("test", 10, &HashMap::new(), &HashMap::new(), "Me");
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
+    assert!(db_ids.is_empty());
 
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();

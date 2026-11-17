@@ -171,13 +171,14 @@ fn initialize_state(
             |db_peers| extract_nickname_maps(&db_peers),
         );
 
-    let (initial_messages, initial_message_ids) = super::state::load_and_format_messages(
-        topic_str,
-        super::state::MAX_MESSAGE_HISTORY,
-        &local_nicknames,
-        &received_nicknames,
-        &own_nickname,
-    );
+    let (initial_messages, initial_message_ids, initial_message_db_ids) =
+        super::state::load_and_format_messages(
+            topic_str,
+            super::state::MAX_MESSAGE_HISTORY,
+            &local_nicknames,
+            &received_nicknames,
+            &own_nickname,
+        );
     p2plog_debug(format!(
         "Loaded {} messages from database",
         initial_messages.len()
@@ -233,6 +234,7 @@ fn initialize_state(
         super::state::InitialStateData {
             messages: initial_messages,
             message_ids: initial_message_ids,
+            message_db_ids: initial_message_db_ids,
             peers: initial_peers,
             broadcast_receipts: loaded_broadcast_receipts,
             dm_receipts: loaded_dm_receipts,

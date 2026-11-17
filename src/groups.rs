@@ -386,12 +386,36 @@ pub fn save_incoming_group_message(
         .wrap_err("failed to save group message")
 }
 
+/// Locally hide a group message we sent (US-005).
+///
+/// Only an outgoing (`sent = 1`) row that is not already a tombstone is
+/// stamped with the current Unix timestamp; incoming rows are never deletable.
+/// Returns `true` iff a row actually changed. This is local-only: no wire
+/// message is sent and peers keep their own copy of the row.
+///
+/// # Errors
+/// Returns an error string when the database write fails.
+pub fn mark_group_message_deleted(id: i32) -> Result<bool, String> {
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let changed = diesel::update(
+        group_messages::table
+            .filter(group_messages::id.eq(id))
+            .filter(group_messages::sent.eq(1))
+            .filter(group_messages::deleted_at.is_null()),
+    )
+    .set(group_messages::deleted_at.eq(crate::fmt::current_timestamp()))
+    .execute(conn)
+    .map_err(|e| format!("failed to delete group message {id}: {e}"))?;
+    Ok(changed > 0)
+}
+
 /// The `sent_at` watermark of a group's newest stored message (`None` when the
 /// group has no history).
 ///
 /// Served as the requesting side's `after` boundary for backfill: any member
 /// with a *newer* stored message than this was up during the gap and can
-/// answer it.
+/// answer it. Deliberately **unfiltered** by `deleted_at`: a local tombstone
+/// must still hold the watermark so peers never resend that row.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
@@ -414,9 +438,10 @@ pub fn latest_group_sent_at(group_id: &str) -> color_eyre::Result<Option<f64>> {
 /// This is the backfill answer: a member that was up longer than the requester
 /// replies by re-publishing exactly these rows on the main group topic, where
 /// the requester's `(group_id, msg_id)` unique index (and the `nil:` synthetic
-/// key for messages without an `msg_id`) absorbs every overlap. Messages
-/// without a `sent_at` are skipped — they predate the watermark convention and
-/// any live retransmit dedups them anyway.
+/// key for messages without an `msg_id`) absorbs every overlap. Local tombstones
+/// are skipped: deletion never leaks back onto the wire. Messages without a
+/// `sent_at` are skipped — they predate the watermark convention and any live
+/// retransmit dedups them anyway.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
@@ -430,6 +455,7 @@ pub fn load_group_messages_after(
     group_messages::table
         .filter(group_messages::group_id.eq(group_id))
         .filter(group_messages::sent_at.gt(after))
+        .filter(group_messages::deleted_at.is_null())
         .order_by(group_messages::sent_at.asc())
         .then_order_by(group_messages::id.asc())
         .limit(crate::usize_limit_to_i64(limit))
@@ -446,6 +472,7 @@ pub fn load_group_messages(group_id: &str, limit: usize) -> color_eyre::Result<V
     let conn = &mut crate::sqlite_connect()?;
     group_messages::table
         .filter(group_messages::group_id.eq(group_id))
+        .filter(group_messages::deleted_at.is_null())
         .order_by(group_messages::created_at.desc())
         .then_order_by(group_messages::id.desc())
         .limit(crate::usize_limit_to_i64(limit))

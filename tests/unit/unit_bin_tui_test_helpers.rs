@@ -22,6 +22,9 @@ pub fn app_state_with_chat_messages(count: usize) -> AppState {
             sender_peer_id: Some(format!("peer{i}")),
         });
         state.message_ids.push_back(Some(format!("msg-{i}")));
+        // Test rows are not DB-backed, so local deletion must be a no-op on
+        // them (US-005). Keep the queue aligned even in pure in-memory tests.
+        state.message_db_ids.push_back(None);
     }
     state
 }
@@ -52,6 +55,9 @@ pub fn app_state_with_dm_messages(peer_id: &str, count: usize) -> AppState {
         peer_id.to_string(),
         (0..count).map(|i| Some(format!("dm-{i}"))).collect(),
     );
+    state
+        .dm_message_db_ids
+        .insert(peer_id.to_string(), (0..count).map(|_| None).collect());
     state.dm_scroll_state.insert(peer_id.to_string(), (0, true));
     state
         .dm_broadcast_scroll_state

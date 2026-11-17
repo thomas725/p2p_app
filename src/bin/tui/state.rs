@@ -61,6 +61,9 @@ pub struct InitialStateData {
     pub messages: VecDeque<p2p_app::DisplayMessage>,
     /// Message IDs aligned with `messages`.
     pub message_ids: VecDeque<Option<String>>,
+    /// DB row IDs aligned with `messages` (local-only deletion, US-005).
+    /// `Some(id)` only for rows we sent; `None` for incoming/live rows.
+    pub message_db_ids: VecDeque<Option<i32>>,
     /// Known peers, sorted most-recently-seen first.
     pub peers: VecDeque<p2p_app::PeerRecord>,
     /// Broadcast receipts: `msg_id` -> (`peer_id` -> `received_at`).
@@ -93,11 +96,16 @@ pub struct AppState {
     pub messages: VecDeque<p2p_app::DisplayMessage>,
     // Message IDs aligned with `messages` (used for receipts / click actions).
     pub message_ids: VecDeque<Option<String>>,
+    // DB row IDs aligned with `messages`/`message_ids`; `Some(id)` only for
+    // rows we sent (US-005). Drives the local-only `Delete` binding.
+    pub message_db_ids: VecDeque<Option<i32>>,
     // Broadcast receipts: msg_id -> (peer_id -> received_at epoch seconds).
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
     pub dm_messages: HashMap<String, VecDeque<String>>,
     // DM message IDs aligned with dm_messages[peer_id].
     pub dm_message_ids: HashMap<String, VecDeque<Option<String>>>,
+    // DB row IDs aligned with dm_messages[peer_id] / dm_message_ids[peer_id].
+    pub dm_message_db_ids: HashMap<String, VecDeque<Option<i32>>>,
     // DM receipts: msg_id -> (peer_id, received_at epoch seconds).
     pub dm_receipts: HashMap<String, (String, f64)>,
 
@@ -138,6 +146,8 @@ pub struct AppState {
     pub group_messages: HashMap<String, VecDeque<String>>,
     // Group message IDs aligned with group_messages[group_id].
     pub group_message_ids: HashMap<String, VecDeque<Option<String>>>,
+    // DB row IDs aligned with group_messages[group_id] / group_message_ids[group_id].
+    pub group_message_db_ids: HashMap<String, VecDeque<Option<i32>>>,
     // Sender peer ID for each group message (None = sent by local user).
     pub group_message_peer_ids: HashMap<String, VecDeque<Option<String>>>,
     // Scroll state per group chat: group_id -> (scroll_offset, auto_scroll).
@@ -198,6 +208,11 @@ pub struct AppState {
     /// copy), mirroring Flutter's "Leave group" dialog.
     pub group_leave_prompt: Option<GroupLeavePrompt>,
 
+    /// A sent message the user asked to hide locally, awaiting confirmation
+    /// ('y'/Enter confirms; any other key or Esc cancels). Single-slot like the
+    /// other prompts: deletion is local-only, so no swarm command is queued.
+    pub delete_message_prompt: Option<DeleteMessagePrompt>,
+
     /// Live call session (calls lane). One session at a time, mirroring the
     /// single-slot device-binding prompt; `None` = no active/ringing call.
     /// Advanced here on call events; the interactive surface (accept/reject/
@@ -237,6 +252,41 @@ pub struct DeviceBindingPrompt {
 pub struct GroupLeavePrompt {
     pub group_id: String,
     pub display_name: String,
+}
+
+/// A sent message the user asked to hide locally (US-005), pending confirmation.
+///
+/// The tab identifies the conversation whose aligned queues hold the row, the
+/// id selects it in the DB, and the preview is shown in the confirmation popup.
+#[derive(Clone, Debug)]
+pub struct DeleteMessagePrompt {
+    pub message_id: i32,
+    pub is_group: bool,
+    pub preview: String,
+    pub tab_content: p2p_app::tui_tabs::TabContent,
+}
+
+/// Index + DB id of the newest outgoing row in an aligned id queue.
+fn last_sent_db_id(ids: &VecDeque<Option<i32>>) -> Option<(usize, i32)> {
+    ids.iter()
+        .enumerate()
+        .rev()
+        .find_map(|(idx, id)| id.map(|id| (idx, id)))
+}
+
+/// Position of a specific DB id in an aligned queue (newest wins).
+fn index_of_db_id(ids: &VecDeque<Option<i32>>, id: i32) -> Option<usize> {
+    ids.iter().rposition(|slot| *slot == Some(id))
+}
+
+/// Short single-line preview for a confirmation popup.
+fn short_preview(text: &str) -> String {
+    let trimmed = text.trim();
+    let mut preview: String = trimmed.chars().take(72).collect();
+    if trimmed.chars().count() > 72 {
+        preview.push('\u{2026}');
+    }
+    preview
 }
 
 impl AppState {
@@ -383,6 +433,128 @@ impl AppState {
         self.group_leave_prompt.take().is_some()
     }
 
+    /// Arm the local-delete confirmation for a sent message in the conversation
+    /// shown by `tab_content` (single slot: a previous prompt is replaced).
+    pub fn begin_delete_message(
+        &mut self,
+        message_id: i32,
+        is_group: bool,
+        preview: String,
+        tab_content: p2p_app::tui_tabs::TabContent,
+    ) {
+        self.delete_message_prompt = Some(DeleteMessagePrompt {
+            message_id,
+            is_group,
+            preview,
+            tab_content,
+        });
+    }
+
+    /// Clear the local-delete confirmation; true when one was armed.
+    pub fn cancel_delete_message(&mut self) -> bool {
+        self.delete_message_prompt.take().is_some()
+    }
+
+    /// The most recent outgoing message in the conversation shown by `tab`,
+    /// as `(db_id, short_preview)`; `None` when there is nothing deletable.
+    #[must_use]
+    pub fn last_sent_message(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<(i32, String)> {
+        use p2p_app::tui_tabs::TabContent;
+
+        let (id, text) = match tab {
+            TabContent::Chat => {
+                let (idx, id) = last_sent_db_id(&self.message_db_ids)?;
+                (id, self.messages.get(idx).map_or("", |m| m.text.as_str()))
+            }
+            TabContent::Direct(peer_id) => {
+                let (idx, id) = last_sent_db_id(self.dm_message_db_ids.get(peer_id)?)?;
+                (
+                    id,
+                    self.dm_messages
+                        .get(peer_id)
+                        .and_then(|msgs| msgs.get(idx))
+                        .map_or("", String::as_str),
+                )
+            }
+            TabContent::GroupChat(group_id) => {
+                let (idx, id) = last_sent_db_id(self.group_message_db_ids.get(group_id)?)?;
+                (
+                    id,
+                    self.group_messages
+                        .get(group_id)
+                        .and_then(|msgs| msgs.get(idx))
+                        .map_or("", String::as_str),
+                )
+            }
+            _ => return None,
+        };
+        Some((id, short_preview(text)))
+    }
+
+    /// Remove the prompted row from the conversation's aligned queues after the
+    /// DB tombstone succeeded. Only local state changes — no swarm command.
+    /// Returns false (leaving state untouched) if the row is no longer present.
+    pub fn remove_deleted_message(&mut self, prompt: &DeleteMessagePrompt) -> bool {
+        use p2p_app::tui_tabs::TabContent;
+
+        match &prompt.tab_content {
+            TabContent::Chat => {
+                let Some(idx) = index_of_db_id(&self.message_db_ids, prompt.message_id) else {
+                    return false;
+                };
+                let _ = self.message_db_ids.remove(idx);
+                let _ = self.message_ids.remove(idx);
+                let _ = self.messages.remove(idx);
+                self.chat_scroll_offset = self.chat_scroll_offset.min(self.messages.len());
+                true
+            }
+            TabContent::Direct(peer_id) => {
+                let Some(ids) = self.dm_message_db_ids.get_mut(peer_id) else {
+                    return false;
+                };
+                let Some(idx) = index_of_db_id(ids, prompt.message_id) else {
+                    return false;
+                };
+                let _ = ids.remove(idx);
+                if let Some(ids) = self.dm_message_ids.get_mut(peer_id) {
+                    let _ = ids.remove(idx);
+                }
+                if let Some(msgs) = self.dm_messages.get_mut(peer_id) {
+                    let _ = msgs.remove(idx);
+                    if let Some(offset) = self.dm_scroll_state.get_mut(peer_id) {
+                        offset.0 = offset.0.min(msgs.len());
+                    }
+                }
+                true
+            }
+            TabContent::GroupChat(group_id) => {
+                let Some(ids) = self.group_message_db_ids.get_mut(group_id) else {
+                    return false;
+                };
+                let Some(idx) = index_of_db_id(ids, prompt.message_id) else {
+                    return false;
+                };
+                let _ = ids.remove(idx);
+                if let Some(ids) = self.group_message_ids.get_mut(group_id) {
+                    let _ = ids.remove(idx);
+                }
+                if let Some(msgs) = self.group_messages.get_mut(group_id) {
+                    let _ = msgs.remove(idx);
+                }
+                if let Some(ids) = self.group_message_peer_ids.get_mut(group_id) {
+                    let _ = ids.remove(idx);
+                }
+                if let Some(msgs) = self.group_messages.get(group_id)
+                    && let Some(scroll) = self.group_scroll_state.get_mut(group_id)
+                {
+                    scroll.0 = scroll.0.min(msgs.len());
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// Apply the local side of leaving `group_id` after the DB rows are gone:
     /// refresh the list, keep the selection in range, drop the in-memory
     /// history (so re-joining starts from the backfill, not stale rows), and
@@ -394,6 +566,7 @@ impl AppState {
             .min(self.group_summaries.len().saturating_sub(1));
         self.group_messages.remove(group_id);
         self.group_message_ids.remove(group_id);
+        self.group_message_db_ids.remove(group_id);
         self.group_message_peer_ids.remove(group_id);
         self.group_scroll_state.remove(group_id);
         if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
@@ -657,9 +830,11 @@ impl AppState {
         let mut state = Self {
             messages: data.messages,
             message_ids: data.message_ids,
+            message_db_ids: data.message_db_ids,
             broadcast_receipts: data.broadcast_receipts,
             dm_messages: HashMap::new(),
             dm_message_ids: HashMap::new(),
+            dm_message_db_ids: HashMap::new(),
             dm_receipts: data.dm_receipts,
             peers: data.peers,
             contacts: Vec::new(),
@@ -671,6 +846,7 @@ impl AppState {
             group_summaries: data.groups,
             group_messages: HashMap::new(),
             group_message_ids: HashMap::new(),
+            group_message_db_ids: HashMap::new(),
             group_message_peer_ids: HashMap::new(),
             group_scroll_state: HashMap::new(),
             group_selection: 0,
@@ -711,6 +887,7 @@ impl AppState {
             popup: None,
             device_binding_prompt: None,
             group_leave_prompt: None,
+            delete_message_prompt: None,
             call_session: None,
             db_url: String::new(),
             platform: String::new(),
@@ -739,9 +916,14 @@ impl AppState {
     }
 }
 
-type FormattedMessages = (VecDeque<p2p_app::DisplayMessage>, VecDeque<Option<String>>);
+type FormattedMessages = (
+    VecDeque<p2p_app::DisplayMessage>,
+    VecDeque<Option<String>>,
+    VecDeque<Option<i32>>,
+);
 
-/// Pure: formats DB messages into display-ready `(text, peer_id)` pairs.
+/// Pure: formats DB messages into display-ready rows plus their aligned wire
+/// IDs and DB row IDs (`Some` only when the row is one we sent, US-005).
 ///
 /// Separated from the DB call so it can be unit-tested without a database.
 fn format_messages_from_db(
@@ -752,6 +934,7 @@ fn format_messages_from_db(
 ) -> FormattedMessages {
     let mut messages = VecDeque::new();
     let mut message_ids = VecDeque::new();
+    let mut message_db_ids = VecDeque::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
         let sender = match (msg.sender_nickname.as_ref(), msg.peer_id.as_ref()) {
@@ -768,8 +951,9 @@ fn format_messages_from_db(
             sender_peer_id: msg.peer_id.clone(),
         });
         message_ids.push_back(msg.msg_id.clone());
+        message_db_ids.push_back((msg.sent == 1).then_some(msg.id));
     }
-    (messages, message_ids)
+    (messages, message_ids, message_db_ids)
 }
 
 pub fn load_and_format_messages(
@@ -782,7 +966,7 @@ pub fn load_and_format_messages(
     p2p_app::load_messages(topic_str, max_messages).map_or_else(
         |_| {
             p2p_app::p2plog_debug("Failed to load messages from database");
-            (VecDeque::new(), VecDeque::new())
+            (VecDeque::new(), VecDeque::new(), VecDeque::new())
         },
         |db_messages| {
             format_messages_from_db(

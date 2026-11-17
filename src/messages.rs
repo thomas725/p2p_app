@@ -136,6 +136,30 @@ pub fn mark_message_sent(id: i32) -> color_eyre::Result<()> {
     Ok(())
 }
 
+/// Locally hide a message we sent (US-005).
+///
+/// Only an outgoing (`sent = 1`) row that is not already a tombstone is
+/// stamped with the current Unix timestamp; incoming rows are never deletable.
+/// Returns `true` iff a row actually changed. This is local-only: no wire
+/// message is sent and peers keep their own copy of the row.
+///
+/// # Errors
+/// Returns an error string when the database write fails.
+pub fn mark_message_deleted(id: i32) -> Result<bool, String> {
+    use crate::generated::schema::messages as messages_table;
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let changed = diesel::update(
+        messages_table::table
+            .filter(messages_table::id.eq(id))
+            .filter(messages_table::sent.eq(1))
+            .filter(messages_table::deleted_at.is_null()),
+    )
+    .set(messages_table::deleted_at.eq(crate::fmt::current_timestamp()))
+    .execute(conn)
+    .map_err(|e| format!("failed to delete message {id}: {e}"))?;
+    Ok(changed > 0)
+}
+
 /// Load broadcast messages for a topic, newest first, limited to count.
 ///
 /// # Errors
@@ -145,6 +169,7 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
     let msgs = messages
         .filter(crate::generated::schema::messages::topic.eq(topic))
         .filter(crate::generated::schema::messages::is_direct.eq(0))
+        .filter(crate::generated::schema::messages::deleted_at.is_null())
         .order_by(crate::generated::schema::messages::created_at.desc())
         .then_order_by(crate::generated::schema::messages::id.desc())
         .limit(crate::usize_limit_to_i64(limit))
@@ -162,6 +187,7 @@ pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Resu
     let msgs = messages
         .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
         .filter(crate::generated::schema::messages::is_direct.eq(1))
+        .filter(crate::generated::schema::messages::deleted_at.is_null())
         .order_by(crate::generated::schema::messages::created_at.asc())
         .then_order_by(crate::generated::schema::messages::id.asc())
         .limit(crate::usize_limit_to_i64(limit))
@@ -320,8 +346,9 @@ struct PeerMessageAggregate {
 /// Each DM is stored exactly once with the peer it is exchanged with in either
 /// `peer_id` or `target_peer` (inbound DMs set both to the sender), so
 /// `COALESCE(peer_id, target_peer)` yields one unattributed row per DM — no
-/// double counting. A second grouped query over `broadcast_recipients` counts
-/// the broadcasts *we* sent that reached each peer.
+/// double counting. Local tombstones are excluded. A second grouped query
+/// over `broadcast_recipients` counts the broadcasts *we* sent that reached
+/// each peer (unaffected by message deletion).
 ///
 /// # Errors
 /// Returns an error if the database query fails.
@@ -334,7 +361,8 @@ pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMess
         SELECT peer_id, COALESCE(SUM(dm), 0) AS dm_count
         FROM (
             SELECT COALESCE(peer_id, target_peer) AS peer_id, 1 AS dm FROM messages
-                WHERE is_direct = 1 AND (peer_id IS NOT NULL OR target_peer IS NOT NULL)
+                WHERE is_direct = 1 AND deleted_at IS NULL
+                  AND (peer_id IS NOT NULL OR target_peer IS NOT NULL)
         )
         GROUP BY peer_id";
     let dm_aggregates = sql_query(dm_sql).load::<PeerMessageAggregate>(conn)?;

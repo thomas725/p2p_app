@@ -1601,6 +1601,7 @@ mod tests {
             sender_nickname: Some("Alice".into()),
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 1);
@@ -1643,6 +1644,7 @@ mod tests {
             sender_nickname: None,
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 2);
@@ -1674,6 +1676,7 @@ mod tests {
             sender_nickname: Some("Bob".into()),
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         let suffix = crate::fmt::peer_id_suffix("peer-bob");
@@ -1702,6 +1705,7 @@ mod tests {
             sender_nickname: Some("Me".into()),
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
@@ -1724,6 +1728,7 @@ mod tests {
             sender_nickname: None,
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.content, "");
@@ -1745,6 +1750,7 @@ mod tests {
             sender_nickname: None,
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         assert!(chat.sent_at.is_none());
@@ -1936,6 +1942,7 @@ mod tests {
             sender_nickname: None,
             attachment_json: None,
             encrypted: 0,
+            deleted_at: None,
         };
         let chat = message_to_chat(msg);
         let cloned = chat.clone();

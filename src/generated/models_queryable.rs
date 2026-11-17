@@ -81,6 +81,9 @@ pub struct Message {
     pub attachment_json: Option<String>,
     /// Whether the message body arrived end to end encrypted (US-042)
     pub encrypted: i32,
+    /// Local-only deletion time (Unix seconds); `None` = visible. Never sent
+    /// to or received from peers (US-005).
+    pub deleted_at: Option<f64>,
 }
 
 /// Queryable struct for the `groups` table
@@ -137,6 +140,9 @@ pub struct GroupMessage {
     pub sender_nickname: Option<String>,
     /// Serialized attachment descriptor (`None` = no attachment)
     pub attachment_json: Option<String>,
+    /// Local-only deletion time (Unix seconds); `None` = visible. Never sent
+    /// to or received from peers (US-005).
+    pub deleted_at: Option<f64>,
 }
 
 /// Queryable struct for the `files` table (content-addressed attachment store)

@@ -283,6 +283,39 @@ fn test_group_leave_prompt_renders_and_ranks_below_device_binding() {
 }
 
 #[test]
+fn test_delete_prompt_renders_and_ranks_below_group_leave() {
+    let mut state = app_state();
+    state.popup = Some("ad-hoc".to_string());
+    state.call_session = Some(p2p_app::CallSession::incoming("call-1", "bob-d1"));
+    state.delete_message_prompt = Some(crate::tui::state::DeleteMessagePrompt {
+        message_id: 7,
+        is_group: false,
+        preview: "delete me".to_string(),
+        tab_content: p2p_app::tui_tabs::TabContent::Chat,
+    });
+
+    // Local deletion outranks the call overlay and ad-hoc popup.
+    let text = render_popup_text(&state).expect("delete prompt text");
+    assert!(text.contains("Delete this sent message from this device?"));
+    assert!(text.contains("delete me"));
+    assert!(text.contains("other peers keep their copy"));
+    assert!(text.contains("Confirm with 'y' or Enter"));
+    assert!(!text.contains("Incoming call from"));
+    assert!(!text.contains("ad-hoc"));
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.popup.as_deref(), Some(text.as_str()));
+
+    // Group leave still wins while its prompt is armed.
+    state.group_leave_prompt = Some(crate::tui::state::GroupLeavePrompt {
+        group_id: "g-1".to_string(),
+        display_name: "Team".to_string(),
+    });
+    let text = render_popup_text(&state).expect("leave prompt wins");
+    assert!(text.contains("Leave group \"Team\"?"));
+    assert!(!text.contains("Delete this sent message"));
+}
+
+#[test]
 fn test_call_overlay_renders_each_state() {
     for (state, expected) in [
         (p2p_app::CallState::Ringing, "Incoming call from"),

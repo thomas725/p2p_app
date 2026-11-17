@@ -153,6 +153,30 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
     crate::mobile_node::load_dm_messages(peer_id, limit)
 }
 
+/// Locally hide one sent message (broadcast, DM, or group message).
+///
+/// Writes a tombstone only when the row was sent by us and is not already
+/// hidden; incoming rows are never deletable. Nothing leaves this device:
+/// `is_group` just picks which local table to stamp. History loaders and
+/// group backfill skip tombstones, while the group watermark still includes
+/// them so peers do not resend the row.
+///
+/// # Errors
+/// Returns an error if the database write fails or no deletable sent row with
+/// that id exists.
+pub fn delete_message(message_id: i32, is_group: bool) -> Result<(), String> {
+    let changed = if is_group {
+        crate::groups::mark_group_message_deleted(message_id)?
+    } else {
+        crate::messages::mark_message_deleted(message_id)?
+    };
+    if changed {
+        Ok(())
+    } else {
+        Err(format!("no deletable sent message with id {message_id}"))
+    }
+}
+
 /// Save an outgoing broadcast message to DB and send via swarm.
 /// `attachment_path`, when present, is stored content-addressedly (files lane
 /// §12) and sent as an attachment descriptor on the message.

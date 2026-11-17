@@ -87,6 +87,26 @@ mixin MessageChatMixin<T extends StatefulWidget> on State<T> {
   Future<int> copySelection(List<ChatMessage> messages) {
     return _copyMessages(context, messages, selectedIndices);
   }
+
+  /// Delete the selected outgoing rows locally, then drop the same ids from the
+  /// screen's in-memory history. [messages] is the screen-owned mutable list.
+  Future<void> deleteSelection(
+    List<ChatMessage> messages, {
+    required bool isGroup,
+  }) async {
+    final deleted = await deleteSelectedMessages(
+      context,
+      messages,
+      selectedIndices,
+      isGroup: isGroup,
+    );
+    if (!mounted) return;
+    setState(() {
+      messages.removeWhere((m) => deleted.contains(m.id));
+      selectionMode = false;
+      selectedIndices.clear();
+    });
+  }
 }
 
 /// Copy a set of selected messages to the clipboard and confirm with a
@@ -98,6 +118,79 @@ Future<int> copySelectedMessages(
   Set<int> selectedIndices,
 ) {
   return _copyMessages(context, messages, selectedIndices);
+}
+
+/// Locally delete the selected messages we sent and return their DB ids so the
+/// calling screen can drop the same rows from its in-memory history.
+///
+/// Only rows with [ChatMessage.sent] are eligible: incoming messages stay on
+/// this device. The confirmation makes the local-only scope explicit — no
+/// retraction is sent, so other peers keep their copies.
+Future<List<int>> deleteSelectedMessages(
+  BuildContext context,
+  List<ChatMessage> messages,
+  Set<int> selectedIndices, {
+  required bool isGroup,
+}) async {
+  final sorted = selectedIndices.toList()..sort();
+  final own = [
+    for (final i in sorted)
+      if (i >= 0 && i < messages.length && messages[i].sent) messages[i],
+  ];
+  if (own.isEmpty) return const <int>[];
+
+  // Capture the messenger before the async confirmation. The dialog itself is
+  // opened synchronously, so no BuildContext crosses an await.
+  final messenger = ScaffoldMessenger.of(context);
+  final count = own.length;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      final colors = Theme.of(dialogContext).colorScheme;
+      return AlertDialog(
+        title: Text(
+          count == 1 ? 'Delete sent message?' : 'Delete $count sent messages?',
+        ),
+        content: const Text(
+          'This hides the message only on this device. Other people keep '
+          'their copies; no retraction is sent.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: colors.error),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed != true) return const <int>[];
+
+  final deleted = <int>[];
+  var failed = 0;
+  for (final msg in own) {
+    try {
+      await nodeApi.deleteMessage(messageId: msg.id, isGroup: isGroup);
+      deleted.add(msg.id);
+    } catch (_) {
+      failed++;
+    }
+  }
+
+  final noun = deleted.length == 1 ? 'message' : 'messages';
+  final summary = 'Deleted ${deleted.length} sent $noun on this device';
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(failed == 0 ? summary : '$summary; $failed failed'),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+  return deleted;
 }
 
 Future<int> _copyMessages(
@@ -157,6 +250,7 @@ class MessageChatBody extends StatelessWidget {
     required this.onBubbleTap,
     required this.onCancelSelection,
     required this.onCopySelected,
+    required this.onDeleteSelected,
     required this.unreadCount,
     required this.unreadLabel,
     required this.onJumpToBottom,
@@ -174,6 +268,7 @@ class MessageChatBody extends StatelessWidget {
   final void Function(int) onBubbleTap;
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
+  final VoidCallback onDeleteSelected;
   final int unreadCount;
   final String unreadLabel;
   final VoidCallback onJumpToBottom;
@@ -182,6 +277,9 @@ class MessageChatBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canDelete = selectedIndices.any(
+      (i) => i >= 0 && i < messages.length && messages[i].sent,
+    );
     return Expanded(
       child: Stack(
         alignment: Alignment.bottomCenter,
@@ -224,6 +322,8 @@ class MessageChatBody extends StatelessWidget {
               count: selectedIndices.length,
               onCancel: onCancelSelection,
               onCopy: onCopySelected,
+              canDelete: canDelete,
+              onDelete: onDeleteSelected,
             )
           else if (unreadCount > 0)
             Padding(
@@ -254,11 +354,15 @@ class SelectionToolbar extends StatelessWidget {
     required this.count,
     required this.onCancel,
     required this.onCopy,
+    required this.canDelete,
+    required this.onDelete,
   });
 
   final int count;
   final VoidCallback onCancel;
   final VoidCallback onCopy;
+  final bool canDelete;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +389,11 @@ class SelectionToolbar extends StatelessWidget {
               onPressed: count == 0 ? null : onCopy,
               icon: const Icon(Icons.copy),
               tooltip: 'Copy',
+            ),
+            IconButton(
+              onPressed: canDelete ? onDelete : null,
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete sent messages on this device',
             ),
           ],
         ),
@@ -369,6 +478,7 @@ class BroadcastChat extends StatefulWidget {
     required this.onBubbleTap,
     required this.onCancelSelection,
     required this.onCopySelected,
+    required this.onDeleteSelected,
     required this.onOpenPeerInfo,
     this.onPickFile,
     this.onOpenAttachment,
@@ -386,6 +496,7 @@ class BroadcastChat extends StatefulWidget {
   final void Function(int) onBubbleTap;
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
+  final VoidCallback onDeleteSelected;
   final void Function(String) onOpenPeerInfo;
   final VoidCallback? onPickFile;
   final void Function(ChatMessage)? onOpenAttachment;
@@ -449,6 +560,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
           onBubbleTap: widget.onBubbleTap,
           onCancelSelection: widget.onCancelSelection,
           onCopySelected: widget.onCopySelected,
+          onDeleteSelected: widget.onDeleteSelected,
           unreadCount: widget.unreadCount,
           unreadLabel:
               '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',

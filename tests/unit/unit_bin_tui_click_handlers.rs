@@ -447,32 +447,40 @@ fn dm_msg(
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
         encrypted: 0,
+        deleted_at: None,
     }
 }
 
 #[test]
 fn test_format_dm_messages_from_db_empty() {
-    let result = super::format_dm_messages_from_db(&[], "Me", &HashMap::new(), &HashMap::new());
+    let (result, db_ids) =
+        super::format_dm_messages_from_db(&[], "Me", &HashMap::new(), &HashMap::new());
     assert!(result.is_empty());
+    assert!(db_ids.is_empty());
 }
 
 #[test]
 fn test_format_dm_messages_from_db_outgoing() {
-    let messages = [dm_msg("hello", None, None, "2024-01-01 12:00:00")];
-    let result =
-        super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
+    let mut outgoing = dm_msg("hello", None, None, "2024-01-01 12:00:00");
+    outgoing.id = 4;
+    outgoing.sent = 1;
+    let (result, db_ids) =
+        super::format_dm_messages_from_db(&[outgoing], "Me", &HashMap::new(), &HashMap::new());
     assert_eq!(result.len(), 1);
     assert!(result[0].contains("[Me]"));
     assert!(result[0].contains("hello"));
+    assert_eq!(db_ids, VecDeque::from([Some(4)]));
 }
 
 #[test]
 fn test_format_dm_messages_from_db_incoming_uses_display_name() {
     let messages = [dm_msg("hi", Some("peer-abc"), None, "2024-01-01 12:00:00")];
     let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
-    let result = super::format_dm_messages_from_db(&messages, "Me", &local, &HashMap::new());
+    let (result, db_ids) =
+        super::format_dm_messages_from_db(&messages, "Me", &local, &HashMap::new());
     assert!(result[0].contains("[Alice]"));
     assert!(result[0].contains("hi"));
+    assert_eq!(db_ids, VecDeque::from([None]));
 }
 
 #[test]
@@ -481,9 +489,10 @@ fn test_format_dm_messages_from_db_reverses_newest_first() {
         dm_msg("second", Some("p1"), None, "2024-01-01 12:00:01"),
         dm_msg("first", Some("p1"), None, "2024-01-01 12:00:00"),
     ];
-    let result =
+    let (result, db_ids) =
         super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
     assert_eq!(result.len(), 2);
+    assert_eq!(db_ids, VecDeque::from([None, None]));
     assert!(
         result[0].contains("first"),
         "first msg should be first after rev"
@@ -497,7 +506,7 @@ fn test_format_dm_messages_from_db_reverses_newest_first() {
 #[test]
 fn test_format_dm_messages_from_db_self_nick_override() {
     let messages = [dm_msg("my msg", None, None, "2024-01-01 12:00:00")];
-    let result = super::format_dm_messages_from_db(
+    let (result, _) = super::format_dm_messages_from_db(
         &messages,
         "CustomNick",
         &HashMap::new(),
@@ -513,12 +522,51 @@ fn test_format_dm_messages_from_db_renders_attachment_chip() {
     msg.attachment_json = Some(
         "{\"file_id\":\"aabb\",\"name\":\"notes.txt\",\"size\":2048,\"mime\":null}".to_string(),
     );
-    let result = super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
+    let (result, _) =
+        super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
     assert!(
         result[0].contains("[file] notes.txt (2 KiB)"),
         "attachment-only row must still show the chip: {}",
         result[0]
     );
+}
+
+fn group_msg(
+    id: i32,
+    sent: i32,
+    content: &str,
+    peer_id: Option<&str>,
+    created_at: &str,
+) -> p2p_app::generated::models_queryable::GroupMessage {
+    p2p_app::generated::models_queryable::GroupMessage {
+        id,
+        created_at: chrono::NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S").unwrap(),
+        group_id: "g1".to_string(),
+        content: content.to_string(),
+        peer_id: peer_id.map(String::from),
+        sent,
+        msg_id: None,
+        sent_at: None,
+        sender_nickname: None,
+        attachment_json: None,
+        deleted_at: None,
+    }
+}
+
+#[test]
+fn test_format_group_messages_from_db_keeps_db_ids_aligned() {
+    let newest_first = vec![
+        group_msg(22, 0, "theirs", Some("p2"), "2024-01-01 12:00:01"),
+        group_msg(21, 1, "mine", None, "2024-01-01 12:00:00"),
+    ];
+    let (messages, ids, peer_ids, db_ids) =
+        super::format_group_messages_from_db(&newest_first, &HashMap::new(), &HashMap::new(), "Me");
+    assert_eq!(messages.len(), 2);
+    assert_eq!(db_ids, VecDeque::from([Some(21), None]));
+    assert_eq!(ids, VecDeque::from([None, None]));
+    assert_eq!(peer_ids, VecDeque::from([None, Some("p2".to_string())]));
+    assert!(messages[0].contains("mine"));
+    assert!(messages[1].contains("theirs"));
 }
 
 // ── load_dm_messages ───────────────────────────────────────────────────
@@ -528,9 +576,23 @@ fn test_load_dm_messages_existing_no_scroll_state_initializes_scroll() {
     let mut state = app_state_with_dm_messages("peer-s", 5);
     // Remove scroll state to trigger the else-if branch
     state.dm_scroll_state.remove("peer-s");
-    // dm_messages still has the peer -> enters else-if, initializes scroll state
+    // A transcript seeded without the new DB-id queue (or with a shorter one)
+    // gets padded to the same length: unknown rows stay non-deletable.
+    state
+        .dm_message_db_ids
+        .insert("peer-s".to_string(), VecDeque::from([None, None]));
     load_dm_messages(&mut state, "peer-s");
     let (offset, auto) = state.dm_scroll_state.get("peer-s").unwrap();
     assert_eq!(*offset, 5);
     assert!(*auto);
+    assert_eq!(state.dm_message_db_ids["peer-s"].len(), 5);
+    assert!(
+        state.dm_message_db_ids["peer-s"]
+            .iter()
+            .all(Option::is_none)
+    );
+    assert_eq!(
+        state.last_sent_message(&p2p_app::tui_tabs::TabContent::Direct("peer-s".into())),
+        None
+    );
 }

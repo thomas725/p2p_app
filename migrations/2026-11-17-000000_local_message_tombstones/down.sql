@@ -1,0 +1,2 @@
+-- Local-only tombstones are additive and nullable; leaving them on downgrade
+-- is harmless (old code never reads or writes the columns).

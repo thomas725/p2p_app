@@ -241,6 +241,7 @@ class _DmChatScreenState extends State<DmChatScreen>
               copySelection(_messages);
               cancelSelection();
             },
+            onDeleteSelected: () => deleteSelection(_messages, isGroup: false),
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),

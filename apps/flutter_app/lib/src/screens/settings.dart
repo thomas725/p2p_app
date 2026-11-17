@@ -38,7 +38,7 @@ const Map<String, List<String>> _helpSections = {
   ],
   'Chat': [
     'Type and press Enter to send. The paperclip attaches a file.',
-    'Double-tap a message to select it, then Copy from the toolbar.',
+    'Double-tap a message to select it, then Copy or Delete from the toolbar. Delete hides only your own sent messages on this device.',
     'Tap a sender name for Peer Info, an attachment chip to open the file, or the unread banner to jump to latest.',
   ],
   'Contacts': [

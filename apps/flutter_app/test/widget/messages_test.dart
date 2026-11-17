@@ -11,6 +11,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
+import 'package:p2p_app_flutter/src/screens/group_chat.dart';
 import 'package:p2p_app_flutter/src/screens/home.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
@@ -52,6 +53,21 @@ MobilePeerRecord peerRecord() => MobilePeerRecord(
   localNickname: null,
   nickname: null,
 );
+
+MobileGroup groupRecord() => MobileGroup(
+  groupId: 'group-1',
+  displayName: 'Test group',
+  memberCount: 2,
+  isPrivate: false,
+);
+
+/// Enter selection mode through the same mixin method the bubble's double-tap
+/// calls. Driving the recognizer with synthetic pointer events is brittle in
+/// widget tests, and the action under test is the delete flow, not the gesture.
+void _selectMessage(WidgetTester tester, Type screenType, int index) {
+  final state = tester.state(find.byType(screenType));
+  (state as dynamic).onBubbleDoubleTap(index);
+}
 
 void main() {
   // The event bus is a global; leaving a sink installed would leak into the
@@ -227,5 +243,96 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('12ms'), findsOneWidget);
+  });
+
+  testWidgets('selection delete hides an own DM locally only', (tester) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(id: 7, content: 'mine', msgId: 'dm-7'),
+        chatMessage(
+          id: 8,
+          content: 'theirs',
+          peerId: 'peer-abc',
+          sent: false,
+          msgId: 'dm-8',
+        ),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('hides the message only on this device'), findsOneWidget);
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    final calls = fake.calls.where((c) => c.method == 'deleteMessage').toList();
+    expect(calls, hasLength(1));
+    expect(calls.single.argument, (messageId: 7, isGroup: false));
+    expect(find.text('mine'), findsNothing);
+    expect(find.text('theirs'), findsOneWidget);
+  });
+
+  testWidgets('cancelling local delete keeps the message', (tester) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(id: 9, content: 'keep me', msgId: 'dm-9'),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(fake.calls.where((c) => c.method == 'deleteMessage'), isEmpty);
+    expect(find.text('keep me'), findsOneWidget);
+  });
+
+  testWidgets('group delete marks the tombstone as a group row', (tester) async {
+    final fake = FakeNodeApi()
+      ..loadGroupMessagesOverride = (_, _) => [
+        MobileGroupMessage(
+          id: 11,
+          content: 'group mine',
+          sent: true,
+          createdAt: '2026-01-01 10:00:00',
+        ),
+      ];
+    nodeApi = fake;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupChatScreen(group: groupRecord(), serviceRunning: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, GroupChatScreen, 0);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    final calls = fake.calls.where((c) => c.method == 'deleteMessage').toList();
+    expect(calls, hasLength(1));
+    expect(calls.single.argument, (messageId: 11, isGroup: true));
+    expect(find.text('group mine'), findsNothing);
   });
 }

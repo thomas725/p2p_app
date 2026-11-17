@@ -292,6 +292,55 @@ async fn confirm_group_leave(state: &SharedState, swarm_cmd_tx: &mpsc::Sender<Sw
     }
 }
 
+/// `Delete` arms the local-only deletion prompt for the newest sent message in
+/// the active chat. Incoming rows and live events have no DB id, so they are
+/// skipped; with nothing deletable we explain that in a popup instead.
+fn arm_delete_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    use p2p_app::tui_tabs::TabContent;
+
+    let Some((id, preview)) = s.last_sent_message(tab) else {
+        s.popup = Some("No sent message to delete in this conversation".to_string());
+        return;
+    };
+    let is_group = matches!(tab, TabContent::GroupChat(_));
+    s.begin_delete_message(id, is_group, preview, tab.clone());
+    p2plog_debug(format!("Delete confirmation armed for message {id}"));
+}
+
+/// Apply a confirmed local deletion: tombstone the DB row via the shared API,
+/// then drop the matching line from the conversation's aligned queues. Nothing
+/// is sent over the swarm — other peers keep their copy (US-005).
+async fn confirm_delete_message(state: &SharedState) {
+    let prompt = {
+        let mut s = state.lock().await;
+        s.delete_message_prompt.take()
+    };
+    let Some(prompt) = prompt else {
+        return;
+    };
+    match p2p_app::api::delete_message(prompt.message_id, prompt.is_group) {
+        Ok(()) => {
+            let mut s = state.lock().await;
+            if s.remove_deleted_message(&prompt) {
+                p2plog_debug(format!("Deleted message {} locally", prompt.message_id));
+            } else {
+                // The row vanished from the in-memory queues (e.g. a reload
+                // happened while the popup was open); the DB tombstone still
+                // applies, so tell the user why nothing was removed on screen.
+                s.popup = Some("Message deleted, but its line is no longer loaded".to_string());
+            }
+        }
+        Err(e) => {
+            p2plog_debug(format!(
+                "Failed to delete message {}: {e}",
+                prompt.message_id
+            ));
+            let mut s = state.lock().await;
+            s.popup = Some(format!("Could not delete message: {e}"));
+        }
+    }
+}
+
 /// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
@@ -440,6 +489,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
     decline_device_binding_prompt(&mut s);
     if s.cancel_group_leave() {
         p2plog_debug("Cancelled group leave".to_string());
+    } else if s.cancel_delete_message() {
+        p2plog_debug("Cancelled message deletion".to_string());
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
@@ -754,6 +805,51 @@ fn remove_selected_network_peer(s: &mut super::state::AppState) {
     }
 }
 
+/// Which single-slot prompt (if any) owns the current key.
+#[derive(Clone, Copy)]
+enum PromptAction {
+    AcceptDeviceBinding,
+    DeclineDeviceBinding,
+    ConfirmGroupLeave,
+    CancelGroupLeave,
+    ConfirmDelete,
+    CancelDelete,
+    NoPrompt,
+}
+
+/// Resolve prompt precedence once: device binding > group leave > deletion.
+/// Every prompt owns its keys (including Esc), so nothing below sees them.
+const fn prompt_key_action(
+    state: &super::state::AppState,
+    key_event: &crossterm::event::KeyEvent,
+) -> PromptAction {
+    use crossterm::event::KeyCode;
+
+    let is_confirm = matches!(key_event.code, KeyCode::Char('y' | 'Y') | KeyCode::Enter);
+    if state.device_binding_prompt.is_some() {
+        return if matches!(key_event.code, KeyCode::Char('a' | 'A')) {
+            PromptAction::AcceptDeviceBinding
+        } else {
+            PromptAction::DeclineDeviceBinding
+        };
+    }
+    if state.group_leave_prompt.is_some() {
+        return if is_confirm {
+            PromptAction::ConfirmGroupLeave
+        } else {
+            PromptAction::CancelGroupLeave
+        };
+    }
+    if state.delete_message_prompt.is_some() {
+        return if is_confirm {
+            PromptAction::ConfirmDelete
+        } else {
+            PromptAction::CancelDelete
+        };
+    }
+    PromptAction::NoPrompt
+}
+
 async fn process_key_event(
     key_event: crossterm::event::KeyEvent,
     state: &SharedState,
@@ -769,10 +865,59 @@ async fn process_key_event(
         return true;
     }
 
-    // A live call session owns the keys until it resolves (mirrors the
-    // device-binding prompt): accept/decline a ring, cancel an outgoing call,
-    // hang up an active one. Handled before Esc so Esc is a call key here, not
-    // the generic dismiss/return-to-chat handling.
+    // Prompt precedence: device-binding > group leave > message deletion >
+    // live call overlay > plain popup/Esc handling.
+    let prompt_action = {
+        let s = state.lock().await;
+        prompt_key_action(&s, &key_event)
+    };
+    match prompt_action {
+        PromptAction::AcceptDeviceBinding => {
+            accept_device_binding_prompt(state, swarm_cmd_tx).await;
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::DeclineDeviceBinding => {
+            let mut s = state.lock().await;
+            decline_device_binding_prompt(&mut s);
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::ConfirmGroupLeave => {
+            confirm_group_leave(state, swarm_cmd_tx).await;
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::CancelGroupLeave => {
+            let mut s = state.lock().await;
+            if s.cancel_group_leave() {
+                p2plog_debug("Cancelled group leave".to_string());
+            }
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::ConfirmDelete => {
+            confirm_delete_message(state).await;
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::CancelDelete => {
+            let mut s = state.lock().await;
+            if s.cancel_delete_message() {
+                p2plog_debug("Cancelled message deletion".to_string());
+            }
+            drop(s);
+            let _ = render_tx.send(RenderEvent).await;
+            return false;
+        }
+        PromptAction::NoPrompt => {}
+    }
+
+    // A live call session owns the keys until it resolves: accept/decline a
+    // ring, cancel an outgoing call, hang up an active one. Handled before Esc
+    // so Esc is a call key here, not the generic dismiss/return-to-chat path.
     let call_active = {
         let s = state.lock().await;
         s.call_session
@@ -790,45 +935,6 @@ async fn process_key_event(
     }
 
     let mut s = state.lock().await;
-
-    // Device-binding intro prompt: 'a'/'A' accepts (mints a signed claim and
-    // sends it to the peer), any other key declines. Explicit-accept only —
-    // never auto-mint, mirroring the mobile Allow/Decline dialog.
-    if s.device_binding_prompt.is_some() {
-        let accept = matches!(key_event.code, crossterm::event::KeyCode::Char('a' | 'A'));
-        drop(s);
-        if accept {
-            accept_device_binding_prompt(state, swarm_cmd_tx).await;
-        } else {
-            let mut s = state.lock().await;
-            decline_device_binding_prompt(&mut s);
-            drop(s);
-        }
-        let _ = render_tx.send(RenderEvent).await;
-        return false;
-    }
-
-    // Group-leave confirmation: 'y'/Enter confirms (delete + unsubscribe),
-    // any other key cancels. Single-slot and wins over all other input, like
-    // the device-binding prompt.
-    if s.group_leave_prompt.is_some() {
-        let confirm = matches!(
-            key_event.code,
-            crossterm::event::KeyCode::Char('y' | 'Y') | crossterm::event::KeyCode::Enter
-        );
-        drop(s);
-        if confirm {
-            confirm_group_leave(state, swarm_cmd_tx).await;
-        } else {
-            let mut s = state.lock().await;
-            if s.cancel_group_leave() {
-                p2plog_debug("Cancelled group leave".to_string());
-            }
-            drop(s);
-        }
-        let _ = render_tx.send(RenderEvent).await;
-        return false;
-    }
 
     // Diagnostic: log exactly what crossterm parsed for every input key that
     // touches the Tab/Ctrl+I/Ctrl+P routing, regardless of the kitty flag, so
@@ -988,6 +1094,20 @@ async fn handle_key_dispatch(
         }
         crossterm::event::KeyCode::F(12) => {
             toggle_mouse_capture(s);
+        }
+        // `Delete` arms local-only deletion of the newest sent message in a
+        // chat. Text editors and the Contacts/Settings/Groups tabs don't own a
+        // message queue, so the key is a no-op there.
+        crossterm::event::KeyCode::Delete
+            if s.input_mode == p2p_app::InputMode::Chat
+                && matches!(
+                    tab,
+                    p2p_app::tui_tabs::TabContent::Chat
+                        | p2p_app::tui_tabs::TabContent::Direct(_)
+                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+                ) =>
+        {
+            arm_delete_prompt(s, &tab);
         }
         crossterm::event::KeyCode::Enter => {
             if s.is_searching_contacts() {

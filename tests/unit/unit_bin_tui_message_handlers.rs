@@ -18,12 +18,28 @@ use tempfile::TempDir;
 #[test]
 fn test_push_outgoing_broadcast_adds_message() {
     let mut state = test_app_state();
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
+    let row_idx =
+        push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
+    assert_eq!(row_idx, 0);
+    assert_eq!(state.message_db_ids, VecDeque::from([None]));
     assert_eq!(state.messages.len(), 1);
     assert!(state.messages[0].text.contains("[Me]"));
     assert!(state.messages[0].text.contains("hello"));
     assert_eq!(state.messages[0].sender_peer_id, None);
     assert_eq!(state.message_ids[0], Some("m1".to_string()));
+}
+
+#[test]
+fn test_attach_sent_db_id_patches_aligned_slot() {
+    let mut state = test_app_state();
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
+    attach_sent_db_id(Some(&mut state.message_db_ids), 0, 42);
+    assert_eq!(state.message_db_ids, VecDeque::from([Some(42)]));
+    let (id, preview) = state
+        .last_sent_message(&p2p_app::tui_tabs::TabContent::Chat)
+        .unwrap();
+    assert_eq!(id, 42);
+    assert!(preview.contains("hello"));
 }
 
 #[test]
@@ -61,7 +77,7 @@ fn test_push_outgoing_broadcast_peer_id_is_none() {
 #[test]
 fn test_push_outgoing_dm_adds_message() {
     let mut state = test_app_state();
-    push_outgoing_dm_to_state(
+    let row_idx = push_outgoing_dm_to_state(
         &mut state,
         OutgoingDm {
             peer_id: "peer-1",
@@ -73,6 +89,8 @@ fn test_push_outgoing_dm_adds_message() {
             encrypted: false,
         },
     );
+    assert_eq!(row_idx, 0);
+    assert_eq!(state.dm_message_db_ids["peer-1"], VecDeque::from([None]));
     assert!(state.dm_messages.contains_key("peer-1"));
     assert_eq!(state.dm_messages["peer-1"].len(), 1);
     assert!(state.dm_messages["peer-1"][0].contains("[Me]"));
@@ -266,6 +284,13 @@ fn test_send_broadcast_saves_to_db() {
             let msgs = p2p_app::load_messages("test-net", 10).unwrap();
             assert_eq!(msgs.len(), 1);
             assert_eq!(msgs[0].content, "db test");
+            assert_eq!(msgs[0].sent, 1, "TUI sends must be marked deletable");
+            assert_eq!(state.message_db_ids, VecDeque::from([Some(msgs[0].id)]));
+            let (id, preview) = state
+                .last_sent_message(&p2p_app::tui_tabs::TabContent::Chat)
+                .unwrap();
+            assert_eq!(id, msgs[0].id);
+            assert!(preview.contains("db test"));
         });
     });
 }
@@ -290,6 +315,52 @@ fn test_send_dm_saves_to_db() {
             let msgs = p2p_app::load_direct_messages("dm-peer", 10).unwrap();
             assert_eq!(msgs.len(), 1);
             assert_eq!(msgs[0].content, "dm db");
+            assert_eq!(msgs[0].sent, 1, "TUI sends must be marked deletable");
+            assert_eq!(
+                state.dm_message_db_ids["dm-peer"],
+                VecDeque::from([Some(msgs[0].id)])
+            );
+            let (id, preview) = state
+                .last_sent_message(&p2p_app::tui_tabs::TabContent::Direct("dm-peer".into()))
+                .unwrap();
+            assert_eq!(id, msgs[0].id);
+            assert!(preview.contains("dm db"));
+        });
+    });
+}
+
+#[test]
+fn test_send_group_saves_sent_row_and_db_id() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    with_test_db(|swarm_cmd_tx| {
+        rt.block_on(async {
+            let mut state = test_app_state();
+            let group_id = "g-db";
+
+            send_message(
+                &mut state,
+                &swarm_cmd_tx,
+                "group db".to_string(),
+                None,
+                p2p_app::tui_tabs::TabContent::GroupChat(group_id.to_string()),
+            )
+            .await;
+
+            let msgs = p2p_app::groups::load_group_messages(group_id, 10).unwrap();
+            assert_eq!(msgs.len(), 1);
+            assert_eq!(msgs[0].content, "group db");
+            assert_eq!(msgs[0].sent, 1, "outgoing group rows are sent on insert");
+            assert_eq!(
+                state.group_message_db_ids[group_id],
+                VecDeque::from([Some(msgs[0].id)])
+            );
+            let (id, preview) = state
+                .last_sent_message(&p2p_app::tui_tabs::TabContent::GroupChat(
+                    group_id.to_string(),
+                ))
+                .unwrap();
+            assert_eq!(id, msgs[0].id);
+            assert!(preview.contains("group db"));
         });
     });
 }

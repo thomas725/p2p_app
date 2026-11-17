@@ -49,8 +49,11 @@ fn apply_broadcast_to_state(
         sender_peer_id: Some(peer_id.to_string()),
     });
     state.message_ids.push_back(msg_id);
+    // Live inbound events have no DB id; the DB loader fills it on restart.
+    state.message_db_ids.push_back(None);
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
+    trim_history(&mut state.message_db_ids, MAX_MESSAGE_HISTORY);
     if !state.auto_scroll.chat {
         state.chat_unread_count = state.chat_unread_count.saturating_add(1);
     }
@@ -77,10 +80,18 @@ fn apply_dm_to_state(
         .entry(peer_id.to_string())
         .or_default()
         .push_back(msg_id);
+    state
+        .dm_message_db_ids
+        .entry(peer_id.to_string())
+        .or_default()
+        .push_back(None);
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg.clone());
     trim_history(dm_msgs, MAX_DM_HISTORY);
     if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
+        trim_history(ids, MAX_DM_HISTORY);
+    }
+    if let Some(ids) = state.dm_message_db_ids.get_mut(peer_id) {
         trim_history(ids, MAX_DM_HISTORY);
     }
     state.dynamic_tabs.add_dm_tab(peer_id.to_string());
@@ -147,11 +158,19 @@ fn apply_group_message_to_state(
         .or_default()
         .push_back(msg_id);
     state
+        .group_message_db_ids
+        .entry(group_id.to_string())
+        .or_default()
+        .push_back(None);
+    state
         .group_message_peer_ids
         .entry(group_id.to_string())
         .or_default()
         .push_back(Some(peer_id.to_string()));
     if let Some(ids) = state.group_message_ids.get_mut(group_id) {
+        trim_history(ids, MAX_MESSAGE_HISTORY);
+    }
+    if let Some(ids) = state.group_message_db_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
     if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {

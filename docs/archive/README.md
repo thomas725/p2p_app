@@ -27,6 +27,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-12_network_peer_config_surface.md](2026-11-12_network_peer_config_surface.md) | Persisted bootstrap/relay multiaddrs editable in all three frontends | 2026-11-12 |
 | [2026-11-12_peer_blocklist.md](2026-11-12_peer_blocklist.md) | Peer blocklist / mute enforced at the swarm boundary (US-054) | 2026-11-12 |
 | [2026-11-17_keyboard_shortcuts_help.md](2026-11-17_keyboard_shortcuts_help.md) | TUI `?` overlay + Flutter Help / controls dialog (US-029) | 2026-11-17 |
+| [2026-11-17_local_message_deletion.md](2026-11-17_local_message_deletion.md) | Local-only tombstones for sent messages (US-005 deletion half) | 2026-11-17 |
 
 ### Completed planning
 

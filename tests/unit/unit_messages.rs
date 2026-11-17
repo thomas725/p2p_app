@@ -315,6 +315,147 @@ fn message_is_dm_resolves_kind_and_unknown_ids() {
 
 #[test]
 #[serial(db)]
+fn mark_message_deleted_hides_only_sent_rows_from_broadcast_and_dm_history() {
+    with_test_db(|| {
+        let topic = "delete-topic";
+        let outgoing =
+            save_message("outgoing", None, topic, false, None).expect("save outgoing broadcast");
+        assert_eq!(outgoing.deleted_at, None, "new rows start visible");
+        assert!(
+            !mark_message_deleted(outgoing.id).expect("unsent row is not deletable"),
+            "only rows we actually sent can be hidden"
+        );
+        mark_message_sent(outgoing.id).expect("mark broadcast sent");
+
+        let incoming =
+            save_message("incoming", Some("peer-a"), topic, false, None).expect("save incoming");
+        let dm_out =
+            save_message("dm-out", None, topic, true, Some("peer-b")).expect("save outgoing dm");
+        mark_message_sent(dm_out.id).expect("mark dm sent");
+        let dm_in = save_message("dm-in", Some("peer-a"), topic, true, Some("peer-a"))
+            .expect("save incoming dm");
+
+        assert!(mark_message_deleted(outgoing.id).expect("delete broadcast"));
+        assert!(mark_message_deleted(dm_out.id).expect("delete outgoing DM"));
+        assert!(
+            !mark_message_deleted(outgoing.id).expect("second delete is a no-op"),
+            "tombstones are idempotent"
+        );
+
+        let conn = &mut crate::sqlite_connect().expect("connect");
+        let stamped = crate::generated::schema::messages::table
+            .filter(crate::generated::schema::messages::id.eq(outgoing.id))
+            .select(crate::generated::schema::messages::deleted_at)
+            .first::<Option<f64>>(conn)
+            .expect("read tombstone");
+        assert!(
+            stamped.is_some_and(|at| at > 0.0),
+            "deletion stamps a Unix timestamp: {stamped:?}"
+        );
+        let untouched = crate::generated::schema::messages::table
+            .filter(crate::generated::schema::messages::id.eq(incoming.id))
+            .select(crate::generated::schema::messages::deleted_at)
+            .first::<Option<f64>>(conn)
+            .expect("read incoming row");
+        assert_eq!(untouched, None, "incoming rows are never tombstoned");
+
+        let broadcasts = load_messages(topic, 100).expect("broadcast history");
+        let broadcast_ids: Vec<i32> = broadcasts.iter().map(|m| m.id).collect();
+        assert!(
+            !broadcast_ids.contains(&outgoing.id),
+            "hidden broadcast gone"
+        );
+        assert!(broadcast_ids.contains(&incoming.id), "other rows remain");
+
+        let dms = load_direct_messages("peer-b", 100).expect("dm history");
+        assert!(dms.iter().all(|m| m.id != dm_out.id), "hidden DM gone");
+        let incoming_dms = load_direct_messages("peer-a", 100).expect("incoming DMs");
+        assert!(
+            incoming_dms.iter().any(|m| m.id == dm_in.id),
+            "incoming DM stays visible"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn deleted_dms_leave_peer_stats_but_not_broadcast_recipients() {
+    with_test_db(|| {
+        let dm = save_message("dm", None, "stats-delete", true, Some("peer-x")).expect("save dm");
+        mark_message_sent(dm.id).expect("mark sent");
+        let _incoming = save_message("in", Some("peer-y"), "stats-delete", true, Some("peer-y"))
+            .expect("save incoming");
+        crate::peers::record_broadcast_recipients("m-x", &["peer-x".to_string()])
+            .expect("record recipient");
+
+        assert_eq!(
+            get_all_peer_stats()
+                .expect("before")
+                .get("peer-x")
+                .expect("peer-x before")
+                .dm_count,
+            1
+        );
+        mark_message_deleted(dm.id).expect("hide dm");
+
+        let after = get_all_peer_stats().expect("after");
+        let x = after.get("peer-x").expect("peer-x still has broadcasts");
+        assert_eq!(x.dm_count, 0, "tombstoned DM no longer counts");
+        assert_eq!(
+            x.broadcast_sent_to_peer, 1,
+            "sent broadcasts are unaffected"
+        );
+        assert_eq!(
+            after.get("peer-y").expect("peer-y").dm_count,
+            1,
+            "other peers are unaffected"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn receipts_for_hidden_rows_remain_consistent() {
+    with_test_db(|| {
+        let msg = save_message_with_meta(
+            "hidden",
+            None,
+            "receipt-delete",
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("hidden-msg".to_string()),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save");
+        mark_message_sent(msg.id).expect("mark sent");
+        mark_message_deleted(msg.id).expect("hide");
+
+        // Receipts are independent of visibility: a hidden row can still be
+        // acknowledged and still produces a delivery tick on load.
+        save_receipt("hidden-msg", "peer-z", 0, 12.0).expect("receipt");
+        assert!(
+            load_messages("receipt-delete", 100)
+                .expect("history")
+                .is_empty()
+        );
+        assert!(
+            confirmed_message_ids(&["hidden-msg".to_string()])
+                .expect("confirmed")
+                .contains("hidden-msg")
+        );
+        assert_eq!(load_receipts().expect("receipts").len(), 1);
+        assert!(
+            !message_is_dm("hidden-msg")
+                .expect("kind")
+                .expect("still in DB")
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
 fn save_receipt_backfills_broadcast_recipient_confirmation() {
     use crate::generated::schema::broadcast_recipients;
     use diesel::OptionalExtension as _;

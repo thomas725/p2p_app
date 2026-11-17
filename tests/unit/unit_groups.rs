@@ -214,6 +214,105 @@ fn incoming_group_message_without_msg_id_dedupes_on_content() {
 
 #[test]
 #[serial(db)]
+fn mark_group_message_deleted_hides_only_sent_rows() {
+    with_test_db(|| {
+        let group = create_public_group("delete-lobby").expect("create");
+        let sent = save_outgoing_group_message(
+            &group.group_id,
+            "mine",
+            GroupMessageMeta {
+                msg_id: Some("g-sent".to_string()),
+                sent_at: Some(2.0),
+                ..GroupMessageMeta::default()
+            },
+        )
+        .expect("save outgoing");
+        assert_eq!(sent.deleted_at, None, "new rows start visible");
+        let incoming = save_incoming_group_message(
+            &group.group_id,
+            "peer-a",
+            "theirs",
+            GroupMessageMeta {
+                msg_id: Some("g-in".to_string()),
+                sent_at: Some(1.0),
+                ..GroupMessageMeta::default()
+            },
+        )
+        .expect("save incoming")
+        .expect("row");
+
+        assert!(
+            !mark_group_message_deleted(incoming.id).expect("incoming not deletable"),
+            "only messages we sent can be hidden"
+        );
+        assert!(mark_group_message_deleted(sent.id).expect("delete sent"));
+        assert!(
+            !mark_group_message_deleted(sent.id).expect("second delete is a no-op"),
+            "tombstones are idempotent"
+        );
+
+        let conn = &mut crate::sqlite_connect().expect("connect");
+        let stamped = crate::generated::schema::group_messages::table
+            .filter(crate::generated::schema::group_messages::id.eq(sent.id))
+            .select(crate::generated::schema::group_messages::deleted_at)
+            .first::<Option<f64>>(conn)
+            .expect("read tombstone");
+        assert!(
+            stamped.is_some_and(|at| at > 0.0),
+            "deletion stamps a Unix timestamp: {stamped:?}"
+        );
+
+        let loaded = load_group_messages(&group.group_id, 100).expect("history");
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, incoming.id, "only the incoming row remains");
+    });
+}
+
+#[test]
+#[serial(db)]
+fn group_tombstones_are_excluded_from_backfill_but_keep_the_watermark() {
+    with_test_db(|| {
+        let group = create_public_group("backfill-delete").expect("create");
+        let mut ids = Vec::new();
+        for (content, sent_at) in [("bf-old", 1.0), ("bf-hidden", 2.0), ("bf-newest", 3.0)] {
+            let row = save_outgoing_group_message(
+                &group.group_id,
+                content,
+                GroupMessageMeta {
+                    msg_id: Some(content.to_string()),
+                    sent_at: Some(sent_at),
+                    ..GroupMessageMeta::default()
+                },
+            )
+            .expect("save");
+            ids.push(row.id);
+        }
+        mark_group_message_deleted(ids[1]).expect("hide middle");
+
+        let after = load_group_messages_after(&group.group_id, 0.0, 100).expect("backfill");
+        let msg_ids: Vec<&str> = after.iter().filter_map(|m| m.msg_id.as_deref()).collect();
+        assert_eq!(
+            msg_ids,
+            ["bf-old", "bf-newest"],
+            "a local tombstone must never be republished to peers"
+        );
+
+        // The watermark is unfiltered even when the newest row is hidden:
+        // peers must not resend a row we deleted locally.
+        mark_group_message_deleted(ids[2]).expect("hide newest");
+        assert_eq!(
+            latest_group_sent_at(&group.group_id).expect("watermark"),
+            Some(3.0),
+            "tombstones still hold the group watermark"
+        );
+        let after = load_group_messages_after(&group.group_id, 0.0, 100).expect("backfill again");
+        let msg_ids: Vec<&str> = after.iter().filter_map(|m| m.msg_id.as_deref()).collect();
+        assert_eq!(msg_ids, ["bf-old"]);
+    });
+}
+
+#[test]
+#[serial(db)]
 fn ensure_group_for_invite_materializes_and_is_idempotent() {
     with_test_db(|| {
         let group = ensure_group_for_invite("abc123def4567890").expect("materialize");

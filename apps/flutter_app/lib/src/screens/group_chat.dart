@@ -244,6 +244,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
               copySelection(_messages);
               cancelSelection();
             },
+            onDeleteSelected: () => deleteSelection(_messages, isGroup: true),
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),

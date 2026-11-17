@@ -81,6 +81,14 @@ abstract class NodeApi {
     required int limit,
   });
 
+  /// Locally hide one sent message (broadcast/DM when [isGroup] is false,
+  /// group message when it is true). This is a tombstone on this device only:
+  /// no retraction is sent and other peers keep their copy.
+  Future<void> deleteMessage({
+    required int messageId,
+    required bool isGroup,
+  });
+
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
   /// uploads to the node first (files lane §12).

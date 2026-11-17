@@ -211,6 +211,19 @@ void main() {
       expect(fake.frame(1)['method'], 'stopNode');
     });
 
+    test('deleteMessage routes the local tombstone params', () async {
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        fake.respond(fake.frame(fake.sentFrames.length - 1), ok: null);
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+
+      await api.deleteMessage(messageId: 42, isGroup: true);
+
+      expect(fake.frame(0)['method'], 'deleteMessage');
+      expect(fake.frame(0)['params'], {'messageId': 42, 'isGroup': true});
+    });
+
     test('deleteGroup and setPeerLocalNickname route camelCase params',
         () async {
       final fake = FakeRemoteTransport();

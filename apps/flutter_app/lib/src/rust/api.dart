@@ -132,6 +132,23 @@ Future<List<ChatMessage>> loadDmMessages({
   required PlatformInt64 limit,
 }) => RustLib.instance.api.crateApiLoadDmMessages(peerId: peerId, limit: limit);
 
+/// Locally hide one sent message (broadcast, DM, or group message).
+///
+/// Writes a tombstone only when the row was sent by us and is not already
+/// hidden; incoming rows are never deletable. Nothing leaves this device:
+/// `is_group` just picks which local table to stamp. History loaders and
+/// group backfill skip tombstones, while the group watermark still includes
+/// them so peers do not resend the row.
+///
+/// # Errors
+/// Returns an error if the database write fails or no deletable sent row with
+/// that id exists.
+Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
+    RustLib.instance.api.crateApiDeleteMessage(
+      messageId: messageId,
+      isGroup: isGroup,
+    );
+
 /// Save an outgoing broadcast message to DB and send via swarm.
 /// `attachment_path`, when present, is stored content-addressedly (files lane
 /// §12) and sent as an attachment descriptor on the message.

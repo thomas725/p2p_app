@@ -1,9 +1,22 @@
 use super::state::AppState;
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, SwarmCommand, p2plog_debug};
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
-/// Pure: format and push an outgoing broadcast message to state, trimming history
+/// Attach the DB row id of a just-sent message to its aligned queue slot.
+/// The push happens before the DB write (to preserve the visible order), so
+/// the caller records the row index and fills it in once the save succeeds.
+fn attach_sent_db_id(ids: Option<&mut VecDeque<Option<i32>>>, idx: usize, id: i32) {
+    if let Some(ids) = ids
+        && let Some(slot) = ids.get_mut(idx)
+    {
+        *slot = Some(id);
+    }
+}
+
+/// Pure: format and push an outgoing broadcast message to state, trimming history.
+/// Returns the index of the new row so the caller can attach its saved DB id.
 fn push_outgoing_broadcast_to_state(
     state: &mut AppState,
     ts: &str,
@@ -11,7 +24,7 @@ fn push_outgoing_broadcast_to_state(
     content: &str,
     attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
-) {
+) -> usize {
     let body = render_outgoing_body(content, attachment);
     let msg = format!("{ts} [{own_nickname}] {body}");
     state.messages.push_back(DisplayMessage {
@@ -19,8 +32,11 @@ fn push_outgoing_broadcast_to_state(
         sender_peer_id: None,
     });
     state.message_ids.push_back(Some(msg_id));
+    state.message_db_ids.push_back(None);
     trim_history(&mut state.messages, MAX_MESSAGE_HISTORY);
     trim_history(&mut state.message_ids, MAX_MESSAGE_HISTORY);
+    trim_history(&mut state.message_db_ids, MAX_MESSAGE_HISTORY);
+    state.message_db_ids.len().saturating_sub(1)
 }
 
 /// Pure: compose an outgoing chat line before the sender tag: text first, the
@@ -51,8 +67,9 @@ struct OutgoingDm<'a> {
     encrypted: bool,
 }
 
-/// Pure: format and push an outgoing DM to state, trimming history
-fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) {
+/// Pure: format and push an outgoing DM to state, trimming history. Returns the
+/// index of the new row so the caller can attach its saved DB id.
+fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) -> usize {
     let OutgoingDm {
         peer_id,
         ts,
@@ -71,13 +88,27 @@ fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) {
         .entry(peer_id.to_string())
         .or_default()
         .push_back(Some(msg_id));
+    state
+        .dm_message_db_ids
+        .entry(peer_id.to_string())
+        .or_default()
+        .push_back(None);
     trim_history(dm_msgs, MAX_DM_HISTORY);
     if let Some(ids) = state.dm_message_ids.get_mut(peer_id) {
         trim_history(ids, MAX_DM_HISTORY);
     }
+    if let Some(ids) = state.dm_message_db_ids.get_mut(peer_id) {
+        trim_history(ids, MAX_DM_HISTORY);
+    }
+    state
+        .dm_message_db_ids
+        .get(peer_id)
+        .map_or(0, VecDeque::len)
+        .saturating_sub(1)
 }
 
-/// Pure: format and push an outgoing group message to state, trimming history
+/// Pure: format and push an outgoing group message to state, trimming history.
+/// Returns the index of the new row so the caller can attach its saved DB id.
 fn push_outgoing_group_message_to_state(
     state: &mut AppState,
     group_id: &str,
@@ -86,7 +117,7 @@ fn push_outgoing_group_message_to_state(
     content: &str,
     attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
-) {
+) -> usize {
     let body = render_outgoing_body(content, attachment);
     let msg = format!("{ts} [{own_nickname}] {body}");
     let msgs = state
@@ -100,12 +131,20 @@ fn push_outgoing_group_message_to_state(
         .or_default()
         .push_back(Some(msg_id));
     state
+        .group_message_db_ids
+        .entry(group_id.to_string())
+        .or_default()
+        .push_back(None);
+    state
         .group_message_peer_ids
         .entry(group_id.to_string())
         .or_default()
         .push_back(None);
     trim_history(msgs, MAX_MESSAGE_HISTORY);
     if let Some(ids) = state.group_message_ids.get_mut(group_id) {
+        trim_history(ids, MAX_MESSAGE_HISTORY);
+    }
+    if let Some(ids) = state.group_message_db_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
     if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {
@@ -115,6 +154,11 @@ fn push_outgoing_group_message_to_state(
         let len = msgs.len();
         (len, true)
     });
+    state
+        .group_message_db_ids
+        .get(group_id)
+        .map_or(0, VecDeque::len)
+        .saturating_sub(1)
 }
 
 /// Sends a message (broadcast, direct, or group message): pushes it into the
@@ -209,7 +253,7 @@ async fn send_dm_message(
 
     let encrypted = p2p_app::e2e::can_encrypt_to_str(&peer_id);
 
-    push_outgoing_dm_to_state(
+    let row_idx = push_outgoing_dm_to_state(
         state,
         OutgoingDm {
             peer_id: &peer_id,
@@ -243,10 +287,30 @@ async fn send_dm_message(
         attachment,
         encrypted,
     };
-    if let Err(e) =
-        p2p_app::save_message_with_meta(&text, None, &state.topic_str, true, Some(&peer_id), meta)
-    {
-        p2plog_debug(format!("Failed to save message: {e}"));
+    let saved_id = match p2p_app::save_message_with_meta(
+        &text,
+        None,
+        &state.topic_str,
+        true,
+        Some(&peer_id),
+        meta,
+    ) {
+        Ok(saved) => Some(saved.id),
+        Err(e) => {
+            p2plog_debug(format!("Failed to save message: {e}"));
+            None
+        }
+    };
+    // The TUI is the sender: stamp `sent = 1` so the row is deletable (US-005).
+    let sent_id = saved_id.and_then(|id| match p2p_app::messages::mark_message_sent(id) {
+        Ok(()) => Some(id),
+        Err(e) => {
+            p2plog_debug(format!("Failed to mark message as sent: {e}"));
+            None
+        }
+    });
+    if let Some(id) = sent_id {
+        attach_sent_db_id(state.dm_message_db_ids.get_mut(&peer_id), row_idx, id);
     }
 }
 
@@ -265,7 +329,7 @@ async fn send_group_message(
     let msg_id_for_db = msg_id.clone();
     let sent_at = p2p_app::current_timestamp();
 
-    push_outgoing_group_message_to_state(
+    let row_idx = push_outgoing_group_message_to_state(
         state,
         &group_id,
         &ts,
@@ -294,8 +358,15 @@ async fn send_group_message(
         sent_at: Some(sent_at),
         attachment,
     };
-    if let Err(e) = p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
-        p2plog_debug(format!("Failed to save group message: {e}"));
+    // Group outgoing rows are inserted with `sent = 1` already; just capture
+    // the id so the local-only Delete binding can find the row (US-005).
+    match p2p_app::groups::save_outgoing_group_message(&group_id, &text, meta) {
+        Ok(saved) => attach_sent_db_id(
+            state.group_message_db_ids.get_mut(&group_id),
+            row_idx,
+            saved.id,
+        ),
+        Err(e) => p2plog_debug(format!("Failed to save group message: {e}")),
     }
 }
 
@@ -315,7 +386,7 @@ async fn send_broadcast_message(
     let msg_id_for_db = msg_id.clone();
     let sent_at = p2p_app::current_timestamp();
 
-    push_outgoing_broadcast_to_state(
+    let row_idx = push_outgoing_broadcast_to_state(
         state,
         &ts,
         &own_nickname,
@@ -343,10 +414,23 @@ async fn send_broadcast_message(
         attachment,
         encrypted: false,
     };
-    if let Err(e) =
-        p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta)
-    {
-        p2plog_debug(format!("Failed to save message: {e}"));
+    let saved_id =
+        match p2p_app::save_message_with_meta(&text, None, &state.topic_str, false, None, meta) {
+            Ok(saved) => Some(saved.id),
+            Err(e) => {
+                p2plog_debug(format!("Failed to save message: {e}"));
+                None
+            }
+        };
+    let sent_id = saved_id.and_then(|id| match p2p_app::messages::mark_message_sent(id) {
+        Ok(()) => Some(id),
+        Err(e) => {
+            p2plog_debug(format!("Failed to mark message as sent: {e}"));
+            None
+        }
+    });
+    if let Some(id) = sent_id {
+        attach_sent_db_id(Some(&mut state.message_db_ids), row_idx, id);
     }
 
     let recipients: Vec<String> = state

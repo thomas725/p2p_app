@@ -179,6 +179,20 @@ class FakeNodeApi implements NodeApi {
   /// Returned by [loadDmMessages] when set; otherwise the call throws.
   List<ChatMessage> Function(String peerId, int limit)? loadDmMessagesOverride;
 
+  /// Called by [deleteMessage]. Tests may leave it unset and assert via [calls]
+  /// instead; an override is useful for injecting a failure.
+  Future<void> Function(int messageId, bool isGroup)? deleteMessageOverride;
+
+  @override
+  Future<void> deleteMessage({
+    required int messageId,
+    required bool isGroup,
+  }) async {
+    _record('deleteMessage', (messageId: messageId, isGroup: isGroup));
+    final override = deleteMessageOverride;
+    if (override != null) return override(messageId, isGroup);
+  }
+
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
@@ -321,11 +335,22 @@ class FakeNodeApi implements NodeApi {
   @override
   Future<List<MobileGroup>> listGroups() => throw UnimplementedError();
 
+  /// Returned by [loadGroupMessages] when set; otherwise the call throws.
+  List<MobileGroupMessage> Function(String groupId, int limit)?
+  loadGroupMessagesOverride;
+
   @override
   Future<List<MobileGroupMessage>> loadGroupMessages({
     required String groupId,
     required int limit,
-  }) => throw UnimplementedError();
+  }) async {
+    _record('loadGroupMessages', groupId);
+    final override = loadGroupMessagesOverride;
+    if (override == null) {
+      throw UnimplementedError('set loadGroupMessagesOverride in this test');
+    }
+    return override(groupId, limit);
+  }
 
   @override
   Future<MobileGroupMessage> saveOutgoingGroup({

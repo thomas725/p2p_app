@@ -1,5 +1,5 @@
 use super::state::AppState;
-use super::state::MAX_DM_HISTORY;
+use super::state::{MAX_DM_HISTORY, trim_history};
 use p2p_app::p2plog_debug;
 use std::collections::{HashMap, VecDeque};
 
@@ -62,8 +62,9 @@ fn format_dm_messages_from_db(
     self_nick_for_peer: &str,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
-) -> VecDeque<String> {
+) -> (VecDeque<String>, VecDeque<Option<i32>>) {
     let mut messages = VecDeque::new();
+    let mut message_db_ids = VecDeque::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
         let sender_display = msg.peer_id.as_ref().map_or_else(
@@ -72,47 +73,67 @@ fn format_dm_messages_from_db(
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
         messages.push_back(format!("{ts} [{sender_display}] {body}"));
+        message_db_ids.push_back((msg.sent == 1).then_some(msg.id));
     }
-    messages
+    (messages, message_db_ids)
 }
 
 /// Loads DM messages from database for a peer
 pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
-    if !state.dm_messages.contains_key(peer_id) {
-        if let Ok(db_messages) = p2p_app::load_direct_messages(peer_id, MAX_DM_HISTORY) {
-            let self_nick_for_peer = state
-                .self_nicknames_for_peers
-                .get(peer_id)
-                .cloned()
-                .unwrap_or_else(|| state.own_nickname.clone());
-            let messages = format_dm_messages_from_db(
-                &db_messages,
-                &self_nick_for_peer,
-                &state.local_nicknames,
-                &state.received_nicknames,
-            );
-            state.dm_messages.insert(peer_id.to_string(), messages);
-            state.dm_message_ids.insert(
-                peer_id.to_string(),
-                std::iter::repeat_with(|| None)
-                    .take(db_messages.len())
-                    .collect(),
-            );
-            let msg_count = db_messages.len();
+    if state.dm_messages.contains_key(peer_id) {
+        // A transcript opened before the DB-id queues existed (or seeded by a
+        // test helper) must still be aligned: unknown rows are not deletable.
+        let msg_count = state.dm_messages.get(peer_id).map_or(0, VecDeque::len);
+        let ids = state
+            .dm_message_db_ids
+            .entry(peer_id.to_string())
+            .or_default();
+        while ids.len() < msg_count {
+            ids.push_back(None);
+        }
+        trim_history(ids, MAX_DM_HISTORY);
+        if !state.dm_scroll_state.contains_key(peer_id) {
             state
                 .dm_scroll_state
-                .entry(peer_id.to_string())
-                .or_insert((msg_count, true));
-            p2plog_debug(format!("Loaded {msg_count} DM messages for {peer_id}"));
+                .insert(peer_id.to_string(), (msg_count, true));
         }
-    } else if !state.dm_scroll_state.contains_key(peer_id)
-        && let Some(msgs) = state.dm_messages.get(peer_id)
-    {
+    } else if let Ok(db_messages) = p2p_app::load_direct_messages(peer_id, MAX_DM_HISTORY) {
+        let self_nick_for_peer = state
+            .self_nicknames_for_peers
+            .get(peer_id)
+            .cloned()
+            .unwrap_or_else(|| state.own_nickname.clone());
+        let (messages, message_db_ids) = format_dm_messages_from_db(
+            &db_messages,
+            &self_nick_for_peer,
+            &state.local_nicknames,
+            &state.received_nicknames,
+        );
+        state.dm_messages.insert(peer_id.to_string(), messages);
+        state.dm_message_ids.insert(
+            peer_id.to_string(),
+            std::iter::repeat_with(|| None)
+                .take(db_messages.len())
+                .collect(),
+        );
+        state
+            .dm_message_db_ids
+            .insert(peer_id.to_string(), message_db_ids);
+        let msg_count = db_messages.len();
         state
             .dm_scroll_state
-            .insert(peer_id.to_string(), (msgs.len(), true));
+            .entry(peer_id.to_string())
+            .or_insert((msg_count, true));
+        p2plog_debug(format!("Loaded {msg_count} DM messages for {peer_id}"));
     }
 }
+
+type FormattedGroupMessages = (
+    VecDeque<String>,
+    VecDeque<Option<String>>,
+    VecDeque<Option<String>>,
+    VecDeque<Option<i32>>,
+);
 
 /// Pure: formats DB messages into display-ready strings for a group chat.
 ///
@@ -122,14 +143,11 @@ fn format_group_messages_from_db(
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
     own_nickname: &str,
-) -> (
-    VecDeque<String>,
-    VecDeque<Option<String>>,
-    VecDeque<Option<String>>,
-) {
+) -> FormattedGroupMessages {
     let mut messages = VecDeque::new();
     let mut message_ids = VecDeque::new();
     let mut peer_ids = VecDeque::new();
+    let mut message_db_ids = VecDeque::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
         let sender = msg.sender_nickname.as_ref().map_or_else(
@@ -150,8 +168,9 @@ fn format_group_messages_from_db(
         messages.push_back(format!("{ts} {sender} {body}"));
         message_ids.push_back(msg.msg_id.clone());
         peer_ids.push_back(msg.peer_id.clone());
+        message_db_ids.push_back((msg.sent == 1).then_some(msg.id));
     }
-    (messages, message_ids, peer_ids)
+    (messages, message_ids, peer_ids, message_db_ids)
 }
 
 /// Load a group's message history from the database into state.
@@ -162,16 +181,21 @@ fn format_group_messages_from_db(
 /// open. Replacing on every open avoids duplicate re-deliveries.
 pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
     if let Ok(db_messages) = p2p_app::groups::load_group_messages(group_id, MAX_DM_HISTORY) {
-        let (messages, message_ids, peer_ids) = format_group_messages_from_db(
+        let (messages, message_ids, peer_ids, message_db_ids) = format_group_messages_from_db(
             &db_messages,
             &state.local_nicknames,
             &state.received_nicknames,
             &state.own_nickname,
         );
+        // Opening a group replaces every aligned queue, so a reloaded history
+        // never mixes stale ids with the fresh rows (US-005).
         state.group_messages.insert(group_id.to_string(), messages);
         state
             .group_message_ids
             .insert(group_id.to_string(), message_ids);
+        state
+            .group_message_db_ids
+            .insert(group_id.to_string(), message_db_ids);
         state
             .group_message_peer_ids
             .insert(group_id.to_string(), peer_ids);

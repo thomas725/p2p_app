@@ -66,6 +66,19 @@ newest message; the counter clears.
 | `Click` a message in the **DM** tab's conversation pane | Open the partner's Peer Info |
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
+| `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
+
+### Local message deletion
+
+`Delete` scans the open conversation backwards for the newest message you sent
+and opens a confirmation. `y` / `Enter` confirms; `Esc`, `n`, or any other key
+cancels. Confirming writes a local tombstone and removes the line from this
+install only — no retraction is sent, so other peers keep their copy. Incoming
+messages cannot be deleted; if the conversation has no sent row, a short
+explanation appears instead.
+
+The delete prompt sits below the device-binding and group-leave prompts but
+above the call overlay and ordinary popup in the input precedence chain.
 
 ## Contacts tab
 
@@ -148,6 +161,7 @@ of the history.
 | `Shift+Enter` | Insert a newline |
 | `Ctrl+I` | Open the DM partner's Peer Info — **kitty-keyboard terminals only** (WezTerm) |
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
+| `Delete` | Hide your most recent sent DM locally (with confirmation) |
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty
 keyboard protocol (Konsole), so bare `Tab` would stop cycling tabs. `Ctrl+P`
@@ -194,7 +208,7 @@ lane. Both frontends render the result as a chip:
 |-----|--------|
 | `?` | Open the compact shortcut-help overlay |
 | `F12` | Toggle mouse capture |
-| `Esc` | Dismiss the popup / decline the device-binding prompt / cancel the current edit / return to the Chat tab |
+| `Esc` | Dismiss the popup / decline the device-binding prompt / cancel a local-delete, group-leave, or current edit / return to the Chat tab |
 | `Ctrl+Q` | Exit the application |
 
 `?` is a plain key, so it opens the help overlay only when no input box owns
@@ -205,9 +219,10 @@ dismiss it, which is why typing `?` inside a prompt still inserts a question
 mark.
 
 `Esc` unwinds one level at a time, in this order: dismiss the popup →
-decline the device-binding prompt → cancel a group leave → clear the contacts
-search → cancel a nickname edit → cancel the group create/join prompt → cancel
-a peer dial → return to the Chat tab.
+decline the device-binding prompt → cancel a group leave → cancel a local
+message deletion → clear the contacts search → cancel a nickname edit →
+cancel the group create/join prompt → cancel a peer dial → return to the Chat
+tab.
 
 ### Device-binding prompt
 

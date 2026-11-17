@@ -373,6 +373,36 @@ mod render_tests {
     }
 
     #[test]
+    fn test_shortcuts_delete_hint_only_on_chat_tabs() {
+        for tab in [
+            TabContent::Chat,
+            TabContent::Direct("peer-1".to_string()),
+            TabContent::GroupChat("group-1".to_string()),
+        ] {
+            assert!(
+                shortcuts_text(&tab, false).contains("Del: delete sent"),
+                "missing delete hint for {tab:?}"
+            );
+            assert!(
+                shortcuts_text(&tab, true).contains("Del: delete sent"),
+                "missing delete hint for {tab:?}"
+            );
+        }
+        for tab in [
+            TabContent::Contacts,
+            TabContent::Groups,
+            TabContent::Settings,
+            TabContent::Log,
+            TabContent::PeerInfo("peer-1".to_string()),
+        ] {
+            assert!(
+                !shortcuts_text(&tab, false).contains("Del:"),
+                "delete hint must stay off {tab:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_shortcuts_plain_tabs_have_no_peer_info_hint() {
         for tab in [
             TabContent::Chat,
@@ -416,6 +446,7 @@ mod render_tests {
             "Ctrl+W",
             "PgUp/PgDn",
             "Enter  Send",
+            "Del -> delete newest sent message",
             "Ctrl+I (kitty) / Ctrl+P",
             "i Info",
             "g create/join",

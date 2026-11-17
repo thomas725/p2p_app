@@ -38,6 +38,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "dialPeer") => node_state(m, params),
         m @ ("loadBroadcastMessages"
         | "loadDmMessages"
+        | "deleteMessage"
         | "saveOutgoingBroadcast"
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
@@ -152,6 +153,10 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         "loadDmMessages" => {
             let p: PeerLimitParams = parse(params)?;
             json(api::load_dm_messages(p.peer_id, p.limit))
+        }
+        "deleteMessage" => {
+            let p: DeleteMessageParams = parse(params)?;
+            json(api::delete_message(p.message_id, p.is_group))
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
@@ -363,6 +368,14 @@ struct LimitParams {
 struct PeerLimitParams {
     peer_id: String,
     limit: i64,
+}
+
+/// Local-only delete of one sent message (`isGroup` selects the table).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeleteMessageParams {
+    message_id: i32,
+    is_group: bool,
 }
 
 #[derive(serde::Deserialize)]

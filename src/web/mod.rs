@@ -687,6 +687,7 @@ mod tests {
             "sortPeers",
             "loadBroadcastMessages",
             "loadDmMessages",
+            "deleteMessage",
             "saveOutgoingBroadcast",
             "saveOutgoingDm",
             "saveIncomingMessage",
@@ -733,6 +734,89 @@ mod tests {
             methods::dispatch("formatTimeHhmm", json!({"dt": "08:42"})).expect("pure helper"),
             json!("08:42")
         );
+    }
+
+    #[test]
+    #[serial(db)]
+    fn delete_message_frame_reaches_the_local_delete_helper() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("web.sqlite").to_string_lossy().into_owned();
+        // Handlers do their DB work on `spawn_blocking` workers and the DB URL
+        // is per-thread in tests: pin the blocking pool to one thread and
+        // initialize the DB there so seed, frame, and assertions share it.
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .max_blocking_threads(1)
+            .enable_all()
+            .build()
+            .expect("test runtime");
+
+        let (response, bad_params, incoming_response, hidden, incoming_id) = rt.block_on(async {
+            let (sent_id, incoming_id) = tokio::task::spawn_blocking({
+                let db_path = db_path.clone();
+                move || {
+                    crate::reset_db_url();
+                    crate::mobile_api::init_mobile_database(db_path).expect("mobile init");
+                    let sent = crate::messages::save_message(
+                        "mine",
+                        None,
+                        crate::CHAT_TOPIC,
+                        false,
+                        None,
+                    )
+                    .expect("save sent");
+                    crate::messages::mark_message_sent(sent.id).expect("mark sent");
+                    let incoming = crate::messages::save_message(
+                        "theirs",
+                        Some("peer-a"),
+                        crate::CHAT_TOPIC,
+                        false,
+                        None,
+                    )
+                    .expect("save incoming");
+                    (sent.id, incoming.id)
+                }
+            })
+            .await
+            .expect("seed task");
+
+            let response = frame(&format!(
+                r#"{{"id": 11, "method": "deleteMessage", "params": {{"messageId": {sent_id}, "isGroup": false}}}}"#
+            ))
+            .await;
+            let bad_params = frame(&format!(
+                r#"{{"id": 12, "method": "deleteMessage", "params": {{"messageId": {sent_id}}}}}"#
+            ))
+            .await;
+            let incoming_response = frame(&format!(
+                r#"{{"id": 13, "method": "deleteMessage", "params": {{"messageId": {incoming_id}, "isGroup": false}}}}"#
+            ))
+            .await;
+            let hidden = tokio::task::spawn_blocking(move || {
+                crate::messages::load_messages(crate::CHAT_TOPIC, 100)
+                    .expect("history")
+                    .iter()
+                    .any(|m| m.id == sent_id)
+            })
+            .await
+            .expect("read task");
+            (response, bad_params, incoming_response, hidden, incoming_id)
+        });
+
+        assert_eq!(response, json!({"id": 11, "ok": null}));
+        assert!(
+            bad_params["err"]
+                .as_str()
+                .expect("err")
+                .starts_with("invalid params:"),
+            "unexpected err: {bad_params}"
+        );
+        assert_eq!(
+            incoming_response["err"].as_str().expect("err"),
+            format!("no deletable sent message with id {incoming_id}")
+        );
+        assert!(!hidden, "the deleted row must disappear from history");
     }
 
     #[test]

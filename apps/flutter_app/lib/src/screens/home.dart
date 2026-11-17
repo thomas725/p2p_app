@@ -253,6 +253,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _cancelSelection();
   }
 
+  Future<void> _deleteSelected() async {
+    final deleted = await deleteSelectedMessages(
+      context,
+      _messages,
+      _selectedIndices,
+      isGroup: false,
+    );
+    if (!mounted) return;
+    setState(() {
+      _messages.removeWhere((m) => deleted.contains(m.id));
+      _selectionMode = false;
+      _selectedIndices.clear();
+    });
+    if (_atBottom) unawaited(_saveViewedCount());
+  }
+
   Future<void> _init() async {
     try {
       bool running = false;
@@ -1005,6 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onBubbleTap: _onBubbleTap,
         onCancelSelection: _cancelSelection,
         onCopySelected: _copySelected,
+        onDeleteSelected: _deleteSelected,
         onOpenPeerInfo: _openPeerInfoForPeerId,
         onPickFile: _pickAndSendBroadcast,
         onOpenAttachment: _openBroadcastAttachment,

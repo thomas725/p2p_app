@@ -7,6 +7,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:p2p_app_flutter/src/rust/api.dart' as api;
+
 void main() {
   group('Dart API layer', () {
     group('startNodeAuto', () {
@@ -20,6 +22,12 @@ void main() {
     group('getLogs', () {
       test('should be defined in generated API', () {
         expect(true, isTrue);
+      });
+    });
+
+    group('deleteMessage', () {
+      test('the FRB wrapper exists for the local tombstone API', () {
+        expect(api.deleteMessage, isA<Function>());
       });
     });
   });

@@ -2115,6 +2115,326 @@ fn test_group_leave_confirmation_deletes_and_unsubscribes() {
     });
 }
 
+// ── local-only sent-message deletion (Del key + confirmation) ────────────
+
+fn delete_key() -> KeyEvent {
+    KeyEvent::new(KeyCode::Delete, KeyModifiers::empty())
+}
+
+fn confirm_key() -> KeyEvent {
+    KeyEvent::new(KeyCode::Char('y'), KeyModifiers::empty())
+}
+
+fn sent_broadcast_state(db_id: i32) -> AppState {
+    let mut s = test_app_state();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [TestUser] delete me".to_string(),
+        sender_peer_id: None,
+    });
+    s.message_ids.push_back(Some("wire-1".to_string()));
+    s.message_db_ids.push_back(Some(db_id));
+    s
+}
+
+#[tokio::test]
+async fn test_delete_key_on_chat_arms_confirmation_for_newest_sent() {
+    let state = Arc::new(Mutex::new(sent_broadcast_state(5)));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(delete_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    let prompt = s.delete_message_prompt.as_ref().expect("prompt armed");
+    assert_eq!(prompt.message_id, 5);
+    assert!(!prompt.is_group);
+    assert!(prompt.preview.contains("delete me"));
+    assert_eq!(prompt.tab_content, TabContent::Chat);
+}
+
+#[tokio::test]
+async fn test_delete_key_without_sent_message_shows_noop_popup() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(delete_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.delete_message_prompt.is_none());
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("No sent message to delete in this conversation")
+    );
+}
+
+#[tokio::test]
+async fn test_delete_key_arms_prompt_on_dm_and_group_tabs() {
+    let mut s = sent_broadcast_state(7);
+    let dm_tab = s.dynamic_tabs.add_dm_tab("peer-dm".to_string());
+    s.active_tab = dm_tab;
+    s.dm_messages.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from(["dm text".to_string()]),
+    );
+    s.dm_message_ids.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from([Some("dm-wire".to_string())]),
+    );
+    s.dm_message_db_ids.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from([Some(9)]),
+    );
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(delete_key(), &state, &swarm_cmd_tx, &render_tx).await;
+    let prompt = state.lock().await.delete_message_prompt.clone().unwrap();
+    assert_eq!(prompt.message_id, 9);
+    assert_eq!(prompt.tab_content, TabContent::Direct("peer-dm".into()));
+
+    let mut s = state.lock().await;
+    s.cancel_delete_message();
+    let group_tab = s
+        .dynamic_tabs
+        .add_group_tab("g-1".to_string(), "Group".to_string());
+    s.active_tab = group_tab;
+    s.group_messages.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from(["group text".to_string()]),
+    );
+    s.group_message_ids
+        .insert("g-1".to_string(), std::collections::VecDeque::from([None]));
+    s.group_message_db_ids.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from([Some(11)]),
+    );
+    s.group_message_peer_ids
+        .insert("g-1".to_string(), std::collections::VecDeque::from([None]));
+    drop(s);
+
+    let _ = process_key_event(delete_key(), &state, &swarm_cmd_tx, &render_tx).await;
+    let prompt = state.lock().await.delete_message_prompt.clone().unwrap();
+    assert_eq!(prompt.message_id, 11);
+    assert!(prompt.is_group);
+    assert_eq!(prompt.tab_content, TabContent::GroupChat("g-1".into()));
+}
+
+#[tokio::test]
+async fn test_delete_key_is_noop_outside_chat_tabs() {
+    let mut s = sent_broadcast_state(5);
+    s.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT - 1; // Groups list
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(delete_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(s.delete_message_prompt.is_none());
+    assert_eq!(
+        s.message_db_ids,
+        std::collections::VecDeque::from([Some(5)])
+    );
+}
+
+#[tokio::test]
+async fn test_delete_prompt_esc_cancels_without_leaving_tab() {
+    let mut s = sent_broadcast_state(5);
+    let dm_tab = s.dynamic_tabs.add_dm_tab("peer-dm".to_string());
+    s.active_tab = dm_tab;
+    s.begin_delete_message(5, false, "delete me".into(), TabContent::Chat);
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.delete_message_prompt.is_none());
+    assert_eq!(s.active_tab, dm_tab);
+    assert_eq!(
+        s.message_db_ids,
+        std::collections::VecDeque::from([Some(5)])
+    );
+}
+
+fn with_local_delete_db(f: impl FnOnce()) {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("delete.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+
+    f();
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+fn saved_broadcast_meta() -> p2p_app::MessageMeta {
+    p2p_app::MessageMeta {
+        sender_nickname: Some("TestUser".to_string()),
+        msg_id: Some("wire-1".to_string()),
+        sent_at: Some(p2p_app::current_timestamp()),
+        attachment: None,
+        encrypted: false,
+    }
+}
+
+#[test]
+#[serial]
+fn test_delete_confirmation_tombstones_db_and_removes_broadcast_line() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let saved = p2p_app::save_message_with_meta(
+                "delete me",
+                None,
+                "test-net",
+                false,
+                None,
+                saved_broadcast_meta(),
+            )
+            .expect("save message");
+            p2p_app::messages::mark_message_sent(saved.id).expect("mark sent");
+
+            let mut s = sent_broadcast_state(saved.id);
+            s.begin_delete_message(saved.id, false, "delete me".into(), TabContent::Chat);
+            let state = Arc::new(Mutex::new(s));
+            let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+            let (render_tx, mut render_rx) = mpsc::channel(4);
+
+            let exited = process_key_event(confirm_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+            assert!(!exited);
+            assert!(
+                p2p_app::load_messages("test-net", 10)
+                    .expect("reload")
+                    .is_empty(),
+                "history loader must skip the tombstone"
+            );
+            assert!(swarm_cmd_rx.try_recv().is_err(), "delete is local-only");
+            assert!(render_rx.try_recv().is_ok(), "confirmation triggers redraw");
+
+            let s = state.lock().await;
+            assert!(s.delete_message_prompt.is_none());
+            assert!(s.messages.is_empty());
+            assert!(s.message_ids.is_empty());
+            assert!(s.message_db_ids.is_empty());
+            assert!(s.popup.is_none());
+        });
+    });
+}
+
+#[test]
+#[serial]
+fn test_delete_confirmation_tombstones_group_row_and_removes_line() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let saved = p2p_app::groups::save_outgoing_group_message(
+                "g-del",
+                "group delete me",
+                p2p_app::groups::GroupMessageMeta {
+                    sender_nickname: Some("TestUser".to_string()),
+                    msg_id: Some("group-wire".to_string()),
+                    sent_at: Some(p2p_app::current_timestamp()),
+                    attachment: None,
+                },
+            )
+            .expect("save group message");
+
+            let mut s = test_app_state();
+            let tab = s
+                .dynamic_tabs
+                .add_group_tab("g-del".to_string(), "Group".to_string());
+            s.active_tab = tab;
+            s.group_messages.insert(
+                "g-del".to_string(),
+                std::collections::VecDeque::from(["group delete me".to_string()]),
+            );
+            s.group_message_ids.insert(
+                "g-del".to_string(),
+                std::collections::VecDeque::from([Some("group-wire".to_string())]),
+            );
+            s.group_message_db_ids.insert(
+                "g-del".to_string(),
+                std::collections::VecDeque::from([Some(saved.id)]),
+            );
+            s.group_message_peer_ids.insert(
+                "g-del".to_string(),
+                std::collections::VecDeque::from([None]),
+            );
+            s.begin_delete_message(
+                saved.id,
+                true,
+                "group delete me".into(),
+                TabContent::GroupChat("g-del".into()),
+            );
+            let state = Arc::new(Mutex::new(s));
+            let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+            let (render_tx, _) = mpsc::channel(4);
+
+            let _ = process_key_event(confirm_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+            assert!(
+                p2p_app::groups::load_group_messages("g-del", 10)
+                    .expect("reload")
+                    .is_empty()
+            );
+            assert!(swarm_cmd_rx.try_recv().is_err());
+            let s = state.lock().await;
+            assert!(s.group_messages["g-del"].is_empty());
+            assert!(s.group_message_db_ids["g-del"].is_empty());
+            assert!(s.group_message_peer_ids["g-del"].is_empty());
+            assert!(s.delete_message_prompt.is_none());
+        });
+    });
+}
+
+#[test]
+#[serial]
+fn test_delete_confirmation_failure_surfaces_popup_and_keeps_line() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let mut s = sent_broadcast_state(5);
+            s.begin_delete_message(9999, false, "delete me".into(), TabContent::Chat);
+            let state = Arc::new(Mutex::new(s));
+            let (swarm_cmd_tx, _) = mpsc::channel(4);
+            let (render_tx, _) = mpsc::channel(4);
+
+            let _ = process_key_event(confirm_key(), &state, &swarm_cmd_tx, &render_tx).await;
+
+            let s = state.lock().await;
+            assert!(s.delete_message_prompt.is_none());
+            assert_eq!(
+                s.message_db_ids,
+                std::collections::VecDeque::from([Some(5)])
+            );
+            assert_eq!(s.messages.len(), 1);
+            assert!(
+                s.popup
+                    .as_deref()
+                    .is_some_and(|p| p.starts_with("Could not delete message:")),
+                "DB failure must be surfaced: {:?}",
+                s.popup
+            );
+        });
+    });
+}
+
 // ── persisted network peers (Settings b/r/x) ─────────────────────────────
 
 #[test]

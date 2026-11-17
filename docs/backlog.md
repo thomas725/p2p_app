@@ -182,11 +182,14 @@ Requires a lightweight "user X is typing" signal on the DM lane. The lane is
 `request_response`; a typing signal is fire-and-forget and must not occupy a
 request slot.
 
-### Edit or delete a sent message (US-005)
+### Edit a sent message (US-005, edit half)
 
-Deletion is the cheaper half: tombstone the row and re-render. Note that
+Local deletion shipped on 2026-11-17 as a `deleted_at` tombstone (see
+`archive/2026-11-17_local_message_deletion.md`); the **edit** half is still
+open. Editing needs an explicit version/edited marker on the message and a
+decision about whether peers see the replacement. Note that
 `confirmed`/`latency` are live decorations, not persisted columns
-(see `archive/2026-10-20_delivery_receipts_parity.md`), so a tombstone has to
+(see `archive/2026-10-20_delivery_receipts_parity.md`), so either path has to
 keep the receipt row consistent with the visible message.
 
 ### Message reactions (US-008)

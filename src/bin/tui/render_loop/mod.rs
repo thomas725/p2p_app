@@ -15,8 +15,8 @@ use std::collections::VecDeque;
 use std::io::Stdout;
 use tokio::sync::mpsc;
 
-/// The popup to render: the device-binding prompt wins while one is active, then
-/// any live call overlay, then the ad-hoc `state.popup` text.
+/// The popup to render, highest precedence first: device-binding intro, group
+/// leave, message deletion, live call overlay, then ad-hoc `state.popup` text.
 fn render_popup_text(state: &AppState) -> Option<String> {
     state
         .device_binding_prompt
@@ -37,6 +37,17 @@ fn render_popup_text(state: &AppState) -> Option<String> {
                      Other members keep their copy.\n\
                      \nConfirm with 'y' or Enter \u{b7} cancel with Esc",
                     p.display_name
+                )
+            })
+        })
+        .or_else(|| {
+            state.delete_message_prompt.as_ref().map(|p| {
+                format!(
+                    "Delete this sent message from this device?\n\
+                     \n{}\n\
+                     \nOnly this device loses the message; other peers keep their copy.\n\
+                     \nConfirm with 'y' or Enter \u{b7} cancel with Esc",
+                    p.preview
                 )
             })
         })

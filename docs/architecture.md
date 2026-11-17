@@ -240,16 +240,16 @@ SQLite via Diesel. Sixteen tables:
 | `peers` | one row per known peer (addresses, first/last seen) |
 | `peer_name_history` | the nicknames a peer has used, for the name origin label |
 | `peer_sessions` | one row per connect/disconnect (real network-size stats) |
-| `messages` | broadcast, direct, and group message bodies |
+| `messages` | broadcast and direct message bodies; `deleted_at` is a local-only tombstone |
 | `message_receipts` | delivery acknowledgements |
 | `broadcast_recipients` | per-peer record of which broadcasts a peer received |
-| `groups` / `group_members` / `group_messages` | the group layer |
+| `groups` / `group_members` / `group_messages` | the group layer (`group_messages.deleted_at` is a local-only tombstone) |
 | `users` / `device_bindings` / `contacts` | the identity + contact layer |
 | `files` | attachment descriptors (the bytes live on disk, never in SQLite) |
 | `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
 | `blocked_peers` | muted peer ids; the swarm boundary drops their traffic |
 
-Nineteen migrations in `migrations/`. `db::ensure_columns()` also runs at
+Twenty migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app
