@@ -1,3 +1,6 @@
+// `#[derive(NetworkBehaviour)]` below expands to code stable clippy flags as
+// `unreachable_code`; the warning is macro-generated, not a hand-written branch.
+#![allow(unreachable_code)]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -426,7 +429,7 @@ async fn discover_via_mdns(
                                 println!("  -> peer: {peer_id}, addr: {multiaddr}");
                                 if peer_id == peer_b {
                                     println!("Node A discovered node B via mDNS, dialing...");
-                                    let _ = node_a.swarm.dial(multiaddr.clone());
+                                    let _ = node_a.swarm.dial(multiaddr);
                                     node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     a_discovered_b = true;
                                 }
@@ -446,7 +449,7 @@ async fn discover_via_mdns(
                                 println!("  -> peer: {peer_id}, addr: {multiaddr}");
                                 if peer_id == peer_a {
                                     println!("Node B discovered node A via mDNS, dialing...");
-                                    let _ = node_b.swarm.dial(multiaddr.clone());
+                                    let _ = node_b.swarm.dial(multiaddr);
                                     node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                                     b_discovered_a = true;
                                 }
@@ -755,7 +758,7 @@ async fn await_stale_address_recovery(
                         SwarmEvent::Behaviour(TestBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                             for (pid, addr) in list {
                                 eprintln!("Node A mDNS discovered: {pid} at {addr}");
-                                let _ = node_a.swarm.dial(addr.clone());
+                                let _ = node_a.swarm.dial(addr);
                                 node_a.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
                             }
                         }
@@ -786,7 +789,7 @@ async fn await_stale_address_recovery(
                                 if pid == peer_a {
                                     mdns_discovered = true;
                                     eprintln!("Node B dialing mDNS address: {addr}");
-                                    let _ = node_b.swarm.dial(addr.clone());
+                                    let _ = node_b.swarm.dial(addr);
                                     node_b.swarm.behaviour_mut().gossipsub.add_explicit_peer(&pid);
                                 }
                             }

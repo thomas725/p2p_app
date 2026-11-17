@@ -193,12 +193,7 @@ pub fn request_tui_redraw() {
 pub fn get_tui_logs() -> Vec<String> {
     LOG_BUFFER
         .get()
-        .map(|m| {
-            m.lock()
-                .map(|g| g.clone().into_iter().collect())
-                .unwrap_or_default()
-        })
-        .unwrap_or_default()
+        .map_or_default(|m| m.lock().map_or_default(|g| g.clone().into_iter().collect()))
 }
 
 /// Clear the in-memory log buffer (Log tab / Settings "Clear" action).

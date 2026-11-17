@@ -67,8 +67,7 @@ impl TuiTestState {
                 } else if m.contains('[') {
                     m.split('[')
                         .nth(1)
-                        .map(|s| s.split(']').next().unwrap_or("").to_string())
-                        .unwrap_or_default()
+                        .map_or_default(|s| s.split(']').next().unwrap_or("").to_string())
                 } else {
                     String::new()
                 }

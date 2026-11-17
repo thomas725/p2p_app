@@ -41,8 +41,10 @@ One job, `pipeline`. It installs the Rust toolchain, `libsqlite3-dev` and
 7. `python3 scripts/check_docs_links.py`
 8. `cargo doc --no-deps --all-features` (with `RUSTDOCFLAGS="-W missing-docs"`)
 
-Each check tees its output to `.github/ci-logs/<name>.log` and appends its own
-`Exit code: N`. The checks are all `continue-on-error: true` on purpose:
+Each check tees its output to `.github/ci-logs/<name>.log` and captures
+`${PIPESTATUS[0]}` (the checked command's status, **not** `tee`'s — Actions'
+default `run:` shell has no pipefail) as its own `Exit code: N`. The checks are
+all `continue-on-error: true` on purpose:
 **one push always yields a complete report**, because a hard failure would skip
 every later check and you would need one push per failure to see them all.
 

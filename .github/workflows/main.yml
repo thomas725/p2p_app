@@ -55,12 +55,16 @@ jobs:
       # ============================================================
       # PHASE 1: Code Quality Checks
       # ============================================================
-      
+      # Every check below captures ${PIPESTATUS[0]} (the checked command),
+      # not $? (tee's status). Actions' default shell does not enable
+      # pipefail for run: steps, so recording $? silently reports PASS for
+      # a failing clippy/test/audit while its log shows the real error.
+
       - name: Check code formatting
         run: |
           set +e
           cargo fmt -- --check 2>&1 | tee .github/ci-logs/fmt.log
-          FMT_EXIT=$?
+          FMT_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $FMT_EXIT" >> .github/ci-logs/fmt.log
           exit $FMT_EXIT
@@ -70,7 +74,7 @@ jobs:
         run: |
           set +e
           cargo clippy --all-targets --all-features 2>&1 | tee .github/ci-logs/clippy.log
-          CLIPPY_EXIT=$?
+          CLIPPY_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $CLIPPY_EXIT" >> .github/ci-logs/clippy.log
           exit $CLIPPY_EXIT
@@ -84,7 +88,7 @@ jobs:
         run: |
           set +e
           cargo test --all-features 2>&1 | tee .github/ci-logs/test.log
-          TEST_EXIT=$?
+          TEST_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $TEST_EXIT" >> .github/ci-logs/test.log
           exit $TEST_EXIT
@@ -94,7 +98,7 @@ jobs:
         run: |
           set +e
           cargo build --release --all-features 2>&1 | tee .github/ci-logs/build.log
-          BUILD_EXIT=$?
+          BUILD_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $BUILD_EXIT" >> .github/ci-logs/build.log
           exit $BUILD_EXIT
@@ -108,7 +112,7 @@ jobs:
         run: |
           set +e
           cargo build --no-default-features --features basic,mdns,sqlite_bundled 2>&1 | tee .github/ci-logs/minimal.log
-          MINIMAL_EXIT=$?
+          MINIMAL_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $MINIMAL_EXIT" >> .github/ci-logs/minimal.log
           exit $MINIMAL_EXIT
@@ -123,7 +127,7 @@ jobs:
           cargo install cargo-audit
           set +e
           cargo audit 2>&1 | tee .github/ci-logs/audit.log
-          AUDIT_EXIT=$?
+          AUDIT_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $AUDIT_EXIT" >> .github/ci-logs/audit.log
           exit $AUDIT_EXIT
@@ -133,7 +137,7 @@ jobs:
         run: |
           set +e
           python3 scripts/check_docs_links.py 2>&1 | tee .github/ci-logs/doclinks.log
-          DOCLINKS_EXIT=$?
+          DOCLINKS_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $DOCLINKS_EXIT" >> .github/ci-logs/doclinks.log
           exit $DOCLINKS_EXIT
@@ -143,7 +147,7 @@ jobs:
         run: |
           set +e
           cargo doc --no-deps --all-features 2>&1 | tee .github/ci-logs/docs.log
-          DOCS_EXIT=$?
+          DOCS_EXIT=${PIPESTATUS[0]}
           set -e
           echo "Exit code: $DOCS_EXIT" >> .github/ci-logs/docs.log
           exit $DOCS_EXIT

@@ -752,8 +752,7 @@ pub(crate) fn save_outgoing_broadcast_attached(
     // Attribute this broadcast to every peer that was online to receive it.
     let connected: Vec<String> = CONNECTED_PEERS
         .lock()
-        .map(|t| t.connected_peer_ids().map(str::to_owned).collect())
-        .unwrap_or_default();
+        .map_or_default(|t| t.connected_peer_ids().map(str::to_owned).collect());
     if !connected.is_empty() {
         let _ = crate::peers::record_broadcast_recipients(&msg_id, &connected);
     }

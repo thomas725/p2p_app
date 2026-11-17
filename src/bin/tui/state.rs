@@ -438,14 +438,13 @@ impl AppState {
     /// column/order while keeping the selected contact (by id) selected. A
     /// device-row selection collapses onto its contact row here.
     pub fn resort_peers(&mut self) {
-        self.broadcast_sent_to_peer = p2p_app::messages::get_all_peer_stats()
-            .map(|stats| {
+        self.broadcast_sent_to_peer =
+            p2p_app::messages::get_all_peer_stats().map_or_default(|stats| {
                 stats
                     .into_iter()
                     .map(|(pid, s)| (pid, usize::try_from(s.broadcast_sent_to_peer).unwrap_or(0)))
                     .collect()
-            })
-            .unwrap_or_default();
+            });
         self.rebuild_contacts();
         self.contacts = p2p_app::contacts::sort_canonical_rows(
             &self.contacts,
@@ -629,13 +628,12 @@ impl AppState {
                     .flatten()
             })
             .and_then(|owner| p2p_app::identity::list_contacts(&owner).ok())
-            .map(|contacts| {
+            .map_or_default(|contacts| {
                 contacts
                     .into_iter()
                     .filter_map(|c| c.nickname_override.map(|n| (c.contact_user_id, n)))
                     .collect()
-            })
-            .unwrap_or_default();
+            });
 
         self.contacts = p2p_app::contacts::build_contact_rows(
             &devices,

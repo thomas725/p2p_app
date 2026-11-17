@@ -69,12 +69,16 @@ jobs:
           echo "Exit code: $?" >> .github/ci-results/outdated.log
 
       # HARD GATE: fail the workflow on any advisory not ignored in .cargo/audit.toml.
-      # cargo audit is currently clean (exit 0), so this turns on without going red.
+      # PIPESTATUS[0] is cargo-audit's status (Actions' default run: shell has no
+      # pipefail), otherwise tee's 0 would make every advisory silently green.
       - name: Check for security vulnerabilities
         if: steps.skip-check.outputs.skip != 'true'
         run: |
           cargo install cargo-audit --locked 2>&1 | tee .github/ci-results/audit-install.log || true
           cargo audit 2>&1 | tee .github/ci-results/audit.log
+          AUDIT_EXIT=${PIPESTATUS[0]}
+          echo "Exit code: $AUDIT_EXIT" >> .github/ci-results/audit.log
+          exit $AUDIT_EXIT
 
       # Push results to a dedicated `ci-results` branch (never `main`). Force-push makes it a
       # rolling "latest run" record; this branch is auto-generated, so overwriting it is safe.

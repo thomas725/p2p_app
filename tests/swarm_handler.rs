@@ -240,7 +240,7 @@ async fn connect_swarms(
                 event = swarm_a.select_next_some() => {
                     match event {
                         Libp2pSwarmEvent::NewListenAddr { address, .. } if addr_a.is_none() => {
-                            addr_a = Some(address.clone());
+                            addr_a = Some(address);
                             if let Some(ref b_addr) = addr_b {
                                 let _ = swarm_a.dial(b_addr.clone());
                             }
@@ -254,7 +254,7 @@ async fn connect_swarms(
                 event = swarm_b.select_next_some() => {
                     match event {
                         Libp2pSwarmEvent::NewListenAddr { address, .. } if addr_b.is_none() => {
-                            addr_b = Some(address.clone());
+                            addr_b = Some(address);
                             if let Some(ref a_addr) = addr_a {
                                 let _ = swarm_b.dial(a_addr.clone());
                             }

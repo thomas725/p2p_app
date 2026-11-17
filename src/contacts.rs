@@ -312,13 +312,12 @@ pub fn load_contacts() -> color_eyre::Result<Vec<ContactRow>> {
     let overrides: HashMap<String, String> = owner_id
         .as_ref()
         .and_then(|owner| crate::identity::list_contacts(owner).ok())
-        .map(|contacts| {
+        .map_or_default(|contacts| {
             contacts
                 .into_iter()
                 .filter_map(|c| c.nickname_override.map(|n| (c.contact_user_id, n)))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
 
     let devices: Vec<ContactDeviceInput> = peers
         .iter()

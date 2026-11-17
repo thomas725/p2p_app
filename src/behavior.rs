@@ -1,5 +1,9 @@
 //! P2P network behavior and protocol definitions
 
+// Stable clippy flags an `unreachable call` inside the NetworkBehaviour derive
+// expansion; it is macro-generated, not a hand-written unreachable branch.
+#![allow(unreachable_code)]
+
 use crate::files::MessageAttachment;
 use crate::network::NetworkSize;
 use crate::p2plog_debug;
