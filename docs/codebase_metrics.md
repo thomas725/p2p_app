@@ -2,23 +2,25 @@
 
 ## Summary
 
-| Metric                |     Value |
-|:----------------------|:----------|
-| Total Rust Files      |        58 |
-| Total Rust Lines      |    28,190 |
-| Total Rust Chars      | 1,057,386 |
-| Avg Lines/Rust File   |       486 |
-| Avg Chars/Rust File   |    18,230 |
-| Total Dart Files      |        30 |
-| Total Dart Lines      |    13,769 |
-| Total Dart Chars      |   437,539 |
-| Avg Lines/Dart File   |       458 |
-| Avg Chars/Dart File   |    14,584 |
-| Total Kotlin Files    |         2 |
-| Total Kotlin Lines    |       209 |
-| Total Kotlin Chars    |     7,161 |
-| Avg Lines/Kotlin File |       104 |
-| Avg Chars/Kotlin File |     3,580 |
+| Metric                |               Value |
+|:----------------------|:--------------------|
+| Total Rust Files      |                  58 |
+| Total Rust Lines      |              28,190 |
+| Total Rust Chars      |           1,057,386 |
+| Avg Lines/Rust File   |                 486 |
+| Avg Chars/Rust File   |              18,230 |
+| Covered Rust Lines    | 5,330 / 9,250 (58%) |
+| Total Dart Files      |                  30 |
+| Total Dart Lines      |              13,769 |
+| Total Dart Chars      |             437,539 |
+| Avg Lines/Dart File   |                 458 |
+| Avg Chars/Dart File   |              14,584 |
+| Covered Dart Lines    | 1,720 / 4,762 (36%) |
+| Total Kotlin Files    |                   2 |
+| Total Kotlin Lines    |                 209 |
+| Total Kotlin Chars    |               7,161 |
+| Avg Lines/Kotlin File |                 104 |
+| Avg Chars/Kotlin File |               3,580 |
 
 **Grand Total:** 90 files, 42,168 lines, 1,502,086 characters
 
@@ -26,66 +28,66 @@
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                                |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
-| /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                           |
-| src                     | behavior.rs          |     6 | 22426 |   552 |        - |       - | Network behavior definitions           |
-| src                     | blocklist.rs         |     2 |  3876 |   104 |        - |       - | Source file                            |
-| src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling) |
-| src                     | chat.rs              |     5 |  6015 |   169 |        - |       - | TUI chat & DM pane renderer            |
-| src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
-| src                     | contacts.rs          |     4 | 14829 |   395 |        - |       - | Canonical contacts-roster model        |
-| src                     | db.rs                |     5 | 25331 |   652 |        - |       - | Database connection & identity mgmt    |
-| src                     | e2e.rs               |     4 | 17127 |   435 |        - |       - | Source file                            |
-| src                     | files.rs             |     6 | 25734 |   702 |        - |       - | Content-addressed attachment store     |
-| src                     | fmt.rs               |     4 |  5203 |   164 |        - |       - | Formatting & display utilities         |
-| src                     | frb_generated.rs     |     6 | 160580 |  3870 |        - |       - | flutter_rust_bridge codegen            |
-| src                     | groups.rs            |     3 | 17920 |   486 |        - |       - | Group management & persistence         |
-| src                     | groups.rs            |     4 |  3829 |   102 |        - |       - | TUI groups renderer                    |
-| src                     | identity.rs          |     4 | 22668 |   601 |        - |       - | Users, account keys & device bindings  |
-| src                     | lib.rs               |     1 |  7158 |   187 |        - |       - | Module declarations & re-exports       |
-| src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
-| src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
-| src                     | messages.rs          |     5 | 14729 |   400 |        - |       - | Message persistence & retrieval        |
-| src                     | methods.rs           |     5 | 17935 |   579 |        - |       - | Web JSON method dispatch               |
-| src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 77732 |  2113 |        - |       - | Mobile node lifecycle & swarm          |
-| src                     | mod.rs               |     4 | 20931 |   608 |        - |       - | FRB API surface                        |
-| src                     | mod.rs               |     4 |  9891 |   263 |        - |       - | TUI render chrome & dispatch           |
-| src                     | mod.rs               |     7 | 52277 |  1374 |        - |       - | Web server (axum HTTP+WS)              |
-| src                     | net_diag.rs          |     4 | 21711 |   605 |        - |       - | Source file                            |
-| src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
-| src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
-| src                     | nickname.rs          |     5 | 12519 |   328 |        - |       - | Nickname management                    |
-| src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
-| src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
-| src                     | peers.rs             |     5 |  5259 |   126 |        - |       - | TUI peers-table renderer               |
-| src                     | relay.rs             |     5 |  3823 |   100 |        - |       - | Source file                            |
-| src                     | settings.rs          |     4 |  7218 |   192 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     8 | 71656 |  1902 |        - |       - | Network event translation              |
-| src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
-| src                     | tui_render_state.rs  |     4 | 22783 |   624 |        - |       - | TUI render state & tab content         |
-| src                     | tui_tabs.rs          |     6 | 11922 |   348 |        - |       - | Tab management & navigation            |
-| src                     | types.rs             |     2 | 12712 |   343 |        - |       - | Event & command type defs              |
-| src/bin                 | p2p_chat.rs          |     7 |  4996 |   135 |        - |       - | CLI chat application                   |
-| src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
-| src/bin                 | p2p_chat_tui.rs      |     6 |  9911 |   278 |        - |       - | Main TUI application entry point       |
-| src/bin/tui             | click_handlers.rs    |     7 | 20713 |   498 |        - |       - | Click handlers & index mapping         |
-| src/bin/tui             | command_processor.rs |     6 | 22502 |   610 |        - |       - | Event routing & state updates          |
-| src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
-| src/bin/tui             | input_processor.rs   |     6 | 51608 |  1361 |        - |       - | Input event routing & processing       |
-| src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |        - |       - | Keyboard enhancement probe             |
-| src/bin/tui             | main_loop.rs         |     6 | 15574 |   395 |        - |       - | Task orchestration & async             |
-| src/bin/tui             | message_handlers.rs  |     4 | 14435 |   448 |        - |       - | Message sending logic                  |
-| src/bin/tui             | scroll_handlers.rs   |     5 | 16156 |   425 |        - |       - | Scroll & hover-aware navigation        |
-| src/bin/tui             | state.rs             |     8 | 41964 |   999 |        - |       - | Shared application state               |
-| src/bin/tui/render_loop | layout.rs            |     5 |  2612 |    76 |        - |       - | UI layout component rendering          |
-| src/bin/tui/render_loop | mod.rs               |     6 | 13018 |   366 |        - |       - | Render loop orchestration (60 FPS)     |
-| src/generated           | columns.rs           |     1 |  3395 |    81 |        - |       - | Auto-generated column definitions      |
-| src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
-| src/generated           | models_insertable.rs |     1 |  8146 |   227 |        - |       - | Insertable data models                 |
-| src/generated           | models_queryable.rs  |     1 | 10383 |   280 |        - |       - | Queryable data models                  |
-| src/generated           | schema.rs            |     2 |  7236 |   241 |        - |       - | Database schema (Diesel)               |
+| /                       | build.rs             |     5 |  4068 |   117 |        0 |       - | Build script                           |
+| src                     | behavior.rs          |     6 | 22426 |   552 |       75 |  97.33% | Network behavior definitions           |
+| src                     | blocklist.rs         |     2 |  3876 |   104 |       35 | 100.00% | Source file                            |
+| src                     | calls.rs             |     3 |  3221 |    90 |       16 | 100.00% | Call session state machine (signaling) |
+| src                     | chat.rs              |     5 |  6015 |   169 |       85 |  83.53% | TUI chat & DM pane renderer            |
+| src                     | connected.rs         |     3 |  2324 |    71 |       18 | 100.00% | Connected peers tracking & monitoring  |
+| src                     | contacts.rs          |     4 | 14829 |   395 |      125 |  97.60% | Canonical contacts-roster model        |
+| src                     | db.rs                |     5 | 25331 |   652 |      101 |  93.07% | Database connection & identity mgmt    |
+| src                     | e2e.rs               |     4 | 17127 |   435 |      123 |  84.55% | Source file                            |
+| src                     | files.rs             |     6 | 25734 |   702 |      264 |  93.56% | Content-addressed attachment store     |
+| src                     | fmt.rs               |     4 |  5203 |   164 |       60 |  98.33% | Formatting & display utilities         |
+| src                     | frb_generated.rs     |     6 | 160580 |  3870 |     1826 |   0.00% | flutter_rust_bridge codegen            |
+| src                     | groups.rs            |     3 | 17920 |   486 |      170 |  95.88% | Group management & persistence         |
+| src                     | groups.rs            |     4 |  3829 |   102 |       52 |   0.00% | TUI groups renderer                    |
+| src                     | identity.rs          |     4 | 22668 |   601 |      220 |  97.73% | Users, account keys & device bindings  |
+| src                     | lib.rs               |     1 |  7158 |   187 |        1 | 100.00% | Module declarations & re-exports       |
+| src                     | log.rs               |     2 |   907 |    31 |       10 | 100.00% | TUI log renderer                       |
+| src                     | logging.rs           |     8 | 13626 |   411 |      119 |  95.80% | Logging utilities & setup              |
+| src                     | messages.rs          |     5 | 14729 |   400 |      117 | 100.00% | Message persistence & retrieval        |
+| src                     | methods.rs           |     5 | 17935 |   579 |      200 |  64.50% | Web JSON method dispatch               |
+| src                     | mobile_api.rs        |     4 | 36782 |  1049 |       92 |  71.74% | Mobile FRB API surface                 |
+| src                     | mobile_node.rs       |     5 | 77732 |  2113 |      442 |  31.90% | Mobile node lifecycle & swarm          |
+| src                     | mod.rs               |     4 | 20931 |   608 |      107 |  17.76% | FRB API surface                        |
+| src                     | mod.rs               |     4 |  9891 |   263 |      113 |  91.15% | TUI render chrome & dispatch           |
+| src                     | mod.rs               |     7 | 52277 |  1374 |      173 |  78.61% | Web server (axum HTTP+WS)              |
+| src                     | net_diag.rs          |     4 | 21711 |   605 |      214 |  98.60% | Source file                            |
+| src                     | network.rs           |     3 |  1979 |    67 |       14 | 100.00% | Network size classification            |
+| src                     | network_config.rs    |     3 |  7681 |   214 |       68 |  98.53% | Source file                            |
+| src                     | nickname.rs          |     5 | 12519 |   328 |      130 |  99.23% | Nickname management                    |
+| src                     | peer_info.rs         |     3 |  3104 |    88 |       39 |  92.31% | TUI peer-info renderer                 |
+| src                     | peers.rs             |     4 | 10590 |   294 |      101 | 100.00% | Peer management & tracking             |
+| src                     | peers.rs             |     5 |  5259 |   126 |       57 | 100.00% | TUI peers-table renderer               |
+| src                     | relay.rs             |     5 |  3823 |   100 |       29 | 100.00% | Source file                            |
+| src                     | settings.rs          |     4 |  7218 |   192 |       99 |  98.99% | TUI settings renderer                  |
+| src                     | swarm_handler.rs     |     8 | 71656 |  1902 |      755 |  21.72% | Network event translation              |
+| src                     | tui_helpers.rs       |     5 | 21932 |   663 |      232 |  96.12% | TUI helper functions & utilities       |
+| src                     | tui_render_state.rs  |     4 | 22783 |   624 |      201 |  95.02% | TUI render state & tab content         |
+| src                     | tui_tabs.rs          |     6 | 11922 |   348 |      133 |  97.74% | Tab management & navigation            |
+| src                     | types.rs             |     2 | 12712 |   343 |        8 |  50.00% | Event & command type defs              |
+| src/bin                 | p2p_chat.rs          |     7 |  4996 |   135 |       62 |   0.00% | CLI chat application                   |
+| src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |       46 |   0.00% | Headless node + web server entry point |
+| src/bin                 | p2p_chat_tui.rs      |     6 |  9911 |   278 |       52 |  25.00% | Main TUI application entry point       |
+| src/bin/tui             | click_handlers.rs    |     7 | 20713 |   498 |      256 |  70.31% | Click handlers & index mapping         |
+| src/bin/tui             | command_processor.rs |     6 | 22502 |   610 |      294 |  77.21% | Event routing & state updates          |
+| src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |       12 |  41.67% | Terminal event polling (60 FPS)        |
+| src/bin/tui             | input_processor.rs   |     6 | 51608 |  1361 |      628 |  79.62% | Input event routing & processing       |
+| src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |       73 |   0.00% | Keyboard enhancement probe             |
+| src/bin/tui             | main_loop.rs         |     6 | 15574 |   395 |      163 |  22.70% | Task orchestration & async             |
+| src/bin/tui             | message_handlers.rs  |     4 | 14435 |   448 |      218 |  88.53% | Message sending logic                  |
+| src/bin/tui             | scroll_handlers.rs   |     5 | 16156 |   425 |      183 |  83.06% | Scroll & hover-aware navigation        |
+| src/bin/tui             | state.rs             |     8 | 41964 |   999 |      349 |  91.69% | Shared application state               |
+| src/bin/tui/render_loop | layout.rs            |     5 |  2612 |    76 |       37 |   0.00% | UI layout component rendering          |
+| src/bin/tui/render_loop | mod.rs               |     6 | 13018 |   366 |      137 |  64.23% | Render loop orchestration (60 FPS)     |
+| src/generated           | columns.rs           |     1 |  3395 |    81 |        0 |       - | Auto-generated column definitions      |
+| src/generated           | mod.rs               |     0 |   488 |    11 |        0 |       - | Module declarations                    |
+| src/generated           | models_insertable.rs |     1 |  8146 |   227 |        0 |       - | Insertable data models                 |
+| src/generated           | models_queryable.rs  |     1 | 10383 |   280 |        0 |       - | Queryable data models                  |
+| src/generated           | schema.rs            |     2 |  7236 |   241 |      116 |  93.10% | Database schema (Diesel)               |
 
-**Total:** 58 files, 28,190 lines, 1,057,386 characters
+**Total:** 58 files, 28,190 lines, 1,057,386 characters (5330/9250 testable lines covered, 58%)
 
 ## Rust Test Files
 
@@ -158,38 +160,38 @@
 
 | Folder       | File                   | Depth | Chars | Lines | Testable | Covered | Purpose                          |
 |:-------------|:-----------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
-| lib          | main.dart              |     5 |  2205 |    74 |        - |       - | Flutter app entry point          |
-| lib          | chat_message_ext.dart  |     2 |   938 |    27 |        - |       - | Hand-written message helpers     |
-| lib          | frb_node_api.dart      |     5 | 10342 |   350 |        - |       - | In-process FRB transport         |
-| lib          | http_node_api.dart     |     5 | 25401 |   767 |        - |       - | WebSocket/HTTP transport         |
-| lib          | node_api.dart          |     2 |  8394 |   250 |        - |       - | Transport-agnostic node API      |
-| lib          | node_transport.dart    |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
-| lib/src/rust | api.dart               |     3 | 17433 |   482 |        - |       - | FRB API bindings (generated)     |
-| lib/src/rust | frb_generated.dart     |     6 | 124610 |  3934 |        - |       - | flutter_rust_bridge codegen      |
-| lib/src/rust | frb_generated.io.dart  |     3 | 16316 |   668 |        - |       - | FRB IO bindings (generated)      |
+| lib          | main.dart              |     5 |  2205 |    74 |       23 |  30.43% | Flutter app entry point          |
+| lib          | chat_message_ext.dart  |     2 |   938 |    27 |       13 | 100.00% | Hand-written message helpers     |
+| lib          | frb_node_api.dart      |     5 | 10342 |   350 |      110 |   6.36% | In-process FRB transport         |
+| lib          | http_node_api.dart     |     5 | 25401 |   767 |      358 |  57.82% | WebSocket/HTTP transport         |
+| lib          | node_api.dart          |     2 |  8394 |   250 |        1 | 100.00% | Transport-agnostic node API      |
+| lib          | node_transport.dart    |     4 |  3396 |   106 |       27 |   0.00% | Duplex transport abstraction     |
+| lib/src/rust | api.dart               |     3 | 17433 |   482 |       90 |   6.67% | FRB API bindings (generated)     |
+| lib/src/rust | frb_generated.dart     |     6 | 124610 |  3934 |     1638 |   0.12% | flutter_rust_bridge codegen      |
+| lib/src/rust | frb_generated.io.dart  |     3 | 16316 |   668 |        5 |   0.00% | FRB IO bindings (generated)      |
 | lib/src/rust | frb_generated.web.dart |     2 | 16236 |   668 |        - |       - | FRB web bindings (generated)     |
 | lib/src/rust | messages.dart          |     5 |  1067 |    32 |        - |       - | Rust bindings (hand-maintained)  |
-| lib/src/rust | mobile_api.dart        |     5 | 16684 |   519 |        - |       - | Mobile API bindings (generated)  |
-| lib/src/rust | mobile_node.dart       |     5 | 13701 |   425 |        - |       - | Mobile node bindings (generated) |
-| lib/src/rust | net_diag.dart          |     5 |  7968 |   256 |        - |       - | Dart source file                 |
-| lib/src/rust | network_config.dart    |     5 |  1182 |    43 |        - |       - | Dart source file                 |
-| lib          | call_screen.dart       |     8 |  9678 |   323 |        - |       - | Call overlay screen              |
-| lib          | contact_list.dart      |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
-| lib          | dm_chat.dart           |     9 |  8375 |   261 |        - |       - | Direct-message chat screen       |
-| lib          | group_chat.dart        |     8 |  8630 |   266 |        - |       - | Group chat screen                |
-| lib          | group_list.dart        |    17 |  7931 |   235 |        - |       - | Group list screen                |
-| lib          | home.dart              |     7 | 35355 |  1079 |        - |       - | App shell & broadcast chat       |
-| lib          | log_tab.dart           |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
-| lib          | messages.dart          |    14 | 27297 |   840 |        - |       - | Shared chat widgets              |
-| lib          | nav_bar.dart           |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
-| lib          | peer_info.dart         |    11 | 16379 |   481 |        - |       - | Peer Info screen                 |
-| lib          | settings.dart          |    16 | 30922 |   911 |        - |       - | Settings screen                  |
-| lib          | attachments.dart       |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
-| lib          | blocklist.dart         |     2 |   755 |    19 |        - |       - | Dart source file                 |
-| lib          | event_bus.dart         |     1 |  1483 |    38 |        - |       - | Node event fan-out               |
-| lib          | ui_utils.dart          |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
+| lib/src/rust | mobile_api.dart        |     5 | 16684 |   519 |      152 |   4.61% | Mobile API bindings (generated)  |
+| lib/src/rust | mobile_node.dart       |     5 | 13701 |   425 |      130 |   4.62% | Mobile node bindings (generated) |
+| lib/src/rust | net_diag.dart          |     5 |  7968 |   256 |       81 |   2.47% | Dart source file                 |
+| lib/src/rust | network_config.dart    |     5 |  1182 |    43 |       10 |  10.00% | Dart source file                 |
+| lib          | call_screen.dart       |     8 |  9678 |   323 |      101 |  89.11% | Call overlay screen              |
+| lib          | contact_list.dart      |    15 | 14857 |   429 |      181 |  99.45% | Contacts roster screen           |
+| lib          | dm_chat.dart           |     9 |  8375 |   261 |      129 |  52.71% | Direct-message chat screen       |
+| lib          | group_chat.dart        |     8 |  8630 |   266 |      130 |  55.38% | Group chat screen                |
+| lib          | group_list.dart        |    17 |  7931 |   235 |       99 |  98.99% | Group list screen                |
+| lib          | home.dart              |     7 | 35355 |  1079 |      506 |  35.77% | App shell & broadcast chat       |
+| lib          | log_tab.dart           |    10 |  3493 |   123 |       51 |  39.22% | Log tab screen                   |
+| lib          | messages.dart          |    14 | 27297 |   840 |      322 |  78.26% | Shared chat widgets              |
+| lib          | nav_bar.dart           |     3 |  1252 |    34 |        5 | 100.00% | Tab navigation bar               |
+| lib          | peer_info.dart         |    11 | 16379 |   481 |      186 |  91.94% | Peer Info screen                 |
+| lib          | settings.dart          |    16 | 30922 |   911 |      367 |  80.93% | Settings screen                  |
+| lib          | attachments.dart       |     4 |  3656 |    92 |       25 |  44.00% | File picker & opener seams       |
+| lib          | blocklist.dart         |     2 |   755 |    19 |        6 | 100.00% | Dart source file                 |
+| lib          | event_bus.dart         |     1 |  1483 |    38 |        6 |  66.67% | Node event fan-out               |
+| lib          | ui_utils.dart          |     2 |  1603 |    37 |       10 |  60.00% | Shared formatting & env helpers  |
 
-**Total:** 30 files, 13,769 lines, 437,539 characters
+**Total:** 30 files, 13,769 lines, 437,539 characters (1720/4762 testable lines covered, 36%)
 
 ## Dart Test Files
 
