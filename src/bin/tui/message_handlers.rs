@@ -24,9 +24,10 @@ fn push_outgoing_broadcast_to_state(
     content: &str,
     attachment: Option<&p2p_app::files::MessageAttachment>,
     msg_id: String,
+    reply_to: Option<&p2p_app::ReplyRef>,
 ) -> usize {
     let body = render_outgoing_body(content, attachment);
-    let msg = format!("{ts} [{own_nickname}] {body}");
+    let msg = p2p_app::reply::with_quoted_header(format!("{ts} [{own_nickname}] {body}"), reply_to);
     state.messages.push_back(DisplayMessage {
         text: msg,
         sender_peer_id: None,
@@ -64,6 +65,7 @@ struct OutgoingDm<'a> {
     content: &'a str,
     attachment: Option<&'a p2p_app::files::MessageAttachment>,
     msg_id: String,
+    reply_to: Option<&'a p2p_app::ReplyRef>,
     encrypted: bool,
 }
 
@@ -77,10 +79,12 @@ fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) -> usize 
         content,
         attachment,
         msg_id,
+        reply_to,
         encrypted,
     } = dm;
     let body = p2p_app::e2e::mark_encrypted(render_outgoing_body(content, attachment), encrypted);
-    let msg = format!("{ts} [{self_nickname}] {body}");
+    let msg =
+        p2p_app::reply::with_quoted_header(format!("{ts} [{self_nickname}] {body}"), reply_to);
     let dm_msgs = state.dm_messages.entry(peer_id.to_string()).or_default();
     dm_msgs.push_back(msg);
     state
@@ -107,19 +111,31 @@ fn push_outgoing_dm_to_state(state: &mut AppState, dm: OutgoingDm<'_>) -> usize 
         .saturating_sub(1)
 }
 
+/// Inputs for appending an outgoing group message to the in-memory chat log.
+struct OutgoingGroup<'a> {
+    group_id: &'a str,
+    ts: &'a str,
+    own_nickname: &'a str,
+    content: &'a str,
+    attachment: Option<&'a p2p_app::files::MessageAttachment>,
+    msg_id: String,
+    reply_to: Option<&'a p2p_app::ReplyRef>,
+}
+
 /// Pure: format and push an outgoing group message to state, trimming history.
 /// Returns the index of the new row so the caller can attach its saved DB id.
-fn push_outgoing_group_message_to_state(
-    state: &mut AppState,
-    group_id: &str,
-    ts: &str,
-    own_nickname: &str,
-    content: &str,
-    attachment: Option<&p2p_app::files::MessageAttachment>,
-    msg_id: String,
-) -> usize {
+fn push_outgoing_group_message_to_state(state: &mut AppState, group: OutgoingGroup<'_>) -> usize {
+    let OutgoingGroup {
+        group_id,
+        ts,
+        own_nickname,
+        content,
+        attachment,
+        msg_id,
+        reply_to,
+    } = group;
     let body = render_outgoing_body(content, attachment);
-    let msg = format!("{ts} [{own_nickname}] {body}");
+    let msg = p2p_app::reply::with_quoted_header(format!("{ts} [{own_nickname}] {body}"), reply_to);
     let msgs = state
         .group_messages
         .entry(group_id.to_string())
@@ -176,6 +192,9 @@ pub async fn send_message(
     tab_content: p2p_app::tui_tabs::TabContent,
 ) {
     let own_nickname = state.own_nickname.clone();
+    // One reply per outgoing message: the draft is consumed here so a failed
+    // send still clears the affordance instead of silently quoting twice.
+    let reply_to = state.take_reply(&tab_content);
     match &tab_content {
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => {
             send_dm_message(
@@ -185,6 +204,7 @@ pub async fn send_message(
                 text,
                 attachment,
                 own_nickname,
+                reply_to,
             )
             .await;
         }
@@ -196,10 +216,21 @@ pub async fn send_message(
                 text,
                 attachment,
                 own_nickname,
+                reply_to,
             )
             .await;
         }
-        _ => send_broadcast_message(state, swarm_cmd_tx, text, attachment, own_nickname).await,
+        _ => {
+            send_broadcast_message(
+                state,
+                swarm_cmd_tx,
+                text,
+                attachment,
+                own_nickname,
+                reply_to,
+            )
+            .await;
+        }
     }
 }
 
@@ -240,6 +271,7 @@ async fn send_dm_message(
     text: String,
     attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
+    reply_to: Option<p2p_app::ReplyRef>,
 ) {
     let ts = p2p_app::format_now();
     let dm_self_nickname = state
@@ -262,6 +294,7 @@ async fn send_dm_message(
             content: &text,
             attachment: attachment.as_ref(),
             msg_id: msg_id.clone(),
+            reply_to: reply_to.as_ref(),
             encrypted,
         },
     );
@@ -277,6 +310,7 @@ async fn send_dm_message(
             msg_id: Some(msg_id),
             ack_for: None,
             attachment: attachment.clone(),
+            reply_to: reply_to.clone(),
         })
         .await;
 
@@ -285,6 +319,7 @@ async fn send_dm_message(
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
         attachment,
+        reply_to,
         encrypted,
     };
     let saved_id = match p2p_app::save_message_with_meta(
@@ -323,6 +358,7 @@ async fn send_group_message(
     text: String,
     attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
+    reply_to: Option<p2p_app::ReplyRef>,
 ) {
     let ts = p2p_app::format_now();
     let msg_id = p2p_app::gen_msg_id();
@@ -331,12 +367,15 @@ async fn send_group_message(
 
     let row_idx = push_outgoing_group_message_to_state(
         state,
-        &group_id,
-        &ts,
-        &own_nickname,
-        &text,
-        attachment.as_ref(),
-        msg_id.clone(),
+        OutgoingGroup {
+            group_id: &group_id,
+            ts: &ts,
+            own_nickname: &own_nickname,
+            content: &text,
+            attachment: attachment.as_ref(),
+            msg_id: msg_id.clone(),
+            reply_to: reply_to.as_ref(),
+        },
     );
     p2plog_debug(format!("Sent group message to {group_id}: {text}"));
 
@@ -349,6 +388,7 @@ async fn send_group_message(
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
             attachment: attachment.clone(),
+            reply_to: reply_to.clone(),
         })
         .await;
 
@@ -357,6 +397,7 @@ async fn send_group_message(
         msg_id: Some(msg_id_for_db),
         sent_at: Some(sent_at),
         attachment,
+        reply_to,
     };
     // Group outgoing rows are inserted with `sent = 1` already; just capture
     // the id so the local-only Delete binding can find the row (US-005).
@@ -380,6 +421,7 @@ async fn send_broadcast_message(
     text: String,
     attachment: Option<p2p_app::files::MessageAttachment>,
     own_nickname: String,
+    reply_to: Option<p2p_app::ReplyRef>,
 ) {
     let ts = p2p_app::format_now();
     let msg_id = p2p_app::gen_msg_id();
@@ -393,6 +435,7 @@ async fn send_broadcast_message(
         &text,
         attachment.as_ref(),
         msg_id.clone(),
+        reply_to.as_ref(),
     );
     p2plog_debug(format!("Sent broadcast: {text}"));
 
@@ -404,6 +447,7 @@ async fn send_broadcast_message(
             nickname: Some(own_nickname.clone()),
             msg_id: Some(msg_id),
             attachment: attachment.clone(),
+            reply_to: reply_to.clone(),
         })
         .await;
 
@@ -412,6 +456,7 @@ async fn send_broadcast_message(
         msg_id: Some(msg_id_for_db.clone()),
         sent_at: Some(sent_at),
         attachment,
+        reply_to,
         encrypted: false,
     };
     let saved_id =

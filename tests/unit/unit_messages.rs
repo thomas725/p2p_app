@@ -57,6 +57,7 @@ fn save_message_with_meta_persists_fields() {
             msg_id: Some("msg-1".to_string()),
             sent_at: Some(123.5),
             attachment: None,
+            reply_to: None,
             encrypted: false,
         };
         let saved = save_message_with_meta("payload", Some("peer-x"), "topic-x", false, None, meta)
@@ -282,7 +283,7 @@ fn confirmed_message_ids_matches_receipts() {
 #[serial(db)]
 fn message_is_dm_resolves_kind_and_unknown_ids() {
     with_test_db(|| {
-        save_message_with_meta(
+        let dm = save_message_with_meta(
             "dm",
             None,
             "t",
@@ -294,7 +295,8 @@ fn message_is_dm_resolves_kind_and_unknown_ids() {
             },
         )
         .expect("save dm");
-        save_message_with_meta(
+        mark_message_sent(dm.id).expect("mark dm sent");
+        let bc = save_message_with_meta(
             "bc",
             None,
             "t",
@@ -306,6 +308,21 @@ fn message_is_dm_resolves_kind_and_unknown_ids() {
             },
         )
         .expect("save broadcast");
+        mark_message_sent(bc.id).expect("mark broadcast sent");
+        // Inbound rows now persist wire ids too. An echoed id must not flip a
+        // receipt's kind, so only sent rows participate in the lookup.
+        save_message_with_meta(
+            "echo",
+            Some("peer-b"),
+            "t",
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("dm-id".to_string()),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save inbound echo");
 
         assert_eq!(message_is_dm("dm-id").expect("dm"), Some(true));
         assert_eq!(message_is_dm("bc-id").expect("broadcast"), Some(false));

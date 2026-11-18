@@ -26,6 +26,7 @@ fn test_direct_message_debug() {
         received_at: None,
         group_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: None,
     };
 
@@ -44,6 +45,7 @@ fn test_broadcast_message_debug() {
         nickname: Some("Broadcaster".to_string()),
         msg_id: Some("bcast-1".to_string()),
         attachment: None,
+        reply_to: None,
     };
 
     let debug = format!("{bm:?}");
@@ -74,6 +76,7 @@ fn test_swarm_command_debug() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
         attachment: None,
+        reply_to: None,
     };
     let publish_debug = format!("{publish:?}");
     assert!(publish_debug.contains("msg"));
@@ -85,6 +88,7 @@ fn test_swarm_command_debug() {
         msg_id: Some("dm-1".to_string()),
         ack_for: Some("original".to_string()),
         attachment: None,
+        reply_to: None,
     };
     let dm_debug = format!("{send_dm:?}");
     assert!(dm_debug.contains("peer123"));
@@ -101,6 +105,7 @@ fn test_swarm_event_debug() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
         attachment: None,
+        reply_to: None,
         encrypted: false,
     });
     let bcast_debug = format!("{bcast:?}");
@@ -113,6 +118,7 @@ fn test_swarm_event_debug() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: false,
     });
     let direct_debug = format!("{direct:?}");

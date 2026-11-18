@@ -66,7 +66,18 @@ newest message; the counter clears.
 | `Click` a message in the **DM** tab's conversation pane | Open the partner's Peer Info |
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
+| `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
+| `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
+
+### Reply / quote
+
+`Ctrl+R` captures the newest message that has a stable wire id into a draft for
+the current conversation. The input title shows the quoted line, and the next
+message you send carries it as an immutable snapshot (`sender` + short preview)
+alongside the source id. The quote renders as a `↳` header above the body in all
+three frontends, even if the original row was later deleted locally. `Esc`
+clears the draft without sending; switching tabs keeps drafts separate.
 
 ### Local message deletion
 
@@ -161,6 +172,7 @@ of the history.
 | `Shift+Enter` | Insert a newline |
 | `Ctrl+I` | Open the DM partner's Peer Info — **kitty-keyboard terminals only** (WezTerm) |
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
+| `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
 | `Delete` | Hide your most recent sent DM locally (with confirmation) |
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty

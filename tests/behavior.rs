@@ -46,6 +46,7 @@ fn test_direct_message_serialization() {
         ack_for: None,
         received_at: None,
         group_id: None,
+        reply_to: None,
         attachment: None,
         encrypted: None,
     };
@@ -61,6 +62,7 @@ fn test_broadcast_message_serialization() {
         sent_at: Some(1_234_567_890.0),
         nickname: Some("Bob".to_string()),
         msg_id: Some("bcast-1".to_string()),
+        reply_to: None,
         attachment: None,
     };
     let json = serde_json::to_string(&bm).unwrap();
@@ -135,6 +137,7 @@ fn test_direct_message_fields() {
         ack_for: Some("orig".to_string()),
         received_at: Some(2.0),
         group_id: None,
+        reply_to: None,
         attachment: None,
         encrypted: None,
     };
@@ -151,6 +154,7 @@ fn test_broadcast_message_fields() {
         sent_at: Some(3.0),
         nickname: None,
         msg_id: Some("bm-id".to_string()),
+        reply_to: None,
         attachment: None,
     };
     assert_eq!(bm.content, "hello");
@@ -169,6 +173,7 @@ fn test_direct_message_clone() {
         ack_for: None,
         received_at: Some(2.0),
         group_id: None,
+        reply_to: None,
         attachment: None,
         encrypted: None,
     };
@@ -185,6 +190,7 @@ fn test_broadcast_message_clone() {
         sent_at: Some(1.5),
         nickname: Some("sender".to_string()),
         msg_id: Some("b-id".to_string()),
+        reply_to: None,
         attachment: None,
     };
     let cloned = bm.clone();
@@ -233,6 +239,7 @@ fn test_direct_message_serialization_roundtrip() {
         ack_for: Some("orig-7".to_string()),
         received_at: Some(3.0),
         group_id: None,
+        reply_to: None,
         attachment: None,
         encrypted: None,
     };

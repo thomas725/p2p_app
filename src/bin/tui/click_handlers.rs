@@ -62,8 +62,13 @@ fn format_dm_messages_from_db(
     self_nick_for_peer: &str,
     local_nicknames: &HashMap<String, String>,
     received_nicknames: &HashMap<String, String>,
-) -> (VecDeque<String>, VecDeque<Option<i32>>) {
+) -> (
+    VecDeque<String>,
+    VecDeque<Option<String>>,
+    VecDeque<Option<i32>>,
+) {
     let mut messages = VecDeque::new();
+    let mut message_ids = VecDeque::new();
     let mut message_db_ids = VecDeque::new();
     for msg in db_messages.iter().rev() {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
@@ -72,10 +77,18 @@ fn format_dm_messages_from_db(
             |p| p2p_app::peer_display_name(p, local_nicknames, received_nicknames),
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
-        messages.push_back(format!("{ts} [{sender_display}] {body}"));
+        let reply = msg
+            .reply_to_json
+            .as_deref()
+            .and_then(p2p_app::reply::decode);
+        messages.push_back(p2p_app::reply::with_quoted_header(
+            format!("{ts} [{sender_display}] {body}"),
+            reply.as_ref(),
+        ));
+        message_ids.push_back(msg.msg_id.clone());
         message_db_ids.push_back((msg.sent == 1).then_some(msg.id));
     }
-    (messages, message_db_ids)
+    (messages, message_ids, message_db_ids)
 }
 
 /// Loads DM messages from database for a peer
@@ -103,19 +116,16 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
             .get(peer_id)
             .cloned()
             .unwrap_or_else(|| state.own_nickname.clone());
-        let (messages, message_db_ids) = format_dm_messages_from_db(
+        let (messages, message_ids, message_db_ids) = format_dm_messages_from_db(
             &db_messages,
             &self_nick_for_peer,
             &state.local_nicknames,
             &state.received_nicknames,
         );
         state.dm_messages.insert(peer_id.to_string(), messages);
-        state.dm_message_ids.insert(
-            peer_id.to_string(),
-            std::iter::repeat_with(|| None)
-                .take(db_messages.len())
-                .collect(),
-        );
+        state
+            .dm_message_ids
+            .insert(peer_id.to_string(), message_ids);
         state
             .dm_message_db_ids
             .insert(peer_id.to_string(), message_db_ids);
@@ -165,7 +175,14 @@ fn format_group_messages_from_db(
             |nick| format!("[{nick}]"),
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
-        messages.push_back(format!("{ts} {sender} {body}"));
+        let reply = msg
+            .reply_to_json
+            .as_deref()
+            .and_then(p2p_app::reply::decode);
+        messages.push_back(p2p_app::reply::with_quoted_header(
+            format!("{ts} {sender} {body}"),
+            reply.as_ref(),
+        ));
         message_ids.push_back(msg.msg_id.clone());
         peer_ids.push_back(msg.peer_id.clone());
         message_db_ids.push_back((msg.sent == 1).then_some(msg.id));

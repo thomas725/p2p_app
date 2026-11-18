@@ -70,6 +70,8 @@ pub struct TuiRenderState {
     pub kitty_keyboard_active: bool,
     /// Optional popup message to display
     pub popup: Option<String>,
+    /// Canonical quoted header of the active conversation's reply draft.
+    pub reply_preview: Option<String>,
     /// Known groups with member counts (for the Groups list tab)
     pub group_summaries: Vec<crate::groups::GroupSummary>,
     /// Group messages per group: formatted display strings
@@ -186,6 +188,7 @@ impl TuiRenderState {
             mouse_capture: false,
             kitty_keyboard_active: false,
             popup: None,
+            reply_preview: None,
             chat_scroll_offset: 0,
             auto_scroll: crate::AutoScrollFlags {
                 chat: true,

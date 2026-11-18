@@ -170,12 +170,6 @@ transport is still to come.
   lean. Do **not** gate the signaling behind it; that already happened once and
   was corrected.
 
-### Reply / quote to a specific message (US-006)
-
-`content` is currently a flat string. A reply needs the replied-to message id
-carried in the wire payload and rendered as a quoted header in all three
-frontends (TUI, Flutter, web).
-
 ### Typing indicators (US-009)
 
 Requires a lightweight "user X is typing" signal on the DM lane. The lane is
@@ -341,6 +335,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Reply / quote to a specific message (US-006) | 2026-11-18 | [`archive/2026-11-18_reply_quote.md`](archive/2026-11-18_reply_quote.md) |
 | Keyboard shortcut help overlay (US-029) + Flutter help dialog | 2026-11-17 | [`archive/2026-11-17_keyboard_shortcuts_help.md`](archive/2026-11-17_keyboard_shortcuts_help.md) |
 | Clear the remaining audit advisories (diesel 2.4.0, libsqlite3-sys 0.39.1, gossipsub, quinn-proto) | 2026-11-17 | `227f214` |
 | CI checks report the checked command's exit code (no `tee` false PASS) | 2026-11-17 | `1835967` |

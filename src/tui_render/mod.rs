@@ -122,6 +122,8 @@ pub fn render_input_section(
             "Edit Nickname"
         };
         format!("{label} ({})", short_peer_id(&state.nickname_peer_id))
+    } else if let Some(preview) = state.reply_preview.as_deref() {
+        format!("Reply: {preview}")
     } else {
         "Input".to_string()
     };
@@ -164,13 +166,13 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+P: Peer Info | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Chat | TabContent::GroupChat(_) => {
-            "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -192,6 +194,7 @@ Up/Down  Move   PgUp/PgDn  Page   Home/End  First / last
 Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 
 Chat / DM / Group: click a message -> sender's Peer Info
+Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
 Chat / DM / Group: Del -> delete newest sent message (local only)
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 

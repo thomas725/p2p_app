@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
+import 'package:p2p_app_flutter/src/util/reply.dart';
 
 /// Full-screen DM chat for a single peer (history + live incoming DMs while
 /// open), with selection/copy and an unread "jump to latest" banner.
@@ -37,6 +39,17 @@ class _DmChatScreenState extends State<DmChatScreen>
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
+
+  /// Frozen quote for the next DM we send; independent of selection mode.
+  ReplyRef? _replyTo;
+
+  void _onReply(int index) {
+    if (index < 0 || index >= _messages.length) return;
+    final draft = replyDraftFor(_messages[index]);
+    if (draft != null) setState(() => _replyTo = draft);
+  }
+
+  void _cancelReply() => setState(() => _replyTo = null);
 
   String get _peerId => widget.peer.peerId;
   String get _label =>
@@ -111,7 +124,7 @@ class _DmChatScreenState extends State<DmChatScreen>
   /// Flip the delivery tick on the message a `receipt` acknowledged. A no-op
   /// when the id belongs to a message this screen doesn't show.
   void _markConfirmed(String msgId) {
-    final idx = _messages.indexWhere((m) => m.msgId == msgId);
+    final idx = confirmedMessageIndex(_messages, msgId);
     if (idx < 0 || _messages[idx].confirmed) return;
     setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
   }
@@ -124,6 +137,8 @@ class _DmChatScreenState extends State<DmChatScreen>
         isDirect: true,
         nickname: event.nickname,
         latency: event.latency,
+        msgId: event.msgId,
+        replyTo: event.replyTo,
       );
       if (!mounted) return;
       setState(() {
@@ -139,10 +154,18 @@ class _DmChatScreenState extends State<DmChatScreen>
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final reply = _replyTo;
     try {
-      final msg = await nodeApi.saveOutgoingDm(peerId: _peerId, content: text);
+      final msg = await nodeApi.saveOutgoingDm(
+        peerId: _peerId,
+        content: text,
+        replyTo: reply,
+      );
       _controller.clear();
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _replyTo = null;
+      });
       forceJumpToBottom(_scrollController);
     } catch (e) {
       debugPrint('DM send failed: $e');
@@ -154,6 +177,7 @@ class _DmChatScreenState extends State<DmChatScreen>
   Future<void> _pickAndSend() async {
     final picked = await pickFileOverride();
     if (picked == null) return;
+    final reply = _replyTo;
     try {
       final msg = await nodeApi.saveOutgoingDm(
         peerId: _peerId,
@@ -161,8 +185,12 @@ class _DmChatScreenState extends State<DmChatScreen>
         attachmentPath: picked.path,
         attachmentBytes: picked.bytes,
         attachmentName: picked.name,
+        replyTo: reply,
       );
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _replyTo = null;
+      });
       forceJumpToBottom(_scrollController);
     } catch (e) {
       debugPrint('DM attachment send failed: $e');
@@ -242,6 +270,7 @@ class _DmChatScreenState extends State<DmChatScreen>
               cancelSelection();
             },
             onDeleteSelected: () => deleteSelection(_messages, isGroup: false),
+            onReply: _onReply,
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
@@ -253,6 +282,8 @@ class _DmChatScreenState extends State<DmChatScreen>
             hintText: widget.serviceRunning ? 'Message $_label...' : 'Offline',
             onSend: _send,
             onPickFile: _pickAndSend,
+            replyTo: _replyTo,
+            onCancelReply: _cancelReply,
           ),
         ],
       ),

@@ -14,7 +14,9 @@ use tokio::sync::mpsc;
 
 enum Event {
     Swarm(Box<Libp2pSwarmEvent<AppEv>>),
-    Command(SwarmCommand),
+    // Boxed so the select-loop event stays small; `SwarmCommand` grows with
+    // each outbound message field (attachment, reply snapshot, …).
+    Command(Box<SwarmCommand>),
 }
 
 /// Whether a peer is muted (US-054). Fail-open: an unreadable database never
@@ -54,6 +56,7 @@ async fn handle_broadcast_message(
             msg_id: bcast.msg_id.clone(),
             attachment: bcast.attachment.clone(),
             encrypted: false,
+            reply_to: bcast.reply_to.clone(),
         }))
         .await;
 
@@ -670,6 +673,16 @@ async fn handle_group_message(
             if let Err(e) = crate::groups::record_group_member(group_id, &peer_id_str) {
                 p2plog_debug(format!("Failed to record group member: {e:?}"));
             }
+            // The persisted row and the live event must expose the same id, so a
+            // reply captured from a transient event stays replyable after a
+            // reload (including the synthetic id for wire-less messages).
+            let event_msg_id = crate::groups::incoming_group_msg_id(
+                group_id,
+                &peer_id_str,
+                &group_msg.content,
+                group_msg.sent_at,
+                group_msg.msg_id.clone(),
+            );
             match crate::groups::save_incoming_group_message(
                 group_id,
                 &peer_id_str,
@@ -679,6 +692,7 @@ async fn handle_group_message(
                     msg_id: group_msg.msg_id.clone(),
                     sent_at: group_msg.sent_at,
                     attachment: group_msg.attachment.clone(),
+                    reply_to: group_msg.reply_to.clone(),
                 },
             ) {
                 Ok(Some(_)) => {}
@@ -700,8 +714,9 @@ async fn handle_group_message(
                     content: group_msg.content,
                     peer_id: peer_id_str,
                     nickname: group_msg.nickname,
-                    msg_id: group_msg.msg_id,
+                    msg_id: Some(event_msg_id),
                     attachment: group_msg.attachment,
+                    reply_to: group_msg.reply_to,
                 }))
                 .await;
         }
@@ -779,6 +794,7 @@ fn handle_backfill_request(
                 .attachment_json
                 .as_deref()
                 .and_then(crate::files::attachment_from_json),
+            reply_to: row.reply_to_json.as_deref().and_then(crate::reply::decode),
         };
         let Ok(json) = serde_json::to_string(&msg) else {
             continue;
@@ -835,6 +851,7 @@ async fn handle_request_response(
                             msg_id: None,
                             attachment: None,
                             encrypted: false,
+                            reply_to: None,
                         }))
                         .await;
                 } else {
@@ -854,6 +871,7 @@ async fn handle_request_response(
                                 nickname: request.nickname,
                                 msg_id,
                                 attachment: request.attachment.clone(),
+                                reply_to: request.reply_to.clone(),
                             }))
                             .await;
                     } else {
@@ -875,6 +893,7 @@ async fn handle_request_response(
                             msg_id,
                             attachment: request.attachment.clone(),
                             encrypted: false,
+                            reply_to: request.reply_to,
                         }))
                         .await;
                 }
@@ -917,6 +936,7 @@ fn make_ack_dm(content: String, ack_for: Option<String>) -> crate::DirectMessage
         received_at: Some(current_timestamp()),
         group_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: None,
     }
 }
@@ -1506,12 +1526,25 @@ pub fn build_broadcast_message_with_attachment(
     msg_id: Option<String>,
     attachment: Option<crate::files::MessageAttachment>,
 ) -> BroadcastMessage {
+    build_broadcast_message_with_reply(content, nickname, msg_id, attachment, None)
+}
+
+/// Build a `BroadcastMessage` carrying an immutable reply snapshot (US-006).
+#[must_use]
+pub fn build_broadcast_message_with_reply(
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+    attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
+) -> BroadcastMessage {
     BroadcastMessage {
         content,
         sent_at: Some(current_timestamp()),
         nickname,
         msg_id,
         attachment,
+        reply_to,
     }
 }
 
@@ -1536,6 +1569,19 @@ pub fn build_group_message_with_attachment(
     msg_id: Option<String>,
     attachment: Option<crate::files::MessageAttachment>,
 ) -> crate::GroupMessage {
+    build_group_message_with_reply(group_id, content, nickname, msg_id, attachment, None)
+}
+
+/// Build a `GroupMessage` carrying an immutable reply snapshot (US-006).
+#[must_use]
+pub fn build_group_message_with_reply(
+    group_id: String,
+    content: String,
+    nickname: Option<String>,
+    msg_id: Option<String>,
+    attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
+) -> crate::GroupMessage {
     crate::GroupMessage {
         group_id,
         content,
@@ -1543,6 +1589,7 @@ pub fn build_group_message_with_attachment(
         nickname,
         msg_id,
         attachment,
+        reply_to,
     }
 }
 
@@ -1553,7 +1600,10 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             nickname,
             msg_id,
             attachment,
-        } => publish_broadcast(content, nickname, msg_id, attachment, swarm, topic),
+            reply_to,
+        } => publish_broadcast(
+            content, nickname, msg_id, attachment, reply_to, swarm, topic,
+        ),
         SwarmCommand::SendDm {
             peer_id,
             content,
@@ -1561,8 +1611,23 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             msg_id,
             ack_for,
             attachment,
+            reply_to,
         } => send_dm(
-            &peer_id, content, nickname, msg_id, ack_for, attachment, swarm,
+            &peer_id,
+            crate::DirectMessage {
+                content,
+                timestamp: chrono::Utc::now().timestamp(),
+                sent_at: Some(current_timestamp()),
+                nickname,
+                msg_id,
+                ack_for,
+                received_at: None,
+                group_id: None,
+                attachment,
+                reply_to,
+                encrypted: None,
+            },
+            swarm,
         ),
         SwarmCommand::PublishGroup {
             group_id,
@@ -1570,7 +1635,10 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
             nickname,
             msg_id,
             attachment,
-        } => publish_group(content, nickname, msg_id, group_id, attachment, swarm),
+            reply_to,
+        } => publish_group(
+            content, nickname, msg_id, group_id, attachment, reply_to, swarm,
+        ),
         SwarmCommand::SubscribeGroup { group_id } => subscribe_to_group(&group_id, swarm),
         SwarmCommand::SendDeviceBinding { peer_id, request } => {
             send_device_binding(&peer_id, request, swarm);
@@ -1589,10 +1657,11 @@ fn publish_broadcast(
     nickname: Option<String>,
     msg_id: Option<String>,
     attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
     swarm: &mut Swarm<AppBehaviour>,
     topic: &str,
 ) {
-    let msg = build_broadcast_message_with_attachment(content, nickname, msg_id, attachment);
+    let msg = build_broadcast_message_with_reply(content, nickname, msg_id, attachment, reply_to);
     if let Ok(json) = serde_json::to_string(&msg) {
         match swarm
             .behaviour_mut()
@@ -1639,32 +1708,12 @@ fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
-fn send_dm(
-    peer_id: &str,
-    content: String,
-    nickname: Option<String>,
-    msg_id: Option<String>,
-    ack_for: Option<String>,
-    attachment: Option<crate::files::MessageAttachment>,
-    swarm: &mut Swarm<AppBehaviour>,
-) {
+fn send_dm(peer_id: &str, msg: crate::DirectMessage, swarm: &mut Swarm<AppBehaviour>) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
         if crate::blocklist::is_blocked(&peer.to_string()) {
             p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));
             return;
         }
-        let msg = crate::DirectMessage {
-            content,
-            timestamp: chrono::Utc::now().timestamp(),
-            sent_at: Some(current_timestamp()),
-            nickname,
-            msg_id,
-            ack_for,
-            received_at: None,
-            group_id: None,
-            attachment,
-            encrypted: None,
-        };
         swarm
             .behaviour_mut()
             .request_response
@@ -1678,10 +1727,12 @@ fn publish_group(
     msg_id: Option<String>,
     group_id: String,
     attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(&group_id));
-    let msg = build_group_message_with_attachment(group_id, content, nickname, msg_id, attachment);
+    let msg =
+        build_group_message_with_reply(group_id, content, nickname, msg_id, attachment, reply_to);
     if let Ok(json) = serde_json::to_string(&msg) {
         match swarm
             .behaviour_mut()
@@ -1878,7 +1929,7 @@ pub fn spawn_swarm_handler(
         loop {
             let event = tokio::select! {
                 swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
-                Some(cmd) = cmd_rx.recv() => Some(Event::Command(cmd)),
+                Some(cmd) = cmd_rx.recv() => Some(Event::Command(Box::new(cmd))),
                 else => None,
             };
 
@@ -1887,7 +1938,7 @@ pub fn spawn_swarm_handler(
                     handle_swarm_event(*swarm_event, &event_tx, &mut swarm, &mut relays).await;
                 }
                 Some(Event::Command(cmd)) => {
-                    handle_command(cmd, &mut swarm, &topic);
+                    handle_command(*cmd, &mut swarm, &topic);
                 }
                 None => break,
             }

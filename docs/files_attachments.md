@@ -42,9 +42,11 @@ in [`backlog.md`](backlog.md).
 
 ## Mobile (FRB) surface
 
-- `MobileAttachment { fileId, name, size: i64, sizeLabel, mime }` lives in `mobile_node.rs`;
+- `MobileAttachment { fileId, name, size: i64, sizeLabel, chip, mime }` lives in `mobile_node.rs`;
   `sizeLabel` is `files::format_file_size(size)` computed Rust-side, so the Flutter chip prints
-  the exact same label as the TUI and Dart never does byte math. `ChatMessage.attachment` and
+  the exact same label as the TUI and Dart never does byte math. `chip` is the canonical
+  `[file] name (size)` string from `files::file_chip`, reused verbatim by the Flutter reply
+  preview for attachment-only rows. `ChatMessage.attachment` and
   `MobileGroupMessage.attachment` added (regen once).
 - `store_send_attachment(Option<String>)`, `save_outgoing_broadcast|dm|group`
   take `attachment_path: Option<String>`; `attachment_file_path(file_id: &str)` →

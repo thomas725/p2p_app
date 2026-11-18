@@ -1,5 +1,7 @@
 //! Core type definitions for application events and commands
 
+use crate::reply::ReplyRef;
+
 #[cfg(feature = "mdns")]
 use libp2p::Multiaddr;
 
@@ -114,6 +116,8 @@ pub struct MessageEvent {
     /// True when the body arrived inside an end-to-end envelope (US-042) and
     /// was opened locally; the frontends mark such messages.
     pub encrypted: bool,
+    /// Immutable reply snapshot carried on the wire (US-006).
+    pub reply_to: Option<ReplyRef>,
 }
 
 /// A group message received from a peer over a per-group gossipsub topic
@@ -131,6 +135,8 @@ pub struct GroupMessageEvent {
     pub msg_id: Option<String>,
     /// Attachment descriptor, if the message carries a file (files lane §12)
     pub attachment: Option<crate::files::MessageAttachment>,
+    /// Immutable reply snapshot carried on the wire (US-006).
+    pub reply_to: Option<ReplyRef>,
 }
 
 /// High-level application events from the swarm
@@ -267,6 +273,8 @@ pub enum SwarmCommand {
         /// Optional attachment descriptor (files lane §12); the sender already
         /// staged the bytes with `files::store_outgoing_file`.
         attachment: Option<crate::files::MessageAttachment>,
+        /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+        reply_to: Option<ReplyRef>,
     },
     /// Send a direct message to a peer
     SendDm {
@@ -278,10 +286,12 @@ pub enum SwarmCommand {
         nickname: Option<String>,
         /// Optional unique message ID
         msg_id: Option<String>,
-        /// Optional ID of the message this is acknowledging
+        /// Optional ID of the message this is acknowledging (receipts only)
         ack_for: Option<String>,
         /// Optional attachment descriptor (files lane §12)
         attachment: Option<crate::files::MessageAttachment>,
+        /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+        reply_to: Option<ReplyRef>,
     },
     /// Publish a message to a group's per-group gossipsub topic
     PublishGroup {
@@ -295,6 +305,8 @@ pub enum SwarmCommand {
         msg_id: Option<String>,
         /// Optional attachment descriptor (files lane §12)
         attachment: Option<crate::files::MessageAttachment>,
+        /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+        reply_to: Option<ReplyRef>,
     },
     /// Subscribe to a group's per-group gossipsub topic
     SubscribeGroup {

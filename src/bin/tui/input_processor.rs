@@ -160,6 +160,7 @@ async fn handle_nickname_submission(
                 msg_id: None,
                 ack_for: None,
                 attachment: None,
+                reply_to: None,
             })
             .await;
         update_dm_transcript_labels(
@@ -185,6 +186,7 @@ async fn handle_nickname_submission(
                     msg_id: None,
                     ack_for: None,
                     attachment: None,
+                    reply_to: None,
                 })
                 .await;
         }
@@ -507,11 +509,16 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         s.cancel_add_network_peer();
         p2plog_debug("Cancelled network peer entry".to_string());
     } else {
-        s.active_tab = 0;
-        s.chat_scroll_offset = 0;
-        s.auto_scroll.chat = true;
-        s.chat_unread_count = 0;
-        p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
+        let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+        if s.clear_reply(&tab) {
+            p2plog_debug("Cleared reply draft".to_string());
+        } else {
+            s.active_tab = 0;
+            s.chat_scroll_offset = 0;
+            s.auto_scroll.chat = true;
+            s.chat_unread_count = 0;
+            p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
+        }
     }
     drop(s);
     let _ = render_tx.send(RenderEvent).await;
@@ -1094,6 +1101,22 @@ async fn handle_key_dispatch(
         }
         crossterm::event::KeyCode::F(12) => {
             toggle_mouse_capture(s);
+        }
+        // `Ctrl+R` captures the newest replyable message in a chat as this
+        // conversation's reply draft; `Esc` clears it, and sending consumes it.
+        crossterm::event::KeyCode::Char('r')
+            if is_ctrl
+                && s.input_mode == p2p_app::InputMode::Chat
+                && matches!(
+                    tab,
+                    p2p_app::tui_tabs::TabContent::Chat
+                        | p2p_app::tui_tabs::TabContent::Direct(_)
+                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+                ) =>
+        {
+            if let Some(reply) = s.begin_reply(&tab) {
+                p2plog_debug(format!("Replying to {}", reply.msg_id));
+            }
         }
         // `Delete` arms local-only deletion of the newest sent message in a
         // chat. Text editors and the Contacts/Settings/Groups tabs don't own a

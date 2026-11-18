@@ -305,6 +305,7 @@ fn insert_message_with_attachment(file_id: &str, json: &str) {
         is_direct: 0,
         target_peer: None,
         msg_id: Some(format!("gc-{file_id}")),
+        reply_to_json: None,
         sent_at: None,
         sender_nickname: None,
         attachment_json: Some(json.to_string()),

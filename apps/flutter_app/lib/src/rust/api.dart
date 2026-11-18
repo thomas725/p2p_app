@@ -9,6 +9,7 @@ import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'reply.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
 ///
@@ -159,9 +160,11 @@ Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
 Future<ChatMessage> saveOutgoingBroadcast({
   required String content,
   String? attachmentPath,
+  ReplyRef? replyTo,
 }) => RustLib.instance.api.crateApiSaveOutgoingBroadcast(
   content: content,
   attachmentPath: attachmentPath,
+  replyTo: replyTo,
 );
 
 /// Save an outgoing DM to DB and send via swarm. `attachment_path`, when
@@ -175,10 +178,12 @@ Future<ChatMessage> saveOutgoingDm({
   required String peerId,
   required String content,
   String? attachmentPath,
+  ReplyRef? replyTo,
 }) => RustLib.instance.api.crateApiSaveOutgoingDm(
   peerId: peerId,
   content: content,
   attachmentPath: attachmentPath,
+  replyTo: replyTo,
 );
 
 /// Save an incoming message (broadcast or DM) to the database.
@@ -194,12 +199,16 @@ Future<ChatMessage> saveIncomingMessage({
   required bool isDirect,
   String? nickname,
   String? latency,
+  String? msgId,
+  ReplyRef? replyTo,
 }) => RustLib.instance.api.crateApiSaveIncomingMessage(
   content: content,
   peerId: peerId,
   isDirect: isDirect,
   nickname: nickname,
   latency: latency,
+  msgId: msgId,
+  replyTo: replyTo,
 );
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).
@@ -275,10 +284,12 @@ Future<MobileGroupMessage> saveOutgoingGroup({
   required String groupId,
   required String content,
   String? attachmentPath,
+  ReplyRef? replyTo,
 }) => RustLib.instance.api.crateApiSaveOutgoingGroup(
   groupId: groupId,
   content: content,
   attachmentPath: attachmentPath,
+  replyTo: replyTo,
 );
 
 /// Accept a pending group invite: materialize the group locally, persist

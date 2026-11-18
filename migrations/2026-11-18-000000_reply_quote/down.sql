@@ -1,0 +1,2 @@
+-- Additive, nullable columns are harmless to older builds; leave them in place
+-- on downgrade just as the local-only tombstone columns are.

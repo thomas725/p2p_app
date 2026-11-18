@@ -7,6 +7,7 @@
 use crate::files::MessageAttachment;
 use crate::network::NetworkSize;
 use crate::p2plog_debug;
+use crate::reply::ReplyRef;
 use libp2p::gossipsub;
 use libp2p::ping;
 use libp2p::request_response;
@@ -60,7 +61,7 @@ pub struct DirectMessage {
     pub nickname: Option<String>,
     /// Optional unique identifier for this message
     pub msg_id: Option<String>,
-    /// Optional ID of the message this is acknowledging/replying to
+    /// Receipt target (delivery acknowledgment only — never a reply id, US-006)
     pub ack_for: Option<String>,
     /// Optional timestamp of when this message was received
     pub received_at: Option<f64>,
@@ -69,6 +70,8 @@ pub struct DirectMessage {
     /// Optional attachment descriptor (files lane §12); the bytes are fetched
     /// separately over the file lane by the receiver.
     pub attachment: Option<MessageAttachment>,
+    /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+    pub reply_to: Option<ReplyRef>,
     /// Optional end-to-end sealed body (US-042). When present the receiver
     /// opens it and uses the decrypted `content`/`nickname`/`attachment`
     /// instead of the (empty) plaintext fields above.
@@ -89,6 +92,8 @@ pub struct BroadcastMessage {
     pub msg_id: Option<String>,
     /// Optional attachment descriptor (files lane §12)
     pub attachment: Option<MessageAttachment>,
+    /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+    pub reply_to: Option<ReplyRef>,
 }
 
 /// Group message content traveling over a per-group gossipsub topic
@@ -107,6 +112,8 @@ pub struct GroupMessage {
     pub msg_id: Option<String>,
     /// Optional attachment descriptor (files lane §12)
     pub attachment: Option<MessageAttachment>,
+    /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+    pub reply_to: Option<ReplyRef>,
 }
 
 /// Backfill request sent on a group's backfill topic on (re)subscribe

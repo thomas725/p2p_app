@@ -15,6 +15,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
 /// request frame on the WebSocket (`{id, method, params}` answered by
@@ -32,9 +33,8 @@ class HttpNodeApi implements NodeApi {
   /// Connect to the node server serving this page (or [origin]). Auth is
   /// HTTP Basic: the browser holds the session cookie minted by the login and
   /// attaches it to both the WebSocket handshake and the attachment routes.
-  factory HttpNodeApi.toServer({Uri? origin}) => HttpNodeApi(
-    connect: () => WsRemoteTransport.connect(origin: origin),
-  );
+  factory HttpNodeApi.toServer({Uri? origin}) =>
+      HttpNodeApi(connect: () => WsRemoteTransport.connect(origin: origin));
 
   final Future<RemoteTransport> Function() _connect;
   RemoteTransport? _transport;
@@ -179,6 +179,26 @@ class HttpNodeApi implements NodeApi {
   static List<T> _list<T>(dynamic raw, T Function(dynamic) convert) =>
       (raw as List<dynamic>).map(convert).toList();
 
+  /// Reply snapshots use Rust's `serde(rename_all = "camelCase")` shape on the
+  /// wire; a missing `replyTo` means an ordinary (non-reply) message.
+  static ReplyRef? replyFromJson(dynamic raw) {
+    if (raw == null) return null;
+    final m = raw as Map<String, dynamic>;
+    return ReplyRef(
+      msgId: m['msgId'] as String,
+      sender: m['sender'] as String,
+      preview: m['preview'] as String,
+    );
+  }
+
+  static Map<String, dynamic>? replyToJson(ReplyRef? reply) => reply == null
+      ? null
+      : {
+          'msgId': reply.msgId,
+          'sender': reply.sender,
+          'preview': reply.preview,
+        };
+
   /// `attachment` travels in both directions: messages carry the frb projection
   /// of the descriptor (camelCase, incl. Rust's `sizeLabel`), uploads hand back
   /// the server's snake_case `files::MessageAttachment` map, which
@@ -190,6 +210,7 @@ class HttpNodeApi implements NodeApi {
       name: m['name'] as String,
       size: PlatformInt64Util.from(m['size'] as int),
       sizeLabel: m['sizeLabel'] as String,
+      chip: m['chip'] as String,
       mime: m['mime'] as String?,
     );
   }
@@ -204,6 +225,7 @@ class HttpNodeApi implements NodeApi {
       targetPeer: m['targetPeer'] as String?,
       sent: m['sent'] as bool,
       msgId: m['msgId'] as String?,
+      replyTo: replyFromJson(m['replyTo']),
       sentAt: m['sentAt'] as String?,
       createdAt: m['createdAt'] as String,
       senderNickname: m['senderNickname'] as String?,
@@ -234,6 +256,7 @@ class HttpNodeApi implements NodeApi {
       peerId: m['peerId'] as String?,
       sent: m['sent'] as bool,
       msgId: m['msgId'] as String?,
+      replyTo: replyFromJson(m['replyTo']),
       sentAt: m['sentAt'] as String?,
       createdAt: m['createdAt'] as String,
       senderNickname: m['senderNickname'] as String?,
@@ -280,7 +303,10 @@ class HttpNodeApi implements NodeApi {
       natProbeFailures: m['natProbeFailures'] as int,
       holePunchAttempts: m['holePunchAttempts'] as int,
       holePunchSuccesses: m['holePunchSuccesses'] as int,
-      relayReservations: _list(m['relayReservations'], (item) => item as String),
+      relayReservations: _list(
+        m['relayReservations'],
+        (item) => item as String,
+      ),
       relayStatus: m['relayStatus'] as String,
       dhtMode: m['dhtMode'] as String,
       dhtConnected: m['dhtConnected'] as bool,
@@ -407,6 +433,7 @@ class HttpNodeApi implements NodeApi {
       latency: m['latency'] as String?,
       nickname: m['nickname'] as String?,
       msgId: m['msgId'] as String?,
+      replyTo: replyFromJson(m['replyTo']),
       address: m['address'] as String?,
       groupId: m['groupId'] as String?,
       devicePubkey: pubkey == null
@@ -438,9 +465,7 @@ class HttpNodeApi implements NodeApi {
 
   @override
   Future<PeerQuality> getPeerQuality(String peerId) async =>
-      peerQualityFromJson(
-        await _call('getPeerQuality', {'peerId': peerId}),
-      );
+      peerQualityFromJson(await _call('getPeerQuality', {'peerId': peerId}));
 
   @override
   Future<String> startNode({required String dbPath}) async =>
@@ -481,13 +506,8 @@ class HttpNodeApi implements NodeApi {
   );
 
   @override
-  Future<void> deleteMessage({
-    required int messageId,
-    required bool isGroup,
-  }) => _call('deleteMessage', {
-    'messageId': messageId,
-    'isGroup': isGroup,
-  });
+  Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
+      _call('deleteMessage', {'messageId': messageId, 'isGroup': isGroup});
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
@@ -495,6 +515,7 @@ class HttpNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) async {
     Map<String, dynamic>? attachment;
     if (attachmentBytes != null) {
@@ -506,6 +527,7 @@ class HttpNodeApi implements NodeApi {
         'content': content,
         'attachmentPath': ?attachmentPath,
         'attachment': ?attachment,
+        'replyTo': ?replyToJson(replyTo),
       }),
     );
   }
@@ -517,6 +539,7 @@ class HttpNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) async {
     Map<String, dynamic>? attachment;
     if (attachmentBytes != null) {
@@ -529,6 +552,7 @@ class HttpNodeApi implements NodeApi {
         'content': content,
         'attachmentPath': ?attachmentPath,
         'attachment': ?attachment,
+        'replyTo': ?replyToJson(replyTo),
       }),
     );
   }
@@ -540,6 +564,8 @@ class HttpNodeApi implements NodeApi {
     required bool isDirect,
     String? nickname,
     String? latency,
+    String? msgId,
+    ReplyRef? replyTo,
   }) async => chatMessageFromJson(
     await _call('saveIncomingMessage', {
       'content': content,
@@ -547,6 +573,8 @@ class HttpNodeApi implements NodeApi {
       'isDirect': isDirect,
       'nickname': ?nickname,
       'latency': ?latency,
+      'msgId': ?msgId,
+      'replyTo': ?replyToJson(replyTo),
     }),
   );
 
@@ -619,6 +647,7 @@ class HttpNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) async {
     Map<String, dynamic>? attachment;
     if (attachmentBytes != null) {
@@ -631,6 +660,7 @@ class HttpNodeApi implements NodeApi {
         'content': content,
         'attachmentPath': ?attachmentPath,
         'attachment': ?attachment,
+        'replyTo': ?replyToJson(replyTo),
       }),
     );
   }
@@ -653,10 +683,7 @@ class HttpNodeApi implements NodeApi {
   Future<void> setPeerLocalNickname({
     required String peerId,
     required String nickname,
-  }) => _call('setPeerLocalNickname', {
-    'peerId': peerId,
-    'nickname': nickname,
-  });
+  }) => _call('setPeerLocalNickname', {'peerId': peerId, 'nickname': nickname});
 
   @override
   Future<bool> validateNickname({required String nickname}) async =>
@@ -669,12 +696,15 @@ class HttpNodeApi implements NodeApi {
   // ── Identity / device binding ─────────────────────────────────────────────
 
   @override
-  Future<String?> getMyUserId() async =>
-      await _call('getMyUserId') as String?;
+  Future<String?> getMyUserId() async => await _call('getMyUserId') as String?;
 
   @override
-  Future<List<MobileDeviceInfo>> getUserDevices({required String userId}) async =>
-      _list(await _call('getUserDevices', {'userId': userId}), deviceInfoFromJson);
+  Future<List<MobileDeviceInfo>> getUserDevices({
+    required String userId,
+  }) async => _list(
+    await _call('getUserDevices', {'userId': userId}),
+    deviceInfoFromJson,
+  );
 
   @override
   Future<void> sendDeviceBindingIntro({required String peerId}) =>
@@ -692,16 +722,12 @@ class HttpNodeApi implements NodeApi {
   // ── Peers + contacts ──────────────────────────────────────────────────────
 
   @override
-  Future<List<PeerWithStats>> getPeersWithStats() async => _list(
-    await _call('getPeersWithStats'),
-    peerWithStatsFromJson,
-  );
+  Future<List<PeerWithStats>> getPeersWithStats() async =>
+      _list(await _call('getPeersWithStats'), peerWithStatsFromJson);
 
   @override
-  Future<List<MobileContactRow>> getContactsWithStats() async => _list(
-    await _call('getContactsWithStats'),
-    contactRowFromJson,
-  );
+  Future<List<MobileContactRow>> getContactsWithStats() async =>
+      _list(await _call('getContactsWithStats'), contactRowFromJson);
 
   @override
   Future<List<ContactSortInput>> sortContacts({
@@ -728,7 +754,11 @@ class HttpNodeApi implements NodeApi {
     required String peerId,
     required String callId,
     required String kind,
-  }) => _call('sendCallSignal', {'peerId': peerId, 'callId': callId, 'kind': kind});
+  }) => _call('sendCallSignal', {
+    'peerId': peerId,
+    'callId': callId,
+    'kind': kind,
+  });
 
   // ── Pure UI helpers (Rust is the single source) ───────────────────────────
 
@@ -747,11 +777,13 @@ class HttpNodeApi implements NodeApi {
     required int scrollOffset,
     required int total,
     required int visible,
-  }) async => await _call('isAtBottom', {
-    'scrollOffset': scrollOffset,
-    'total': total,
-    'visible': visible,
-  }) as bool;
+  }) async =>
+      await _call('isAtBottom', {
+            'scrollOffset': scrollOffset,
+            'total': total,
+            'visible': visible,
+          })
+          as bool;
 
   // ── Attachments ───────────────────────────────────────────────────────────
 

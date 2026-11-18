@@ -64,6 +64,7 @@ fn direct_message_json_roundtrip() {
         received_at: Some(3.4),
         group_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: None,
     };
     let json = serde_json::to_string(&dm).expect("serialize");

@@ -443,6 +443,7 @@ fn dm_msg(
         is_direct: 1,
         target_peer: Some("me".to_string()),
         msg_id: None,
+        reply_to_json: None,
         sent_at: None,
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
@@ -453,7 +454,7 @@ fn dm_msg(
 
 #[test]
 fn test_format_dm_messages_from_db_empty() {
-    let (result, db_ids) =
+    let (result, _, db_ids) =
         super::format_dm_messages_from_db(&[], "Me", &HashMap::new(), &HashMap::new());
     assert!(result.is_empty());
     assert!(db_ids.is_empty());
@@ -464,7 +465,7 @@ fn test_format_dm_messages_from_db_outgoing() {
     let mut outgoing = dm_msg("hello", None, None, "2024-01-01 12:00:00");
     outgoing.id = 4;
     outgoing.sent = 1;
-    let (result, db_ids) =
+    let (result, _, db_ids) =
         super::format_dm_messages_from_db(&[outgoing], "Me", &HashMap::new(), &HashMap::new());
     assert_eq!(result.len(), 1);
     assert!(result[0].contains("[Me]"));
@@ -476,7 +477,7 @@ fn test_format_dm_messages_from_db_outgoing() {
 fn test_format_dm_messages_from_db_incoming_uses_display_name() {
     let messages = [dm_msg("hi", Some("peer-abc"), None, "2024-01-01 12:00:00")];
     let local = HashMap::from([("peer-abc".to_string(), "Alice".to_string())]);
-    let (result, db_ids) =
+    let (result, _, db_ids) =
         super::format_dm_messages_from_db(&messages, "Me", &local, &HashMap::new());
     assert!(result[0].contains("[Alice]"));
     assert!(result[0].contains("hi"));
@@ -489,7 +490,7 @@ fn test_format_dm_messages_from_db_reverses_newest_first() {
         dm_msg("second", Some("p1"), None, "2024-01-01 12:00:01"),
         dm_msg("first", Some("p1"), None, "2024-01-01 12:00:00"),
     ];
-    let (result, db_ids) =
+    let (result, _, db_ids) =
         super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
     assert_eq!(result.len(), 2);
     assert_eq!(db_ids, VecDeque::from([None, None]));
@@ -506,7 +507,7 @@ fn test_format_dm_messages_from_db_reverses_newest_first() {
 #[test]
 fn test_format_dm_messages_from_db_self_nick_override() {
     let messages = [dm_msg("my msg", None, None, "2024-01-01 12:00:00")];
-    let (result, _) = super::format_dm_messages_from_db(
+    let (result, _, _) = super::format_dm_messages_from_db(
         &messages,
         "CustomNick",
         &HashMap::new(),
@@ -522,13 +523,38 @@ fn test_format_dm_messages_from_db_renders_attachment_chip() {
     msg.attachment_json = Some(
         "{\"file_id\":\"aabb\",\"name\":\"notes.txt\",\"size\":2048,\"mime\":null}".to_string(),
     );
-    let (result, _) =
+    let (result, _, _) =
         super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
     assert!(
         result[0].contains("[file] notes.txt (2 KiB)"),
         "attachment-only row must still show the chip: {}",
         result[0]
     );
+}
+
+#[test]
+fn test_format_dm_messages_from_db_restores_quote_and_wire_id() {
+    let mut msg = dm_msg(
+        "reply body",
+        Some("p1"),
+        Some("Alice"),
+        "2024-01-01 12:00:00",
+    );
+    msg.msg_id = Some("dm-reply".to_string());
+    msg.reply_to_json = p2p_app::reply::encode(&p2p_app::ReplyRef::new(
+        "dm-original".to_string(),
+        "Bob (abc)".to_string(),
+        "earlier text",
+    ));
+    let (messages, ids, _) =
+        super::format_dm_messages_from_db(&[msg], "Me", &HashMap::new(), &HashMap::new());
+    assert_eq!(ids, VecDeque::from([Some("dm-reply".to_string())]));
+    assert!(
+        messages[0].starts_with("↳ Bob (abc): earlier text\n"),
+        "reloaded rows render the stored snapshot: {}",
+        messages[0]
+    );
+    assert!(messages[0].contains("reply body"));
 }
 
 fn group_msg(
@@ -546,6 +572,7 @@ fn group_msg(
         peer_id: peer_id.map(String::from),
         sent,
         msg_id: None,
+        reply_to_json: None,
         sent_at: None,
         sender_nickname: None,
         attachment_json: None,

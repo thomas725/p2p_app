@@ -195,6 +195,12 @@ pub struct AppState {
     // Ad-hoc UI popup (used for receipt timing details, etc.)
     pub popup: Option<String>,
 
+    /// Per-conversation reply drafts (US-006). Keyed by `chat`, `dm:<peer>` or
+    /// `group:<id>` so a draft survives switching tabs but never leaks into a
+    /// different conversation. `Ctrl+R` captures the newest row; sending or
+    /// `Esc` consumes/clears it.
+    pub reply_drafts: HashMap<String, p2p_app::ReplyRef>,
+
     /// Incoming device-binding intro awaiting the account holder's decision
     /// (TUI user decision: like the mobile dialog, accepting is explicit — a
     /// confirmed keypress, never automatic). Rendered as a popup; 'a' accepts,
@@ -279,9 +285,10 @@ fn index_of_db_id(ids: &VecDeque<Option<i32>>, id: i32) -> Option<usize> {
     ids.iter().rposition(|slot| *slot == Some(id))
 }
 
-/// Short single-line preview for a confirmation popup.
+/// Short single-line preview for a confirmation popup. Quoted headers are
+/// skipped so the popup previews the message body, not its reply banner.
 fn short_preview(text: &str) -> String {
-    let trimmed = text.trim();
+    let trimmed = text.rsplit('\n').next().unwrap_or(text).trim();
     let mut preview: String = trimmed.chars().take(72).collect();
     if trimmed.chars().count() > 72 {
         preview.push('\u{2026}');
@@ -491,6 +498,90 @@ impl AppState {
         Some((id, short_preview(text)))
     }
 
+    /// Key of the reply draft belonging to a tab. `None` for tabs without a
+    /// message composer, so a draft can never leak into another conversation.
+    #[must_use]
+    pub fn reply_key(tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        use p2p_app::tui_tabs::TabContent;
+        match tab {
+            TabContent::Chat => Some("chat".to_string()),
+            TabContent::Direct(peer_id) => Some(format!("dm:{peer_id}")),
+            TabContent::GroupChat(group_id) => Some(format!("group:{group_id}")),
+            _ => None,
+        }
+    }
+
+    /// Capture the newest replyable message in `tab` as a reply draft.
+    ///
+    /// The source must have a stable wire id; otherwise the quote could not be
+    /// correlated by the receiver. Attached files render as their canonical
+    /// chip text, which is already part of the transcript line.
+    pub fn begin_reply(
+        &mut self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<p2p_app::ReplyRef> {
+        use p2p_app::tui_tabs::TabContent;
+
+        let key = Self::reply_key(tab)?;
+        let (line, id) = match tab {
+            TabContent::Chat => {
+                let idx = self
+                    .message_ids
+                    .iter()
+                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                (
+                    self.messages.get(idx)?.text.as_str(),
+                    self.message_ids.get(idx)?.as_deref()?,
+                )
+            }
+            TabContent::Direct(peer_id) => {
+                let ids = self.dm_message_ids.get(peer_id)?;
+                let idx = ids
+                    .iter()
+                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                (
+                    self.dm_messages.get(peer_id)?.get(idx)?.as_str(),
+                    ids.get(idx)?.as_deref()?,
+                )
+            }
+            TabContent::GroupChat(group_id) => {
+                let ids = self.group_message_ids.get(group_id)?;
+                let idx = ids
+                    .iter()
+                    .rposition(|id| id.as_deref().is_some_and(|id| !id.trim().is_empty()))?;
+                (
+                    self.group_messages.get(group_id)?.get(idx)?.as_str(),
+                    ids.get(idx)?.as_deref()?,
+                )
+            }
+            _ => return None,
+        };
+        let reply = p2p_app::reply::from_display_line(line, id)?;
+        self.reply_drafts.insert(key, reply.clone());
+        Some(reply)
+    }
+
+    /// Draft currently attached to `tab`, if any.
+    #[must_use]
+    pub fn reply_draft(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<&p2p_app::ReplyRef> {
+        let key = Self::reply_key(tab)?;
+        self.reply_drafts.get(key.as_str())
+    }
+
+    /// Consume the draft for `tab` and return it (used just before sending).
+    pub fn take_reply(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> Option<p2p_app::ReplyRef> {
+        let key = Self::reply_key(tab)?;
+        self.reply_drafts.remove(key.as_str())
+    }
+
+    /// Clear the draft for `tab`; true when one was armed.
+    pub fn clear_reply(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> bool {
+        let Some(key) = Self::reply_key(tab) else {
+            return false;
+        };
+        self.reply_drafts.remove(key.as_str()).is_some()
+    }
+
     /// Remove the prompted row from the conversation's aligned queues after the
     /// DB tombstone succeeded. Only local state changes — no swarm command.
     /// Returns false (leaving state untouched) if the row is no longer present.
@@ -569,6 +660,7 @@ impl AppState {
         self.group_message_db_ids.remove(group_id);
         self.group_message_peer_ids.remove(group_id);
         self.group_scroll_state.remove(group_id);
+        self.reply_drafts.remove(&format!("group:{group_id}"));
         if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
             if closed == self.active_tab {
                 // Leaving from the group's own chat tab: back to the list.
@@ -885,6 +977,7 @@ impl AppState {
             topic_str,
             editing_nickname_peer: None,
             popup: None,
+            reply_drafts: HashMap::new(),
             device_binding_prompt: None,
             group_leave_prompt: None,
             delete_message_prompt: None,
@@ -946,8 +1039,15 @@ fn format_messages_from_db(
             (None, None) => format!("[{own_nickname}]"),
         };
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        let reply = msg
+            .reply_to_json
+            .as_deref()
+            .and_then(p2p_app::reply::decode);
         messages.push_back(p2p_app::DisplayMessage {
-            text: format!("{ts} {sender} {body}"),
+            text: p2p_app::reply::with_quoted_header(
+                format!("{ts} {sender} {body}"),
+                reply.as_ref(),
+            ),
             sender_peer_id: msg.peer_id.clone(),
         });
         message_ids.push_back(msg.msg_id.clone());

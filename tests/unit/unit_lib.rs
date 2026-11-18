@@ -120,6 +120,7 @@ fn test_direct_message_serialization() {
         received_at: None,
         group_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: None,
     };
     let json = serde_json::to_string(&dm).unwrap();
@@ -136,6 +137,7 @@ fn test_broadcast_message_serialization() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        reply_to: None,
     };
     let json = serde_json::to_string(&bm).unwrap();
     assert!(json.contains("World"));

@@ -109,6 +109,13 @@ Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the
 bytes move over the separate `file_transfer` lane.
 
+Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
+message payload rather than a foreign key. `src/reply.rs` owns the bounded
+preview and the `↳ {sender}: {preview}` header used by all three frontends; the
+snapshot survives local tombstones and is persisted in `reply_to_json` so
+reloaded rows still render their quote. Incoming wire ids are stored in
+`msg_id` so those rows can be replied to later.
+
 ### Network diagnostics
 
 `src/net_diag.rs` is the single live-state store behind the Settings-tab

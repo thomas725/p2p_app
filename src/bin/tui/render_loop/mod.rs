@@ -11,7 +11,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
 };
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::Stdout;
 use tokio::sync::mpsc;
 
@@ -86,7 +86,6 @@ fn call_overlay_text(state: &AppState) -> Option<String> {
     }
 }
 
-/// Convert `AppState` to `TuiRenderState` for library rendering
 /// Project the broadcast-chat `DisplayMessage` history into the text + sender
 /// columns the render layer consumes.
 fn message_texts(
@@ -115,9 +114,18 @@ fn last_disconnection(state: &AppState) -> (Option<f64>, Option<String>) {
     }
 }
 
+/// Clone a keyed chat-log map so the render layer can outlive the state borrow.
+fn cloned_log<V: Clone>(log: &HashMap<String, V>) -> BTreeMap<String, V> {
+    log.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+}
+
 /// Convert `AppState` to `TuiRenderState` for library rendering
 fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
     let tab_titles = state.dynamic_tabs.all_titles();
+    let active_tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    let reply_preview = state
+        .reply_draft(&active_tab_content)
+        .map(p2p_app::reply::quoted_header);
     let (messages, message_peer_ids) = message_texts(&state.messages);
     let (last_connection_lost, last_connection_peer) = last_disconnection(state);
     let peers = render_peer_records(&state.peers);
@@ -139,16 +147,8 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
             .connected_peer_ids()
             .map(str::to_owned)
             .collect(),
-        dm_messages: state
-            .dm_messages
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        dm_message_ids: state
-            .dm_message_ids
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
+        dm_messages: cloned_log(&state.dm_messages),
+        dm_message_ids: cloned_log(&state.dm_message_ids),
         dm_receipts: state.dm_receipts.clone(),
         input_text: state.chat_input.lines().join("\n"),
         log_messages: get_tui_logs().into_iter().collect(),
@@ -158,42 +158,19 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         mouse_capture: state.env.mouse_capture,
         kitty_keyboard_active: state.env.kitty_keyboard_active,
         popup: render_popup_text(state),
+        reply_preview,
         chat_scroll_offset: state.chat_scroll_offset,
         auto_scroll: state.auto_scroll,
         chat_unread_count: state.chat_unread_count,
         log_scroll_offset: state.log_scroll_offset,
 
-        dm_scroll_state: state
-            .dm_scroll_state
-            .iter()
-            .map(|(k, v)| (k.clone(), *v))
-            .collect(),
-        dm_broadcast_scroll_state: state
-            .dm_broadcast_scroll_state
-            .iter()
-            .map(|(k, v)| (k.clone(), *v))
-            .collect(),
+        dm_scroll_state: cloned_log(&state.dm_scroll_state),
+        dm_broadcast_scroll_state: cloned_log(&state.dm_broadcast_scroll_state),
         group_summaries: state.group_summaries.clone(),
-        group_messages: state
-            .group_messages
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        group_message_ids: state
-            .group_message_ids
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        group_message_peer_ids: state
-            .group_message_peer_ids
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect(),
-        group_scroll_state: state
-            .group_scroll_state
-            .iter()
-            .map(|(k, v)| (k.clone(), *v))
-            .collect(),
+        group_messages: cloned_log(&state.group_messages),
+        group_message_ids: cloned_log(&state.group_message_ids),
+        group_message_peer_ids: cloned_log(&state.group_message_peer_ids),
+        group_scroll_state: cloned_log(&state.group_scroll_state),
         group_selection: state.group_selection,
 
         peer_selection: state.peer_selection,

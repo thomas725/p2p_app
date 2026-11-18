@@ -28,6 +28,8 @@ pub struct GroupMessageMeta {
     pub sent_at: Option<f64>,
     /// Optional attachment descriptor (files lane §12)
     pub attachment: Option<crate::files::MessageAttachment>,
+    /// Immutable reply snapshot (US-006), stored as `reply_to_json`.
+    pub reply_to: Option<crate::ReplyRef>,
 }
 
 // ── Topic helpers ──────────────────────────────────────────────────────────
@@ -319,12 +321,14 @@ pub fn save_outgoing_group_message(
     meta: GroupMessageMeta,
 ) -> color_eyre::Result<GroupMessage> {
     let conn = &mut crate::sqlite_connect()?;
+    let reply_to_json = meta.reply_to.as_ref().and_then(crate::reply::encode);
     let new_msg = NewGroupMessage {
         group_id: group_id.to_string(),
         content: content.to_string(),
         peer_id: None,
         sent: 1,
         msg_id: meta.msg_id,
+        reply_to_json,
         sent_at: meta.sent_at,
         sender_nickname: meta.sender_nickname,
         attachment_json: meta
@@ -337,6 +341,28 @@ pub fn save_outgoing_group_message(
         .returning(GroupMessage::as_returning())
         .get_result(conn)
         .wrap_err("failed to save group message")
+}
+
+/// Stable id assigned to an incoming group row.
+///
+/// Wire ids are kept as-is; a message that arrived without one uses the same
+/// synthetic `nil:` key the insert does, so live events and reloaded history
+/// expose the same replyable id even for a duplicate delivery.
+#[must_use]
+pub fn incoming_group_msg_id(
+    group_id: &str,
+    peer_id: &str,
+    content: &str,
+    sent_at: Option<f64>,
+    wire_msg_id: Option<String>,
+) -> String {
+    wire_msg_id.unwrap_or_else(|| {
+        let key = fnv1a_hex(&format!(
+            "{group_id}|{peer_id}|{}|{content}",
+            sent_at.unwrap_or(0.0)
+        ));
+        format!("nil:{key}")
+    })
 }
 
 /// Save an incoming group message, deduplicating mesh re-deliveries on
@@ -356,19 +382,15 @@ pub fn save_incoming_group_message(
     meta: GroupMessageMeta,
 ) -> color_eyre::Result<Option<GroupMessage>> {
     let conn = &mut crate::sqlite_connect()?;
-    let msg_id = meta.msg_id.unwrap_or_else(|| {
-        let key = fnv1a_hex(&format!(
-            "{group_id}|{peer_id}|{}|{content}",
-            meta.sent_at.unwrap_or(0.0)
-        ));
-        format!("nil:{key}")
-    });
+    let msg_id = incoming_group_msg_id(group_id, peer_id, content, meta.sent_at, meta.msg_id);
+    let reply_to_json = meta.reply_to.as_ref().and_then(crate::reply::encode);
     let new_msg = NewGroupMessage {
         group_id: group_id.to_string(),
         content: content.to_string(),
         peer_id: Some(peer_id.to_string()),
         sent: 0,
         msg_id: Some(msg_id),
+        reply_to_json,
         sent_at: meta.sent_at,
         sender_nickname: meta.sender_nickname,
         attachment_json: meta

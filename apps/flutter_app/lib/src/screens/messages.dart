@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/util/reply.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Shared chat-list behavior (at-bottom tracking, unread counting, selection)
@@ -211,8 +213,7 @@ Future<int> _copyMessages(
               (msg.peerId!.length >= 12
                   ? msg.peerId!.substring(0, 12)
                   : msg.peerId!));
-    final time =
-        msg.sentAt ?? await nodeApi.formatTimeHhmm(dt: msg.createdAt);
+    final time = msg.sentAt ?? await nodeApi.formatTimeHhmm(dt: msg.createdAt);
     buf.writeln(peerName);
     buf.writeln(msg.content);
     buf.writeln(time);
@@ -234,6 +235,13 @@ Future<int> _copyMessages(
 // Shared chat UI: scrollable body (with overlays) + input bar
 // ────────────────────────────────────────────────────────────────────────────
 
+/// Index of the outgoing message a `receipt` acknowledges, or -1 when the id
+/// is unknown here. Incoming rows persist wire ids too, so an echoed id must
+/// never flip the delivery tick of an inbound message (mirrors Rust's
+/// `mark_confirmed`).
+int confirmedMessageIndex(List<ChatMessage> messages, String msgId) =>
+    messages.indexWhere((m) => m.sent && m.msgId == msgId);
+
 /// The scrollable message list with its overlays — tap-selection toolbar or the
 /// unread "jump to latest" banner — shared by the broadcast tab, DM chat, and
 /// group chat.
@@ -251,6 +259,7 @@ class MessageChatBody extends StatelessWidget {
     required this.onCancelSelection,
     required this.onCopySelected,
     required this.onDeleteSelected,
+    this.onReply,
     required this.unreadCount,
     required this.unreadLabel,
     required this.onJumpToBottom,
@@ -269,6 +278,10 @@ class MessageChatBody extends StatelessWidget {
   final VoidCallback onCancelSelection;
   final VoidCallback onCopySelected;
   final VoidCallback onDeleteSelected;
+
+  /// Called with the selected message's index when Reply is tapped. The action
+  /// is hidden unless exactly one message with a wire id is selected.
+  final void Function(int)? onReply;
   final int unreadCount;
   final String unreadLabel;
   final VoidCallback onJumpToBottom;
@@ -280,6 +293,14 @@ class MessageChatBody extends StatelessWidget {
     final canDelete = selectedIndices.any(
       (i) => i >= 0 && i < messages.length && messages[i].sent,
     );
+    final int? replyIndex =
+        selectedIndices.length == 1 &&
+            onReply != null &&
+            selectedIndices.first >= 0 &&
+            selectedIndices.first < messages.length &&
+            messages[selectedIndices.first].msgId?.isNotEmpty == true
+        ? selectedIndices.first
+        : null;
     return Expanded(
       child: Stack(
         alignment: Alignment.bottomCenter,
@@ -324,6 +345,7 @@ class MessageChatBody extends StatelessWidget {
               onCopy: onCopySelected,
               canDelete: canDelete,
               onDelete: onDeleteSelected,
+              onReply: replyIndex == null ? null : () => onReply!(replyIndex),
             )
           else if (unreadCount > 0)
             Padding(
@@ -356,6 +378,7 @@ class SelectionToolbar extends StatelessWidget {
     required this.onCopy,
     required this.canDelete,
     required this.onDelete,
+    this.onReply,
   });
 
   final int count;
@@ -363,6 +386,9 @@ class SelectionToolbar extends StatelessWidget {
   final VoidCallback onCopy;
   final bool canDelete;
   final VoidCallback onDelete;
+
+  /// Null hides the Reply action (multi-select or a row without a wire id).
+  final VoidCallback? onReply;
 
   @override
   Widget build(BuildContext context) {
@@ -374,6 +400,7 @@ class SelectionToolbar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
+              key: const Key('cancel-selection'),
               onPressed: onCancel,
               icon: const Icon(Icons.close),
               tooltip: 'Cancel',
@@ -395,6 +422,13 @@ class SelectionToolbar extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Delete sent messages on this device',
             ),
+            if (onReply != null)
+              IconButton(
+                key: const Key('reply-action'),
+                onPressed: onReply,
+                icon: const Icon(Icons.reply),
+                tooltip: 'Reply',
+              ),
           ],
         ),
       ),
@@ -411,6 +445,8 @@ class MessageInputBar extends StatelessWidget {
     required this.hintText,
     required this.onSend,
     this.onPickFile,
+    this.replyTo,
+    this.onCancelReply,
   });
 
   final TextEditingController controller;
@@ -419,35 +455,80 @@ class MessageInputBar extends StatelessWidget {
   final VoidCallback onSend;
   final VoidCallback? onPickFile;
 
+  /// Frozen quote shown above the field until the user sends or cancels it.
+  final ReplyRef? replyTo;
+  final VoidCallback? onCancelReply;
+
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  enabled: enabled,
+            if (replyTo != null)
+              Container(
+                key: const Key('reply-draft'),
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: cs.outlineVariant),
                 ),
-                onSubmitted: (_) => onSend(),
+                child: Row(
+                  children: [
+                    Icon(Icons.reply, size: 16, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        quotedHeader(replyTo!),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      key: const Key('reply-cancel'),
+                      onPressed: onCancelReply,
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: 'Cancel reply',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            if (onPickFile != null)
-              IconButton(
-                onPressed: enabled ? onPickFile : null,
-                icon: const Icon(Icons.attach_file),
-                tooltip: 'Attach a file',
-              ),
-            IconButton.filled(
-              onPressed: enabled ? onSend : null,
-              icon: const Icon(Icons.send),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      hintText: hintText,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                      enabled: enabled,
+                    ),
+                    onSubmitted: (_) => onSend(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (onPickFile != null)
+                  IconButton(
+                    onPressed: enabled ? onPickFile : null,
+                    icon: const Icon(Icons.attach_file),
+                    tooltip: 'Attach a file',
+                  ),
+                IconButton.filled(
+                  onPressed: enabled ? onSend : null,
+                  icon: const Icon(Icons.send),
+                ),
+              ],
             ),
           ],
         ),
@@ -480,6 +561,9 @@ class BroadcastChat extends StatefulWidget {
     required this.onCopySelected,
     required this.onDeleteSelected,
     required this.onOpenPeerInfo,
+    this.onReply,
+    this.replyTo,
+    this.onCancelReply,
     this.onPickFile,
     this.onOpenAttachment,
   });
@@ -498,6 +582,9 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback onCopySelected;
   final VoidCallback onDeleteSelected;
   final void Function(String) onOpenPeerInfo;
+  final void Function(int)? onReply;
+  final ReplyRef? replyTo;
+  final VoidCallback? onCancelReply;
   final VoidCallback? onPickFile;
   final void Function(ChatMessage)? onOpenAttachment;
 
@@ -561,6 +648,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
           onCancelSelection: widget.onCancelSelection,
           onCopySelected: widget.onCopySelected,
           onDeleteSelected: widget.onDeleteSelected,
+          onReply: widget.onReply,
           unreadCount: widget.unreadCount,
           unreadLabel:
               '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',
@@ -574,6 +662,8 @@ class _BroadcastChatState extends State<BroadcastChat> {
           hintText: widget.serviceRunning ? 'Broadcast...' : 'Offline',
           onSend: _send,
           onPickFile: widget.onPickFile,
+          replyTo: widget.replyTo,
+          onCancelReply: widget.onCancelReply,
         ),
       ],
     );
@@ -663,8 +753,22 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (message.replyTo != null)
+                Padding(
+                  key: const Key('quote-header'),
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    quotedHeader(message.replyTo!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 11, color: fg.withAlpha(150)),
+                  ),
+                ),
               if (message.content.isNotEmpty)
-                Text(message.content, style: TextStyle(fontSize: 14, color: fg)),
+                Text(
+                  message.content,
+                  style: TextStyle(fontSize: 14, color: fg),
+                ),
               if (message.attachment != null)
                 _AttachmentChip(
                   attachment: message.attachment!,
@@ -683,7 +787,10 @@ class MessageBubble extends StatelessWidget {
                     if (message.latency != null) ...[
                       Text(
                         message.latency!,
-                        style: TextStyle(fontSize: 11, color: fg.withAlpha(130)),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: fg.withAlpha(130),
+                        ),
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -747,7 +854,9 @@ class _AttachmentChip extends StatelessWidget {
             Icon(
               Icons.insert_drive_file,
               size: 14,
-              color: onOpen != null ? Theme.of(context).colorScheme.primary : color,
+              color: onOpen != null
+                  ? Theme.of(context).colorScheme.primary
+                  : color,
             ),
             const SizedBox(width: 6),
             Flexible(

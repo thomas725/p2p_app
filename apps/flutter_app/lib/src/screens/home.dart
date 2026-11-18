@@ -9,6 +9,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/contact_list.dart';
 import 'package:p2p_app_flutter/src/screens/call_screen.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
@@ -23,6 +24,7 @@ import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
+import 'package:p2p_app_flutter/src/util/reply.dart';
 
 /// Prompt whether to bind an incoming device into this account. Shown when a
 /// peer's `device_binding_intro` arrives; accepting mints a signed claim that
@@ -77,6 +79,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int _unreadCount = 0;
   bool _selectionMode = false;
   final Set<int> _selectedIndices = {};
+
+  /// Frozen quote for the next broadcast we send (US-006). Owned by the shell
+  /// because BroadcastChat lives inside the IndexedStack; cancelling selection
+  /// never clears it — only the Reply affordance or a send does.
+  ReplyRef? _replyTo;
 
   final List<ChatMessage> _messages = [];
   List<MobilePeerRecord> _peers = [];
@@ -248,6 +255,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Capture a single selected row as the next broadcast's quote. The draft is
+  /// independent of selection mode, so clearing that mode keeps it visible.
+  void _onReply(int index) {
+    if (index < 0 || index >= _messages.length) return;
+    final draft = replyDraftFor(_messages[index]);
+    if (draft == null) return;
+    setState(() => _replyTo = draft);
+  }
+
+  void _cancelReply() => setState(() => _replyTo = null);
+
   Future<void> _copySelected() async {
     await copySelectedMessages(context, _messages, _selectedIndices);
     _cancelSelection();
@@ -388,10 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
     MobilePeerRecord peer,
     String nickname,
   ) async {
-    await nodeApi.setPeerLocalNickname(
-      peerId: peer.peerId,
-      nickname: nickname,
-    );
+    await nodeApi.setPeerLocalNickname(peerId: peer.peerId, nickname: nickname);
     await _refreshRoster();
     return _peers.where((p) => p.peerId == peer.peerId).firstOrNull;
   }
@@ -455,6 +470,8 @@ class _HomeScreenState extends State<HomeScreen> {
             event.peerId!,
             event.nickname,
             event.latency,
+            msgId: event.msgId,
+            replyTo: event.replyTo,
           );
         }
         // A nickname in the event means we just learned or updated this peer's
@@ -474,6 +491,8 @@ class _HomeScreenState extends State<HomeScreen> {
             event.peerId!,
             event.nickname,
             event.latency,
+            msgId: event.msgId,
+            replyTo: event.replyTo,
           );
         }
         if (event.nickname != null) {
@@ -565,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Flip the delivery tick on the broadcast message a `receipt` acknowledged.
   /// A no-op for unknown ids (e.g. a DM's receipt, or a message not loaded here).
   void _markConfirmed(String msgId) {
-    final idx = _messages.indexWhere((m) => m.msgId == msgId);
+    final idx = confirmedMessageIndex(_messages, msgId);
     if (idx < 0 || _messages[idx].confirmed) return;
     setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
   }
@@ -575,7 +594,11 @@ class _HomeScreenState extends State<HomeScreen> {
       // We're already in a session; decline the new ring so its caller stops
       // ringing us. Best-effort — the caller times out the invite anyway.
       try {
-        await nodeApi.sendCallSignal(peerId: peerId, callId: callId, kind: 'reject');
+        await nodeApi.sendCallSignal(
+          peerId: peerId,
+          callId: callId,
+          kind: 'reject',
+        );
       } catch (e) {
         debugPrint('Failed to decline concurrent call: $e');
       }
@@ -609,8 +632,10 @@ class _HomeScreenState extends State<HomeScreen> {
     String content,
     String peerId,
     String? nickname,
-    String? latency,
-  ) async {
+    String? latency, {
+    String? msgId,
+    ReplyRef? replyTo,
+  }) async {
     try {
       final msg = await nodeApi.saveIncomingMessage(
         content: content,
@@ -618,6 +643,8 @@ class _HomeScreenState extends State<HomeScreen> {
         isDirect: false,
         nickname: nickname,
         latency: latency,
+        msgId: msgId,
+        replyTo: replyTo,
       );
       if (mounted) {
         setState(() {
@@ -636,8 +663,10 @@ class _HomeScreenState extends State<HomeScreen> {
     String content,
     String peerId,
     String? nickname,
-    String? latency,
-  ) async {
+    String? latency, {
+    String? msgId,
+    ReplyRef? replyTo,
+  }) async {
     try {
       await nodeApi.saveIncomingMessage(
         content: content,
@@ -645,6 +674,8 @@ class _HomeScreenState extends State<HomeScreen> {
         isDirect: true,
         nickname: nickname,
         latency: latency,
+        msgId: msgId,
+        replyTo: replyTo,
       );
     } catch (e) {
       debugPrint('Failed to save incoming DM: $e');
@@ -704,9 +735,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _sendBroadcast(String text) async {
     if (text.isEmpty) return;
+    final reply = _replyTo;
     try {
-      final msg = await nodeApi.saveOutgoingBroadcast(content: text);
-      setState(() => _messages.add(msg));
+      final msg = await nodeApi.saveOutgoingBroadcast(
+        content: text,
+        replyTo: reply,
+      );
+      setState(() {
+        _messages.add(msg);
+        _replyTo = null;
+      });
       _forceScrollToBottom();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -718,14 +756,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _pickAndSendBroadcast() async {
     final picked = await pickFileOverride();
     if (picked == null) return;
+    final reply = _replyTo;
     try {
       final msg = await nodeApi.saveOutgoingBroadcast(
         content: '',
         attachmentPath: picked.path,
         attachmentBytes: picked.bytes,
         attachmentName: picked.name,
+        replyTo: reply,
       );
-      setState(() => _messages.add(msg));
+      setState(() {
+        _messages.add(msg);
+        _replyTo = null;
+      });
       _forceScrollToBottom();
     } catch (e) {
       setState(() => _error = e.toString());
@@ -888,9 +931,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) setState(() => _activeCallId = null);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start call: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to start call: $e')));
       }
     }
   }
@@ -1022,6 +1065,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onCancelSelection: _cancelSelection,
         onCopySelected: _copySelected,
         onDeleteSelected: _deleteSelected,
+        onReply: _onReply,
+        replyTo: _replyTo,
+        onCancelReply: _cancelReply,
         onOpenPeerInfo: _openPeerInfoForPeerId,
         onPickFile: _pickAndSendBroadcast,
         onOpenAttachment: _openBroadcastAttachment,

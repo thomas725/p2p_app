@@ -10,11 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_chat.dart';
 import 'package:p2p_app_flutter/src/screens/home.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/reply.dart';
 
 import '../helpers/fake_node_api.dart';
 
@@ -28,6 +30,8 @@ ChatMessage chatMessage({
   bool encrypted = false,
   String? senderNickname,
   String? latency,
+  ReplyRef? replyTo,
+  MobileAttachment? attachment,
 }) => ChatMessage(
   id: id,
   content: content,
@@ -36,10 +40,11 @@ ChatMessage chatMessage({
   targetPeer: null,
   sent: sent,
   msgId: msgId,
+  replyTo: replyTo,
   sentAt: '10:00',
   createdAt: '2026-01-01 10:00:00',
   senderNickname: senderNickname,
-  attachment: null,
+  attachment: attachment,
   encrypted: encrypted,
   confirmed: confirmed,
   latency: latency,
@@ -78,7 +83,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: MessageBubble(message: chatMessage(confirmed: true), isOwn: true),
+          body: MessageBubble(
+            message: chatMessage(confirmed: true),
+            isOwn: true,
+          ),
         ),
       ),
     );
@@ -91,10 +99,17 @@ void main() {
         home: Scaffold(
           body: Column(
             children: [
-              MessageBubble(message: chatMessage(confirmed: false), isOwn: true),
+              MessageBubble(
+                message: chatMessage(confirmed: false),
+                isOwn: true,
+              ),
               // Even a *confirmed* incoming message never shows our tick.
               MessageBubble(
-                message: chatMessage(id: 2, peerId: 'peer-abc', confirmed: true),
+                message: chatMessage(
+                  id: 2,
+                  peerId: 'peer-abc',
+                  confirmed: true,
+                ),
                 isOwn: false,
               ),
             ],
@@ -120,7 +135,11 @@ void main() {
     expect(find.byIcon(Icons.done_all), findsNothing);
 
     fake.deliverEvent(
-      const SwarmEventJson(eventType: 'receipt', peerId: 'peer-abc', msgId: 'dm-1'),
+      const SwarmEventJson(
+        eventType: 'receipt',
+        peerId: 'peer-abc',
+        msgId: 'dm-1',
+      ),
     );
     await tester.pump();
     expect(find.byIcon(Icons.done_all), findsOneWidget);
@@ -151,6 +170,21 @@ void main() {
     expect(find.byIcon(Icons.done_all), findsNothing);
   });
 
+  test('a receipt match skips inbound rows echoing an outgoing wire id', () {
+    final messages = [
+      chatMessage(
+        id: 1,
+        peerId: 'peer-abc',
+        msgId: 'dm-1',
+        sent: false,
+        senderNickname: 'Alice',
+      ),
+      chatMessage(id: 2, msgId: 'dm-1'),
+    ];
+    expect(confirmedMessageIndex(messages, 'dm-1'), 1);
+    expect(confirmedMessageIndex(messages, 'missing'), -1);
+  });
+
   testWidgets('a receipt event ticks the acknowledged broadcast', (
     tester,
   ) async {
@@ -170,7 +204,11 @@ void main() {
     expect(find.byIcon(Icons.done_all), findsNothing);
 
     fake.deliverEvent(
-      const SwarmEventJson(eventType: 'receipt', peerId: 'peer-abc', msgId: 'bc-1'),
+      const SwarmEventJson(
+        eventType: 'receipt',
+        peerId: 'peer-abc',
+        msgId: 'bc-1',
+      ),
     );
     await tester.pump();
     expect(find.byIcon(Icons.done_all), findsOneWidget);
@@ -217,14 +255,15 @@ void main() {
     // swallow the following `..setter` into the list literal's own cascade.)
     fake.loadBroadcastMessagesOverride = (_) => [];
     fake.saveIncomingMessageOverride =
-        (content, peerId, isDirect, nickname, latency) => chatMessage(
-          id: 7,
-          content: content,
-          peerId: peerId,
-          msgId: null,
-          senderNickname: nickname,
-          latency: latency,
-        );
+        (content, peerId, isDirect, nickname, latency, msgId, replyTo) =>
+            chatMessage(
+              id: 7,
+              content: content,
+              peerId: peerId,
+              msgId: null,
+              senderNickname: nickname,
+              latency: latency,
+            );
     nodeApi = fake;
 
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
@@ -243,6 +282,243 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('12ms'), findsOneWidget);
+  });
+
+  test('an attachment-only reply quotes the canonical Rust chip', () {
+    const attachment = MobileAttachment(
+      fileId: 'abc123',
+      name: 'notes.txt',
+      size: 2048,
+      sizeLabel: '2 KiB',
+      chip: '[file] notes.txt (2 KiB)',
+    );
+    final fileOnly = replyDraftFor(
+      chatMessage(
+        id: 1,
+        content: '',
+        peerId: 'peer-abc',
+        msgId: 'file-1',
+        sent: false,
+        senderNickname: 'Alice',
+        attachment: attachment,
+      ),
+    );
+    expect(
+      fileOnly,
+      const ReplyRef(
+        msgId: 'file-1',
+        sender: 'Alice',
+        preview: '[file] notes.txt (2 KiB)',
+      ),
+    );
+    final mixed = replyDraftFor(
+      chatMessage(
+        id: 2,
+        content: 'see attached',
+        peerId: 'peer-abc',
+        msgId: 'file-2',
+        sent: false,
+        senderNickname: 'Alice',
+        attachment: attachment,
+      ),
+    );
+    expect(
+      mixed?.preview,
+      'see attached [file] notes.txt (2 KiB)',
+    );
+  });
+
+  testWidgets('a reply bubble renders the canonical quoted header', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(
+                message: chatMessage(
+                  id: 1,
+                  peerId: 'peer-abc',
+                  content: 'the answer',
+                  senderNickname: 'Alice',
+                  replyTo: const ReplyRef(
+                    msgId: 'm0',
+                    sender: 'Bob',
+                    preview: 'the original question',
+                  ),
+                ),
+                isOwn: false,
+              ),
+              MessageBubble(
+                message: chatMessage(id: 2, content: 'no quote'),
+                isOwn: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.text('↳ Bob: the original question'), findsOneWidget);
+    expect(find.byKey(const Key('quote-header')), findsOneWidget);
+  });
+
+  testWidgets('a live broadcast carries its reply snapshot into the chat', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    const quote = ReplyRef(
+      msgId: 'quoted-wire-id',
+      sender: 'Bob',
+      preview: 'an earlier broadcast',
+    );
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..mobilePeerStatus = const MobilePeerStatus(
+        databaseUrl: ':memory:',
+        localPeerId: 'me',
+      )
+      ..loadBroadcastMessagesOverride = (_) => [];
+    String? seenMsgId;
+    ReplyRef? seenReply;
+    fake.saveIncomingMessageOverride =
+        (content, peerId, isDirect, nickname, latency, msgId, replyTo) {
+          seenMsgId = msgId;
+          seenReply = replyTo;
+          return chatMessage(
+            id: 7,
+            content: content,
+            peerId: peerId,
+            msgId: msgId,
+            replyTo: replyTo,
+            latency: latency,
+          );
+        };
+    nodeApi = fake;
+
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+
+    fake.deliverEvent(
+      SwarmEventJson(
+        eventType: 'broadcast',
+        peerId: 'peer-abc',
+        content: 'this answers Bob',
+        msgId: 'new-wire-id',
+        replyTo: quote,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(seenMsgId, 'new-wire-id');
+    expect(seenReply, quote);
+    expect(find.text('↳ Bob: an earlier broadcast'), findsOneWidget);
+  });
+
+  testWidgets('the reply action builds a draft and a DM send forwards it', (
+    tester,
+  ) async {
+    const expected = ReplyRef(
+      msgId: 'dm-1',
+      sender: 'Alice',
+      preview: 'hi there',
+    );
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(
+          id: 1,
+          content: 'hi there',
+          peerId: 'peer-abc',
+          msgId: 'dm-1',
+          senderNickname: 'Alice',
+          sent: false,
+        ),
+      ];
+    fake.saveOutgoingDmOverride = (peerId, content, replyTo) =>
+        chatMessage(id: 2, content: content, msgId: 'dm-2', replyTo: replyTo);
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reply-action')), findsNothing);
+
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reply-action')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('reply-action')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reply-draft')), findsOneWidget);
+    expect(find.text('↳ Alice: hi there'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'answering');
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+
+    expect(fake.dmSends, hasLength(1));
+    expect(fake.dmSends.single.content, 'answering');
+    expect(fake.dmSends.single.replyTo, expected);
+    // The quote stays on the sent bubble, but the compose affordance is gone.
+    expect(find.byKey(const Key('reply-draft')), findsNothing);
+  });
+
+  testWidgets('Reply is hidden for a selected row with an empty wire id', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(
+          id: 1,
+          content: 'no stable id',
+          peerId: 'peer-abc',
+          msgId: '',
+          sent: false,
+          senderNickname: 'Alice',
+        ),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('reply-action')), findsNothing);
+  });
+
+  testWidgets('cancelling selection keeps the draft; cancel reply drops it', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(id: 1, msgId: 'dm-1', senderNickname: 'Alice'),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('reply-action')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('cancel-selection')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reply-draft')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('reply-cancel')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reply-draft')), findsNothing);
+    expect(fake.dmSends, isEmpty);
   });
 
   testWidgets('selection delete hides an own DM locally only', (tester) async {
@@ -271,7 +547,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('hides the message only on this device'), findsOneWidget);
+    expect(
+      find.textContaining('hides the message only on this device'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
@@ -305,7 +584,9 @@ void main() {
     expect(find.text('keep me'), findsOneWidget);
   });
 
-  testWidgets('group delete marks the tombstone as a group row', (tester) async {
+  testWidgets('group delete marks the tombstone as a group row', (
+    tester,
+  ) async {
     final fake = FakeNodeApi()
       ..loadGroupMessagesOverride = (_, _) => [
         MobileGroupMessage(

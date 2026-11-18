@@ -15,6 +15,7 @@ import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
+import 'reply.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -41,6 +42,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
+
+  @protected
+  ReplyRef dco_decode_box_autoadd_reply_ref(dynamic raw);
 
   @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw);
@@ -159,6 +163,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobileAttachment? dco_decode_opt_box_autoadd_mobile_attachment(dynamic raw);
 
   @protected
+  ReplyRef? dco_decode_opt_box_autoadd_reply_ref(dynamic raw);
+
+  @protected
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
 
   @protected
@@ -172,6 +179,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerWithStats dco_decode_peer_with_stats(dynamic raw);
+
+  @protected
+  ReplyRef dco_decode_reply_ref(dynamic raw);
 
   @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
@@ -210,6 +220,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobileAttachment sse_decode_box_autoadd_mobile_attachment(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ReplyRef sse_decode_box_autoadd_reply_ref(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
@@ -358,6 +371,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ReplyRef? sse_decode_opt_box_autoadd_reply_ref(SseDeserializer deserializer);
+
+  @protected
   SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   );
@@ -373,6 +389,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerWithStats sse_decode_peer_with_stats(SseDeserializer deserializer);
+
+  @protected
+  ReplyRef sse_decode_reply_ref(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
@@ -410,6 +429,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_mobile_attachment(
     MobileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_reply_ref(
+    ReplyRef self,
     SseSerializer serializer,
   );
 
@@ -612,6 +637,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_reply_ref(
+    ReplyRef? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_swarm_event_json(
     SwarmEventJson? self,
     SseSerializer serializer,
@@ -631,6 +662,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_peer_with_stats(PeerWithStats self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_reply_ref(ReplyRef self, SseSerializer serializer);
 
   @protected
   void sse_encode_swarm_event_json(

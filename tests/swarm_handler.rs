@@ -41,6 +41,7 @@ fn test_serialize_broadcast_message_some() {
         nickname: Some("nick".to_string()),
         msg_id: Some("id".to_string()),
         attachment: None,
+        reply_to: None,
     };
     let json = serde_json::to_string(&msg);
     assert!(json.is_ok());
@@ -56,6 +57,7 @@ fn test_serialize_broadcast_message_none() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        reply_to: None,
     };
     let json = serde_json::to_string(&msg);
     assert!(json.is_ok());
@@ -329,6 +331,7 @@ async fn test_spawn_handler_broadcast_message() {
             nickname: Some("tester".to_string()),
             msg_id: Some("test-msg-1".to_string()),
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -367,6 +370,7 @@ async fn test_spawn_handler_direct_message() {
             msg_id: Some("dm-msg-1".to_string()),
             ack_for: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -409,6 +413,7 @@ async fn test_spawn_handler_nickname_only_dm_surfaces() {
             msg_id: None,
             ack_for: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -451,6 +456,7 @@ async fn test_spawn_handler_direct_message_receipt() {
             msg_id: Some("dm-ack-1".to_string()),
             ack_for: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -504,6 +510,7 @@ async fn test_spawn_handler_broadcast_receipt() {
             nickname: Some("tester".to_string()),
             msg_id: Some("bcast-ack-1".to_string()),
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -552,6 +559,7 @@ async fn test_send_dm_invalid_peer_id_is_ignored() {
             msg_id: None,
             ack_for: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -563,6 +571,7 @@ async fn test_send_dm_invalid_peer_id_is_ignored() {
             nickname: None,
             msg_id: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -586,6 +595,7 @@ async fn test_publish_with_no_peers_logs_error_and_continues() {
             nickname: None,
             msg_id: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();
@@ -597,6 +607,7 @@ async fn test_publish_with_no_peers_logs_error_and_continues() {
             nickname: None,
             msg_id: None,
             attachment: None,
+            reply_to: None,
         })
         .await
         .unwrap();

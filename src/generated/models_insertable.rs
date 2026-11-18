@@ -62,6 +62,8 @@ pub struct NewMessage {
     pub target_peer: Option<String>,
     /// Application-level unique message identifier
     pub msg_id: Option<String>,
+    /// JSON-encoded immutable reply snapshot (`None` = not a reply, US-006)
+    pub reply_to_json: Option<String>,
     /// Unix timestamp (seconds) when the message was sent
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending
@@ -118,6 +120,8 @@ pub struct NewGroupMessage {
     pub sent: i32,
     /// Application-level unique message identifier
     pub msg_id: Option<String>,
+    /// JSON-encoded immutable reply snapshot (`None` = not a reply, US-006)
+    pub reply_to_json: Option<String>,
     /// Unix timestamp (seconds) when the message was sent
     pub sent_at: Option<f64>,
     /// Nickname of the sender at the time of sending

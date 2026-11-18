@@ -187,8 +187,9 @@ pub fn delete_message(message_id: i32, is_group: bool) -> Result<(), String> {
 pub fn save_outgoing_broadcast(
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_outgoing_broadcast(content, attachment_path)
+    crate::mobile_node::save_outgoing_broadcast(content, attachment_path, reply_to)
 }
 
 /// Save an outgoing DM to DB and send via swarm. `attachment_path`, when
@@ -202,8 +203,9 @@ pub fn save_outgoing_dm(
     peer_id: String,
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_outgoing_dm(peer_id, content, attachment_path)
+    crate::mobile_node::save_outgoing_dm(peer_id, content, attachment_path, reply_to)
 }
 
 /// Save an incoming message (broadcast or DM) to the database.
@@ -219,8 +221,12 @@ pub fn save_incoming_message(
     is_direct: bool,
     nickname: Option<String>,
     latency: Option<String>,
+    msg_id: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_incoming_message(content, peer_id, is_direct, nickname, latency)
+    crate::mobile_node::save_incoming_message(
+        content, peer_id, is_direct, nickname, latency, msg_id, reply_to,
+    )
 }
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).
@@ -311,8 +317,9 @@ pub fn save_outgoing_group(
     group_id: String,
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<MobileGroupMessage, String> {
-    crate::mobile_node::save_outgoing_group(group_id, content, attachment_path)
+    crate::mobile_node::save_outgoing_group(group_id, content, attachment_path, reply_to)
 }
 
 /// Accept a pending group invite: materialize the group locally, persist

@@ -22,6 +22,7 @@ fn msg(
         is_direct: 0,
         target_peer: None,
         msg_id: msg_id.map(String::from),
+        reply_to_json: None,
         sent_at,
         sender_nickname: sender_nickname.map(String::from),
         attachment_json: None,
@@ -36,6 +37,68 @@ fn test_format_messages_from_db_empty() {
     assert!(msgs.is_empty());
     assert!(ids.is_empty());
     assert!(db_ids.is_empty());
+}
+
+#[test]
+fn test_reply_draft_capture_clear_and_consume() {
+    let mut s = test_app_state();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] the question".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("wire-1".to_string()));
+    let tab = p2p_app::tui_tabs::TabContent::Chat;
+
+    let reply = s.begin_reply(&tab).expect("newest row is replyable");
+    assert_eq!(reply.msg_id, "wire-1");
+    assert_eq!(reply.sender, "Alice");
+    assert_eq!(reply.preview, "the question");
+    assert_eq!(s.reply_draft(&tab), Some(&reply));
+
+    assert!(s.clear_reply(&tab));
+    assert!(!s.clear_reply(&tab), "clearing twice is a no-op");
+    assert!(s.reply_draft(&tab).is_none());
+
+    let again = s.begin_reply(&tab).expect("row remains replyable");
+    assert_eq!(s.take_reply(&tab), Some(again));
+    assert!(s.reply_draft(&tab).is_none(), "sending consumes the draft");
+}
+
+#[test]
+fn test_reply_drafts_are_scoped_to_a_conversation() {
+    let mut s = test_app_state();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] broadcast question".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("bc-wire".to_string()));
+    let chat = p2p_app::tui_tabs::TabContent::Chat;
+    assert!(s.begin_reply(&chat).is_some());
+
+    s.dynamic_tabs.add_dm_tab("peer-dm".to_string());
+    s.dm_messages.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from(["12:01 [Bob] dm question".to_string()]),
+    );
+    s.dm_message_ids.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from([Some("dm-wire".to_string())]),
+    );
+    let dm = p2p_app::tui_tabs::TabContent::Direct("peer-dm".to_string());
+
+    let dm_reply = s.begin_reply(&dm).expect("dm row is replyable");
+    assert_eq!(dm_reply.msg_id, "dm-wire");
+    assert_eq!(
+        s.reply_draft(&chat).map(|r| r.msg_id.as_str()),
+        Some("bc-wire")
+    );
+    assert_eq!(s.reply_draft(&dm), Some(&dm_reply));
+
+    assert!(s.clear_reply(&dm));
+    assert_eq!(
+        s.reply_draft(&chat).map(|r| r.msg_id.as_str()),
+        Some("bc-wire")
+    );
 }
 
 #[test]

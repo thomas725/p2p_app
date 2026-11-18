@@ -5,6 +5,7 @@
 
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'reply.dart';
 
 // These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
@@ -63,6 +64,9 @@ class ChatMessage {
   /// Stable wire message ID, used for dedup and delivery receipts.
   final String? msgId;
 
+  /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+  final ReplyRef? replyTo;
+
   /// Send time as `HH:MM` (from the Unix-seconds wire value), if recorded.
   final String? sentAt;
 
@@ -99,6 +103,7 @@ class ChatMessage {
     this.targetPeer,
     required this.sent,
     this.msgId,
+    this.replyTo,
     this.sentAt,
     required this.createdAt,
     this.senderNickname,
@@ -117,6 +122,7 @@ class ChatMessage {
       targetPeer.hashCode ^
       sent.hashCode ^
       msgId.hashCode ^
+      replyTo.hashCode ^
       sentAt.hashCode ^
       createdAt.hashCode ^
       senderNickname.hashCode ^
@@ -137,6 +143,7 @@ class ChatMessage {
           targetPeer == other.targetPeer &&
           sent == other.sent &&
           msgId == other.msgId &&
+          replyTo == other.replyTo &&
           sentAt == other.sentAt &&
           createdAt == other.createdAt &&
           senderNickname == other.senderNickname &&
@@ -162,6 +169,10 @@ class MobileAttachment {
   /// math of its own.
   final String sizeLabel;
 
+  /// Canonical `[file] name (size)` chip text, reused verbatim for
+  /// attachment-only reply previews so no frontend assembles it.
+  final String chip;
+
   /// Best-effort MIME type hint (`None` when unknown)
   final String? mime;
 
@@ -170,6 +181,7 @@ class MobileAttachment {
     required this.name,
     required this.size,
     required this.sizeLabel,
+    required this.chip,
     this.mime,
   });
 
@@ -179,6 +191,7 @@ class MobileAttachment {
       name.hashCode ^
       size.hashCode ^
       sizeLabel.hashCode ^
+      chip.hashCode ^
       mime.hashCode;
 
   @override
@@ -190,6 +203,7 @@ class MobileAttachment {
           name == other.name &&
           size == other.size &&
           sizeLabel == other.sizeLabel &&
+          chip == other.chip &&
           mime == other.mime;
 }
 
@@ -249,6 +263,9 @@ class MobileGroupMessage {
   /// Stable wire ID used for deduplication, if the sender supplied one.
   final String? msgId;
 
+  /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+  final ReplyRef? replyTo;
+
   /// Send time as `HH:MM`, if recorded.
   final String? sentAt;
 
@@ -267,6 +284,7 @@ class MobileGroupMessage {
     this.peerId,
     required this.sent,
     this.msgId,
+    this.replyTo,
     this.sentAt,
     required this.createdAt,
     this.senderNickname,
@@ -280,6 +298,7 @@ class MobileGroupMessage {
       peerId.hashCode ^
       sent.hashCode ^
       msgId.hashCode ^
+      replyTo.hashCode ^
       sentAt.hashCode ^
       createdAt.hashCode ^
       senderNickname.hashCode ^
@@ -295,6 +314,7 @@ class MobileGroupMessage {
           peerId == other.peerId &&
           sent == other.sent &&
           msgId == other.msgId &&
+          replyTo == other.replyTo &&
           sentAt == other.sentAt &&
           createdAt == other.createdAt &&
           senderNickname == other.senderNickname &&
@@ -375,6 +395,9 @@ class SwarmEventJson {
   /// Message ID of a receipt or delivered message, when applicable.
   final String? msgId;
 
+  /// Immutable reply snapshot on a live chat event (US-006).
+  final ReplyRef? replyTo;
+
   /// Multiaddr of a listen/external-address/discovery event.
   final String? address;
 
@@ -391,6 +414,7 @@ class SwarmEventJson {
     this.latency,
     this.nickname,
     this.msgId,
+    this.replyTo,
     this.address,
     this.groupId,
     this.devicePubkey,
@@ -404,6 +428,7 @@ class SwarmEventJson {
       latency.hashCode ^
       nickname.hashCode ^
       msgId.hashCode ^
+      replyTo.hashCode ^
       address.hashCode ^
       groupId.hashCode ^
       devicePubkey.hashCode;
@@ -419,6 +444,7 @@ class SwarmEventJson {
           latency == other.latency &&
           nickname == other.nickname &&
           msgId == other.msgId &&
+          replyTo == other.replyTo &&
           address == other.address &&
           groupId == other.groupId &&
           devicePubkey == other.devicePubkey;

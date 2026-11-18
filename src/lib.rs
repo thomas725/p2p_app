@@ -46,6 +46,7 @@
 //! - [`blocklist`] - peer blocklist / mute (swarm-boundary filtering)
 //! - [`nickname`] - nickname management
 //! - [`fmt`] - formatting utilities
+//! - [`reply`] - immutable reply/quote snapshots (US-006)
 //! - [`logging`] - tracing-based logging with TUI callback
 
 #[cfg(feature = "mobile")]
@@ -78,6 +79,7 @@ pub mod nickname;
 pub mod peers;
 #[cfg(feature = "relay")]
 pub mod relay;
+pub mod reply;
 pub mod swarm_handler;
 pub mod tui_tabs;
 pub mod types;
@@ -153,6 +155,7 @@ pub use peers::{
     get_average_peer_count, load_known_peers, load_listen_ports, load_peers, save_listen_ports,
     save_peer,
 };
+pub use reply::ReplyRef;
 pub use swarm_handler::{build_broadcast_message, build_group_message, spawn_swarm_handler};
 #[cfg(feature = "tui")]
 pub use tui_helpers::{

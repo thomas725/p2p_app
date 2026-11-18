@@ -738,6 +738,72 @@ mod tests {
 
     #[test]
     #[serial(db)]
+    fn save_incoming_message_frame_carries_msg_id_and_reply_to() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir
+            .path()
+            .join("web-reply.sqlite")
+            .to_string_lossy()
+            .into_owned();
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .max_blocking_threads(1)
+            .enable_all()
+            .build()
+            .expect("test runtime");
+
+        let (response, persisted) = rt.block_on(async {
+            tokio::task::spawn_blocking({
+                let db_path = db_path.clone();
+                move || {
+                    crate::reset_db_url();
+                    crate::mobile_api::init_mobile_database(db_path).expect("mobile init");
+                }
+            })
+            .await
+            .expect("init task");
+
+            let response = frame(
+                r#"{"id": 14, "method": "saveIncomingMessage", "params": {
+                    "content": "reply body", "peerId": "peer-reply", "isDirect": false,
+                    "latency": "5ms", "msgId": "incoming-9",
+                    "replyTo": {"msgId": "old-9", "sender": "Alice", "preview": "earlier text"}
+                }}"#,
+            )
+            .await;
+
+            let persisted = tokio::task::spawn_blocking(|| {
+                crate::messages::load_messages(crate::CHAT_TOPIC, 100)
+                    .expect("history")
+                    .into_iter()
+                    .find(|m| m.msg_id.as_deref() == Some("incoming-9"))
+                    .map(|m| (m.msg_id, m.reply_to_json))
+            })
+            .await
+            .expect("read task");
+            (response, persisted)
+        });
+
+        assert_eq!(response["id"], 14);
+        assert_eq!(response["ok"]["msgId"], "incoming-9");
+        assert_eq!(response["ok"]["replyTo"]["msgId"], "old-9");
+        assert_eq!(response["ok"]["replyTo"]["sender"], "Alice");
+        assert_eq!(response["ok"]["replyTo"]["preview"], "earlier text");
+        let (msg_id, reply_json) = persisted.expect("row saved through the web dispatch");
+        assert_eq!(msg_id.as_deref(), Some("incoming-9"));
+        assert_eq!(
+            crate::reply::decode(&reply_json.expect("reply snapshot")),
+            Some(crate::ReplyRef::new(
+                "old-9".to_string(),
+                "Alice".to_string(),
+                "earlier text"
+            ))
+        );
+    }
+
+    #[test]
+    #[serial(db)]
     fn delete_message_frame_reaches_the_local_delete_helper() {
         let _guard = db_lock();
         let dir = tempfile::tempdir().expect("tempdir");

@@ -26,6 +26,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
     name: 'notes.txt',
     size: 12,
     sizeLabel: '12 B',
+    chip: '[file] notes.txt (12 B)',
     mime: 'text/plain',
   ),
   encrypted: false,

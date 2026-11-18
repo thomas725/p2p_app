@@ -130,6 +130,7 @@ fn outgoing_group_message_has_no_peer_and_is_sent() {
                 msg_id: Some("out-1".to_string()),
                 sent_at: Some(123.0),
                 attachment: None,
+                reply_to: None,
             },
         )
         .expect("save outgoing");
@@ -158,6 +159,7 @@ fn incoming_group_message_dedupes_on_msg_id() {
             msg_id: Some("in-1".to_string()),
             sent_at: Some(122.0),
             attachment: None,
+            reply_to: None,
         };
         let first = save_incoming_group_message(&group.group_id, "peer-a", "hey", meta.clone())
             .expect("first")
@@ -188,6 +190,7 @@ fn incoming_group_message_without_msg_id_dedupes_on_content() {
             msg_id: None,
             sent_at: Some(122.0),
             attachment: None,
+            reply_to: None,
         };
         let first = save_incoming_group_message(&group.group_id, "peer-a", "repeat", meta.clone())
             .expect("first")
@@ -346,6 +349,7 @@ fn load_group_messages_orders_newest_first_and_respects_limit() {
                     msg_id: Some(format!("out-{i}")),
                     sent_at: Some(f64::from(i)),
                     attachment: None,
+                    reply_to: None,
                 },
             )
             .expect("save");
@@ -445,6 +449,7 @@ fn latest_group_sent_at_returns_newest_watermark_skipping_nulls() {
                     msg_id: Some(format!("wm-{i}")),
                     sent_at: Some(f64::from(i)),
                     attachment: None,
+                    reply_to: None,
                 },
             )
             .expect("save");
@@ -479,6 +484,7 @@ fn load_group_messages_after_is_strict_bounded_and_oldest_first() {
                     msg_id: Some(format!("bf-{i}")),
                     sent_at: Some(f64::from(i)),
                     attachment: None,
+                    reply_to: None,
                 },
             )
             .expect("save");

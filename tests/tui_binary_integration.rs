@@ -20,6 +20,7 @@ fn test_message_meta_serialization() {
         msg_id: Some("msg-abc-123".to_string()),
         sent_at: Some(1_234_567_890.123),
         attachment: None,
+        reply_to: None,
         encrypted: false,
     };
 
@@ -64,6 +65,7 @@ fn test_swarm_command_variants() {
         nickname: Some("TestNick".to_string()),
         msg_id: Some("msg-123".to_string()),
         attachment: None,
+        reply_to: None,
     };
 
     let debug = format!("{publish:?}");
@@ -93,6 +95,7 @@ fn test_swarm_command_variants() {
         msg_id: Some("dm-1".to_string()),
         ack_for: Some("ack-msg".to_string()),
         attachment: None,
+        reply_to: None,
     };
 
     let dm_debug = format!("{dm:?}");
@@ -111,6 +114,7 @@ fn test_swarm_event_variants() {
         nickname: Some("EventNick".to_string()),
         msg_id: Some("evt-1".to_string()),
         attachment: None,
+        reply_to: None,
         encrypted: false,
     });
 
@@ -126,6 +130,7 @@ fn test_swarm_event_variants() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: false,
     });
 
@@ -275,6 +280,7 @@ fn test_direct_message_struct() {
         received_at: Some(1_234_567_891.0),
         group_id: None,
         attachment: None,
+        reply_to: None,
         encrypted: None,
     };
 
@@ -299,6 +305,7 @@ fn test_broadcast_message_struct() {
         nickname: Some("BcastNick".to_string()),
         msg_id: Some("bcast-msg-1".to_string()),
         attachment: None,
+        reply_to: None,
     };
 
     let debug = format!("{bm:?}");

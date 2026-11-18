@@ -2115,6 +2115,72 @@ fn test_group_leave_confirmation_deletes_and_unsubscribes() {
     });
 }
 
+// ── reply drafts (Ctrl+R capture, Esc clear) ─────────────────────────────
+
+fn reply_state() -> AppState {
+    let mut s = test_app_state();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] older line".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("reply-wire".to_string()));
+    s
+}
+
+#[tokio::test]
+async fn test_ctrl_r_captures_the_newest_replyable_line() {
+    let state = Arc::new(Mutex::new(reply_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    let reply = s.reply_draft(&TabContent::Chat).expect("draft armed");
+    assert_eq!(reply.msg_id, "reply-wire");
+    assert_eq!(reply.sender, "Alice");
+    assert_eq!(reply.preview, "older line");
+}
+
+#[tokio::test]
+async fn test_esc_clears_a_reply_draft_before_returning_to_chat() {
+    let mut s = reply_state();
+    s.dynamic_tabs.add_dm_tab("peer-dm".to_string());
+    s.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT; // the DM tab
+    let dm = TabContent::Direct("peer-dm".to_string());
+    s.dm_messages.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from(["12:01 [Bob] dm line".to_string()]),
+    );
+    s.dm_message_ids.insert(
+        "peer-dm".to_string(),
+        std::collections::VecDeque::from([Some("dm-wire".to_string())]),
+    );
+    assert!(s.begin_reply(&dm).is_some());
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.reply_draft(&dm).is_none());
+    assert_eq!(s.active_tab, p2p_app::tui_tabs::FIXED_TAB_COUNT);
+}
+
 // ── local-only sent-message deletion (Del key + confirmation) ────────────
 
 fn delete_key() -> KeyEvent {
@@ -2288,6 +2354,7 @@ fn saved_broadcast_meta() -> p2p_app::MessageMeta {
         msg_id: Some("wire-1".to_string()),
         sent_at: Some(p2p_app::current_timestamp()),
         attachment: None,
+        reply_to: None,
         encrypted: false,
     }
 }
@@ -2351,6 +2418,7 @@ fn test_delete_confirmation_tombstones_group_row_and_removes_line() {
                     msg_id: Some("group-wire".to_string()),
                     sent_at: Some(p2p_app::current_timestamp()),
                     attachment: None,
+                    reply_to: None,
                 },
             )
             .expect("save group message");

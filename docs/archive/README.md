@@ -28,6 +28,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-12_peer_blocklist.md](2026-11-12_peer_blocklist.md) | Peer blocklist / mute enforced at the swarm boundary (US-054) | 2026-11-12 |
 | [2026-11-17_keyboard_shortcuts_help.md](2026-11-17_keyboard_shortcuts_help.md) | TUI `?` overlay + Flutter Help / controls dialog (US-029) | 2026-11-17 |
 | [2026-11-17_local_message_deletion.md](2026-11-17_local_message_deletion.md) | Local-only tombstones for sent messages (US-005 deletion half) | 2026-11-17 |
+| [2026-11-18_reply_quote.md](2026-11-18_reply_quote.md) | Immutable reply snapshots carried on the wire and quoted in all three frontends (US-006) | 2026-11-18 |
 
 ### Completed planning
 

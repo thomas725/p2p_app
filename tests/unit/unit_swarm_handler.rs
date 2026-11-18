@@ -61,6 +61,7 @@ fn test_swarm_command_variants_all() {
         nickname: None,
         msg_id: None,
         attachment: None,
+        reply_to: None,
     };
 
     // Verify Publish variant
@@ -85,6 +86,7 @@ fn test_swarm_command_variants_all() {
         msg_id: Some("msg-1".to_string()),
         ack_for: Some("prev-msg".to_string()),
         attachment: None,
+        reply_to: None,
     };
 
     // Verify SendDm variant with all fields
@@ -96,12 +98,14 @@ fn test_swarm_command_variants_all() {
             msg_id,
             ack_for,
             attachment: _,
+            reply_to,
         } => {
             assert_eq!(peer_id, "peer");
             assert_eq!(content, "dm msg");
             assert_eq!(nickname, Some("Alice".to_string()));
             assert_eq!(msg_id, Some("msg-1".to_string()));
             assert_eq!(ack_for, Some("prev-msg".to_string()));
+            assert!(reply_to.is_none());
         }
         SwarmCommand::Publish { .. }
         | SwarmCommand::PublishGroup { .. }

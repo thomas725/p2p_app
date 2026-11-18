@@ -147,12 +147,42 @@ fn test_apply_broadcast_to_state_adds_message() {
     state
         .local_nicknames
         .insert("p1".to_string(), "Alice".to_string());
-    let msg = apply_broadcast_to_state(&mut state, "hello", "p1", None, Some("m1".to_string()));
+    let msg = apply_broadcast_to_state(
+        &mut state,
+        "hello",
+        "p1",
+        None,
+        Some("m1".to_string()),
+        None,
+    );
     assert_eq!(state.messages.len(), 1);
     assert!(msg.contains("Alice"));
     assert!(msg.contains("hello"));
     assert_eq!(state.message_ids[0], Some("m1".to_string()));
     assert_eq!(state.messages[0].sender_peer_id, Some("p1".to_string()));
+}
+
+#[test]
+fn test_apply_broadcast_to_state_renders_quoted_header() {
+    let mut state = test_app_state();
+    let reply = p2p_app::ReplyRef::new(
+        "m-old".to_string(),
+        "Alice (abc)".to_string(),
+        "earlier text",
+    );
+    let msg = apply_broadcast_to_state(
+        &mut state,
+        "reply",
+        "p1",
+        None,
+        Some("m2".to_string()),
+        Some(&reply),
+    );
+    assert!(
+        msg.starts_with("↳ Alice (abc): earlier text\n"),
+        "live rows render the immutable snapshot: {msg}"
+    );
+    assert!(msg.contains("reply"));
 }
 
 #[test]
@@ -167,9 +197,9 @@ fn test_apply_broadcast_to_state_trims_history() {
         state.message_ids.push_back(None);
     }
     // Add 3 more to trigger trimming
-    apply_broadcast_to_state(&mut state, "a", "p1", None, None);
-    apply_broadcast_to_state(&mut state, "b", "p1", None, None);
-    apply_broadcast_to_state(&mut state, "c", "p1", None, None);
+    apply_broadcast_to_state(&mut state, "a", "p1", None, None, None);
+    apply_broadcast_to_state(&mut state, "b", "p1", None, None, None);
+    apply_broadcast_to_state(&mut state, "c", "p1", None, None, None);
     assert!(state.messages.len() <= MAX_MESSAGE_HISTORY);
     assert!(state.messages.len() >= MAX_MESSAGE_HISTORY.saturating_sub(1));
 }
@@ -177,7 +207,7 @@ fn test_apply_broadcast_to_state_trims_history() {
 #[test]
 fn test_apply_broadcast_to_state_with_latency() {
     let mut state = test_app_state();
-    let msg = apply_broadcast_to_state(&mut state, "ping", "p1", Some("10ms"), None);
+    let msg = apply_broadcast_to_state(&mut state, "ping", "p1", Some("10ms"), None, None);
     assert!(msg.contains("10ms"));
 }
 
@@ -186,8 +216,8 @@ fn test_apply_broadcast_increments_unread_when_scrolled_up() {
     let mut state = test_app_state();
     state.auto_scroll.chat = false;
     state.chat_unread_count = 0;
-    apply_broadcast_to_state(&mut state, "a", "p1", None, None);
-    apply_broadcast_to_state(&mut state, "b", "p1", None, None);
+    apply_broadcast_to_state(&mut state, "a", "p1", None, None, None);
+    apply_broadcast_to_state(&mut state, "b", "p1", None, None, None);
     assert_eq!(state.chat_unread_count, 2);
 }
 
@@ -196,7 +226,7 @@ fn test_apply_broadcast_no_unread_when_at_bottom() {
     let mut state = test_app_state();
     state.auto_scroll.chat = true;
     state.chat_unread_count = 0;
-    apply_broadcast_to_state(&mut state, "a", "p1", None, None);
+    apply_broadcast_to_state(&mut state, "a", "p1", None, None, None);
     assert_eq!(state.chat_unread_count, 0);
 }
 
@@ -209,7 +239,7 @@ fn test_apply_dm_to_state_adds_message_and_tab() {
         .received_nicknames
         .insert("p2".to_string(), "Bob".to_string());
     let dm_count_before = state.dynamic_tabs.dm_tab_count();
-    let msg = apply_dm_to_state(&mut state, "hey", "p2", None, Some("dm1".to_string()));
+    let msg = apply_dm_to_state(&mut state, "hey", "p2", None, Some("dm1".to_string()), None);
     assert_eq!(state.dynamic_tabs.dm_tab_count(), dm_count_before + 1);
     assert!(state.dm_messages.contains_key("p2"));
     assert_eq!(state.dm_messages["p2"].len(), 1);
@@ -222,10 +252,10 @@ fn test_apply_dm_to_state_adds_message_and_tab() {
 fn test_apply_dm_to_state_trims_history() {
     let mut state = test_app_state();
     for i in 0..MAX_DM_HISTORY {
-        apply_dm_to_state(&mut state, &format!("msg-{i}"), "peer-dm", None, None);
+        apply_dm_to_state(&mut state, &format!("msg-{i}"), "peer-dm", None, None, None);
     }
     assert_eq!(state.dm_messages["peer-dm"].len(), MAX_DM_HISTORY);
-    apply_dm_to_state(&mut state, "overflow", "peer-dm", None, None);
+    apply_dm_to_state(&mut state, "overflow", "peer-dm", None, None, None);
     assert_eq!(state.dm_messages["peer-dm"].len(), MAX_DM_HISTORY);
     // First message should have been "msg-0" but it was popped; now it's "msg-1"
     assert!(state.dm_messages["peer-dm"][0].contains("msg-1"));
@@ -236,8 +266,8 @@ fn test_apply_dm_to_state_trims_history() {
 #[test]
 fn test_apply_dm_to_state_multiple_peers() {
     let mut state = test_app_state();
-    apply_dm_to_state(&mut state, "hi", "pa", None, None);
-    apply_dm_to_state(&mut state, "ho", "pb", None, None);
+    apply_dm_to_state(&mut state, "hi", "pa", None, None, None);
+    apply_dm_to_state(&mut state, "ho", "pb", None, None, None);
     assert_eq!(state.dm_messages.len(), 2);
     assert_eq!(state.dm_messages["pa"].len(), 1);
     assert_eq!(state.dm_messages["pb"].len(), 1);
@@ -393,6 +423,7 @@ fn test_handle_incoming_broadcast_adds_message() {
                 nickname: None,
                 msg_id: Some("m1".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             false,
@@ -426,6 +457,7 @@ fn test_handle_incoming_dm_adds_message_and_tab() {
                 nickname: None,
                 msg_id: Some("dm1".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             true,
@@ -459,6 +491,7 @@ fn test_handle_incoming_empty_content_with_nickname_returns_early() {
                 nickname: Some("Nickname".to_string()),
                 msg_id: None,
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             false,
@@ -495,6 +528,7 @@ fn test_handle_incoming_sets_received_nickname() {
                 nickname: Some("Alice".to_string()),
                 msg_id: None,
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             false,
@@ -530,6 +564,7 @@ fn test_handle_incoming_broadcast_with_latency() {
                 nickname: None,
                 msg_id: None,
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             false,
@@ -564,6 +599,7 @@ fn test_handle_incoming_dm_with_nickname_and_latency() {
                 nickname: Some("Bob".to_string()),
                 msg_id: Some("dm-5".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             },
             true,
@@ -600,6 +636,7 @@ fn test_process_swarm_event_broadcast_adds_message() {
                 nickname: None,
                 msg_id: Some("m1".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             }),
             &state,
@@ -637,6 +674,7 @@ fn test_process_swarm_event_dm_adds_message() {
                 nickname: None,
                 msg_id: Some("dm1".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             }),
             &state,
@@ -743,6 +781,7 @@ fn test_command_processor_processes_swarm_events() {
                 nickname: None,
                 msg_id: Some("m-loop".to_string()),
                 attachment: None,
+                reply_to: None,
                 encrypted: false,
             }))
             .await

@@ -119,6 +119,7 @@ async fn main() -> color_eyre::Result<()> {
                     nickname: None,
                     msg_id: None,
                     attachment: None,
+                    reply_to: None,
                 };
                 if let Ok(json) = serde_json::to_string(&msg) {
                     let _ = swarm

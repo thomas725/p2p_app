@@ -18,8 +18,15 @@ use tempfile::TempDir;
 #[test]
 fn test_push_outgoing_broadcast_adds_message() {
     let mut state = test_app_state();
-    let row_idx =
-        push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
+    let row_idx = push_outgoing_broadcast_to_state(
+        &mut state,
+        "12:00",
+        "Me",
+        "hello",
+        None,
+        "m1".into(),
+        None,
+    );
     assert_eq!(row_idx, 0);
     assert_eq!(state.message_db_ids, VecDeque::from([None]));
     assert_eq!(state.messages.len(), 1);
@@ -32,7 +39,7 @@ fn test_push_outgoing_broadcast_adds_message() {
 #[test]
 fn test_attach_sent_db_id_patches_aligned_slot() {
     let mut state = test_app_state();
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into());
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "hello", None, "m1".into(), None);
     attach_sent_db_id(Some(&mut state.message_db_ids), 0, 42);
     assert_eq!(state.message_db_ids, VecDeque::from([Some(42)]));
     let (id, preview) = state
@@ -53,10 +60,19 @@ fn test_push_outgoing_broadcast_trims_history() {
             &format!("msg-{i}"),
             None,
             format!("m{i}"),
+            None,
         );
     }
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "newest", None, "m-last".into());
+    push_outgoing_broadcast_to_state(
+        &mut state,
+        "12:00",
+        "Me",
+        "newest",
+        None,
+        "m-last".into(),
+        None,
+    );
     assert_eq!(state.messages.len(), MAX_MESSAGE_HISTORY);
     assert!(
         state.messages[MAX_MESSAGE_HISTORY - 1]
@@ -68,7 +84,7 @@ fn test_push_outgoing_broadcast_trims_history() {
 #[test]
 fn test_push_outgoing_broadcast_peer_id_is_none() {
     let mut state = test_app_state();
-    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "test", None, "m1".into());
+    push_outgoing_broadcast_to_state(&mut state, "12:00", "Me", "test", None, "m1".into(), None);
     assert_eq!(state.messages[0].sender_peer_id, None);
 }
 
@@ -86,6 +102,7 @@ fn test_push_outgoing_dm_adds_message() {
             content: "secret",
             attachment: None,
             msg_id: "dm1".into(),
+            reply_to: None,
             encrypted: false,
         },
     );
@@ -111,6 +128,7 @@ fn test_push_outgoing_dm_trims_history() {
                 content: &format!("msg-{i}"),
                 attachment: None,
                 msg_id: format!("m{i}"),
+                reply_to: None,
                 encrypted: false,
             },
         );
@@ -125,6 +143,7 @@ fn test_push_outgoing_dm_trims_history() {
             content: "newest",
             attachment: None,
             msg_id: "m-last".into(),
+            reply_to: None,
             encrypted: false,
         },
     );
@@ -145,6 +164,7 @@ fn test_push_outgoing_dm_separate_peers() {
             content: "hi",
             attachment: None,
             msg_id: "m1".into(),
+            reply_to: None,
             encrypted: false,
         },
     );
@@ -157,6 +177,7 @@ fn test_push_outgoing_dm_separate_peers() {
             content: "ho",
             attachment: None,
             msg_id: "m2".into(),
+            reply_to: None,
             encrypted: false,
         },
     );
@@ -197,6 +218,54 @@ fn test_send_broadcast_updates_state_and_sends_command() {
         let cmd = swarm_cmd_rx.try_recv().unwrap();
         match cmd {
             p2p_app::SwarmCommand::Publish { content, .. } => assert_eq!(content, "hello"),
+            _ => panic!("expected Publish"),
+        }
+    });
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_send_broadcast_consumes_reply_draft_into_wire_command() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.messages.push_back(p2p_app::DisplayMessage {
+            text: "12:00 [Alice] earlier question".to_string(),
+            sender_peer_id: Some("peer-a".to_string()),
+        });
+        state.message_ids.push_back(Some("old-wire".to_string()));
+        let tab = p2p_app::tui_tabs::TabContent::Chat;
+        let expected = state.begin_reply(&tab).expect("draft captured");
+
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+        send_message(
+            &mut state,
+            &swarm_cmd_tx,
+            "the answer".into(),
+            None,
+            tab.clone(),
+        )
+        .await;
+
+        assert!(
+            state.reply_draft(&tab).is_none(),
+            "sending consumes the draft"
+        );
+        assert!(
+            state.messages[1]
+                .text
+                .starts_with("↳ Alice: earlier question\n")
+        );
+        let cmd = swarm_cmd_rx.try_recv().unwrap();
+        match cmd {
+            p2p_app::SwarmCommand::Publish { reply_to, .. } => assert_eq!(reply_to, Some(expected)),
             _ => panic!("expected Publish"),
         }
     });

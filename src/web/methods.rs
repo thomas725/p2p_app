@@ -162,18 +162,21 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
             let p: SendParams = parse(params)?;
             json(match (p.attachment_path, p.attachment) {
                 (_, Some(att)) => {
-                    mobile_node::save_outgoing_broadcast_attached(p.content, Some(att))
+                    mobile_node::save_outgoing_broadcast_attached(p.content, Some(att), p.reply_to)
                 }
-                (path, None) => api::save_outgoing_broadcast(p.content, path),
+                (path, None) => api::save_outgoing_broadcast(p.content, path, p.reply_to),
             })
         }
         "saveOutgoingDm" => {
             let p: SendDmParams = parse(params)?;
             json(match (p.attachment_path, p.attachment) {
-                (_, Some(att)) => {
-                    mobile_node::save_outgoing_dm_attached(p.peer_id, p.content, Some(att))
-                }
-                (path, None) => api::save_outgoing_dm(p.peer_id, p.content, path),
+                (_, Some(att)) => mobile_node::save_outgoing_dm_attached(
+                    p.peer_id,
+                    p.content,
+                    Some(att),
+                    p.reply_to,
+                ),
+                (path, None) => api::save_outgoing_dm(p.peer_id, p.content, path, p.reply_to),
             })
         }
         "saveIncomingMessage" => {
@@ -184,6 +187,8 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
                 p.is_direct,
                 p.nickname,
                 p.latency,
+                p.msg_id,
+                p.reply_to,
             ))
         }
         other => Err(format!("method not routed to messages: {other}")),
@@ -205,10 +210,13 @@ fn groups(method: &str, params: Value) -> Result<Value, String> {
         "saveOutgoingGroup" => {
             let p: SendGroupParams = parse(params)?;
             json(match (p.attachment_path, p.attachment) {
-                (_, Some(att)) => {
-                    mobile_node::save_outgoing_group_attached(p.group_id, p.content, Some(att))
-                }
-                (path, None) => api::save_outgoing_group(p.group_id, p.content, path),
+                (_, Some(att)) => mobile_node::save_outgoing_group_attached(
+                    p.group_id,
+                    p.content,
+                    Some(att),
+                    p.reply_to,
+                ),
+                (path, None) => api::save_outgoing_group(p.group_id, p.content, path, p.reply_to),
             })
         }
         "acceptGroupInvite" => {
@@ -438,6 +446,8 @@ struct SendParams {
     attachment_path: Option<String>,
     #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
+    #[serde(default)]
+    reply_to: Option<crate::ReplyRef>,
 }
 
 #[derive(serde::Deserialize)]
@@ -449,6 +459,8 @@ struct SendDmParams {
     attachment_path: Option<String>,
     #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
+    #[serde(default)]
+    reply_to: Option<crate::ReplyRef>,
 }
 
 #[derive(serde::Deserialize)]
@@ -460,6 +472,8 @@ struct SendGroupParams {
     attachment_path: Option<String>,
     #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
+    #[serde(default)]
+    reply_to: Option<crate::ReplyRef>,
 }
 
 #[derive(serde::Deserialize)]
@@ -472,6 +486,12 @@ struct SaveIncomingParams {
     /// Live round-trip latency of the event (decorates the reply only).
     #[serde(default)]
     latency: Option<String>,
+    /// Stable wire id of the incoming row, persisted for future replies.
+    #[serde(default)]
+    msg_id: Option<String>,
+    /// Immutable reply snapshot carried by the live event (US-006).
+    #[serde(default)]
+    reply_to: Option<crate::ReplyRef>,
 }
 
 #[derive(serde::Deserialize)]

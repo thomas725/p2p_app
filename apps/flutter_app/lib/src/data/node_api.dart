@@ -20,6 +20,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
 /// swaps in [HttpNodeApi] for the web build. Tests may replace it with a
@@ -84,19 +85,18 @@ abstract class NodeApi {
   /// Locally hide one sent message (broadcast/DM when [isGroup] is false,
   /// group message when it is true). This is a tombstone on this device only:
   /// no retraction is sent and other peers keep their copy.
-  Future<void> deleteMessage({
-    required int messageId,
-    required bool isGroup,
-  });
+  Future<void> deleteMessage({required int messageId, required bool isGroup});
 
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
-  /// uploads to the node first (files lane §12).
+  /// uploads to the node first (files lane §12). [replyTo] is an immutable
+  /// quote snapshot captured when the user picked Reply (US-006).
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   });
 
   Future<ChatMessage> saveOutgoingDm({
@@ -105,6 +105,7 @@ abstract class NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   });
 
   Future<ChatMessage> saveIncomingMessage({
@@ -113,6 +114,8 @@ abstract class NodeApi {
     required bool isDirect,
     String? nickname,
     String? latency,
+    String? msgId,
+    ReplyRef? replyTo,
   });
 
   Future<void> dialPeer({required String address});
@@ -165,6 +168,7 @@ abstract class NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   });
 
   Future<MobileGroup> acceptGroupInvite({required String groupId});

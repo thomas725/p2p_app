@@ -55,6 +55,7 @@ fn test_message_meta_with_all_fields() {
         msg_id: Some("msg-001".into()),
         sent_at: Some(1_700_000_000.0),
         attachment: None,
+        reply_to: None,
         encrypted: false,
     };
     assert_eq!(meta.sender_nickname.as_deref(), Some("alice"));
@@ -109,6 +110,7 @@ fn test_save_message_with_meta() {
             msg_id: Some("msg-42".into()),
             sent_at: Some(9999.0),
             attachment: None,
+            reply_to: None,
             encrypted: false,
         };
         let msg =
@@ -453,6 +455,8 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
             false,
             None,
             Some("5ms".to_string()),
+            Some("incoming-1".to_string()),
+            None,
         )
         .unwrap();
 

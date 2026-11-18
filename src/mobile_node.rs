@@ -327,6 +327,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
                     msg_id: Some(msg_id),
                     ack_for: None,
                     attachment: None,
+                    reply_to: None,
                 });
             }
         }
@@ -487,6 +488,8 @@ pub struct ChatMessage {
     pub sent: bool,
     /// Stable wire message ID, used for dedup and delivery receipts.
     pub msg_id: Option<String>,
+    /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+    pub reply_to: Option<crate::ReplyRef>,
     /// Send time as `HH:MM` (from the Unix-seconds wire value), if recorded.
     pub sent_at: Option<String>,
     /// Time the row was stored, formatted for display.
@@ -559,16 +562,21 @@ pub struct MobileAttachment {
     /// canonical `files::format_file_size` so the Flutter chip does no byte
     /// math of its own.
     pub size_label: String,
+    /// Canonical `[file] name (size)` chip text, reused verbatim for
+    /// attachment-only reply previews so no frontend assembles it.
+    pub chip: String,
     /// Best-effort MIME type hint (`None` when unknown)
     pub mime: Option<String>,
 }
 
 fn mobile_attachment(att: crate::files::MessageAttachment) -> MobileAttachment {
+    let chip = crate::files::file_chip(&att);
     MobileAttachment {
         file_id: att.file_id,
         name: att.name,
         size: i64::try_from(att.size).unwrap_or(i64::MAX),
         size_label: crate::files::format_file_size(att.size),
+        chip,
         mime: att.mime,
     }
 }
@@ -609,6 +617,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         target_peer: msg.target_peer,
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
+        reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
         sent_at: msg.sent_at.map(|t| {
             // `sent_at` is a Unix timestamp in seconds (well within i64 range);
             // `to_i64` truncates the fractional part exactly like `as i64` did.
@@ -647,7 +656,10 @@ fn mark_confirmed(messages: &mut [ChatMessage]) {
     match crate::messages::confirmed_message_ids(&ids) {
         Ok(confirmed) => {
             for m in messages.iter_mut() {
-                m.confirmed = m.msg_id.as_ref().is_some_and(|id| confirmed.contains(id));
+                // Only our own sent rows can be acknowledged. Incoming rows now
+                // persist `msg_id` too, so an echoed id must never tick an
+                // inbound message.
+                m.confirmed = m.sent && m.msg_id.as_ref().is_some_and(|id| confirmed.contains(id));
             }
         }
         Err(e) => p2plog_debug(format!("Failed to load message receipts: {e}")),
@@ -697,9 +709,10 @@ fn store_send_attachment(
 pub fn save_outgoing_broadcast(
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
-    save_outgoing_broadcast_attached(content, attachment)
+    save_outgoing_broadcast_attached(content, attachment, reply_to)
 }
 
 /// [`save_outgoing_broadcast`] with a pre-stored attachment (files lane §12).
@@ -710,6 +723,7 @@ pub fn save_outgoing_broadcast(
 pub(crate) fn save_outgoing_broadcast_attached(
     content: String,
     attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
@@ -720,6 +734,7 @@ pub(crate) fn save_outgoing_broadcast_attached(
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
         attachment: attachment.clone(),
+        reply_to: reply_to.clone(),
         encrypted: false,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, false, None, meta)
@@ -736,6 +751,7 @@ pub(crate) fn save_outgoing_broadcast_attached(
                     nickname,
                     msg_id: Some(msg_id.clone()),
                     attachment,
+                    reply_to,
                 })
                 .is_ok();
         }
@@ -767,9 +783,10 @@ pub fn save_outgoing_dm(
     peer_id: String,
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
-    save_outgoing_dm_attached(peer_id, content, attachment)
+    save_outgoing_dm_attached(peer_id, content, attachment, reply_to)
 }
 
 /// [`save_outgoing_dm`] with a pre-stored attachment (files lane §12); see
@@ -778,6 +795,7 @@ pub(crate) fn save_outgoing_dm_attached(
     peer_id: String,
     content: String,
     attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
@@ -788,6 +806,7 @@ pub(crate) fn save_outgoing_dm_attached(
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
         attachment: attachment.clone(),
+        reply_to: reply_to.clone(),
         encrypted: false,
     };
     let msg = save_message_with_meta(&content, None, CHAT_TOPIC, true, Some(&peer_id), meta)
@@ -806,6 +825,7 @@ pub(crate) fn save_outgoing_dm_attached(
                     msg_id: Some(msg_id),
                     ack_for: None,
                     attachment,
+                    reply_to,
                 })
                 .is_ok();
         }
@@ -830,6 +850,8 @@ pub fn save_incoming_message(
     is_direct: bool,
     nickname: Option<String>,
     latency: Option<String>,
+    msg_id: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<ChatMessage, String> {
     let target = is_direct.then_some(peer_id.as_str());
     // Ensure the peer row exists (and gets a generated petname if it's a
@@ -840,9 +862,10 @@ pub fn save_incoming_message(
     }
     let meta = MessageMeta {
         sender_nickname: nickname,
-        msg_id: None,
+        msg_id,
         sent_at: None,
         attachment: None,
+        reply_to,
         encrypted: false,
     };
     let msg = save_message_with_meta(
@@ -986,6 +1009,8 @@ pub struct MobileGroupMessage {
     pub sent: bool,
     /// Stable wire ID used for deduplication, if the sender supplied one.
     pub msg_id: Option<String>,
+    /// Immutable reply snapshot (US-006); `None` for an ordinary message.
+    pub reply_to: Option<crate::ReplyRef>,
     /// Send time as `HH:MM`, if recorded.
     pub sent_at: Option<String>,
     /// Time the row was stored, formatted for display.
@@ -1018,6 +1043,7 @@ fn group_message_to_mobile(
         peer_id: msg.peer_id,
         sent: msg.sent == 1,
         msg_id: msg.msg_id,
+        reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
         sent_at: msg.sent_at.map(|t| {
             // `sent_at` is a Unix timestamp in seconds (well within i64 range);
             // `to_i64` truncates the fractional part exactly like `as i64` did.
@@ -1151,9 +1177,10 @@ pub fn save_outgoing_group(
     group_id: String,
     content: String,
     attachment_path: Option<String>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<MobileGroupMessage, String> {
     let attachment = store_send_attachment(attachment_path)?;
-    save_outgoing_group_attached(group_id, content, attachment)
+    save_outgoing_group_attached(group_id, content, attachment, reply_to)
 }
 
 /// [`save_outgoing_group`] with a pre-stored attachment (files lane §12); see
@@ -1162,6 +1189,7 @@ pub(crate) fn save_outgoing_group_attached(
     group_id: String,
     content: String,
     attachment: Option<crate::files::MessageAttachment>,
+    reply_to: Option<crate::ReplyRef>,
 ) -> Result<MobileGroupMessage, String> {
     let msg_id = gen_msg_id();
     let sent_at = current_timestamp();
@@ -1171,6 +1199,7 @@ pub(crate) fn save_outgoing_group_attached(
         msg_id: Some(msg_id.clone()),
         sent_at: Some(sent_at),
         attachment: attachment.clone(),
+        reply_to: reply_to.clone(),
     };
     let msg = crate::groups::save_outgoing_group_message(&group_id, &content, meta)
         .map_err(|e| e.to_string())?;
@@ -1183,6 +1212,7 @@ pub(crate) fn save_outgoing_group_attached(
                 nickname,
                 msg_id: Some(msg_id),
                 attachment,
+                reply_to,
             });
         }
     }
@@ -1224,6 +1254,8 @@ pub struct SwarmEventJson {
     pub nickname: Option<String>,
     /// Message ID of a receipt or delivered message, when applicable.
     pub msg_id: Option<String>,
+    /// Immutable reply snapshot on a live chat event (US-006).
+    pub reply_to: Option<crate::ReplyRef>,
     /// Multiaddr of a listen/external-address/discovery event.
     pub address: Option<String>,
     /// Group topic of a group message/invite event.
@@ -1367,6 +1399,7 @@ const fn default_event() -> SwarmEventJson {
         latency: None,
         nickname: None,
         msg_id: None,
+        reply_to: None,
         address: None,
         group_id: None,
         device_pubkey: None,
@@ -1383,6 +1416,7 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
         latency: m.latency,
         nickname: m.nickname,
         msg_id: m.msg_id,
+        reply_to: m.reply_to,
         address: None,
         group_id: None,
         device_pubkey: None,
@@ -1397,6 +1431,7 @@ fn group_message_event_json(m: crate::GroupMessageEvent) -> SwarmEventJson {
         content: Some(m.content),
         nickname: m.nickname,
         msg_id: m.msg_id,
+        reply_to: m.reply_to,
         group_id: Some(m.group_id),
         ..default_event()
     }
@@ -1435,6 +1470,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: Some("m1".into()),
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         let j = event_to_json(ev);
@@ -1456,6 +1492,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         let j = event_to_json(ev);
@@ -1600,6 +1637,7 @@ mod tests {
             sent_at: Some(1_718_455_800.0),
             sender_nickname: Some("Alice".into()),
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1643,6 +1681,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1675,6 +1714,7 @@ mod tests {
             sent_at: None,
             sender_nickname: Some("Bob".into()),
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1704,6 +1744,7 @@ mod tests {
             sent_at: None,
             sender_nickname: Some("Me".into()),
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1727,6 +1768,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1749,6 +1791,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -1767,6 +1810,7 @@ mod tests {
             nickname: Some("Bob".into()),
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         process_event_for_mobile(&ev, None);
@@ -1781,6 +1825,7 @@ mod tests {
             nickname: Some("Charlie".into()),
             msg_id: Some("msg-b1".into()),
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         process_event_for_mobile(&ev, None);
@@ -1869,6 +1914,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         assert!(is_nickname_only_dm(&ev));
@@ -1883,6 +1929,7 @@ mod tests {
             nickname: None,
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
@@ -1897,6 +1944,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
@@ -1911,6 +1959,7 @@ mod tests {
             nickname: Some("Alice".into()),
             msg_id: None,
             attachment: None,
+            reply_to: None,
             encrypted: false,
         });
         assert!(!is_nickname_only_dm(&ev));
@@ -1941,6 +1990,7 @@ mod tests {
             sent_at: None,
             sender_nickname: None,
             attachment_json: None,
+            reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
         };
@@ -2050,9 +2100,9 @@ mod tests {
         crate::db::set_db_url(&db_path.to_string_lossy());
         crate::init_database().expect("init db");
 
-        // Two outgoing broadcasts; only the first gets a receipt. A third
-        // *incoming* row (never `sent`) carries a receipt id too, but an
-        // inbound message never shows a delivery tick on our side.
+        // Two outgoing broadcasts; only the first gets a receipt. An incoming
+        // row carries a receipt id too, and another echoes the *same* id as the
+        // acknowledged outgoing message: neither ever shows a delivery tick.
         save_outgoing_with_msg_id("acked", "msg-acked", false, None);
         save_outgoing_with_msg_id("unacked", "msg-unacked", false, None);
         let inbound = save_message_with_meta(
@@ -2068,24 +2118,48 @@ mod tests {
             },
         )
         .expect("save inbound");
+        let echoed = save_message_with_meta(
+            "echo",
+            Some("peer-a"),
+            CHAT_TOPIC,
+            false,
+            None,
+            MessageMeta {
+                msg_id: Some("msg-acked".to_string()),
+                sent_at: Some(4.0),
+                ..MessageMeta::default()
+            },
+        )
+        .expect("save echoed inbound");
 
         crate::messages::save_receipt("msg-acked", "peer-a", 0, 5.0).expect("receipt");
         crate::messages::save_receipt("msg-in", "peer-a", 0, 6.0).expect("inbound receipt");
 
         let msgs = load_broadcast_messages(100).expect("load broadcast");
-        assert_eq!(msgs.len(), 3);
-        let by_id = |id: &str| {
+        assert_eq!(msgs.len(), 4);
+        let by_id = |id: &str, sent: bool| {
             msgs.iter()
-                .find(|m| m.msg_id.as_deref() == Some(id))
+                .find(|m| m.msg_id.as_deref() == Some(id) && m.sent == sent)
                 .expect("message present")
         };
-        assert!(by_id("msg-acked").confirmed, "acked message shows a tick");
         assert!(
-            !by_id("msg-unacked").confirmed,
+            by_id("msg-acked", true).confirmed,
+            "acked message shows a tick"
+        );
+        assert!(
+            !by_id("msg-unacked", true).confirmed,
             "unacked message has no tick"
         );
-        assert!(!by_id("msg-in").confirmed, "inbound message never ticks");
+        assert!(
+            !by_id("msg-in", false).confirmed,
+            "inbound message never ticks"
+        );
+        assert!(
+            !by_id("msg-acked", false).confirmed,
+            "an inbound echo of our wire id never ticks"
+        );
         assert_eq!(inbound.sent, 0);
+        assert_eq!(echoed.sent, 0);
     }
 
     #[test]

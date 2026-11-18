@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 
 void main() {
@@ -10,40 +11,46 @@ void main() {
     name: 'notes.txt',
     size: 2048,
     sizeLabel: '2 KiB',
+    chip: '[file] notes.txt (2 KiB)',
     mime: 'text/plain',
   );
 
-  Widget harness({bool selectionMode = false, VoidCallback? onOpen}) =>
-      MaterialApp(
-        home: Scaffold(
-          body: ListView(
-            children: [
-              MessageBubble(
-                message: ChatMessage(
-                  id: 1,
-                  content: '',
-                  peerId: 'peer-1',
-                  isBroadcast: false,
-                  sent: true,
-                  msgId: 'msg-1',
-                  sentAt: '2026-10-04 12:00:00',
-                  createdAt: '2026-10-04 12:00:00',
-                  senderNickname: 'Alice',
-                  attachment: attachment,
-                  encrypted: false,
-                  confirmed: false,
-                ),
-                isOwn: false,
-                selectionMode: selectionMode,
-                onOpenAttachment: onOpen,
-              ),
-            ],
+  Widget harness({
+    bool selectionMode = false,
+    VoidCallback? onOpen,
+    ReplyRef? replyTo,
+  }) => MaterialApp(
+    home: Scaffold(
+      body: ListView(
+        children: [
+          MessageBubble(
+            message: ChatMessage(
+              id: 1,
+              content: '',
+              peerId: 'peer-1',
+              isBroadcast: false,
+              sent: true,
+              msgId: 'msg-1',
+              sentAt: '2026-10-04 12:00:00',
+              createdAt: '2026-10-04 12:00:00',
+              senderNickname: 'Alice',
+              replyTo: replyTo,
+              attachment: attachment,
+              encrypted: false,
+              confirmed: false,
+            ),
+            isOwn: false,
+            selectionMode: selectionMode,
+            onOpenAttachment: onOpen,
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 
-  testWidgets('attachment-only bubble renders the chip, not a blank row',
-      (tester) async {
+  testWidgets('attachment-only bubble renders the chip, not a blank row', (
+    tester,
+  ) async {
     await tester.pumpWidget(harness());
     expect(find.text('[file] notes.txt (2 KiB)'), findsOneWidget);
     expect(find.text(''), findsNothing);
@@ -54,6 +61,22 @@ void main() {
     await tester.pumpWidget(harness(onOpen: () => opened++));
     await tester.tap(find.text('[file] notes.txt (2 KiB)'));
     expect(opened, 1);
+  });
+
+  testWidgets('an attachment-only row quotes the canonical chip', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      harness(
+        replyTo: const ReplyRef(
+          msgId: 'msg-0',
+          sender: 'Alice',
+          preview: '[file] notes.txt (2 KiB)',
+        ),
+      ),
+    );
+    expect(find.text('↳ Alice: [file] notes.txt (2 KiB)'), findsOneWidget);
+    expect(find.text('[file] notes.txt (2 KiB)'), findsOneWidget);
   });
 
   testWidgets('chip is not tappable in selection mode', (tester) async {

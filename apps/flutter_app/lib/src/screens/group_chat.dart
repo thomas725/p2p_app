@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
+import 'package:p2p_app_flutter/src/util/reply.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
 /// Full-screen group chat (history + live incoming group messages while open),
@@ -36,6 +38,17 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
+
+  /// Frozen quote for the next group message we send; independent of selection.
+  ReplyRef? _replyTo;
+
+  void _onReply(int index) {
+    if (index < 0 || index >= _messages.length) return;
+    final draft = replyDraftFor(_messages[index]);
+    if (draft != null) setState(() => _replyTo = draft);
+  }
+
+  void _cancelReply() => setState(() => _replyTo = null);
 
   String get _groupId => widget.group.groupId;
   int get _memberCount => widget.group.memberCount.toInt();
@@ -74,6 +87,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     isBroadcast: false,
     sent: m.sent,
     msgId: m.msgId,
+    replyTo: m.replyTo,
     sentAt: m.sentAt,
     createdAt: m.createdAt,
     senderNickname: m.senderNickname,
@@ -89,7 +103,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
 
   Future<void> _loadHistory() async {
     try {
-      final msgs = await nodeApi.loadGroupMessages(groupId: _groupId, limit: 200);
+      final msgs = await nodeApi.loadGroupMessages(
+        groupId: _groupId,
+        limit: 200,
+      );
       setState(() {
         _messages
           ..clear()
@@ -116,7 +133,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     _reloadInFlight = true;
     try {
       final knownIds = {for (final m in _messages) m.id};
-      final msgs = await nodeApi.loadGroupMessages(groupId: _groupId, limit: 200);
+      final msgs = await nodeApi.loadGroupMessages(
+        groupId: _groupId,
+        limit: 200,
+      );
       if (!mounted) return;
       final added = msgs.where((m) => !knownIds.contains(m.id)).toList();
       setState(() {
@@ -151,10 +171,18 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final reply = _replyTo;
     try {
-      final msg = await nodeApi.saveOutgoingGroup(groupId: _groupId, content: text);
+      final msg = await nodeApi.saveOutgoingGroup(
+        groupId: _groupId,
+        content: text,
+        replyTo: reply,
+      );
       _controller.clear();
-      setState(() => _messages.add(_toChatMessage(msg)));
+      setState(() {
+        _messages.add(_toChatMessage(msg));
+        _replyTo = null;
+      });
       forceJumpToBottom(_scrollController);
     } catch (e) {
       debugPrint('Group send failed: $e');
@@ -166,6 +194,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   Future<void> _pickAndSend() async {
     final picked = await pickFileOverride();
     if (picked == null) return;
+    final reply = _replyTo;
     try {
       final msg = await nodeApi.saveOutgoingGroup(
         groupId: _groupId,
@@ -173,8 +202,12 @@ class _GroupChatScreenState extends State<GroupChatScreen>
         attachmentPath: picked.path,
         attachmentBytes: picked.bytes,
         attachmentName: picked.name,
+        replyTo: reply,
       );
-      setState(() => _messages.add(_toChatMessage(msg)));
+      setState(() {
+        _messages.add(_toChatMessage(msg));
+        _replyTo = null;
+      });
       forceJumpToBottom(_scrollController);
     } catch (e) {
       debugPrint('Group attachment send failed: $e');
@@ -245,6 +278,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
               cancelSelection();
             },
             onDeleteSelected: () => deleteSelection(_messages, isGroup: true),
+            onReply: _onReply,
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
@@ -258,6 +292,8 @@ class _GroupChatScreenState extends State<GroupChatScreen>
                 : 'Offline',
             onSend: _send,
             onPickFile: _pickAndSend,
+            replyTo: _replyTo,
+            onCancelReply: _cancelReply,
           ),
         ],
       ),

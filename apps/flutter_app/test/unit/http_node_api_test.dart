@@ -14,6 +14,7 @@ import 'package:p2p_app_flutter/src/data/http_node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// In-memory stand-in for `WsRemoteTransport`: records outbound frames and
 /// uploads, and lets tests inject response/event frames.
@@ -98,8 +99,24 @@ class FakeRemoteTransport implements RemoteTransport {
   static Future<void> pump() => Future<void>.delayed(Duration.zero);
 }
 
+/// The camelCase reply shape Rust's `ReplyRef` serializes to.
+Map<String, dynamic> replyJson() => {
+  'msgId': 'm0',
+  'sender': 'Alice',
+  'preview': 'the original line',
+};
+
+const ReplyRef replyRef = ReplyRef(
+  msgId: 'm0',
+  sender: 'Alice',
+  preview: 'the original line',
+);
+
 /// Wire fixture: a camelCase-serialized `ChatMessage` with a descriptor.
-Map<String, dynamic> chatMessageJson({bool withAttachment = false}) => {
+Map<String, dynamic> chatMessageJson({
+  bool withAttachment = false,
+  Map<String, dynamic>? replyTo,
+}) => {
   'id': 7,
   'content': 'hello',
   'peerId': null,
@@ -107,6 +124,7 @@ Map<String, dynamic> chatMessageJson({bool withAttachment = false}) => {
   'targetPeer': null,
   'sent': true,
   'msgId': 'm1',
+  'replyTo': ?replyTo,
   'sentAt': '2026-10-19 10:00:00',
   'createdAt': '2026-10-19 10:00:00',
   'senderNickname': null,
@@ -116,87 +134,160 @@ Map<String, dynamic> chatMessageJson({bool withAttachment = false}) => {
           'name': 'notes.txt',
           'size': 2048,
           'sizeLabel': '2 KiB',
+          'chip': '[file] notes.txt (2 KiB)',
           'mime': 'text/plain',
         }
       : null,
 };
 
+/// Wire fixture for a persisted group row (no receipts/latency fields).
+Map<String, dynamic> groupMessageJson({Map<String, dynamic>? replyTo}) => {
+  'id': 8,
+  'content': 'group answer',
+  'peerId': 'peer-1',
+  'sent': false,
+  'msgId': 'g1',
+  'replyTo': ?replyTo,
+  'sentAt': '2026-10-19 10:00:00',
+  'createdAt': '2026-10-19 10:00:00',
+  'senderNickname': 'Bob',
+  'attachment': null,
+};
+
 void main() {
   group('HttpNodeApi request frames', () {
-    test('loadBroadcastMessages sends method + params and parses messages',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
+    test(
+      'loadBroadcastMessages sends method + params and parses messages',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(0);
+          fake.respond(
+            request,
+            ok: [chatMessageJson(), chatMessageJson(withAttachment: true)],
+          );
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        final messages = await api.loadBroadcastMessages(limit: 200);
+
         final request = fake.frame(0);
-        fake.respond(request, ok: [
-          chatMessageJson(),
-          chatMessageJson(withAttachment: true),
-        ]);
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+        expect(request['method'], 'loadBroadcastMessages');
+        expect(request['params'], {'limit': 200});
+        expect(request['id'], isA<int>());
+        expect(messages, hasLength(2));
+        final first = messages.first;
+        expect(first.id, 7);
+        expect(first.content, 'hello');
+        expect(first.isBroadcast, isTrue);
+        expect(first.peerId, isNull);
+        final attachment = messages.last.attachment!;
+        expect(attachment.fileId, 'abc123');
+        expect(attachment.size.toInt(), 2048);
+        expect(attachment.sizeLabel, '2 KiB');
+        expect(attachment.chip, '[file] notes.txt (2 KiB)');
+        expect(attachment.mime, 'text/plain');
+      },
+    );
 
-      final messages = await api.loadBroadcastMessages(limit: 200);
+    test(
+      'loadDmMessages and saveOutgoingDm route peer-specific params',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          // loadDmMessages returns a list; saveOutgoingDm returns one message.
+          fake.respond(
+            request,
+            ok: request['method'] == 'loadDmMessages'
+                ? [chatMessageJson()]
+                : chatMessageJson(),
+          );
+        };
+        final api = HttpNodeApi(connect: () async => fake);
 
-      final request = fake.frame(0);
-      expect(request['method'], 'loadBroadcastMessages');
-      expect(request['params'], {'limit': 200});
-      expect(request['id'], isA<int>());
-      expect(messages, hasLength(2));
-      final first = messages.first;
-      expect(first.id, 7);
-      expect(first.content, 'hello');
-      expect(first.isBroadcast, isTrue);
-      expect(first.peerId, isNull);
-      final attachment = messages.last.attachment!;
-      expect(attachment.fileId, 'abc123');
-      expect(attachment.size.toInt(), 2048);
-      expect(attachment.sizeLabel, '2 KiB');
-      expect(attachment.mime, 'text/plain');
-    });
+        await api.loadDmMessages(peerId: 'peer-x', limit: 50);
+        await api.saveOutgoingDm(peerId: 'peer-x', content: 'yo');
 
-    test('loadDmMessages and saveOutgoingDm route peer-specific params',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        // loadDmMessages returns a list; saveOutgoingDm returns one message.
-        fake.respond(
-          request,
-          ok: request['method'] == 'loadDmMessages'
-              ? [chatMessageJson()]
-              : chatMessageJson(),
+        expect(fake.frame(0)['method'], 'loadDmMessages');
+        expect(fake.frame(0)['params'], {'peerId': 'peer-x', 'limit': 50});
+        expect(fake.frame(1)['method'], 'saveOutgoingDm');
+        expect(fake.frame(1)['params'], {'peerId': 'peer-x', 'content': 'yo'});
+      },
+    );
+
+    test(
+      'all four save methods serialize replyTo as a camelCase object',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          fake.respond(
+            request,
+            ok: request['method'] == 'saveOutgoingGroup'
+                ? groupMessageJson()
+                : chatMessageJson(),
+          );
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        await api.saveOutgoingBroadcast(content: 'a', replyTo: replyRef);
+        await api.saveOutgoingDm(
+          peerId: 'peer-x',
+          content: 'b',
+          replyTo: replyRef,
         );
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+        await api.saveIncomingMessage(
+          content: 'c',
+          peerId: 'peer-x',
+          isDirect: true,
+          msgId: 'm1',
+          replyTo: replyRef,
+        );
+        await api.saveOutgoingGroup(
+          groupId: 'g1',
+          content: 'd',
+          replyTo: replyRef,
+        );
 
-      await api.loadDmMessages(peerId: 'peer-x', limit: 50);
-      await api.saveOutgoingDm(peerId: 'peer-x', content: 'yo');
-
-      expect(fake.frame(0)['method'], 'loadDmMessages');
-      expect(fake.frame(0)['params'], {'peerId': 'peer-x', 'limit': 50});
-      expect(fake.frame(1)['method'], 'saveOutgoingDm');
-      expect(fake.frame(1)['params'], {'peerId': 'peer-x', 'content': 'yo'});
-    });
-
-    test('error frames surface as exceptions with the server message',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        fake.respondError(fake.frame(0), 'boom');
-      };
-      final api = HttpNodeApi(connect: () async => fake);
-
-      await expectLater(
-        api.getLogs(),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('boom'),
+        final expected = replyJson();
+        for (var i = 0; i < 4; i++) {
+          final params = fake.frame(i)['params']! as Map<String, dynamic>;
+          expect(params['replyTo'], expected);
+        }
+        expect(fake.frame(2)['params']['msgId'], 'm1');
+        // Ordinary sends omit the key entirely (the Rust params are Option).
+        await api.saveOutgoingBroadcast(content: 'plain');
+        expect(
+          (fake.frame(4)['params']! as Map<String, dynamic>).containsKey(
+            'replyTo',
           ),
-        ),
-      );
-    });
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'error frames surface as exceptions with the server message',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          fake.respondError(fake.frame(0), 'boom');
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        await expectLater(
+          api.getLogs(),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('boom'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('null results (void methods) complete with null', () async {
       final fake = FakeRemoteTransport();
@@ -224,25 +315,27 @@ void main() {
       expect(fake.frame(0)['params'], {'messageId': 42, 'isGroup': true});
     });
 
-    test('deleteGroup and setPeerLocalNickname route camelCase params',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        fake.respond(fake.frame(fake.sentFrames.length - 1), ok: null);
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+    test(
+      'deleteGroup and setPeerLocalNickname route camelCase params',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          fake.respond(fake.frame(fake.sentFrames.length - 1), ok: null);
+        };
+        final api = HttpNodeApi(connect: () async => fake);
 
-      await api.deleteGroup(groupId: 'g-1');
-      await api.setPeerLocalNickname(peerId: 'peer-x', nickname: 'bob');
+        await api.deleteGroup(groupId: 'g-1');
+        await api.setPeerLocalNickname(peerId: 'peer-x', nickname: 'bob');
 
-      expect(fake.frame(0)['method'], 'deleteGroup');
-      expect(fake.frame(0)['params'], {'groupId': 'g-1'});
-      expect(fake.frame(1)['method'], 'setPeerLocalNickname');
-      expect(fake.frame(1)['params'], {
-        'peerId': 'peer-x',
-        'nickname': 'bob',
-      });
-    });
+        expect(fake.frame(0)['method'], 'deleteGroup');
+        expect(fake.frame(0)['params'], {'groupId': 'g-1'});
+        expect(fake.frame(1)['method'], 'setPeerLocalNickname');
+        expect(fake.frame(1)['params'], {
+          'peerId': 'peer-x',
+          'nickname': 'bob',
+        });
+      },
+    );
 
     test('non-protocol frames are ignored, not fatal', () async {
       final fake = FakeRemoteTransport();
@@ -286,6 +379,26 @@ void main() {
       expect(received!.eventType, 'device_binding_intro'); // unchanged
     });
 
+    test('pushed live messages carry their reply snapshot', () async {
+      final fake = FakeRemoteTransport();
+      final api = HttpNodeApi(connect: () async => fake);
+      SwarmEventJson? received;
+      api.startEventPump((event) => received = event);
+
+      fake.pushEvent({
+        'eventType': 'broadcast',
+        'peerId': 'peer-9',
+        'content': 'answer',
+        'msgId': 'm2',
+        'replyTo': replyJson(),
+      });
+      await FakeRemoteTransport.pump();
+
+      expect(received!.msgId, 'm2');
+      expect(received!.replyTo, replyRef);
+      api.stopEventPump();
+    });
+
     test('response frames are not delivered as events', () async {
       final fake = FakeRemoteTransport();
       final delivered = <SwarmEventJson>[];
@@ -302,99 +415,139 @@ void main() {
   });
 
   group('HttpNodeApi attachments', () {
-    test('byte sends upload first, then pass the descriptor to the save call',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        final request = fake.frame(fake.sentFrames.length - 1);
-        if (request['method'] == 'saveOutgoingBroadcast') {
-          fake.respond(request, ok: chatMessageJson(withAttachment: true));
-        }
-      };
-      final api = HttpNodeApi(connect: () async => fake);
-      final bytes = Uint8List.fromList([1, 2, 3, 4]);
+    test(
+      'byte sends upload first, then pass the descriptor to the save call',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          if (request['method'] == 'saveOutgoingBroadcast') {
+            fake.respond(request, ok: chatMessageJson(withAttachment: true));
+          }
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+        final bytes = Uint8List.fromList([1, 2, 3, 4]);
 
-      final message = await api.saveOutgoingBroadcast(
-        content: '',
-        attachmentBytes: bytes,
-        attachmentName: 'photo.png',
-      );
+        final message = await api.saveOutgoingBroadcast(
+          content: '',
+          attachmentBytes: bytes,
+          attachmentName: 'photo.png',
+        );
 
-      expect(fake.uploads.single.$1, 'photo.png');
-      expect(fake.uploads.single.$2, bytes);
-      // Uploads travel over HTTP, not the WS protocol — the save call is the
-      // only frame.
-      final request = fake.frame(0);
-      expect(request['method'], 'saveOutgoingBroadcast');
-      final params = request['params']! as Map<String, dynamic>;
-      expect(params['content'], '');
-      // The descriptor rides in the persisted snake_case shape.
-      expect(params['attachment'], {
-        'file_id': 'sha-photo.png',
-        'name': 'photo.png',
-        'size': 4,
-        'mime': null,
-      });
-      expect(message.attachment!.name, 'notes.txt');
-    });
+        expect(fake.uploads.single.$1, 'photo.png');
+        expect(fake.uploads.single.$2, bytes);
+        // Uploads travel over HTTP, not the WS protocol — the save call is the
+        // only frame.
+        final request = fake.frame(0);
+        expect(request['method'], 'saveOutgoingBroadcast');
+        final params = request['params']! as Map<String, dynamic>;
+        expect(params['content'], '');
+        // The descriptor rides in the persisted snake_case shape.
+        expect(params['attachment'], {
+          'file_id': 'sha-photo.png',
+          'name': 'photo.png',
+          'size': 4,
+          'mime': null,
+        });
+        expect(message.attachment!.name, 'notes.txt');
+      },
+    );
 
-    test('resolveAttachmentLocation returns the transport download URL',
-        () async {
-      final fake = FakeRemoteTransport();
-      final api = HttpNodeApi(connect: () async => fake);
+    test(
+      'resolveAttachmentLocation returns the transport download URL',
+      () async {
+        final fake = FakeRemoteTransport();
+        final api = HttpNodeApi(connect: () async => fake);
 
-      final url = await api.resolveAttachmentLocation('abc123');
-      expect(url, 'http://node.test/api/files/abc123');
-      // Pure URL resolution — no frame should have been sent.
-      expect(fake.sentFrames, isEmpty);
-    });
+        final url = await api.resolveAttachmentLocation('abc123');
+        expect(url, 'http://node.test/api/files/abc123');
+        // Pure URL resolution — no frame should have been sent.
+        expect(fake.sentFrames, isEmpty);
+      },
+    );
   });
 
   group('HttpNodeApi model conversion', () {
-    test('getContactsWithStats parses rows, devices, and stat counts',
-        () async {
-      final fake = FakeRemoteTransport();
-      fake.onSend = (frame) {
-        fake.respond(fake.frame(0), ok: [
-          {
-            'contactId': 'user-1',
-            'isUser': true,
-            'displayName': 'Alice',
-            'deviceCount': 2,
-            'deviceRows': [
+    test('chat, group and event JSON parse replyTo snapshots', () {
+      final chat = HttpNodeApi.chatMessageFromJson(
+        chatMessageJson(replyTo: replyJson()),
+      );
+      expect(chat.replyTo, replyRef);
+
+      final group = HttpNodeApi.groupMessageFromJson(
+        groupMessageJson(replyTo: replyJson()),
+      );
+      expect(group.replyTo, replyRef);
+
+      final event = HttpNodeApi.eventFromJson({
+        'eventType': 'group_message',
+        'replyTo': replyJson(),
+      });
+      expect(event.replyTo, replyRef);
+
+      // Ordinary rows stay quote-free.
+      expect(
+        HttpNodeApi.chatMessageFromJson(chatMessageJson()).replyTo,
+        isNull,
+      );
+      expect(
+        HttpNodeApi.eventFromJson({'eventType': 'peer_connected'}).replyTo,
+        isNull,
+      );
+    });
+
+    test(
+      'getContactsWithStats parses rows, devices, and stat counts',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          fake.respond(
+            fake.frame(0),
+            ok: [
               {
-                'peerId': 'peer-a',
-                'displayName': 'Alice phone',
+                'contactId': 'user-1',
+                'isUser': true,
+                'displayName': 'Alice',
+                'deviceCount': 2,
+                'deviceRows': [
+                  {
+                    'peerId': 'peer-a',
+                    'displayName': 'Alice phone',
+                    'firstSeen': '2026-10-01 00:00:00',
+                    'lastSeen': '2026-10-02 00:00:00',
+                    'receivedNickname': null,
+                    'localNickname': 'Al',
+                  },
+                ],
                 'firstSeen': '2026-10-01 00:00:00',
                 'lastSeen': '2026-10-02 00:00:00',
-                'receivedNickname': null,
-                'localNickname': 'Al',
+                'dmCount': 3,
+                'broadcastSentToPeer': 1,
               },
             ],
-            'firstSeen': '2026-10-01 00:00:00',
-            'lastSeen': '2026-10-02 00:00:00',
-            'dmCount': 3,
-            'broadcastSentToPeer': 1,
-          },
-        ]);
-      };
-      final api = HttpNodeApi(connect: () async => fake);
+          );
+        };
+        final api = HttpNodeApi(connect: () async => fake);
 
-      final rows = await api.getContactsWithStats();
-      final row = rows.single;
-      expect(row.contactId, 'user-1');
-      expect(row.deviceCount, BigInt.two);
-      expect(row.dmCount.toInt(), 3);
-      expect(row.broadcastSentToPeer.toInt(), 1);
-      expect(row.deviceRows.single.localNickname, 'Al');
-    });
+        final rows = await api.getContactsWithStats();
+        final row = rows.single;
+        expect(row.contactId, 'user-1');
+        expect(row.deviceCount, BigInt.two);
+        expect(row.dmCount.toInt(), 3);
+        expect(row.broadcastSentToPeer.toInt(), 1);
+        expect(row.deviceRows.single.localNickname, 'Al');
+      },
+    );
 
     test('sortContacts round-trips rows with integer counts', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {
         final request = fake.frame(0);
         // Answer with the same rows the client sent (server echoes order).
-        fake.respond(request, ok: (request['params']! as Map<String, dynamic>)['contacts']);
+        fake.respond(
+          request,
+          ok: (request['params']! as Map<String, dynamic>)['contacts'],
+        );
       };
       final api = HttpNodeApi(connect: () async => fake);
       final row = ContactSortInput(
@@ -426,18 +579,21 @@ void main() {
     test('getPeersWithStats parses nullable nicknames and counts', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {
-        fake.respond(fake.frame(0), ok: [
-          {
-            'peerId': 'peer-1',
-            'displayName': 'Alice',
-            'firstSeen': '2026-10-01 00:00:00',
-            'lastSeen': '2026-10-02 00:00:00',
-            'nickname': 'received',
-            'localNickname': null,
-            'dmCount': 4,
-            'broadcastSentToPeer': 0,
-          },
-        ]);
+        fake.respond(
+          fake.frame(0),
+          ok: [
+            {
+              'peerId': 'peer-1',
+              'displayName': 'Alice',
+              'firstSeen': '2026-10-01 00:00:00',
+              'lastSeen': '2026-10-02 00:00:00',
+              'nickname': 'received',
+              'localNickname': null,
+              'dmCount': 4,
+              'broadcastSentToPeer': 0,
+            },
+          ],
+        );
       };
       final api = HttpNodeApi(connect: () async => fake);
 
@@ -453,11 +609,14 @@ void main() {
         final request = fake.frame(fake.sentFrames.length - 1);
         switch (request['method']) {
           case 'getMobilePeerStatus':
-            fake.respond(request, ok: {
-              'databaseUrl': 'sqlite:///tmp/x.db',
-              'localPeerId': '12D3KooWTEST',
-              'selfNickname': 'Me',
-            });
+            fake.respond(
+              request,
+              ok: {
+                'databaseUrl': 'sqlite:///tmp/x.db',
+                'localPeerId': '12D3KooWTEST',
+                'selfNickname': 'Me',
+              },
+            );
           case 'getMyUserId':
             fake.respond(request, ok: 'user-42');
           case 'validateNickname':
@@ -482,25 +641,19 @@ void main() {
 
       expect(await api.getMyUserId(), 'user-42');
       expect(await api.validateNickname(nickname: 'ok'), isTrue);
-      expect(
-        await api.networkSizeLabel(peerCount: 3),
-        '3 peers connected',
-      );
+      expect(await api.networkSizeLabel(peerCount: 3), '3 peers connected');
     });
   });
 
   group('HttpNodeApi pure-helper memo', () {
-    test('formatTimeHhmm caches Rust answers for synchronous reads',
-        () async {
+    test('formatTimeHhmm caches Rust answers for synchronous reads', () async {
       final fake = FakeRemoteTransport();
       fake.onSend = (frame) {
         final request = fake.frame(0);
-        final dt = (request['params']! as Map<String, dynamic>)['dt']! as String;
+        final dt =
+            (request['params']! as Map<String, dynamic>)['dt']! as String;
         // Mirror the Rust rule: HH:MM when the string is long enough.
-        fake.respond(
-          request,
-          ok: dt.length >= 16 ? dt.substring(11, 16) : dt,
-        );
+        fake.respond(request, ok: dt.length >= 16 ? dt.substring(11, 16) : dt);
       };
       final api = HttpNodeApi(connect: () async => fake);
       const dt = '2026-10-19 08:42:00';
@@ -509,7 +662,10 @@ void main() {
       expect(await api.formatTimeHhmm(dt: dt), '08:42');
       // Memo hit is synchronous and identical to Rust's answer.
       expect(api.formatTimeHhmmSync(dt: dt), '08:42');
-      expect(fake.sentFrames, hasLength(1)); // memo prevents a second round trip
+      expect(
+        fake.sentFrames,
+        hasLength(1),
+      ); // memo prevents a second round trip
     });
 
     test('isAtBottom forwards the geometry as integers', () async {
@@ -535,11 +691,13 @@ void main() {
   group('HttpNodeApi connection lifecycle', () {
     test('pending calls fail on drop; the next call reconnects', () async {
       final fakes = <FakeRemoteTransport>[];
-      final api = HttpNodeApi(connect: () async {
-        final fake = FakeRemoteTransport();
-        fakes.add(fake);
-        return fake;
-      });
+      final api = HttpNodeApi(
+        connect: () async {
+          final fake = FakeRemoteTransport();
+          fakes.add(fake);
+          return fake;
+        },
+      );
 
       // First call hangs (no response), then the connection drops.
       final hanging = api.getLogs();
@@ -561,14 +719,16 @@ void main() {
     test('repeated calls reuse one connection', () async {
       var connects = 0;
       late FakeRemoteTransport fake;
-      final api = HttpNodeApi(connect: () async {
-        connects++;
-        fake = FakeRemoteTransport();
-        fake.onSend = (frame) {
-          fake.respond(fake.frame(fake.sentFrames.length - 1), ok: []);
-        };
-        return fake;
-      });
+      final api = HttpNodeApi(
+        connect: () async {
+          connects++;
+          fake = FakeRemoteTransport();
+          fake.onSend = (frame) {
+            fake.respond(fake.frame(fake.sentFrames.length - 1), ok: []);
+          };
+          return fake;
+        },
+      );
 
       await api.clearLogs();
       await api.stopNode();

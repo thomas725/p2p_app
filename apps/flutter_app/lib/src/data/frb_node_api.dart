@@ -17,6 +17,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
 /// bindings (the historical mobile behavior). This is the default transport
@@ -104,10 +105,8 @@ class FrbNodeApi implements NodeApi {
   );
 
   @override
-  Future<void> deleteMessage({
-    required int messageId,
-    required bool isGroup,
-  }) => bridge.deleteMessage(messageId: messageId, isGroup: isGroup);
+  Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
+      bridge.deleteMessage(messageId: messageId, isGroup: isGroup);
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
@@ -115,11 +114,13 @@ class FrbNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) {
     _rejectBytesOnlyAttachments(attachmentBytes);
     return bridge.saveOutgoingBroadcast(
       content: content,
       attachmentPath: attachmentPath,
+      replyTo: replyTo,
     );
   }
 
@@ -130,12 +131,14 @@ class FrbNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) {
     _rejectBytesOnlyAttachments(attachmentBytes);
     return bridge.saveOutgoingDm(
       peerId: peerId,
       content: content,
       attachmentPath: attachmentPath,
+      replyTo: replyTo,
     );
   }
 
@@ -146,12 +149,16 @@ class FrbNodeApi implements NodeApi {
     required bool isDirect,
     String? nickname,
     String? latency,
+    String? msgId,
+    ReplyRef? replyTo,
   }) => bridge.saveIncomingMessage(
     content: content,
     peerId: peerId,
     isDirect: isDirect,
     nickname: nickname,
     latency: latency,
+    msgId: msgId,
+    replyTo: replyTo,
   );
 
   @override
@@ -215,12 +222,14 @@ class FrbNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
+    ReplyRef? replyTo,
   }) {
     _rejectBytesOnlyAttachments(attachmentBytes);
     return bridge.saveOutgoingGroup(
       groupId: groupId,
       content: content,
       attachmentPath: attachmentPath,
+      replyTo: replyTo,
     );
   }
 
@@ -250,9 +259,7 @@ class FrbNodeApi implements NodeApi {
 
   @override
   Future<String> networkSizeLabel({required int peerCount}) =>
-      bridge.networkSizeLabel(
-        peerCount: PlatformInt64Util.from(peerCount),
-      );
+      bridge.networkSizeLabel(peerCount: PlatformInt64Util.from(peerCount));
 
   // ── Identity / device binding ─────────────────────────────────────────────
 
@@ -271,16 +278,13 @@ class FrbNodeApi implements NodeApi {
   Future<void> acceptDeviceBinding({
     required String peerId,
     required Uint8List devicePubkey,
-  }) => bridge.acceptDeviceBinding(
-    peerId: peerId,
-    devicePubkey: devicePubkey,
-  );
+  }) => bridge.acceptDeviceBinding(peerId: peerId, devicePubkey: devicePubkey);
 
   // ── Peers + contacts ──────────────────────────────────────────────────────
 
   @override
-  Future<List<PeerWithStats>> getPeersWithStats() async => mobile
-      .getPeersWithStats();
+  Future<List<PeerWithStats>> getPeersWithStats() async =>
+      mobile.getPeersWithStats();
 
   @override
   Future<List<MobileContactRow>> getContactsWithStats() =>

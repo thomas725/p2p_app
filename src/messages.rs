@@ -22,6 +22,8 @@ pub struct MessageMeta {
     pub sent_at: Option<f64>,
     /// Optional attachment descriptor (files lane §12)
     pub attachment: Option<crate::files::MessageAttachment>,
+    /// Immutable reply snapshot (US-006), stored as `reply_to_json`.
+    pub reply_to: Option<crate::ReplyRef>,
     /// Whether the message body was end-to-end encrypted (US-042); persisted
     /// so the marker survives a reload.
     pub encrypted: bool,
@@ -88,6 +90,7 @@ pub fn save_message_with_meta(
     meta: MessageMeta,
 ) -> color_eyre::Result<Message> {
     let conn = &mut crate::sqlite_connect()?;
+    let reply_to_json = meta.reply_to.as_ref().and_then(crate::reply::encode);
     let new_msg = NewMessage {
         content: content.to_string(),
         peer_id: peer_id.map(std::string::ToString::to_string),
@@ -97,6 +100,7 @@ pub fn save_message_with_meta(
         target_peer: target_peer.map(std::string::ToString::to_string),
         sender_nickname: meta.sender_nickname,
         msg_id: meta.msg_id,
+        reply_to_json,
         sent_at: meta.sent_at,
         attachment_json: meta
             .attachment
@@ -294,6 +298,7 @@ pub fn message_is_dm(msg_id: &str) -> color_eyre::Result<Option<bool>> {
     let conn = &mut crate::sqlite_connect()?;
     let is_direct = crate::generated::schema::messages::table
         .filter(crate::generated::schema::messages::msg_id.eq(msg_id))
+        .filter(crate::generated::schema::messages::sent.eq(1))
         .select(crate::generated::schema::messages::is_direct)
         .first::<i32>(conn)
         .optional()?;

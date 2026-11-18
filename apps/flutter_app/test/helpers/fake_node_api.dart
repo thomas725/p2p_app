@@ -10,6 +10,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 class FakeNodeApi implements NodeApi {
   FakeNodeApi({this.isRemoteTransport = false});
@@ -155,7 +156,9 @@ class FakeNodeApi implements NodeApi {
     _record('loadBroadcastMessages', limit);
     final override = loadBroadcastMessagesOverride;
     if (override == null) {
-      throw UnimplementedError('set loadBroadcastMessagesOverride in this test');
+      throw UnimplementedError(
+        'set loadBroadcastMessagesOverride in this test',
+      );
     }
     return override(limit);
   }
@@ -193,13 +196,44 @@ class FakeNodeApi implements NodeApi {
     if (override != null) return override(messageId, isGroup);
   }
 
+  /// Recorded outgoing sends, in call order. Each includes the frozen reply
+  /// draft (when one was active) so a test can assert the quote was threaded
+  /// through to the transport.
+  final List<({String content, ReplyRef? replyTo})> broadcastSends = [];
+  final List<({String peerId, String content, ReplyRef? replyTo})> dmSends = [];
+  final List<({String groupId, String content, ReplyRef? replyTo})> groupSends =
+      [];
+
+  /// Returned by the outgoing save methods when set; otherwise they throw.
+  ChatMessage Function(String content, ReplyRef? replyTo)?
+  saveOutgoingBroadcastOverride;
+  ChatMessage Function(String peerId, String content, ReplyRef? replyTo)?
+  saveOutgoingDmOverride;
+  MobileGroupMessage Function(
+    String groupId,
+    String content,
+    ReplyRef? replyTo,
+  )?
+  saveOutgoingGroupOverride;
+
   @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
-  }) => throw UnimplementedError();
+    ReplyRef? replyTo,
+  }) async {
+    broadcastSends.add((content: content, replyTo: replyTo));
+    _record('saveOutgoingBroadcast', (content: content, replyTo: replyTo));
+    final override = saveOutgoingBroadcastOverride;
+    if (override == null) {
+      throw UnimplementedError(
+        'set saveOutgoingBroadcastOverride in this test',
+      );
+    }
+    return override(content, replyTo);
+  }
 
   @override
   Future<ChatMessage> saveOutgoingDm({
@@ -208,7 +242,16 @@ class FakeNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
-  }) => throw UnimplementedError();
+    ReplyRef? replyTo,
+  }) async {
+    dmSends.add((peerId: peerId, content: content, replyTo: replyTo));
+    _record('saveOutgoingDm', (content: content, replyTo: replyTo));
+    final override = saveOutgoingDmOverride;
+    if (override == null) {
+      throw UnimplementedError('set saveOutgoingDmOverride in this test');
+    }
+    return override(peerId, content, replyTo);
+  }
 
   @override
   Future<ChatMessage> saveIncomingMessage({
@@ -217,25 +260,39 @@ class FakeNodeApi implements NodeApi {
     required bool isDirect,
     String? nickname,
     String? latency,
+    String? msgId,
+    ReplyRef? replyTo,
   }) async {
     _record('saveIncomingMessage', content);
     final override = saveIncomingMessageOverride;
     if (override == null) {
       throw UnimplementedError('set saveIncomingMessageOverride in this test');
     }
-    return override(content, peerId, isDirect, nickname, latency);
+    return override(
+      content,
+      peerId,
+      isDirect,
+      nickname,
+      latency,
+      msgId,
+      replyTo,
+    );
   }
 
   /// Builds the persisted incoming message for [saveIncomingMessage] when set;
   /// otherwise the call throws. The callback receives the raw arguments so a
-  /// test can assert how the live event's `latency` was threaded through.
+  /// test can assert how the live event's `latency`, `msgId` and `replyTo` were
+  /// threaded through.
   ChatMessage Function(
     String content,
     String peerId,
     bool isDirect,
     String? nickname,
     String? latency,
-  )? saveIncomingMessageOverride;
+    String? msgId,
+    ReplyRef? replyTo,
+  )?
+  saveIncomingMessageOverride;
 
   @override
   Future<void> dialPeer({required String address}) async {}
@@ -359,7 +416,16 @@ class FakeNodeApi implements NodeApi {
     String? attachmentPath,
     Uint8List? attachmentBytes,
     String? attachmentName,
-  }) => throw UnimplementedError();
+    ReplyRef? replyTo,
+  }) async {
+    groupSends.add((groupId: groupId, content: content, replyTo: replyTo));
+    _record('saveOutgoingGroup', (content: content, replyTo: replyTo));
+    final override = saveOutgoingGroupOverride;
+    if (override == null) {
+      throw UnimplementedError('set saveOutgoingGroupOverride in this test');
+    }
+    return override(groupId, content, replyTo);
+  }
 
   @override
   Future<MobileGroup> acceptGroupInvite({required String groupId}) =>
@@ -416,8 +482,7 @@ class FakeNodeApi implements NodeApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<List<PeerWithStats>> getPeersWithStats() =>
-      throw UnimplementedError();
+  Future<List<PeerWithStats>> getPeersWithStats() => throw UnimplementedError();
 
   @override
   Future<List<MobileContactRow>> getContactsWithStats() =>
@@ -433,7 +498,9 @@ class FakeNodeApi implements NodeApi {
     final override = sortContactsOverride;
     // Rust owns contact ordering. The fake returns the rows unchanged unless an
     // override mirrors the real semantics (as `contact_list_test.dart` does).
-    return override == null ? contacts : override(contacts, sortColumn, ascending);
+    return override == null
+        ? contacts
+        : override(contacts, sortColumn, ascending);
   }
 
   /// Replaces Rust's canonical contact ordering in [sortContacts] when set.
@@ -441,7 +508,8 @@ class FakeNodeApi implements NodeApi {
     List<ContactSortInput> contacts,
     int sortColumn,
     bool ascending,
-  )? sortContactsOverride;
+  )?
+  sortContactsOverride;
 
   @override
   Future<String> startCall({required String peerId}) =>

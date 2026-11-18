@@ -36,13 +36,17 @@ fn apply_broadcast_to_state(
     peer_id: &str,
     latency: Option<&str>,
     msg_id: Option<String>,
+    reply_to: Option<&p2p_app::ReplyRef>,
 ) -> String {
     let ts = p2p_app::format_now();
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
-    let msg = format!(
-        "{ts} {} [{sender_display}] {content}",
-        latency.unwrap_or_default(),
+    let msg = p2p_app::reply::with_quoted_header(
+        format!(
+            "{ts} {} [{sender_display}] {content}",
+            latency.unwrap_or_default(),
+        ),
+        reply_to,
     );
     state.messages.push_back(DisplayMessage {
         text: msg.clone(),
@@ -67,13 +71,17 @@ fn apply_dm_to_state(
     peer_id: &str,
     latency: Option<&str>,
     msg_id: Option<String>,
+    reply_to: Option<&p2p_app::ReplyRef>,
 ) -> String {
     let ts = p2p_app::format_now();
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
-    let msg = format!(
-        "{ts} {} [{sender_display}] {content}",
-        latency.unwrap_or_default(),
+    let msg = p2p_app::reply::with_quoted_header(
+        format!(
+            "{ts} {} [{sender_display}] {content}",
+            latency.unwrap_or_default(),
+        ),
+        reply_to,
     );
     state
         .dm_message_ids
@@ -138,6 +146,7 @@ fn apply_group_message_to_state(
     content: &str,
     peer_id: &str,
     msg_id: Option<String>,
+    reply_to: Option<&p2p_app::ReplyRef>,
 ) {
     if state.dynamic_tabs.get_group_tab(group_id).is_none() {
         return;
@@ -145,7 +154,8 @@ fn apply_group_message_to_state(
     let ts = p2p_app::format_now();
     let sender_display =
         p2p_app::peer_display_name(peer_id, &state.local_nicknames, &state.received_nicknames);
-    let msg = format!("{ts} [{sender_display}] {content}");
+    let msg =
+        p2p_app::reply::with_quoted_header(format!("{ts} [{sender_display}] {content}"), reply_to);
     let group_msgs = state
         .group_messages
         .entry(group_id.to_string())
@@ -258,6 +268,7 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         nickname,
         msg_id,
         attachment,
+        reply_to,
         encrypted,
     } = msg;
     if let Some(n) = nickname.as_deref() {
@@ -275,10 +286,25 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         render_message_body(&content, attachment.as_ref()),
         encrypted,
     );
+    let msg_id_for_db = msg_id.clone();
     if is_direct {
-        apply_dm_to_state(s, &body, &peer_id, latency.as_deref(), msg_id);
+        apply_dm_to_state(
+            s,
+            &body,
+            &peer_id,
+            latency.as_deref(),
+            msg_id,
+            reply_to.as_ref(),
+        );
     } else {
-        apply_broadcast_to_state(s, &body, &peer_id, latency.as_deref(), msg_id);
+        apply_broadcast_to_state(
+            s,
+            &body,
+            &peer_id,
+            latency.as_deref(),
+            msg_id,
+            reply_to.as_ref(),
+        );
     }
     p2plog_debug(format!(
         "{} from {sender_display}: {content}",
@@ -286,9 +312,10 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
     ));
     let meta = p2p_app::MessageMeta {
         sender_nickname: nickname,
-        msg_id: None,
+        msg_id: msg_id_for_db,
         sent_at: None,
         attachment,
+        reply_to,
         encrypted,
     };
     if let Err(e) = p2p_app::save_message_with_meta(
@@ -439,7 +466,14 @@ async fn handle_group_message(state: &SharedState, msg: p2p_app::GroupMessageEve
     let sender_display =
         p2p_app::peer_display_name(&msg.peer_id, &s.local_nicknames, &s.received_nicknames);
     let body = render_message_body(&msg.content, msg.attachment.as_ref());
-    apply_group_message_to_state(&mut s, &msg.group_id, &body, &msg.peer_id, msg.msg_id);
+    apply_group_message_to_state(
+        &mut s,
+        &msg.group_id,
+        &body,
+        &msg.peer_id,
+        msg.msg_id,
+        msg.reply_to.as_ref(),
+    );
     s.reload_group_summaries();
     drop(s);
     p2plog_debug(format!(
@@ -519,6 +553,7 @@ async fn handle_peer_connected(
             msg_id: Some(msg_id),
             ack_for: None,
             attachment: None,
+            reply_to: None,
         })
         .await;
 }
