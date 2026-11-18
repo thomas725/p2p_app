@@ -810,6 +810,63 @@ fn handle_backfill_request(
     }
 }
 
+/// Open a sealed DM body (US-042) before any control check. Returns `true`
+/// when the request carried a valid envelope whose plaintext fields were
+/// restored into `request`; `false` means the request was never sealed.
+///
+/// Error means a malformed/foreign envelope: the caller acks and drops it so it
+/// never reaches a frontend.
+fn open_encrypted_request(request: &mut crate::DirectMessage) -> color_eyre::Result<bool> {
+    let Some(envelope) = request.encrypted.take() else {
+        return Ok(false);
+    };
+    let opened = crate::e2e::open_incoming(request.msg_id.as_deref(), &envelope)?;
+    request.content = opened.content;
+    request.nickname = opened.nickname;
+    request.attachment = opened.attachment;
+    request.reply_to = opened.reply_to;
+    Ok(true)
+}
+
+/// Dispatch the empty-content control paths of an incoming DM: a delivery
+/// receipt (`ack_for`), a nickname-only greeting, or an empty message with
+/// neither (dropped). Called only when the body is empty and carries no
+/// attachment, so an attachment-only DM never takes this path.
+async fn handle_empty_dm_control(
+    request: &crate::DirectMessage,
+    peer_id_str: &str,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    if let Some(ack_for) = &request.ack_for {
+        let _ = event_tx
+            .send(SwarmEvent::Receipt {
+                peer_id: peer_id_str.to_string(),
+                ack_for: ack_for.clone(),
+                received_at: request.received_at,
+            })
+            .await;
+    } else if request.nickname.is_some() {
+        // Nickname-only DM: the empty-content exchange we send on connect (and
+        // that the peer echoes). Deliver it as an empty `DirectMessage` so the
+        // receiving frontend records the announced nickname (and touches the
+        // peer's last-seen) without persisting a chat message.
+        let _ = event_tx
+            .send(SwarmEvent::DirectMessage(crate::MessageEvent {
+                content: String::new(),
+                peer_id: peer_id_str.to_string(),
+                latency: Some(crate::format_latency(request.sent_at, SystemTime::now())),
+                nickname: request.nickname.clone(),
+                msg_id: None,
+                attachment: None,
+                encrypted: false,
+                reply_to: None,
+            }))
+            .await;
+    } else {
+        p2plog_debug("Dropped empty DM with no ack_for or nickname".to_string());
+    }
+}
+
 async fn handle_request_response(
     message: libp2p::request_response::Message<crate::DirectMessage, crate::DirectMessage>,
     peer: libp2p::PeerId,
@@ -819,44 +876,31 @@ async fn handle_request_response(
     let peer_id_str = peer.to_string();
     match message {
         libp2p::request_response::Message::Request {
-            request, channel, ..
+            mut request,
+            channel,
+            ..
         } => {
-            // An attachment-only DM is a real message despite empty content
-            // (files lane §12), so the empty-content control paths below only
-            // apply when no attachment rides along.
-            if request.content.trim().is_empty() && request.attachment.is_none() {
-                if let Some(ack_for) = &request.ack_for {
-                    let _ = event_tx
-                        .send(SwarmEvent::Receipt {
-                            peer_id: peer_id_str.clone(),
-                            ack_for: ack_for.clone(),
-                            received_at: request.received_at,
-                        })
-                        .await;
-                } else if request.nickname.is_some() {
-                    // Nickname-only DM: the empty-content exchange we send on
-                    // connect (and that the peer echoes). Deliver it as an empty
-                    // `DirectMessage` so the receiving frontend records the
-                    // announced nickname (and touches the peer's last-seen)
-                    // without persisting a chat message.
-                    let _ = event_tx
-                        .send(SwarmEvent::DirectMessage(crate::MessageEvent {
-                            content: String::new(),
-                            peer_id: peer_id_str,
-                            latency: Some(crate::format_latency(
-                                request.sent_at,
-                                SystemTime::now(),
-                            )),
-                            nickname: request.nickname,
-                            msg_id: None,
-                            attachment: None,
-                            encrypted: false,
-                            reply_to: None,
-                        }))
-                        .await;
-                } else {
-                    p2plog_debug("Dropped empty DM with no ack_for or nickname".to_string());
+            // US-042: open an inbound sealed body *before* any control check —
+            // the plaintext fields of an envelope are deliberately empty. A
+            // malformed/foreign envelope is acked (so it is not retransmitted)
+            // and dropped; it never reaches a frontend.
+            let encrypted = match open_encrypted_request(&mut request) {
+                Ok(encrypted) => encrypted,
+                Err(e) => {
+                    p2plog_debug(format!("Dropped sealed DM we could not open: {e}"));
+                    let response = make_ack_dm("ok".to_string(), request.msg_id);
+                    let _ = swarm
+                        .behaviour_mut()
+                        .request_response
+                        .send_response(channel, response);
+                    return;
                 }
+            };
+            // An attachment-only DM is a real message despite empty content
+            // (files lane §12), so the empty-content control paths only apply
+            // when no attachment rides along.
+            if request.content.trim().is_empty() && request.attachment.is_none() {
+                handle_empty_dm_control(&request, &peer_id_str, event_tx).await;
             } else {
                 let msg_id = request.msg_id.clone();
                 let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
@@ -892,7 +936,7 @@ async fn handle_request_response(
                             nickname: request.nickname,
                             msg_id,
                             attachment: request.attachment.clone(),
-                            encrypted: false,
+                            encrypted,
                             reply_to: request.reply_to,
                         }))
                         .await;
@@ -1708,12 +1752,16 @@ fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
-fn send_dm(peer_id: &str, msg: crate::DirectMessage, swarm: &mut Swarm<AppBehaviour>) {
+fn send_dm(peer_id: &str, mut msg: crate::DirectMessage, swarm: &mut Swarm<AppBehaviour>) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
         if crate::blocklist::is_blocked(&peer.to_string()) {
             p2plog_debug(format!("Refusing to send to blocked peer {peer_id}"));
             return;
         }
+        // US-042: seal user traffic for the recipient device. The routing
+        // fields and control traffic stay in the clear; a sealed message carries
+        // no plaintext body/nickname/attachment/reply snapshot.
+        crate::e2e::seal_dm_payload(&mut msg, &peer);
         swarm
             .behaviour_mut()
             .request_response

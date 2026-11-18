@@ -434,6 +434,7 @@ class HttpNodeApi implements NodeApi {
       nickname: m['nickname'] as String?,
       msgId: m['msgId'] as String?,
       replyTo: replyFromJson(m['replyTo']),
+      encrypted: m['encrypted'] as bool? ?? false,
       address: m['address'] as String?,
       groupId: m['groupId'] as String?,
       devicePubkey: pubkey == null
@@ -566,6 +567,7 @@ class HttpNodeApi implements NodeApi {
     String? latency,
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   }) async => chatMessageFromJson(
     await _call('saveIncomingMessage', {
       'content': content,
@@ -575,6 +577,7 @@ class HttpNodeApi implements NodeApi {
       'latency': ?latency,
       'msgId': ?msgId,
       'replyTo': ?replyToJson(replyTo),
+      'encrypted': encrypted,
     }),
   );
 

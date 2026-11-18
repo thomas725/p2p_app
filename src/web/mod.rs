@@ -767,7 +767,7 @@ mod tests {
             let response = frame(
                 r#"{"id": 14, "method": "saveIncomingMessage", "params": {
                     "content": "reply body", "peerId": "peer-reply", "isDirect": false,
-                    "latency": "5ms", "msgId": "incoming-9",
+                    "latency": "5ms", "msgId": "incoming-9", "encrypted": true,
                     "replyTo": {"msgId": "old-9", "sender": "Alice", "preview": "earlier text"}
                 }}"#,
             )
@@ -778,7 +778,7 @@ mod tests {
                     .expect("history")
                     .into_iter()
                     .find(|m| m.msg_id.as_deref() == Some("incoming-9"))
-                    .map(|m| (m.msg_id, m.reply_to_json))
+                    .map(|m| (m.msg_id, m.reply_to_json, m.encrypted))
             })
             .await
             .expect("read task");
@@ -787,11 +787,14 @@ mod tests {
 
         assert_eq!(response["id"], 14);
         assert_eq!(response["ok"]["msgId"], "incoming-9");
+        assert_eq!(response["ok"]["encrypted"], true);
         assert_eq!(response["ok"]["replyTo"]["msgId"], "old-9");
         assert_eq!(response["ok"]["replyTo"]["sender"], "Alice");
         assert_eq!(response["ok"]["replyTo"]["preview"], "earlier text");
-        let (msg_id, reply_json) = persisted.expect("row saved through the web dispatch");
+        let (msg_id, reply_json, encrypted) =
+            persisted.expect("row saved through the web dispatch");
         assert_eq!(msg_id.as_deref(), Some("incoming-9"));
+        assert_eq!(encrypted, 1, "the US-042 flag must be persisted");
         assert_eq!(
             crate::reply::decode(&reply_json.expect("reply snapshot")),
             Some(crate::ReplyRef::new(

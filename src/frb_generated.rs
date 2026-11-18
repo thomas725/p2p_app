@@ -1405,6 +1405,7 @@ fn wire__crate__api__save_incoming_message_impl(
             let api_latency = <Option<String>>::sse_decode(&mut deserializer);
             let api_msg_id = <Option<String>>::sse_decode(&mut deserializer);
             let api_reply_to = <Option<crate::reply::ReplyRef>>::sse_decode(&mut deserializer);
+            let api_encrypted = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
@@ -1416,6 +1417,7 @@ fn wire__crate__api__save_incoming_message_impl(
                         api_latency,
                         api_msg_id,
                         api_reply_to,
+                        api_encrypted,
                     )?;
                     std::result::Result::Ok(output_ok)
                 })())
@@ -2724,6 +2726,7 @@ impl SseDecode for crate::mobile_node::SwarmEventJson {
         let mut var_nickname = <Option<String>>::sse_decode(deserializer);
         let mut var_msgId = <Option<String>>::sse_decode(deserializer);
         let mut var_replyTo = <Option<crate::reply::ReplyRef>>::sse_decode(deserializer);
+        let mut var_encrypted = <bool>::sse_decode(deserializer);
         let mut var_address = <Option<String>>::sse_decode(deserializer);
         let mut var_groupId = <Option<String>>::sse_decode(deserializer);
         let mut var_devicePubkey = <Option<Vec<u8>>>::sse_decode(deserializer);
@@ -2735,6 +2738,7 @@ impl SseDecode for crate::mobile_node::SwarmEventJson {
             nickname: var_nickname,
             msg_id: var_msgId,
             reply_to: var_replyTo,
+            encrypted: var_encrypted,
             address: var_address,
             group_id: var_groupId,
             device_pubkey: var_devicePubkey,
@@ -3353,6 +3357,7 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::SwarmEventJson {
             self.nickname.into_into_dart().into_dart(),
             self.msg_id.into_into_dart().into_dart(),
             self.reply_to.into_into_dart().into_dart(),
+            self.encrypted.into_into_dart().into_dart(),
             self.address.into_into_dart().into_dart(),
             self.group_id.into_into_dart().into_dart(),
             self.device_pubkey.into_into_dart().into_dart(),
@@ -3871,6 +3876,7 @@ impl SseEncode for crate::mobile_node::SwarmEventJson {
         <Option<String>>::sse_encode(self.nickname, serializer);
         <Option<String>>::sse_encode(self.msg_id, serializer);
         <Option<crate::reply::ReplyRef>>::sse_encode(self.reply_to, serializer);
+        <bool>::sse_encode(self.encrypted, serializer);
         <Option<String>>::sse_encode(self.address, serializer);
         <Option<String>>::sse_encode(self.group_id, serializer);
         <Option<Vec<u8>>>::sse_encode(self.device_pubkey, serializer);

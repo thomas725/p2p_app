@@ -45,9 +45,10 @@
 //! stops an envelope from being replayed under a different `msg_id` (which
 //! would otherwise collide with, or bypass, the receipt/dedup bookkeeping).
 //!
-//! The sealed payload is a [`SealedDmBody`]: the content, the sender nickname
-//! and the attachment descriptor all move inside the ciphertext, so only the
-//! routing fields (`msg_id`, `sent_at`, `group_id`) stay readable on the wire.
+//! The sealed payload is a [`SealedDmBody`]: the content, the sender nickname,
+//! the attachment descriptor and the reply snapshot all move inside the
+//! ciphertext, so only the routing fields (`msg_id`, `sent_at`, `group_id`)
+//! stay readable on the wire.
 //!
 //! ## What is deliberately *not* encrypted
 //!
@@ -106,8 +107,9 @@ pub struct EncryptedDm {
 
 /// The plaintext that travels inside an [`EncryptedDm`].
 ///
-/// Encrypting the nickname and attachment alongside the content is the point of
-/// the lane: an observer that sees the envelope learns the routing fields only.
+/// Encrypting the nickname, attachment and reply snapshot alongside the content
+/// is the point of the lane: an observer that sees the envelope learns the
+/// routing fields only.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SealedDmBody {
@@ -117,6 +119,9 @@ pub struct SealedDmBody {
     pub nickname: Option<String>,
     /// Attachment descriptor (files lane §12); the bytes are pulled separately.
     pub attachment: Option<MessageAttachment>,
+    /// Immutable reply snapshot (US-006); travels inside the ciphertext so the
+    /// quoted preview is hidden too.
+    pub reply_to: Option<crate::ReplyRef>,
 }
 
 /// The local device's static X25519 secret, derived from its Ed25519 identity.
@@ -170,52 +175,50 @@ pub fn can_encrypt_to_str(peer_id: &str) -> bool {
         .is_ok_and(|p| can_encrypt_to(&p))
 }
 
-/// Split an outgoing DM into its wire fields, sealing the body when possible.
+/// Seal an outgoing DM's body in place (US-042) when possible.
 ///
-/// Returns `(content, nickname, attachment, envelope)`. When the envelope is
-/// `Some`, the three plaintext fields are emptied — the receiver must open the
-/// envelope instead, and must not read the empty content as a control message.
+/// On success the wire fields `content`, `nickname`, `attachment` and `reply_to`
+/// are emptied and the ciphertext is stored in `msg.encrypted`; the receiver
+/// must open the envelope instead and must not read the empty content as a
+/// control message. The reply snapshot itself travels inside the sealed body.
 ///
 /// Control traffic deliberately stays in the clear:
 ///
 /// * delivery acks (`ack_for` set) carry no user content, and a peer must be
 ///   able to answer a message it could not open;
 /// * the nickname-only exchange (empty content, no attachment) is how a peer
-///   announces its name on connect, and every peer must understand it.
+///   announces its name on connect, and every peer must understand it;
+/// * DM-lane group messages (`group_id` set) are membership/invite control.
 ///
 /// A peer whose identity is not Ed25519, or a sealing failure, also falls back
-/// to plaintext so the lane keeps working with builds that predate it.
-#[must_use]
-pub fn seal_dm_payload(
-    content: String,
-    nickname: Option<String>,
-    attachment: Option<MessageAttachment>,
-    ack_for: Option<&str>,
-    msg_id: Option<&str>,
-    peer: &libp2p::PeerId,
-) -> (
-    String,
-    Option<String>,
-    Option<MessageAttachment>,
-    Option<EncryptedDm>,
-) {
-    let is_control = ack_for.is_some() || (content.trim().is_empty() && attachment.is_none());
+/// to plaintext so the lane keeps working with builds that predate it. In both
+/// cases `msg` is left untouched.
+pub fn seal_dm_payload(msg: &mut crate::DirectMessage, peer: &libp2p::PeerId) {
+    let is_control = msg.ack_for.is_some()
+        || msg.group_id.is_some()
+        || (msg.content.trim().is_empty() && msg.attachment.is_none());
     if is_control {
-        return (content, nickname, attachment, None);
+        return;
     }
     let Some(recipient) = peer_messaging_key(peer) else {
-        return (content, nickname, attachment, None);
+        return;
     };
     let body = SealedDmBody {
-        content,
-        nickname,
-        attachment,
+        content: std::mem::take(&mut msg.content),
+        nickname: msg.nickname.take(),
+        attachment: msg.attachment.take(),
+        reply_to: msg.reply_to.clone(),
     };
-    match seal_body(&body, &recipient, msg_id) {
-        Ok(envelope) => (String::new(), None, None, Some(envelope)),
+    match seal_body(&body, &recipient, msg.msg_id.as_deref()) {
+        Ok(envelope) => {
+            msg.encrypted = Some(envelope);
+            msg.reply_to = None;
+        }
         Err(e) => {
             crate::p2plog_debug(format!("dm-e2e: falling back to plaintext: {e}"));
-            (body.content, body.nickname, body.attachment, None)
+            msg.content = body.content;
+            msg.nickname = body.nickname;
+            msg.attachment = body.attachment;
         }
     }
 }

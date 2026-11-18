@@ -100,10 +100,12 @@ Seven libp2p behaviours (`src/behavior.rs`):
 | `ping` | — | liveness |
 
 Transport is TCP+QUIC with yamux multiplexing; libp2p `noise` provides
-transport encryption. There is **no end-to-end encryption layer yet** — the
-receiving node sees plaintext message bodies. A scaffolding lane exists
-(`src/e2e.rs`, `DirectMessage.encrypted`) but is not wired into the send/receive
-paths; see [`e2e_encryption.md`](e2e_encryption.md) and backlog US-042.
+transport encryption. Direct messages additionally carry a payload-level
+end-to-end envelope (US-042): `src/e2e.rs` seals the body for the recipient's
+device in `send_dm`, and `handle_request_response` opens it before persistence.
+Broadcasts and group messages stay plaintext (multi-recipient); a relay or
+store-and-forward holder sees only the sealed envelope for a DM. See
+[`e2e_encryption.md`](e2e_encryption.md) for the threat model and limits.
 
 Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the

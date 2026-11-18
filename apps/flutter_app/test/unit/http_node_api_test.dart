@@ -243,6 +243,7 @@ void main() {
           isDirect: true,
           msgId: 'm1',
           replyTo: replyRef,
+          encrypted: true,
         );
         await api.saveOutgoingGroup(
           groupId: 'g1',
@@ -256,6 +257,7 @@ void main() {
           expect(params['replyTo'], expected);
         }
         expect(fake.frame(2)['params']['msgId'], 'm1');
+        expect(fake.frame(2)['params']['encrypted'], isTrue);
         // Ordinary sends omit the key entirely (the Rust params are Option).
         await api.saveOutgoingBroadcast(content: 'plain');
         expect(

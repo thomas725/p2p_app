@@ -211,10 +211,17 @@ pub fn save_outgoing_dm(
 /// Save an incoming message (broadcast or DM) to the database.
 ///
 /// `latency` is the live event's measured round-trip time; it only decorates
-/// the returned message (never persisted), mirroring the TUI.
+/// the returned message (never persisted), mirroring the TUI. `encrypted`
+/// records that the DM arrived sealed (US-042) so the flag survives a reload.
 ///
 /// # Errors
 /// Returns an error if the message cannot be saved.
+// FRB 2.13 emits one Dart named argument per Rust parameter; grouping these
+// into a struct would change the generated `saveIncomingMessage` signature and
+// every Dart/web caller. The internal impl already takes a struct (see
+// `mobile_node::IncomingMessageData`), so the extra argument is irreducible at
+// this boundary.
+#[allow(clippy::too_many_arguments)]
 pub fn save_incoming_message(
     content: String,
     peer_id: String,
@@ -223,10 +230,18 @@ pub fn save_incoming_message(
     latency: Option<String>,
     msg_id: Option<String>,
     reply_to: Option<crate::ReplyRef>,
+    encrypted: bool,
 ) -> Result<ChatMessage, String> {
-    crate::mobile_node::save_incoming_message(
-        content, peer_id, is_direct, nickname, latency, msg_id, reply_to,
-    )
+    crate::mobile_node::save_incoming_message(crate::mobile_node::IncomingMessageData {
+        content,
+        peer_id,
+        is_direct,
+        nickname,
+        latency,
+        msg_id,
+        reply_to,
+        encrypted,
+    })
 }
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).

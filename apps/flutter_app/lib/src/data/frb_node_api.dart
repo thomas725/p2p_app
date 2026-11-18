@@ -151,6 +151,7 @@ class FrbNodeApi implements NodeApi {
     String? latency,
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   }) => bridge.saveIncomingMessage(
     content: content,
     peerId: peerId,
@@ -159,6 +160,7 @@ class FrbNodeApi implements NodeApi {
     latency: latency,
     msgId: msgId,
     replyTo: replyTo,
+    encrypted: encrypted,
   );
 
   @override

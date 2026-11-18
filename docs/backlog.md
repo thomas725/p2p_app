@@ -96,35 +96,6 @@ Still open when the project moves to a PR flow:
 - pin the CI toolchain to the dev toolchain, or the stable/nightly clippy drift
   will produce false reds the moment the check becomes required.
 
-### End-to-end encryption for direct messages (US-042) — **partial: scaffolding only**
-
-Transport encryption exists (libp2p `noise`), but a relay or the receiving
-node sees plaintext message bodies. E2E would need a per-user key, a key
-exchange over the existing DM lane, and a per-message envelope.
-
-**What landed (2026-11-02, commit pending):** the crypto module
-(`src/e2e.rs`: X25519 from the Ed25519 identity, recipient key recovered from
-the peer ID, HKDF-SHA256 + ChaCha20-Poly1305 envelope, `msg_id` in the AAD),
-the `DirectMessage.encrypted` wire field, the `MessageEvent.encrypted` flag,
-the `messages.encrypted` column, `ChatMessage.encrypted` (mobile) and the TUI
-`[e2e] ` marker plumbing. All of it compiles and the tests pass.
-
-**What is NOT wired:** `swarm_handler::send_dm` still sends plaintext and
-`handle_request_response` never opens an envelope, so no DM is encrypted end to
-end today. See `docs/e2e_encryption.md`.
-
-- **Rationale (updated 2026-11-02):** at-rest protection for message bodies is
-  **not** a goal of this lane — it should be achieved at the **database level**
-  (encrypted SQLite / SQLCipher-style), not per message. The remaining
-  justification for the per-recipient envelope is **store-and-forward / offline
-  caching**: a third node holding and forwarding a sealed blob it must not be
-  able to read. That use case is tracked separately (see the new backlog item
-  below); until it is implemented, this lane's value is limited to defense in
-  depth. The scheme also has no forward secrecy or post-compromise security.
-- **Scope sketch (if pursued):** reuse the per-install Ed25519 identity (not
-  the account key — sibling devices don't hold it); seal in `send_dm`; open in
-  `handle_request_response`; persist the flag; surface a lock marker in Flutter.
-
 ### Database-level at-rest encryption
 
 Message bodies, peer data and group state currently live in plaintext SQLite.
@@ -149,14 +120,14 @@ per-message E2E lane (US-042) is not it.
 A peer that is offline cannot receive a DM. Store-and-forward would let a
 mutually-trusted (or untrusted) intermediate node hold a sealed blob and
 deliver it when the recipient reconnects — the use case the per-recipient
-envelope in `src/e2e.rs` (US-042) was designed for: the holder must not be
-able to read the body.
+envelope in `src/e2e.rs` (US-042, now live) was designed for: the holder must
+not be able to read the body.
 
 - **Scope**: a relay/holder protocol (request_response or gossipsub-backed),
   retention/expiry policy, dedup on delivery, and the recipient-side open path
-  (`e2e::open_incoming`) once US-042 is wired.
-- **Depends on**: US-042 being completed (seal in `send_dm`, open in
-  `handle_request_response`) so the forwarded bytes are actually sealed.
+  (`e2e::open_incoming`), which DMs already use.
+- **Depends on**: nothing in the crypto lane — `send_dm` seals and
+  `handle_request_response` opens already, so the forwarded bytes are sealed.
 - **Trust model**: holders see only routing fields (`msg_id`, `sent_at`) and
   the ciphertext; a compromised holder can drop or delay, not read.
 
@@ -325,7 +296,7 @@ here so they are not mistaken for unfinished work.
 | No message sync between a user's own devices | A user's devices are separate peers; syncing them needs one of the user's own devices online within the gap window. Out of scope by decision (`archive/2026-09-02_backlog.md` §11). |
 | Calls are signaling-only | Media transport is not implemented; see US-044 above. |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
-| DM bodies are plaintext to the receiving node | Transport is encrypted, but there is no E2E layer; see US-042 above. |
+| DMs are readable by a store-and-forward holder | US-042 seals DM bodies per recipient; a holder sees only the envelope (see `e2e_encryption.md`). |
 | The web frontend's HTTP Basic credentials are not encrypted on the wire | The server has no TLS of its own (it is a LAN display client). Put a TLS-terminating reverse proxy in front for any exposure beyond a trusted LAN; the browser-native credential dialog and the session cookie already keep the secret out of URLs, history and logs. |
 | `cargo outdated` reports eight direct rows | Informational (exit 0 by default); none is a security advisory. Two deliberate pins, a few compatible patches, and a few semver-incompatible majors — see the dependency lane above. |
 

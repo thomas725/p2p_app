@@ -782,6 +782,18 @@ class MessageBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Lock marker for a DM that arrived sealed end to end
+                    // (US-042). It is in the metadata row so the body stays
+                    // identical to the TUI's `[e2e] `-prefixed line.
+                    if (message.encrypted) ...[
+                      Icon(
+                        Icons.lock,
+                        size: 12,
+                        color: cs.primary,
+                        semanticLabel: 'End-to-end encrypted',
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     // Round-trip latency of a live incoming message, printed
                     // before the time just as the TUI prefixes it onto the line.
                     if (message.latency != null) ...[

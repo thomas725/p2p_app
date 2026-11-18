@@ -116,6 +116,7 @@ abstract class NodeApi {
     String? latency,
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   });
 
   Future<void> dialPeer({required String address});

@@ -120,6 +120,30 @@ void main() {
     expect(find.byIcon(Icons.done_all), findsNothing);
   });
 
+  testWidgets('only sealed DMs show the end-to-end lock marker', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(
+                message: chatMessage(encrypted: true),
+                isOwn: false,
+              ),
+              MessageBubble(
+                message: chatMessage(id: 2, encrypted: false),
+                isOwn: false,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byIcon(Icons.lock), findsOneWidget);
+  });
+
   testWidgets('a receipt event ticks the acknowledged DM', (tester) async {
     final fake = FakeNodeApi()
       ..loadDmMessagesOverride = (_, _) => [chatMessage(msgId: 'dm-1')];
@@ -138,6 +162,7 @@ void main() {
       const SwarmEventJson(
         eventType: 'receipt',
         peerId: 'peer-abc',
+        encrypted: false,
         msgId: 'dm-1',
       ),
     );
@@ -163,6 +188,7 @@ void main() {
       const SwarmEventJson(
         eventType: 'receipt',
         peerId: 'peer-abc',
+        encrypted: false,
         msgId: 'someone-elses-message',
       ),
     );
@@ -207,6 +233,7 @@ void main() {
       const SwarmEventJson(
         eventType: 'receipt',
         peerId: 'peer-abc',
+        encrypted: false,
         msgId: 'bc-1',
       ),
     );
@@ -255,15 +282,24 @@ void main() {
     // swallow the following `..setter` into the list literal's own cascade.)
     fake.loadBroadcastMessagesOverride = (_) => [];
     fake.saveIncomingMessageOverride =
-        (content, peerId, isDirect, nickname, latency, msgId, replyTo) =>
-            chatMessage(
-              id: 7,
-              content: content,
-              peerId: peerId,
-              msgId: null,
-              senderNickname: nickname,
-              latency: latency,
-            );
+        (
+          content,
+          peerId,
+          isDirect,
+          nickname,
+          latency,
+          msgId,
+          replyTo,
+          encrypted,
+        ) => chatMessage(
+          id: 7,
+          content: content,
+          peerId: peerId,
+          msgId: null,
+          senderNickname: nickname,
+          latency: latency,
+          encrypted: encrypted,
+        );
     nodeApi = fake;
 
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
@@ -277,6 +313,7 @@ void main() {
         peerId: 'peer-abc',
         content: 'hi all',
         latency: '12ms',
+        encrypted: false,
       ),
     );
     await tester.pump();
@@ -381,7 +418,16 @@ void main() {
     String? seenMsgId;
     ReplyRef? seenReply;
     fake.saveIncomingMessageOverride =
-        (content, peerId, isDirect, nickname, latency, msgId, replyTo) {
+        (
+          content,
+          peerId,
+          isDirect,
+          nickname,
+          latency,
+          msgId,
+          replyTo,
+          encrypted,
+        ) {
           seenMsgId = msgId;
           seenReply = replyTo;
           return chatMessage(
@@ -391,6 +437,7 @@ void main() {
             msgId: msgId,
             replyTo: replyTo,
             latency: latency,
+            encrypted: encrypted,
           );
         };
     nodeApi = fake;
@@ -406,6 +453,7 @@ void main() {
         content: 'this answers Bob',
         msgId: 'new-wire-id',
         replyTo: quote,
+        encrypted: false,
       ),
     );
     await tester.pump();
@@ -615,5 +663,57 @@ void main() {
     expect(calls, hasLength(1));
     expect(calls.single.argument, (messageId: 11, isGroup: true));
     expect(find.text('group mine'), findsNothing);
+  });
+
+  testWidgets('a sealed live DM keeps its lock flag when persisted', (
+    tester,
+  ) async {
+    bool? persistedEncrypted;
+    final fake = FakeNodeApi()..loadDmMessagesOverride = (_, _) => [];
+    fake.saveIncomingMessageOverride =
+        (
+          content,
+          peerId,
+          isDirect,
+          nickname,
+          latency,
+          msgId,
+          replyTo,
+          encrypted,
+        ) {
+          persistedEncrypted = encrypted;
+          return chatMessage(
+            id: 9,
+            content: content,
+            peerId: peerId,
+            msgId: msgId,
+            replyTo: replyTo,
+            sent: false,
+            encrypted: encrypted,
+          );
+        };
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'dm',
+        peerId: 'peer-abc',
+        content: 'sealed hello',
+        msgId: 'dm-e2e-1',
+        encrypted: true,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(persistedEncrypted, isTrue);
+    expect(find.text('sealed hello'), findsOneWidget);
+    expect(find.byIcon(Icons.lock), findsOneWidget);
   });
 }

@@ -18,6 +18,7 @@ SwarmEventJson callEvent(String type, {required String peerId, required String c
       eventType: type,
       peerId: peerId,
       content: callId,
+      encrypted: false,
     );
 
 void main() {
@@ -300,6 +301,7 @@ void main() {
       eventType: 'dm',
       peerId: peerId,
       content: 'hello',
+      encrypted: false,
     );
     // No previous sink is installed in the harness, so a DM reaching the
     // screen must not crash or mutate call state.

@@ -204,6 +204,7 @@ abstract class RustLibApi extends BaseApi {
     String? latency,
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   });
 
   Future<ChatMessage> crateApiSaveOutgoingBroadcast({
@@ -1467,6 +1468,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     String? latency,
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1479,6 +1481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_opt_String(latency, serializer);
           sse_encode_opt_String(msgId, serializer);
           sse_encode_opt_box_autoadd_reply_ref(replyTo, serializer);
+          sse_encode_bool(encrypted, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -1499,6 +1502,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           latency,
           msgId,
           replyTo,
+          encrypted,
         ],
         apiImpl: this,
       ),
@@ -1516,6 +1520,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           "latency",
           "msgId",
           "replyTo",
+          "encrypted",
         ],
       );
 
@@ -2565,8 +2570,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 10)
-      throw Exception('unexpected arr length: expect 10 but see ${arr.length}');
+    if (arr.length != 11)
+      throw Exception('unexpected arr length: expect 11 but see ${arr.length}');
     return SwarmEventJson(
       eventType: dco_decode_String(arr[0]),
       peerId: dco_decode_opt_String(arr[1]),
@@ -2575,9 +2580,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: dco_decode_opt_String(arr[4]),
       msgId: dco_decode_opt_String(arr[5]),
       replyTo: dco_decode_opt_box_autoadd_reply_ref(arr[6]),
-      address: dco_decode_opt_String(arr[7]),
-      groupId: dco_decode_opt_String(arr[8]),
-      devicePubkey: dco_decode_opt_list_prim_u_8_strict(arr[9]),
+      encrypted: dco_decode_bool(arr[7]),
+      address: dco_decode_opt_String(arr[8]),
+      groupId: dco_decode_opt_String(arr[9]),
+      devicePubkey: dco_decode_opt_list_prim_u_8_strict(arr[10]),
     );
   }
 
@@ -3367,6 +3373,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_nickname = sse_decode_opt_String(deserializer);
     var var_msgId = sse_decode_opt_String(deserializer);
     var var_replyTo = sse_decode_opt_box_autoadd_reply_ref(deserializer);
+    var var_encrypted = sse_decode_bool(deserializer);
     var var_address = sse_decode_opt_String(deserializer);
     var var_groupId = sse_decode_opt_String(deserializer);
     var var_devicePubkey = sse_decode_opt_list_prim_u_8_strict(deserializer);
@@ -3378,6 +3385,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       nickname: var_nickname,
       msgId: var_msgId,
       replyTo: var_replyTo,
+      encrypted: var_encrypted,
       address: var_address,
       groupId: var_groupId,
       devicePubkey: var_devicePubkey,
@@ -4027,6 +4035,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.nickname, serializer);
     sse_encode_opt_String(self.msgId, serializer);
     sse_encode_opt_box_autoadd_reply_ref(self.replyTo, serializer);
+    sse_encode_bool(self.encrypted, serializer);
     sse_encode_opt_String(self.address, serializer);
     sse_encode_opt_String(self.groupId, serializer);
     sse_encode_opt_list_prim_u_8_strict(self.devicePubkey, serializer);

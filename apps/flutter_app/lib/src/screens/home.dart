@@ -472,6 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
             event.latency,
             msgId: event.msgId,
             replyTo: event.replyTo,
+            encrypted: event.encrypted,
           );
         }
         // A nickname in the event means we just learned or updated this peer's
@@ -493,6 +494,7 @@ class _HomeScreenState extends State<HomeScreen> {
             event.latency,
             msgId: event.msgId,
             replyTo: event.replyTo,
+            encrypted: event.encrypted,
           );
         }
         if (event.nickname != null) {
@@ -635,6 +637,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? latency, {
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   }) async {
     try {
       final msg = await nodeApi.saveIncomingMessage(
@@ -645,6 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
         latency: latency,
         msgId: msgId,
         replyTo: replyTo,
+        encrypted: encrypted,
       );
       if (mounted) {
         setState(() {
@@ -666,6 +670,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String? latency, {
     String? msgId,
     ReplyRef? replyTo,
+    required bool encrypted,
   }) async {
     try {
       await nodeApi.saveIncomingMessage(
@@ -676,6 +681,7 @@ class _HomeScreenState extends State<HomeScreen> {
         latency: latency,
         msgId: msgId,
         replyTo: replyTo,
+        encrypted: encrypted,
       );
     } catch (e) {
       debugPrint('Failed to save incoming DM: $e');

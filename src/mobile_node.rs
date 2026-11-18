@@ -838,21 +838,46 @@ pub(crate) fn save_outgoing_dm_attached(
     Ok(chat)
 }
 
+/// Fields for persisting one incoming broadcast or DM (internal; the FRB
+/// wrapper in [`crate::api`] takes the same values as separate named args so
+/// Dart keeps its generated signature).
+pub struct IncomingMessageData {
+    /// Message body (may be empty for an attachment-only message).
+    pub content: String,
+    /// Sender peer id.
+    pub peer_id: String,
+    /// `true` for a DM, `false` for a broadcast.
+    pub is_direct: bool,
+    /// Announced sender nickname, if any.
+    pub nickname: Option<String>,
+    /// Live round-trip time decoration (never persisted).
+    pub latency: Option<String>,
+    /// Stable message id (reply/receipt correlation).
+    pub msg_id: Option<String>,
+    /// Immutable reply snapshot (US-006).
+    pub reply_to: Option<crate::ReplyRef>,
+    /// Whether the DM arrived sealed (US-042); persisted.
+    pub encrypted: bool,
+}
+
 /// Save an incoming message (broadcast or DM) to the database.
 ///
 /// `latency` is the measured round-trip time of the live event; it decorates
 /// the returned [`ChatMessage`] only (never written to the database), matching
-/// the TUI's in-memory rendering.
+/// the TUI's in-memory rendering. `encrypted` is the live US-042 flag and *is*
+/// persisted, so a reloaded DM still shows the lock marker.
 #[flutter_rust_bridge::frb(ignore)]
-pub fn save_incoming_message(
-    content: String,
-    peer_id: String,
-    is_direct: bool,
-    nickname: Option<String>,
-    latency: Option<String>,
-    msg_id: Option<String>,
-    reply_to: Option<crate::ReplyRef>,
-) -> Result<ChatMessage, String> {
+pub fn save_incoming_message(data: IncomingMessageData) -> Result<ChatMessage, String> {
+    let IncomingMessageData {
+        content,
+        peer_id,
+        is_direct,
+        nickname,
+        latency,
+        msg_id,
+        reply_to,
+        encrypted,
+    } = data;
     let target = is_direct.then_some(peer_id.as_str());
     // Ensure the peer row exists (and gets a generated petname if it's a
     // silent peer seen for the first time / before this feature) so the
@@ -866,7 +891,7 @@ pub fn save_incoming_message(
         sent_at: None,
         attachment: None,
         reply_to,
-        encrypted: false,
+        encrypted,
     };
     let msg = save_message_with_meta(
         &content,
@@ -1256,6 +1281,8 @@ pub struct SwarmEventJson {
     pub msg_id: Option<String>,
     /// Immutable reply snapshot on a live chat event (US-006).
     pub reply_to: Option<crate::ReplyRef>,
+    /// True when a live DM arrived sealed end to end (US-042).
+    pub encrypted: bool,
     /// Multiaddr of a listen/external-address/discovery event.
     pub address: Option<String>,
     /// Group topic of a group message/invite event.
@@ -1400,6 +1427,7 @@ const fn default_event() -> SwarmEventJson {
         nickname: None,
         msg_id: None,
         reply_to: None,
+        encrypted: false,
         address: None,
         group_id: None,
         device_pubkey: None,
@@ -1417,6 +1445,7 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
         nickname: m.nickname,
         msg_id: m.msg_id,
         reply_to: m.reply_to,
+        encrypted: m.encrypted,
         address: None,
         group_id: None,
         device_pubkey: None,

@@ -139,6 +139,7 @@ class _DmChatScreenState extends State<DmChatScreen>
         latency: event.latency,
         msgId: event.msgId,
         replyTo: event.replyTo,
+        encrypted: event.encrypted,
       );
       if (!mounted) return;
       setState(() {

@@ -1,8 +1,9 @@
 # End-to-end encryption for direct messages (US-042)
 
-**Status: scaffolding only.** The crypto module, the wire field and the DB column
-exist and compile, but the send/receive paths do **not** yet seal or open
-messages. No DM is encrypted end to end today. See "What is still missing" below.
+**Status: live.** Direct messages between install identities are sealed with a
+per-message envelope at the sender and opened by the recipient before anything
+is persisted or shown. Broadcasts and group messages are deliberately outside
+this lane (see "What is deliberately not encrypted").
 
 ## Why this exists at all
 
@@ -25,64 +26,52 @@ So the remaining justification for this per-recipient envelope is
 sealed blob it must not be able to read. That use case is tracked separately
 (see backlog "Store-and-forward / offline caching for direct messages").
 
-## What is in the tree today
+## How it works today
 
-- `src/e2e.rs` — the crypto module:
-  - `device_secret` / `peer_messaging_key` / `can_encrypt_to` /
-    `can_encrypt_to_str`: derive a static X25519 key from the install's
-    Ed25519 identity (standard `ed25519-dalek` conversion), and recover the
-    recipient's key from its Ed25519 peer ID without a handshake.
-  - `seal_body` / `open_body` / `seal_dm_payload`: per-message ephemeral
-    X25519 + HKDF-SHA256 + ChaCha20-Poly1305, with the `msg_id` bound into
-    the AAD. The sealed body (`SealedDmBody`) carries content, nickname and
-    attachment; only routing fields stay readable.
-  - `mark_encrypted`: prefixes the TUI's `[e2e] ` marker onto a rendered line.
-  - `ENVELOPE_VERSION`, `HKDF_INFO`, `TUI_ENCRYPTED_MARKER` constants.
-  - Unit tests in `tests/unit/unit_e2e.rs`.
-- `behavior::DirectMessage.encrypted: Option<EncryptedDm>` — serde-default,
-  so older peers that never send it keep working.
-- `types::MessageEvent.encrypted: bool` — surfaced to the frontends.
-- `messages` table: `encrypted INTEGER NOT NULL DEFAULT 0` column (migration
-  `2026-11-02-000000_e2e_encrypted`), `MessageMeta.encrypted`,
-  `ChatMessage.encrypted` (mobile).
-- `src/frb_generated.rs` regenerated for the new `ChatMessage` field.
-- TUI: incoming/outgoing DM lines are prefixed with `[e2e] ` when the flag is
-  set (the flag is currently always false, so the marker never appears yet).
+- **Key**: the install's Ed25519 identity key (the same keypair that produces
+  the peer ID), converted to X25519. The account key is *not* used — sibling
+  devices bound into one account do not hold its private half.
+- **Recipient key**: recovered directly from the Ed25519 peer ID (an identity
+  multihash whose digest is the protobuf public key), so no handshake or
+  key-directory lookup is needed. Non-Ed25519 peer IDs fall back to plaintext.
+- **Envelope**: fresh ephemeral X25519 keypair per message, ECDH against the
+  recipient static key, HKDF-SHA256 (salt = `ephemeral_pub ‖ recipient_pub`,
+  info = `HKDF_INFO`) to a ChaCha20-Poly1305 key, random 12-byte nonce, and
+  AAD = `HKDF_INFO ‖ 0x00 ‖ msg_id`. Binding `msg_id` into the AAD prevents an
+  envelope being replayed under a different wire id.
+- **Sealed body** (`SealedDmBody`): content, sender nickname, attachment
+  descriptor and the US-006 reply snapshot. Only routing fields (`msg_id`,
+  `sent_at`, `group_id`) stay readable on the wire.
+- **Send**: `swarm_handler::send_dm` calls `e2e::seal_dm_payload`. On success the
+  plaintext `content`/`nickname`/`attachment`/`reply_to` fields are cleared and
+  `DirectMessage.encrypted` carries the hex-encoded envelope.
+- **Receive**: `handle_request_response` opens `request.encrypted` with
+  `e2e::open_incoming` *before* any control check, then continues with the
+  decrypted fields and sets `MessageEvent.encrypted`. Malformed/foreign
+  envelopes are acked and dropped — they never reach a frontend.
+- **Persistence**: `messages.encrypted` stores the real incoming flag; the TUI
+  prefixes `[e2e] ` and Flutter shows a lock icon in `MessageBubble` when it is
+  set (including after a history reload). Outgoing rows stay `encrypted = 0`
+  locally: this device is the sender and holds the plaintext.
 
 ## What is deliberately not encrypted
 
-- Broadcasts and group-topic messages (multi-recipient; no per-recipient key).
-- Control traffic on the DM lane (acks, nickname exchange) — no user content.
+- Broadcasts and group-topic messages (multi-recipient; gossipsub has no
+  per-recipient key and the topic itself is public).
+- Control traffic on the DM lane: delivery acks, the nickname-only exchange
+  sent on connect, and DM-lane group messages — no user content, and keeping
+  them readable preserves interoperability with peers that predate this lane.
 - Local storage: the DB keeps the plaintext (this device is the intended
   reader) plus the `encrypted` flag.
 
-## What is still missing (the wiring)
+## Limits
 
-1. `swarm_handler::send_dm` does **not** call `e2e::seal_dm_payload`; it sends
-   plaintext and sets `encrypted: None`.
-2. `handle_request_response` does **not** open `request.encrypted`; it never
-   calls `e2e::open_incoming`.
-3. The mobile `save_incoming_message` path does not receive or persist a real
-   flag (it is hardcoded `false`).
-4. Flutter has no lock marker in `MessageBubble` (the `ChatMessage.encrypted`
-   field exists but is always false).
+This scheme has **no forward secrecy and no post-compromise security**: a
+compromised install identity can decrypt every message ever sealed to it, and
+captured envelopes stay decryptable with that key. Key rotation would require
+a new envelope version and a way to announce the current key. This is acceptable
+for the current store-and-forward motivation; revisit before relying on the
+lane for stronger guarantees.
 
-## The open question
-
-libp2p Noise already gives transport encryption, so on the wire this envelope
-is double encryption. The lane's value is therefore limited to:
-
-- **Store-and-forward / offline caching** (the only remaining justification) —
-  a third node holding and forwarding a sealed blob it must not read. Tracked
-  as backlog "Store-and-forward / offline caching for direct messages"; that
-  item depends on this lane being wired up.
-- Defense in depth.
-
-At-rest protection is **not** a goal here — it belongs at the database level
-(see backlog "Database-level at-rest encryption").
-
-Completing the wiring is roughly a day of careful work across the DM lane,
-both frontends and the web client, plus key-rotation/forward-secrecy questions
-that are not answered here (the current scheme has no forward secrecy and no
-post-compromise security). Revisit before investing if store-and-forward is
-added.
+At-rest protection belongs at the database level (see backlog
+"Database-level at-rest encryption"), not here.

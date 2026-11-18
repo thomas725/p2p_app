@@ -135,7 +135,7 @@ these direct rows (none is a security advisory):
 | Crate | Locked | Newer | Status |
 |---|---|---|---|
 | `base64` | 0.22.1 | 0.23.1 | Held: 0.22 matches libp2p's line; 0.23 is already in the tree via another dep. |
-| `chacha20poly1305` | 0.10.1 | 0.11.0 | E2E scaffolding dep; semver-incompatible bump, no advisory. |
+| `chacha20poly1305` | 0.10.1 | 0.11.0 | DM end-to-end envelope dep (US-042); semver-incompatible bump, no advisory. |
 | `clap` | 4.6.7 | 4.6.8 | Compatible patch, not security-relevant. |
 | `libp2p-identity` | 0.3.0 | 0.3.1 | Pinned `=0.3.0` to keep a single `PeerId` type in the tree. |
 | `libsqlite3-sys` | 0.39.1 | 0.40.0 | Semver-incompatible; the security-fixed 0.39 line is in use. |

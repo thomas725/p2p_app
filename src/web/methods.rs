@@ -189,6 +189,7 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
                 p.latency,
                 p.msg_id,
                 p.reply_to,
+                p.encrypted,
             ))
         }
         other => Err(format!("method not routed to messages: {other}")),
@@ -492,6 +493,9 @@ struct SaveIncomingParams {
     /// Immutable reply snapshot carried by the live event (US-006).
     #[serde(default)]
     reply_to: Option<crate::ReplyRef>,
+    /// Whether the live DM arrived sealed end to end (US-042).
+    #[serde(default)]
+    encrypted: bool,
 }
 
 #[derive(serde::Deserialize)]

@@ -398,6 +398,9 @@ class SwarmEventJson {
   /// Immutable reply snapshot on a live chat event (US-006).
   final ReplyRef? replyTo;
 
+  /// True when a live DM arrived sealed end to end (US-042).
+  final bool encrypted;
+
   /// Multiaddr of a listen/external-address/discovery event.
   final String? address;
 
@@ -415,6 +418,7 @@ class SwarmEventJson {
     this.nickname,
     this.msgId,
     this.replyTo,
+    required this.encrypted,
     this.address,
     this.groupId,
     this.devicePubkey,
@@ -429,6 +433,7 @@ class SwarmEventJson {
       nickname.hashCode ^
       msgId.hashCode ^
       replyTo.hashCode ^
+      encrypted.hashCode ^
       address.hashCode ^
       groupId.hashCode ^
       devicePubkey.hashCode;
@@ -445,6 +450,7 @@ class SwarmEventJson {
           nickname == other.nickname &&
           msgId == other.msgId &&
           replyTo == other.replyTo &&
+          encrypted == other.encrypted &&
           address == other.address &&
           groupId == other.groupId &&
           devicePubkey == other.devicePubkey;

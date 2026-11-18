@@ -5,6 +5,7 @@ fn body(content: &str) -> SealedDmBody {
         content: content.to_string(),
         nickname: Some("alice".to_string()),
         attachment: None,
+        reply_to: None,
     }
 }
 
@@ -82,6 +83,7 @@ fn attachment_descriptor_survives_the_envelope() {
             size: 12,
             mime: None,
         }),
+        reply_to: None,
     };
     let envelope = seal_body(&with_file, &recipient_public, None).expect("seal");
     assert_eq!(
@@ -204,4 +206,107 @@ fn non_ed25519_peer_ids_are_not_encryptable() {
     assert_eq!(peer_ed25519_public_key(&peer_id), None);
     assert!(peer_messaging_key(&peer_id).is_none());
     assert!(!can_encrypt_to(&peer_id));
+}
+
+#[test]
+fn reply_snapshot_survives_the_envelope() {
+    let recipient = keypair();
+    let recipient_secret = device_secret(&recipient).expect("secret");
+    let recipient_public = peer_messaging_key(&recipient.public().to_peer_id()).expect("public");
+    let mut with_reply = body("a reply");
+    with_reply.reply_to = Some(crate::ReplyRef::new(
+        "source-1".to_string(),
+        "bob".to_string(),
+        "the original message",
+    ));
+
+    let envelope = seal_body(&with_reply, &recipient_public, Some("reply-1")).expect("seal");
+    let opened = open_body(&envelope, &recipient_secret, Some("reply-1")).expect("open");
+    assert_eq!(opened, with_reply);
+
+    // The quoted preview is ciphertext, not wire metadata.
+    assert!(!envelope.ciphertext.contains("original"));
+}
+
+#[test]
+fn seal_dm_payload_seals_user_traffic_and_keeps_control_plaintext() {
+    let recipient = keypair();
+    let peer_id = recipient.public().to_peer_id();
+    let secret = device_secret(&recipient).expect("secret");
+    let reply = crate::ReplyRef::new("source-1".into(), "bob".into(), "original");
+    let attachment = MessageAttachment {
+        file_id: "abc".to_string(),
+        name: "notes.txt".to_string(),
+        size: 12,
+        mime: None,
+    };
+
+    let mut msg = crate::DirectMessage {
+        content: "secret hello".to_string(),
+        nickname: Some("alice".to_string()),
+        attachment: Some(attachment.clone()),
+        msg_id: Some("m1".to_string()),
+        reply_to: Some(reply.clone()),
+        ..Default::default()
+    };
+    seal_dm_payload(&mut msg, &peer_id);
+    let envelope = msg.encrypted.expect("sealed user traffic");
+    assert_eq!(msg.content, "");
+    assert!(msg.nickname.is_none());
+    assert!(msg.attachment.is_none());
+    assert!(msg.reply_to.is_none());
+    assert_eq!(
+        open_body(&envelope, &secret, Some("m1")).expect("open"),
+        SealedDmBody {
+            content: "secret hello".to_string(),
+            nickname: Some("alice".to_string()),
+            attachment: Some(attachment),
+            reply_to: Some(reply),
+        }
+    );
+
+    // Acks, nickname-only greetings and DM-lane group control stay readable.
+    let mut ack = crate::DirectMessage {
+        content: "ok".to_string(),
+        ack_for: Some("acked".to_string()),
+        ..Default::default()
+    };
+    seal_dm_payload(&mut ack, &peer_id);
+    assert_eq!(ack.content, "ok");
+    assert!(ack.nickname.is_none() && ack.attachment.is_none() && ack.encrypted.is_none());
+
+    let mut greeting = crate::DirectMessage {
+        content: String::new(),
+        nickname: Some("alice".to_string()),
+        ..Default::default()
+    };
+    seal_dm_payload(&mut greeting, &peer_id);
+    assert_eq!(greeting.content, "");
+    assert_eq!(greeting.nickname.as_deref(), Some("alice"));
+    assert!(greeting.attachment.is_none() && greeting.encrypted.is_none());
+
+    let mut group = crate::DirectMessage {
+        content: "group control".to_string(),
+        group_id: Some("group-1".to_string()),
+        ..Default::default()
+    };
+    seal_dm_payload(&mut group, &peer_id);
+    assert_eq!(group.content, "group control");
+    assert!(group.nickname.is_none() && group.attachment.is_none() && group.encrypted.is_none());
+}
+
+#[test]
+fn seal_dm_payload_falls_back_to_plaintext_without_an_ed25519_peer_id() {
+    let mut raw = vec![0x12u8, 0x20];
+    raw.extend_from_slice(&[3u8; 32]);
+    let peer_id = libp2p::PeerId::from_bytes(&raw).expect("sha256 peer id");
+    let mut msg = crate::DirectMessage {
+        content: "plaintext".to_string(),
+        nickname: Some("alice".to_string()),
+        ..Default::default()
+    };
+    seal_dm_payload(&mut msg, &peer_id);
+    assert_eq!(msg.content, "plaintext");
+    assert_eq!(msg.nickname.as_deref(), Some("alice"));
+    assert!(msg.attachment.is_none() && msg.encrypted.is_none());
 }

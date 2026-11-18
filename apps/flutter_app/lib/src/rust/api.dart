@@ -189,7 +189,8 @@ Future<ChatMessage> saveOutgoingDm({
 /// Save an incoming message (broadcast or DM) to the database.
 ///
 /// `latency` is the live event's measured round-trip time; it only decorates
-/// the returned message (never persisted), mirroring the TUI.
+/// the returned message (never persisted), mirroring the TUI. `encrypted`
+/// records that the DM arrived sealed (US-042) so the flag survives a reload.
 ///
 /// # Errors
 /// Returns an error if the message cannot be saved.
@@ -201,6 +202,7 @@ Future<ChatMessage> saveIncomingMessage({
   String? latency,
   String? msgId,
   ReplyRef? replyTo,
+  required bool encrypted,
 }) => RustLib.instance.api.crateApiSaveIncomingMessage(
   content: content,
   peerId: peerId,
@@ -209,6 +211,7 @@ Future<ChatMessage> saveIncomingMessage({
   latency: latency,
   msgId: msgId,
   replyTo: replyTo,
+  encrypted: encrypted,
 );
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).

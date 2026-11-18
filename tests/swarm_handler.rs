@@ -164,8 +164,9 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
 }
 
 #[cfg(not(feature = "relay"))]
-fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
-    let keypair = Keypair::generate_ed25519();
+fn build_test_swarm_with_identity(
+    keypair: Keypair,
+) -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
     let peer_id = keypair.public().to_peer_id();
 
     #[cfg(feature = "quic")]
@@ -210,6 +211,19 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
         .build();
 
     (swarm, peer_id)
+}
+
+#[cfg(not(feature = "relay"))]
+fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    build_test_swarm_with_identity(Keypair::generate_ed25519())
+}
+
+/// Build a swarm whose identity matches the one `e2e::open_incoming` reads from
+/// the (thread-local) test database, so an inbound sealed DM can be decrypted.
+#[cfg(not(feature = "relay"))]
+fn build_test_swarm_with_db_identity() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    let keypair = p2p_app::db::get_libp2p_identity().expect("test identity");
+    build_test_swarm_with_identity(keypair)
 }
 
 /// Connect two swarms, subscribe to the chat topic, and wait for the gossipsub
@@ -354,7 +368,9 @@ async fn test_spawn_handler_broadcast_message() {
 #[tokio::test]
 async fn test_spawn_handler_direct_message() {
     let (mut swarm_a, peer_a) = build_test_swarm();
-    let (mut swarm_b, peer_b) = build_test_swarm();
+    // The receiver's swarm identity must match the DB identity used to open
+    // the US-042 envelope.
+    let (mut swarm_b, peer_b) = build_test_swarm_with_db_identity();
 
     connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
 
@@ -362,6 +378,7 @@ async fn test_spawn_handler_direct_message() {
     let (_handle_b, mut event_rx_b, _cmd_tx_b) =
         spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
 
+    let reply = p2p_app::ReplyRef::new("source-1".into(), "bob".into(), "the original");
     cmd_tx_a
         .send(SwarmCommand::SendDm {
             peer_id: peer_b.to_string(),
@@ -370,7 +387,7 @@ async fn test_spawn_handler_direct_message() {
             msg_id: Some("dm-msg-1".to_string()),
             ack_for: None,
             attachment: None,
-            reply_to: None,
+            reply_to: Some(reply.clone()),
         })
         .await
         .unwrap();
@@ -388,6 +405,12 @@ async fn test_spawn_handler_direct_message() {
     assert_eq!(received.content, "hello direct");
     assert_eq!(received.nickname, Some("dm_tester".to_string()));
     assert_eq!(received.msg_id, Some("dm-msg-1".to_string()));
+    assert!(received.encrypted, "DM should have arrived sealed (US-042)");
+    assert_eq!(
+        received.reply_to,
+        Some(reply),
+        "reply snapshot must survive the envelope"
+    );
 }
 
 /// A nickname-only DM (empty content + nickname, no `ack_for`) — the greeting
@@ -439,7 +462,8 @@ async fn test_spawn_handler_nickname_only_dm_surfaces() {
 #[tokio::test]
 async fn test_spawn_handler_direct_message_receipt() {
     let (mut swarm_a, peer_a) = build_test_swarm();
-    let (mut swarm_b, peer_b) = build_test_swarm();
+    // B opens the sealed DM before replying with the delivery ack.
+    let (mut swarm_b, peer_b) = build_test_swarm_with_db_identity();
 
     connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
 
@@ -638,8 +662,9 @@ async fn test_handler_survives_command_sender_drop() {
 }
 
 #[cfg(feature = "relay")]
-fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
-    let keypair = Keypair::generate_ed25519();
+fn build_test_swarm_with_identity(
+    keypair: Keypair,
+) -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
     let peer_id = keypair.public().to_peer_id();
 
     let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
@@ -665,4 +690,17 @@ fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) 
         .build();
 
     (swarm, peer_id)
+}
+
+#[cfg(feature = "relay")]
+fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    build_test_swarm_with_identity(Keypair::generate_ed25519())
+}
+
+/// Build a swarm whose identity matches the one `e2e::open_incoming` reads from
+/// the (thread-local) test database, so an inbound sealed DM can be decrypted.
+#[cfg(feature = "relay")]
+fn build_test_swarm_with_db_identity() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
+    let keypair = p2p_app::db::get_libp2p_identity().expect("test identity");
+    build_test_swarm_with_identity(keypair)
 }

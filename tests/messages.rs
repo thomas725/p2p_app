@@ -450,13 +450,16 @@ fn test_incoming_message_from_silent_peer_shows_generated_name() {
         p2p_app::save_peer("silent-peer", &[]).unwrap();
 
         let chat = p2p_app::mobile_node::save_incoming_message(
-            "hello".to_string(),
-            "silent-peer".to_string(),
-            false,
-            None,
-            Some("5ms".to_string()),
-            Some("incoming-1".to_string()),
-            None,
+            p2p_app::mobile_node::IncomingMessageData {
+                content: "hello".to_string(),
+                peer_id: "silent-peer".to_string(),
+                is_direct: false,
+                nickname: None,
+                latency: Some("5ms".to_string()),
+                msg_id: Some("incoming-1".to_string()),
+                reply_to: None,
+                encrypted: false,
+            },
         )
         .unwrap();
 
