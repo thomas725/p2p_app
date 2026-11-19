@@ -17,6 +17,8 @@ enum Event {
     // Boxed so the select-loop event stays small; `SwarmCommand` grows with
     // each outbound message field (attachment, reply snapshot, …).
     Command(Box<SwarmCommand>),
+    // Periodic store-and-forward retry/prune tick.
+    Flush,
 }
 
 /// Whether a peer is muted (US-054). Fail-open: an unreadable database never
@@ -447,7 +449,16 @@ async fn handle_connection_event(
 ) {
     match swarm_event {
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
+            let peer_id_str = peer_id.to_string();
             handle_connection_established(peer_id, event_tx, swarm, relays).await;
+            // Store-and-forward: retry any sealed DMs addressed to this peer
+            // that were parked while it was offline.
+            match crate::dm_outbox::pending_for(&peer_id_str) {
+                Ok(rows) => retry_outbox_rows(rows, swarm),
+                Err(e) => {
+                    p2plog_debug(format!("Failed to load pending DMs on reconnect: {e}"));
+                }
+            }
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
             handle_connection_closed(peer_id, event_tx, swarm).await;
@@ -902,6 +913,20 @@ async fn handle_request_response(
             if request.content.trim().is_empty() && request.attachment.is_none() {
                 handle_empty_dm_control(&request, &peer_id_str, event_tx).await;
             } else {
+                // Store-and-forward: a reconnect replay can deliver the same
+                // sealed envelope twice. Drop a DM we already persisted (we
+                // still ack below) so no duplicate row reaches a frontend.
+                if let Some(id) = request.msg_id.as_deref()
+                    && crate::messages::incoming_dm_exists(&peer_id_str, id)
+                {
+                    p2plog_debug(format!("Dropped duplicate DM {id} from {peer_id_str}"));
+                    let response = make_ack_dm("ok".to_string(), request.msg_id);
+                    let _ = swarm
+                        .behaviour_mut()
+                        .request_response
+                        .send_response(channel, response);
+                    return;
+                }
                 let msg_id = request.msg_id.clone();
                 let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
                 if let Some(group_id) = request.group_id.clone() {
@@ -957,6 +982,12 @@ async fn handle_request_response(
         }
         libp2p::request_response::Message::Response { response, .. } => {
             if let Some(ack_for) = response.ack_for {
+                // Store-and-forward: the recipient confirmed receipt, so the
+                // sealed envelope is no longer needed. Best-effort — a missing
+                // row (e.g. a broadcast receipt) is a harmless no-op.
+                if let Err(e) = crate::dm_outbox::remove(&peer_id_str, &ack_for) {
+                    p2plog_debug(format!("Failed to clear outbox row for ack {ack_for}: {e}"));
+                }
                 let _ = event_tx
                     .send(SwarmEvent::Receipt {
                         peer_id: peer_id_str,
@@ -1752,6 +1783,50 @@ fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
     }
 }
 
+/// Retry a batch of sealed envelopes from the store-and-forward outbox.
+///
+/// Best-effort: libp2p queues the request when the peer is connected (or has a
+/// known address) and fails silently otherwise; the row stays until the ack
+/// removes it. A malformed envelope is dropped; a blocked recipient is skipped
+/// (its row eventually expires) so neither is retried forever.
+fn retry_outbox_rows(
+    rows: Vec<crate::generated::models_queryable::DmOutboxRow>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    for row in rows {
+        let Ok(peer) = row.recipient_peer_id.parse::<libp2p::PeerId>() else {
+            continue;
+        };
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            continue;
+        }
+        let Ok(msg) = serde_json::from_str::<crate::DirectMessage>(&row.envelope_json) else {
+            p2plog_debug(format!("Dropping malformed outbox envelope {}", row.msg_id));
+            let _ = crate::dm_outbox::remove(&row.recipient_peer_id, &row.msg_id);
+            continue;
+        };
+        swarm
+            .behaviour_mut()
+            .request_response
+            .send_request(&peer, msg);
+        if let Err(e) = crate::dm_outbox::record_attempt(row.id) {
+            p2plog_debug(format!("Failed to record DM retry attempt: {e}"));
+        }
+    }
+}
+
+/// Retry every pending sealed DM and prune expired rows (periodic sweep).
+fn flush_pending_outbox(swarm: &mut Swarm<AppBehaviour>) {
+    match crate::dm_outbox::prune_expired() {
+        Ok(0) | Err(_) => {}
+        Ok(n) => p2plog_debug(format!("Pruned {n} expired DMs from outbox")),
+    }
+    match crate::dm_outbox::pending() {
+        Ok(rows) => retry_outbox_rows(rows, swarm),
+        Err(e) => p2plog_debug(format!("Failed to load DM outbox for retry: {e}")),
+    }
+}
+
 fn send_dm(peer_id: &str, mut msg: crate::DirectMessage, swarm: &mut Swarm<AppBehaviour>) {
     if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
         if crate::blocklist::is_blocked(&peer.to_string()) {
@@ -1762,6 +1837,18 @@ fn send_dm(peer_id: &str, mut msg: crate::DirectMessage, swarm: &mut Swarm<AppBe
         // fields and control traffic stay in the clear; a sealed message carries
         // no plaintext body/nickname/attachment/reply snapshot.
         crate::e2e::seal_dm_payload(&mut msg, &peer);
+        // Store-and-forward: park the sealed envelope until an ack arrives.
+        // Only sealed user DMs are queued — acks, nickname announcements and
+        // DM-lane group control stay plaintext and are intentionally not cached.
+        if msg.encrypted.is_some()
+            && let (Ok(json), Some(id)) = (serde_json::to_string(&msg), msg.msg_id.as_ref())
+        {
+            match crate::dm_outbox::queue(peer_id, id, &json, crate::dm_outbox::DEFAULT_TTL_SECS) {
+                Ok(true) => p2plog_debug(format!("Queued sealed DM {id} for {peer_id}")),
+                Ok(false) => {}
+                Err(e) => p2plog_debug(format!("Failed to queue sealed DM {id}: {e}")),
+            }
+        }
         swarm
             .behaviour_mut()
             .request_response
@@ -1974,10 +2061,17 @@ pub fn spawn_swarm_handler(
         let mut relays = RelayState::new();
         relays.configure(&mut swarm);
 
+        // Store-and-forward: periodically retry sealed DMs that never got an
+        // ack and prune expired rows. The first tick fires immediately (useful
+        // after a restart); `Skip` keeps a busy node from stacking catch-ups.
+        let mut flush_ticker = tokio::time::interval(std::time::Duration::from_secs(30));
+        flush_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
         loop {
             let event = tokio::select! {
                 swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
                 Some(cmd) = cmd_rx.recv() => Some(Event::Command(Box::new(cmd))),
+                _ = flush_ticker.tick() => Some(Event::Flush),
                 else => None,
             };
 
@@ -1987,6 +2081,9 @@ pub fn spawn_swarm_handler(
                 }
                 Some(Event::Command(cmd)) => {
                     handle_command(*cmd, &mut swarm, &topic);
+                }
+                Some(Event::Flush) => {
+                    flush_pending_outbox(&mut swarm);
                 }
                 None => break,
             }

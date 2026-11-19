@@ -6,9 +6,9 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    blocked_peers, broadcast_recipients, contacts, device_bindings, files, group_members,
-    group_messages, groups, identities, message_receipts, messages, network_peers, peer_sessions,
-    peers, users,
+    blocked_peers, broadcast_recipients, contacts, device_bindings, dm_outbox, files,
+    group_members, group_messages, groups, identities, message_receipts, messages, network_peers,
+    peer_sessions, peers, users,
 };
 use diesel::Insertable;
 
@@ -228,4 +228,18 @@ pub struct NewNetworkPeer {
     pub kind: String,
     /// Canonical text form of the peer multiaddr
     pub multiaddr: String,
+}
+
+/// Insertable struct for the `dm_outbox` table (store-and-forward DMs)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = dm_outbox)]
+pub struct NewDmOutbox {
+    /// Canonical base58 text of the recipient peer id
+    pub recipient_peer_id: String,
+    /// Unique message id from the sealed envelope
+    pub msg_id: String,
+    /// Full sealed `DirectMessage` as JSON (no plaintext body)
+    pub envelope_json: String,
+    /// Retention deadline; rows past this are pruned
+    pub expires_at: NaiveDateTime,
 }

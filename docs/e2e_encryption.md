@@ -22,9 +22,12 @@ indexes and the rest of the schema readable. See the backlog item
 "Database-level at-rest encryption".
 
 So the remaining justification for this per-recipient envelope is
-**store-and-forward / offline caching**: a third node can hold and forward a
-sealed blob it must not be able to read. That use case is tracked separately
-(see backlog "Store-and-forward / offline caching for direct messages").
+**store-and-forward / offline caching**. The sender-side half ships today: a
+sealed DM the recipient cannot receive yet is parked in `dm_outbox` and retried
+on reconnect — see [Store-and-forward outbox](#store-and-forward-outbox). A
+**third-party holder** that relays sealed blobs for offline recipients is still
+a follow-up (tracked in the archive record for this slice); the outbox already
+uses the same sealed-bytes-only discipline such a holder requires.
 
 ## How it works today
 
@@ -61,8 +64,35 @@ sealed blob it must not be able to read. That use case is tracked separately
 - Control traffic on the DM lane: delivery acks, the nickname-only exchange
   sent on connect, and DM-lane group messages — no user content, and keeping
   them readable preserves interoperability with peers that predate this lane.
-- Local storage: the DB keeps the plaintext (this device is the intended
-  reader) plus the `encrypted` flag.
+- Local storage: the `messages` table keeps the plaintext (this device is the
+  intended reader) plus the `encrypted` flag. The `dm_outbox` table is the one
+  exception — it stores the **sealed envelope only**, never a readable body.
+
+## Store-and-forward outbox
+
+A sealed DM addressed to an offline peer is parked in `dm_outbox` (one row per
+`(recipient, msg_id)`) instead of being lost. The storage and retry mechanics:
+
+- **Queue**: `swarm_handler::send_dm` stores the sealed `DirectMessage` JSON
+  after `seal_dm_payload`, only when an `encrypted` body is present. The unique
+  index makes a resend/replay idempotent.
+- **Retry**: `ConnectionEstablished` flushes that peer's rows; a 30-second tick
+  in the handler loop retries every pending row and prunes expired ones.
+  Retries re-send the stored sealed bytes verbatim (they never re-seal).
+- **Delivery + dedup**: the recipient opens the envelope through the normal
+  `open_incoming` path and acks. `messages::incoming_dm_exists(peer, msg_id)`
+  drops a replayed envelope before it reaches a frontend, so a retry cannot
+  duplicate the message row; the ack still goes back.
+- **Ack cleanup**: the `Message::Response` arm removes `(peer, ack_for)` from
+  the outbox. A malformed envelope (or a blocked recipient) is dropped rather
+  than retried forever.
+- **Retention**: 7 days (`dm_outbox::DEFAULT_TTL_SECS`), bounded by
+  `expires_at`; rows past it are pruned by the periodic tick.
+
+This is sender-side store-and-forward: the sender holds its own sealed
+envelopes. A third-party holder that sees only these routing fields and the
+ciphertext (and can drop or delay, but not read) is a follow-up; the outbox uses
+the same sealed-bytes-only representation such a holder would need.
 
 ## Limits
 

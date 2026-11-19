@@ -223,10 +223,28 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: store-and-forward DM outbox. Each row holds one sealed
+// `DirectMessage` (JSON) waiting for an offline recipient. The plaintext fields
+// of a sealed message are empty, so this table never stores a readable body.
+// `expires_at` bounds retention; the unique (recipient, msg_id) index makes a
+// resend/replay a no-op.
+diesel::table! {
+    dm_outbox (id) {
+        id -> Integer,
+        recipient_peer_id -> Text,
+        msg_id -> Text,
+        envelope_json -> Text,
+        created_at -> Timestamp,
+        expires_at -> Timestamp,
+        attempts -> Integer,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     blocked_peers,
     broadcast_recipients,
     contacts,
+    dm_outbox,
     device_bindings,
     files,
     group_members,

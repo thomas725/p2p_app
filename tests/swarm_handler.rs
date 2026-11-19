@@ -413,6 +413,108 @@ async fn test_spawn_handler_direct_message() {
     );
 }
 
+/// Store-and-forward: a sealed DM sent while the recipient is offline is parked
+/// in the outbox, delivered when the peers reconnect, and cleared on the ack.
+#[tokio::test]
+async fn test_spawn_handler_dm_store_and_forward_on_reconnect() {
+    let (swarm_a, _peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm_with_db_identity();
+
+    // B listens, but A is never connected before the send.
+    swarm_b
+        .listen_on("/ip4/127.0.0.1/tcp/0".parse().unwrap())
+        .unwrap();
+    let b_addr = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Libp2pSwarmEvent::NewListenAddr { address, .. } =
+                swarm_b.select_next_some().await
+                && address.to_string().contains("127.0.0.1")
+            {
+                break address;
+            }
+        }
+    })
+    .await
+    .expect("B listen address");
+
+    let (_handle_a, _event_rx_a, cmd_tx_a) = spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, _cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::SendDm {
+            peer_id: peer_b.to_string(),
+            content: "offline hello".to_string(),
+            nickname: Some("saf".to_string()),
+            msg_id: Some("saf-1".to_string()),
+            ack_for: None,
+            attachment: None,
+            reply_to: None,
+        })
+        .await
+        .unwrap();
+
+    // The sealed envelope is parked until the ack arrives (no ack possible
+    // while A is disconnected), and it carries no readable body.
+    let row = timeout(Duration::from_secs(5), async {
+        loop {
+            let rows = p2p_app::dm_outbox::pending_for(&peer_b.to_string()).unwrap();
+            if let Some(row) = rows.into_iter().find(|r| r.msg_id == "saf-1") {
+                break row;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("sealed DM was not queued in the outbox");
+    let envelope: p2p_app::DirectMessage = serde_json::from_str(&row.envelope_json).unwrap();
+    assert!(
+        envelope.encrypted.is_some(),
+        "stored envelope must be sealed"
+    );
+    assert!(
+        envelope.content.is_empty(),
+        "no plaintext body in the outbox"
+    );
+
+    // Reconnect: dialing B must flush the parked envelope.
+    cmd_tx_a
+        .send(SwarmCommand::Dial {
+            address: b_addr.to_string(),
+        })
+        .await
+        .unwrap();
+
+    let received = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::DirectMessage(msg)) = event_rx_b.recv().await
+                && msg.msg_id.as_deref() == Some("saf-1")
+            {
+                break msg;
+            }
+        }
+    })
+    .await
+    .expect("store-and-forward DM was not delivered on reconnect");
+    assert_eq!(received.content, "offline hello");
+
+    // The recipient's ack clears the parked envelope.
+    timeout(Duration::from_secs(5), async {
+        loop {
+            let still_queued = p2p_app::dm_outbox::pending_for(&peer_b.to_string())
+                .unwrap()
+                .iter()
+                .any(|r| r.msg_id == "saf-1");
+            if !still_queued {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("outbox row was not cleared after the ack");
+}
+
 /// A nickname-only DM (empty content + nickname, no `ack_for`) — the greeting
 /// every frontend sends on peer connect — must surface as an (empty) Direct
 /// message so the receiver records the announced nickname, rather than being

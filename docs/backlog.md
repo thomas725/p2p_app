@@ -115,21 +115,7 @@ per-message E2E lane (US-042) is not it.
 - **Blocked on**: a decision on key management (identity-derived vs.
   passphrase) and whether to ship SQLCipher as a bundled dep.
 
-### Store-and-forward / offline caching for direct messages
-
-A peer that is offline cannot receive a DM. Store-and-forward would let a
-mutually-trusted (or untrusted) intermediate node hold a sealed blob and
-deliver it when the recipient reconnects — the use case the per-recipient
-envelope in `src/e2e.rs` (US-042, now live) was designed for: the holder must
-not be able to read the body.
-
-- **Scope**: a relay/holder protocol (request_response or gossipsub-backed),
-  retention/expiry policy, dedup on delivery, and the recipient-side open path
-  (`e2e::open_incoming`), which DMs already use.
-- **Depends on**: nothing in the crypto lane — `send_dm` seals and
-  `handle_request_response` opens already, so the forwarded bytes are sealed.
-- **Trust model**: holders see only routing fields (`msg_id`, `sent_at`) and
-  the ciphertext; a compromised holder can drop or delay, not read.
+### Call media transport (future)
 
 Call **signaling** shipped (un-gated, mirroring device binding). The media
 transport is still to come.
@@ -306,6 +292,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Store-and-forward DM outbox (sealed envelopes, retry on reconnect, dedup, expiry) | 2026-11-19 | [`archive/2026-11-19_store_and_forward_dm_outbox.md`](archive/2026-11-19_store_and_forward_dm_outbox.md) |
 | Reply / quote to a specific message (US-006) | 2026-11-18 | [`archive/2026-11-18_reply_quote.md`](archive/2026-11-18_reply_quote.md) |
 | Keyboard shortcut help overlay (US-029) + Flutter help dialog | 2026-11-17 | [`archive/2026-11-17_keyboard_shortcuts_help.md`](archive/2026-11-17_keyboard_shortcuts_help.md) |
 | Clear the remaining audit advisories (diesel 2.4.0, libsqlite3-sys 0.39.1, gossipsub, quinn-proto) | 2026-11-17 | `227f214` |

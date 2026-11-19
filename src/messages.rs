@@ -305,6 +305,27 @@ pub fn message_is_dm(msg_id: &str) -> color_eyre::Result<Option<bool>> {
     Ok(is_direct.map(|d| d == 1))
 }
 
+/// Whether an incoming DM from `peer_id` with `msg_id` is already persisted.
+///
+/// Store-and-forward re-delivers the same sealed envelope after a reconnect;
+/// the swarm handler uses this to drop a replay before it reaches a frontend,
+/// so the retry cannot create a second message row. Fail-open: a broken DB
+/// means "not seen", never a globally muted DM lane.
+#[must_use]
+pub fn incoming_dm_exists(peer_id: &str, msg_id: &str) -> bool {
+    use crate::generated::schema::messages as messages_table;
+    let Ok(conn) = &mut crate::sqlite_connect() else {
+        return false;
+    };
+    let count: i64 = messages_table::table
+        .filter(messages_table::peer_id.eq(peer_id))
+        .filter(messages_table::msg_id.eq(msg_id))
+        .count()
+        .get_result(conn)
+        .unwrap_or(0);
+    count > 0
+}
+
 /// Load all message receipts from the database.
 ///
 /// Retrieves all stored message receipts (delivery/read confirmations).

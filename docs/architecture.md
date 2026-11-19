@@ -53,6 +53,7 @@ src/
 ├── relay.rs            circuit-relay config + relayed listen address (P2P_RELAY)
 ├── types.rs            shared constants and enums (SwarmEvent, SwarmCommand, InputMode)
 ├── db.rs               connection handling, multi-instance DB resolution, ensure_columns
+├── dm_outbox.rs        sealed-DM store-and-forward outbox (queue/retry/expiry)
 ├── messages.rs         message + receipt persistence, per-peer stats
 ├── peers.rs            peer rows, sessions, broadcast recipients
 ├── blocklist.rs        peer blocklist / mute (swarm-boundary filtering)
@@ -103,9 +104,12 @@ Transport is TCP+QUIC with yamux multiplexing; libp2p `noise` provides
 transport encryption. Direct messages additionally carry a payload-level
 end-to-end envelope (US-042): `src/e2e.rs` seals the body for the recipient's
 device in `send_dm`, and `handle_request_response` opens it before persistence.
-Broadcasts and group messages stay plaintext (multi-recipient); a relay or
-store-and-forward holder sees only the sealed envelope for a DM. See
-[`e2e_encryption.md`](e2e_encryption.md) for the threat model and limits.
+Broadcasts and group messages stay plaintext (multi-recipient); a future relay
+or store-and-forward holder sees only the sealed envelope for a DM. The
+sender-side outbox (`dm_outbox.rs`) already parks sealed envelopes for offline
+recipients and retries them on reconnect. See
+[`e2e_encryption.md`](e2e_encryption.md) for the threat model, the outbox
+lifecycle and the limits.
 
 Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the
@@ -241,7 +245,7 @@ single-device contact.
 
 ## Persistence
 
-SQLite via Diesel. Sixteen tables:
+SQLite via Diesel. Seventeen tables:
 
 | Table | Holds |
 |---|---|
@@ -250,6 +254,7 @@ SQLite via Diesel. Sixteen tables:
 | `peer_name_history` | the nicknames a peer has used, for the name origin label |
 | `peer_sessions` | one row per connect/disconnect (real network-size stats) |
 | `messages` | broadcast and direct message bodies; `deleted_at` is a local-only tombstone |
+| `dm_outbox` | sealed DM envelopes awaiting an offline recipient's ack (store-and-forward) |
 | `message_receipts` | delivery acknowledgements |
 | `broadcast_recipients` | per-peer record of which broadcasts a peer received |
 | `groups` / `group_members` / `group_messages` | the group layer (`group_messages.deleted_at` is a local-only tombstone) |
@@ -258,7 +263,7 @@ SQLite via Diesel. Sixteen tables:
 | `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
 | `blocked_peers` | muted peer ids; the swarm boundary drops their traffic |
 
-Twenty migrations in `migrations/`. `db::ensure_columns()` also runs at
+Twenty-two migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app

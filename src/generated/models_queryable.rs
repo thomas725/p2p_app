@@ -6,8 +6,8 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    blocked_peers, contacts, device_bindings, files, group_members, group_messages, groups,
-    identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
+    blocked_peers, contacts, device_bindings, dm_outbox, files, group_members, group_messages,
+    groups, identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -281,4 +281,24 @@ pub struct NetworkPeerRow {
     pub multiaddr: String,
     /// Timestamp when this peer was added
     pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `dm_outbox` table (store-and-forward DMs)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = dm_outbox)]
+pub struct DmOutboxRow {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Canonical base58 text of the recipient peer id
+    pub recipient_peer_id: String,
+    /// Unique message id from the sealed envelope
+    pub msg_id: String,
+    /// Full sealed `DirectMessage` as JSON (no plaintext body)
+    pub envelope_json: String,
+    /// Timestamp when the row was queued
+    pub created_at: NaiveDateTime,
+    /// Retention deadline; rows past this are pruned
+    pub expires_at: NaiveDateTime,
+    /// Number of delivery attempts made so far
+    pub attempts: i32,
 }
