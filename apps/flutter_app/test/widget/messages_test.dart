@@ -27,6 +27,7 @@ ChatMessage chatMessage({
   String? msgId = 'm1',
   bool sent = true,
   bool confirmed = false,
+  bool edited = false,
   bool encrypted = false,
   String? senderNickname,
   String? latency,
@@ -47,6 +48,7 @@ ChatMessage chatMessage({
   attachment: attachment,
   encrypted: encrypted,
   confirmed: confirmed,
+  edited: edited,
   latency: latency,
 );
 
@@ -142,6 +144,87 @@ void main() {
       ),
     );
     expect(find.byIcon(Icons.lock), findsOneWidget);
+  });
+
+  testWidgets('an edited bubble shows the canonical local-edit marker', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              MessageBubble(message: chatMessage(edited: true), isOwn: true),
+              MessageBubble(message: chatMessage(id: 2), isOwn: true),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('edited-marker')), findsOneWidget);
+    expect(find.text('(edited)'), findsOneWidget);
+  });
+
+  testWidgets('Edit updates one sent message locally and shows its marker', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(id: 7, content: 'original', msgId: 'dm-1'),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('edit-action')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('edit-message-field')), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byKey(const Key('edit-message-field')))
+          .controller
+          ?.text,
+      'original',
+    );
+    await tester.enterText(find.byKey(const Key('edit-message-field')), 'fixed');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      fake.calls.where((c) => c.method == 'editMessage'),
+      hasLength(1),
+    );
+    expect(find.text('fixed'), findsOneWidget);
+    expect(find.byKey(const Key('edited-marker')), findsOneWidget);
+  });
+
+  testWidgets('Edit is hidden for incoming messages', (tester) async {
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(
+          id: 7,
+          content: 'incoming',
+          peerId: 'peer-abc',
+          msgId: 'dm-1',
+          sent: false,
+          senderNickname: 'Alice',
+        ),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+    _selectMessage(tester, DmChatScreen, 0);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('edit-action')), findsNothing);
   });
 
   testWidgets('a receipt event ticks the acknowledged DM', (tester) async {
@@ -641,6 +724,7 @@ void main() {
           id: 11,
           content: 'group mine',
           sent: true,
+          edited: false,
           createdAt: '2026-01-01 10:00:00',
         ),
       ];

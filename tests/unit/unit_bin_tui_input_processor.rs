@@ -2406,6 +2406,55 @@ fn test_delete_confirmation_tombstones_db_and_removes_broadcast_line() {
 
 #[test]
 #[serial]
+fn test_edit_key_and_enter_replace_db_body_without_swarm_traffic() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let saved = p2p_app::save_message_with_meta(
+                "delete me",
+                None,
+                "test-net",
+                false,
+                None,
+                saved_broadcast_meta(),
+            )
+            .expect("save message");
+            p2p_app::messages::mark_message_sent(saved.id).expect("mark sent");
+
+            let state = Arc::new(Mutex::new(sent_broadcast_state(saved.id)));
+            let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+            let (render_tx, _) = mpsc::channel(4);
+
+            let edit_key = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty());
+            assert!(!process_key_event(edit_key, &state, &swarm_cmd_tx, &render_tx).await);
+            {
+                let s = state.lock().await;
+                assert!(s.is_editing_message());
+                assert_eq!(s.chat_input.lines(), ["delete me"]);
+            }
+
+            {
+                let mut s = state.lock().await;
+                s.begin_edit_message(saved.id, false, "new body".to_string(), TabContent::Chat);
+            }
+            let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+            assert!(!process_key_event(enter, &state, &swarm_cmd_tx, &render_tx).await);
+
+            let loaded = p2p_app::load_messages("test-net", 10).expect("reload");
+            assert_eq!(loaded.len(), 1);
+            assert_eq!(loaded[0].content, "new body");
+            assert!(swarm_cmd_rx.try_recv().is_err(), "edit is local-only");
+
+            let s = state.lock().await;
+            assert!(!s.is_editing_message());
+            assert_eq!(s.input_mode, p2p_app::InputMode::Chat);
+            assert_eq!(s.messages[0].text, "12:00 [TestUser] new body (edited)");
+        });
+    });
+}
+
+#[test]
+#[serial]
 fn test_delete_confirmation_tombstones_group_row_and_removes_line() {
     with_local_delete_db(|| {
         let rt = tokio::runtime::Runtime::new().expect("runtime");

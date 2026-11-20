@@ -36,6 +36,8 @@ pub enum InputMode {
     /// Capturing the local display name this install shows for a peer
     /// (`peers.peer_local_nickname`), edited from a Peer Info tab.
     EditingLocalNickname,
+    /// Capturing a replacement body for a sent message edited locally (US-005).
+    EditingMessage,
     /// Capturing a group name for create/join on the Groups tab.
     CreatingGroup,
     /// Capturing a Contacts-tab search query (filters the contact table).

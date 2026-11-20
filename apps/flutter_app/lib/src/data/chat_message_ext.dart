@@ -27,6 +27,29 @@ extension ChatMessageExt on ChatMessage {
     attachment: attachment,
     encrypted: encrypted,
     confirmed: value,
+    edited: edited,
+    latency: latency,
+  );
+
+  /// A copy with the body replaced and the local-edit marker set (US-005).
+  /// Everything else — quote snapshot, attachment, receipts, latency — stays
+  /// verbatim, mirroring the TUI's in-place line replacement.
+  ChatMessage withEditedBody(String newContent) => ChatMessage(
+    id: id,
+    content: newContent,
+    peerId: peerId,
+    isBroadcast: isBroadcast,
+    targetPeer: targetPeer,
+    sent: sent,
+    msgId: msgId,
+    replyTo: replyTo,
+    sentAt: sentAt,
+    createdAt: createdAt,
+    senderNickname: senderNickname,
+    attachment: attachment,
+    encrypted: encrypted,
+    confirmed: confirmed,
+    edited: true,
     latency: latency,
   );
 }

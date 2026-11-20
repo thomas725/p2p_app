@@ -39,6 +39,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("loadBroadcastMessages"
         | "loadDmMessages"
         | "deleteMessage"
+        | "editMessage"
         | "saveOutgoingBroadcast"
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
@@ -157,6 +158,10 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         "deleteMessage" => {
             let p: DeleteMessageParams = parse(params)?;
             json(api::delete_message(p.message_id, p.is_group))
+        }
+        "editMessage" => {
+            let p: EditMessageParams = parse(params)?;
+            json(api::edit_message(p.message_id, p.is_group, &p.content))
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
@@ -385,6 +390,15 @@ struct PeerLimitParams {
 struct DeleteMessageParams {
     message_id: i32,
     is_group: bool,
+}
+
+/// Local-only edit of one sent message (`isGroup` selects the table).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EditMessageParams {
+    message_id: i32,
+    is_group: bool,
+    content: String,
 }
 
 #[derive(serde::Deserialize)]

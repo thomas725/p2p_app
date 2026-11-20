@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
@@ -109,6 +110,27 @@ mixin MessageChatMixin<T extends StatefulWidget> on State<T> {
       selectedIndices.clear();
     });
   }
+
+  /// Replace the body of the single selected sent message locally, then update
+  /// the screen-owned list so the new text and edit marker appear immediately.
+  Future<void> editSelection(
+    List<ChatMessage> messages, {
+    required bool isGroup,
+  }) async {
+    final edited = await editSelectedMessage(
+      context,
+      messages,
+      selectedIndices,
+      isGroup: isGroup,
+    );
+    if (!mounted || edited == null) return;
+    setState(() {
+      final idx = messages.indexWhere((m) => m.id == edited.id);
+      if (idx >= 0) messages[idx] = edited;
+      selectionMode = false;
+      selectedIndices.clear();
+    });
+  }
 }
 
 /// Copy a set of selected messages to the clipboard and confirm with a
@@ -195,6 +217,87 @@ Future<List<int>> deleteSelectedMessages(
   return deleted;
 }
 
+/// Locally replace the body of the one selected message we sent, returning the
+/// rebuilt row so the calling screen can update its in-memory history. Only a
+/// single sent row is eligible. The dialog makes the device-only scope plain:
+/// no edit is sent, so other peers keep the original body.
+Future<ChatMessage?> editSelectedMessage(
+  BuildContext context,
+  List<ChatMessage> messages,
+  Set<int> selectedIndices, {
+  required bool isGroup,
+}) async {
+  if (selectedIndices.length != 1) return null;
+  final index = selectedIndices.first;
+  if (index < 0 || index >= messages.length) return null;
+  final original = messages[index];
+  if (!original.sent) return null;
+
+  final messenger = ScaffoldMessenger.of(context);
+  final controller = TextEditingController(text: original.content);
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Edit sent message?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This changes the message only on this device. Other people '
+              'keep the original; no edit is sent.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('edit-message-field'),
+              controller: controller,
+              autofocus: true,
+              maxLines: 4,
+              minLines: 1,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
+  if (saved != true) return null;
+  final content = controller.text.trim();
+  if (content.isEmpty) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Message body cannot be empty')),
+    );
+    return null;
+  }
+  try {
+    await nodeApi.editMessage(
+      messageId: original.id,
+      isGroup: isGroup,
+      content: content,
+    );
+    return original.withEditedBody(content);
+  } catch (_) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Could not edit message')),
+    );
+    return null;
+  }
+}
+
 Future<int> _copyMessages(
   BuildContext context,
   List<ChatMessage> messages,
@@ -260,6 +363,7 @@ class MessageChatBody extends StatelessWidget {
     required this.onCopySelected,
     required this.onDeleteSelected,
     this.onReply,
+    this.onEdit,
     required this.unreadCount,
     required this.unreadLabel,
     required this.onJumpToBottom,
@@ -282,6 +386,10 @@ class MessageChatBody extends StatelessWidget {
   /// Called with the selected message's index when Reply is tapped. The action
   /// is hidden unless exactly one message with a wire id is selected.
   final void Function(int)? onReply;
+
+  /// Called when Edit is tapped. Hidden unless exactly one sent message is
+  /// selected (a local-only edit); the owning screen already holds that list.
+  final VoidCallback? onEdit;
   final int unreadCount;
   final String unreadLabel;
   final VoidCallback onJumpToBottom;
@@ -293,12 +401,18 @@ class MessageChatBody extends StatelessWidget {
     final canDelete = selectedIndices.any(
       (i) => i >= 0 && i < messages.length && messages[i].sent,
     );
-    final int? replyIndex =
+    final bool singleSelected =
         selectedIndices.length == 1 &&
+        selectedIndices.first >= 0 &&
+        selectedIndices.first < messages.length;
+    final int? replyIndex =
+        singleSelected &&
             onReply != null &&
-            selectedIndices.first >= 0 &&
-            selectedIndices.first < messages.length &&
             messages[selectedIndices.first].msgId?.isNotEmpty == true
+        ? selectedIndices.first
+        : null;
+    final int? editIndex =
+        singleSelected && onEdit != null && messages[selectedIndices.first].sent
         ? selectedIndices.first
         : null;
     return Expanded(
@@ -346,6 +460,7 @@ class MessageChatBody extends StatelessWidget {
               canDelete: canDelete,
               onDelete: onDeleteSelected,
               onReply: replyIndex == null ? null : () => onReply!(replyIndex),
+              onEdit: editIndex == null ? null : onEdit,
             )
           else if (unreadCount > 0)
             Padding(
@@ -379,6 +494,7 @@ class SelectionToolbar extends StatelessWidget {
     required this.canDelete,
     required this.onDelete,
     this.onReply,
+    this.onEdit,
   });
 
   final int count;
@@ -389,6 +505,9 @@ class SelectionToolbar extends StatelessWidget {
 
   /// Null hides the Reply action (multi-select or a row without a wire id).
   final VoidCallback? onReply;
+
+  /// Null hides the local Edit action (multi-select or an incoming row).
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -428,6 +547,13 @@ class SelectionToolbar extends StatelessWidget {
                 onPressed: onReply,
                 icon: const Icon(Icons.reply),
                 tooltip: 'Reply',
+              ),
+            if (onEdit != null)
+              IconButton(
+                key: const Key('edit-action'),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit sent message on this device',
               ),
           ],
         ),
@@ -562,6 +688,7 @@ class BroadcastChat extends StatefulWidget {
     required this.onDeleteSelected,
     required this.onOpenPeerInfo,
     this.onReply,
+    this.onEdit,
     this.replyTo,
     this.onCancelReply,
     this.onPickFile,
@@ -583,6 +710,7 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback onDeleteSelected;
   final void Function(String) onOpenPeerInfo;
   final void Function(int)? onReply;
+  final VoidCallback? onEdit;
   final ReplyRef? replyTo;
   final VoidCallback? onCancelReply;
   final VoidCallback? onPickFile;
@@ -649,6 +777,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
           onCopySelected: widget.onCopySelected,
           onDeleteSelected: widget.onDeleteSelected,
           onReply: widget.onReply,
+          onEdit: widget.onEdit,
           unreadCount: widget.unreadCount,
           unreadLabel:
               '${widget.unreadCount} new message${widget.unreadCount > 1 ? 's' : ''}',
@@ -791,6 +920,16 @@ class MessageBubble extends StatelessWidget {
                         size: 12,
                         color: cs.primary,
                         semanticLabel: 'End-to-end encrypted',
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    // Local-edit marker (US-005). The TUI appends the same
+                    // canonical text to the transcript line.
+                    if (message.edited) ...[
+                      const Text(
+                        '(edited)',
+                        key: Key('edited-marker'),
+                        style: TextStyle(fontSize: 11),
                       ),
                       const SizedBox(width: 6),
                     ],

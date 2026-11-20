@@ -49,6 +49,7 @@ diesel::table! {
         attachment_json -> Nullable<Text>,
         encrypted -> Integer,
         deleted_at -> Nullable<Double>,
+        edited_at -> Nullable<Double>,
     }
 }
 
@@ -142,6 +143,7 @@ diesel::table! {
         sender_nickname -> Nullable<Text>,
         attachment_json -> Nullable<Text>,
         deleted_at -> Nullable<Double>,
+        edited_at -> Nullable<Double>,
     }
 }
 

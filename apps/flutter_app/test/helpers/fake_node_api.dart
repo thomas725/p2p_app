@@ -196,6 +196,25 @@ class FakeNodeApi implements NodeApi {
     if (override != null) return override(messageId, isGroup);
   }
 
+  /// Called by [editMessage]; an override can inject a failure.
+  Future<void> Function(int messageId, bool isGroup, String content)?
+  editMessageOverride;
+
+  @override
+  Future<void> editMessage({
+    required int messageId,
+    required bool isGroup,
+    required String content,
+  }) async {
+    _record('editMessage', (
+      messageId: messageId,
+      isGroup: isGroup,
+      content: content,
+    ));
+    final override = editMessageOverride;
+    if (override != null) return override(messageId, isGroup, content);
+  }
+
   /// Recorded outgoing sends, in call order. Each includes the frozen reply
   /// draft (when one was active) so a test can assert the quote was threaded
   /// through to the transport.

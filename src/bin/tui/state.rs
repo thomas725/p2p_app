@@ -219,6 +219,11 @@ pub struct AppState {
     /// other prompts: deletion is local-only, so no swarm command is queued.
     pub delete_message_prompt: Option<DeleteMessagePrompt>,
 
+    /// A sent message being edited locally, pending text submission. The editor
+    /// owns the shared `chat_input`, pre-filled with the original body; Enter
+    /// applies the edit, Esc cancels. Device-only, like deletion (US-005).
+    pub editing_message: Option<EditMessagePrompt>,
+
     /// Live call session (calls lane). One session at a time, mirroring the
     /// single-slot device-binding prompt; `None` = no active/ringing call.
     /// Advanced here on call events; the interactive surface (accept/reject/
@@ -269,6 +274,14 @@ pub struct DeleteMessagePrompt {
     pub message_id: i32,
     pub is_group: bool,
     pub preview: String,
+    pub tab_content: p2p_app::tui_tabs::TabContent,
+}
+
+/// The sent message whose body the shared editor is replacing (US-005).
+#[derive(Clone, Debug)]
+pub struct EditMessagePrompt {
+    pub message_id: i32,
+    pub is_group: bool,
     pub tab_content: p2p_app::tui_tabs::TabContent,
 }
 
@@ -462,10 +475,54 @@ impl AppState {
         self.delete_message_prompt.take().is_some()
     }
 
+    /// True while the shared text input is replacing a sent message's body.
+    #[must_use]
+    pub const fn is_editing_message(&self) -> bool {
+        self.editing_message.is_some()
+    }
+
+    /// Open the shared editor pre-filled with a sent message's full body.
+    pub fn begin_edit_message(
+        &mut self,
+        message_id: i32,
+        is_group: bool,
+        original: String,
+        tab_content: p2p_app::tui_tabs::TabContent,
+    ) {
+        self.input_mode = p2p_app::InputMode::EditingMessage;
+        self.editing_message = Some(EditMessagePrompt {
+            message_id,
+            is_group,
+            tab_content,
+        });
+        self.chat_input = TextArea::new(vec![original]);
+    }
+
+    /// Cancel an in-progress local edit, leaving the stored body untouched.
+    pub fn cancel_edit_message(&mut self) -> bool {
+        let was_editing = self.editing_message.take().is_some();
+        if was_editing {
+            self.input_mode = p2p_app::InputMode::Chat;
+            self.chat_input = TextArea::default();
+        }
+        was_editing
+    }
+
     /// The most recent outgoing message in the conversation shown by `tab`,
     /// as `(db_id, short_preview)`; `None` when there is nothing deletable.
     #[must_use]
     pub fn last_sent_message(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<(i32, String)> {
+        self.last_sent_message_raw(tab)
+            .map(|(id, text)| (id, short_preview(&text)))
+    }
+
+    /// The most recent outgoing message with its FULL body, used to pre-fill
+    /// the local-edit editor (the delete prompt wants the short preview only).
+    #[must_use]
+    pub fn last_sent_message_raw(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<(i32, String)> {
         use p2p_app::tui_tabs::TabContent;
 
         let (id, text) = match tab {
@@ -495,7 +552,7 @@ impl AppState {
             }
             _ => return None,
         };
-        Some((id, short_preview(text)))
+        Some((id, p2p_app::reply::display_body(text)))
     }
 
     /// Key of the reply draft belonging to a tab. `None` for tabs without a
@@ -639,6 +696,61 @@ impl AppState {
                     && let Some(scroll) = self.group_scroll_state.get_mut(group_id)
                 {
                     scroll.0 = scroll.0.min(msgs.len());
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Refresh the prompted row's in-memory line after a successful local edit:
+    /// replace the body with the new text and append the canonical edit marker.
+    /// Returns false (leaving state untouched) if the row is no longer loaded.
+    pub fn replace_edited_message(&mut self, prompt: &EditMessagePrompt, content: &str) -> bool {
+        use p2p_app::tui_tabs::TabContent;
+
+        let new_body = p2p_app::fmt::with_edited_marker(content);
+        let replace = |line: &str| p2p_app::reply::with_body(line, &new_body);
+        match &prompt.tab_content {
+            TabContent::Chat => {
+                let Some(idx) = index_of_db_id(&self.message_db_ids, prompt.message_id) else {
+                    return false;
+                };
+                if let Some(line) = self.messages.get_mut(idx) {
+                    let old = line.text.clone();
+                    line.text = replace(&old);
+                }
+                true
+            }
+            TabContent::Direct(peer_id) => {
+                let Some(idx) = self
+                    .dm_message_db_ids
+                    .get(peer_id)
+                    .and_then(|ids| index_of_db_id(ids, prompt.message_id))
+                else {
+                    return false;
+                };
+                if let Some(msgs) = self.dm_messages.get_mut(peer_id)
+                    && let Some(line) = msgs.get_mut(idx)
+                {
+                    let old = line.clone();
+                    *line = replace(&old);
+                }
+                true
+            }
+            TabContent::GroupChat(group_id) => {
+                let Some(idx) = self
+                    .group_message_db_ids
+                    .get(group_id)
+                    .and_then(|ids| index_of_db_id(ids, prompt.message_id))
+                else {
+                    return false;
+                };
+                if let Some(msgs) = self.group_messages.get_mut(group_id)
+                    && let Some(line) = msgs.get_mut(idx)
+                {
+                    let old = line.clone();
+                    *line = replace(&old);
                 }
                 true
             }
@@ -981,6 +1093,7 @@ impl AppState {
             device_binding_prompt: None,
             group_leave_prompt: None,
             delete_message_prompt: None,
+            editing_message: None,
             call_session: None,
             db_url: String::new(),
             platform: String::new(),

@@ -688,6 +688,7 @@ mod tests {
             "loadBroadcastMessages",
             "loadDmMessages",
             "deleteMessage",
+            "editMessage",
             "saveOutgoingBroadcast",
             "saveOutgoingDm",
             "saveIncomingMessage",

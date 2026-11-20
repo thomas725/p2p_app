@@ -38,6 +38,7 @@ void main() {
               attachment: attachment,
               encrypted: false,
               confirmed: false,
+              edited: false,
             ),
             isOwn: false,
             selectionMode: selectionMode,

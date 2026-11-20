@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reply.dart';
 
 // These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `MobileNode`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `IncomingMessageData`, `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`
 
@@ -89,6 +89,11 @@ class ChatMessage {
   /// [`load_dm_messages`] fill it in from the receipts table.
   final bool confirmed;
 
+  /// True when the body was edited locally after sending (US-005). The edit
+  /// is device-only; peers keep the original body. Filled from the row's
+  /// `edited_at` marker on history loads.
+  final bool edited;
+
   /// Round-trip latency of a *live* incoming message (`5ms`, `<1ms`, `1.2s`),
   /// the value the TUI prefixes onto the message line. `None` for outgoing
   /// messages, group messages, and every row read back from the database —
@@ -110,6 +115,7 @@ class ChatMessage {
     this.attachment,
     required this.encrypted,
     required this.confirmed,
+    required this.edited,
     this.latency,
   });
 
@@ -129,6 +135,7 @@ class ChatMessage {
       attachment.hashCode ^
       encrypted.hashCode ^
       confirmed.hashCode ^
+      edited.hashCode ^
       latency.hashCode;
 
   @override
@@ -150,6 +157,7 @@ class ChatMessage {
           attachment == other.attachment &&
           encrypted == other.encrypted &&
           confirmed == other.confirmed &&
+          edited == other.edited &&
           latency == other.latency;
 }
 
@@ -260,6 +268,10 @@ class MobileGroupMessage {
   /// True for a message we sent.
   final bool sent;
 
+  /// True when the body was edited locally after sending (US-005). Device-only,
+  /// filled from the row's `edited_at` marker on history loads.
+  final bool edited;
+
   /// Stable wire ID used for deduplication, if the sender supplied one.
   final String? msgId;
 
@@ -283,6 +295,7 @@ class MobileGroupMessage {
     required this.content,
     this.peerId,
     required this.sent,
+    required this.edited,
     this.msgId,
     this.replyTo,
     this.sentAt,
@@ -297,6 +310,7 @@ class MobileGroupMessage {
       content.hashCode ^
       peerId.hashCode ^
       sent.hashCode ^
+      edited.hashCode ^
       msgId.hashCode ^
       replyTo.hashCode ^
       sentAt.hashCode ^
@@ -313,6 +327,7 @@ class MobileGroupMessage {
           content == other.content &&
           peerId == other.peerId &&
           sent == other.sent &&
+          edited == other.edited &&
           msgId == other.msgId &&
           replyTo == other.replyTo &&
           sentAt == other.sentAt &&

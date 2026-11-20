@@ -86,6 +86,9 @@ pub struct Message {
     /// Local-only deletion time (Unix seconds); `None` = visible. Never sent
     /// to or received from peers (US-005).
     pub deleted_at: Option<f64>,
+    /// Local-only edit time (Unix seconds); `None` = unchanged. The body is
+    /// replaced in place on this device only (US-005).
+    pub edited_at: Option<f64>,
 }
 
 /// Queryable struct for the `groups` table
@@ -147,6 +150,9 @@ pub struct GroupMessage {
     /// Local-only deletion time (Unix seconds); `None` = visible. Never sent
     /// to or received from peers (US-005).
     pub deleted_at: Option<f64>,
+    /// Local-only edit time (Unix seconds); `None` = unchanged. The body is
+    /// replaced in place on this device only (US-005).
+    pub edited_at: Option<f64>,
 }
 
 /// Queryable struct for the `files` table (content-addressed attachment store)

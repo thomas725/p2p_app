@@ -1,4 +1,7 @@
-use crate::reply::{ReplyRef, decode, encode, from_display_line, preview_line, quoted_header};
+use crate::reply::{
+    ReplyRef, decode, display_body, encode, from_display_line, preview_line, quoted_header,
+    split_display_line, with_body,
+};
 
 #[test]
 fn preview_line_collapses_and_bounds_text() {
@@ -43,6 +46,26 @@ fn tui_display_line_capture_skips_an_existing_quote_header() {
 #[test]
 fn without_a_wire_id_there_is_no_reply_capture() {
     assert_eq!(from_display_line("12:34 [Alice] hello", ""), None);
+}
+
+#[test]
+fn display_line_body_can_be_replaced_without_losing_the_prefix() {
+    let line = "12:34 [Alice (abc)] original body";
+    assert_eq!(split_display_line(line), ("Alice (abc)", "original body"));
+    assert_eq!(display_body(line), "original body");
+    assert_eq!(
+        with_body(line, "replacement (edited)"),
+        "12:34 [Alice (abc)] replacement (edited)"
+    );
+}
+
+#[test]
+fn replacing_a_quoted_line_keeps_the_quote_header() {
+    let line = "12:34 [5ms] [Alice] ↳ Bob: earlier text\n12:34 [Alice] original";
+    assert_eq!(
+        with_body(line, "replacement"),
+        "12:34 [5ms] [Alice] ↳ Bob: earlier text\n12:34 [Alice] replacement"
+    );
 }
 
 #[test]

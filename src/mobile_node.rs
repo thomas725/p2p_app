@@ -506,6 +506,10 @@ pub struct ChatMessage {
     /// returned right after sending; [`load_broadcast_messages`] /
     /// [`load_dm_messages`] fill it in from the receipts table.
     pub confirmed: bool,
+    /// True when the body was edited locally after sending (US-005). The edit
+    /// is device-only; peers keep the original body. Filled from the row's
+    /// `edited_at` marker on history loads.
+    pub edited: bool,
     /// Round-trip latency of a *live* incoming message (`5ms`, `<1ms`, `1.2s`),
     /// the value the TUI prefixes onto the message line. `None` for outgoing
     /// messages, group messages, and every row read back from the database —
@@ -636,6 +640,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
         encrypted: msg.encrypted != 0,
         confirmed: false,
+        edited: msg.edited_at.is_some(),
         latency: None,
     }
 }
@@ -1032,6 +1037,9 @@ pub struct MobileGroupMessage {
     pub peer_id: Option<String>,
     /// True for a message we sent.
     pub sent: bool,
+    /// True when the body was edited locally after sending (US-005). Device-only,
+    /// filled from the row's `edited_at` marker on history loads.
+    pub edited: bool,
     /// Stable wire ID used for deduplication, if the sender supplied one.
     pub msg_id: Option<String>,
     /// Immutable reply snapshot (US-006); `None` for an ordinary message.
@@ -1067,6 +1075,7 @@ fn group_message_to_mobile(
         content: msg.content,
         peer_id: msg.peer_id,
         sent: msg.sent == 1,
+        edited: msg.edited_at.is_some(),
         msg_id: msg.msg_id,
         reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
         sent_at: msg.sent_at.map(|t| {
@@ -1669,6 +1678,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 1);
@@ -1713,6 +1723,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 2);
@@ -1746,6 +1757,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         let suffix = crate::fmt::peer_id_suffix("peer-bob");
@@ -1776,6 +1788,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
@@ -1800,6 +1813,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.content, "");
@@ -1823,6 +1837,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         assert!(chat.sent_at.is_none());
@@ -2022,6 +2037,7 @@ mod tests {
             reply_to_json: None,
             encrypted: 0,
             deleted_at: None,
+            edited_at: None,
         };
         let chat = message_to_chat(msg);
         let cloned = chat.clone();

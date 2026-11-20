@@ -271,6 +271,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _cancelSelection();
   }
 
+  Future<void> _editSelected() async {
+    final edited = await editSelectedMessage(
+      context,
+      _messages,
+      _selectedIndices,
+      isGroup: false,
+    );
+    if (!mounted || edited == null) return;
+    setState(() {
+      final idx = _messages.indexWhere((m) => m.id == edited.id);
+      if (idx >= 0) _messages[idx] = edited;
+      _selectionMode = false;
+      _selectedIndices.clear();
+    });
+  }
+
   Future<void> _deleteSelected() async {
     final deleted = await deleteSelectedMessages(
       context,
@@ -1072,6 +1088,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onCopySelected: _copySelected,
         onDeleteSelected: _deleteSelected,
         onReply: _onReply,
+        onEdit: _editSelected,
         replyTo: _replyTo,
         onCancelReply: _cancelReply,
         onOpenPeerInfo: _openPeerInfoForPeerId,

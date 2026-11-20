@@ -87,6 +87,14 @@ abstract class NodeApi {
   /// no retraction is sent and other peers keep their copy.
   Future<void> deleteMessage({required int messageId, required bool isGroup});
 
+  /// Locally replace the body of one sent message (US-005). Device-only: no
+  /// edit is sent, so peers keep the original body.
+  Future<void> editMessage({
+    required int messageId,
+    required bool isGroup,
+    required String content,
+  });
+
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
   /// uploads to the node first (files lane §12). [replyTo] is an immutable

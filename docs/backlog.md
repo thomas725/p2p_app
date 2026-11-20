@@ -133,16 +133,6 @@ Requires a lightweight "user X is typing" signal on the DM lane. The lane is
 `request_response`; a typing signal is fire-and-forget and must not occupy a
 request slot.
 
-### Edit a sent message (US-005, edit half)
-
-Local deletion shipped on 2026-11-17 as a `deleted_at` tombstone (see
-`archive/2026-11-17_local_message_deletion.md`); the **edit** half is still
-open. Editing needs an explicit version/edited marker on the message and a
-decision about whether peers see the replacement. Note that
-`confirmed`/`latency` are live decorations, not persisted columns
-(see `archive/2026-10-20_delivery_receipts_parity.md`), so either path has to
-keep the receipt row consistent with the visible message.
-
 ### Message reactions (US-008)
 
 A per-message reaction set. Needs a new table plus a wire type; reactions are
@@ -292,6 +282,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Local sent-message edits (US-005, edit half) | 2026-11-20 | [`archive/2026-11-20_local_message_edits.md`](archive/2026-11-20_local_message_edits.md) |
 | Store-and-forward DM outbox (sealed envelopes, retry on reconnect, dedup, expiry) | 2026-11-19 | [`archive/2026-11-19_store_and_forward_dm_outbox.md`](archive/2026-11-19_store_and_forward_dm_outbox.md) |
 | Reply / quote to a specific message (US-006) | 2026-11-18 | [`archive/2026-11-18_reply_quote.md`](archive/2026-11-18_reply_quote.md) |
 | Keyboard shortcut help overlay (US-029) + Flutter help dialog | 2026-11-17 | [`archive/2026-11-17_keyboard_shortcuts_help.md`](archive/2026-11-17_keyboard_shortcuts_help.md) |

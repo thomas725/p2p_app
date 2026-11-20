@@ -82,11 +82,37 @@ pub fn from_display_line(line: &str, msg_id: &str) -> Option<ReplyRef> {
     // A message that is itself a reply has a quoted header on the first line;
     // capture only the actual transcript line below it.
     let line = line.rsplit('\n').next().unwrap_or(line);
-    let (sender, body) = line
-        .split_once('[')
-        .and_then(|(_, rest)| rest.split_once("] "))
-        .unwrap_or(("", line));
+    let (sender, body) = split_display_line(line);
     Some(ReplyRef::new(msg_id.to_string(), sender.to_string(), body))
+}
+
+/// Split a TUI transcript line into `(sender tag, body)`, ignoring any quoted
+/// header above it. The body is what the local-edit editor shows and replaces.
+#[must_use]
+pub fn split_display_line(line: &str) -> (&str, &str) {
+    let line = line.rsplit('\n').next().unwrap_or(line);
+    line.split_once('[')
+        .and_then(|(_, rest)| rest.split_once("] "))
+        .map_or(("", line), |(sender, body)| (sender, body))
+}
+
+/// The body of a TUI transcript line (see [`split_display_line`]).
+#[must_use]
+pub fn display_body(line: &str) -> String {
+    split_display_line(line).1.to_string()
+}
+
+/// Replace the body of a TUI transcript line while keeping its timestamp,
+/// sender tag and quoted header. Used after a local edit (US-005).
+#[must_use]
+pub fn with_body(line: &str, body: &str) -> String {
+    let (headers, row) = line
+        .rsplit_once('\n')
+        .map_or(("", line), |(headers, row)| (headers, row));
+    let old_body = split_display_line(row).1;
+    let prefix = row.strip_suffix(old_body).unwrap_or(row);
+    let separator = if headers.is_empty() { "" } else { "\n" };
+    format!("{headers}{separator}{prefix}{body}")
 }
 
 /// Prepend the canonical quoted header to a rendered transcript line.

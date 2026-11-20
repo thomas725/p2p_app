@@ -343,6 +343,56 @@ async fn confirm_delete_message(state: &SharedState) {
     }
 }
 
+/// `e` opens the local-edit editor on the newest sent message in the active
+/// chat, pre-filled with its full body. Incoming rows and live events have no
+/// DB id, so they are skipped; with nothing editable we explain that in a popup.
+fn arm_edit_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    use p2p_app::tui_tabs::TabContent;
+
+    let Some((id, original)) = s.last_sent_message_raw(tab) else {
+        s.popup = Some("No sent message to edit in this conversation".to_string());
+        return;
+    };
+    let is_group = matches!(tab, TabContent::GroupChat(_));
+    s.begin_edit_message(id, is_group, original, tab.clone());
+    p2plog_debug(format!("Local edit opened for message {id}"));
+}
+
+/// Apply a confirmed local edit: replace the DB body through the shared API,
+/// then refresh the matching in-memory line with the canonical edit marker.
+/// Nothing is sent over the swarm — peers keep the original body (US-005).
+fn confirm_edit_message(s: &mut super::state::AppState) {
+    let Some(prompt) = s.editing_message.clone() else {
+        return;
+    };
+    let content = s
+        .chat_input
+        .lines()
+        .first()
+        .map_or_else(String::new, std::string::ToString::to_string)
+        .trim()
+        .to_string();
+    if content.is_empty() {
+        s.popup = Some("Message body cannot be empty".to_string());
+        return;
+    }
+    match p2p_app::api::edit_message(prompt.message_id, prompt.is_group, &content) {
+        Ok(()) => {
+            let applied = s.replace_edited_message(&prompt, &content);
+            s.editing_message = None;
+            s.input_mode = p2p_app::InputMode::Chat;
+            s.chat_input = super::TextArea::default();
+            if !applied {
+                s.popup = Some("Message edited, but its line is no longer loaded".to_string());
+            }
+            p2plog_debug(format!("Edited message {} locally", prompt.message_id));
+        }
+        Err(e) => {
+            s.popup = Some(format!("Could not edit message: {e}"));
+        }
+    }
+}
+
 /// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
@@ -493,6 +543,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled group leave".to_string());
     } else if s.cancel_delete_message() {
         p2plog_debug("Cancelled message deletion".to_string());
+    } else if s.cancel_edit_message() {
+        p2plog_debug("Cancelled message edit".to_string());
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
@@ -991,7 +1043,7 @@ fn handle_contacts_tab_key(
     is_ctrl: bool,
     s: &mut super::state::AppState,
 ) {
-    if is_ctrl || s.is_editing_nickname() {
+    if is_ctrl || s.is_editing_nickname() || s.is_editing_message() {
         return;
     }
     match key_event.code {
@@ -1067,13 +1119,15 @@ async fn handle_key_dispatch(
     match key_event.code {
         // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
         crossterm::event::KeyCode::Char('i' | 'p')
-            if !s.is_editing_nickname() && is_ctrl && on_direct =>
+            if !s.is_editing_nickname() && !s.is_editing_message() && is_ctrl && on_direct =>
         {
             handle_peer_info_control_chord(&key_event, s);
         }
         // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
         // non-Direct tabs falls through to the chat-input branch, as before.
-        crossterm::event::KeyCode::Char('p') if !s.is_editing_nickname() && is_ctrl => {
+        crossterm::event::KeyCode::Char('p')
+            if !s.is_editing_nickname() && !s.is_editing_message() && is_ctrl =>
+        {
             p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }
         crossterm::event::KeyCode::BackTab => {
@@ -1132,12 +1186,28 @@ async fn handle_key_dispatch(
         {
             arm_delete_prompt(s, &tab);
         }
+        // `e` opens the local-edit editor for the newest sent message in a
+        // chat. Like `Delete`, it is a no-op in editors and non-chat tabs.
+        crossterm::event::KeyCode::Char('e')
+            if !is_ctrl
+                && s.input_mode == p2p_app::InputMode::Chat
+                && matches!(
+                    tab,
+                    p2p_app::tui_tabs::TabContent::Chat
+                        | p2p_app::tui_tabs::TabContent::Direct(_)
+                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+                ) =>
+        {
+            arm_edit_prompt(s, &tab);
+        }
         crossterm::event::KeyCode::Enter => {
             if s.is_searching_contacts() {
                 s.end_contact_search(true);
                 p2plog_debug("Applied Contacts search".to_string());
             } else if s.is_editing_nickname() {
                 handle_nickname_submission(s, swarm_cmd_tx).await;
+            } else if s.is_editing_message() {
+                confirm_edit_message(s);
             } else if s.is_dialing_peer() {
                 handle_dial_peer_submission(s, swarm_cmd_tx).await;
             } else if s.is_adding_network_peer() {
@@ -1199,6 +1269,7 @@ async fn handle_key_dispatch(
         _ => {
             if input_enabled
                 || s.is_editing_nickname()
+                || s.is_editing_message()
                 || s.is_creating_group()
                 || s.is_dialing_peer()
                 || s.is_adding_network_peer()
@@ -1221,7 +1292,7 @@ async fn handle_contacts_action_key(
     s: &mut super::state::AppState,
     swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
 ) -> bool {
-    if is_ctrl || s.is_editing_nickname() {
+    if is_ctrl || s.is_editing_nickname() || s.is_editing_message() {
         return false;
     }
     match key_event.code {

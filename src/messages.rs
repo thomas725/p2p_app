@@ -164,6 +164,34 @@ pub fn mark_message_deleted(id: i32) -> Result<bool, String> {
     Ok(changed > 0)
 }
 
+/// Locally edit the body of a message we sent (US-005).
+///
+/// Only an outgoing (`sent = 1`), non-tombstoned row is changed; incoming rows
+/// are never editable. The new body replaces the stored one and `edited_at`
+/// records the LOCAL edit time, so both the content and the marker survive a
+/// reload. Repeat edits are allowed and refresh the timestamp. Nothing leaves
+/// this device: peers keep their original copy. Returns `true` iff a row changed.
+///
+/// # Errors
+/// Returns an error string when the database write fails.
+pub fn edit_message(id: i32, content: &str) -> Result<bool, String> {
+    use crate::generated::schema::messages as messages_table;
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let changed = diesel::update(
+        messages_table::table
+            .filter(messages_table::id.eq(id))
+            .filter(messages_table::sent.eq(1))
+            .filter(messages_table::deleted_at.is_null()),
+    )
+    .set((
+        messages_table::content.eq(content),
+        messages_table::edited_at.eq(crate::fmt::current_timestamp()),
+    ))
+    .execute(conn)
+    .map_err(|e| format!("failed to edit message {id}: {e}"))?;
+    Ok(changed > 0)
+}
+
 /// Load broadcast messages for a topic, newest first, limited to count.
 ///
 /// # Errors

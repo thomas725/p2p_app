@@ -449,6 +449,7 @@ fn dm_msg(
         attachment_json: None,
         encrypted: 0,
         deleted_at: None,
+        edited_at: None,
     }
 }
 
@@ -577,6 +578,7 @@ fn group_msg(
         sender_nickname: None,
         attachment_json: None,
         deleted_at: None,
+        edited_at: None,
     }
 }
 

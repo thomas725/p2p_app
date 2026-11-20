@@ -106,7 +106,9 @@ pub fn render_input_section(
     state: &TuiRenderState,
     tab_content: &TabContent,
 ) {
-    let title = if state.is_dialing_peer() {
+    let title = if state.is_editing_message() {
+        "Edit message (local only)".to_string()
+    } else if state.is_dialing_peer() {
         "Dial peer address".to_string()
     } else if state.is_adding_network_peer() {
         format!(
@@ -132,6 +134,7 @@ pub fn render_input_section(
 
     if tab_content.is_input_enabled()
         || state.is_editing_nickname()
+        || state.is_editing_message()
         || state.is_searching_contacts()
         || state.is_dialing_peer()
         || state.is_adding_network_peer()
@@ -166,13 +169,13 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Chat | TabContent::GroupChat(_) => {
-            "Tab: next | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -196,6 +199,7 @@ Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 Chat / DM / Group: click a message -> sender's Peer Info
 Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
 Chat / DM / Group: Del -> delete newest sent message (local only)
+Chat / DM / Group: e -> edit newest sent message (local only)
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 
 Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse

@@ -69,6 +69,7 @@ newest message; the counter clears.
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
+| `e` in **Chat** / **DM** / **Group chat** | Edit your most recent sent message in that conversation (local only) |
 
 ### Reply / quote
 
@@ -90,6 +91,16 @@ explanation appears instead.
 
 The delete prompt sits below the device-binding and group-leave prompts but
 above the call overlay and ordinary popup in the input precedence chain.
+
+### Local message editing
+
+`e` scans the open conversation backwards for the newest message you sent and
+opens a single-line editor pre-filled with its full body. Enter saves, Esc
+cancels. Saving replaces the body in this install's history, stamps `edited_at`
+and appends the canonical `(edited)` marker after the body; the line keeps its
+timestamp, sender tag and quoted header. Peers are not notified, so they keep
+the original text. Incoming rows cannot be edited; if there is no sent row, a
+short explanation appears instead.
 
 ## Contacts tab
 
@@ -174,6 +185,7 @@ of the history.
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
 | `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
 | `Delete` | Hide your most recent sent DM locally (with confirmation) |
+| `e` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty
 keyboard protocol (Konsole), so bare `Tab` would stop cycling tabs. `Ctrl+P`
@@ -200,7 +212,7 @@ message while the Settings tab is active.
 
 | Key | Action |
 |-----|--------|
-| `Enter` | Send the message / save the nickname / confirm the group prompt |
+| `Enter` | Send the message / save a local message edit / save the nickname / confirm the group prompt |
 | `Shift+Enter` | New line in a multi-line message |
 | `Esc` | Cancel the edit in progress, or return to the Chat tab |
 | `/file <path>` | Attach a local file and send it (see below) |
@@ -220,7 +232,7 @@ lane. Both frontends render the result as a chip:
 |-----|--------|
 | `?` | Open the compact shortcut-help overlay |
 | `F12` | Toggle mouse capture |
-| `Esc` | Dismiss the popup / decline the device-binding prompt / cancel a local-delete, group-leave, or current edit / return to the Chat tab |
+| `Esc` | Dismiss the popup / decline the device-binding prompt / cancel a local-delete, local edit, group-leave, or current edit / return to the Chat tab |
 | `Ctrl+Q` | Exit the application |
 
 `?` is a plain key, so it opens the help overlay only when no input box owns
@@ -232,7 +244,8 @@ mark.
 
 `Esc` unwinds one level at a time, in this order: dismiss the popup →
 decline the device-binding prompt → cancel a group leave → cancel a local
-message deletion → clear the contacts search → cancel a nickname edit →
+message deletion → cancel a local message edit → clear the contacts search →
+cancel a nickname edit →
 cancel the group create/join prompt → cancel a peer dial → return to the Chat
 tab.
 

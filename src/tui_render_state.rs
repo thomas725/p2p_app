@@ -230,6 +230,12 @@ impl TuiRenderState {
         )
     }
 
+    /// True while the shared input captures a local edit of a sent message.
+    #[must_use]
+    pub const fn is_editing_message(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::EditingMessage)
+    }
+
     /// True while the editor sets the local display name of `nickname_peer_id`.
     #[must_use]
     pub const fn is_editing_local_nickname(&self) -> bool {

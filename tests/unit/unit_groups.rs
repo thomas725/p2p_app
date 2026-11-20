@@ -273,6 +273,65 @@ fn mark_group_message_deleted_hides_only_sent_rows() {
 
 #[test]
 #[serial(db)]
+fn edit_group_message_replaces_only_own_live_rows_and_marks_them_edited() {
+    with_test_db(|| {
+        let group = create_public_group("edit-lobby").expect("create");
+        let sent = save_outgoing_group_message(
+            &group.group_id,
+            "before",
+            GroupMessageMeta {
+                msg_id: Some("g-edit".to_string()),
+                sent_at: Some(2.0),
+                ..GroupMessageMeta::default()
+            },
+        )
+        .expect("save outgoing");
+        let incoming = save_incoming_group_message(
+            &group.group_id,
+            "peer-a",
+            "theirs",
+            GroupMessageMeta {
+                msg_id: Some("g-in".to_string()),
+                sent_at: Some(1.0),
+                ..GroupMessageMeta::default()
+            },
+        )
+        .expect("save incoming")
+        .expect("row");
+
+        assert!(
+            !edit_group_message(incoming.id, "new body").expect("incoming not editable"),
+            "incoming group rows are never edited"
+        );
+        assert!(edit_group_message(sent.id, " new ").expect("edit sent"));
+
+        let conn = &mut crate::sqlite_connect().expect("connect");
+        let (body, edited_at) = crate::generated::schema::group_messages::table
+            .filter(crate::generated::schema::group_messages::id.eq(sent.id))
+            .select((
+                crate::generated::schema::group_messages::content,
+                crate::generated::schema::group_messages::edited_at,
+            ))
+            .first::<(String, Option<f64>)>(conn)
+            .expect("read edited group row");
+        assert_eq!(body, " new ");
+        assert!(edited_at.is_some_and(|at| at > 0.0));
+
+        assert!(edit_group_message(sent.id, "second").expect("repeat edit"));
+        let loaded = load_group_messages(&group.group_id, 100).expect("history");
+        let row = loaded.iter().find(|m| m.id == sent.id).expect("edited row");
+        assert_eq!(row.content, "second", "repeat edits replace the body");
+
+        mark_group_message_deleted(sent.id).expect("hide edited row");
+        assert!(
+            !edit_group_message(sent.id, "after delete").expect("deleted row not editable"),
+            "tombstoned group rows cannot be edited"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
 fn group_tombstones_are_excluded_from_backfill_but_keep_the_watermark() {
     with_test_db(|| {
         let group = create_public_group("backfill-delete").expect("create");

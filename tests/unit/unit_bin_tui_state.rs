@@ -28,6 +28,7 @@ fn msg(
         attachment_json: None,
         encrypted: 0,
         deleted_at: None,
+        edited_at: None,
     }
 }
 
@@ -375,6 +376,60 @@ fn test_delete_prompt_removal_is_scoped_to_dm_and_group() {
     assert!(state.remove_deleted_message(&dm_prompt));
     assert!(state.dm_messages["p1"].is_empty());
     assert!(state.dm_message_db_ids["p1"].is_empty());
+}
+
+#[test]
+fn test_edit_prompt_prefill_cancel_and_in_place_replacement() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut state = test_app_state();
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: "10:00 [Alice] before".to_string(),
+        sender_peer_id: None,
+    });
+    state.message_ids.push_back(Some("wire-1".to_string()));
+    state.message_db_ids.push_back(Some(42));
+
+    assert_eq!(
+        state.last_sent_message_raw(&TabContent::Chat),
+        Some((42, "before".to_string()))
+    );
+    assert_eq!(
+        state.last_sent_message(&TabContent::Chat),
+        Some((42, "before".to_string()))
+    );
+
+    state.begin_edit_message(42, false, "before".to_string(), TabContent::Chat);
+    assert!(state.is_editing_message());
+    assert_eq!(state.input_mode, p2p_app::InputMode::EditingMessage);
+    assert_eq!(state.chat_input.lines(), ["before"]);
+
+    let prompt = crate::tui::state::EditMessagePrompt {
+        message_id: 42,
+        is_group: false,
+        tab_content: TabContent::Chat,
+    };
+    assert!(state.replace_edited_message(&prompt, "after"));
+    assert_eq!(state.messages[0].text, "10:00 [Alice] after (edited)");
+    assert!(
+        state.replace_edited_message(&prompt, "again"),
+        "repeat edits refresh the same row"
+    );
+    assert_eq!(
+        state.messages[0].text, "10:00 [Alice] again (edited)",
+        "a repeat edit must not stack the marker"
+    );
+    let missing = crate::tui::state::EditMessagePrompt {
+        message_id: 99,
+        ..prompt
+    };
+    assert!(!state.replace_edited_message(&missing, "nowhere"));
+
+    state.begin_edit_message(42, false, "again".to_string(), TabContent::Chat);
+    assert!(state.cancel_edit_message());
+    assert!(!state.is_editing_message());
+    assert_eq!(state.input_mode, p2p_app::InputMode::Chat);
+    assert!(!state.cancel_edit_message());
 }
 
 // ── AppState ────────────────────────────────────────────────────────────

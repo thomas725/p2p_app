@@ -150,6 +150,26 @@ Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
       isGroup: isGroup,
     );
 
+/// Locally replace the body of one sent message (broadcast, DM, or group).
+///
+/// Only a sent, non-deleted row is editable; incoming rows keep their copy.
+/// The new body must contain non-whitespace text. This is device-only: no edit
+/// is sent over the swarm, so peers still see the original message. `is_group`
+/// just picks which local table to update.
+///
+/// # Errors
+/// Returns an error if the body is blank, the database write fails, or no
+/// editable sent row with that id exists.
+Future<void> editMessage({
+  required int messageId,
+  required bool isGroup,
+  required String content,
+}) => RustLib.instance.api.crateApiEditMessage(
+  messageId: messageId,
+  isGroup: isGroup,
+  content: content,
+);
+
 /// Save an outgoing broadcast message to DB and send via swarm.
 /// `attachment_path`, when present, is stored content-addressedly (files lane
 /// §12) and sent as an attachment descriptor on the message.

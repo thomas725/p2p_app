@@ -14,7 +14,9 @@ pub fn render_input_section(
     state: &AppState,
     tab_content: &TabContent,
 ) {
-    let title = if state.is_dialing_peer() {
+    let title = if state.is_editing_message() {
+        "Edit sent message - Enter to save locally, Esc to cancel".to_string()
+    } else if state.is_dialing_peer() {
         "Dial peer address - Enter to dial, Esc to cancel".to_string()
     } else if state.is_adding_network_peer() {
         format!(
@@ -48,6 +50,7 @@ pub fn render_input_section(
     let input_block = Block::default().title(title).borders(Borders::ALL);
     if tab_content.is_input_enabled()
         || state.is_editing_nickname()
+        || state.is_editing_message()
         || state.is_creating_group()
         || state.is_dialing_peer()
         || state.is_adding_network_peer()

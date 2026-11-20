@@ -3,6 +3,19 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
+/// Marker appended to a locally edited message (US-005). Both frontends use
+/// this exact text so a sent-message edit reads the same in the TUI and Flutter.
+pub const EDITED_MARKER: &str = "(edited)";
+
+/// Append the local-edit marker to a rendered message line, replacing a
+/// previous marker so a message edited twice does not accumulate suffixes.
+#[must_use]
+pub fn with_edited_marker(line: &str) -> String {
+    let suffix = format!(" {EDITED_MARKER}");
+    let base = line.strip_suffix(&suffix).unwrap_or(line);
+    format!("{base}{suffix}")
+}
+
 /// Format a Chrono `NaiveDateTime` into "YYYY-MM-DD HH:MM:SS" format
 #[must_use]
 pub fn format_peer_datetime(time: chrono::NaiveDateTime) -> String {

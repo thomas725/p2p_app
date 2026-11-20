@@ -141,6 +141,16 @@ fn test_format_latency_none() {
 }
 
 #[test]
+fn test_with_edited_marker_is_idempotent() {
+    assert_eq!(p2p_app::fmt::with_edited_marker("hello"), "hello (edited)");
+    assert_eq!(
+        p2p_app::fmt::with_edited_marker("hello (edited)"),
+        "hello (edited)",
+        "a second edit must not stack markers"
+    );
+}
+
+#[test]
 fn test_current_timestamp_returns_positive() {
     let ts = p2p_app::current_timestamp();
     assert!(ts > 0.0, "timestamp should be positive");

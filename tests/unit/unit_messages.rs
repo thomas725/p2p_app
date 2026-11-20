@@ -396,6 +396,59 @@ fn mark_message_deleted_hides_only_sent_rows_from_broadcast_and_dm_history() {
 
 #[test]
 #[serial(db)]
+fn edit_message_replaces_only_own_live_rows_and_marks_them_edited() {
+    with_test_db(|| {
+        let topic = "edit-topic";
+        let unsent =
+            save_message("unsent", None, topic, false, None).expect("save unsent broadcast");
+        assert!(
+            !edit_message(unsent.id, "new body").expect("unsent row is not editable"),
+            "only rows we actually sent can be edited"
+        );
+
+        let outgoing =
+            save_message("before", None, topic, false, None).expect("save outgoing broadcast");
+        mark_message_sent(outgoing.id).expect("mark broadcast sent");
+        let incoming =
+            save_message("theirs", Some("peer-a"), topic, false, None).expect("save incoming");
+        assert!(
+            !edit_message(incoming.id, "new body").expect("incoming row is not editable"),
+            "incoming rows are never edited"
+        );
+
+        assert!(edit_message(outgoing.id, " after ").expect("edit broadcast"));
+        let conn = &mut crate::sqlite_connect().expect("connect");
+        let (body, edited_at, deleted_at) = crate::generated::schema::messages::table
+            .filter(crate::generated::schema::messages::id.eq(outgoing.id))
+            .select((
+                crate::generated::schema::messages::content,
+                crate::generated::schema::messages::edited_at,
+                crate::generated::schema::messages::deleted_at,
+            ))
+            .first::<(String, Option<f64>, Option<f64>)>(conn)
+            .expect("read edited row");
+        assert_eq!(body, " after ", "the new body is stored verbatim");
+        assert!(edited_at.is_some_and(|at| at > 0.0));
+        assert_eq!(deleted_at, None, "editing does not tombstone the row");
+
+        assert!(edit_message(outgoing.id, "second").expect("repeat edit"));
+        let loaded = load_messages(topic, 100).expect("history");
+        let row = loaded
+            .iter()
+            .find(|m| m.id == outgoing.id)
+            .expect("edited row");
+        assert_eq!(row.content, "second", "repeat edits replace the body");
+
+        mark_message_deleted(outgoing.id).expect("hide edited row");
+        assert!(
+            !edit_message(outgoing.id, "after delete").expect("deleted row is not editable"),
+            "tombstoned rows cannot be edited"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
 fn deleted_dms_leave_peer_stats_but_not_broadcast_recipients() {
     with_test_db(|| {
         let dm = save_message("dm", None, "stats-delete", true, Some("peer-x")).expect("save dm");

@@ -431,6 +431,32 @@ pub fn mark_group_message_deleted(id: i32) -> Result<bool, String> {
     Ok(changed > 0)
 }
 
+/// Locally edit the body of a group message we sent (US-005).
+///
+/// Mirrors [`crate::messages::edit_message`]: only a non-tombstoned outgoing
+/// row is changed, the body is replaced in place and `edited_at` records the
+/// LOCAL edit time. Repeat edits refresh the timestamp; nothing is sent to the
+/// group. Returns `true` iff a row changed.
+///
+/// # Errors
+/// Returns an error string when the database write fails.
+pub fn edit_group_message(id: i32, content: &str) -> Result<bool, String> {
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let changed = diesel::update(
+        group_messages::table
+            .filter(group_messages::id.eq(id))
+            .filter(group_messages::sent.eq(1))
+            .filter(group_messages::deleted_at.is_null()),
+    )
+    .set((
+        group_messages::content.eq(content),
+        group_messages::edited_at.eq(crate::fmt::current_timestamp()),
+    ))
+    .execute(conn)
+    .map_err(|e| format!("failed to edit group message {id}: {e}"))?;
+    Ok(changed > 0)
+}
+
 /// The `sent_at` watermark of a group's newest stored message (`None` when the
 /// group has no history).
 ///

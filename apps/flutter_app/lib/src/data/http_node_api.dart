@@ -234,6 +234,7 @@ class HttpNodeApi implements NodeApi {
           : attachmentFromJson(m['attachment']),
       encrypted: m['encrypted'] as bool? ?? false,
       confirmed: m['confirmed'] as bool? ?? false,
+      edited: m['edited'] as bool? ?? false,
       latency: m['latency'] as String?,
     );
   }
@@ -255,6 +256,7 @@ class HttpNodeApi implements NodeApi {
       content: m['content'] as String,
       peerId: m['peerId'] as String?,
       sent: m['sent'] as bool,
+      edited: m['edited'] as bool? ?? false,
       msgId: m['msgId'] as String?,
       replyTo: replyFromJson(m['replyTo']),
       sentAt: m['sentAt'] as String?,
@@ -509,6 +511,17 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<void> deleteMessage({required int messageId, required bool isGroup}) =>
       _call('deleteMessage', {'messageId': messageId, 'isGroup': isGroup});
+
+  @override
+  Future<void> editMessage({
+    required int messageId,
+    required bool isGroup,
+    required String content,
+  }) => _call('editMessage', {
+    'messageId': messageId,
+    'isGroup': isGroup,
+    'content': content,
+  });
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({

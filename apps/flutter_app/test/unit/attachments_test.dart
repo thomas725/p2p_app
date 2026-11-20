@@ -31,6 +31,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
   ),
   encrypted: false,
   confirmed: false,
+  edited: false,
 );
 
 void main() {
@@ -103,6 +104,7 @@ void main() {
         attachment: null,
         encrypted: false,
         confirmed: false,
+        edited: false,
       );
 
       expect(await openAttachedFile(message), isNull);

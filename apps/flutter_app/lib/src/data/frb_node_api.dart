@@ -109,6 +109,17 @@ class FrbNodeApi implements NodeApi {
       bridge.deleteMessage(messageId: messageId, isGroup: isGroup);
 
   @override
+  Future<void> editMessage({
+    required int messageId,
+    required bool isGroup,
+    required String content,
+  }) => bridge.editMessage(
+    messageId: messageId,
+    isGroup: isGroup,
+    content: content,
+  );
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,
