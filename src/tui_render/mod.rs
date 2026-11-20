@@ -169,13 +169,13 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
-            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) => {
-            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+P: Peer Info | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Chat | TabContent::GroupChat(_) => {
-            "Tab: next | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | e: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Ctrl+R: reply | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Enter: send | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -199,7 +199,7 @@ Enter  Send / open / save   Shift+Enter  Newline   Esc  Cancel / back
 Chat / DM / Group: click a message -> sender's Peer Info
 Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
 Chat / DM / Group: Del -> delete newest sent message (local only)
-Chat / DM / Group: e -> edit newest sent message (local only)
+Chat / DM / Group: Ctrl+E -> edit newest sent message (local only)
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 
 Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse

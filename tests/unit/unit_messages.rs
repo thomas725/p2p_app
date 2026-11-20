@@ -430,6 +430,17 @@ fn edit_message_replaces_only_own_live_rows_and_marks_them_edited() {
         assert_eq!(body, " after ", "the new body is stored verbatim");
         assert!(edited_at.is_some_and(|at| at > 0.0));
         assert_eq!(deleted_at, None, "editing does not tombstone the row");
+        assert_eq!(
+            message_body(outgoing.id).expect("raw body").as_deref(),
+            Some(" after ")
+        );
+        assert_eq!(
+            message_display_body(outgoing.id)
+                .expect("rendered body")
+                .as_deref(),
+            Some(" after  (edited)")
+        );
+        assert_eq!(message_body(incoming.id).expect("incoming body"), None);
 
         assert!(edit_message(outgoing.id, "second").expect("repeat edit"));
         let loaded = load_messages(topic, 100).expect("history");

@@ -41,6 +41,38 @@ fn test_format_messages_from_db_empty() {
 }
 
 #[test]
+fn test_format_messages_from_db_restores_edit_marker() {
+    let plain = msg(
+        "plain body",
+        None,
+        None,
+        Some("m-plain"),
+        Some(1.0),
+        "2024-01-01 12:00:00",
+    );
+    let mut edited = msg(
+        "edited body",
+        None,
+        None,
+        Some("m-edited"),
+        Some(2.0),
+        "2024-01-01 12:01:00",
+    );
+    edited.edited_at = Some(1_700_000_000.0);
+
+    let (msgs, _, db_ids) =
+        format_messages_from_db(&[plain, edited], &HashMap::new(), &HashMap::new(), "Me");
+    assert_eq!(msgs.len(), 2);
+    assert!(msgs[1].text.ends_with("plain body"));
+    assert!(!msgs[1].text.contains("(edited)"));
+    assert!(msgs[0].text.ends_with("edited body (edited)"));
+    assert!(
+        db_ids[0].is_none(),
+        "test rows are incoming unless explicitly marked sent"
+    );
+}
+
+#[test]
 fn test_reply_draft_capture_clear_and_consume() {
     let mut s = test_app_state();
     s.messages.push_back(p2p_app::DisplayMessage {

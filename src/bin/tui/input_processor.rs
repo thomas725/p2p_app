@@ -343,17 +343,27 @@ async fn confirm_delete_message(state: &SharedState) {
     }
 }
 
-/// `e` opens the local-edit editor on the newest sent message in the active
-/// chat, pre-filled with its full body. Incoming rows and live events have no
-/// DB id, so they are skipped; with nothing editable we explain that in a popup.
+/// `Ctrl+E` opens the local-edit editor on the newest sent message in the
+/// active chat. Incoming rows and live events have no DB id, so they are
+/// skipped; with nothing editable we explain that in a popup. The pre-fill is
+/// the persisted body, never the rendered transcript line, so file chips,
+/// quote headers and the edit marker cannot leak into the stored text.
 fn arm_edit_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
     use p2p_app::tui_tabs::TabContent;
 
-    let Some((id, original)) = s.last_sent_message_raw(tab) else {
+    let Some((id, fallback)) = s.last_sent_message_raw(tab) else {
         s.popup = Some("No sent message to edit in this conversation".to_string());
         return;
     };
     let is_group = matches!(tab, TabContent::GroupChat(_));
+    let original = if is_group {
+        p2p_app::groups::group_message_body(id)
+    } else {
+        p2p_app::messages::message_body(id)
+    }
+    .ok()
+    .flatten()
+    .unwrap_or(fallback);
     s.begin_edit_message(id, is_group, original, tab.clone());
     p2plog_debug(format!("Local edit opened for message {id}"));
 }
@@ -1186,10 +1196,10 @@ async fn handle_key_dispatch(
         {
             arm_delete_prompt(s, &tab);
         }
-        // `e` opens the local-edit editor for the newest sent message in a
-        // chat. Like `Delete`, it is a no-op in editors and non-chat tabs.
+        // `Ctrl+E` opens the local-edit editor for the newest sent message in a
+        // chat. A bare printable key would swallow the letter while composing.
         crossterm::event::KeyCode::Char('e')
-            if !is_ctrl
+            if is_ctrl
                 && s.input_mode == p2p_app::InputMode::Chat
                 && matches!(
                     tab,

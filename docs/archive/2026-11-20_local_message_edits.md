@@ -32,11 +32,13 @@ original copy. Local deletion shipped separately on 2026-11-17
 
 ## Frontend bindings
 
-- **TUI**: `e` in Chat/DM/Group opens the single-slot editor pre-filled with
-  the newest sent message's full body; Enter saves, Esc cancels. State holds
+- **TUI**: `Ctrl+E` in Chat/DM/Group opens the single-slot editor pre-filled
+  with the newest sent message's persisted body (a bare `e` still types in the
+  composer); Enter saves, Esc cancels. State holds
   `EditMessagePrompt { message_id, is_group, tab_content }` and
   `InputMode::EditingMessage`. `reply::with_body` preserves the timestamp,
-  sender tag and quoted header when the in-memory line is replaced.
+  sender tag and quoted header when the in-memory line is replaced, and the
+  DB loaders append the marker from `edited_at` so it survives a restart.
 - **Flutter/web**: selecting one sent bubble shows a local Edit action in the
   selection toolbar. The dialog explains that only this device changes, calls
   `NodeApi.editMessage`, and updates the row through `ChatMessageExt.withEditedBody`.

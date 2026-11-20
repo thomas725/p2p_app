@@ -7,7 +7,8 @@ use crate::{
 };
 use color_eyre::eyre::Context;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl as _, SelectableHelper as _,
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
+    SelectableHelper as _,
 };
 use std::collections::HashMap;
 
@@ -190,6 +191,57 @@ pub fn edit_message(id: i32, content: &str) -> Result<bool, String> {
     .execute(conn)
     .map_err(|e| format!("failed to edit message {id}: {e}"))?;
     Ok(changed > 0)
+}
+
+/// Raw stored body of an editable sent row, for the TUI edit pre-fill.
+///
+/// The transcript line contains display-only decorations (timestamp, sender,
+/// quote header, file chip, edit marker), so the editor must start from the
+/// persisted `content` instead. `None` means the row is missing, incoming, or
+/// tombstoned and therefore not editable.
+///
+/// # Errors
+/// Returns an error string when the database read fails.
+pub fn message_body(id: i32) -> Result<Option<String>, String> {
+    use crate::generated::schema::messages as messages_table;
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    messages_table::table
+        .filter(messages_table::id.eq(id))
+        .filter(messages_table::sent.eq(1))
+        .filter(messages_table::deleted_at.is_null())
+        .select(messages_table::content)
+        .first::<String>(conn)
+        .optional()
+        .map_err(|e| format!("failed to read message {id}: {e}"))
+}
+
+/// Fully rendered body of an edited sent row (attachment chip + edit marker).
+///
+/// Used after an edit so the in-memory transcript agrees with the next reload:
+/// the chip is regenerated from `attachment_json` exactly once and the marker
+/// comes from the persisted `edited_at`, never from the editor's text.
+///
+/// # Errors
+/// Returns an error string when the database read fails.
+pub fn message_display_body(id: i32) -> Result<Option<String>, String> {
+    use crate::generated::schema::messages as messages_table;
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let row = messages_table::table
+        .filter(messages_table::id.eq(id))
+        .filter(messages_table::sent.eq(1))
+        .filter(messages_table::deleted_at.is_null())
+        .select((
+            messages_table::content,
+            messages_table::attachment_json,
+            messages_table::edited_at,
+        ))
+        .first::<(String, Option<String>, Option<f64>)>(conn)
+        .optional()
+        .map_err(|e| format!("failed to read message {id}: {e}"))?;
+    Ok(row.map(|(content, attachment_json, edited_at)| {
+        let body = crate::files::render_stored_body(&content, attachment_json.as_deref());
+        crate::fmt::with_edited_marker_if(edited_at.is_some(), &body)
+    }))
 }
 
 /// Load broadcast messages for a topic, newest first, limited to count.

@@ -583,6 +583,15 @@ fn group_msg(
 }
 
 #[test]
+fn test_format_dm_messages_from_db_restores_edit_marker() {
+    let mut edited = dm_msg("edited body", Some("p2"), None, "2024-01-01 12:00:00");
+    edited.edited_at = Some(1_700_000_000.0);
+    let (messages, _, _) =
+        super::format_dm_messages_from_db(&[edited], "Me", &HashMap::new(), &HashMap::new());
+    assert!(messages[0].ends_with("edited body (edited)"));
+}
+
+#[test]
 fn test_format_group_messages_from_db_keeps_db_ids_aligned() {
     let newest_first = vec![
         group_msg(22, 0, "theirs", Some("p2"), "2024-01-01 12:00:01"),
@@ -596,6 +605,15 @@ fn test_format_group_messages_from_db_keeps_db_ids_aligned() {
     assert_eq!(peer_ids, VecDeque::from([None, Some("p2".to_string())]));
     assert!(messages[0].contains("mine"));
     assert!(messages[1].contains("theirs"));
+}
+
+#[test]
+fn test_format_group_messages_from_db_restores_edit_marker() {
+    let mut edited = group_msg(23, 1, "edited body", None, "2024-01-01 12:00:00");
+    edited.edited_at = Some(1_700_000_000.0);
+    let (messages, _, _, _) =
+        super::format_group_messages_from_db(&[edited], &HashMap::new(), &HashMap::new(), "Me");
+    assert!(messages[0].ends_with("edited body (edited)"));
 }
 
 // ── load_dm_messages ───────────────────────────────────────────────────

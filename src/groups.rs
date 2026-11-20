@@ -457,6 +457,53 @@ pub fn edit_group_message(id: i32, content: &str) -> Result<bool, String> {
     Ok(changed > 0)
 }
 
+/// Raw stored body of an editable sent group row, for the TUI edit pre-fill.
+///
+/// Mirrors [`crate::messages::message_body`]: display-only decorations must not
+/// leak back into the persisted body. `None` means missing, incoming, or
+/// tombstoned.
+///
+/// # Errors
+/// Returns an error string when the database read fails.
+pub fn group_message_body(id: i32) -> Result<Option<String>, String> {
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    group_messages::table
+        .filter(group_messages::id.eq(id))
+        .filter(group_messages::sent.eq(1))
+        .filter(group_messages::deleted_at.is_null())
+        .select(group_messages::content)
+        .first::<String>(conn)
+        .optional()
+        .map_err(|e| format!("failed to read group message {id}: {e}"))
+}
+
+/// Fully rendered body of an edited sent group row (chip + edit marker).
+///
+/// Mirrors [`crate::messages::message_display_body`] so the in-memory group
+/// transcript matches the next DB reload after a local edit.
+///
+/// # Errors
+/// Returns an error string when the database read fails.
+pub fn group_message_display_body(id: i32) -> Result<Option<String>, String> {
+    let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+    let row = group_messages::table
+        .filter(group_messages::id.eq(id))
+        .filter(group_messages::sent.eq(1))
+        .filter(group_messages::deleted_at.is_null())
+        .select((
+            group_messages::content,
+            group_messages::attachment_json,
+            group_messages::edited_at,
+        ))
+        .first::<(String, Option<String>, Option<f64>)>(conn)
+        .optional()
+        .map_err(|e| format!("failed to read group message {id}: {e}"))?;
+    Ok(row.map(|(content, attachment_json, edited_at)| {
+        let body = crate::files::render_stored_body(&content, attachment_json.as_deref());
+        crate::fmt::with_edited_marker_if(edited_at.is_some(), &body)
+    }))
+}
+
 /// The `sent_at` watermark of a group's newest stored message (`None` when the
 /// group has no history).
 ///

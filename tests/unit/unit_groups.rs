@@ -316,6 +316,20 @@ fn edit_group_message_replaces_only_own_live_rows_and_marks_them_edited() {
             .expect("read edited group row");
         assert_eq!(body, " new ");
         assert!(edited_at.is_some_and(|at| at > 0.0));
+        assert_eq!(
+            group_message_body(sent.id).expect("raw body").as_deref(),
+            Some(" new ")
+        );
+        assert_eq!(
+            group_message_display_body(sent.id)
+                .expect("rendered body")
+                .as_deref(),
+            Some(" new  (edited)")
+        );
+        assert_eq!(
+            group_message_body(incoming.id).expect("incoming body"),
+            None
+        );
 
         assert!(edit_group_message(sent.id, "second").expect("repeat edit"));
         let loaded = load_group_messages(&group.group_id, 100).expect("history");

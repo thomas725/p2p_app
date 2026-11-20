@@ -77,6 +77,7 @@ fn format_dm_messages_from_db(
             |p| p2p_app::peer_display_name(p, local_nicknames, received_nicknames),
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        let body = p2p_app::fmt::with_edited_marker_if(msg.edited_at.is_some(), &body);
         let reply = msg
             .reply_to_json
             .as_deref()
@@ -175,6 +176,7 @@ fn format_group_messages_from_db(
             |nick| format!("[{nick}]"),
         );
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        let body = p2p_app::fmt::with_edited_marker_if(msg.edited_at.is_some(), &body);
         let reply = msg
             .reply_to_json
             .as_deref()

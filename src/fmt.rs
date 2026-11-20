@@ -6,14 +6,30 @@ use std::time::SystemTime;
 /// Marker appended to a locally edited message (US-005). Both frontends use
 /// this exact text so a sent-message edit reads the same in the TUI and Flutter.
 pub const EDITED_MARKER: &str = "(edited)";
+const EDITED_MARKER_SUFFIX: &str = " (edited)";
 
 /// Append the local-edit marker to a rendered message line, replacing a
 /// previous marker so a message edited twice does not accumulate suffixes.
 #[must_use]
 pub fn with_edited_marker(line: &str) -> String {
-    let suffix = format!(" {EDITED_MARKER}");
-    let base = line.strip_suffix(&suffix).unwrap_or(line);
-    format!("{base}{suffix}")
+    format!("{}{}", without_edited_marker(line), EDITED_MARKER_SUFFIX)
+}
+
+/// Strip a previously rendered local-edit marker, so an editor pre-fill or a
+/// re-format never carries the suffix into the stored body.
+#[must_use]
+pub fn without_edited_marker(line: &str) -> &str {
+    line.strip_suffix(EDITED_MARKER_SUFFIX).unwrap_or(line)
+}
+
+/// Append the marker only when the row has a local edit timestamp.
+#[must_use]
+pub fn with_edited_marker_if(edited: bool, line: &str) -> String {
+    if edited {
+        with_edited_marker(line)
+    } else {
+        line.to_string()
+    }
 }
 
 /// Format a Chrono `NaiveDateTime` into "YYYY-MM-DD HH:MM:SS" format

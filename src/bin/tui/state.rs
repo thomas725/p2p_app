@@ -552,7 +552,8 @@ impl AppState {
             }
             _ => return None,
         };
-        Some((id, p2p_app::reply::display_body(text)))
+        let body = p2p_app::reply::display_body(text);
+        Some((id, p2p_app::fmt::without_edited_marker(&body).to_string()))
     }
 
     /// Key of the reply draft belonging to a tab. `None` for tabs without a
@@ -703,14 +704,22 @@ impl AppState {
         }
     }
 
-    /// Refresh the prompted row's in-memory line after a successful local edit:
-    /// replace the body with the new text and append the canonical edit marker.
-    /// Returns false (leaving state untouched) if the row is no longer loaded.
+    /// Refresh the prompted row's in-memory line after a successful local edit.
+    /// The replacement is re-rendered from the DB row (text + attachment chip +
+    /// marker), so it matches the next reload exactly. Returns false (leaving
+    /// state untouched) if the row is no longer loaded.
     pub fn replace_edited_message(&mut self, prompt: &EditMessagePrompt, content: &str) -> bool {
         use p2p_app::tui_tabs::TabContent;
 
-        let new_body = p2p_app::fmt::with_edited_marker(content);
-        let replace = |line: &str| p2p_app::reply::with_body(line, &new_body);
+        let rendered = if prompt.is_group {
+            p2p_app::groups::group_message_display_body(prompt.message_id)
+        } else {
+            p2p_app::messages::message_display_body(prompt.message_id)
+        }
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| p2p_app::fmt::with_edited_marker(content));
+        let replace = |line: &str| p2p_app::reply::with_body(line, &rendered);
         match &prompt.tab_content {
             TabContent::Chat => {
                 let Some(idx) = index_of_db_id(&self.message_db_ids, prompt.message_id) else {
@@ -1152,6 +1161,7 @@ fn format_messages_from_db(
             (None, None) => format!("[{own_nickname}]"),
         };
         let body = p2p_app::files::render_stored_body(&msg.content, msg.attachment_json.as_deref());
+        let body = p2p_app::fmt::with_edited_marker_if(msg.edited_at.is_some(), &body);
         let reply = msg
             .reply_to_json
             .as_deref()

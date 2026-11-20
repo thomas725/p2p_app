@@ -2404,9 +2404,26 @@ fn test_delete_confirmation_tombstones_db_and_removes_broadcast_line() {
     });
 }
 
+#[tokio::test]
+async fn test_bare_e_still_types_in_the_chat_composer() {
+    let state = Arc::new(Mutex::new(sent_broadcast_state(5)));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let key = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty());
+    assert!(!process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await);
+
+    let s = state.lock().await;
+    assert!(
+        !s.is_editing_message(),
+        "a printable key must never open the editor"
+    );
+    assert_eq!(s.chat_input.lines(), ["e"]);
+}
+
 #[test]
 #[serial]
-fn test_edit_key_and_enter_replace_db_body_without_swarm_traffic() {
+fn test_ctrl_e_and_enter_replace_db_body_without_swarm_traffic() {
     with_local_delete_db(|| {
         let rt = tokio::runtime::Runtime::new().expect("runtime");
         rt.block_on(async {
@@ -2425,7 +2442,7 @@ fn test_edit_key_and_enter_replace_db_body_without_swarm_traffic() {
             let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
             let (render_tx, _) = mpsc::channel(4);
 
-            let edit_key = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::empty());
+            let edit_key = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL);
             assert!(!process_key_event(edit_key, &state, &swarm_cmd_tx, &render_tx).await);
             {
                 let s = state.lock().await;
@@ -2449,6 +2466,66 @@ fn test_edit_key_and_enter_replace_db_body_without_swarm_traffic() {
             assert!(!s.is_editing_message());
             assert_eq!(s.input_mode, p2p_app::InputMode::Chat);
             assert_eq!(s.messages[0].text, "12:00 [TestUser] new body (edited)");
+        });
+    });
+}
+
+#[test]
+#[serial]
+fn test_edit_attachment_message_keeps_one_chip_and_a_clean_prefill() {
+    with_local_delete_db(|| {
+        let rt = tokio::runtime::Runtime::new().expect("runtime");
+        rt.block_on(async {
+            let attachment = p2p_app::files::MessageAttachment {
+                file_id: "abc123".to_string(),
+                name: "notes.txt".to_string(),
+                size: 5,
+                mime: None,
+            };
+            let mut meta = saved_broadcast_meta();
+            meta.attachment = Some(attachment.clone());
+            let saved =
+                p2p_app::save_message_with_meta("body", None, "test-net", false, None, meta)
+                    .expect("save attached message");
+            p2p_app::messages::mark_message_sent(saved.id).expect("mark sent");
+
+            let mut state = sent_broadcast_state(saved.id);
+            state.messages[0].text = format!(
+                "12:00 [TestUser] {}",
+                p2p_app::files::render_message_body("body", Some(&attachment))
+            );
+            let state = Arc::new(Mutex::new(state));
+            let (swarm_cmd_tx, _) = mpsc::channel(4);
+            let (render_tx, _) = mpsc::channel(4);
+
+            let ctrl_e = KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL);
+            assert!(!process_key_event(ctrl_e, &state, &swarm_cmd_tx, &render_tx).await);
+            {
+                let mut s = state.lock().await;
+                assert_eq!(
+                    s.chat_input.lines(),
+                    ["body"],
+                    "the editor starts from the stored text, not the rendered chip"
+                );
+                s.begin_edit_message(saved.id, false, "edited".to_string(), TabContent::Chat);
+            }
+            let enter = KeyEvent::new(KeyCode::Enter, KeyModifiers::empty());
+            assert!(!process_key_event(enter, &state, &swarm_cmd_tx, &render_tx).await);
+
+            let loaded = p2p_app::load_messages("test-net", 10).expect("reload");
+            assert_eq!(loaded[0].content, "edited");
+            let s = state.lock().await;
+            let chip = p2p_app::files::file_chip(&attachment);
+            assert_eq!(
+                s.messages[0].text.matches(&chip).count(),
+                1,
+                "the chip must not be duplicated in memory or on reload"
+            );
+            let expected = p2p_app::fmt::with_edited_marker(&p2p_app::files::render_message_body(
+                "edited",
+                Some(&attachment),
+            ));
+            assert_eq!(s.messages[0].text, format!("12:00 [TestUser] {expected}"));
         });
     });
 }

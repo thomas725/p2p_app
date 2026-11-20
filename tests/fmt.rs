@@ -148,6 +148,16 @@ fn test_with_edited_marker_is_idempotent() {
         "hello (edited)",
         "a second edit must not stack markers"
     );
+    assert_eq!(
+        p2p_app::fmt::without_edited_marker("hello (edited)"),
+        "hello"
+    );
+    assert_eq!(p2p_app::fmt::without_edited_marker("hello"), "hello");
+    assert_eq!(
+        p2p_app::fmt::with_edited_marker_if(true, "hello"),
+        "hello (edited)"
+    );
+    assert_eq!(p2p_app::fmt::with_edited_marker_if(false, "hello"), "hello");
 }
 
 #[test]

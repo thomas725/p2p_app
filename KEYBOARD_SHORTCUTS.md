@@ -69,7 +69,7 @@ newest message; the counter clears.
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
-| `e` in **Chat** / **DM** / **Group chat** | Edit your most recent sent message in that conversation (local only) |
+| `Ctrl+E` in **Chat** / **DM** / **Group chat** | Edit your most recent sent message in that conversation (local only) |
 
 ### Reply / quote
 
@@ -94,13 +94,15 @@ above the call overlay and ordinary popup in the input precedence chain.
 
 ### Local message editing
 
-`e` scans the open conversation backwards for the newest message you sent and
-opens a single-line editor pre-filled with its full body. Enter saves, Esc
-cancels. Saving replaces the body in this install's history, stamps `edited_at`
-and appends the canonical `(edited)` marker after the body; the line keeps its
-timestamp, sender tag and quoted header. Peers are not notified, so they keep
-the original text. Incoming rows cannot be edited; if there is no sent row, a
-short explanation appears instead.
+`Ctrl+E` scans the open conversation backwards for the newest message you sent
+and opens a single-line editor pre-filled with the stored body (display-only
+decorations such as file chips and the edit marker are not included). Enter
+saves, Esc cancels. Saving replaces the body in this install's history, stamps
+`edited_at` and appends the canonical `(edited)` marker after the rendered body;
+the line keeps its timestamp, sender tag and quoted header, and the marker
+survives a reload. Peers are not notified, so they keep the original text.
+Incoming rows cannot be edited; if there is no sent row, a short explanation
+appears instead. A bare `e` still types normally in the composer.
 
 ## Contacts tab
 
@@ -185,7 +187,7 @@ of the history.
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
 | `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
 | `Delete` | Hide your most recent sent DM locally (with confirmation) |
-| `e` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
+| `Ctrl+E` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
 
 `Ctrl+I` collapses to the same byte as `Tab` on terminals without the kitty
 keyboard protocol (Konsole), so bare `Tab` would stop cycling tabs. `Ctrl+P`
