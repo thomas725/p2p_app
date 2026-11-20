@@ -1,4 +1,0 @@
-[1m[92m    Updating[0m crates.io index
-[1m[92m Downloading[0m crates ...
-[1m[92m  Downloaded[0m cargo-outdated v0.19.0
-[1m[92m     Ignored[0m package `cargo-outdated v0.19.0` is already installed, use --force to override
