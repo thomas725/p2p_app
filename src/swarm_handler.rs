@@ -1585,6 +1585,15 @@ fn maybe_start_fetch(
     attachment: &crate::files::MessageAttachment,
     swarm: &mut Swarm<AppBehaviour>,
 ) {
+    // The descriptor rides in on the wire; never turn an unvalidated id into a
+    // request (nor, downstream, a filesystem path).
+    if !crate::files::is_valid_file_id(&attachment.file_id) {
+        p2plog_debug(format!(
+            "ignoring attachment with invalid file id {:?}",
+            attachment.file_id
+        ));
+        return;
+    }
     if crate::files::file_path(&attachment.file_id).is_none()
         && !receiving_files()
             .lock()
@@ -1720,6 +1729,12 @@ async fn handle_file_transfer_response(
     match response.kind.as_str() {
         "meta" => {
             let file_id = response.file_id.clone();
+            if !crate::files::is_valid_file_id(&file_id) {
+                p2plog_debug(format!(
+                    "refusing transfer with invalid file id {file_id:?}"
+                ));
+                return;
+            }
             let size = response.size.unwrap_or_default();
             if size > crate::files::MAX_ATTACHMENT_SIZE {
                 // Drop the partial too: a later valid meta for the same content

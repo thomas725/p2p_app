@@ -32,6 +32,82 @@ fn hash_bytes_is_lowercase_hex_sha256() {
 }
 
 #[test]
+fn file_id_validation_accepts_canonical_hashes() {
+    assert!(is_valid_file_id(&hash_bytes(b"")));
+    assert!(is_valid_file_id(&hash_bytes(b"hello world")));
+    assert!(is_valid_file_id(&hash_bytes(&[0_u8, 255_u8].repeat(100))));
+}
+
+#[test]
+fn file_id_validation_rejects_traversal_and_malformed() {
+    // The actual attack: a traversal path must never be accepted as an id.
+    assert!(!is_valid_file_id("../../../.bashrc"));
+    assert!(!is_valid_file_id("../../etc/passwd"));
+    // Padded to 64 chars so a naive length-only check would pass.
+    let padded = format!("{:0>64}", "../../../.bashrc");
+    assert!(!is_valid_file_id(&padded));
+    // Uppercase hex is not canonical (`hash_bytes` emits lowercase only).
+    let upper = hash_bytes(b"x").to_uppercase();
+    assert!(!is_valid_file_id(&upper));
+    // Wrong length, non-hex characters, and empty ids.
+    assert!(!is_valid_file_id(""));
+    assert!(!is_valid_file_id("deadbeef"));
+    let too_long = format!("{}0", hash_bytes(b"x"));
+    assert!(!is_valid_file_id(&too_long));
+    let non_hex = "g".repeat(64);
+    assert!(!is_valid_file_id(&non_hex));
+}
+
+#[test]
+#[serial(db)]
+fn store_path_for_rejects_invalid_file_id() {
+    with_test_db(|| {
+        let upper = hash_bytes(b"x").to_uppercase();
+        let too_long = format!("{}0", hash_bytes(b"x"));
+        for bad in [
+            "../../../.bashrc",
+            "deadbeef",
+            "",
+            upper.as_str(),
+            too_long.as_str(),
+        ] {
+            let err = store_path_for(bad).expect_err("invalid id must be rejected");
+            assert!(
+                format!("{err:?}").contains("invalid attachment file id"),
+                "unexpected error for {bad:?}: {err:?}"
+            );
+        }
+    });
+}
+
+#[test]
+#[serial(db)]
+fn receiving_file_rejects_invalid_file_id() {
+    with_test_db(|| {
+        let err = ReceivingFile::new("../../../.bashrc", "x", None, 0)
+            .expect_err("invalid id must be rejected");
+        assert!(format!("{err:?}").contains("invalid attachment file id"));
+    });
+}
+
+#[test]
+#[serial(db)]
+fn receiving_file_empty_hash_mismatch_is_rejected() {
+    with_test_db(|| {
+        // Valid-format id that is deliberately NOT the hash of empty bytes.
+        let wrong_id = hash_bytes(b"non-empty content");
+        let receiving = ReceivingFile::new(&wrong_id, "empty.txt", None, 0).expect("new");
+        assert!(receiving.is_complete());
+        let err = receiving.finalize().expect_err("empty hash mismatch");
+        assert!(
+            format!("{err:?}").contains("empty attachment hash mismatch"),
+            "unexpected error: {err:?}"
+        );
+        assert!(find_file(&wrong_id).expect("lookup").is_none());
+    });
+}
+
+#[test]
 fn total_chunks_rounds_up_to_fixed_slice() {
     assert_eq!(total_chunks(0), 0);
     assert_eq!(total_chunks(1), 1);

@@ -1,5 +1,12 @@
 use super::*;
 
+/// A canonical content address derived from a per-test seed. The file store
+/// validates ids as 64 lowercase hex chars, so these chunk/transfer tests must
+/// use real-looking addresses rather than human-readable placeholders.
+fn test_file_id(seed: &str) -> String {
+    crate::files::hash_bytes(seed.as_bytes())
+}
+
 #[test]
 fn test_newly_persisted_gates_duplicate_and_failed_saves() {
     // A mesh retransmit (Ok(None)) or a failed write must never produce a live
@@ -33,7 +40,8 @@ fn test_apply_chunk_without_data_aborts_transfer() {
     // A malformed `chunk` response with `data: None` must abandon the transfer
     // instead of being treated as zero progress (which made the receiver ask
     // for the same chunk forever).
-    let file_id = "apply-chunk-no-data-test";
+    let id = test_file_id("apply-chunk-no-data-test");
+    let file_id = id.as_str();
     assert!(begin_receive(file_id, "no-data.bin", None, 10));
     assert!(
         receiving_files()
@@ -91,7 +99,8 @@ fn clear_transfer(file_id: &str) {
 fn test_apply_chunk_empty_data_aborts_transfer() {
     // `Some(vec![])` used to append zero bytes and return the same chunk index,
     // making the handler re-request that chunk forever.
-    let file_id = "apply-chunk-empty-data-test";
+    let id = test_file_id("apply-chunk-empty-data-test");
+    let file_id = id.as_str();
     assert!(begin_receive(file_id, "empty.txt", None, 10));
     let part_path = receiving_files()
         .lock()
@@ -116,7 +125,8 @@ fn test_apply_chunk_empty_data_aborts_transfer() {
 fn test_apply_chunk_wrong_index_aborts_transfer() {
     // A chunk for any index other than the next expected one must be rejected
     // instead of being appended out of order.
-    let file_id = "apply-chunk-wrong-index-test";
+    let id = test_file_id("apply-chunk-wrong-index-test");
+    let file_id = id.as_str();
     assert!(begin_receive(file_id, "indexed.bin", None, 10));
     let outcome = apply_chunk(
         file_id,
@@ -136,7 +146,8 @@ fn test_apply_chunk_wrong_index_aborts_transfer() {
 fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
     // The strict checks must still admit a correct chunk so a transfer can
     // finish; the assembled `.part` is only consumed by the finalizer.
-    let file_id = "apply-chunk-valid-test";
+    let id = test_file_id("apply-chunk-valid-test");
+    let file_id = id.as_str();
     let data = vec![0xABu8; 10];
     assert!(begin_receive(file_id, "valid.bin", None, 10));
     let part_path = receiving_files()
@@ -162,7 +173,8 @@ fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
 fn test_abandon_transfer_discards_partial_bytes() {
     // Every abort path funnels through `abandon_transfer`: stale `.part` bytes
     // would otherwise corrupt a later transfer of the same content address.
-    let file_id = "abandon-transfer-test";
+    let id = test_file_id("abandon-transfer-test");
+    let file_id = id.as_str();
     assert!(begin_receive(file_id, "partial.bin", None, 10));
     let mut transfers = receiving_files()
         .lock()
@@ -183,7 +195,8 @@ fn test_begin_receive_refuses_duplicate_meta() {
     // A repeated `meta` response must not replace a live transfer: the fresh
     // `ReceivingFile` would reset `received` to 0 while the `.part` bytes stayed
     // on disk, corrupting the assembled file.
-    let file_id = "begin-receive-duplicate-test";
+    let id = test_file_id("begin-receive-duplicate-test");
+    let file_id = id.as_str();
     assert!(begin_receive(file_id, "first.txt", None, 10));
     assert!(!begin_receive(file_id, "second.txt", None, 10));
 

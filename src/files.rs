@@ -159,12 +159,33 @@ pub fn files_dir() -> color_eyre::Result<std::path::PathBuf> {
     Ok(dir)
 }
 
+/// Whether `file_id` is a canonical content address as produced by
+/// [`hash_bytes`]: exactly 64 lowercase hexadecimal characters.
+///
+/// Every path in the store is built by appending this value to a directory, so
+/// validating it at the trust boundary is what keeps a network-supplied
+/// descriptor from escaping the store via path traversal (e.g.
+/// `"../../../.bashrc"`) or colliding with a non-blob file. Requiring lowercase
+/// matches [`hash_bytes`] exactly and prevents duplicate blobs for the same
+/// bytes under differently-cased ids.
+#[must_use]
+pub fn is_valid_file_id(file_id: &str) -> bool {
+    file_id.len() == 64
+        && file_id
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
 /// Absolute on-disk path a `file_id`'s blob lives at (whether or not it exists
 /// yet).
 ///
 /// # Errors
-/// Returns an error if the store directory cannot be created.
+/// Returns an error if `file_id` is not a canonical content address or the
+/// store directory cannot be created.
 pub fn store_path_for(file_id: &str) -> color_eyre::Result<std::path::PathBuf> {
+    if !is_valid_file_id(file_id) {
+        return Err(eyre!("invalid attachment file id: {file_id:?}"));
+    }
     Ok(files_dir()?.join(file_id))
 }
 
@@ -413,13 +434,17 @@ impl ReceivingFile {
     /// Start assembling a transfer in the store directory.
     ///
     /// # Errors
-    /// Returns an error if the store directory cannot be created.
+    /// Returns an error if `file_id` is not a canonical content address or the
+    /// store directory cannot be created.
     pub fn new(
         file_id: &str,
         name: &str,
         mime: Option<String>,
         size: u64,
     ) -> color_eyre::Result<Self> {
+        if !is_valid_file_id(file_id) {
+            return Err(eyre!("invalid attachment file id: {file_id:?}"));
+        }
         let path = files_dir()?.join(format!("{file_id}.part"));
         Ok(Self {
             file_id: file_id.to_string(),
@@ -467,6 +492,18 @@ impl ReceivingFile {
     pub fn finalize(self) -> color_eyre::Result<String> {
         let store_path = store_path_for(&self.file_id)?;
         if self.size == 0 {
+            // An empty file is still content: its address must be the SHA-256
+            // of the empty byte string. Without this check a peer could claim
+            // any content address with size 0 and get an empty blob stored
+            // under it (poisoning the store and any future lookup/serve).
+            let empty_id = hash_bytes(&[]);
+            if empty_id != self.file_id {
+                let _ = std::fs::remove_file(&self.path);
+                return Err(eyre!(
+                    "empty attachment hash mismatch (expected {}, got {empty_id})",
+                    self.file_id
+                ));
+            }
             if !store_path.exists() {
                 std::fs::write(&store_path, []).wrap_err_with(|| {
                     format!(
