@@ -162,8 +162,7 @@ pub fn recipients_for_message(msg_id: &str) -> Vec<String> {
             return partner.into_iter().collect();
         }
         return crate::peers::load_peers()
-            .map(|peers| peers.into_iter().map(|p| p.peer_id).collect())
-            .unwrap_or_default();
+            .map_or_default(|peers| peers.into_iter().map(|p| p.peer_id).collect());
     }
 
     // Group messages sync to the group's members only.
