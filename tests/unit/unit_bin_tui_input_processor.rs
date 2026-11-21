@@ -2923,3 +2923,49 @@ async fn test_settings_add_prompt_owns_printable_keys() {
     );
     assert_eq!(s.chat_input.lines().join("\n"), "b");
 }
+
+// ── Ctrl+O open received attachment (Flutter parity) ───────────────────────
+
+#[tokio::test]
+async fn test_ctrl_o_without_attachment_shows_popup_and_does_not_type() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("No downloaded attachment in this conversation")
+    );
+    // The modifier must keep `o` out of the composer.
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_ctrl_o_is_inert_on_non_chat_tabs() {
+    let mut s = test_app_state();
+    s.active_tab = 1; // the Contacts fixed tab (fixed order: Chat, Contacts, Groups)
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(s.popup.is_none());
+}

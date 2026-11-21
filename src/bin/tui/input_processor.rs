@@ -368,6 +368,39 @@ fn arm_edit_prompt(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabC
     p2plog_debug(format!("Local edit opened for message {id}"));
 }
 
+/// Open a downloaded attachment with the platform's default handler (parity
+/// with Flutter's tappable attachment chip).
+///
+/// The path is passed as a single argument — never through a shell — and the
+/// opener is spawned detached: the input task must not block until the user
+/// closes their image viewer. Linux uses `xdg-open`, macOS `open`, and Windows
+/// the `start` builtin via `cmd`.
+fn open_attachment(path: &str) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let spawned = std::process::Command::new("cmd")
+        .args(["/C", "start", "", path])
+        .spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let spawned = std::process::Command::new("xdg-open").arg(path).spawn();
+    #[cfg(target_os = "macos")]
+    let spawned = std::process::Command::new("open").arg(path).spawn();
+    spawned
+        .map(|_| ())
+        .map_err(|e| format!("Could not open attachment '{path}': {e}"))
+}
+
+/// Resolve and launch the newest downloaded attachment in `tab`, surfacing a
+/// popup when there is nothing to open or the platform opener cannot start.
+fn open_newest_attachment(s: &mut super::state::AppState, tab: &p2p_app::tui_tabs::TabContent) {
+    let Some(path) = s.newest_attachment_path(tab) else {
+        s.popup = Some("No downloaded attachment in this conversation".to_string());
+        return;
+    };
+    if let Err(err) = open_attachment(&path) {
+        s.popup = Some(err);
+    }
+}
+
 /// Apply a confirmed local edit: replace the DB body through the shared API,
 /// then refresh the matching in-memory line with the canonical edit marker.
 /// Nothing is sent over the swarm — peers keep the original body (US-005).
@@ -1369,6 +1402,21 @@ async fn handle_key_dispatch(
             } else {
                 s.popup = Some("No message to react to in this conversation".to_string());
             }
+        }
+        // `Ctrl+O` opens the newest downloaded attachment in a chat, matching
+        // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
+        // the modifier keeps the chat composer untouched.
+        crossterm::event::KeyCode::Char('o')
+            if is_ctrl
+                && s.input_mode == p2p_app::InputMode::Chat
+                && matches!(
+                    tab,
+                    p2p_app::tui_tabs::TabContent::Chat
+                        | p2p_app::tui_tabs::TabContent::Direct(_)
+                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+                ) =>
+        {
+            open_newest_attachment(s, &tab);
         }
         crossterm::event::KeyCode::Enter => {
             if s.is_searching_contacts() {

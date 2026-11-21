@@ -6,8 +6,8 @@ and the web mirror. Both frontends can send and receive file attachments on
 DMs, broadcast, and groups.
 
 This document is the lane's reference: the wire design, the store surface, and
-the blob lifecycle. The code is the authority; the open polish item is listed
-in [`backlog.md`](backlog.md).
+the blob lifecycle. The code is the authority; open work is listed in
+[`backlog.md`](backlog.md).
 
 ## Wire design
 
@@ -38,7 +38,11 @@ in [`backlog.md`](backlog.md).
 - TUI: typed `/file <path>` → `parse_file_command` → `send_file_message` /
   `send_message(state, tx, text, attachment, tab_content)`; DB-reload chips via
   `render_stored_body` in `click_handlers.rs` and `state.rs`; `FileReceived` event
-  already logged the landed path.
+  already logged the landed path. Opening a received file is `Ctrl+O` in any chat
+  tab: `AppState::newest_attachment_path` walks the aligned wire ids newest-first,
+  resolves `attachment_json` through `messages::`/`groups::attachment_json_for_msg_id`
+  and `files::file_path`, then launches the OS default handler — the TUI equivalent
+  of Flutter's tappable `_AttachmentChip`.
 
 ## Mobile (FRB) surface
 

@@ -394,6 +394,25 @@ pub fn message_is_dm(msg_id: &str) -> color_eyre::Result<Option<bool>> {
     Ok(is_direct.map(|d| d == 1))
 }
 
+/// Stored attachment descriptor JSON for a message with the given wire id.
+///
+/// Used by the TUI's open-attachment key: the transcript line holds only the
+/// rendered chip text (name/size), so the `file_id` has to come from the
+/// persisted `attachment_json`. Returns `None` for a missing row, a row with
+/// no attachment, or a database error — an attachment that cannot be resolved
+/// simply cannot be opened.
+#[must_use]
+pub fn attachment_json_for_msg_id(msg_id: &str) -> Option<String> {
+    use crate::generated::schema::messages as messages_table;
+
+    let conn = &mut crate::sqlite_connect().ok()?;
+    messages_table::table
+        .filter(messages_table::msg_id.eq(msg_id))
+        .select(messages_table::attachment_json)
+        .first::<Option<String>>(conn)
+        .ok()?
+}
+
 /// Whether an incoming DM from `peer_id` with `msg_id` is already persisted.
 ///
 /// Store-and-forward re-delivers the same sealed envelope after a reconnect;

@@ -67,6 +67,7 @@ newest message; the counter clears.
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
+| `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
 | `Ctrl+E` in **Chat** / **DM** / **Group chat** | Edit your most recent sent message in that conversation (local only) |
@@ -247,6 +248,16 @@ message carries a descriptor and the bytes travel over the separate file
 lane. Both frontends render the result as a chip:
 `[file] report.pdf (1 MiB)` — the size label comes from Rust's canonical
 `files::format_file_size`, so both frontends always agree.
+
+### Opening a received file
+
+`Ctrl+O` in **Chat** / **DM** / **Group chat** opens the newest downloaded
+attachment in that conversation with the system default app (`xdg-open` on
+Linux, `open` on macOS, `start` on Windows) — the TUI equivalent of tapping the
+chip in Flutter. It resolves the descriptor from the persisted message row, so
+a file must have finished downloading and the row must still exist; otherwise a
+short "No downloaded attachment" popup appears. A failed launch reports the
+error in the same popup.
 
 ## UI control
 

@@ -150,6 +150,20 @@ pub fn find_group(group_id: &str) -> color_eyre::Result<Option<Group>> {
         .wrap_err("failed to look up group")
 }
 
+/// Stored attachment descriptor JSON for a group message by wire id.
+///
+/// Mirrors [`crate::messages::attachment_json_for_msg_id`] so the TUI's
+/// open-attachment key resolves group chips the same way as broadcast/DM ones.
+#[must_use]
+pub fn attachment_json_for_msg_id(msg_id: &str) -> Option<String> {
+    let conn = &mut crate::sqlite_connect().ok()?;
+    group_messages::table
+        .filter(group_messages::msg_id.eq(msg_id))
+        .select(group_messages::attachment_json)
+        .first::<Option<String>>(conn)
+        .ok()?
+}
+
 /// Create a public group from `name`, or return the existing group if one with
 /// the same canonical name is already known (idempotent — `create == join` in
 /// the UI).

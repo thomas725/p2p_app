@@ -887,3 +887,75 @@ fn test_active_conversation_key_tracks_the_visible_chat() {
         Some("dm:peer-42")
     );
 }
+
+// ── newest_attachment_path (TUI received-attachment open, Flutter parity) ───
+
+#[test]
+fn test_newest_attachment_path_resolves_broadcast_and_group() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().unwrap().to_string();
+    p2p_app::db::set_db_url(&db_str);
+    p2p_app::db::init_database().unwrap();
+
+    // No attachment in an empty conversation.
+    let mut state = test_app_state();
+    assert_eq!(state.newest_attachment_path(&TabContent::Chat), None);
+
+    // Store a blob on disk and attach it to a broadcast message.
+    let src = dir.path().join("chip.txt");
+    std::fs::write(&src, b"attachment bytes").unwrap();
+    let att = p2p_app::files::store_outgoing_file(src.to_str().unwrap()).unwrap();
+    let expected = p2p_app::files::file_path(&att.file_id).unwrap();
+
+    let meta = p2p_app::messages::MessageMeta {
+        msg_id: Some("broadcast-att-1".to_string()),
+        attachment: Some(att.clone()),
+        ..Default::default()
+    };
+    p2p_app::messages::save_message_with_meta("see file", None, "broadcast", false, None, meta)
+        .unwrap();
+
+    state
+        .message_ids
+        .push_back(Some("broadcast-att-1".to_string()));
+    assert_eq!(
+        state.newest_attachment_path(&TabContent::Chat).as_deref(),
+        Some(expected.as_str())
+    );
+
+    // A group message resolves through the group messages table.
+    let gmeta = p2p_app::groups::GroupMessageMeta {
+        msg_id: Some("group-att-1".to_string()),
+        attachment: Some(att),
+        ..Default::default()
+    };
+    p2p_app::groups::save_incoming_group_message("grp-att", "peer-1", "group file", gmeta).unwrap();
+    let mut gstate = test_app_state();
+    gstate.group_message_ids.insert(
+        "grp-att".to_string(),
+        std::collections::VecDeque::from(vec![Some("group-att-1".to_string())]),
+    );
+    assert_eq!(
+        gstate
+            .newest_attachment_path(&TabContent::GroupChat("grp-att".to_string()))
+            .as_deref(),
+        Some(expected.as_str())
+    );
+
+    // A wire id that has no persisted attachment yields nothing (the chip may
+    // have been rendered from a live event whose row failed to persist).
+    let mut missing = test_app_state();
+    missing
+        .message_ids
+        .push_back(Some("never-persisted".to_string()));
+    assert_eq!(missing.newest_attachment_path(&TabContent::Chat), None);
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}

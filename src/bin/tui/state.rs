@@ -571,20 +571,46 @@ impl AppState {
         was_adding
     }
 
-    /// Wire id of the newest message with a stable id in `tab` (US-008).
-    #[must_use]
-    pub fn newest_message_id(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+    /// Wire-id deque aligned with the transcript of `tab`, when it has one.
+    fn message_ids_for_tab(
+        &self,
+        tab: &p2p_app::tui_tabs::TabContent,
+    ) -> Option<&std::collections::VecDeque<Option<String>>> {
         use p2p_app::tui_tabs::TabContent;
-        let ids = match tab {
+        match tab {
             TabContent::Chat => Some(&self.message_ids),
             TabContent::Direct(peer_id) => self.dm_message_ids.get(peer_id),
             TabContent::GroupChat(group_id) => self.group_message_ids.get(group_id),
             _ => None,
-        }?;
-        ids.iter().rev().find_map(|id| {
+        }
+    }
+
+    /// Wire id of the newest message with a stable id in `tab` (US-008).
+    #[must_use]
+    pub fn newest_message_id(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        self.message_ids_for_tab(tab)?.iter().rev().find_map(|id| {
             id.as_deref()
                 .filter(|id| !id.trim().is_empty())
                 .map(str::to_owned)
+        })
+    }
+
+    /// Local path of the newest downloaded attachment in `tab`'s conversation.
+    ///
+    /// `Ctrl+O` opens this (parity with Flutter's tappable attachment chip).
+    /// Transcript lines hold only the rendered chip text (`[file] name (size)`),
+    /// not the `file_id`, so the descriptor is resolved from the persisted row
+    /// by wire id — newest first. Rows without a stable id (e.g. meshed group
+    /// messages without a wire id) have no lookup key and are skipped, just as
+    /// they are for replies. `None` means nothing downloadable was found.
+    #[must_use]
+    pub fn newest_attachment_path(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        self.message_ids_for_tab(tab)?.iter().rev().find_map(|id| {
+            let id = id.as_deref().filter(|id| !id.trim().is_empty())?;
+            let json = p2p_app::messages::attachment_json_for_msg_id(id)
+                .or_else(|| p2p_app::groups::attachment_json_for_msg_id(id))?;
+            let att = p2p_app::files::attachment_from_json(&json)?;
+            p2p_app::files::file_path(&att.file_id)
         })
     }
 
