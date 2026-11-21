@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,192 |
-| Total Rust Chars      | 1,253,725 |
-| Avg Lines/Rust File   |       518 |
-| Avg Chars/Rust File   |    19,589 |
+| Total Rust Lines      |    33,320 |
+| Total Rust Chars      | 1,258,981 |
+| Avg Lines/Rust File   |       520 |
+| Avg Chars/Rust File   |    19,671 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,577 lines, 1,814,266 characters
+**Grand Total:** 106 files, 50,705 lines, 1,819,522 characters
 
 ## Rust Source Files
 
@@ -51,7 +51,7 @@
 | src                     | mobile_node.rs       |     5 | 91630 |  2455 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     4 | 25712 |   741 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 | 10997 |   287 |        - |       - | TUI render chrome & dispatch           |
-| src                     | mod.rs               |     7 | 57935 |  1522 |        - |       - | Web server (axum HTTP+WS)              |
+| src                     | mod.rs               |     7 | 63191 |  1650 |        - |       - | Web server (axum HTTP+WS)              |
 | src                     | net_diag.rs          |     4 | 21711 |   605 |        - |       - | Source file                            |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
 | src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,192 lines, 1,253,725 characters
+**Total:** 64 files, 33,320 lines, 1,258,981 characters
 
 ## Rust Test Files
 

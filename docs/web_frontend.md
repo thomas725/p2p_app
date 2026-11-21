@@ -65,7 +65,16 @@ Single-user, shared-secret, browser-native: **HTTP Basic auth** (`RFC 7617`).
 - The cookie value is `expiry.MAC`, where the MAC is
   `SHA-256("p2p-web-session" ‖ user ‖ password ‖ expiry)`. Sessions are
   therefore **stateless** (nothing to store or prune) and **rotating the
-  password invalidates every session**. Comparisons are constant-time.
+  password invalidates every session**. Both the MAC and the Basic credential
+  comparison hash to fixed-length digests before the constant-time check, so
+  neither content nor secret length leaks through timing.
+- With auth enabled, the `/ws` upgrade also checks that a browser `Origin`
+  header matches the request `Host`, rejecting cross-site hijack (CSWSH)
+  attempts that ride on cached Basic credentials. Non-browser clients (no
+  `Origin`) are unaffected; the SPA connects same-origin by default.
+- Attachments are accepted only as descriptors returned by `/api/upload`. The
+  outgoing-send methods deliberately do **not** accept a server-local path, so
+  a client cannot read arbitrary files off the server through the JSON surface.
 - Secrets never appear in a URL: the old `?token=` query parameter is gone, so
   nothing lands in browser history, `Referer` headers, or proxy access logs.
 - **There is no TLS of its own.** Basic credentials are base64 (not encrypted),

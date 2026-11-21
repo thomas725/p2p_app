@@ -243,7 +243,16 @@ fn basic_credentials_match(credentials: &Credentials, headers: &HeaderMap) -> bo
         return false;
     };
     let expected = format!("{}:{}", credentials.user, credentials.password);
-    expected.as_bytes().ct_eq(presented.as_bytes()).into()
+    // `subtle`'s slice `ct_eq` short-circuits when the lengths differ, which
+    // would leak the configured secret's length through response timing.
+    // Hashing both sides to fixed 32-byte digests first makes the comparison
+    // branch only on content, honoring the constant-time guarantee.
+    let expected_hash = Sha256::digest(expected.as_bytes());
+    let presented_hash = Sha256::digest(presented.as_bytes());
+    expected_hash
+        .as_slice()
+        .ct_eq(presented_hash.as_slice())
+        .into()
 }
 
 /// `Set-Cookie` value for a fresh session: `expiry.MAC`, both derived from the
@@ -322,8 +331,36 @@ fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
 
 // --- WebSocket ---
 
-async fn ws_handler(ws: WebSocketUpgrade, State(state): State<WebState>) -> Response {
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    headers: HeaderMap,
+    State(state): State<WebState>,
+) -> Response {
+    // Browsers cache HTTP Basic credentials per origin and attach them to WS
+    // handshakes regardless of the session cookie's `SameSite` policy, so with
+    // auth enabled a page the user visited after logging in could otherwise
+    // drive the whole API through a cross-site socket (CSWSH). Every browser
+    // WS handshake carries `Origin`; non-browser clients do not, so only a
+    // present-but-mismatched Origin is rejected.
+    if state.credentials.is_some() && !ws_origin_matches_host(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
     ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+/// Whether a WS handshake's `Origin` (when present) matches the request's
+/// `Host`. Absent `Origin` is allowed so native/test WS clients keep working;
+/// a present one must carry the Host as its `scheme://authority`.
+fn ws_origin_matches_host(headers: &HeaderMap) -> bool {
+    let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) else {
+        return true;
+    };
+    let Some(host) = headers.get(header::HOST).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+    origin
+        .split_once("://")
+        .is_some_and(|(_, authority)| authority.eq_ignore_ascii_case(host))
 }
 
 /// Serve one client: answer request frames, forward pushed events, exit on
@@ -1034,6 +1071,46 @@ mod tests {
     }
 
     #[test]
+    fn ws_origin_matches_host_only_rejects_present_mismatches() {
+        let mut headers = HeaderMap::new();
+        // Non-browser clients send no Origin and must be allowed.
+        assert!(ws_origin_matches_host(&headers));
+
+        headers.insert(header::HOST, HeaderValue::from_static("127.0.0.1:8080"));
+        // Still absent: allowed even with a Host present.
+        assert!(ws_origin_matches_host(&headers));
+
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("http://127.0.0.1:8080"),
+        );
+        assert!(ws_origin_matches_host(&headers));
+
+        // Scheme is irrelevant, authority (case-insensitive) is what matters.
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("ws://127.0.0.1:8080"),
+        );
+        assert!(ws_origin_matches_host(&headers));
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://LOCALHOST:8080"),
+        );
+        assert!(!ws_origin_matches_host(&headers));
+
+        // A foreign origin is the hijack case: rejected.
+        headers.insert(
+            header::ORIGIN,
+            HeaderValue::from_static("https://evil.example"),
+        );
+        assert!(!ws_origin_matches_host(&headers));
+
+        // Malformed Origin (no scheme separator) is rejected, not allowed.
+        headers.insert(header::ORIGIN, HeaderValue::from_static("null"));
+        assert!(!ws_origin_matches_host(&headers));
+    }
+
+    #[test]
     fn basic_decoding_needs_the_exact_scheme_and_valid_base64() {
         let mut headers = HeaderMap::new();
         assert_eq!(basic_credentials(&headers), None);
@@ -1481,6 +1558,57 @@ mod tests {
         assert_eq!(
             serde_json::from_str::<Value>(&next_text(&mut socket).await).expect("json"),
             json!({"event": {"eventType": "peer_found", "peerId": "peer-1"}})
+        );
+
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn websocket_rejects_cross_site_origin_but_allows_same_site() {
+        let credentials = credentials();
+        let (state, _events) = test_state(Some(credentials.clone()));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind");
+        let addr = listener.local_addr().expect("local addr");
+        let server = tokio::spawn(axum::serve(listener, build_router(state, None)).into_future());
+
+        let cookie = format!("{SESSION_COOKIE}={}", session_cookie_value(&credentials));
+
+        // A valid session from a foreign page is the hijack case: rejected
+        // even though the cookie would otherwise authenticate the handshake.
+        let mut hostile =
+            tokio_tungstenite::tungstenite::client::IntoClientRequest::into_client_request(
+                format!("ws://{addr}/ws"),
+            )
+            .expect("ws request");
+        hostile
+            .headers_mut()
+            .insert("cookie", HeaderValue::from_str(&cookie).expect("cookie"));
+        hostile
+            .headers_mut()
+            .insert("origin", HeaderValue::from_static("https://evil.example"));
+        assert!(
+            tokio_tungstenite::connect_async(hostile).await.is_err(),
+            "a cross-site WS handshake must be rejected"
+        );
+
+        // The SPA connects from its own origin: allowed.
+        let mut same_site =
+            tokio_tungstenite::tungstenite::client::IntoClientRequest::into_client_request(
+                format!("ws://{addr}/ws"),
+            )
+            .expect("ws request");
+        same_site
+            .headers_mut()
+            .insert("cookie", HeaderValue::from_str(&cookie).expect("cookie"));
+        same_site.headers_mut().insert(
+            "origin",
+            HeaderValue::from_str(&format!("http://{addr}")).expect("origin"),
+        );
+        assert!(
+            tokio_tungstenite::connect_async(same_site).await.is_ok(),
+            "a same-site WS handshake must still work"
         );
 
         server.abort();
