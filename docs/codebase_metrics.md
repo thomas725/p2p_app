@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,135 |
-| Total Rust Chars      | 1,251,713 |
-| Avg Lines/Rust File   |       517 |
-| Avg Chars/Rust File   |    19,558 |
+| Total Rust Lines      |    33,192 |
+| Total Rust Chars      | 1,253,725 |
+| Avg Lines/Rust File   |       518 |
+| Avg Chars/Rust File   |    19,589 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,520 lines, 1,812,254 characters
+**Grand Total:** 106 files, 50,577 lines, 1,814,266 characters
 
 ## Rust Source Files
 
@@ -46,12 +46,12 @@
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     5 | 19315 |   506 |        - |       - | Message persistence & retrieval        |
-| src                     | methods.rs           |     5 | 21241 |   693 |        - |       - | Web JSON method dispatch               |
+| src                     | methods.rs           |     4 | 20584 |   681 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
 | src                     | mobile_node.rs       |     5 | 91630 |  2455 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     4 | 25712 |   741 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 | 10997 |   287 |        - |       - | TUI render chrome & dispatch           |
-| src                     | mod.rs               |     7 | 55266 |  1453 |        - |       - | Web server (axum HTTP+WS)              |
+| src                     | mod.rs               |     7 | 57935 |  1522 |        - |       - | Web server (axum HTTP+WS)              |
 | src                     | net_diag.rs          |     4 | 21711 |   605 |        - |       - | Source file                            |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
 | src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,135 lines, 1,251,713 characters
+**Total:** 64 files, 33,192 lines, 1,253,725 characters
 
 ## Rust Test Files
 

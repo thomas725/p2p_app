@@ -191,24 +191,20 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
-            json(match (p.attachment_path, p.attachment) {
-                (_, Some(att)) => {
-                    mobile_node::save_outgoing_broadcast_attached(p.content, Some(att), p.reply_to)
-                }
-                (path, None) => api::save_outgoing_broadcast(p.content, path, p.reply_to),
-            })
+            json(mobile_node::save_outgoing_broadcast_attached(
+                p.content,
+                p.attachment,
+                p.reply_to,
+            ))
         }
         "saveOutgoingDm" => {
             let p: SendDmParams = parse(params)?;
-            json(match (p.attachment_path, p.attachment) {
-                (_, Some(att)) => mobile_node::save_outgoing_dm_attached(
-                    p.peer_id,
-                    p.content,
-                    Some(att),
-                    p.reply_to,
-                ),
-                (path, None) => api::save_outgoing_dm(p.peer_id, p.content, path, p.reply_to),
-            })
+            json(mobile_node::save_outgoing_dm_attached(
+                p.peer_id,
+                p.content,
+                p.attachment,
+                p.reply_to,
+            ))
         }
         "saveIncomingMessage" => {
             let p: SaveIncomingParams = parse(params)?;
@@ -241,15 +237,12 @@ fn groups(method: &str, params: Value) -> Result<Value, String> {
         }
         "saveOutgoingGroup" => {
             let p: SendGroupParams = parse(params)?;
-            json(match (p.attachment_path, p.attachment) {
-                (_, Some(att)) => mobile_node::save_outgoing_group_attached(
-                    p.group_id,
-                    p.content,
-                    Some(att),
-                    p.reply_to,
-                ),
-                (path, None) => api::save_outgoing_group(p.group_id, p.content, path, p.reply_to),
-            })
+            json(mobile_node::save_outgoing_group_attached(
+                p.group_id,
+                p.content,
+                p.attachment,
+                p.reply_to,
+            ))
         }
         "acceptGroupInvite" => {
             let p: GroupIdParams = parse(params)?;
@@ -507,14 +500,13 @@ struct PeerCountParams {
     peer_count: i64,
 }
 
-/// Outgoing message with an optional attachment: either a server-local path
-/// (mobile-style) or a descriptor already stored via `/api/upload`.
+/// Outgoing message with an optional attachment descriptor already stored via
+/// `/api/upload`. Client-supplied server-local paths are deliberately not
+/// accepted: the web surface never reads files off the server's filesystem.
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SendParams {
     content: String,
-    #[serde(default)]
-    attachment_path: Option<String>,
     #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
     #[serde(default)]
@@ -527,8 +519,6 @@ struct SendDmParams {
     peer_id: String,
     content: String,
     #[serde(default)]
-    attachment_path: Option<String>,
-    #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
     #[serde(default)]
     reply_to: Option<crate::ReplyRef>,
@@ -539,8 +529,6 @@ struct SendDmParams {
 struct SendGroupParams {
     group_id: String,
     content: String,
-    #[serde(default)]
-    attachment_path: Option<String>,
     #[serde(default)]
     attachment: Option<crate::files::MessageAttachment>,
     #[serde(default)]

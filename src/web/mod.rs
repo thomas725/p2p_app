@@ -814,6 +814,75 @@ mod tests {
 
     #[test]
     #[serial(db)]
+    fn save_outgoing_never_reads_a_client_supplied_attachment_path() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir
+            .path()
+            .join("web-path.sqlite")
+            .to_string_lossy()
+            .into_owned();
+        // A real, readable file with recognizable contents. Before the fix the
+        // web surface's `attachmentPath` fallback fed this straight to
+        // `std::fs::read`, giving any authenticated client an arbitrary-file-
+        // read + p2p exfiltration primitive. The web client uploads bytes via
+        // `/api/upload` and sends only the resulting descriptor.
+        let secret = dir.path().join("secret.bin");
+        std::fs::write(&secret, b"TOP-SECRET-SERVER-FILE").expect("write secret");
+        let secret_path = secret.to_string_lossy().into_owned();
+
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .max_blocking_threads(1)
+            .enable_all()
+            .build()
+            .expect("test runtime");
+
+        let (response, saved) = rt.block_on(async {
+            tokio::task::spawn_blocking({
+                let db_path = db_path.clone();
+                move || {
+                    crate::reset_db_url();
+                    crate::mobile_api::init_mobile_database(db_path).expect("mobile init");
+                }
+            })
+            .await
+            .expect("init task");
+
+            let request = json!({
+                "id": 22,
+                "method": "saveOutgoingBroadcast",
+                "params": { "content": "hello", "attachmentPath": secret_path }
+            })
+            .to_string();
+            let response = frame(&request).await;
+
+            let saved = tokio::task::spawn_blocking(|| {
+                crate::messages::load_messages(crate::CHAT_TOPIC, 100)
+                    .expect("history")
+                    .into_iter()
+                    .find(|m| m.content == "hello")
+                    .map(|m| (m.attachment_json, m.content))
+            })
+            .await
+            .expect("read task");
+            (response, saved)
+        });
+
+        assert_eq!(response["id"], 22);
+        assert!(
+            response["ok"]["msgId"].is_string(),
+            "message must still save without a path: {response}"
+        );
+        let (attachment_json, _) = saved.expect("message saved through the web dispatch");
+        assert!(
+            attachment_json.is_none(),
+            "a client-supplied attachmentPath must never read a server-local file: {attachment_json:?}"
+        );
+    }
+
+    #[test]
+    #[serial(db)]
     fn delete_message_frame_reaches_the_local_delete_helper() {
         let _guard = db_lock();
         let dir = tempfile::tempdir().expect("tempdir");
