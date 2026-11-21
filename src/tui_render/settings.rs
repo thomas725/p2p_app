@@ -98,7 +98,13 @@ fn render_network_details(lines: &mut Vec<String>, net: &crate::net_diag::Networ
         net.dht_bootstrap_successes,
         net.dht_bootstrap_failures
     ));
-    lines.push(format!("  DHT announcement: {}", net.dht_announce_status));
+    // Mirror Flutter: surface the announced flag, not only the status line.
+    let announcement = if net.dht_announced {
+        format!("Announced ({})", net.dht_announce_status)
+    } else {
+        net.dht_announce_status.clone()
+    };
+    lines.push(format!("  DHT announcement: {announcement}"));
 
     if !net.external_addrs.is_empty() {
         lines.push("  External addresses:".to_string());

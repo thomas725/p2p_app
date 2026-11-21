@@ -7,10 +7,11 @@ mod render_tests {
     use p2p_app::{
         TuiRenderState,
         tui_render::{
-            render_chat_content, render_dm_content, render_frame, render_input_section,
-            render_log_content, render_peer_info_content, render_peers_content, render_popup,
-            render_settings_content, render_shortcuts, render_shortcuts_help_popup,
-            render_status_bar, render_tabs, shortcuts_help_text, shortcuts_text,
+            render_chat_content, render_dm_content, render_frame, render_group_chat_content,
+            render_input_section, render_log_content, render_peer_info_content,
+            render_peers_content, render_popup, render_settings_content, render_shortcuts,
+            render_shortcuts_help_popup, render_status_bar, render_tabs, shortcuts_help_text,
+            shortcuts_text,
         },
         tui_tabs::TabContent,
     };
@@ -859,7 +860,7 @@ mod render_tests {
             "got: {text:?}"
         );
         assert!(
-            text.contains("DHT announcement: Announced to the DHT"),
+            text.contains("DHT announcement: Announced (Announced to the DHT)"),
             "got: {text:?}"
         );
         assert!(text.contains("External addresses:"), "got: {text:?}");
@@ -870,6 +871,43 @@ mod render_tests {
         assert!(text.contains("eth0 — aa:bb:cc:dd:ee:ff"), "got: {text:?}");
         assert!(text.contains("IPv4: 192.168.1.2"), "got: {text:?}");
         assert!(text.contains("IPv6: fe80::1"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_group_chat_header_matches_flutter() {
+        use std::collections::VecDeque;
+
+        let mut terminal = Terminal::new(TestBackend::new(80, 24)).unwrap();
+        let mut state = TuiRenderState::new();
+        let group_id = "abcdef12-3456-7890";
+        state.group_summaries = vec![p2p_app::groups::GroupSummary {
+            group: p2p_app::generated::models_queryable::Group {
+                id: 1,
+                group_id: group_id.to_string(),
+                display_name: "Rust Devs".to_string(),
+                is_private: 0,
+                created_at: chrono::NaiveDateTime::default(),
+            },
+            member_count: 3,
+        }];
+        state
+            .group_messages
+            .insert(group_id.to_string(), VecDeque::new());
+
+        terminal
+            .draw(|f| render_group_chat_content(f, f.area(), group_id, &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(
+            text.contains("Group: Rust Devs (3 members) [abcdef12]"),
+            "got: {text:?}"
+        );
     }
 
     #[test]

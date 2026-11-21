@@ -69,11 +69,24 @@ pub fn render_group_chat_content(
     group_id: &str,
     state: &TuiRenderState,
 ) {
-    let display_name = state
+    // Mirror Flutter's group-chat header: name, member count and short ID.
+    let summary = state
         .group_summaries
         .iter()
-        .find(|g| g.group.group_id == group_id)
-        .map_or_else(|| group_id.to_string(), |g| g.group.display_name.clone());
+        .find(|g| g.group.group_id == group_id);
+    let (display_name, member_count) = summary.map_or_else(
+        || (group_id.to_string(), 0),
+        |g| (g.group.display_name.clone(), g.member_count),
+    );
+    let short_id: String = group_id.chars().take(8).collect();
+    let title = format!(
+        "Group: {display_name} ({member_count} {}) [{short_id}]",
+        if member_count == 1 {
+            "member"
+        } else {
+            "members"
+        }
+    );
     let usable_height = usize::from(area.height.saturating_sub(2));
 
     if let Some(msgs) = state.group_messages.get(group_id) {
@@ -102,11 +115,10 @@ pub fn render_group_chat_content(
             })
             .collect();
 
-        let list = List::new(items).block(bordered_block(format!("Group: {display_name}")));
+        let list = List::new(items).block(bordered_block(title));
         f.render_widget(list, area);
     } else {
-        let para = Paragraph::new("No messages in this group yet")
-            .block(bordered_block(format!("Group: {display_name}")));
+        let para = Paragraph::new("No messages in this group yet").block(bordered_block(title));
         f.render_widget(para, area);
     }
 }
