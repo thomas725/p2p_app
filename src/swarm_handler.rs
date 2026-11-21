@@ -1349,6 +1349,22 @@ async fn handle_typing_signal(
     }
 }
 
+/// Apply one inbound reaction change, returning whether it was accepted.
+///
+/// Kept separate from the transport handler so the ack can be driven by the
+/// real persistence result: a rejected signal (bad emoji, failed write) must
+/// not be acked as `ok: true`, which would leave the sender believing a chip
+/// was stored when it was not.
+fn apply_inbound_reaction(msg_id: &str, actor: &str, emoji: &str, remove: bool) -> bool {
+    match crate::reactions::apply(msg_id, actor, emoji, remove) {
+        Ok(_) => true,
+        Err(err) => {
+            p2plog_debug(format!("Rejected reaction from {actor}: {err}"));
+            false
+        }
+    }
+}
+
 /// Apply an inbound reaction (US-008) and surface the updated summary to both
 /// frontends. The reactor is taken from the connection's peer id, never the
 /// signal's `actor` field, so a peer cannot post a reaction on another's behalf.
@@ -1366,22 +1382,19 @@ async fn handle_reaction_signal(
             request, channel, ..
         } => {
             let actor = peer.to_string();
-            match crate::reactions::apply(&request.msg_id, &actor, &request.emoji, request.remove) {
-                Ok(_) => {
-                    let _ = event_tx
-                        .send(SwarmEvent::Reaction {
-                            msg_id: request.msg_id,
-                        })
-                        .await;
-                }
-                Err(err) => {
-                    p2plog_debug(format!("Rejected reaction from {actor}: {err}"));
-                }
+            let accepted =
+                apply_inbound_reaction(&request.msg_id, &actor, &request.emoji, request.remove);
+            if accepted {
+                let _ = event_tx
+                    .send(SwarmEvent::Reaction {
+                        msg_id: request.msg_id,
+                    })
+                    .await;
             }
             let _ = swarm
                 .behaviour_mut()
                 .reactions
-                .send_response(channel, crate::behavior::ReactionAck { ok: true });
+                .send_response(channel, crate::behavior::ReactionAck { ok: accepted });
         }
         libp2p::request_response::Message::Response { .. } => {}
     }
