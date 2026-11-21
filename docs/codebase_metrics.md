@@ -143,7 +143,7 @@
 | unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   624 | 22507 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                  |   747 | 29220 |     4 | identity module tests                 |
-| unit   | unit_lib.rs                       |   255 |  6980 |     2 | Unit tests for library re-exports/api |
+| unit   | unit_lib.rs                       |   278 |  7955 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                   |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                  |   580 | 21994 |     4 | Unit tests for messages module        |
 | unit   | unit_net_diag.rs                  |   479 | 15624 |     3 | Test file                             |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,445 lines, 844,774 characters
+**Total:** 63 test files, 25,468 lines, 845,749 characters
 
 ## Dart Source Files
 

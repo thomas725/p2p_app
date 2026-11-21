@@ -24,6 +24,29 @@ fn test_now_timestamp_format() {
 }
 
 #[test]
+fn flutter_network_name_matches_chat_topic() {
+    // Flutter shows the network/topic name in Settings from a Dart constant,
+    // while the TUI renders `crate::CHAT_TOPIC` straight from Rust. Guard the
+    // two against drifting apart: a source-level check keeps the display
+    // identical in both frontends without a runtime binding (and without a
+    // FRB regen for a display-only value).
+    let source = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("apps/flutter_app/lib/src/util/ui_utils.dart"),
+    )
+    .expect("ui_utils.dart is readable");
+    let line = source
+        .lines()
+        .find(|line| line.contains("const String kNetworkName"))
+        .expect("kNetworkName declaration is present");
+    let dart_value = line
+        .split_once('\'')
+        .and_then(|(_, rest)| rest.split_once('\''))
+        .map_or("", |(value, _)| value);
+    assert_eq!(dart_value, crate::CHAT_TOPIC);
+}
+
+#[test]
 fn test_network_size_from_peer_count() {
     assert_eq!(
         network::NetworkSize::from_peer_count(1.0),
