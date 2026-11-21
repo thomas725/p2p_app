@@ -40,11 +40,18 @@ thread_local! {
 #[cfg(not(any(test, feature = "test-utils")))]
 static PRIMARY_DB_URL: OnceLock<std::sync::Mutex<Option<String>>> = OnceLock::new();
 
+/// The process-wide primary database URL, if one has been selected.
 #[cfg(not(any(test, feature = "test-utils")))]
 fn primary_db_url() -> Option<String> {
     PRIMARY_DB_URL
         .get()
         .and_then(|m| m.lock().ok().and_then(|g| g.clone()))
+}
+
+/// The process-wide primary database URL is not tracked in test builds.
+#[cfg(any(test, feature = "test-utils"))]
+const fn primary_db_url() -> Option<String> {
+    None
 }
 
 #[cfg(not(any(test, feature = "test-utils")))]
@@ -541,29 +548,13 @@ pub fn release_db_lock() {
     // the one that selected/set it (e.g. an FRB stop call on a thread-pool
     // worker). Fall back to the process-wide primary URL so the lock for the
     // real database is released wherever the release happens.
-    let db_path = DB_URL
-        .with(|u| u.borrow().clone())
-        .or_else(primary_db_url_unlocked);
+    let db_path = DB_URL.with(|u| u.borrow().clone()).or_else(primary_db_url);
     if let Some(db_path) = db_path {
         let lock_path = format!("{db_path}.lock");
         if std::path::Path::new(&lock_path).exists() && std::fs::remove_file(&lock_path).is_ok() {
             crate::logging::p2plog_debug(format!("[DB] released lock on exit: {lock_path}"));
         }
     }
-}
-
-/// The process-wide primary database URL, if one has been selected.
-#[cfg(not(any(test, feature = "test-utils")))]
-fn primary_db_url_unlocked() -> Option<String> {
-    PRIMARY_DB_URL
-        .get()
-        .and_then(|m| m.lock().ok().and_then(|g| g.clone()))
-}
-
-/// The process-wide primary database URL is not tracked in test builds.
-#[cfg(any(test, feature = "test-utils"))]
-const fn primary_db_url_unlocked() -> Option<String> {
-    None
 }
 
 /// Load or generate the libp2p identity keypair.

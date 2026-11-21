@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,860 |
-| Total Rust Chars      | 1,283,835 |
-| Avg Lines/Rust File   |       529 |
-| Avg Chars/Rust File   |    20,059 |
+| Total Rust Lines      |    33,850 |
+| Total Rust Chars      | 1,283,583 |
+| Avg Lines/Rust File   |       528 |
+| Avg Chars/Rust File   |    20,055 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,375 lines, 1,850,237 characters
+**Grand Total:** 106 files, 51,365 lines, 1,849,985 characters
 
 ## Rust Source Files
 
@@ -33,7 +33,7 @@
 | src                     | chat.rs              |     5 |  6324 |   176 |        - |       - | TUI chat & DM pane renderer            |
 | src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
 | src                     | contacts.rs          |     4 | 14829 |   395 |        - |       - | Canonical contacts-roster model        |
-| src                     | db.rs                |     5 | 25331 |   652 |        - |       - | Database connection & identity mgmt    |
+| src                     | db.rs                |     5 | 25101 |   643 |        - |       - | Database connection & identity mgmt    |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                            |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                            |
 | src                     | files.rs             |     6 | 29006 |   767 |        - |       - | Content-addressed attachment store     |
@@ -60,7 +60,7 @@
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
 | src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer               |
-| src                     | reactions.rs         |     5 | 15943 |   420 |        - |       - | Source file                            |
+| src                     | reactions.rs         |     5 | 15921 |   419 |        - |       - | Source file                            |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                            |
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,860 lines, 1,283,835 characters
+**Total:** 64 files, 33,850 lines, 1,283,583 characters
 
 ## Rust Test Files
 

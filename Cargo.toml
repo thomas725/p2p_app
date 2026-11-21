@@ -164,7 +164,7 @@ getrandom = "0.4"
 # Web frontend server (feature `web`): JSON-over-WebSocket mirror of the FRB
 # surface + attachment upload/download routes + static serving of the Flutter
 # web build.
-axum = { version = "0.8", optional = true, features = ["ws", "json", "query", "tokio", "http1", "macros"] }
+axum = { version = "0.8", optional = true, features = ["ws", "json", "query", "tokio", "http1"] }
 tower-http = { version = "0.7", optional = true, features = ["cors", "fs"] }
 # Stream/Sink combinators for splitting the axum WebSocket in the web server.
 futures-util = { version = "0.3", optional = true }
