@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,371 |
-| Total Rust Chars      | 1,261,558 |
-| Avg Lines/Rust File   |       521 |
-| Avg Chars/Rust File   |    19,711 |
+| Total Rust Lines      |    33,463 |
+| Total Rust Chars      | 1,265,076 |
+| Avg Lines/Rust File   |       522 |
+| Avg Chars/Rust File   |    19,766 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,14 +20,14 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,756 lines, 1,822,099 characters
+**Grand Total:** 106 files, 50,848 lines, 1,825,617 characters
 
 ## Rust Source Files
 
 | Folder                  | File                 | Depth | Chars | Lines | Testable | Covered | Purpose                                |
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                           |
-| src                     | behavior.rs          |     6 | 27359 |   677 |        - |       - | Network behavior definitions           |
+| src                     | behavior.rs          |     6 | 27519 |   679 |        - |       - | Network behavior definitions           |
 | src                     | blocklist.rs         |     2 |  3876 |   104 |        - |       - | Source file                            |
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling) |
 | src                     | chat.rs              |     5 |  6324 |   176 |        - |       - | TUI chat & DM pane renderer            |
@@ -41,7 +41,7 @@
 | src                     | frb_generated.rs     |     6 | 193360 |  4652 |        - |       - | flutter_rust_bridge codegen            |
 | src                     | groups.rs            |     3 | 21995 |   585 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4661 |   124 |        - |       - | TUI groups renderer                    |
-| src                     | identity.rs          |     4 | 23519 |   613 |        - |       - | Users, account keys & device bindings  |
+| src                     | identity.rs          |     4 | 28876 |   762 |        - |       - | Users, account keys & device bindings  |
 | src                     | lib.rs               |     1 |  7330 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
@@ -65,7 +65,7 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 92973 |  2424 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 90974 |  2365 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,371 lines, 1,261,558 characters
+**Total:** 64 files, 33,463 lines, 1,265,076 characters
 
 ## Rust Test Files
 
@@ -142,7 +142,7 @@
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
 | unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   589 | 21435 |     5 | Unit tests for groups module          |
-| unit   | unit_identity.rs                  |   594 | 22956 |     4 | identity module tests                 |
+| unit   | unit_identity.rs                  |   747 | 29220 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                       |   255 |  6980 |     2 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                   |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                  |   580 | 21994 |     4 | Unit tests for messages module        |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,219 lines, 835,838 characters
+**Total:** 63 test files, 25,372 lines, 842,102 characters
 
 ## Dart Source Files
 

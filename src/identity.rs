@@ -49,6 +49,57 @@ pub fn save_user(
         .wrap_err("failed to save user")
 }
 
+/// Insert the account root for a `user_id` if it does not exist yet, without
+/// touching display seams.
+///
+/// Unlike [`save_user`], this never overwrites an existing row: a known
+/// account's stored `account_pubkey` and self-declared display names stay
+/// authoritative. The receive path uses this to materialize the root so the
+/// claim signature can be verified *before* any unauthenticated display data
+/// from a network request is persisted.
+///
+/// # Errors
+/// Returns an error if the insert fails.
+pub fn ensure_user_root(user_id: &str, account_pubkey: &[u8]) -> color_eyre::Result<()> {
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::insert_into(users::table)
+        .values(NewUser {
+            user_id: user_id.to_string(),
+            account_pubkey: account_pubkey.to_vec(),
+            self_username: None,
+            self_nickname: None,
+        })
+        .on_conflict_do_nothing()
+        .execute(conn)
+        .wrap_err("failed to ensure user root")?;
+    Ok(())
+}
+
+/// Refresh the self-declared display names of an account.
+///
+/// Call only after [`verify_device_binding_claim`] succeeded for a claim
+/// carrying these fields: they are unauthenticated (not covered by the claim
+/// signature) and must never be persisted for a rejected claim.
+///
+/// # Errors
+/// Returns an error if the update fails.
+pub fn set_user_display_seams(
+    user_id: &str,
+    self_username: Option<&str>,
+    self_nickname: Option<&str>,
+) -> color_eyre::Result<()> {
+    let conn = &mut crate::sqlite_connect()?;
+    diesel::update(users::table)
+        .filter(users::user_id.eq(user_id))
+        .set((
+            users::self_username.eq(self_username),
+            users::self_nickname.eq(self_nickname),
+        ))
+        .execute(conn)
+        .wrap_err("failed to update user display seams")?;
+    Ok(())
+}
+
 /// Look up an account by stable `user_id`.
 ///
 /// # Errors
@@ -169,6 +220,104 @@ pub fn verify_device_binding_claim(
     }
 
     Ok(false)
+}
+
+/// Verify and apply a device-binding claim received from the network.
+///
+/// This is the single choke point for the receive path. It holds the
+/// hostile-device invariant end-to-end: an unauthenticated claim can never
+/// overwrite a known account's display seams, because those are written only
+/// after the signature verifies and the binding is accepted. The claim must
+/// also be *about this install* (`peer_id` + `device_pubkey`), checked before
+/// any row is inserted.
+///
+/// `sender_peer_id` is the peer that transmitted the claim (sibling path);
+/// `local_peer_id` / `local_device_pubkey` identify the receiving install.
+/// An identical retransmit that already bound this device is accepted.
+///
+/// # Errors
+/// Returns an error if the claim is malformed, names another device, fails
+/// verification, or any persistence step fails.
+pub fn receive_device_binding_claim(
+    request: &crate::behavior::DeviceBindingRequest,
+    sender_peer_id: &str,
+    local_peer_id: &str,
+    local_device_pubkey: &[u8],
+) -> color_eyre::Result<String> {
+    let user_id = request
+        .user_id
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no user_id"))?;
+    let account_pubkey = request
+        .account_pubkey
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no account_pubkey"))?;
+    let claim_id = request
+        .claim_id
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no claim_id"))?;
+    let signature = request
+        .signature
+        .clone()
+        .ok_or_else(|| color_eyre::eyre::eyre!("claim carries no signature"))?;
+
+    // The claim must target this device. Check before touching the DB so a
+    // claim about somebody else leaves no rows behind at all.
+    if request.peer_id != local_peer_id {
+        return Err(color_eyre::eyre::eyre!(
+            "claim names a different device than this node"
+        ));
+    }
+    if request.device_pubkey != local_device_pubkey {
+        return Err(color_eyre::eyre::eyre!(
+            "claim names a different device key than this install's"
+        ));
+    }
+
+    // Materialize the root without display data so verification can read the
+    // stored account key. An existing user's key and seams are left intact.
+    ensure_user_root(&user_id, &account_pubkey)?;
+
+    // Verify before persisting anything derived from the claim's display lane.
+    if !verify_device_binding_claim(
+        &user_id,
+        &request.device_pubkey,
+        &claim_id,
+        &signature,
+        Some(sender_peer_id),
+    )? {
+        return Err(color_eyre::eyre::eyre!(
+            "device-binding claim failed verification for user {user_id}"
+        ));
+    }
+
+    match save_device_binding(
+        &user_id,
+        &request.peer_id,
+        &request.device_pubkey,
+        &claim_id,
+        &signature,
+        Some(sender_peer_id),
+    ) {
+        Ok(_) => {}
+        // An identical claim already bound this device into the same user.
+        Err(_)
+            if find_user_id_for_peer(&request.peer_id)
+                .unwrap_or(None)
+                .as_deref()
+                == Some(user_id.as_str()) => {}
+        Err(e) => return Err(e),
+    }
+
+    // Only now — verification succeeded and the device is bound — may the
+    // unauthenticated display seams be applied to the account row.
+    set_user_display_seams(
+        &user_id,
+        request.self_username.as_deref(),
+        request.self_nickname.as_deref(),
+    )?;
+
+    Ok(user_id)
 }
 
 /// Bind a device into a user's device-set, **only after its claim verifies**

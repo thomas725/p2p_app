@@ -218,9 +218,11 @@ pub type FileTransferCodec =
 ///   so the account holder can decide whether to mint a claim for it.
 /// * `"claim"` — a signed device→user claim. `user_id`, `account_pubkey`,
 ///   `claim_id`, `bound_at` and `signature` are all present. The receiver
-///   `save_user`s the root (upsert), verifies `signature` over
-///   `user_id ‖ device_pubkey ‖ claim_id` against *that user's* stored account
-///   pubkey, and only then binds (`save_device_binding`). Never auto-mints.
+///   ([`crate::identity::receive_device_binding_claim`]) checks the claim is
+///   about itself, materializes the account root without display data,
+///   verifies `signature` over `user_id ‖ device_pubkey ‖ claim_id` against
+///   *that user's* stored account pubkey, binds (`save_device_binding`), and
+///   only then persists the self-declared display seams. Never auto-mints.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DeviceBindingRequest {

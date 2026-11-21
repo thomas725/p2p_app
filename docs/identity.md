@@ -211,8 +211,11 @@ proposal above are bolded):
 - **Receivers never auto-mint on an intro.** An incoming `intro` is surfaced as an event only
   (`SwarmEvent::DeviceBindingIntro`, later `DeviceBindingReceived { user_id }` after the account
   holder calls `accept_device_binding`); the holder explicitly accepts. Claims (`kind: "claim"`)
-  are verified and bound by `swarm_handler::verify_and_bind_claim` only after the account-signed
-  claim passes, enforcing the §11.1 hostile invariant.
+  are verified and bound by `identity::receive_device_binding_claim` (called from
+  `swarm_handler::verify_and_bind_claim`) only after the account-signed claim passes, enforcing
+  the §11.1 hostile invariant. The account root is materialized insert-if-absent with no display
+  data, and the claim's self-declared `self_username`/`self_nickname` are persisted **only after**
+  verification succeeds — an unverified claim can never overwrite a known account's display seams.
 - Transport: `device_binding` request/response behaviour (protocol id
   `/p2p-chat/device-binding/1.0.0`) minted/consumed by `identity::{intro,mint,verify}_device_binding*`
   and routed/managed in `swarm_handler`; sends are queued as `SwarmCommand::SendDeviceBinding` and
@@ -251,8 +254,8 @@ proposal above are bolded):
   seed the users row with the install's current self nickname (both already `ensure_self_nickname`
   first), so a fresh account announces a named user row immediately. `intro_device_binding_request`
   and `mint_device_binding` already read `users.self_username`/`self_nickname` fresh, so the
-  re-announce flows (intro; claim → `verify_and_bind_claim` → `save_user`) pick up the new name
-  with no further change. No display-name cache depends on the users row (contact-row names are
+  re-announce flows (intro; claim → `receive_device_binding_claim` → `set_user_display_seams`)
+  pick up the new name with no further change. No display-name cache depends on the users row (contact-row names are
   resolved per `load_contacts` call), so no invalidation point was needed. Tests: `set_my_user_*`
   nickname update in unit_identity, set-self-nickname → users-row propagation in unit_nickname
   (lib 302). Committed as its own slice.

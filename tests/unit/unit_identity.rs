@@ -592,3 +592,156 @@ fn sibling_device_can_mint_claim_without_account_key() {
         assert!(!account_key.public().verify(&msg, &claim));
     });
 }
+
+#[test]
+#[serial]
+fn forged_claim_cannot_hijack_existing_user_display_seams() {
+    with_test_db(|| {
+        // A known account with trusted display seams.
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let account_pubkey = account_key.public().encode_protobuf();
+        let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+        crate::identity::save_user(
+            &user_id,
+            &account_pubkey,
+            Some("real-user"),
+            Some("Real Name"),
+        )
+        .expect("save user");
+
+        // A forged claim that names this user + our device but is signed by a
+        // stranger's key, carrying attacker-controlled display seams.
+        let attacker_key = libp2p_identity::Keypair::generate_ed25519();
+        let local_peer = "local-peer";
+        let local_pubkey = [0x42u8; 32];
+        let claim_id = "forged-claim";
+        let msg = crate::identity::device_binding_claim_message(&user_id, &local_pubkey, claim_id);
+        let forged_sig = attacker_key.sign(&msg).expect("sign forged claim");
+        let request = crate::behavior::DeviceBindingRequest {
+            kind: "claim".to_string(),
+            user_id: Some(user_id.clone()),
+            account_pubkey: Some(account_pubkey.clone()),
+            self_username: Some("attacker".to_string()),
+            self_nickname: Some("HACKED".to_string()),
+            peer_id: local_peer.to_string(),
+            device_pubkey: local_pubkey.to_vec(),
+            claim_id: Some(claim_id.to_string()),
+            signature: Some(forged_sig),
+            ..Default::default()
+        };
+
+        let result = crate::identity::receive_device_binding_claim(
+            &request,
+            "stranger-peer",
+            local_peer,
+            &local_pubkey,
+        );
+        assert!(result.is_err(), "forged signature must be rejected");
+
+        // The trusted seams and account key are untouched: verification failed
+        // before the display lane was written.
+        let user = crate::identity::find_user(&user_id)
+            .expect("find user")
+            .expect("user still exists");
+        assert_eq!(user.self_username.as_deref(), Some("real-user"));
+        assert_eq!(user.self_nickname.as_deref(), Some("Real Name"));
+        assert_eq!(user.account_pubkey, account_pubkey);
+        assert_eq!(
+            crate::identity::find_user_id_for_peer(local_peer).expect("lookup"),
+            None,
+            "no binding from a rejected claim"
+        );
+    });
+}
+
+#[test]
+#[serial]
+fn valid_received_claim_binds_and_persists_display_seams() {
+    with_test_db(|| {
+        // No pre-existing user row: `ensure_user_root` must materialize it.
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let account_pubkey = account_key.public().encode_protobuf();
+        let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+        crate::peers::save_peer("local-peer", &[]).expect("save peer for FK");
+
+        let local_peer = "local-peer";
+        let local_pubkey = [0x42u8; 32];
+        let claim_id = "valid-claim";
+        let msg = crate::identity::device_binding_claim_message(&user_id, &local_pubkey, claim_id);
+        let signature = account_key.sign(&msg).expect("sign valid claim");
+        let request = crate::behavior::DeviceBindingRequest {
+            kind: "claim".to_string(),
+            user_id: Some(user_id.clone()),
+            account_pubkey: Some(account_pubkey.clone()),
+            self_username: Some("alice".to_string()),
+            self_nickname: Some("Alice".to_string()),
+            peer_id: local_peer.to_string(),
+            device_pubkey: local_pubkey.to_vec(),
+            claim_id: Some(claim_id.to_string()),
+            signature: Some(signature),
+            ..Default::default()
+        };
+
+        let accepted = crate::identity::receive_device_binding_claim(
+            &request,
+            "account-holder-peer",
+            local_peer,
+            &local_pubkey,
+        )
+        .expect("valid claim accepted");
+        assert_eq!(accepted, user_id);
+
+        // Binding + display seams both persisted after successful verification.
+        assert_eq!(
+            crate::identity::find_user_id_for_peer(local_peer).expect("lookup"),
+            Some(user_id.clone())
+        );
+        let user = crate::identity::find_user(&user_id)
+            .expect("find user")
+            .expect("user exists");
+        assert_eq!(user.self_username.as_deref(), Some("alice"));
+        assert_eq!(user.self_nickname.as_deref(), Some("Alice"));
+        assert_eq!(user.account_pubkey, account_pubkey);
+    });
+}
+
+#[test]
+#[serial]
+fn claim_about_another_device_is_rejected_without_writing_rows() {
+    with_test_db(|| {
+        let account_key = libp2p_identity::Keypair::generate_ed25519();
+        let account_pubkey = account_key.public().encode_protobuf();
+        let user_id = crate::identity::user_id_from_account_pubkey(&account_key.public());
+        let target_pubkey = [0x42u8; 32];
+        let claim_id = "other-device-claim";
+        let msg = crate::identity::device_binding_claim_message(&user_id, &target_pubkey, claim_id);
+        let signature = account_key.sign(&msg).expect("sign claim for other device");
+        let request = crate::behavior::DeviceBindingRequest {
+            kind: "claim".to_string(),
+            user_id: Some(user_id.clone()),
+            account_pubkey: Some(account_pubkey),
+            peer_id: "someone-else".to_string(),
+            device_pubkey: target_pubkey.to_vec(),
+            claim_id: Some(claim_id.to_string()),
+            signature: Some(signature),
+            ..Default::default()
+        };
+
+        assert!(
+            crate::identity::receive_device_binding_claim(
+                &request,
+                "stranger-peer",
+                "local-peer",
+                &[0x99u8; 32],
+            )
+            .is_err(),
+            "a claim about another device must be rejected"
+        );
+        // The about-us check runs before any insert, so no user row is created.
+        assert!(
+            crate::identity::find_user(&user_id)
+                .expect("lookup")
+                .is_none()
+        );
+    });
+}
