@@ -56,6 +56,10 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
 
 /// Pure: formats DB messages into display-ready strings for a DM chat.
 ///
+/// `load_direct_messages` returns chronological (oldest-first) rows, so they are
+/// pushed in order — live DMs are appended with `push_back` too, keeping one
+/// oldest→newest transcript across reloads and live updates. (By contrast the
+/// broadcast/group loaders return newest-first and their formatters reverse.)
 /// Separated from the DB call so it can be unit-tested without a database.
 fn format_dm_messages_from_db(
     db_messages: &[p2p_app::generated::models_queryable::Message],
@@ -70,7 +74,7 @@ fn format_dm_messages_from_db(
     let mut messages = VecDeque::new();
     let mut message_ids = VecDeque::new();
     let mut message_db_ids = VecDeque::new();
-    for msg in db_messages.iter().rev() {
+    for msg in db_messages {
         let ts = p2p_app::format_peer_datetime(msg.created_at);
         let sender_display = msg.peer_id.as_ref().map_or_else(
             || self_nick_for_peer.to_string(),

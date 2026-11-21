@@ -486,10 +486,13 @@ fn test_format_dm_messages_from_db_incoming_uses_display_name() {
 }
 
 #[test]
-fn test_format_dm_messages_from_db_reverses_newest_first() {
+fn test_format_dm_messages_from_db_keeps_chronological_order() {
+    // load_direct_messages returns oldest-first, so the formatter must push in
+    // order (no reverse) to match live messages appended with push_back. The
+    // tail of the deque must be the newest row, which is what auto-scroll shows.
     let messages = vec![
-        dm_msg("second", Some("p1"), None, "2024-01-01 12:00:01"),
         dm_msg("first", Some("p1"), None, "2024-01-01 12:00:00"),
+        dm_msg("second", Some("p1"), None, "2024-01-01 12:00:01"),
     ];
     let (result, _, db_ids) =
         super::format_dm_messages_from_db(&messages, "Me", &HashMap::new(), &HashMap::new());
@@ -497,11 +500,11 @@ fn test_format_dm_messages_from_db_reverses_newest_first() {
     assert_eq!(db_ids, VecDeque::from([None, None]));
     assert!(
         result[0].contains("first"),
-        "first msg should be first after rev"
+        "oldest row stays at the head of the transcript"
     );
     assert!(
         result[1].contains("second"),
-        "second msg should be last after rev"
+        "newest row stays at the tail, where auto-scroll lands"
     );
 }
 

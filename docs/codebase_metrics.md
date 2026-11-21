@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,549 |
-| Total Rust Chars      | 1,268,324 |
+| Total Rust Lines      |    33,559 |
+| Total Rust Chars      | 1,268,956 |
 | Avg Lines/Rust File   |       524 |
-| Avg Chars/Rust File   |    19,817 |
+| Avg Chars/Rust File   |    19,827 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,934 lines, 1,828,865 characters
+**Grand Total:** 106 files, 50,944 lines, 1,829,497 characters
 
 ## Rust Source Files
 
@@ -45,7 +45,7 @@
 | src                     | lib.rs               |     1 |  7348 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
-| src                     | messages.rs          |     5 | 19315 |   506 |        - |       - | Message persistence & retrieval        |
+| src                     | messages.rs          |     5 | 19642 |   512 |        - |       - | Message persistence & retrieval        |
 | src                     | methods.rs           |     4 | 20584 |   681 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
 | src                     | mobile_node.rs       |     5 | 91630 |  2455 |        - |       - | Mobile node lifecycle & swarm          |
@@ -74,7 +74,7 @@
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                   |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
 | src/bin                 | p2p_chat_tui.rs      |     6 |  9911 |   278 |        - |       - | Main TUI application entry point       |
-| src/bin/tui             | click_handlers.rs    |     7 | 21557 |   519 |        - |       - | Click handlers & index mapping         |
+| src/bin/tui             | click_handlers.rs    |     7 | 21862 |   523 |        - |       - | Click handlers & index mapping         |
 | src/bin/tui             | command_processor.rs |     6 | 26081 |   725 |        - |       - | Event routing & state updates          |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
 | src/bin/tui             | input_processor.rs   |     7 | 66214 |  1705 |        - |       - | Input event routing & processing       |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,549 lines, 1,268,324 characters
+**Total:** 64 files, 33,559 lines, 1,268,956 characters
 
 ## Rust Test Files
 
@@ -107,7 +107,7 @@
 | tests  | db_selection.rs                   |    73 |  2253 |     3 | Database selection tests              |
 | tests  | fmt.rs                            |   301 |  8151 |     2 | fmt module tests                      |
 | tests  | logging.rs                        |   335 |  9679 |     3 | logging module tests                  |
-| tests  | messages.rs                       |   492 | 14988 |     4 | messages module tests                 |
+| tests  | messages.rs                       |   495 | 15274 |     4 | messages module tests                 |
 | tests  | network.rs                        |    49 |  1638 |     1 | network module tests                  |
 | tests  | nickname.rs                       |   516 | 17397 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                |  1099 | 39657 |    10 | P2P integration tests                 |
@@ -123,7 +123,7 @@
 | tests  | tui_tasks.rs                      |   245 |  7811 |     7 | TUI task tests                        |
 | tests  | types.rs                          |   662 | 20562 |     3 | types module tests                    |
 | unit   | unit_behavior.rs                  |   122 |  3894 |     3 | Unit tests for behavior module        |
-| unit   | unit_bin_tui_click_handlers.rs    |   645 | 23639 |     3 | Unit tests for TUI click handlers     |
+| unit   | unit_bin_tui_click_handlers.rs    |   648 | 23912 |     3 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs |  1228 | 41026 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1352 |     2 | Unit tests for TUI event source       |
 | unit   | unit_bin_tui_input_processor.rs   |  2925 | 100025 |     5 | Unit tests for TUI input processor    |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,439 lines, 844,215 characters
+**Total:** 63 test files, 25,445 lines, 844,774 characters
 
 ## Dart Source Files
 

@@ -262,21 +262,27 @@ pub fn load_messages(topic: &str, limit: usize) -> color_eyre::Result<Vec<Messag
     Ok(msgs)
 }
 
-/// Load direct messages with a peer, oldest first, limited to count.
+/// Load the most recent direct messages with a peer, oldest first.
+///
+/// The cap applies to the *newest* rows: select DESC + `LIMIT`, then reverse so
+/// callers still receive a chronological (oldest-first) transcript. Ordering
+/// ASC before limiting would keep the oldest `limit` rows and silently drop the
+/// end of an active conversation once it exceeds the cap.
 ///
 /// # Errors
 /// Returns an error if the database query fails.
 pub fn load_direct_messages(target_peer: &str, limit: usize) -> color_eyre::Result<Vec<Message>> {
     let conn = &mut crate::sqlite_connect()?;
-    let msgs = messages
+    let mut msgs = messages
         .filter(crate::generated::schema::messages::target_peer.eq(target_peer))
         .filter(crate::generated::schema::messages::is_direct.eq(1))
         .filter(crate::generated::schema::messages::deleted_at.is_null())
-        .order_by(crate::generated::schema::messages::created_at.asc())
-        .then_order_by(crate::generated::schema::messages::id.asc())
+        .order_by(crate::generated::schema::messages::created_at.desc())
+        .then_order_by(crate::generated::schema::messages::id.desc())
         .limit(crate::usize_limit_to_i64(limit))
         .select(Message::as_select())
         .load(conn)?;
+    msgs.reverse();
     Ok(msgs)
 }
 

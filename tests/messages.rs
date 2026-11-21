@@ -241,13 +241,16 @@ fn test_load_direct_messages_peer_isolation() {
 
 #[serial]
 #[test]
-fn test_load_direct_messages_limit() {
+fn test_load_direct_messages_limit_keeps_newest() {
     with_test_db(|| {
         for i in 0..6 {
             p2p_app::save_message(&format!("dm {i}"), None, "t", true, Some("peer-lim")).unwrap();
         }
         let msgs = p2p_app::load_direct_messages("peer-lim", 4).unwrap();
-        assert_eq!(msgs.len(), 4);
+        let contents: Vec<&str> = msgs.iter().map(|m| m.content.as_str()).collect();
+        // The cap must keep the tail of the conversation, oldest-first — not
+        // the first four rows, which used to silently hide the latest messages.
+        assert_eq!(contents, ["dm 2", "dm 3", "dm 4", "dm 5"]);
     });
 }
 
