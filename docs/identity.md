@@ -21,9 +21,10 @@ What shipped:
 | Call signaling | `src/calls.rs` (`CallSession`, `CallState`) — **signaling only**, media is future work |
 | Frontends | TUI Contacts tab, Flutter ContactList, and the web mirror of both |
 
-The one open question this doc does **not** settle: whether a *sibling* device
-of the same user (as opposed to the account key alone) may add another device
-to that user's set. See [`backlog.md`](backlog.md) (P0).
+An already-bound *sibling* device of the same user may add another device to
+that user's set, in addition to the account key. This decision and its hostile-
+device invariant are recorded in
+[`archive/2026-11-02_sibling_device_claims.md`](archive/2026-11-02_sibling_device_claims.md).
 
 ## The pre-implementation state (historical)
 
@@ -174,8 +175,9 @@ A single Rust model + one bulk loading fn feeds both UIs (replacing the peer-lis
 
 - ~~Backfill transport choice + watermark persistence location~~ — **resolved 2026-09-26**:
   anonymous gossipsub on the derived backfill topic, watermark recomputed per request.
-- Who may *add* a sibling device (device-signed vs. account-key-only) — the archived backlog's §11
-  "Open sub-decisions"; tracked as **P0** in [`backlog.md`](backlog.md).
+- ~~Who may *add* a sibling device (device-signed vs. account-key-only)~~ — **resolved 2026-11-02**:
+  an already-bound sibling device may sign a claim for a new device, as well as the account key.
+  See [`archive/2026-11-02_sibling_device_claims.md`](archive/2026-11-02_sibling_device_claims.md).
 - Same-user message sync across devices requires ≥1 of the user's devices online within the gap —
   no external store-and-forward (the §11 note; not a separate promised server lane).
 

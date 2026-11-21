@@ -6,7 +6,7 @@
 |:----------------------|:----------|
 | Total Rust Files      |        61 |
 | Total Rust Lines      |    31,359 |
-| Total Rust Chars      | 1,183,523 |
+| Total Rust Chars      | 1,183,541 |
 | Avg Lines/Rust File   |       514 |
 | Avg Chars/Rust File   |    19,402 |
 | Total Dart Files      |        33 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       104 |
 | Avg Chars/Kotlin File |     3,580 |
 
-**Grand Total:** 96 files, 47,045 lines, 1,685,675 characters
+**Grand Total:** 96 files, 47,045 lines, 1,685,693 characters
 
 ## Rust Source Files
 
@@ -48,7 +48,7 @@
 | src                     | messages.rs          |     5 | 19315 |   506 |        - |       - | Message persistence & retrieval        |
 | src                     | methods.rs           |     5 | 20149 |   654 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 87577 |  2362 |        - |       - | Mobile node lifecycle & swarm          |
+| src                     | mobile_node.rs       |     5 | 87595 |  2362 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     4 | 23889 |   687 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 | 10597 |   274 |        - |       - | TUI render chrome & dispatch           |
 | src                     | mod.rs               |     7 | 55088 |  1447 |        - |       - | Web server (axum HTTP+WS)              |
@@ -88,7 +88,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12219 |   327 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8427 |   277 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 61 files, 31,359 lines, 1,183,523 characters
+**Total:** 61 files, 31,359 lines, 1,183,541 characters
 
 ## Rust Test Files
 
