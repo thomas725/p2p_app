@@ -782,6 +782,30 @@ const fn newly_persisted<T, E>(saved: &Result<Option<T>, E>) -> bool {
     matches!(saved, Ok(Some(_)))
 }
 
+/// Run a fallible operation up to `attempts` times, returning the first success.
+///
+/// Gossipsub dedups by message id, so it never redelivers a message we already
+/// saw — a single transient failure saving an incoming message (brief lock
+/// contention, a connection/migration hiccup) would lose that message forever.
+/// The save is `ON CONFLICT DO NOTHING`, so a retry is safe: if the first attempt
+/// did commit before reporting an error, the retry returns `Ok(None)` and the
+/// normal duplicate path absorbs it. No sleep between attempts — SQLite's own
+/// `busy_timeout` already covers contention, so an immediate retry suffices.
+fn retry_transient<T, E>(mut attempts: usize, mut f: impl FnMut() -> Result<T, E>) -> Result<T, E> {
+    loop {
+        match f() {
+            Ok(value) => return Ok(value),
+            Err(_) if attempts > 1 => {
+                attempts = attempts.saturating_sub(1);
+            }
+            Err(err) => return Err(err),
+        }
+    }
+}
+
+/// Number of attempts for a transient receive-path DB write.
+const INCOMING_SAVE_ATTEMPTS: usize = 3;
+
 async fn handle_group_message(
     message: gossipsub::Message,
     author: libp2p::PeerId,
@@ -817,18 +841,20 @@ async fn handle_group_message(
                 group_msg.sent_at,
                 group_msg.msg_id.clone(),
             );
-            let saved = crate::groups::save_incoming_group_message(
-                group_id,
-                &peer_id_str,
-                &group_msg.content,
-                crate::groups::GroupMessageMeta {
-                    sender_nickname: group_msg.nickname.clone(),
-                    msg_id: group_msg.msg_id.clone(),
-                    sent_at: group_msg.sent_at,
-                    attachment: group_msg.attachment.clone(),
-                    reply_to: group_msg.reply_to.clone(),
-                },
-            );
+            let saved = retry_transient(INCOMING_SAVE_ATTEMPTS, || {
+                crate::groups::save_incoming_group_message(
+                    group_id,
+                    &peer_id_str,
+                    &group_msg.content,
+                    crate::groups::GroupMessageMeta {
+                        sender_nickname: group_msg.nickname.clone(),
+                        msg_id: group_msg.msg_id.clone(),
+                        sent_at: group_msg.sent_at,
+                        attachment: group_msg.attachment.clone(),
+                        reply_to: group_msg.reply_to.clone(),
+                    },
+                )
+            });
             // Only a freshly persisted row reaches a frontend. The DB is the
             // single source of truth for group history, and the TUI appends
             // live events to its in-memory history without its own dedup — so

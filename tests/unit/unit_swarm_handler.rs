@@ -363,6 +363,45 @@ fn test_begin_receive_refuses_duplicate_meta() {
 }
 
 #[test]
+fn retry_transient_recovers_from_transient_failures() {
+    // Gossipsub never redelivers a seen message id, so the receive path must
+    // survive a transient DB hiccup instead of losing the message forever.
+    let mut calls = 0;
+    let result = retry_transient(3, || {
+        calls += 1;
+        if calls < 3 {
+            Err("locked")
+        } else {
+            Ok("saved")
+        }
+    });
+    assert_eq!(result, Ok("saved"));
+    assert_eq!(calls, 3, "stop as soon as the write succeeds");
+}
+
+#[test]
+fn retry_transient_gives_up_after_the_last_attempt() {
+    let mut calls = 0;
+    let result: Result<(), &str> = retry_transient(3, || {
+        calls += 1;
+        Err("still locked")
+    });
+    assert_eq!(result, Err("still locked"));
+    assert_eq!(calls, 3, "never exceed the configured attempt count");
+}
+
+#[test]
+fn retry_transient_runs_once_when_configured() {
+    let mut calls = 0;
+    let result: Result<(), &str> = retry_transient(1, || {
+        calls += 1;
+        Err("failed")
+    });
+    assert_eq!(result, Err("failed"));
+    assert_eq!(calls, 1);
+}
+
+#[test]
 fn test_build_broadcast_message() {
     let msg = build_broadcast_message(
         "Hello world".to_string(),
