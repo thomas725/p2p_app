@@ -4,6 +4,7 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import 'frb_generated.dart';
+import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
@@ -445,6 +446,10 @@ class SwarmEventJson {
   /// Raw device public key of a device-binding intro.
   final Uint8List? devicePubkey;
 
+  /// Notification built in Rust for incoming messages (US-027/US-028).
+  /// `None` when both channels are off or the event is not a user message.
+  final Notification? notification;
+
   const SwarmEventJson({
     required this.eventType,
     this.peerId,
@@ -457,6 +462,7 @@ class SwarmEventJson {
     this.address,
     this.groupId,
     this.devicePubkey,
+    this.notification,
   });
 
   @override
@@ -471,7 +477,8 @@ class SwarmEventJson {
       encrypted.hashCode ^
       address.hashCode ^
       groupId.hashCode ^
-      devicePubkey.hashCode;
+      devicePubkey.hashCode ^
+      notification.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -488,5 +495,6 @@ class SwarmEventJson {
           encrypted == other.encrypted &&
           address == other.address &&
           groupId == other.groupId &&
-          devicePubkey == other.devicePubkey;
+          devicePubkey == other.devicePubkey &&
+          notification == other.notification;
 }

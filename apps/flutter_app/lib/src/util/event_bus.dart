@@ -1,5 +1,6 @@
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'notifications.dart' show deliverNotification;
 
 /// Single event sink for node events. Exactly one screen owns it at a time:
 /// the home broadcast view by default, or the DM chat screen while it is
@@ -28,7 +29,13 @@ void Function(SwarmEventJson)? pushEventSink(
 /// server-pushed frames — both funnel through [NodeApi.startEventPump], so
 /// screens never care which one is active.
 void startEventPolling() {
-  nodeApi.startEventPump((event) => _onEvent?.call(event));
+  nodeApi.startEventPump((event) {
+    // Delivery policy is Rust-owned; here we only hand the payload to the
+    // platform adapter (which applies focus suppression). Never let a
+    // notification failure interrupt the message event reaching the screen.
+    deliverNotification(event.notification);
+    _onEvent?.call(event);
+  });
 }
 
 /// Stop the event pump (e.g. before `stopNode`, so no frames are polled

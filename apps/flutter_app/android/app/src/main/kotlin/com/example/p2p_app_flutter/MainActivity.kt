@@ -14,6 +14,15 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        // Notification delivery adapter (US-027/US-028): policy and text are
+        // Rust-owned; this channel only maps the two flags onto Android APIs.
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            MessageNotifications.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            MessageNotifications.handle(call, this, result)
+        }
+
         val channel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL,

@@ -8,6 +8,7 @@ import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
+import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
@@ -106,6 +107,22 @@ Future<AppTheme> getTheme() => RustLib.instance.api.crateApiGetTheme();
 /// Returns an error for an unknown accent name or a failed database write.
 Future<void> setTheme({required bool dark, required String accentName}) =>
     RustLib.instance.api.crateApiSetTheme(dark: dark, accentName: accentName);
+
+/// Current notification delivery channels (US-027/US-028).
+Future<NotificationSettings> getNotificationSettings() =>
+    RustLib.instance.api.crateApiGetNotificationSettings();
+
+/// Persist the notification sound + desktop channels (US-027/US-028).
+///
+/// # Errors
+/// Returns an error if the database write fails.
+Future<void> setNotificationSettings({
+  required bool sound,
+  required bool desktop,
+}) => RustLib.instance.api.crateApiSetNotificationSettings(
+  sound: sound,
+  desktop: desktop,
+);
 
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///

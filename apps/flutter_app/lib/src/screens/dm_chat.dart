@@ -11,6 +11,8 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/notifications.dart'
+    show pushFocusedConversation, setFocusedConversation;
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
@@ -69,17 +71,20 @@ class _DmChatScreenState extends State<DmChatScreen>
   // Sink installed while this screen is open; restored on dispose so the view
   // underneath keeps receiving events (e.g. when opened from Peer info).
   void Function(SwarmEventJson)? _previousSink;
+  String? _previousFocus;
 
   @override
   void initState() {
     super.initState();
     _previousSink = pushEventSink(_handleDmEvent);
+    _previousFocus = pushFocusedConversation('dm:${widget.peer.peerId}');
     _scrollController.addListener(_onScroll);
     _loadHistory();
   }
 
   @override
   void dispose() {
+    setFocusedConversation(_previousFocus);
     _typingTimer?.cancel();
     if (_lastTypingStart != null) {
       unawaited(_emitTyping(false));

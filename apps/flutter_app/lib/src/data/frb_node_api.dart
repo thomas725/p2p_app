@@ -16,6 +16,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
@@ -222,6 +223,16 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> setTheme({required bool dark, required String accentName}) =>
       bridge.setTheme(dark: dark, accentName: accentName);
+
+  @override
+  Future<NotificationSettings> getNotificationSettings() =>
+      bridge.getNotificationSettings();
+
+  @override
+  Future<void> setNotificationSettings({
+    required bool sound,
+    required bool desktop,
+  }) => bridge.setNotificationSettings(sound: sound, desktop: desktop);
 
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
 

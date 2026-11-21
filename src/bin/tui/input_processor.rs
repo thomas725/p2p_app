@@ -877,6 +877,8 @@ fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
         'l' => toggle_lan_only(s),
         't' => toggle_theme_dark(s),
         'c' => cycle_theme_accent(s),
+        's' => toggle_notification_sound(s),
+        'o' => toggle_notification_desktop(s),
         'd' if !s.is_dialing_peer() => {
             s.begin_dial_peer();
             p2plog_debug("Started peer dial".to_string());
@@ -933,6 +935,26 @@ fn toggle_lan_only(s: &mut super::state::AppState) {
     match p2p_app::settings::set_lan_only(next) {
         Ok(()) => p2plog_debug(format!("LAN-only mode set to {next}")),
         Err(error) => s.popup = Some(format!("LAN-only setting not saved: {error}")),
+    }
+}
+
+/// Toggle the notification sound channel (Settings `s`). Persist via the
+/// canonical notification accessor so TUI and Flutter share one setting.
+fn toggle_notification_sound(s: &mut super::state::AppState) {
+    let next = !p2p_app::settings::notification_sound();
+    match p2p_app::notifications::set_settings(next, p2p_app::settings::notification_desktop()) {
+        Ok(()) => p2plog_debug(format!("Notification sound set to {next}")),
+        Err(error) => s.popup = Some(format!("Notification setting not saved: {error}")),
+    }
+}
+
+/// Toggle the desktop-notification channel (Settings `o`). Same persistence
+/// path as [`toggle_notification_sound`].
+fn toggle_notification_desktop(s: &mut super::state::AppState) {
+    let next = !p2p_app::settings::notification_desktop();
+    match p2p_app::notifications::set_settings(p2p_app::settings::notification_sound(), next) {
+        Ok(()) => p2plog_debug(format!("Desktop notifications set to {next}")),
+        Err(error) => s.popup = Some(format!("Notification setting not saved: {error}")),
     }
 }
 

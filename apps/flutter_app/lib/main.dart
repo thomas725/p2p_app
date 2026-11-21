@@ -7,6 +7,7 @@ import 'src/data/node_api.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/screens/home.dart';
 import 'src/util/event_bus.dart';
+import 'src/util/notifications.dart' show setAppInForeground;
 import 'src/util/theme.dart';
 import 'src/util/ui_utils.dart';
 
@@ -61,17 +62,24 @@ class P2pApp extends StatefulWidget {
   State<P2pApp> createState() => _P2pAppState();
 }
 
-class _P2pAppState extends State<P2pApp> {
+class _P2pAppState extends State<P2pApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     themeNotifier.addListener(_onTheme);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     themeNotifier.removeListener(_onTheme);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setAppInForeground(state == AppLifecycleState.resumed);
   }
 
   void _onTheme() => setState(() {});

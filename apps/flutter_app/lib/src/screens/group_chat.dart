@@ -10,6 +10,8 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/notifications.dart'
+    show pushFocusedConversation, setFocusedConversation;
 
 /// Full-screen group chat (history + live incoming group messages while open),
 /// with selection/copy and an unread "jump to latest" banner. Incoming messages
@@ -56,17 +58,20 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   // Sink installed while this screen is open; restored on dispose so the view
   // underneath keeps receiving events.
   void Function(SwarmEventJson)? _previousSink;
+  String? _previousFocus;
 
   @override
   void initState() {
     super.initState();
     _previousSink = pushEventSink(_handleGroupEvent);
+    _previousFocus = pushFocusedConversation('group:${widget.group.groupId}');
     _scrollController.addListener(_onScroll);
     _loadHistory();
   }
 
   @override
   void dispose() {
+    setFocusedConversation(_previousFocus);
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();

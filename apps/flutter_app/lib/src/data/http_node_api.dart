@@ -14,6 +14,7 @@ import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
@@ -480,6 +481,22 @@ class HttpNodeApi implements NodeApi {
       devicePubkey: pubkey == null
           ? null
           : Uint8List.fromList((pubkey as List<dynamic>).cast<int>()),
+      notification: notificationFromJson(m['notification']),
+    );
+  }
+
+  /// Rust-built notification payload (US-027/US-028). Kept here rather than
+  /// in a util so both the event parser and the settings path share one
+  /// decoder; the fields mirror the serde camelCase names exactly.
+  static Notification? notificationFromJson(dynamic raw) {
+    if (raw == null) return null;
+    final m = raw as Map<String, dynamic>;
+    return Notification(
+      title: m['title'] as String,
+      body: m['body'] as String,
+      conversationKey: m['conversationKey'] as String,
+      sound: m['sound'] as bool? ?? false,
+      desktop: m['desktop'] as bool? ?? false,
     );
   }
 
@@ -694,6 +711,26 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<void> setTheme({required bool dark, required String accentName}) async {
     await _call('setTheme', {'dark': dark, 'accentName': accentName});
+  }
+
+  @override
+  Future<NotificationSettings> getNotificationSettings() async {
+    final m = await _call('getNotificationSettings') as Map<String, dynamic>;
+    return NotificationSettings(
+      sound: m['sound'] as bool? ?? true,
+      desktop: m['desktop'] as bool? ?? false,
+    );
+  }
+
+  @override
+  Future<void> setNotificationSettings({
+    required bool sound,
+    required bool desktop,
+  }) async {
+    await _call('setNotificationSettings', {
+      'sound': sound,
+      'desktop': desktop,
+    });
   }
 
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────

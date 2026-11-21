@@ -3,9 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
+
+import '../helpers/fake_node_api.dart';
 
 const _live = LiveStatus(
   connectedCount: 0,
@@ -211,5 +214,40 @@ void main() {
     await tester.tap(find.descendant(of: dialog, matching: find.text('Close')));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('Notification toggles persist both channels through the transport', (
+    tester,
+  ) async {
+    _useTallSurface(tester);
+    final fake = FakeNodeApi();
+    nodeApi = fake;
+    await tester.pumpWidget(_app(userId: 'user-abc', devices: const []));
+    await tester.pumpAndSettle();
+
+    // Defaults from the persisted settings (sound on, desktop off).
+    final sound = find.byKey(const Key('notification-sound-toggle'));
+    final desktop = find.byKey(const Key('notification-desktop-toggle'));
+    expect(sound, findsOneWidget);
+    expect(desktop, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(sound).value, isTrue);
+    expect(tester.widget<SwitchListTile>(desktop).value, isFalse);
+
+    // Toggle the desktop channel on; only that flag changes.
+    await tester.tap(desktop);
+    await tester.pumpAndSettle();
+    expect(fake.notificationSettings.sound, isTrue);
+    expect(fake.notificationSettings.desktop, isTrue);
+
+    // Toggle sound off; both writes go through the shared transport.
+    await tester.tap(sound);
+    await tester.pumpAndSettle();
+    expect(fake.notificationSettings.sound, isFalse);
+    expect(fake.notificationSettings.desktop, isTrue);
+
+    expect(
+      fake.calls.where((c) => c.method == 'setNotificationSettings').length,
+      2,
+    );
   });
 }

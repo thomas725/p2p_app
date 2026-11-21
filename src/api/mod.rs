@@ -119,6 +119,20 @@ pub fn set_theme(dark: bool, accent_name: &str) -> Result<(), String> {
     crate::theme::set(dark, accent_name)
 }
 
+/// Current notification delivery channels (US-027/US-028).
+#[must_use]
+pub fn get_notification_settings() -> crate::notifications::NotificationSettings {
+    crate::notifications::settings()
+}
+
+/// Persist the notification sound + desktop channels (US-027/US-028).
+///
+/// # Errors
+/// Returns an error if the database write fails.
+pub fn set_notification_settings(sound: bool, desktop: bool) -> Result<(), String> {
+    crate::notifications::set_settings(sound, desktop)
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

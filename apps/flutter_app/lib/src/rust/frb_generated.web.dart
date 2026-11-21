@@ -14,6 +14,7 @@ import 'mobile_api.dart';
 import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
+import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 import 'reactions.dart';
 import 'reply.dart';
@@ -50,6 +51,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
+
+  @protected
+  Notification dco_decode_box_autoadd_notification(dynamic raw);
 
   @protected
   ReplyRef dco_decode_box_autoadd_reply_ref(dynamic raw);
@@ -168,6 +172,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NetworkPeer dco_decode_network_peer(dynamic raw);
 
   @protected
+  Notification dco_decode_notification(dynamic raw);
+
+  @protected
+  NotificationSettings dco_decode_notification_settings(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
@@ -175,6 +185,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileAttachment? dco_decode_opt_box_autoadd_mobile_attachment(dynamic raw);
+
+  @protected
+  Notification? dco_decode_opt_box_autoadd_notification(dynamic raw);
 
   @protected
   ReplyRef? dco_decode_opt_box_autoadd_reply_ref(dynamic raw);
@@ -241,6 +254,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileAttachment sse_decode_box_autoadd_mobile_attachment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Notification sse_decode_box_autoadd_notification(
     SseDeserializer deserializer,
   );
 
@@ -393,6 +411,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   NetworkPeer sse_decode_network_peer(SseDeserializer deserializer);
 
   @protected
+  Notification sse_decode_notification(SseDeserializer deserializer);
+
+  @protected
+  NotificationSettings sse_decode_notification_settings(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
@@ -400,6 +426,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   MobileAttachment? sse_decode_opt_box_autoadd_mobile_attachment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  Notification? sse_decode_opt_box_autoadd_notification(
     SseDeserializer deserializer,
   );
 
@@ -471,6 +502,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_mobile_attachment(
     MobileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_notification(
+    Notification self,
     SseSerializer serializer,
   );
 
@@ -679,6 +716,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_network_peer(NetworkPeer self, SseSerializer serializer);
 
   @protected
+  void sse_encode_notification(Notification self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_notification_settings(
+    NotificationSettings self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
@@ -687,6 +733,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_mobile_attachment(
     MobileAttachment? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_notification(
+    Notification? self,
     SseSerializer serializer,
   );
 

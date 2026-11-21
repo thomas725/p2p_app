@@ -74,9 +74,12 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
             blocklist(m, params)
         }
         "getTheme" => ok(api::get_theme()),
-        m @ ("formatTimeHhmm" | "isAtBottom" | "parseLastSeenMs" | "setTheme") => {
-            ui_helpers(m, params)
-        }
+        "getNotificationSettings" => ok(api::get_notification_settings()),
+        m @ ("formatTimeHhmm"
+        | "isAtBottom"
+        | "parseLastSeenMs"
+        | "setTheme"
+        | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
     }
 }
@@ -376,6 +379,10 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: ThemeParams = parse(params)?;
             json(api::set_theme(p.dark, &p.accent_name))
         }
+        "setNotificationSettings" => {
+            let p: NotificationSettingsParams = parse(params)?;
+            json(api::set_notification_settings(p.sound, p.desktop))
+        }
         other => Err(format!("method not routed to ui_helpers: {other}")),
     }
 }
@@ -591,6 +598,13 @@ struct LanOnlyParams {
 struct ThemeParams {
     dark: bool,
     accent_name: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NotificationSettingsParams {
+    sound: bool,
+    desktop: bool,
 }
 
 #[derive(serde::Deserialize)]

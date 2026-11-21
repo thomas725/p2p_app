@@ -9,6 +9,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
@@ -459,6 +460,28 @@ class FakeNodeApi implements NodeApi {
       accentArgb: swatch.isNotEmpty ? swatch.first.argb : theme.accentArgb,
       accents: theme.accents,
     );
+  }
+
+  /// In-memory notification settings; [setNotificationSettings] updates them
+  /// so widget tests can toggle both channels without FFI.
+  NotificationSettings notificationSettings = const NotificationSettings(
+    sound: true,
+    desktop: false,
+  );
+
+  @override
+  Future<NotificationSettings> getNotificationSettings() async {
+    _record('getNotificationSettings');
+    return notificationSettings;
+  }
+
+  @override
+  Future<void> setNotificationSettings({
+    required bool sound,
+    required bool desktop,
+  }) async {
+    _record('setNotificationSettings', {'sound': sound, 'desktop': desktop});
+    notificationSettings = NotificationSettings(sound: sound, desktop: desktop);
   }
 
   // --- peer blocklist / mute ---

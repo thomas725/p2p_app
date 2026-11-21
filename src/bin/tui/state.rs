@@ -209,6 +209,12 @@ pub struct AppState {
     // Ad-hoc UI popup (used for receipt timing details, etc.)
     pub popup: Option<String>,
 
+    /// Notifications built by Rust for incoming messages and waiting to be
+    /// emitted as terminal escape sequences by the render loop (US-027/028).
+    /// The queue keeps all TUI stdout writes in the render task, so a bell or
+    /// OSC notification can never interleave with ratatui's frame drawing.
+    pub pending_notifications: Vec<p2p_app::notifications::Notification>,
+
     /// Per-conversation reply drafts (US-006). Keyed by `chat`, `dm:<peer>` or
     /// `group:<id>` so a draft survives switching tabs but never leaks into a
     /// different conversation. `Ctrl+R` captures the newest row; sending or
@@ -628,6 +634,21 @@ impl AppState {
         };
         let body = p2p_app::reply::display_body(text);
         Some((id, p2p_app::fmt::without_edited_marker(&body).to_string()))
+    }
+
+    /// Notification focus key of the active tab (`broadcast`, `dm:<peer>`,
+    /// `group:<id>`), or `None` for tabs without a chat conversation. Mirrors
+    /// `notifications::conversation_key` so a message arriving in the
+    /// conversation already on screen does not fire a notification (US-028).
+    #[must_use]
+    pub fn active_conversation_key(&self) -> Option<String> {
+        use p2p_app::tui_tabs::TabContent;
+        match self.dynamic_tabs.tab_index_to_content(self.active_tab) {
+            TabContent::Chat => Some("broadcast".to_string()),
+            TabContent::Direct(peer) => Some(format!("dm:{peer}")),
+            TabContent::GroupChat(id) => Some(format!("group:{id}")),
+            _ => None,
+        }
     }
 
     /// Key of the reply draft belonging to a tab. `None` for tabs without a
@@ -1175,6 +1196,7 @@ impl AppState {
             topic_str,
             editing_nickname_peer: None,
             popup: None,
+            pending_notifications: Vec::new(),
             reply_drafts: HashMap::new(),
             device_binding_prompt: None,
             group_leave_prompt: None,

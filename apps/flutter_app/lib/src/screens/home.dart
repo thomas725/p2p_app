@@ -23,6 +23,8 @@ import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
+import 'package:p2p_app_flutter/src/util/notifications.dart'
+    show setFocusedConversation;
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
@@ -199,12 +201,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     setEventSink(_handleSwarmEvent);
+    // The home screen's broadcast chat is the visible conversation only while
+    // the Chat tab is selected; DM/group screens override this on top.
+    setFocusedConversation(_tabIndex == 0 ? 'broadcast' : null);
     _scrollController.addListener(_onScroll);
     _init();
   }
 
   @override
   void dispose() {
+    setFocusedConversation(null);
     _scrollController.removeListener(_onScroll);
     setEventSink(null);
     _scrollController.dispose();
@@ -895,6 +901,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // so the user can navigate without the back button.
   void _navigateToTab(int i) {
     setState(() => _tabIndex = i);
+    // Only the Chat tab shows the broadcast conversation; every other tab has
+    // no focused chat, so system notifications should fire for broadcasts.
+    setFocusedConversation(i == 0 ? 'broadcast' : null);
     if (i == 4) _refreshSettingsOnOpen();
   }
 

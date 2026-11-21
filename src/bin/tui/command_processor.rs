@@ -258,6 +258,29 @@ fn render_message_body(content: &str, attachment: Option<&p2p_app::MessageAttach
     p2p_app::files::render_message_body(content, attachment)
 }
 
+/// Build a notification for an incoming user message and queue it for the
+/// render loop, unless its conversation is already the active tab (US-028).
+/// Rust owns the policy and display text via [`p2p_app::notifications`]; the
+/// TUI only decides focus and writes the terminal escape sequence.
+fn queue_notification(
+    s: &mut AppState,
+    event_type: &str,
+    peer_id: &str,
+    nickname: Option<&str>,
+    content: &str,
+    group_id: Option<&str>,
+) {
+    let Some(notification) =
+        p2p_app::notifications::for_message(event_type, peer_id, nickname, content, group_id)
+    else {
+        return;
+    };
+    if s.active_conversation_key().as_deref() == Some(notification.conversation_key.as_str()) {
+        return;
+    }
+    s.pending_notifications.push(notification);
+}
+
 /// Route one inbound chat message into TUI state (and the DB). `is_direct`
 /// selects a DM vs a broadcast; an empty-content message that only carries a
 /// nickname is treated as a pure nickname update.
@@ -286,6 +309,17 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
     let body = p2p_app::e2e::mark_encrypted(
         render_message_body(&content, attachment.as_ref()),
         encrypted,
+    );
+    // Queue the notification while `nickname` is still borrowed — it is moved
+    // into `meta` below. The chat conversation on screen is suppressed in the
+    // helper via the active tab's focus key.
+    queue_notification(
+        s,
+        if is_direct { "dm" } else { "broadcast" },
+        &peer_id,
+        nickname.as_deref(),
+        &content,
+        None,
     );
     let msg_id_for_db = msg_id.clone();
     if is_direct {
@@ -491,6 +525,14 @@ async fn handle_group_message(state: &SharedState, msg: p2p_app::GroupMessageEve
         &msg.peer_id,
         msg.msg_id,
         msg.reply_to.as_ref(),
+    );
+    queue_notification(
+        &mut s,
+        "group_message",
+        &msg.peer_id,
+        msg.nickname.as_deref(),
+        &msg.content,
+        Some(&msg.group_id),
     );
     s.reload_group_summaries();
     drop(s);

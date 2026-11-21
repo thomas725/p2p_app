@@ -77,6 +77,7 @@ pub mod net_diag;
 pub mod network;
 pub mod network_config;
 pub mod nickname;
+pub mod notifications;
 pub mod peers;
 pub mod reactions;
 #[cfg(feature = "relay")]

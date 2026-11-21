@@ -19,6 +19,7 @@ import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
@@ -178,6 +179,16 @@ abstract class NodeApi {
   /// Persist the dark/light + accent choice. An unknown accent is rejected in
   /// Rust, so the palette cannot drift between frontends.
   Future<void> setTheme({required bool dark, required String accentName});
+
+  /// Persisted notification delivery channels (US-027/US-028). Text and policy
+  /// are Rust-owned; the frontends only deliver the payload on the event.
+  Future<NotificationSettings> getNotificationSettings();
+
+  /// Persist both notification channels in one round trip.
+  Future<void> setNotificationSettings({
+    required bool sound,
+    required bool desktop,
+  });
 
   // --- Peer blocklist / mute (US-054) ---
 

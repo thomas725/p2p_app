@@ -20,6 +20,10 @@ const KEY_LAN_ONLY: &str = "lan_only";
 const KEY_THEME_DARK: &str = "theme_dark";
 /// `app_settings.key` for the accent colour (US-026).
 const KEY_THEME_ACCENT: &str = "theme_accent";
+/// `app_settings.key` for the notification sound channel (US-027).
+const KEY_NOTIFICATION_SOUND: &str = "notification_sound";
+/// `app_settings.key` for the desktop notification channel (US-028).
+const KEY_NOTIFICATION_DESKTOP: &str = "notification_desktop";
 
 /// Read a raw setting value. Returns `None` when the key is absent or the DB
 /// cannot be read (a broken settings table must not break the caller).
@@ -104,6 +108,37 @@ pub fn theme_accent() -> Accent {
 /// Returns a human-readable error if the database write fails.
 pub fn set_theme_accent(accent: Accent) -> Result<(), String> {
     set(KEY_THEME_ACCENT, accent.as_str())
+}
+
+/// Whether the notification sound is enabled (US-027). Defaults to `true`:
+/// a sound needs no permission and preserves the expected chat behaviour.
+#[must_use]
+pub fn notification_sound() -> bool {
+    get(KEY_NOTIFICATION_SOUND).is_none_or(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"))
+}
+
+/// Persist the notification-sound choice (US-027). Stored as `"1"`/`"0"`.
+///
+/// # Errors
+/// Returns a human-readable error if the database write fails.
+pub fn set_notification_sound(enabled: bool) -> Result<(), String> {
+    set(KEY_NOTIFICATION_SOUND, if enabled { "1" } else { "0" })
+}
+
+/// Whether desktop notifications are enabled (US-028). Defaults to `false`:
+/// browsers and Android 13+ require an explicit permission grant first, so a
+/// fresh install stays quiet until the user opts in.
+#[must_use]
+pub fn notification_desktop() -> bool {
+    get(KEY_NOTIFICATION_DESKTOP).is_some_and(|v| matches!(v.as_str(), "1" | "true" | "yes" | "on"))
+}
+
+/// Persist the desktop-notification choice (US-028). Stored as `"1"`/`"0"`.
+///
+/// # Errors
+/// Returns a human-readable error if the database write fails.
+pub fn set_notification_desktop(enabled: bool) -> Result<(), String> {
+    set(KEY_NOTIFICATION_DESKTOP, if enabled { "1" } else { "0" })
 }
 
 #[cfg(test)]

@@ -1,3 +1,6 @@
+import 'dart:async' show unawaited;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
@@ -5,7 +8,10 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
+import 'package:p2p_app_flutter/src/util/notifications.dart'
+    show requestNotificationPermission;
 import 'package:p2p_app_flutter/src/util/theme.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
@@ -110,6 +116,10 @@ class _SettingsState extends State<Settings> {
   String? _networkPeersError;
   bool _lanOnly = false;
   AppTheme _theme = themeNotifier.value;
+  NotificationSettings _notifications = const NotificationSettings(
+    sound: true,
+    desktop: false,
+  );
 
   @override
   void initState() {
@@ -125,6 +135,39 @@ class _SettingsState extends State<Settings> {
     _refreshNetworkSize();
     _refreshNetworkPeers();
     _refreshLanOnly();
+    _refreshNotifications();
+  }
+
+  /// Load the persisted notification channels. Best-effort: a transport error
+  /// keeps the Rust defaults (sound on, desktop off).
+  Future<void> _refreshNotifications() async {
+    try {
+      final settings = await nodeApi.getNotificationSettings();
+      if (mounted) setState(() => _notifications = settings);
+    } catch (e) {
+      debugPrint('Failed to load notification settings: $e');
+    }
+  }
+
+  /// Persist both notification channels in one round trip, reverting on error.
+  Future<void> _setNotifications({required bool sound, required bool desktop}) async {
+    final previous = _notifications;
+    setState(() {
+      _notifications = NotificationSettings(sound: sound, desktop: desktop);
+    });
+    try {
+      await nodeApi.setNotificationSettings(sound: sound, desktop: desktop);
+      if (desktop && kIsWeb) {
+        unawaited(requestNotificationPermission());
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _notifications = previous);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Notification setting not saved: $e')),
+        );
+      }
+    }
   }
 
   /// Load the persisted LAN-only toggle. Best-effort: a transport error leaves
@@ -481,6 +524,38 @@ class _SettingsState extends State<Settings> {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Notification channels (US-027/US-028). Policy + text are Rust-owned;
+        // these switches only persist the two delivery flags.
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                key: const Key('notification-sound-toggle'),
+                title: const Text('Notification sound'),
+                subtitle: const Text('Play a short sound for new messages.'),
+                value: _notifications.sound,
+                onChanged: (v) => _setNotifications(
+                  sound: v,
+                  desktop: _notifications.desktop,
+                ),
+              ),
+              SwitchListTile(
+                key: const Key('notification-desktop-toggle'),
+                title: const Text('System notifications'),
+                subtitle: const Text(
+                  'Show a system notification for messages in other chats. '
+                  'Needs a one-time permission on web/Android.',
+                ),
+                value: _notifications.desktop,
+                onChanged: (v) => _setNotifications(
+                  sound: _notifications.sound,
+                  desktop: v,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),

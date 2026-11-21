@@ -170,6 +170,23 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         if state.palette.dark { "dark" } else { "light" },
         state.palette.accent.as_str()
     ));
+    let notification_settings = crate::notifications::settings();
+    lines.push(format!(
+        "Notification sound: {} (press 's' to toggle)",
+        if notification_settings.sound {
+            "yes"
+        } else {
+            "no"
+        }
+    ));
+    lines.push(format!(
+        "Desktop notifications: {} (press 'o' to toggle)",
+        if notification_settings.desktop {
+            "yes"
+        } else {
+            "no"
+        }
+    ));
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
     lines.push(format!("Node: {node_status}"));

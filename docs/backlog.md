@@ -116,11 +116,11 @@ Re-run `cargo outdated --depth 1` before assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
-### Notification sounds (US-027) and desktop notifications (US-028)
+### Notification sounds (US-027) and desktop notifications (US-028) — **shipped**
 
-Neither frontend has a notification dependency today. Android already runs a
-foreground service, so a system notification is the smaller half; the TUI has
-no notification backend.
+Rust owns the notification payload, policy and display text; the TUI, Android
+and browser are thin delivery adapters with one shared focus-suppression rule.
+Full record: [`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md).
 
 ---
 
@@ -145,6 +145,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Notification sounds + desktop alerts (US-027/US-028) | 2026-11-21 | [`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md) |
 | LAN-only mode toggle (US-051) | 2026-11-21 | [`archive/2026-11-21_lan_only_mode.md`](archive/2026-11-21_lan_only_mode.md) |
 | Public bootstrap nodes / internet discovery (US-050) | 2026-11-12 | [`archive/2026-11-12_public_bootstrap_discovery.md`](archive/2026-11-12_public_bootstrap_discovery.md) |
 | Sibling-device claim authority (P0 identity) | 2026-11-02 | [`archive/2026-11-02_sibling_device_claims.md`](archive/2026-11-02_sibling_device_claims.md) |

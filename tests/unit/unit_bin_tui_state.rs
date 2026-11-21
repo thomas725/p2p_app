@@ -852,3 +852,38 @@ fn test_clear_typing_forgets_both_directions() {
     assert!(state.typing_sent_at.is_empty());
     assert!(!state.clear_typing("peer-a"));
 }
+
+#[test]
+fn test_active_conversation_key_tracks_the_visible_chat() {
+    let mut state = test_app_state();
+
+    // Default tab is the broadcast chat.
+    assert_eq!(
+        state.active_conversation_key().as_deref(),
+        Some("broadcast")
+    );
+
+    // Non-chat tabs never suppress a notification.
+    state.active_tab = 1; // Contacts
+    assert_eq!(state.active_conversation_key(), None);
+    state.active_tab = 2; // Groups
+    assert_eq!(state.active_conversation_key(), None);
+
+    // A group-chat tab suppresses only that group's key.
+    let group_tab = state
+        .dynamic_tabs
+        .add_group_tab("grp-1".into(), "Team".into());
+    state.active_tab = group_tab;
+    assert_eq!(
+        state.active_conversation_key().as_deref(),
+        Some("group:grp-1")
+    );
+
+    // A DM tab suppresses only that peer's key.
+    let dm_tab = state.dynamic_tabs.add_dm_tab("peer-42".into());
+    state.active_tab = dm_tab;
+    assert_eq!(
+        state.active_conversation_key().as_deref(),
+        Some("dm:peer-42")
+    );
+}

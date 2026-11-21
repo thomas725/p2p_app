@@ -12,7 +12,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
 };
 use std::collections::{BTreeMap, HashMap, VecDeque};
-use std::io::Stdout;
+use std::io::{Stdout, Write};
 use tokio::sync::mpsc;
 
 /// The popup to render, highest precedence first: device-binding intro, group
@@ -337,6 +337,23 @@ pub fn spawn_render_loop(
                 }
                 render_frame(f, &s);
             });
+
+            // Drain notifications queued by the command processor *after* the
+            // frame is drawn so a bell or OSC sequence can never interleave
+            // with ratatui's screen writes. A single locked stdout handle is
+            // reused for the whole drain.
+            let pending = std::mem::take(&mut s.pending_notifications);
+            drop(s);
+            if !pending.is_empty() {
+                let mut stdout = std::io::stdout().lock();
+                for notification in &pending {
+                    let sequence = p2p_app::notifications::terminal_sequence(notification);
+                    if !sequence.is_empty() {
+                        let _ = stdout.write_all(sequence.as_bytes());
+                    }
+                }
+                let _ = stdout.flush();
+            }
         }
     })
 }

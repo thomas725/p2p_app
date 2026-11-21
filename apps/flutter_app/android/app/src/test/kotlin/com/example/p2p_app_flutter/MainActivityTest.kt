@@ -47,6 +47,19 @@ class MainActivityTest {
     }
 
     @Test
+    fun `notification channel and methods match the Dart side`() {
+        // US-027/US-028: the MethodChannel name and method strings are a
+        // contract shared with lib/src/util/notifications.dart. Drift here
+        // silently drops every notification, so pin them in a test.
+        assertEquals(
+            "com.example.p2p_app_flutter/notifications",
+            MessageNotifications.CHANNEL,
+        )
+        assertEquals("playSound", MessageNotifications.SOUND)
+        assertEquals("show", MessageNotifications.SHOW)
+    }
+
+    @Test
     fun `service instance tracking works correctly`() {
         // Initially not running
         val instanceField = P2pForegroundService::class.java

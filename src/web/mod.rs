@@ -720,6 +720,7 @@ mod tests {
             "removeNetworkPeer",
             "setLanOnly",
             "setTheme",
+            "setNotificationSettings",
             "blockPeer",
             "unblockPeer",
             "formatTimeHhmm",
@@ -920,6 +921,7 @@ mod tests {
             "listNetworkPeers",
             "getLanOnly",
             "getTheme",
+            "getNotificationSettings",
             "listBlockedPeers",
         ] {
             assert!(

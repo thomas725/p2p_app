@@ -1402,6 +1402,9 @@ pub struct SwarmEventJson {
     pub group_id: Option<String>,
     /// Raw device public key of a device-binding intro.
     pub device_pubkey: Option<Vec<u8>>,
+    /// Notification built in Rust for incoming messages (US-027/US-028).
+    /// `None` when both channels are off or the event is not a user message.
+    pub notification: Option<crate::notifications::Notification>,
 }
 
 /// Build an event envelope with only `event_type` populated, so match arms
@@ -1557,12 +1560,20 @@ const fn default_event() -> SwarmEventJson {
         address: None,
         group_id: None,
         device_pubkey: None,
+        notification: None,
     }
 }
 
 /// JSON envelope for broadcast/DM events (the two text-message kinds the Dart
 /// chat surfaces persist); the `event_type` distinguishes them.
 fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJson {
+    let notification = crate::notifications::for_message(
+        event_type,
+        &m.peer_id,
+        m.nickname.as_deref(),
+        &m.content,
+        None,
+    );
     SwarmEventJson {
         event_type: event_type.to_string(),
         peer_id: Some(m.peer_id),
@@ -1575,11 +1586,19 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
         address: None,
         group_id: None,
         device_pubkey: None,
+        notification,
     }
 }
 
 /// JSON envelope for group chat events; `group_id` names the room.
 fn group_message_event_json(m: crate::GroupMessageEvent) -> SwarmEventJson {
+    let notification = crate::notifications::for_message(
+        "group_message",
+        &m.peer_id,
+        m.nickname.as_deref(),
+        &m.content,
+        Some(&m.group_id),
+    );
     SwarmEventJson {
         event_type: "group_message".into(),
         peer_id: Some(m.peer_id),
@@ -1588,6 +1607,7 @@ fn group_message_event_json(m: crate::GroupMessageEvent) -> SwarmEventJson {
         msg_id: m.msg_id,
         reply_to: m.reply_to,
         group_id: Some(m.group_id),
+        notification,
         ..default_event()
     }
 }

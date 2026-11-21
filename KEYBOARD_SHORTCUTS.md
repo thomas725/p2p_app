@@ -206,9 +206,13 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 | `l` | Toggle LAN-only mode (applies on next node start) |
 | `t` | Toggle dark / light theme |
 | `c` | Cycle the accent color |
+| `s` | Toggle the notification sound |
+| `o` | Toggle desktop notifications (OSC 777 on supported terminals) |
 
-The theme is a single persisted choice shared with Flutter; Rust owns the
-palette, so both frontends always agree on the valid accents. The dial prompt
+Incoming messages fire a notification only when their conversation is not the
+active tab; the payload and the two delivery flags are Rust-owned and shared
+with Flutter. The theme is a single persisted choice shared with Flutter; Rust
+owns the palette, so both frontends always agree on the valid accents. The dial prompt
 uses the shared input box; `Esc` cancels it without dialing.
 The same box serves `b`/`r`; saved network peers are only read when the node
 starts, so an added or removed entry applies on the next start. Outside the
