@@ -38,7 +38,8 @@ fn peer_is_blocked(peer_id: &libp2p::PeerId) -> bool {
 /// dedup), and send the delivery receipt to a peer that never recorded the
 /// broadcast recipient row. Unsigned/local messages have no `source`, in which
 /// case the last hop is the best available attribution.
-const fn gossipsub_author(
+#[must_use]
+pub const fn gossipsub_author(
     source: Option<libp2p::PeerId>,
     propagation_source: libp2p::PeerId,
 ) -> libp2p::PeerId {

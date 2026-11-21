@@ -161,7 +161,7 @@ pub use peers::{
     save_peer,
 };
 pub use reply::ReplyRef;
-pub use swarm_handler::{build_broadcast_message, spawn_swarm_handler};
+pub use swarm_handler::{build_broadcast_message, gossipsub_author, spawn_swarm_handler};
 #[cfg(feature = "tui")]
 pub use tui_helpers::{
     PAGE_SIZE, WHEEL_SCROLL_LINES, disable_auto_scroll_to_max, handle_scroll_key_for_section,

@@ -38,14 +38,24 @@ fn handle_listen_addr_event(address: &libp2p::Multiaddr) {
     }
 }
 
-fn handle_message_event(propagation_source: &libp2p::PeerId, message: &gossipsub::Message) {
-    let sender = propagation_source.to_string();
+/// Format one gossipsub message for the CLI log.
+///
+/// Gossipsub signs every message (`MessageAuthenticity::Signed`), so `source` is
+/// the verified publisher while `propagation_source` is only the last hop. Use
+/// the canonical helper so a relayed message is attributed to the peer that
+/// actually authored it, matching every other frontend.
+fn format_message_event(
+    propagation_source: &libp2p::PeerId,
+    message: &gossipsub::Message,
+) -> String {
+    let author = p2p_app::gossipsub_author(message.source, *propagation_source);
+    let sender = author.to_string();
     let sender_short = sender.get(..8.min(sender.len())).unwrap_or(&sender);
     let msg_str = String::from_utf8_lossy(&message.data);
     if let Ok(bcast) = serde_json::from_str::<BroadcastMessage>(&msg_str) {
-        p2p_app::logging::p2plog_info(format!("[{}] {}", sender_short, bcast.content));
+        format!("[{sender_short}] {}", bcast.content)
     } else {
-        p2p_app::logging::p2plog_info(format!("[{sender_short}] {msg_str}"));
+        format!("[{sender_short}] {msg_str}")
     }
 }
 
@@ -108,7 +118,7 @@ async fn main() -> color_eyre::Result<()> {
                         },
                     ),
                 ) => {
-                    handle_message_event(&propagation_source, &message);
+                    p2plog_info(format_message_event(&propagation_source, &message));
                 }
                 _ => {}
             },
@@ -133,4 +143,50 @@ async fn main() -> color_eyre::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_message(source: Option<libp2p::PeerId>) -> gossipsub::Message {
+        gossipsub::Message {
+            source,
+            data: b"hello".to_vec(),
+            sequence_number: None,
+            topic: gossipsub::IdentTopic::new("test").hash(),
+        }
+    }
+
+    fn short_id(peer: libp2p::PeerId) -> String {
+        let full = peer.to_string();
+        full.get(..8.min(full.len())).unwrap_or(&full).to_string()
+    }
+
+    #[test]
+    fn relayed_message_is_attributed_to_the_signed_publisher() {
+        let publisher = libp2p::identity::Keypair::generate_ed25519()
+            .public()
+            .to_peer_id();
+        let relay = libp2p::identity::Keypair::generate_ed25519()
+            .public()
+            .to_peer_id();
+        let line = format_message_event(&relay, &test_message(Some(publisher)));
+        assert!(
+            line.starts_with(&format!("[{}]", short_id(publisher))),
+            "a relayed message must be shown under its publisher, not the relay"
+        );
+    }
+
+    #[test]
+    fn unsigned_message_falls_back_to_the_relay() {
+        let relay = libp2p::identity::Keypair::generate_ed25519()
+            .public()
+            .to_peer_id();
+        let line = format_message_event(&relay, &test_message(None));
+        assert!(
+            line.starts_with(&format!("[{}]", short_id(relay))),
+            "an unsigned local message has no publisher, so the relay is the best label"
+        );
+    }
 }

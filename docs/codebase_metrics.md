@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,479 |
-| Total Rust Chars      | 1,265,892 |
-| Avg Lines/Rust File   |       523 |
-| Avg Chars/Rust File   |    19,779 |
+| Total Rust Lines      |    33,536 |
+| Total Rust Chars      | 1,267,811 |
+| Avg Lines/Rust File   |       524 |
+| Avg Chars/Rust File   |    19,809 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,864 lines, 1,826,433 characters
+**Grand Total:** 106 files, 50,921 lines, 1,828,352 characters
 
 ## Rust Source Files
 
@@ -42,7 +42,7 @@
 | src                     | groups.rs            |     3 | 22811 |   601 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4661 |   124 |        - |       - | TUI groups renderer                    |
 | src                     | identity.rs          |     4 | 28876 |   762 |        - |       - | Users, account keys & device bindings  |
-| src                     | lib.rs               |     1 |  7330 |   195 |        - |       - | Module declarations & re-exports       |
+| src                     | lib.rs               |     1 |  7348 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     5 | 19315 |   506 |        - |       - | Message persistence & retrieval        |
@@ -65,13 +65,13 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 90974 |  2365 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 90990 |  2366 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
 | src                     | tui_tabs.rs          |     6 | 11711 |   342 |        - |       - | Tab management & navigation            |
 | src                     | types.rs             |     2 | 15094 |   394 |        - |       - | Event & command type defs              |
-| src/bin                 | p2p_chat.rs          |     7 |  5032 |   136 |        - |       - | CLI chat application                   |
+| src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                   |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
 | src/bin                 | p2p_chat_tui.rs      |     6 |  9911 |   278 |        - |       - | Main TUI application entry point       |
 | src/bin/tui             | click_handlers.rs    |     7 | 21557 |   519 |        - |       - | Click handlers & index mapping         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,479 lines, 1,265,892 characters
+**Total:** 64 files, 33,536 lines, 1,267,811 characters
 
 ## Rust Test Files
 
