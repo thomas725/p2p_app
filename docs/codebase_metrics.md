@@ -10,17 +10,17 @@
 | Avg Lines/Rust File   |       525 |
 | Avg Chars/Rust File   |    19,873 |
 | Total Dart Files      |        39 |
-| Total Dart Lines      |    17,102 |
-| Total Dart Chars      |   550,571 |
+| Total Dart Lines      |    17,103 |
+| Total Dart Chars      |   550,687 |
 | Avg Lines/Dart File   |       438 |
-| Avg Chars/Dart File   |    14,117 |
+| Avg Chars/Dart File   |    14,120 |
 | Total Kotlin Files    |         3 |
 | Total Kotlin Lines    |       303 |
 | Total Kotlin Chars    |    10,990 |
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,042 lines, 1,833,494 characters
+**Grand Total:** 106 files, 51,043 lines, 1,833,610 characters
 
 ## Rust Source Files
 
@@ -196,7 +196,7 @@
 | lib          | messages.dart                   |    15 | 43068 |  1251 |        - |       - | Shared chat widgets              |
 | lib          | nav_bar.dart                    |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
 | lib          | peer_info.dart                  |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
-| lib          | settings.dart                   |    16 | 39169 |  1140 |        - |       - | Settings screen                  |
+| lib          | settings.dart                   |    16 | 39285 |  1141 |        - |       - | Settings screen                  |
 | lib          | attachments.dart                |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
 | lib          | blocklist.dart                  |     2 |   755 |    19 |        - |       - | Dart source file                 |
 | lib          | event_bus.dart                  |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
@@ -207,7 +207,7 @@
 | lib          | theme.dart                      |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                   |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 39 files, 17,102 lines, 550,571 characters
+**Total:** 39 files, 17,103 lines, 550,687 characters
 
 ## Dart Test Files
 

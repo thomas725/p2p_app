@@ -52,7 +52,8 @@ const Map<String, List<String>> _helpSections = {
   ],
   'Chat': [
     'Type and press Enter to send. The paperclip attaches a file.',
-    'Double-tap a message to select it, then Copy or Delete from the toolbar. Delete hides only your own sent messages on this device.',
+    'Double-tap a message to select it, then Copy, Delete, Reply or Edit from the toolbar. Delete and Edit affect only your own sent messages on this device.',
+    'Tap the add-reaction chip on a message to react, or an existing chip to toggle yours.',
     'Tap a sender name for Peer Info, an attachment chip to open the file, or the unread banner to jump to latest.',
   ],
   'Contacts': [
