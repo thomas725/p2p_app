@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,615 |
-| Total Rust Chars      | 1,271,225 |
+| Total Rust Lines      |    33,621 |
+| Total Rust Chars      | 1,271,534 |
 | Avg Lines/Rust File   |       525 |
-| Avg Chars/Rust File   |    19,862 |
+| Avg Chars/Rust File   |    19,867 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,130 lines, 1,837,627 characters
+**Grand Total:** 106 files, 51,136 lines, 1,837,936 characters
 
 ## Rust Source Files
 
@@ -28,7 +28,7 @@
 |:------------------------|:---------------------|------:|------:|------:|---------:|--------:|---------------------------------------:|
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                           |
 | src                     | behavior.rs          |     6 | 27519 |   679 |        - |       - | Network behavior definitions           |
-| src                     | blocklist.rs         |     2 |  3876 |   104 |        - |       - | Source file                            |
+| src                     | blocklist.rs         |     2 |  4185 |   110 |        - |       - | Source file                            |
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling) |
 | src                     | chat.rs              |     5 |  6324 |   176 |        - |       - | TUI chat & DM pane renderer            |
 | src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,615 lines, 1,271,225 characters
+**Total:** 64 files, 33,621 lines, 1,271,534 characters
 
 ## Rust Test Files
 
@@ -133,7 +133,7 @@
 | unit   | unit_bin_tui_scroll_handlers.rs   |   657 | 21507 |     3 | Unit tests for TUI scroll handlers    |
 | unit   | unit_bin_tui_state.rs             |   889 | 28404 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs      |    66 |  2330 |     3 | Unit tests for TUI test helpers       |
-| unit   | unit_blocklist.rs                 |    98 |  3435 |     2 | Test file                             |
+| unit   | unit_blocklist.rs                 |   112 |  3932 |     3 | Test file                             |
 | unit   | unit_calls.rs                     |    90 |  2797 |     1 | calls module tests                    |
 | unit   | unit_connected.rs                 |    65 |  2019 |     1 | Unit tests for connected module       |
 | unit   | unit_contacts.rs                  |   357 | 12111 |     4 | contacts module tests                 |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,496 lines, 846,953 characters
+**Total:** 63 test files, 25,510 lines, 847,450 characters
 
 ## Dart Source Files
 

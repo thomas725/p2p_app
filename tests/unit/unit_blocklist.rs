@@ -61,6 +61,20 @@ fn blocking_canonicalizes_the_peer_id() {
 }
 
 #[test]
+fn checking_a_noncanonical_peer_id_matches_the_canonical_row() {
+    // `block_peer` stores the canonical form; `is_blocked` must canonicalize
+    // its input the same way, or a padded id checks a key that never matches.
+    with_test_db(|| {
+        let peer = peer_id().to_string();
+        assert!(block_peer(&peer).expect("block"), "first block inserts");
+        assert!(
+            is_blocked(&format!("  {peer}  ")),
+            "padded id is still blocked"
+        );
+    });
+}
+
+#[test]
 fn invalid_peer_ids_are_rejected() {
     with_test_db(|| {
         let err = block_peer("").expect_err("empty");

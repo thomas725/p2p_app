@@ -74,11 +74,17 @@ pub fn unblock_peer(peer_id: &str) -> Result<bool, String> {
 /// database can never act as a global mute.
 #[must_use]
 pub fn is_blocked(peer_id: &str) -> bool {
+    // Writes store the canonical form, so reads must canonicalize too —
+    // otherwise a padded/noncanonical id checks a key that can never match.
+    // An unparseable id cannot have been blocked, so fail open (false).
+    let Ok(peer_id) = canonical_peer_id(peer_id) else {
+        return false;
+    };
     let Ok(conn) = &mut crate::sqlite_connect() else {
         return false;
     };
     blocked_peers::table
-        .filter(blocked_peers::peer_id.eq(peer_id))
+        .filter(blocked_peers::peer_id.eq(&peer_id))
         .select(BlockedPeerRow::as_select())
         .first(conn)
         .is_ok()
