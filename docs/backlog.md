@@ -109,10 +109,12 @@ the SQLite range so `libsqlite3-sys 0.39.1` could land, alongside
 three unfixable allowed warnings (`chrono`, `paste`, `yoke-derive`).
 
 `cargo outdated --depth 1` now prints a table again (diesel no longer blocks
-the probe) with eight direct rows. None is a security advisory: two are
-deliberate pins (`libp2p-identity` 0.3.0, dev-only `tokio-tungstenite` 0.29),
-a few are compatible patches, and the rest are semver-incompatible majors.
-Re-run `cargo outdated --depth 1` before assuming this lane is empty.
+the probe) with five direct rows after the 2026-11-22 round took the last
+compatible patches (`clap`, `ratatui-textarea`, `unicode-width`). None is a
+security advisory: two are deliberate pins (`libp2p-identity` 0.3.0, dev-only
+`tokio-tungstenite` 0.29), `base64` is held on libp2p's line, and two are
+semver-incompatible majors. Re-run `cargo outdated --depth 1` before assuming
+this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
@@ -138,7 +140,7 @@ here so they are not mistaken for unfinished work.
 | Native Flutter desktop builds deliver no notification sound/system alert | The primary desktop path is the browser frontend, which delivers both channels through the WebAudio/`Notification` adapters. Android uses the MethodChannel. The `flutter build linux` artifact is currently a display shell without a native notification plugin; TUI users get bell/OSC 777. |
 | DMs are readable by a store-and-forward holder | US-042 seals DM bodies per recipient; a holder sees only the envelope (see `e2e_encryption.md`). |
 | The web frontend's HTTP Basic credentials are not encrypted on the wire | The server has no TLS of its own (it is a LAN display client). Put a TLS-terminating reverse proxy in front for any exposure beyond a trusted LAN; the browser-native credential dialog and the session cookie already keep the secret out of URLs, history and logs. |
-| `cargo outdated` reports eight direct rows | Informational (exit 0 by default); none is a security advisory. Two deliberate pins, a few compatible patches, and a few semver-incompatible majors — see the dependency lane above. |
+| `cargo outdated` reports five direct rows | Informational (exit 0 by default); none is a security advisory. Two deliberate pins, `base64` held on libp2p's line, and two semver-incompatible majors — see the dependency lane above. |
 
 ---
 

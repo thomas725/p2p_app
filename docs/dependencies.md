@@ -45,7 +45,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
 | `ratatui` | `=0.30.2` | 0.30.2 | The TUI's rendering library. Optional — behind `tui`. |
-| `ratatui-textarea` | `0.9` | 0.9.3 | The multi-line text input widget. Optional — behind `tui`. |
+| `ratatui-textarea` | `0.9` | 0.9.4 | The multi-line text input widget. Optional — behind `tui`. |
 | `crossterm` | `=0.29` | 0.29.0 | Terminal raw mode, key events, and mouse capture. Optional — behind `tui`. |
 | `flutter_rust_bridge` | `=2.13.0` | 2.13.0 | The FFI bridge for the Flutter app. Pinned exactly: FRB's codegen and the Rust crate must agree on the version. Optional — behind `mobile`. |
 
@@ -54,7 +54,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
 | `petname` | `3.0` | 3.2.0 | Generates the fallback display names for peers with no nickname. |
-| `unicode-width` | `0.2` | 0.2.2 | Display-width measurement, so table cells pad correctly for wide characters. |
+| `unicode-width` | `0.2` | 0.2.3 | Display-width measurement, so table cells pad correctly for wide characters. |
 | `num-traits` | `0.2` | 0.2.19 | `ToPrimitive` for safe `f64 → i64` timestamp truncation — the project denies `as` conversions. |
 | `tracing` | `=0.1.44` | 0.1.44 | Structured logging; libp2p emits through it. Optional — behind `tracing`. |
 | `tracing-subscriber` | `=0.3.23` | 0.3.23 | The log formatter/filter. Optional — behind `tracing`. |
@@ -129,19 +129,19 @@ stack — so the repo stays on the newer line and the lock collapses to a single
 `cargo outdated` prints a normal table again now that diesel 2.4.0 accepts
 `libsqlite3-sys <0.41.0` — the old dependency-resolution error is gone. It
 exits 0 by default (`--exit-code N` changes that), which is another reason the
-daily job keeps it informational. `cargo outdated --depth 1` currently reports
-these direct rows (none is a security advisory):
+daily job keeps it informational. The 2026-11-22 round took the last compatible
+patches — `clap 4.6.7 → 4.6.9` (with `clap_derive` and `syn`),
+`ratatui-textarea 0.9.3 → 0.9.4`, `unicode-width 0.2.2 → 0.2.3` — as lockfile-only
+bumps. No source change was needed. `cargo outdated --depth 1` now reports five
+direct rows (none is a security advisory):
 
 | Crate | Locked | Newer | Status |
 |---|---|---|---|
 | `base64` | 0.22.1 | 0.23.1 | Held: 0.22 matches libp2p's line; 0.23 is already in the tree via another dep. |
 | `chacha20poly1305` | 0.10.1 | 0.11.0 | DM end-to-end envelope dep (US-042); semver-incompatible bump, no advisory. |
-| `clap` | 4.6.7 | 4.6.8 | Compatible patch, not security-relevant. |
 | `libp2p-identity` | 0.3.0 | 0.3.1 | Pinned `=0.3.0` to keep a single `PeerId` type in the tree. |
 | `libsqlite3-sys` | 0.39.1 | 0.40.0 | Semver-incompatible; the security-fixed 0.39 line is in use. |
-| `ratatui-textarea` | 0.9.3 | 0.9.4 | Compatible patch, not security-relevant. |
 | `tokio-tungstenite` | 0.29.0 | 0.30.0 | Test-only client, held in lockstep with axum's `ws` feature — 0.30 adds a second `tungstenite` tree for no behavioural gain. Revisit when axum moves. |
-| `unicode-width` | 0.2.2 | 0.2.3 | Compatible patch, not security-relevant. |
 
 The full `cargo outdated` output also lists transitive rows. Those are not
 actionable here — they move when their parent moves.
