@@ -3,8 +3,8 @@ SUMMARY
 ============================================================
 check      exit  result
 fmt        0     PASS
-clippy     101   FAIL (exit 101)
-test       0     PASS
+clippy     0     PASS
+test       101   FAIL (exit 101)
 build      0     PASS
 minimal    0     PASS
 audit      0     PASS
