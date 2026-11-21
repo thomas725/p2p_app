@@ -48,6 +48,10 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   final _scrollController = ScrollController();
   bool _loading = true;
 
+  /// Incremented per initial history load so a reply arriving after the fetch
+  /// started cannot clobber messages received live in the meantime.
+  int _historyGeneration = 0;
+
   /// Frozen quote for the next group message we send; independent of selection.
   ReplyRef? _replyTo;
 
@@ -116,19 +120,26 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   );
 
   Future<void> _loadHistory() async {
+    final generation = ++_historyGeneration;
     try {
       final msgs = await nodeApi.loadGroupMessages(
         groupId: _groupId,
         limit: 200,
       );
+      if (!mounted || generation != _historyGeneration) return;
       setState(() {
+        // Preserve rows appended live while the fetch was in flight.
+        final historyIds = msgs.map((m) => m.id).toSet();
+        final live = _messages.where((m) => !historyIds.contains(m.id)).toList();
         _messages
           ..clear()
-          ..addAll(msgs.map(_toChatMessage));
+          ..addAll(msgs.map(_toChatMessage))
+          ..addAll(live);
         _loading = false;
       });
       scrollToBottom(_scrollController);
     } catch (_) {
+      if (!mounted || generation != _historyGeneration) return;
       setState(() => _loading = false);
     }
   }
@@ -139,11 +150,18 @@ class _GroupChatScreenState extends State<GroupChatScreen>
   /// of these back-to-back.
   bool _reloadInFlight = false;
 
+  /// An event arrived while a reload was in flight. Its DB row may postdate the
+  /// in-flight snapshot, so we must run one more reload rather than drop it.
+  bool _reloadPending = false;
+
   /// Reload history and reflect only the messages we did not already have, so
   /// live incoming messages accumulate without dropping our own optimistic
   /// copies.
   Future<void> _reloadForIncoming() async {
-    if (_reloadInFlight) return;
+    if (_reloadInFlight) {
+      _reloadPending = true;
+      return;
+    }
     _reloadInFlight = true;
     try {
       final knownIds = {for (final m in _messages) m.id};
@@ -163,6 +181,12 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     } catch (_) {
     } finally {
       _reloadInFlight = false;
+      // An event that landed while we were fetching may postdate the snapshot
+      // we just applied. Run one more reload instead of dropping it.
+      if (_reloadPending) {
+        _reloadPending = false;
+        if (mounted) unawaited(_reloadForIncoming());
+      }
     }
   }
 
@@ -195,6 +219,9 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     }
     if (event.groupId == _groupId && event.content != null) {
       unawaited(_reloadForIncoming());
+      // Home only refreshes the group list on this event (member counts stay
+      // fresh), so forwarding it is safe and keeps the summary in sync.
+      _previousSink?.call(event);
     } else {
       // A message for a different group (or a status-only event): let the
       // view underneath refresh group summaries, which keeps member counts

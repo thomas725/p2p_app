@@ -54,6 +54,11 @@ class _DmChatScreenState extends State<DmChatScreen>
   final _scrollController = ScrollController();
   bool _loading = true;
 
+  /// Incremented for every history load. A reply that arrives after an earlier
+  /// load was kicked off is stale: applying it would clobber messages received
+  /// live while the fetch was in flight.
+  int _historyGeneration = 0;
+
   /// Live typing state for this conversation (US-009). Incoming signals are
   /// frontend-only and expire locally; nothing is persisted.
   bool _peerTyping = false;
@@ -109,16 +114,24 @@ class _DmChatScreenState extends State<DmChatScreen>
   }
 
   Future<void> _loadHistory() async {
+    final generation = ++_historyGeneration;
     try {
       final msgs = await nodeApi.loadDmMessages(peerId: _peerId, limit: 200);
+      if (!mounted || generation != _historyGeneration) return;
       setState(() {
+        // A live DM can be appended while the fetch is in flight. Merge by id
+        // so those rows are not wiped by the older history snapshot.
+        final historyIds = msgs.map((m) => m.id).toSet();
+        final live = _messages.where((m) => !historyIds.contains(m.id)).toList();
         _messages
           ..clear()
-          ..addAll(msgs);
+          ..addAll(msgs)
+          ..addAll(live);
         _loading = false;
       });
       scrollToBottom(_scrollController);
     } catch (_) {
+      if (!mounted || generation != _historyGeneration) return;
       setState(() => _loading = false);
     }
   }
@@ -183,6 +196,14 @@ class _DmChatScreenState extends State<DmChatScreen>
       if (event.msgId != null) {
         _markConfirmed(event.msgId!);
       }
+      _previousSink?.call(event);
+      return;
+    }
+    if (event.eventType == 'peer_disconnected' && event.peerId == _peerId) {
+      // TUI clears typing immediately when the peer drops; without this the
+      // stale 3-second TTL keeps "typing…" visible after the disconnect.
+      _typingTimer?.cancel();
+      setState(() => _peerTyping = false);
       _previousSink?.call(event);
       return;
     }

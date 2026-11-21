@@ -12,16 +12,20 @@ import 'package:p2p_app_flutter/src/rust/reply.dart';
 /// `reply::PREVIEW_CHARS`).
 const int replyPreviewChars = 80;
 
-/// Canonical sender label for a message row: `Me` for our own rows, otherwise
-/// the Rust-resolved nickname or the short peer id. Shared by the bubble header,
-/// the copy-to-clipboard transcript, and reply drafts so all three agree.
+/// Canonical sender label for a message row: the Rust-resolved nickname (our
+/// own rows carry the installed self nickname; others the announced/petname
+/// label) or the short peer id, with `Me` only as a last-resort own-row label.
+/// Shared by the bubble header, the copy-to-clipboard transcript, and reply
+/// drafts so all three agree — and so a quote of our own message freezes the
+/// same sender tag the TUI captures from its `[nickname]` header.
 ///
 /// [isOwn] defaults to the wire rule (`peerId == null`) but can be supplied by
 /// widgets that track ownership separately (e.g. `MessageBubble`).
 String messageSenderLabel(ChatMessage message, {bool? isOwn}) {
-  if (isOwn ?? message.peerId == null) return 'Me';
+  final own = isOwn ?? message.peerId == null;
   final nickname = message.senderNickname;
   if (nickname != null) return nickname;
+  if (own) return 'Me';
   final peerId = message.peerId;
   if (peerId == null) return 'Unknown';
   return peerId.length >= 12 ? peerId.substring(0, 12) : peerId;

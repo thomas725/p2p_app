@@ -309,7 +309,24 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_atBottom) unawaited(_saveViewedCount());
   }
 
+  /// Show an operational failure without replacing the whole app. Startup
+  /// failures use [_error] (which offers Retry); send/toggle/share failures are
+  /// transient and must leave the rest of the UI usable.
+  void _showError(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(e.toString())));
+  }
+
   Future<void> _init() async {
+    // Retry re-enters here from the full-screen error view. Clear the error and
+    // restore the spinner first, otherwise a successful retry would rebuild
+    // straight back into the error view with the stale message.
+    setState(() {
+      _error = null;
+      _loading = true;
+    });
     try {
       bool running = false;
       if (isAndroid) {
@@ -765,7 +782,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final unreadCount = _messages.length - lastViewed;
 
     if (unreadCount > 0 && _messages.isNotEmpty) {
-      _unreadCount = unreadCount;
+      // This read happens after an `await`, so a frame may already show zero
+      // unread. Publish the count or the "N new" banner never appears until an
+      // unrelated rebuild happens.
+      if (!mounted) return;
+      setState(() => _unreadCount = unreadCount);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           final firstUnreadIndex = lastViewed.clamp(0, _messages.length - 1);
@@ -794,7 +815,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       _forceScrollToBottom();
     } catch (e) {
-      setState(() => _error = e.toString());
+      _showError(e);
     }
   }
 
@@ -818,7 +839,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       _forceScrollToBottom();
     } catch (e) {
-      setState(() => _error = e.toString());
+      _showError(e);
     }
   }
 
@@ -884,7 +905,7 @@ class _HomeScreenState extends State<HomeScreen> {
         startEventPolling();
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      _showError(e);
     }
   }
 
@@ -893,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await serviceChannel.invokeMethod('shareApk');
     } catch (e) {
-      setState(() => _error = e.toString());
+      _showError(e);
     }
   }
 
@@ -1165,6 +1186,11 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedIndex: _tabIndex,
         onDestinationSelected: (i) {
           setState(() => _tabIndex = i);
+          // Keep notification suppression in sync with the visible chat, just
+          // as `_navigateToTab` does for full-screen routes. Without this,
+          // leaving/returning to Chat via the bottom nav leaves a stale focus
+          // and broadcasts notify in the wrong place.
+          setFocusedConversation(i == 0 ? 'broadcast' : null);
           _stopNetworkRefresh();
           if (i == 4) {
             _refreshSettingsOnOpen();

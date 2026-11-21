@@ -526,6 +526,27 @@ void main() {
     );
   });
 
+  test('a reply to our own message freezes the self nickname as sender', () {
+    // Rust resolves our outgoing rows' senderNickname to the installed self
+    // nickname, and the TUI captures that same `[nickname]` tag in its reply
+    // snapshot. Flutter must not freeze the generic "Me" label instead.
+    final draft = replyDraftFor(
+      chatMessage(
+        id: 1,
+        content: 'my earlier note',
+        peerId: null,
+        msgId: 'own-1',
+        senderNickname: 'Alice (abc)',
+      ),
+    );
+    expect(draft?.sender, 'Alice (abc)');
+    // Rows without a resolved nickname still fall back to "Me".
+    expect(
+      replyDraftFor(chatMessage(id: 2, msgId: 'own-2'))?.sender,
+      'Me',
+    );
+  });
+
   testWidgets('a reply bubble renders the canonical quoted header', (
     tester,
   ) async {
