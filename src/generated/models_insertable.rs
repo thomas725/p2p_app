@@ -6,7 +6,7 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    blocked_peers, broadcast_recipients, contacts, device_bindings, dm_outbox, files,
+    app_settings, blocked_peers, broadcast_recipients, contacts, device_bindings, dm_outbox, files,
     group_members, group_messages, groups, identities, message_reactions, message_receipts,
     messages, network_peers, peer_sessions, peers, users,
 };
@@ -228,6 +228,16 @@ pub struct NewNetworkPeer {
     pub kind: String,
     /// Canonical text form of the peer multiaddr
     pub multiaddr: String,
+}
+
+/// Insertable struct for the `app_settings` table (US-051)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = app_settings)]
+pub struct NewAppSetting {
+    /// Setting key
+    pub key: String,
+    /// Stored value (text; parsed by `src/settings.rs`)
+    pub value: String,
 }
 
 /// Insertable struct for the `message_reactions` table (US-008)

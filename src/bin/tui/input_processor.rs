@@ -869,11 +869,12 @@ async fn handle_dial_peer_submission(
 
 /// Settings-tab single-key shortcuts: `n` edits this install's nickname,
 /// `d` begins a peer dial, `b`/`r` open the network-peer add prompt for a
-/// bootstrap/relay multiaddr, `x` removes the highlighted entry. Other chars
-/// fall through to the input box.
+/// bootstrap/relay multiaddr, `x` removes the highlighted entry, `l` toggles
+/// LAN-only mode. Other chars fall through to the input box.
 fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
     match c {
         'n' => handle_nickname_key(s, &p2p_app::tui_tabs::TabContent::Settings),
+        'l' => toggle_lan_only(s),
         'd' if !s.is_dialing_peer() => {
             s.begin_dial_peer();
             p2plog_debug("Started peer dial".to_string());
@@ -920,6 +921,16 @@ fn handle_add_network_peer_submission(s: &mut super::state::AppState) {
         Err(error) => {
             s.popup = Some(format!("Network peer not saved: {error}"));
         }
+    }
+}
+
+/// Toggle LAN-only mode (Settings `l`), persisting via the canonical settings
+/// accessor. Applies on next node start; the current run keeps its wiring.
+fn toggle_lan_only(s: &mut super::state::AppState) {
+    let next = !p2p_app::settings::lan_only();
+    match p2p_app::settings::set_lan_only(next) {
+        Ok(()) => p2plog_debug(format!("LAN-only mode set to {next}")),
+        Err(error) => s.popup = Some(format!("LAN-only setting not saved: {error}")),
     }
 }
 

@@ -164,6 +164,13 @@ abstract class NodeApi {
   /// Remove the persisted entry with [id]; true when a row was deleted.
   Future<bool> removeNetworkPeer({required int id});
 
+  /// Whether LAN-only mode is enabled (US-051). Disables DHT, relays and
+  /// internet bootstrap; mDNS and direct dials still work.
+  Future<bool> getLanOnly();
+
+  /// Persist the LAN-only toggle (US-051). Applies on next node start.
+  Future<void> setLanOnly({required bool enabled});
+
   // --- Peer blocklist / mute (US-054) ---
 
   /// Whether [peerId] is muted. Blocked peers are ignored at the swarm

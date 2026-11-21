@@ -74,6 +74,22 @@ Future<NetworkPeer> addNetworkPeer({
 Future<bool> removeNetworkPeer({required int id}) =>
     RustLib.instance.api.crateApiRemoveNetworkPeer(id: id);
 
+/// Whether LAN-only mode is enabled (US-051).
+///
+/// LAN-only disables the DHT, relays and internet bootstrap; mDNS and direct
+/// dials still work. Both frontends show this on Settings.
+Future<bool> getLanOnly() => RustLib.instance.api.crateApiGetLanOnly();
+
+/// Enable or disable LAN-only mode (US-051).
+///
+/// The change is persisted and applies on the **next node start** — the swarm's
+/// discovery/relay wiring is fixed when the node is built.
+///
+/// # Errors
+/// Returns an error if the database write fails.
+Future<void> setLanOnly({required bool enabled}) =>
+    RustLib.instance.api.crateApiSetLanOnly(enabled: enabled);
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

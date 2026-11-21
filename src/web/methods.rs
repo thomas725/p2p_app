@@ -66,9 +66,10 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "sortContacts"
         | "startCall"
         | "sendCallSignal") => contacts_calls(m, params),
-        m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer") => {
+        m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer" | "setLanOnly") => {
             network_config(m, params)
         }
+        "getLanOnly" => ok(api::get_lan_only()),
         m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {
             blocklist(m, params)
         }
@@ -121,6 +122,10 @@ fn network_config(method: &str, params: Value) -> Result<Value, String> {
         "removeNetworkPeer" => {
             let p: IdParams = parse(params)?;
             json(api::remove_network_peer(p.id))
+        }
+        "setLanOnly" => {
+            let p: LanOnlyParams = parse(params)?;
+            json(api::set_lan_only(p.enabled))
         }
         other => Err(format!("method not routed to network_config: {other}")),
     }
@@ -566,6 +571,12 @@ struct NetworkPeerParams {
 #[serde(rename_all = "camelCase")]
 struct IdParams {
     id: i32,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LanOnlyParams {
+    enabled: bool,
 }
 
 #[derive(serde::Deserialize)]

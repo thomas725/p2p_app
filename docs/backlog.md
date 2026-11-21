@@ -116,11 +116,6 @@ Re-run `cargo outdated --depth 1` before assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
-### LAN-only mode toggle (US-051)
-
-A switch that disables any non-LAN transport. Cheap in principle, but it needs
-the transport layer to be separable from discovery.
-
 ### Dark / light theme (US-025) and custom color scheme (US-026)
 
 The TUI uses ratatui styles directly and Flutter uses Material themes. A theme
@@ -156,6 +151,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| LAN-only mode toggle (US-051) | 2026-11-21 | [`archive/2026-11-21_lan_only_mode.md`](archive/2026-11-21_lan_only_mode.md) |
 | Public bootstrap nodes / internet discovery (US-050) | 2026-11-12 | [`archive/2026-11-12_public_bootstrap_discovery.md`](archive/2026-11-12_public_bootstrap_discovery.md) |
 | Sibling-device claim authority (P0 identity) | 2026-11-02 | [`archive/2026-11-02_sibling_device_claims.md`](archive/2026-11-02_sibling_device_claims.md) |
 | Message reactions (US-008) | 2026-11-21 | [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md) |

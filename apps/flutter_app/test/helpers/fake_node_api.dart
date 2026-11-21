@@ -411,6 +411,22 @@ class FakeNodeApi implements NodeApi {
     return networkPeers.length != before;
   }
 
+  /// In-memory LAN-only flag; [setLanOnly] updates it so a test can toggle and
+  /// read back without stubbing.
+  bool lanOnly = false;
+
+  @override
+  Future<bool> getLanOnly() async {
+    _record('getLanOnly');
+    return lanOnly;
+  }
+
+  @override
+  Future<void> setLanOnly({required bool enabled}) async {
+    _record('setLanOnly', enabled);
+    lanOnly = enabled;
+  }
+
   // --- peer blocklist / mute ---
 
   /// The persisted blocklist the fake serves; edits apply to it, so a test can

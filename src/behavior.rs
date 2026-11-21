@@ -568,8 +568,9 @@ pub fn build_behaviour(
     let relay_server = {
         // Do not act as an open relay for the public internet by default: only
         // accept reservations when explicitly opted in via P2P_RELAY_SERVER=1.
+        // LAN-only mode (US-051) always disables the server, whatever the env.
         let mut cfg = libp2p::relay::Config::default();
-        if std::env::var("P2P_RELAY_SERVER").is_err() {
+        if std::env::var("P2P_RELAY_SERVER").is_err() || crate::settings::lan_only() {
             cfg.max_reservations = 0;
             cfg.max_reservations_per_peer = 0;
             cfg.max_circuits = 0;

@@ -106,6 +106,7 @@ class _SettingsState extends State<Settings> {
   NetworkDetails? _network;
   List<NetworkPeer>? _networkPeers;
   String? _networkPeersError;
+  bool _lanOnly = false;
 
   @override
   void initState() {
@@ -119,6 +120,33 @@ class _SettingsState extends State<Settings> {
     widget.networkDetails?.addListener(_onNetwork);
     _refreshNetworkSize();
     _refreshNetworkPeers();
+    _refreshLanOnly();
+  }
+
+  /// Load the persisted LAN-only toggle. Best-effort: a transport error leaves
+  /// the default (off) in place.
+  Future<void> _refreshLanOnly() async {
+    try {
+      final enabled = await nodeApi.getLanOnly();
+      if (mounted) setState(() => _lanOnly = enabled);
+    } catch (e) {
+      debugPrint('Failed to load LAN-only setting: $e');
+    }
+  }
+
+  /// Persist the LAN-only toggle. It applies on the next node start.
+  Future<void> _setLanOnly(bool enabled) async {
+    setState(() => _lanOnly = enabled);
+    try {
+      await nodeApi.setLanOnly(enabled: enabled);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _lanOnly = !enabled);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('LAN-only setting not saved: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -387,6 +415,20 @@ class _SettingsState extends State<Settings> {
           ),
         ),
         const SizedBox(height: 8),
+        // LAN-only mode (US-051): toggles DHT/relay/internet bootstrap.
+        Card(
+          child: SwitchListTile(
+            key: const Key('lan-only-toggle'),
+            title: const Text('LAN only'),
+            subtitle: const Text(
+              'Disable DHT, relays and internet bootstrap. mDNS and direct '
+              'dials still work. Applies on the next node start.',
+            ),
+            value: _lanOnly,
+            onChanged: _setLanOnly,
+          ),
+        ),
+        const SizedBox(height: 16),
         // Persisted bootstrap/relay configuration (US-050 follow-up 1)
         Card(
           child: Padding(

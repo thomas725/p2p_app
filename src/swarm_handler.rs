@@ -132,6 +132,10 @@ fn handle_kad_query(result: libp2p::kad::QueryResult) {
 /// we believe are reachable (confirmed external addresses first).
 #[cfg(feature = "kad")]
 fn maybe_announce(swarm: &mut Swarm<AppBehaviour>) {
+    // LAN-only mode (US-051): never publish our record to the global DHT.
+    if crate::settings::lan_only() {
+        return;
+    }
     if !crate::net_diag::announce_due() {
         return;
     }
@@ -528,8 +532,10 @@ async fn handle_connection_established(
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
-    let _ = swarm.behaviour_mut().kad.bootstrap();
-    refresh_dht_routing(swarm);
+    if !crate::settings::lan_only() {
+        let _ = swarm.behaviour_mut().kad.bootstrap();
+        refresh_dht_routing(swarm);
+    }
     relays.request_reservation(peer_id, swarm);
     maybe_announce(swarm);
 }
@@ -2128,6 +2134,11 @@ const PUBLIC_BOOTSTRAP_PEERS: &str = concat!(
 ///    default install stays LAN-only (mDNS) and generates no global DHT traffic.
 #[cfg(feature = "kad")]
 fn bootstrap_addrs() -> Vec<libp2p::Multiaddr> {
+    // LAN-only mode (US-051): no internet bootstrap, regardless of env or
+    // persisted entries. mDNS and manual direct dials still work.
+    if crate::settings::lan_only() {
+        return Vec::new();
+    }
     if let Ok(value) = std::env::var("P2P_BOOTSTRAP") {
         return parse_bootstrap_addrs(&value);
     }

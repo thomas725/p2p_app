@@ -82,6 +82,7 @@ pub mod reactions;
 #[cfg(feature = "relay")]
 pub mod relay;
 pub mod reply;
+pub mod settings;
 pub mod swarm_handler;
 pub mod tui_tabs;
 pub mod types;

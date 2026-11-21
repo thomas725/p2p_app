@@ -79,6 +79,26 @@ pub fn remove_network_peer(id: i32) -> Result<bool, String> {
     crate::network_config::remove_network_peer(id).map_err(|e| e.to_string())
 }
 
+/// Whether LAN-only mode is enabled (US-051).
+///
+/// LAN-only disables the DHT, relays and internet bootstrap; mDNS and direct
+/// dials still work. Both frontends show this on Settings.
+#[must_use]
+pub fn get_lan_only() -> bool {
+    crate::settings::lan_only()
+}
+
+/// Enable or disable LAN-only mode (US-051).
+///
+/// The change is persisted and applies on the **next node start** — the swarm's
+/// discovery/relay wiring is fixed when the node is built.
+///
+/// # Errors
+/// Returns an error if the database write fails.
+pub fn set_lan_only(enabled: bool) -> Result<(), String> {
+    crate::settings::set_lan_only(enabled)
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

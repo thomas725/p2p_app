@@ -208,6 +208,13 @@ class FrbNodeApi implements NodeApi {
   Future<bool> removeNetworkPeer({required int id}) =>
       bridge.removeNetworkPeer(id: id);
 
+  @override
+  Future<bool> getLanOnly() => bridge.getLanOnly();
+
+  @override
+  Future<void> setLanOnly({required bool enabled}) =>
+      bridge.setLanOnly(enabled: enabled);
+
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
 
   @override

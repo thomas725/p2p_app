@@ -238,6 +238,16 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: persisted app settings (US-051). A generic key/value table
+// so future Settings toggles reuse the same storage; `src/settings.rs` owns the
+// typed accessors and is the only place that parses values.
+diesel::table! {
+    app_settings (key) {
+        key -> Text,
+        value -> Text,
+    }
+}
+
 // Hand-maintained: store-and-forward DM outbox. Each row holds one sealed
 // `DirectMessage` (JSON) waiting for an offline recipient. The plaintext fields
 // of a sealed message are empty, so this table never stores a readable body.
@@ -256,6 +266,7 @@ diesel::table! {
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
+    app_settings,
     blocked_peers,
     broadcast_recipients,
     contacts,

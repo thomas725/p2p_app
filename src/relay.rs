@@ -62,6 +62,10 @@ pub fn configured_relay_addrs() -> Vec<Multiaddr> {
 /// at node start, so a Settings change applies on the next start.
 #[must_use]
 pub fn effective_relay_addrs() -> Vec<Multiaddr> {
+    // LAN-only mode (US-051): no relay reservations, env or persisted.
+    if crate::settings::lan_only() {
+        return Vec::new();
+    }
     let mut addrs = configured_relay_addrs();
     for addr in crate::network_config::stored_relay_addrs() {
         if !addrs.contains(&addr) {

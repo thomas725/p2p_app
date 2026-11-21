@@ -160,6 +160,11 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         }
     }
     render_network_peers(&mut lines, state);
+    let lan_only = crate::settings::lan_only();
+    lines.push(format!(
+        "LAN only: {} (press 'l' to toggle; applies on next node start)",
+        if lan_only { "yes" } else { "no" }
+    ));
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
     lines.push(format!("Node: {node_status}"));

@@ -718,6 +718,7 @@ mod tests {
             "sendCallSignal",
             "addNetworkPeer",
             "removeNetworkPeer",
+            "setLanOnly",
             "blockPeer",
             "unblockPeer",
             "formatTimeHhmm",
@@ -916,6 +917,7 @@ mod tests {
             "getNetworkDetails",
             "getMyUserId",
             "listNetworkPeers",
+            "getLanOnly",
             "listBlockedPeers",
         ] {
             assert!(

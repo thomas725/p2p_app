@@ -661,6 +661,14 @@ class HttpNodeApi implements NodeApi {
   Future<bool> removeNetworkPeer({required int id}) async =>
       await _call('removeNetworkPeer', {'id': id}) as bool;
 
+  @override
+  Future<bool> getLanOnly() async => await _call('getLanOnly') as bool;
+
+  @override
+  Future<void> setLanOnly({required bool enabled}) async {
+    await _call('setLanOnly', {'enabled': enabled});
+  }
+
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
 
   @override

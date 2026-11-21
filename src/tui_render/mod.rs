@@ -169,7 +169,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Settings => {
-            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN only | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -209,7 +209,7 @@ DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | b block / unblock
-Settings: n own nickname | d dial | b/r add peer | x remove
+Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only
 
 Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
 }

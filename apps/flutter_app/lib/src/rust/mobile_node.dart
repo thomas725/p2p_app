@@ -8,7 +8,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
 
-// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `typing_event_json`
+// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `event_with_type`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `typing_event_json`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `IncomingMessageData`, `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`, `toggle_reaction`
@@ -106,8 +106,8 @@ class ChatMessage {
   final String? latency;
 
   /// Aggregated reactions on this message (US-008). Empty on a freshly sent
-  /// row; history loaders fill it in one batched query via
-  /// [`hydrate_reactions`].
+  /// row; history loaders fill it in one batched query via the internal
+  /// `hydrate_reactions` helper.
   final List<ReactionSummary> reactions;
 
   const ChatMessage({

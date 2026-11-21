@@ -6,9 +6,9 @@
 #![allow(clippy::all)]
 
 use crate::generated::schema::{
-    blocked_peers, contacts, device_bindings, dm_outbox, files, group_members, group_messages,
-    groups, identities, message_reactions, message_receipts, messages, network_peers,
-    peer_sessions, peers, users,
+    app_settings, blocked_peers, contacts, device_bindings, dm_outbox, files, group_members,
+    group_messages, groups, identities, message_reactions, message_receipts, messages,
+    network_peers, peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -288,6 +288,16 @@ pub struct NetworkPeerRow {
     pub multiaddr: String,
     /// Timestamp when this peer was added
     pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `app_settings` table (US-051)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = app_settings)]
+pub struct AppSettingRow {
+    /// Setting key
+    pub key: String,
+    /// Stored value (text; parsed by `src/settings.rs`)
+    pub value: String,
 }
 
 /// Queryable struct for the `message_reactions` table (US-008)
