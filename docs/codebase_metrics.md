@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,116 |
-| Total Rust Chars      | 1,250,508 |
+| Total Rust Lines      |    33,135 |
+| Total Rust Chars      | 1,251,713 |
 | Avg Lines/Rust File   |       517 |
-| Avg Chars/Rust File   |    19,539 |
+| Avg Chars/Rust File   |    19,558 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,501 lines, 1,811,049 characters
+**Grand Total:** 106 files, 50,520 lines, 1,812,254 characters
 
 ## Rust Source Files
 
@@ -59,7 +59,7 @@
 | src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                            |
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
-| src                     | peers.rs             |     5 |  5265 |   126 |        - |       - | TUI peers-table renderer               |
+| src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer               |
 | src                     | reactions.rs         |     5 | 14127 |   375 |        - |       - | Source file                            |
 | src                     | relay.rs             |     5 |  3965 |   104 |        - |       - | Source file                            |
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
@@ -68,7 +68,7 @@
 | src                     | swarm_handler.rs     |     7 | 90976 |  2391 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
-| src                     | tui_render_state.rs  |     4 | 24891 |   677 |        - |       - | TUI render state & tab content         |
+| src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
 | src                     | tui_tabs.rs          |     6 | 11711 |   342 |        - |       - | Tab management & navigation            |
 | src                     | types.rs             |     2 | 15094 |   394 |        - |       - | Event & command type defs              |
 | src/bin                 | p2p_chat.rs          |     7 |  5032 |   136 |        - |       - | CLI chat application                   |
@@ -84,14 +84,14 @@
 | src/bin/tui             | scroll_handlers.rs   |     5 | 16156 |   425 |        - |       - | Scroll & hover-aware navigation        |
 | src/bin/tui             | state.rs             |     8 | 57234 |  1370 |        - |       - | Shared application state               |
 | src/bin/tui/render_loop | layout.rs            |     5 |  2923 |    82 |        - |       - | UI layout component rendering          |
-| src/bin/tui/render_loop | mod.rs               |     6 | 13695 |   363 |        - |       - | Render loop orchestration (60 FPS)     |
+| src/bin/tui/render_loop | mod.rs               |     6 | 13810 |   365 |        - |       - | Render loop orchestration (60 FPS)     |
 | src/generated           | columns.rs           |     1 |  4107 |    97 |        - |       - | Auto-generated column definitions      |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
 | src/generated           | models_insertable.rs |     1 |  9589 |   267 |        - |       - | Insertable data models                 |
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,116 lines, 1,250,508 characters
+**Total:** 64 files, 33,135 lines, 1,251,713 characters
 
 ## Rust Test Files
 
@@ -118,7 +118,7 @@
 | tests  | tui_chat.rs                       |   739 | 23504 |     4 | TUI chat functionality tests          |
 | tests  | tui_helpers.rs                    |   437 | 13387 |     3 | TUI helpers tests                     |
 | tests  | tui_integration.rs                |   495 | 15705 |     4 | TUI integration tests                 |
-| tests  | tui_render_integration.rs         |  1518 | 52626 |     5 | TUI render integration tests          |
+| tests  | tui_render_integration.rs         |  1583 | 54947 |     5 | TUI render integration tests          |
 | tests  | tui_state.rs                      |   269 |  8313 |     2 | TUI state tests                       |
 | tests  | tui_tasks.rs                      |   245 |  7811 |     7 | TUI task tests                        |
 | tests  | types.rs                          |   662 | 20562 |     3 | types module tests                    |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,097 lines, 831,420 characters
+**Total:** 63 test files, 25,162 lines, 833,741 characters
 
 ## Dart Source Files
 

@@ -118,6 +118,71 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_peers_search_shows_visible_over_total_count() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        for i in 0..3 {
+            state.add_peer(
+                format!("12D3KooWpeer{i}"),
+                "2026-08-01 10:00:00",
+                "2026-08-28 15:26:41",
+            );
+        }
+        // Simulate an active search that leaves one of three rows visible.
+        state.contacts.truncate(1);
+        state.contact_search_total = Some(3);
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Contacts (1/3)"), "got: {text:?}");
+        assert!(!text.contains("No contacts match."), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peers_no_match_search_shows_hint_and_zero_over_total() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        state.contact_search_total = Some(3); // active query, no matches
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Contacts (0/3)"), "got: {text:?}");
+        assert!(text.contains("No contacts match."), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_peers_empty_roster_without_query_shows_empty_hint() {
+        let mut terminal = create_test_terminal();
+        let state = TuiRenderState::new(); // no contacts, no query
+
+        terminal
+            .draw(|f| render_peers_content(f, f.area(), &state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Contacts (0)"), "got: {text:?}");
+        assert!(text.contains("No contacts yet."), "got: {text:?}");
+    }
+
+    #[test]
     fn test_render_peers_expands_device_subrows() {
         let mut terminal = create_test_terminal();
         let mut state = TuiRenderState::new();

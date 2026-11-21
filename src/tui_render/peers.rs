@@ -71,13 +71,16 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
             .into_iter()
             .map(|w| Constraint::Length(u16::try_from(w).unwrap_or(u16::MAX)))
             .collect();
+    // Mirror Flutter's Contacts count: bare total with no filter, `visible/total`
+    // while a search is active. Kept as a single expression so the two frontends
+    // cannot drift on the format.
+    let title = state.contact_search_total.map_or_else(
+        || format!("Contacts ({})", state.contacts.len()),
+        |all| format!("Contacts ({}/{all})", state.contacts.len()),
+    );
     let table = Table::new(body, widths)
         .header(header)
-        .block(
-            Block::default()
-                .title(format!("Contacts ({})", state.contacts.len()))
-                .borders(Borders::ALL),
-        )
+        .block(Block::default().title(title).borders(Borders::ALL))
         .row_highlight_style(Style::default().bg(state.palette.selection_bg()));
 
     // Reserve the last row of the block's inner area for a sort hint.
@@ -93,10 +96,17 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
     *table_state.offset_mut() = 0;
     f.render_stateful_widget(table, table_area, &mut table_state);
 
-    let hint = Paragraph::new(
-        "e: expand/collapse ×N · 1-5 (n/m/b/l/f): sort · o: order · click header · PgUp/PgDn: page",
-    )
-    .style(Style::default().add_modifier(Modifier::DIM));
+    // Match Flutter's empty-state hint: a no-match search says so explicitly;
+    // an empty roster with no query says "No contacts yet.".
+    let hint_text = if total == 0 {
+        match state.contact_search_total {
+            Some(_) => "No contacts match.",
+            None => "No contacts yet.",
+        }
+    } else {
+        "e: expand/collapse ×N · 1-5 (n/m/b/l/f): sort · o: order · click header · PgUp/PgDn: page"
+    };
+    let hint = Paragraph::new(hint_text).style(Style::default().add_modifier(Modifier::DIM));
     f.render_widget(hint, hint_area);
 }
 

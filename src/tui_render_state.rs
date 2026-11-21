@@ -37,7 +37,13 @@ pub struct TuiRenderState {
     pub peers: Vec<PeerRecord>,
     /// Canonical Contacts-tab rows (from `contacts::build_contact_rows`).
     /// The Contacts tab renders these; `peers` stays only as the device input.
+    /// While a search is active this is the filtered view.
     pub contacts: Vec<crate::contacts::ContactRow>,
+    /// Unfiltered Contacts count while a search query is applied, `None` when
+    /// no filter is active. The renderer shows `Contacts (visible/total)` and a
+    /// `No contacts match.` hint when this is `Some` (mirroring Flutter); using
+    /// `Option` makes an active search without a known total unrepresentable.
+    pub contact_search_total: Option<usize>,
     /// Contact IDs expanded into their device sub-rows on the Contacts tab.
     pub expanded_contact_ids: std::collections::HashSet<String>,
     /// Peers muted on this install (US-054), shown on the Peer Info tab.
@@ -171,6 +177,7 @@ impl TuiRenderState {
             reactions: HashMap::new(),
             peers: Vec::new(),
             contacts: Vec::new(),
+            contact_search_total: None,
             expanded_contact_ids: std::collections::HashSet::new(),
             blocked_peers: std::collections::HashSet::new(),
             broadcast_sent_to_peer: HashMap::new(),
