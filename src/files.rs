@@ -268,17 +268,34 @@ pub fn store_outgoing_bytes(name: &str, data: &[u8]) -> color_eyre::Result<Messa
     })
 }
 
+/// Canonical on-disk path of a blob that still exists.
+///
+/// Every writer stores bytes at [`store_path_for`] and records that same path
+/// in the `files` row, so this is the single source of truth for blob bytes —
+/// including on the serving side, where a per-chunk DB lookup would be waste.
+fn canonical_blob_path(file_id: &str) -> Option<std::path::PathBuf> {
+    let path = store_path_for(file_id).ok()?;
+    path.exists().then_some(path)
+}
+
+/// Path of a stored attachment, but only when both halves of storage agree:
+/// the metadata row exists and the blob is still on disk.
+///
+/// A `files` row alone is not proof of availability — the blob can be deleted
+/// out of band while the row survives (GC only sweeps at startup). Treating
+/// such a row as available makes the receiver skip the re-download and hands
+/// the frontends a path they cannot open. Conversely, a blob without a row
+/// cannot be served to peers (no name/size to advertise) and is GC's orphan
+/// class, so it is not advertised either.
+fn stored_blob_path(file_id: &str) -> Option<std::path::PathBuf> {
+    find_file(file_id).ok().flatten()?;
+    canonical_blob_path(file_id)
+}
+
 /// Absolute path of a stored attachment, as the frontends open/save it.
 #[must_use]
 pub fn file_path(file_id: &str) -> Option<String> {
-    if let Ok(row) = find_file(file_id)
-        && let Some(row) = row
-    {
-        return Some(row.path);
-    }
-    store_path_for(file_id)
-        .ok()
-        .and_then(|p| p.exists().then_some(p.display().to_string()))
+    stored_blob_path(file_id).map(|p| p.display().to_string())
 }
 
 /// Number of fixed-size chunks a `size`-byte file splits into ({0} for empty).
@@ -288,12 +305,16 @@ pub const fn total_chunks(size: u64) -> u64 {
 }
 
 /// Serve the metadata handshake for a stored file.
+///
+/// Advertises a file only when its `files` row *and* its blob are present: a
+/// stale row whose blob vanished must trigger a fresh pull on the receiver
+/// instead of a meta/chunk pair the sender cannot fulfil.
 #[must_use]
 pub fn serve_file_meta(file_id: &str) -> Option<(String, u64, Option<String>)> {
-    find_file(file_id).ok().flatten().map(|row| {
-        let size = u64::try_from(row.size).unwrap_or(u64::MAX);
-        (row.name, size, row.mime)
-    })
+    let row = find_file(file_id).ok().flatten()?;
+    canonical_blob_path(file_id)?;
+    let size = u64::try_from(row.size).unwrap_or(u64::MAX);
+    Some((row.name, size, row.mime))
 }
 
 /// Serve one chunk of a stored file (the sender side of the pull-based lane).
@@ -301,6 +322,8 @@ pub fn serve_file_meta(file_id: &str) -> Option<(String, u64, Option<String>)> {
 pub fn serve_chunk(file_id: &str, chunk_index: u64) -> Option<Vec<u8>> {
     use std::io::{Read, Seek, SeekFrom};
     let offset = chunk_index.checked_mul(FILE_CHUNK_SIZE)?;
+    // The metadata handshake already checked the row and the blob; each chunk
+    // only needs the canonical on-disk path, so no DB query is paid per chunk.
     let path = store_path_for(file_id).ok()?;
     if !path.exists() {
         return None;

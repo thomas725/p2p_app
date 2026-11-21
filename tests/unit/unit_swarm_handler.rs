@@ -42,7 +42,15 @@ fn test_apply_chunk_without_data_aborts_transfer() {
             .contains_key(file_id)
     );
 
-    assert!(matches!(apply_chunk(file_id, None), ChunkOutcome::Failed));
+    let response = crate::FileTransferResponse {
+        kind: "chunk".to_string(),
+        file_id: file_id.to_string(),
+        ..Default::default()
+    };
+    assert!(matches!(
+        apply_chunk(file_id, response),
+        ChunkOutcome::Failed
+    ));
 
     // The in-flight entry (and its partial blob) must be gone.
     assert!(
@@ -51,6 +59,123 @@ fn test_apply_chunk_without_data_aborts_transfer() {
             .unwrap_or_else(PoisonError::into_inner)
             .contains_key(file_id)
     );
+}
+
+fn chunk_response(
+    file_id: &str,
+    chunk_index: Option<u64>,
+    data: Option<Vec<u8>>,
+) -> crate::FileTransferResponse {
+    crate::FileTransferResponse {
+        kind: "chunk".to_string(),
+        file_id: file_id.to_string(),
+        chunk_index,
+        data,
+        ..Default::default()
+    }
+}
+
+/// Clean up an in-flight transfer so these tests stay idempotent against the
+/// process-wide `RECEIVING_FILES` map.
+fn clear_transfer(file_id: &str) {
+    let removed = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .remove(file_id);
+    if let Some(receiving) = removed {
+        receiving.discard();
+    }
+}
+
+#[test]
+fn test_apply_chunk_empty_data_aborts_transfer() {
+    // `Some(vec![])` used to append zero bytes and return the same chunk index,
+    // making the handler re-request that chunk forever.
+    let file_id = "apply-chunk-empty-data-test";
+    assert!(begin_receive(file_id, "empty.txt", None, 10));
+    let part_path = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(file_id)
+        .map(|r| r.path.clone())
+        .expect("in-flight transfer");
+
+    let outcome = apply_chunk(file_id, chunk_response(file_id, Some(0), Some(vec![])));
+    assert!(matches!(outcome, ChunkOutcome::Failed));
+    assert!(
+        !receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(file_id)
+    );
+    assert!(!part_path.exists(), "empty chunk must discard the partial");
+    clear_transfer(file_id);
+}
+
+#[test]
+fn test_apply_chunk_wrong_index_aborts_transfer() {
+    // A chunk for any index other than the next expected one must be rejected
+    // instead of being appended out of order.
+    let file_id = "apply-chunk-wrong-index-test";
+    assert!(begin_receive(file_id, "indexed.bin", None, 10));
+    let outcome = apply_chunk(
+        file_id,
+        chunk_response(file_id, Some(4), Some(vec![1u8; 10])),
+    );
+    assert!(matches!(outcome, ChunkOutcome::Failed));
+    assert!(
+        !receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(file_id)
+    );
+    clear_transfer(file_id);
+}
+
+#[test]
+fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
+    // The strict checks must still admit a correct chunk so a transfer can
+    // finish; the assembled `.part` is only consumed by the finalizer.
+    let file_id = "apply-chunk-valid-test";
+    let data = vec![0xABu8; 10];
+    assert!(begin_receive(file_id, "valid.bin", None, 10));
+    let part_path = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(file_id)
+        .map(|r| r.path.clone())
+        .expect("in-flight transfer");
+
+    let outcome = apply_chunk(file_id, chunk_response(file_id, Some(0), Some(data)));
+    match outcome {
+        ChunkOutcome::Complete(receiving) => {
+            assert_eq!(receiving.received, 10);
+            receiving.discard();
+        }
+        other => panic!("expected a complete transfer, got {other:?}"),
+    }
+    assert!(!part_path.exists());
+    clear_transfer(file_id);
+}
+
+#[test]
+fn test_abandon_transfer_discards_partial_bytes() {
+    // Every abort path funnels through `abandon_transfer`: stale `.part` bytes
+    // would otherwise corrupt a later transfer of the same content address.
+    let file_id = "abandon-transfer-test";
+    assert!(begin_receive(file_id, "partial.bin", None, 10));
+    let mut transfers = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    let receiving = transfers.get_mut(file_id).expect("in-flight transfer");
+    receiving.write_chunk(&[1u8; 5]).expect("write partial");
+    let part_path = receiving.path.clone();
+    drop(transfers);
+    assert!(part_path.exists());
+
+    assert!(abandon_transfer(file_id).is_some());
+    assert!(!part_path.exists(), "abandon must remove the partial blob");
+    clear_transfer(file_id);
 }
 
 #[test]

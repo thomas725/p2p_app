@@ -163,6 +163,32 @@ fn store_outgoing_file_roundtrips_and_serves() {
 
 #[test]
 #[serial(db)]
+fn stale_file_row_is_not_reported_as_available() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("stale.txt");
+        let bytes = b"blob that disappears".to_vec();
+        std::fs::write(&path, &bytes).expect("write source");
+
+        let att = store_outgoing_file(path.to_str().expect("path")).expect("store");
+        assert!(file_path(&att.file_id).is_some());
+        assert!(serve_file_meta(&att.file_id).is_some());
+
+        // Simulate an out-of-band blob deletion (GC only runs at startup): the
+        // files row survives, but the bytes are gone. Availability must follow
+        // the blob, otherwise the receiver skips re-downloading and the
+        // frontend is handed a path it cannot open.
+        std::fs::remove_file(store_path_for(&att.file_id).expect("store path"))
+            .expect("remove blob");
+        assert!(find_file(&att.file_id).expect("lookup").is_some());
+        assert_eq!(file_path(&att.file_id), None);
+        assert_eq!(serve_file_meta(&att.file_id), None);
+        assert_eq!(serve_chunk(&att.file_id, 0), None);
+    });
+}
+
+#[test]
+#[serial(db)]
 fn store_outgoing_file_is_idempotent_by_content_address() {
     with_test_db(|| {
         let dir = TempDir::new().expect("tempdir");

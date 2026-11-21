@@ -1452,7 +1452,22 @@ pub fn gc_stale_attachments() -> color_eyre::Result<crate::files::GcStats> {
     Ok(crate::files::GcStats::default())
 }
 
+/// Remove an in-flight transfer and discard its `.part` blob. Every abort path
+/// (malformed chunk, peer error, oversized meta) must go through here so a
+/// later transfer of the same content address cannot append to stale bytes.
+fn abandon_transfer(file_id: &str) -> Option<crate::files::ReceivingFile> {
+    let partial = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .remove(file_id);
+    if let Some(partial) = partial.as_ref() {
+        partial.discard();
+    }
+    partial
+}
+
 /// What applying one chunk response should do next.
+#[derive(Debug)]
 enum ChunkOutcome {
     /// All bytes are in: hand the assembled transfer to the finalizer.
     Complete(crate::files::ReceivingFile),
@@ -1462,10 +1477,35 @@ enum ChunkOutcome {
     Failed,
 }
 
+/// Validate one chunk response against the transfer's advertised size and
+/// current progress. Rejecting empty/mis-indexed/oversized chunks is what stops
+/// a peer from keeping the receiver in the same request/response loop forever.
+fn chunk_is_expected(
+    receiving: &crate::files::ReceivingFile,
+    chunk_index: Option<u64>,
+    total_chunks: Option<u64>,
+    chunk_size: Option<u64>,
+    data_len: u64,
+) -> bool {
+    let expected = receiving.received.div_euclid(crate::files::FILE_CHUNK_SIZE);
+    let remaining = receiving.size.saturating_sub(receiving.received);
+    let advertised = crate::files::total_chunks(receiving.size);
+    let expected_len = if expected.saturating_add(1) < advertised {
+        crate::files::FILE_CHUNK_SIZE
+    } else {
+        remaining
+    };
+    data_len > 0
+        && data_len == expected_len
+        && chunk_index == Some(expected)
+        && total_chunks.is_none_or(|value| value == advertised)
+        && chunk_size.is_none_or(|value| value == crate::files::FILE_CHUNK_SIZE)
+}
+
 /// Append one chunk's bytes to the in-flight transfer and decide what happens
 /// next. Kept fully synchronous so no `MutexGuard` (not `Send`) ever crosses an
 /// `.await` in the handler task.
-fn apply_chunk(file_id: &str, data: Option<Vec<u8>>) -> ChunkOutcome {
+fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOutcome {
     let mut transfers = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
@@ -1473,23 +1513,29 @@ fn apply_chunk(file_id: &str, data: Option<Vec<u8>>) -> ChunkOutcome {
         p2plog_debug(format!("chunk for unknown transfer {file_id}"));
         return ChunkOutcome::Failed;
     };
-    let Some(data) = data else {
-        // A `chunk` response with no payload is malformed. Treating it as
-        // progress would re-request the same chunk forever (`received` never
-        // advances), so abandon the transfer and drop its partial blob.
+    let Some(data) = response.data else {
         p2plog_debug(format!("chunk for {file_id} carried no data"));
-        let partial = transfers.remove(file_id);
-        if let Some(partial) = partial {
-            partial.discard();
-        }
+        drop(transfers);
+        abandon_transfer(file_id);
         return ChunkOutcome::Failed;
     };
+    let data_len = u64::try_from(data.len()).unwrap_or(u64::MAX);
+    if !chunk_is_expected(
+        receiving,
+        response.chunk_index,
+        response.total_chunks,
+        response.chunk_size,
+        data_len,
+    ) {
+        p2plog_debug(format!("rejected unexpected chunk for {file_id}"));
+        drop(transfers);
+        abandon_transfer(file_id);
+        return ChunkOutcome::Failed;
+    }
     if let Err(e) = receiving.write_chunk(&data) {
         p2plog_debug(format!("failed to write chunk for {file_id}: {e}"));
-        let partial = transfers.remove(file_id);
-        if let Some(partial) = partial {
-            partial.discard();
-        }
+        drop(transfers);
+        abandon_transfer(file_id);
         return ChunkOutcome::Failed;
     }
     let complete = receiving.is_complete();
@@ -1676,10 +1722,9 @@ async fn handle_file_transfer_response(
             let file_id = response.file_id.clone();
             let size = response.size.unwrap_or_default();
             if size > crate::files::MAX_ATTACHMENT_SIZE {
-                receiving_files()
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .remove(&file_id);
+                // Drop the partial too: a later valid meta for the same content
+                // address must not append to bytes from the refused transfer.
+                abandon_transfer(&file_id);
                 p2plog_debug(format!(
                     "refusing oversized attachment {file_id} ({size} bytes)"
                 ));
@@ -1708,7 +1753,7 @@ async fn handle_file_transfer_response(
         }
         "chunk" => {
             let file_id = response.file_id.clone();
-            match apply_chunk(&file_id, response.data) {
+            match apply_chunk(&file_id, response) {
                 ChunkOutcome::Complete(partial) => {
                     finish_received_file(partial, peer_id_str, event_tx).await;
                 }
@@ -1723,13 +1768,7 @@ async fn handle_file_transfer_response(
         "error" => {
             let file_id = response.file_id.clone();
             let reason = response.reason.unwrap_or_default();
-            let partial = receiving_files()
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .remove(&file_id);
-            if let Some(partial) = partial {
-                partial.discard();
-            }
+            abandon_transfer(&file_id);
             p2plog_debug(format!("file transfer {file_id} failed: {reason}"));
         }
         other => p2plog_debug(format!("unknown file-transfer response kind: {other}")),
