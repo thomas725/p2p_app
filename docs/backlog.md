@@ -88,89 +88,14 @@ transport is still to come.
   lean. Do **not** gate the signaling behind it; that already happened once and
   was corrected.
 
-### Public bootstrap nodes (US-050) — **stage 1 shipped (Kademlia + Identify)**
+### Public bootstrap nodes (US-050) — **shipped**
 
-Discovery was mDNS only, so the network was LAN-scoped by construction. Stage 1
-adds internet-wide discovery via a Kademlia DHT:
-
-- New `kad` feature (default + mobile) enabling `libp2p/kad` + `libp2p/identify`.
-- `AppBehaviour` gains `kad` (MemoryStore) and `identify` behaviours.
-- `handle_swarm_event` feeds Identify-received listen addresses into the DHT
-  and persists them (so they can be re-dialed later).
-- On connection, `kad.bootstrap()` is invoked.
-- On startup, peers listed in the `P2P_BOOTSTRAP` env var (comma-separated
-  multiaddrs, ideally with `/p2p/<peerid>`) are dialed.
-
-**Stages 2-4 (shipped 2026-11-02):** NAT traversal is now wired:
-- `relay` feature: circuit-relay v2 server (`relay::Behaviour`) + client
-  (`relay::client::Behaviour`), with the transport wrapped via
-  `with_relay_client` in `build_swarm`.
-- `nat` feature: AutoNAT (`autonat::Behaviour`) and DCUtR (`dcutr::Behaviour`).
-- All four behaviours are in `AppBehaviour` (cfg-gated) and have catch-all
-  arms in `handle_swarm_event`.
-
-**Stage 5 (shipped 2026-11-03): view network details.** Both frontends now
-show where the node stands on the network:
-- `src/net_diag.rs` records live listen/external addresses, AutoNAT status and
-  probe outcomes, DCUtR hole punches, relay reservations/circuits, Kademlia
-  mode/routing size/bootstrap results, and DHT announcement state.
-- OS interfaces (name, MAC, IPv4/IPv6) are enumerated via `network-interface`
-  and cached 5 s.
-- The node publishes a rate-limited (60 s) `/p2p-chat/peer/<peer_id>` DHT
-  record once it has routing peers + reachable addresses; `PutRecord`'s result
-  is the announced/failed status.
-- TUI: Settings-tab "Network details" block; Flutter: Settings "Network
-  details" card, refreshed on open/events and every 5 s while visible. Web
-  mirrors it as the `getNetworkDetails` JSON method.
-
-Progress (2026-11-03): joined the public IPFS Kademlia DHT for discovery without
-hosting our own bootstrap nodes:
-
-- Default bootstrap list now falls back to the public IPFS bootstrap nodes when
-  `P2P_BOOTSTRAP` is unset (set it to empty to disable).
-- Kademlia is forced into `Mode::Client` so we route through the public DHT
-  without storing/serving its record set.
-- Identify protocol renamed to `/ipfs/id/1.0.0` for interoperability with
-  public bootstrap nodes.
-- Relay server no longer accepts reservations unless `P2P_RELAY_SERVER=1`, so
-  we don't become an open relay on the public internet.
-
-Remaining follow-ups (detailed 2026-11-03):
-
-1. **Config surface for bootstrap/relay peers — shipped 2026-11-12**
-   (`b11d03a` + `61f9f2a`). Relay peers are configurable with the `P2P_RELAY`
-   env var (comma-separated multiaddrs, each needing `/p2p/<peer-id>`);
-   bootstrap peers stay on `P2P_BOOTSTRAP`. On top of that, both lists are now
-   persisted in the `network_peers` table and editable from Settings in the
-   TUI (`b` / `r` / `x`), Flutter (a "Network peers" card) and the web
-   frontend (the same JSON methods). Entries are validated as `Multiaddr`, relay
-   entries must carry `/p2p/<peerid>`, and both lists are read at node start
-   only. Bootstrap precedence: env var (set ⇒ wins, even empty) → persisted
-   rows → public IPFS nodes with `P2P_PUBLIC_DHT=1`; relays are the union of
-   env and persisted rows. The manual one-off dial is US-053 (Settings `d` /
-   Flutter "Connect to address" / `dialPeer`). Record:
-   [`archive/2026-11-12_network_peer_config_surface.md`](archive/2026-11-12_network_peer_config_surface.md).
-2. **Relay reservation triggering — shipped 2026-11-08.** `src/relay.rs` parses
-   `P2P_RELAY` and builds the `/p2p-circuit` listen address; `swarm_handler`
-   listens on every configured relay at node start (which dials the relay and
-   requests the reservation) and again when a configured relay connects.
-   `ListenerClosed`/`ListenerError` drop the reservation and free the relay for
-   a later retry, so the "Reserved via …" / "Reservation via … ended" status
-   lines are accurate. Renewal is the relay client's own (the listener stays
-   open), so no extra renewal code is needed.
-3. **AutoNAT-driven addressing — shipped 2026-11-08.**
-   `NetworkDetails::announce_addresses(self_peer_id)` replaces the old
-   `reachable_addresses()` call in `maybe_announce`: when AutoNAT says
-   `Private` and a reservation is held it advertises only the completed
-   `/p2p/<relay>/p2p-circuit/p2p/<self>` circuit addresses (raw circuit
-   listeners without the self id are dropped); otherwise the normal external
-   list comes first with completed circuit addresses appended. Identify
-   advertises the circuit listener automatically, so DHT peers and Identify
-   peers see the same dialable address.
-
-Items 2 and 3 are coupled (a reservation is required before there is anything
-to advertise). All three follow-ups have shipped; nothing here is blocked on an
-external decision.
+All stages (Kademlia + Identify, NAT traversal, network details view, public
+IPFS DHT) and all three follow-ups (config surface, relay reservation
+triggering, AutoNAT-driven addressing) have shipped. The full record is in
+[`archive/2026-11-12_public_bootstrap_discovery.md`](archive/2026-11-12_public_bootstrap_discovery.md);
+the manual one-off dial (US-053) and the network-peer config surface have their
+own archive entries.
 
 ---
 
@@ -231,6 +156,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Public bootstrap nodes / internet discovery (US-050) | 2026-11-12 | [`archive/2026-11-12_public_bootstrap_discovery.md`](archive/2026-11-12_public_bootstrap_discovery.md) |
 | Sibling-device claim authority (P0 identity) | 2026-11-02 | [`archive/2026-11-02_sibling_device_claims.md`](archive/2026-11-02_sibling_device_claims.md) |
 | Message reactions (US-008) | 2026-11-21 | [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md) |
 | DM typing indicators (US-009) | 2026-11-21 | [`archive/2026-11-21_typing_indicators.md`](archive/2026-11-21_typing_indicators.md) |
