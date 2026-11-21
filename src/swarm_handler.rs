@@ -1416,9 +1416,18 @@ fn apply_chunk(file_id: &str, data: Option<Vec<u8>>) -> ChunkOutcome {
         p2plog_debug(format!("chunk for unknown transfer {file_id}"));
         return ChunkOutcome::Failed;
     };
-    if let Some(data) = data
-        && let Err(e) = receiving.write_chunk(&data)
-    {
+    let Some(data) = data else {
+        // A `chunk` response with no payload is malformed. Treating it as
+        // progress would re-request the same chunk forever (`received` never
+        // advances), so abandon the transfer and drop its partial blob.
+        p2plog_debug(format!("chunk for {file_id} carried no data"));
+        let partial = transfers.remove(file_id);
+        if let Some(partial) = partial {
+            partial.discard();
+        }
+        return ChunkOutcome::Failed;
+    };
+    if let Err(e) = receiving.write_chunk(&data) {
         p2plog_debug(format!("failed to write chunk for {file_id}: {e}"));
         let partial = transfers.remove(file_id);
         if let Some(partial) = partial {
@@ -1435,6 +1444,33 @@ fn apply_chunk(file_id: &str, data: Option<Vec<u8>>) -> ChunkOutcome {
     }
     drop(transfers);
     ChunkOutcome::Continue(received.div_euclid(crate::files::FILE_CHUNK_SIZE))
+}
+
+/// Atomically register a fresh in-flight receive for `file_id`.
+///
+/// Returns `true` when a new transfer was registered, `false` when one is
+/// already in flight (a duplicate `meta` response) or the partial file could
+/// not be opened. A duplicate must never replace the live transfer:
+/// `ReceivingFile::new` resets `received` to 0 but leaves the `.part` bytes on
+/// disk, so later chunks would append after stale data and the final hash
+/// check would fail.
+fn begin_receive(file_id: &str, name: &str, mime: Option<String>, size: u64) -> bool {
+    let mut transfers = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if transfers.contains_key(file_id) {
+        p2plog_debug(format!("ignoring duplicate meta for transfer {file_id}"));
+        return false;
+    }
+    let receiving = match crate::files::ReceivingFile::new(file_id, name, mime, size) {
+        Ok(receiving) => receiving,
+        Err(e) => {
+            p2plog_debug(format!("failed to open receiving file for {file_id}: {e}"));
+            return false;
+        }
+    };
+    transfers.insert(file_id.to_string(), receiving);
+    true
 }
 
 /// Receiver side of the attachment pull: if we neither hold the blob in the
@@ -1592,34 +1628,25 @@ async fn handle_file_transfer_response(
                 ));
                 return;
             }
-            let receiving = crate::files::ReceivingFile::new(
+            if !begin_receive(
                 &file_id,
                 response.name.as_deref().unwrap_or("attachment"),
                 response.mime.clone(),
                 size,
-            );
-            match receiving {
-                Ok(receiving) => {
-                    receiving_files()
-                        .lock()
-                        .unwrap_or_else(PoisonError::into_inner)
-                        .insert(file_id.clone(), receiving);
-                    // A zero-length file completes immediately.
-                    if size == 0 {
-                        let receiving = receiving_files()
-                            .lock()
-                            .unwrap_or_else(PoisonError::into_inner)
-                            .remove(&file_id);
-                        if let Some(receiving) = receiving {
-                            finish_received_file(receiving, peer_id_str, event_tx).await;
-                        }
-                    } else {
-                        request_file_chunk(swarm, &peer, &file_id, 0);
-                    }
+            ) {
+                return;
+            }
+            // A zero-length file completes immediately.
+            if size == 0 {
+                let receiving = receiving_files()
+                    .lock()
+                    .unwrap_or_else(PoisonError::into_inner)
+                    .remove(&file_id);
+                if let Some(receiving) = receiving {
+                    finish_received_file(receiving, peer_id_str, event_tx).await;
                 }
-                Err(e) => {
-                    p2plog_debug(format!("failed to open receiving file for {file_id}: {e}"));
-                }
+            } else {
+                request_file_chunk(swarm, &peer, &file_id, 0);
             }
         }
         "chunk" => {

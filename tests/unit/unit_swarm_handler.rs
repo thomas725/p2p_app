@@ -19,6 +19,61 @@ fn test_group_topics_covers_main_and_backfill() {
 }
 
 #[test]
+fn test_apply_chunk_without_data_aborts_transfer() {
+    // A malformed `chunk` response with `data: None` must abandon the transfer
+    // instead of being treated as zero progress (which made the receiver ask
+    // for the same chunk forever).
+    let file_id = "apply-chunk-no-data-test";
+    assert!(begin_receive(file_id, "no-data.bin", None, 10));
+    assert!(
+        receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(file_id)
+    );
+
+    assert!(matches!(apply_chunk(file_id, None), ChunkOutcome::Failed));
+
+    // The in-flight entry (and its partial blob) must be gone.
+    assert!(
+        !receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(file_id)
+    );
+}
+
+#[test]
+fn test_begin_receive_refuses_duplicate_meta() {
+    // A repeated `meta` response must not replace a live transfer: the fresh
+    // `ReceivingFile` would reset `received` to 0 while the `.part` bytes stayed
+    // on disk, corrupting the assembled file.
+    let file_id = "begin-receive-duplicate-test";
+    assert!(begin_receive(file_id, "first.txt", None, 10));
+    assert!(!begin_receive(file_id, "second.txt", None, 10));
+
+    {
+        let transfers = receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        assert!(
+            transfers
+                .get(file_id)
+                .is_some_and(|receiving| receiving.name == "first.txt"),
+            "the first meta response must still own the in-flight transfer"
+        );
+        drop(transfers);
+    }
+
+    // Clean up the global in-flight map so the test is idempotent.
+    let removed = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .remove(file_id);
+    assert!(removed.is_some());
+}
+
+#[test]
 fn test_build_broadcast_message() {
     let msg = build_broadcast_message(
         "Hello world".to_string(),
