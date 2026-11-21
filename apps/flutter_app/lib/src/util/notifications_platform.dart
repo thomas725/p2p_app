@@ -3,8 +3,9 @@
 // The web build selects `notifications_platform_web.dart` via the conditional
 // import in `notifications.dart`; on native targets these no-ops are the whole
 // implementation. Sound and system notifications on Android go through the
-// MethodChannel in `notifications.dart`, so nothing is lost here — desktop
-// Flutter is not a shipping target (the web frontend covers it).
+// MethodChannel in `notifications.dart`. Native desktop builds currently have
+// no platform adapter — the browser frontend is the primary desktop path and
+// does deliver both channels through the web implementation.
 
 /// No browser audio on native targets.
 Future<void> platformBeep() async {}

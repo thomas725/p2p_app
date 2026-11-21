@@ -99,8 +99,8 @@ Future<void> _deliverSound() async {
   } else if (isAndroid) {
     await _channel.invokeMethod<void>('playSound');
   }
-  // Desktop Flutter is not a shipping target (the web frontend covers it), so
-  // there is no native audio plugin to call here.
+  // Native desktop builds have no platform audio adapter; the browser frontend
+  // is the primary desktop path and delivers sound via notifications_platform_web.
 }
 
 Future<void> _deliverSystem({

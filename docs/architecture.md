@@ -5,10 +5,12 @@ How the system fits together. For *what to build next* see
 
 ## What it is
 
-A LAN-first, serverless P2P chat application. Every participant is both a
-client and a node: there is no central server, and the only way peers find
-each other is mDNS on the local network. Persistence is a local SQLite file
-(Diesel). The app is a thin shell over a Rust core that all frontends share.
+A serverless P2P chat application. Every participant is both a client and a
+node: there is no central server. Peers find each other over mDNS on the LAN by
+default; Kademlia DHT bootstrap and relay-based NAT traversal are opt-in (see
+[network entry points](#network-entry-points-bootstrap--relays)). Persistence is
+a local SQLite file (Diesel). The app is a thin shell over a Rust core that all
+frontends share.
 
 ## One core, four frontends
 
@@ -66,6 +68,13 @@ src/
 ├── files.rs            content-addressed attachment store
 ├── connected.rs        ConnectedTracker
 ├── logging.rs          log helpers
+├── network_config.rs   persisted bootstrap / relay multiaddrs (Settings, node start)
+├── e2e.rs              DM envelope seal/open (X25519 → ChaCha20-Poly1305)
+├── reactions.rs        per-message reaction persistence + summaries
+├── reply.rs            canonical bounded reply preview + quoted header
+├── notifications.rs    Rust-owned notification payload, policy, terminal sequence
+├── settings.rs         typed app_settings readers/writers
+├── theme.rs            shared theme tokens
 │
 ├── api/mod.rs          FRB surface (mobile) — the canonical binding layer
 ├── mobile_api.rs       FRB-exposed helpers (sorting, formatting, stats)
@@ -140,6 +149,22 @@ preview and the `↳ {sender}: {preview}` header used by all three frontends; th
 snapshot survives local tombstones and is persisted in `reply_to_json` so
 reloaded rows still render their quote. Incoming wire ids are stored in
 `msg_id` so those rows can be replied to later.
+
+### Notifications (US-027 / US-028)
+
+`src/notifications.rs` owns the whole policy: it decides which incoming events
+notify, builds the display text, and attaches a `Notification` payload
+(`title`, bounded single-line `body`, a stable `conversationKey`, and `sound` /
+`desktop` flags) to every broadcast, DM and group swarm event. Frontends are
+thin delivery adapters: the TUI emits a bell / OSC 777 sequence after drawing,
+Flutter and web ask `lib/src/util/notifications.dart` to deliver, and Android
+posts through a MethodChannel. The one frontend rule — suppress when the app is
+foregrounded **and** that conversation is on screen — lives with the adapter;
+permission is requested only when the desktop channel is enabled. The two
+channels persist in `app_settings` (`getNotificationSettings` /
+`setNotificationSettings`, mirrored in web JSON). See
+[`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md)
+for the full slice.
 
 ### Network diagnostics
 
@@ -265,7 +290,7 @@ single-device contact.
 
 ## Persistence
 
-SQLite via Diesel. Seventeen tables:
+SQLite via Diesel. Nineteen tables:
 
 | Table | Holds |
 |---|---|
@@ -276,14 +301,16 @@ SQLite via Diesel. Seventeen tables:
 | `messages` | broadcast and direct message bodies; `deleted_at` is a local-only tombstone |
 | `dm_outbox` | sealed DM envelopes awaiting an offline recipient's ack (store-and-forward) |
 | `message_receipts` | delivery acknowledgements |
+| `message_reactions` | per-message reactions keyed on `(msg_id, peer_id, emoji)` |
 | `broadcast_recipients` | per-peer record of which broadcasts a peer received |
 | `groups` / `group_members` / `group_messages` | the group layer (`group_messages.deleted_at` is a local-only tombstone) |
 | `users` / `device_bindings` / `contacts` | the identity + contact layer |
 | `files` | attachment descriptors (the bytes live on disk, never in SQLite) |
 | `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
 | `blocked_peers` | muted peer ids; the swarm boundary drops their traffic |
+| `app_settings` | key/value store behind notification channels and LAN-only mode |
 
-Twenty-two migrations in `migrations/`. `db::ensure_columns()` also runs at
+Twenty-five migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app

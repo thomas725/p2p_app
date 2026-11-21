@@ -18,26 +18,39 @@ the smallest footprint (reads stdin, prints to stderr).
 ## Features
 
 * **Broadcast chat** — publish messages to all peers over gossipsub.
-* **Direct messages** — private 1:1 messaging over the request-response protocol.
+* **Direct messages** — private 1:1 messaging over the request-response protocol,
+  sealed end-to-end (`src/e2e.rs`) with a store-and-forward outbox for offline
+  recipients.
 * **Group chats** — gossipsub topics with membership, history, and a
   store-and-forward backfill lane.
+* **Replies, reactions and typing** — quote a specific message, react with an
+  emoji, and see live "is typing" in DMs. Rust owns the wire types and the
+  canonical display strings.
+* **Local edits and deletes** — correct your own sent messages or remove them
+  locally with a tombstone (never a retraction).
 * **File attachments** — content-addressed (SHA-256) transfer over a separate
   lane, so gossipsub's 256 KiB message cap is never hit.
+* **Notifications** — Rust-built notification payloads with a sound channel and
+  an optional system/bell channel; frontends only deliver them. See
+  [`docs/architecture.md`](docs/architecture.md#notifications-us-027--us-028).
 * **Call signaling** — ring / accept / decline / hang up. Media transport is
   not implemented yet.
 * **Identity and device binding** — an account key per user, signed claims
   binding devices, and a Contacts roster that collapses one user's devices
   into a single row.
-* **Peer discovery** — mDNS on the LAN plus Kademlia DHT bootstrap for
-  internet-wide discovery.
+* **Peer discovery** — mDNS on the LAN by default, plus opt-in Kademlia DHT
+  bootstrap and public IPFS nodes for internet-wide discovery.
 * **NAT traversal** — circuit-relay v2 reservations, AutoNAT reachability
   detection, and DCUtR hole punching.
 * **Network diagnostics** — live OS interfaces, listen/external addresses,
-  reachability, relay reservations, and DHT state on Settings in both
-  frontends.
-* **Transports** — TCP, with optional QUIC.
+  reachability, relay reservations, and DHT state on Settings in all frontends.
+* **Transports** — TCP, with optional QUIC. A LAN-only toggle disables all
+  internet discovery.
 * **Nicknames** — per-peer and self nicknames, with auto-generated petnames for
   silent peers. Validation lives in Rust (`crate::nickname::validate_nickname`).
+* **Blocklist / mute** — drop a peer's traffic at the swarm boundary, with a
+  presentational marker in the Contacts roster.
+* **Themes** — a shared theme in Rust with light/dark selection in the app.
 * **Network-size tuning** — gossipsub mesh parameters adapt to peer count
   (Small / Medium / Large, see `crate::network::NetworkSize`).
 * **Debug logging** — structured, scrollable logs with ANSI stripping.
