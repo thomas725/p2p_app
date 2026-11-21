@@ -70,6 +70,32 @@ void main() {
     expect(find.byKey(const Key('call-peer-info')), findsNothing);
   });
 
+  testWidgets('link-device button renders and invokes onLinkDevice', (
+    tester,
+  ) async {
+    MobilePeerRecord? linked;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PeerInfoScreen(
+          peer: peer(),
+          serviceRunning: true,
+          onLinkDevice: (p) => linked = p,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('link-device-peer-info')));
+    expect(linked?.peerId, 'peer-abc');
+  });
+
+  testWidgets('no link-device button renders without onLinkDevice', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(home: PeerInfoScreen(peer: peer(), serviceRunning: true)),
+    );
+    expect(find.byKey(const Key('link-device-peer-info')), findsNothing);
+  });
+
   testWidgets('no edit button renders without onEditLocalNickname', (
     tester,
   ) async {

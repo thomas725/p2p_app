@@ -25,6 +25,7 @@ class PeerInfoScreen extends StatefulWidget {
     this.loadBlocked,
     this.toggleBlock,
     this.onOpenPeerInfo,
+    this.onLinkDevice,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
@@ -66,6 +67,11 @@ class PeerInfoScreen extends StatefulWidget {
   /// Opens a sender's Peer Info from a message tap in the DM chat this page
   /// pushes. Optional so standalone widget tests need no host callback.
   final void Function(String)? onOpenPeerInfo;
+
+  /// Sends our device-binding intro to this device so its account holder can
+  /// bind us into their account. Mirrors the TUI Peer Info `d` action and the
+  /// Contacts per-device link button. Optional: when null, no action renders.
+  final void Function(MobilePeerRecord peer)? onLinkDevice;
 
   @override
   State<PeerInfoScreen> createState() => _PeerInfoScreenState();
@@ -237,6 +243,13 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
               icon: const Icon(Icons.phone),
               tooltip: 'Call',
               onPressed: () => widget.onCall!(peer),
+            ),
+          if (widget.onLinkDevice != null)
+            IconButton(
+              key: const Key('link-device-peer-info'),
+              icon: const Icon(Icons.link),
+              tooltip: 'Link device',
+              onPressed: () => widget.onLinkDevice!(peer),
             ),
         ],
       ),

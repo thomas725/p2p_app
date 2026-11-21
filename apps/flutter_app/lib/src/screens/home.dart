@@ -980,6 +980,7 @@ class _HomeScreenState extends State<HomeScreen> {
           loadBlocked: peerIsBlocked,
           toggleBlock: _togglePeerBlock,
           onOpenPeerInfo: _openPeerInfoForPeerId,
+          onLinkDevice: (p) => _sendIntroToPeer(p.peerId, p.displayName),
         ),
       ),
     );
@@ -1045,12 +1046,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// us into their account (the primary "add my second device" direction: run
   /// this on the new device, targeting the account holder already in our
   /// roster). Confirms via a snackbar; errors surface inline.
-  Future<void> _sendIntro(MobileContactDevice device) async {
+  Future<void> _sendIntro(MobileContactDevice device) =>
+      _sendIntroToPeer(device.peerId, device.displayName);
+
+  /// Shared by the Contacts per-device button and the Peer Info action (both
+  /// frontends expose the same "send my identity" affordance on either surface).
+  Future<void> _sendIntroToPeer(String peerId, String displayName) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     try {
-      await nodeApi.sendDeviceBindingIntro(peerId: device.peerId);
+      await nodeApi.sendDeviceBindingIntro(peerId: peerId);
       messenger?.showSnackBar(
-        SnackBar(content: Text('Device intro sent to ${device.displayName}')),
+        SnackBar(content: Text('Device intro sent to $displayName')),
       );
     } catch (e) {
       messenger?.showSnackBar(
@@ -1110,6 +1116,7 @@ class _HomeScreenState extends State<HomeScreen> {
           loadBlocked: peerIsBlocked,
           toggleBlock: _togglePeerBlock,
           onOpenPeerInfo: _openPeerInfoForPeerId,
+          onLinkDevice: (p) => _sendIntroToPeer(p.peerId, p.displayName),
         ),
       ),
     );
