@@ -12,14 +12,18 @@ import 'package:p2p_app_flutter/src/rust/reply.dart';
 /// `reply::PREVIEW_CHARS`).
 const int replyPreviewChars = 80;
 
-/// Sender label of [message], matching the name `MessageBubble` prints above
-/// the body: `Me` for our own rows, otherwise the received nickname or the
-/// short peer id.
-String replySenderLabel(ChatMessage message) {
-  if (message.peerId == null) return 'Me';
+/// Canonical sender label for a message row: `Me` for our own rows, otherwise
+/// the Rust-resolved nickname or the short peer id. Shared by the bubble header,
+/// the copy-to-clipboard transcript, and reply drafts so all three agree.
+///
+/// [isOwn] defaults to the wire rule (`peerId == null`) but can be supplied by
+/// widgets that track ownership separately (e.g. `MessageBubble`).
+String messageSenderLabel(ChatMessage message, {bool? isOwn}) {
+  if (isOwn ?? message.peerId == null) return 'Me';
   final nickname = message.senderNickname;
   if (nickname != null) return nickname;
-  final peerId = message.peerId!;
+  final peerId = message.peerId;
+  if (peerId == null) return 'Unknown';
   return peerId.length >= 12 ? peerId.substring(0, 12) : peerId;
 }
 
@@ -59,7 +63,7 @@ ReplyRef? replyDraftFor(ChatMessage message) {
   if (msgId == null || msgId.isEmpty) return null;
   return ReplyRef(
     msgId: msgId,
-    sender: replySenderLabel(message),
+    sender: messageSenderLabel(message),
     preview: replyPreviewLine(replyPreviewBody(message)),
   );
 }

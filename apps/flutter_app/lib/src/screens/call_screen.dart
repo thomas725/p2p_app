@@ -71,7 +71,7 @@ class CallScreen extends StatefulWidget {
   State<CallScreen> createState() => CallScreenState();
 }
 
-class CallScreenState extends State<CallScreen> with WidgetsBindingObserver {
+class CallScreenState extends State<CallScreen> {
   // Sink installed while this screen is open; restored on dispose so the view
   // underneath keeps receiving events (e.g. an open DM chat).
   void Function(SwarmEventJson)? _previousSink;

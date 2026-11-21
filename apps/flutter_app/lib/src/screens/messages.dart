@@ -310,13 +310,7 @@ Future<int> _copyMessages(
   final buf = StringBuffer();
   for (var i = 0; i < sorted.length; i++) {
     final msg = messages[sorted[i]];
-    final isOwn = msg.peerId == null;
-    final peerName = isOwn
-        ? 'Me'
-        : (msg.senderNickname ??
-              (msg.peerId!.length >= 12
-                  ? msg.peerId!.substring(0, 12)
-                  : msg.peerId!));
+    final peerName = messageSenderLabel(msg);
     final time = msg.sentAt ?? await nodeApi.formatTimeHhmm(dt: msg.createdAt);
     buf.writeln(peerName);
     buf.writeln(msg.content);
@@ -899,14 +893,7 @@ class MessageBubble extends StatelessWidget {
     final bg = isOwn ? cs.primaryContainer : cs.surfaceContainerHighest;
     final fg = isOwn ? cs.onPrimaryContainer : cs.onSurface;
 
-    final senderName = isOwn
-        ? 'Me'
-        : (message.senderNickname ??
-              (message.peerId != null
-                  ? (message.peerId!.length >= 12
-                        ? message.peerId!.substring(0, 12)
-                        : message.peerId!)
-                  : 'Unknown'));
+    final senderName = messageSenderLabel(message, isOwn: isOwn);
     // Tapping the sender name opens the peer info page (unless selecting).
     final onOpenPeerInfo =
         (!isOwn && !selectionMode && this.onOpenPeerInfo != null)
