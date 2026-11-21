@@ -3,6 +3,14 @@
 import '../rust/mobile_node.dart';
 import '../rust/reactions.dart';
 
+/// Keep the pre-refactor property names for channel and direction: FRB now
+/// generates a nested [ChatMessageOrigin], but call sites still read the two
+/// flags directly (and the web JSON remains flat).
+extension ChatMessageOriginX on ChatMessage {
+  bool get isBroadcast => origin.isBroadcast;
+  bool get sent => origin.sent;
+}
+
 /// FRB 2.13 emits data classes without `copyWith`, but live events must flip a
 /// flag or swap a field without reloading history — so we rebuild the message.
 /// Kept in a hand-written file (the generated one is overwritten by every
@@ -23,9 +31,8 @@ extension ChatMessageExt on ChatMessage {
     id: id,
     content: content ?? this.content,
     peerId: peerId,
-    isBroadcast: isBroadcast,
+    origin: origin,
     targetPeer: targetPeer,
-    sent: sent,
     msgId: msgId,
     replyTo: replyTo,
     sentAt: sentAt,

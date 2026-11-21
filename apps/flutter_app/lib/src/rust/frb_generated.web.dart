@@ -59,10 +59,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef dco_decode_box_autoadd_reply_ref(dynamic raw);
 
   @protected
+  SaveIncomingMessageParams dco_decode_box_autoadd_save_incoming_message_params(
+    dynamic raw,
+  );
+
+  @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw);
 
   @protected
   ChatMessage dco_decode_chat_message(dynamic raw);
+
+  @protected
+  ChatMessageOrigin dco_decode_chat_message_origin(dynamic raw);
 
   @protected
   ContactSortInput dco_decode_contact_sort_input(dynamic raw);
@@ -214,6 +222,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef dco_decode_reply_ref(dynamic raw);
 
   @protected
+  SaveIncomingMessageParams dco_decode_save_incoming_message_params(
+    dynamic raw,
+  );
+
+  @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
 
   @protected
@@ -266,12 +279,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef sse_decode_box_autoadd_reply_ref(SseDeserializer deserializer);
 
   @protected
+  SaveIncomingMessageParams sse_decode_box_autoadd_save_incoming_message_params(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   );
 
   @protected
   ChatMessage sse_decode_chat_message(SseDeserializer deserializer);
+
+  @protected
+  ChatMessageOrigin sse_decode_chat_message_origin(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ContactSortInput sse_decode_contact_sort_input(SseDeserializer deserializer);
@@ -461,6 +484,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef sse_decode_reply_ref(SseDeserializer deserializer);
 
   @protected
+  SaveIncomingMessageParams sse_decode_save_incoming_message_params(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
 
   @protected
@@ -518,6 +546,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_save_incoming_message_params(
+    SaveIncomingMessageParams self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_swarm_event_json(
     SwarmEventJson self,
     SseSerializer serializer,
@@ -525,6 +559,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_chat_message(ChatMessage self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chat_message_origin(
+    ChatMessageOrigin self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_contact_sort_input(
@@ -777,6 +817,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_reply_ref(ReplyRef self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_save_incoming_message_params(
+    SaveIncomingMessageParams self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_swarm_event_json(

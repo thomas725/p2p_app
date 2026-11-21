@@ -14,6 +14,8 @@ import 'reactions.dart';
 import 'reply.dart';
 import 'theme.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+
 /// Initialize the mobile database at the given path and return peer info.
 ///
 /// # Errors
@@ -266,24 +268,8 @@ Future<ChatMessage> saveOutgoingDm({
 /// # Errors
 /// Returns an error if the message cannot be saved.
 Future<ChatMessage> saveIncomingMessage({
-  required String content,
-  required String peerId,
-  required bool isDirect,
-  String? nickname,
-  String? latency,
-  String? msgId,
-  ReplyRef? replyTo,
-  required bool encrypted,
-}) => RustLib.instance.api.crateApiSaveIncomingMessage(
-  content: content,
-  peerId: peerId,
-  isDirect: isDirect,
-  nickname: nickname,
-  latency: latency,
-  msgId: msgId,
-  replyTo: replyTo,
-  encrypted: encrypted,
-);
+  required SaveIncomingMessageParams params,
+}) => RustLib.instance.api.crateApiSaveIncomingMessage(params: params);
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).
 ///
@@ -591,3 +577,71 @@ Future<void> removeContact({required String contactUserId}) =>
 /// Returns an error if the roster cannot be loaded.
 Future<List<MobileContactRow>> getContactsWithStats() =>
     RustLib.instance.api.crateApiGetContactsWithStats();
+
+/// Fields for persisting one incoming broadcast or DM.
+///
+/// FRB 2.13 emits one Dart named argument per Rust parameter, so grouping the
+/// values into a struct keeps both this signature and the generated Dart call
+/// small. The web transport keeps its flat JSON shape; only the FRB adapter
+/// builds this struct.
+class SaveIncomingMessageParams {
+  /// Message body (may be empty for an attachment-only message).
+  final String content;
+
+  /// Sender peer id.
+  final String peerId;
+
+  /// `true` for a DM, `false` for a broadcast.
+  final bool isDirect;
+
+  /// Announced sender nickname, if any.
+  final String? nickname;
+
+  /// Live round-trip decoration (never persisted).
+  final String? latency;
+
+  /// Stable wire message id (reply/receipt correlation).
+  final String? msgId;
+
+  /// Immutable reply snapshot (US-006).
+  final ReplyRef? replyTo;
+
+  /// Whether the DM arrived sealed end to end (US-042).
+  final bool encrypted;
+
+  const SaveIncomingMessageParams({
+    required this.content,
+    required this.peerId,
+    required this.isDirect,
+    this.nickname,
+    this.latency,
+    this.msgId,
+    this.replyTo,
+    required this.encrypted,
+  });
+
+  @override
+  int get hashCode =>
+      content.hashCode ^
+      peerId.hashCode ^
+      isDirect.hashCode ^
+      nickname.hashCode ^
+      latency.hashCode ^
+      msgId.hashCode ^
+      replyTo.hashCode ^
+      encrypted.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SaveIncomingMessageParams &&
+          runtimeType == other.runtimeType &&
+          content == other.content &&
+          peerId == other.peerId &&
+          isDirect == other.isDirect &&
+          nickname == other.nickname &&
+          latency == other.latency &&
+          msgId == other.msgId &&
+          replyTo == other.replyTo &&
+          encrypted == other.encrypted;
+}

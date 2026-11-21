@@ -288,6 +288,32 @@ pub fn save_outgoing_dm(
     crate::mobile_node::save_outgoing_dm(peer_id, content, attachment_path, reply_to)
 }
 
+/// Fields for persisting one incoming broadcast or DM.
+///
+/// FRB 2.13 emits one Dart named argument per Rust parameter, so grouping the
+/// values into a struct keeps both this signature and the generated Dart call
+/// small. The web transport keeps its flat JSON shape; only the FRB adapter
+/// builds this struct.
+#[derive(Debug, Clone)]
+pub struct SaveIncomingMessageParams {
+    /// Message body (may be empty for an attachment-only message).
+    pub content: String,
+    /// Sender peer id.
+    pub peer_id: String,
+    /// `true` for a DM, `false` for a broadcast.
+    pub is_direct: bool,
+    /// Announced sender nickname, if any.
+    pub nickname: Option<String>,
+    /// Live round-trip decoration (never persisted).
+    pub latency: Option<String>,
+    /// Stable wire message id (reply/receipt correlation).
+    pub msg_id: Option<String>,
+    /// Immutable reply snapshot (US-006).
+    pub reply_to: Option<crate::ReplyRef>,
+    /// Whether the DM arrived sealed end to end (US-042).
+    pub encrypted: bool,
+}
+
 /// Save an incoming message (broadcast or DM) to the database.
 ///
 /// `latency` is the live event's measured round-trip time; it only decorates
@@ -296,22 +322,17 @@ pub fn save_outgoing_dm(
 ///
 /// # Errors
 /// Returns an error if the message cannot be saved.
-// FRB 2.13 emits one Dart named argument per Rust parameter; grouping these
-// into a struct would change the generated `saveIncomingMessage` signature and
-// every Dart/web caller. The internal impl already takes a struct (see
-// `mobile_node::IncomingMessageData`), so the extra argument is irreducible at
-// this boundary.
-#[allow(clippy::too_many_arguments)]
-pub fn save_incoming_message(
-    content: String,
-    peer_id: String,
-    is_direct: bool,
-    nickname: Option<String>,
-    latency: Option<String>,
-    msg_id: Option<String>,
-    reply_to: Option<crate::ReplyRef>,
-    encrypted: bool,
-) -> Result<ChatMessage, String> {
+pub fn save_incoming_message(params: SaveIncomingMessageParams) -> Result<ChatMessage, String> {
+    let SaveIncomingMessageParams {
+        content,
+        peer_id,
+        is_direct,
+        nickname,
+        latency,
+        msg_id,
+        reply_to,
+        encrypted,
+    } = params;
     crate::mobile_node::save_incoming_message(crate::mobile_node::IncomingMessageData {
         content,
         peer_id,

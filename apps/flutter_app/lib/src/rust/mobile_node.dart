@@ -9,9 +9,9 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
 
-// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `event_with_type`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `typing_event_json`
+// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `blocking_send_cmd`, `call_event_json`, `default_event`, `event_to_json`, `event_with_type`, `forward_swarm_events`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `try_send_cmd`, `typing_event_json`, `with_cmd_tx`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `IncomingMessageData`, `MobileNode`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`, `toggle_reaction`
 
 /// Get the local peer ID.
@@ -58,14 +58,11 @@ class ChatMessage {
   /// Peer ID of the sender (incoming) or partner (outgoing DM), if known.
   final String? peerId;
 
-  /// True for a gossipsub broadcast, false for DMs and group messages.
-  final bool isBroadcast;
+  /// Channel and direction of this row (flat in the serialized form).
+  final ChatMessageOrigin origin;
 
   /// Intended recipient of an outgoing DM, if any.
   final String? targetPeer;
-
-  /// True for messages we sent, false for incoming ones.
-  final bool sent;
 
   /// Stable wire message ID, used for dedup and delivery receipts.
   final String? msgId;
@@ -115,9 +112,8 @@ class ChatMessage {
     required this.id,
     required this.content,
     this.peerId,
-    required this.isBroadcast,
+    required this.origin,
     this.targetPeer,
-    required this.sent,
     this.msgId,
     this.replyTo,
     this.sentAt,
@@ -136,9 +132,8 @@ class ChatMessage {
       id.hashCode ^
       content.hashCode ^
       peerId.hashCode ^
-      isBroadcast.hashCode ^
+      origin.hashCode ^
       targetPeer.hashCode ^
-      sent.hashCode ^
       msgId.hashCode ^
       replyTo.hashCode ^
       sentAt.hashCode ^
@@ -159,9 +154,8 @@ class ChatMessage {
           id == other.id &&
           content == other.content &&
           peerId == other.peerId &&
-          isBroadcast == other.isBroadcast &&
+          origin == other.origin &&
           targetPeer == other.targetPeer &&
-          sent == other.sent &&
           msgId == other.msgId &&
           replyTo == other.replyTo &&
           sentAt == other.sentAt &&
@@ -173,6 +167,32 @@ class ChatMessage {
           edited == other.edited &&
           latency == other.latency &&
           reactions == other.reactions;
+}
+
+/// Channel and direction of a chat row.
+///
+/// Grouped so [`ChatMessage`] stays under clippy's bool limit; `serde(flatten)`
+/// keeps the web JSON keys (`isBroadcast`, `sent`) exactly as before, and Dart
+/// keeps its old property names through a hand-written extension.
+class ChatMessageOrigin {
+  /// True for a gossipsub broadcast, false for DMs and group messages.
+  final bool isBroadcast;
+
+  /// True for messages we sent, false for incoming ones.
+  final bool sent;
+
+  const ChatMessageOrigin({required this.isBroadcast, required this.sent});
+
+  @override
+  int get hashCode => isBroadcast.hashCode ^ sent.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessageOrigin &&
+          runtimeType == other.runtimeType &&
+          isBroadcast == other.isBroadcast &&
+          sent == other.sent;
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).

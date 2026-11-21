@@ -1596,27 +1596,11 @@ fn wire__crate__api__save_incoming_message_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_content = <String>::sse_decode(&mut deserializer);
-            let api_peer_id = <String>::sse_decode(&mut deserializer);
-            let api_is_direct = <bool>::sse_decode(&mut deserializer);
-            let api_nickname = <Option<String>>::sse_decode(&mut deserializer);
-            let api_latency = <Option<String>>::sse_decode(&mut deserializer);
-            let api_msg_id = <Option<String>>::sse_decode(&mut deserializer);
-            let api_reply_to = <Option<crate::reply::ReplyRef>>::sse_decode(&mut deserializer);
-            let api_encrypted = <bool>::sse_decode(&mut deserializer);
+            let api_params = <crate::api::SaveIncomingMessageParams>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::save_incoming_message(
-                        api_content,
-                        api_peer_id,
-                        api_is_direct,
-                        api_nickname,
-                        api_latency,
-                        api_msg_id,
-                        api_reply_to,
-                        api_encrypted,
-                    )?;
+                    let output_ok = crate::api::save_incoming_message(api_params)?;
                     std::result::Result::Ok(output_ok)
                 })())
             }
@@ -2412,9 +2396,8 @@ impl SseDecode for crate::mobile_node::ChatMessage {
         let mut var_id = <i32>::sse_decode(deserializer);
         let mut var_content = <String>::sse_decode(deserializer);
         let mut var_peerId = <Option<String>>::sse_decode(deserializer);
-        let mut var_isBroadcast = <bool>::sse_decode(deserializer);
+        let mut var_origin = <crate::mobile_node::ChatMessageOrigin>::sse_decode(deserializer);
         let mut var_targetPeer = <Option<String>>::sse_decode(deserializer);
-        let mut var_sent = <bool>::sse_decode(deserializer);
         let mut var_msgId = <Option<String>>::sse_decode(deserializer);
         let mut var_replyTo = <Option<crate::reply::ReplyRef>>::sse_decode(deserializer);
         let mut var_sentAt = <Option<String>>::sse_decode(deserializer);
@@ -2431,9 +2414,8 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             id: var_id,
             content: var_content,
             peer_id: var_peerId,
-            is_broadcast: var_isBroadcast,
+            origin: var_origin,
             target_peer: var_targetPeer,
-            sent: var_sent,
             msg_id: var_msgId,
             reply_to: var_replyTo,
             sent_at: var_sentAt,
@@ -2445,6 +2427,18 @@ impl SseDecode for crate::mobile_node::ChatMessage {
             edited: var_edited,
             latency: var_latency,
             reactions: var_reactions,
+        };
+    }
+}
+
+impl SseDecode for crate::mobile_node::ChatMessageOrigin {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_isBroadcast = <bool>::sse_decode(deserializer);
+        let mut var_sent = <bool>::sse_decode(deserializer);
+        return crate::mobile_node::ChatMessageOrigin {
+            is_broadcast: var_isBroadcast,
+            sent: var_sent,
         };
     }
 }
@@ -3202,6 +3196,30 @@ impl SseDecode for crate::reply::ReplyRef {
     }
 }
 
+impl SseDecode for crate::api::SaveIncomingMessageParams {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_content = <String>::sse_decode(deserializer);
+        let mut var_peerId = <String>::sse_decode(deserializer);
+        let mut var_isDirect = <bool>::sse_decode(deserializer);
+        let mut var_nickname = <Option<String>>::sse_decode(deserializer);
+        let mut var_latency = <Option<String>>::sse_decode(deserializer);
+        let mut var_msgId = <Option<String>>::sse_decode(deserializer);
+        let mut var_replyTo = <Option<crate::reply::ReplyRef>>::sse_decode(deserializer);
+        let mut var_encrypted = <bool>::sse_decode(deserializer);
+        return crate::api::SaveIncomingMessageParams {
+            content: var_content,
+            peer_id: var_peerId,
+            is_direct: var_isDirect,
+            nickname: var_nickname,
+            latency: var_latency,
+            msg_id: var_msgId,
+            reply_to: var_replyTo,
+            encrypted: var_encrypted,
+        };
+    }
+}
+
 impl SseDecode for crate::mobile_node::SwarmEventJson {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3404,9 +3422,8 @@ impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessage {
             self.id.into_into_dart().into_dart(),
             self.content.into_into_dart().into_dart(),
             self.peer_id.into_into_dart().into_dart(),
-            self.is_broadcast.into_into_dart().into_dart(),
+            self.origin.into_into_dart().into_dart(),
             self.target_peer.into_into_dart().into_dart(),
-            self.sent.into_into_dart().into_dart(),
             self.msg_id.into_into_dart().into_dart(),
             self.reply_to.into_into_dart().into_dart(),
             self.sent_at.into_into_dart().into_dart(),
@@ -3430,6 +3447,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::mobile_node::ChatMessage>
     for crate::mobile_node::ChatMessage
 {
     fn into_into_dart(self) -> crate::mobile_node::ChatMessage {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::mobile_node::ChatMessageOrigin {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.is_broadcast.into_into_dart().into_dart(),
+            self.sent.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::mobile_node::ChatMessageOrigin
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::mobile_node::ChatMessageOrigin>
+    for crate::mobile_node::ChatMessageOrigin
+{
+    fn into_into_dart(self) -> crate::mobile_node::ChatMessageOrigin {
         self
     }
 }
@@ -3952,6 +3990,33 @@ impl flutter_rust_bridge::IntoIntoDart<crate::reply::ReplyRef> for crate::reply:
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::SaveIncomingMessageParams {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.content.into_into_dart().into_dart(),
+            self.peer_id.into_into_dart().into_dart(),
+            self.is_direct.into_into_dart().into_dart(),
+            self.nickname.into_into_dart().into_dart(),
+            self.latency.into_into_dart().into_dart(),
+            self.msg_id.into_into_dart().into_dart(),
+            self.reply_to.into_into_dart().into_dart(),
+            self.encrypted.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::SaveIncomingMessageParams
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::SaveIncomingMessageParams>
+    for crate::api::SaveIncomingMessageParams
+{
+    fn into_into_dart(self) -> crate::api::SaveIncomingMessageParams {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::mobile_node::SwarmEventJson {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -4021,9 +4086,8 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <i32>::sse_encode(self.id, serializer);
         <String>::sse_encode(self.content, serializer);
         <Option<String>>::sse_encode(self.peer_id, serializer);
-        <bool>::sse_encode(self.is_broadcast, serializer);
+        <crate::mobile_node::ChatMessageOrigin>::sse_encode(self.origin, serializer);
         <Option<String>>::sse_encode(self.target_peer, serializer);
-        <bool>::sse_encode(self.sent, serializer);
         <Option<String>>::sse_encode(self.msg_id, serializer);
         <Option<crate::reply::ReplyRef>>::sse_encode(self.reply_to, serializer);
         <Option<String>>::sse_encode(self.sent_at, serializer);
@@ -4035,6 +4099,14 @@ impl SseEncode for crate::mobile_node::ChatMessage {
         <bool>::sse_encode(self.edited, serializer);
         <Option<String>>::sse_encode(self.latency, serializer);
         <Vec<crate::reactions::ReactionSummary>>::sse_encode(self.reactions, serializer);
+    }
+}
+
+impl SseEncode for crate::mobile_node::ChatMessageOrigin {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_broadcast, serializer);
+        <bool>::sse_encode(self.sent, serializer);
     }
 }
 
@@ -4549,6 +4621,20 @@ impl SseEncode for crate::reply::ReplyRef {
         <String>::sse_encode(self.msg_id, serializer);
         <String>::sse_encode(self.sender, serializer);
         <String>::sse_encode(self.preview, serializer);
+    }
+}
+
+impl SseEncode for crate::api::SaveIncomingMessageParams {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.content, serializer);
+        <String>::sse_encode(self.peer_id, serializer);
+        <bool>::sse_encode(self.is_direct, serializer);
+        <Option<String>>::sse_encode(self.nickname, serializer);
+        <Option<String>>::sse_encode(self.latency, serializer);
+        <Option<String>>::sse_encode(self.msg_id, serializer);
+        <Option<crate::reply::ReplyRef>>::sse_encode(self.reply_to, serializer);
+        <bool>::sse_encode(self.encrypted, serializer);
     }
 }
 

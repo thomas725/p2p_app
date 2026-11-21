@@ -181,14 +181,16 @@ class FrbNodeApi implements NodeApi {
     ReplyRef? replyTo,
     required bool encrypted,
   }) => bridge.saveIncomingMessage(
-    content: content,
-    peerId: peerId,
-    isDirect: isDirect,
-    nickname: nickname,
-    latency: latency,
-    msgId: msgId,
-    replyTo: replyTo,
-    encrypted: encrypted,
+    params: bridge.SaveIncomingMessageParams(
+      content: content,
+      peerId: peerId,
+      isDirect: isDirect,
+      nickname: nickname,
+      latency: latency,
+      msgId: msgId,
+      replyTo: replyTo,
+      encrypted: encrypted,
+    ),
   );
 
   @override

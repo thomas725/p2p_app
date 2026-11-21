@@ -521,12 +521,23 @@ pub fn get_known_peers() -> Result<Vec<MobilePeerRecord>, String> {
 
 // --- Message history types ---
 
+/// Channel and direction of a chat row.
+///
+/// Grouped so [`ChatMessage`] stays under clippy's bool limit; `serde(flatten)`
+/// keeps the web JSON keys (`isBroadcast`, `sent`) exactly as before, and Dart
+/// keeps its old property names through a hand-written extension.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessageOrigin {
+    /// True for a gossipsub broadcast, false for DMs and group messages.
+    pub is_broadcast: bool,
+    /// True for messages we sent, false for incoming ones.
+    pub sent: bool,
+}
+
 /// One chat message row shared by the broadcast, DM and group screens.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-// Four independent boolean flags on a serialized DTO; a state machine would
-// only obscure the wire shape (US-042).
-#[allow(clippy::struct_excessive_bools)]
 pub struct ChatMessage {
     /// Database row ID (unique per message).
     pub id: i32,
@@ -534,12 +545,11 @@ pub struct ChatMessage {
     pub content: String,
     /// Peer ID of the sender (incoming) or partner (outgoing DM), if known.
     pub peer_id: Option<String>,
-    /// True for a gossipsub broadcast, false for DMs and group messages.
-    pub is_broadcast: bool,
+    /// Channel and direction of this row (flat in the serialized form).
+    #[serde(flatten)]
+    pub origin: ChatMessageOrigin,
     /// Intended recipient of an outgoing DM, if any.
     pub target_peer: Option<String>,
-    /// True for messages we sent, false for incoming ones.
-    pub sent: bool,
     /// Stable wire message ID, used for dedup and delivery receipts.
     pub msg_id: Option<String>,
     /// Immutable reply snapshot (US-006); `None` for an ordinary message.
@@ -663,9 +673,11 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         id: msg.id,
         content: msg.content,
         peer_id: msg.peer_id,
-        is_broadcast: msg.is_direct == 0,
+        origin: ChatMessageOrigin {
+            is_broadcast: msg.is_direct == 0,
+            sent: msg.sent == 1,
+        },
         target_peer: msg.target_peer,
-        sent: msg.sent == 1,
         msg_id: msg.msg_id,
         reply_to: msg.reply_to_json.as_deref().and_then(crate::reply::decode),
         sent_at: msg.sent_at.map(|t| {
@@ -699,7 +711,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
 fn mark_confirmed(messages: &mut [ChatMessage]) {
     let ids: Vec<String> = messages
         .iter()
-        .filter(|m| m.sent)
+        .filter(|m| m.origin.sent)
         .filter_map(|m| m.msg_id.clone())
         .collect();
     if ids.is_empty() {
@@ -711,7 +723,8 @@ fn mark_confirmed(messages: &mut [ChatMessage]) {
                 // Only our own sent rows can be acknowledged. Incoming rows now
                 // persist `msg_id` too, so an echoed id must never tick an
                 // inbound message.
-                m.confirmed = m.sent && m.msg_id.as_ref().is_some_and(|id| confirmed.contains(id));
+                m.confirmed =
+                    m.origin.sent && m.msg_id.as_ref().is_some_and(|id| confirmed.contains(id));
             }
         }
         Err(e) => p2plog_debug(format!("Failed to load message receipts: {e}")),
@@ -1799,8 +1812,8 @@ mod tests {
         assert_eq!(chat.id, 1);
         assert_eq!(chat.content, "hello world");
         assert!(chat.peer_id.is_none());
-        assert!(chat.is_broadcast);
-        assert!(chat.sent);
+        assert!(chat.origin.is_broadcast);
+        assert!(chat.origin.sent);
         assert_eq!(chat.msg_id.as_deref(), Some("msg-1"));
         assert!(chat.sent_at.is_some());
         assert_eq!(chat.sender_nickname.as_deref(), Some("Alice"));
@@ -1842,8 +1855,8 @@ mod tests {
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.id, 2);
-        assert!(!chat.is_broadcast);
-        assert!(!chat.sent);
+        assert!(!chat.origin.is_broadcast);
+        assert!(!chat.origin.sent);
         assert!(chat.sent_at.is_none());
         // No announced nickname: falls back to the resolved display name
         // (petname + short-id suffix), not a raw ID fragment.
@@ -1880,7 +1893,7 @@ mod tests {
             chat.sender_nickname.as_deref(),
             Some(format!("Bob ({suffix})").as_str())
         );
-        assert!(chat.is_broadcast);
+        assert!(chat.origin.is_broadcast);
     }
 
     #[test]
@@ -1907,7 +1920,7 @@ mod tests {
         };
         let chat = message_to_chat(msg);
         assert_eq!(chat.sender_nickname.as_deref(), Some("Me"));
-        assert!(chat.sent);
+        assert!(chat.origin.sent);
     }
 
     #[test]
@@ -2344,7 +2357,7 @@ mod tests {
         assert_eq!(msgs.len(), 4);
         let by_id = |id: &str, sent: bool| {
             msgs.iter()
-                .find(|m| m.msg_id.as_deref() == Some(id) && m.sent == sent)
+                .find(|m| m.msg_id.as_deref() == Some(id) && m.origin.sent == sent)
                 .expect("message present")
         };
         assert!(

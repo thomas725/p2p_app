@@ -218,14 +218,7 @@ abstract class RustLibApi extends BaseApi {
   Future<bool> crateApiRemoveNetworkPeer({required int id});
 
   Future<ChatMessage> crateApiSaveIncomingMessage({
-    required String content,
-    required String peerId,
-    required bool isDirect,
-    String? nickname,
-    String? latency,
-    String? msgId,
-    ReplyRef? replyTo,
-    required bool encrypted,
+    required SaveIncomingMessageParams params,
   });
 
   Future<ChatMessage> crateApiSaveOutgoingBroadcast({
@@ -1679,27 +1672,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<ChatMessage> crateApiSaveIncomingMessage({
-    required String content,
-    required String peerId,
-    required bool isDirect,
-    String? nickname,
-    String? latency,
-    String? msgId,
-    ReplyRef? replyTo,
-    required bool encrypted,
+    required SaveIncomingMessageParams params,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(content, serializer);
-          sse_encode_String(peerId, serializer);
-          sse_encode_bool(isDirect, serializer);
-          sse_encode_opt_String(nickname, serializer);
-          sse_encode_opt_String(latency, serializer);
-          sse_encode_opt_String(msgId, serializer);
-          sse_encode_opt_box_autoadd_reply_ref(replyTo, serializer);
-          sse_encode_bool(encrypted, serializer);
+          sse_encode_box_autoadd_save_incoming_message_params(
+            params,
+            serializer,
+          );
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -1712,16 +1694,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiSaveIncomingMessageConstMeta,
-        argValues: [
-          content,
-          peerId,
-          isDirect,
-          nickname,
-          latency,
-          msgId,
-          replyTo,
-          encrypted,
-        ],
+        argValues: [params],
         apiImpl: this,
       ),
     );
@@ -1730,16 +1703,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiSaveIncomingMessageConstMeta =>
       const TaskConstMeta(
         debugName: "save_incoming_message",
-        argNames: [
-          "content",
-          "peerId",
-          "isDirect",
-          "nickname",
-          "latency",
-          "msgId",
-          "replyTo",
-          "encrypted",
-        ],
+        argNames: ["params"],
       );
 
   @override
@@ -2500,6 +2464,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SaveIncomingMessageParams dco_decode_box_autoadd_save_incoming_message_params(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_save_incoming_message_params(raw);
+  }
+
+  @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_swarm_event_json(raw);
@@ -2509,26 +2481,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ChatMessage dco_decode_chat_message(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 17)
-      throw Exception('unexpected arr length: expect 17 but see ${arr.length}');
+    if (arr.length != 16)
+      throw Exception('unexpected arr length: expect 16 but see ${arr.length}');
     return ChatMessage(
       id: dco_decode_i_32(arr[0]),
       content: dco_decode_String(arr[1]),
       peerId: dco_decode_opt_String(arr[2]),
-      isBroadcast: dco_decode_bool(arr[3]),
+      origin: dco_decode_chat_message_origin(arr[3]),
       targetPeer: dco_decode_opt_String(arr[4]),
-      sent: dco_decode_bool(arr[5]),
-      msgId: dco_decode_opt_String(arr[6]),
-      replyTo: dco_decode_opt_box_autoadd_reply_ref(arr[7]),
-      sentAt: dco_decode_opt_String(arr[8]),
-      createdAt: dco_decode_String(arr[9]),
-      senderNickname: dco_decode_opt_String(arr[10]),
-      attachment: dco_decode_opt_box_autoadd_mobile_attachment(arr[11]),
-      encrypted: dco_decode_bool(arr[12]),
-      confirmed: dco_decode_bool(arr[13]),
-      edited: dco_decode_bool(arr[14]),
-      latency: dco_decode_opt_String(arr[15]),
-      reactions: dco_decode_list_reaction_summary(arr[16]),
+      msgId: dco_decode_opt_String(arr[5]),
+      replyTo: dco_decode_opt_box_autoadd_reply_ref(arr[6]),
+      sentAt: dco_decode_opt_String(arr[7]),
+      createdAt: dco_decode_String(arr[8]),
+      senderNickname: dco_decode_opt_String(arr[9]),
+      attachment: dco_decode_opt_box_autoadd_mobile_attachment(arr[10]),
+      encrypted: dco_decode_bool(arr[11]),
+      confirmed: dco_decode_bool(arr[12]),
+      edited: dco_decode_bool(arr[13]),
+      latency: dco_decode_opt_String(arr[14]),
+      reactions: dco_decode_list_reaction_summary(arr[15]),
+    );
+  }
+
+  @protected
+  ChatMessageOrigin dco_decode_chat_message_origin(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ChatMessageOrigin(
+      isBroadcast: dco_decode_bool(arr[0]),
+      sent: dco_decode_bool(arr[1]),
     );
   }
 
@@ -3044,6 +3027,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SaveIncomingMessageParams dco_decode_save_incoming_message_params(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return SaveIncomingMessageParams(
+      content: dco_decode_String(arr[0]),
+      peerId: dco_decode_String(arr[1]),
+      isDirect: dco_decode_bool(arr[2]),
+      nickname: dco_decode_opt_String(arr[3]),
+      latency: dco_decode_opt_String(arr[4]),
+      msgId: dco_decode_opt_String(arr[5]),
+      replyTo: dco_decode_opt_box_autoadd_reply_ref(arr[6]),
+      encrypted: dco_decode_bool(arr[7]),
+    );
+  }
+
+  @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -3174,6 +3177,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SaveIncomingMessageParams sse_decode_box_autoadd_save_incoming_message_params(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_save_incoming_message_params(deserializer));
+  }
+
+  @protected
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
     SseDeserializer deserializer,
   ) {
@@ -3187,9 +3198,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_id = sse_decode_i_32(deserializer);
     var var_content = sse_decode_String(deserializer);
     var var_peerId = sse_decode_opt_String(deserializer);
-    var var_isBroadcast = sse_decode_bool(deserializer);
+    var var_origin = sse_decode_chat_message_origin(deserializer);
     var var_targetPeer = sse_decode_opt_String(deserializer);
-    var var_sent = sse_decode_bool(deserializer);
     var var_msgId = sse_decode_opt_String(deserializer);
     var var_replyTo = sse_decode_opt_box_autoadd_reply_ref(deserializer);
     var var_sentAt = sse_decode_opt_String(deserializer);
@@ -3207,9 +3217,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       id: var_id,
       content: var_content,
       peerId: var_peerId,
-      isBroadcast: var_isBroadcast,
+      origin: var_origin,
       targetPeer: var_targetPeer,
-      sent: var_sent,
       msgId: var_msgId,
       replyTo: var_replyTo,
       sentAt: var_sentAt,
@@ -3222,6 +3231,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       latency: var_latency,
       reactions: var_reactions,
     );
+  }
+
+  @protected
+  ChatMessageOrigin sse_decode_chat_message_origin(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_isBroadcast = sse_decode_bool(deserializer);
+    var var_sent = sse_decode_bool(deserializer);
+    return ChatMessageOrigin(isBroadcast: var_isBroadcast, sent: var_sent);
   }
 
   @protected
@@ -3958,6 +3977,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SaveIncomingMessageParams sse_decode_save_incoming_message_params(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_content = sse_decode_String(deserializer);
+    var var_peerId = sse_decode_String(deserializer);
+    var var_isDirect = sse_decode_bool(deserializer);
+    var var_nickname = sse_decode_opt_String(deserializer);
+    var var_latency = sse_decode_opt_String(deserializer);
+    var var_msgId = sse_decode_opt_String(deserializer);
+    var var_replyTo = sse_decode_opt_box_autoadd_reply_ref(deserializer);
+    var var_encrypted = sse_decode_bool(deserializer);
+    return SaveIncomingMessageParams(
+      content: var_content,
+      peerId: var_peerId,
+      isDirect: var_isDirect,
+      nickname: var_nickname,
+      latency: var_latency,
+      msgId: var_msgId,
+      replyTo: var_replyTo,
+      encrypted: var_encrypted,
+    );
+  }
+
+  @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_eventType = sse_decode_String(deserializer);
@@ -4093,6 +4137,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_save_incoming_message_params(
+    SaveIncomingMessageParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_save_incoming_message_params(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_swarm_event_json(
     SwarmEventJson self,
     SseSerializer serializer,
@@ -4107,9 +4160,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.id, serializer);
     sse_encode_String(self.content, serializer);
     sse_encode_opt_String(self.peerId, serializer);
-    sse_encode_bool(self.isBroadcast, serializer);
+    sse_encode_chat_message_origin(self.origin, serializer);
     sse_encode_opt_String(self.targetPeer, serializer);
-    sse_encode_bool(self.sent, serializer);
     sse_encode_opt_String(self.msgId, serializer);
     sse_encode_opt_box_autoadd_reply_ref(self.replyTo, serializer);
     sse_encode_opt_String(self.sentAt, serializer);
@@ -4121,6 +4173,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self.edited, serializer);
     sse_encode_opt_String(self.latency, serializer);
     sse_encode_list_reaction_summary(self.reactions, serializer);
+  }
+
+  @protected
+  void sse_encode_chat_message_origin(
+    ChatMessageOrigin self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.isBroadcast, serializer);
+    sse_encode_bool(self.sent, serializer);
   }
 
   @protected
@@ -4715,6 +4777,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.msgId, serializer);
     sse_encode_String(self.sender, serializer);
     sse_encode_String(self.preview, serializer);
+  }
+
+  @protected
+  void sse_encode_save_incoming_message_params(
+    SaveIncomingMessageParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.content, serializer);
+    sse_encode_String(self.peerId, serializer);
+    sse_encode_bool(self.isDirect, serializer);
+    sse_encode_opt_String(self.nickname, serializer);
+    sse_encode_opt_String(self.latency, serializer);
+    sse_encode_opt_String(self.msgId, serializer);
+    sse_encode_opt_box_autoadd_reply_ref(self.replyTo, serializer);
+    sse_encode_bool(self.encrypted, serializer);
   }
 
   @protected

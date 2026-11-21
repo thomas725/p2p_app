@@ -213,16 +213,16 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         }
         "saveIncomingMessage" => {
             let p: SaveIncomingParams = parse(params)?;
-            json(api::save_incoming_message(
-                p.content,
-                p.peer_id,
-                p.is_direct,
-                p.nickname,
-                p.latency,
-                p.msg_id,
-                p.reply_to,
-                p.encrypted,
-            ))
+            json(api::save_incoming_message(api::SaveIncomingMessageParams {
+                content: p.content,
+                peer_id: p.peer_id,
+                is_direct: p.is_direct,
+                nickname: p.nickname,
+                latency: p.latency,
+                msg_id: p.msg_id,
+                reply_to: p.reply_to,
+                encrypted: p.encrypted,
+            }))
         }
         other => Err(format!("method not routed to messages: {other}")),
     }

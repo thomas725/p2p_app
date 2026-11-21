@@ -224,9 +224,11 @@ class HttpNodeApi implements NodeApi {
       id: m['id'] as int,
       content: m['content'] as String,
       peerId: m['peerId'] as String?,
-      isBroadcast: m['isBroadcast'] as bool,
+      origin: ChatMessageOrigin(
+        isBroadcast: m['isBroadcast'] as bool,
+        sent: m['sent'] as bool,
+      ),
       targetPeer: m['targetPeer'] as String?,
-      sent: m['sent'] as bool,
       msgId: m['msgId'] as String?,
       replyTo: replyFromJson(m['replyTo']),
       sentAt: m['sentAt'] as String?,
