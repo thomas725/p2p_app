@@ -977,4 +977,80 @@ void main() {
     ]);
     expect(messages[0].content, 'hello', reason: 'only chips change');
   });
+
+  testWidgets('tapping a DM sender name opens that sender\'s Peer Info', (
+    tester,
+  ) async {
+    final opened = <String>[];
+    final fake = FakeNodeApi()
+      ..loadDmMessagesOverride = (_, _) => [
+        chatMessage(
+          id: 3,
+          content: 'from peer',
+          peerId: 'peer-abc',
+          sent: false,
+          senderNickname: 'Peer Sender',
+        ),
+      ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DmChatScreen(
+          peer: peerRecord(),
+          serviceRunning: true,
+          onOpenPeerInfo: opened.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Drive the bubble's callback directly: the bubbles live inside a
+    // SelectionArea, whose recognizers swallow synthetic taps in widget tests.
+    // This still verifies the screen → body → bubble wiring under test; the
+    // gesture-to-callback path itself is covered by MessageBubble's own tests.
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onOpenPeerInfo!('peer-abc');
+
+    expect(opened, ['peer-abc']);
+  });
+
+  testWidgets('tapping a group sender name opens that sender\'s Peer Info', (
+    tester,
+  ) async {
+    final opened = <String>[];
+    final fake = FakeNodeApi()
+      ..loadGroupMessagesOverride = (_, _) => [
+        MobileGroupMessage(
+          id: 4,
+          content: 'from group peer',
+          peerId: 'group-sender',
+          sent: false,
+          edited: false,
+          senderNickname: 'Group Sender',
+          createdAt: '2026-01-01 10:00:00',
+          reactions: const [],
+        ),
+      ];
+    nodeApi = fake;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GroupChatScreen(
+          group: groupRecord(),
+          serviceRunning: true,
+          onOpenPeerInfo: opened.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // See the DM test above: drive the bubble callback directly because the
+    // SelectionArea swallows synthetic taps in widget tests.
+    tester
+        .widget<MessageBubble>(find.byType(MessageBubble).first)
+        .onOpenPeerInfo!('group-sender');
+
+    expect(opened, ['group-sender']);
+  });
 }

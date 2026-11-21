@@ -948,6 +948,7 @@ class _HomeScreenState extends State<HomeScreen> {
           loadQuality: nodeApi.getPeerQuality,
           loadBlocked: peerIsBlocked,
           toggleBlock: _togglePeerBlock,
+          onOpenPeerInfo: _openPeerInfoForPeerId,
         ),
       ),
     );
@@ -1000,6 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> {
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 1,
+          onOpenPeerInfo: _openPeerInfoForPeerId,
         ),
       ),
     );
@@ -1035,6 +1037,7 @@ class _HomeScreenState extends State<HomeScreen> {
           serviceRunning: _serviceRunning,
           onNavigate: _navigateToTab,
           currentTab: 2,
+          onOpenPeerInfo: _openPeerInfoForPeerId,
         ),
       ),
     ).then((_) {
@@ -1075,6 +1078,7 @@ class _HomeScreenState extends State<HomeScreen> {
           loadQuality: nodeApi.getPeerQuality,
           loadBlocked: peerIsBlocked,
           toggleBlock: _togglePeerBlock,
+          onOpenPeerInfo: _openPeerInfoForPeerId,
         ),
       ),
     );

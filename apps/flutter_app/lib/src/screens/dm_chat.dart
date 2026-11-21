@@ -30,11 +30,18 @@ class DmChatScreen extends StatefulWidget {
     required this.serviceRunning,
     this.onNavigate,
     this.currentTab = 1,
+    this.onOpenPeerInfo,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
   final void Function(int)? onNavigate;
   final int currentTab;
+
+  /// Opens a sender's Peer Info when a message's sender name is tapped — the
+  /// Flutter mirror of the TUI's "message click opens the sender's Peer Info"
+  /// rule. Optional so widget tests can pump without FFI; when absent the DM
+  /// screen pushes its own Peer Info page for the conversation partner.
+  final void Function(String)? onOpenPeerInfo;
 
   @override
   State<DmChatScreen> createState() => _DmChatScreenState();
@@ -299,6 +306,32 @@ class _DmChatScreenState extends State<DmChatScreen>
       );
   }
 
+  /// Open the tapped message sender's Peer Info. The host (HomeScreen) usually
+  /// supplies [DmChatScreen.onOpenPeerInfo] so the info page gets the full
+  /// roster/contact context; standalone use (widget tests) falls back to a
+  /// local push for this DM's partner.
+  void _openPeerInfo(String peerId) {
+    final callback = widget.onOpenPeerInfo;
+    if (callback != null) {
+      callback(peerId);
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PeerInfoScreen(
+          peer: widget.peer,
+          serviceRunning: widget.serviceRunning,
+          onNavigate: widget.onNavigate,
+          currentTab: widget.currentTab,
+          loadQuality: nodeApi.getPeerQuality,
+          loadBlocked: peerIsBlocked,
+          toggleBlock: togglePeerBlock,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,20 +353,8 @@ class _DmChatScreenState extends State<DmChatScreen>
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'Peer info',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PeerInfoScreen(
-                  peer: widget.peer,
-                  serviceRunning: widget.serviceRunning,
-                  onNavigate: widget.onNavigate,
-                  currentTab: widget.currentTab,
-                  loadQuality: nodeApi.getPeerQuality,
-                  loadBlocked: peerIsBlocked,
-                  toggleBlock: togglePeerBlock,
-                ),
-              ),
-            ),
+            key: const Key('dm-peer-info'),
+            onPressed: () => _openPeerInfo(widget.peer.peerId),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -375,6 +396,7 @@ class _DmChatScreenState extends State<DmChatScreen>
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
+            onOpenPeerInfo: _openPeerInfo,
             onOpenAttachment: _openAttachment,
             onReact: _onReact,
           ),

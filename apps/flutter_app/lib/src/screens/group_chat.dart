@@ -24,11 +24,18 @@ class GroupChatScreen extends StatefulWidget {
     required this.serviceRunning,
     this.onNavigate,
     this.currentTab = 2,
+    this.onOpenPeerInfo,
   });
   final MobileGroup group;
   final bool serviceRunning;
   final void Function(int)? onNavigate;
   final int currentTab;
+
+  /// Opens a message sender's Peer Info when their name is tapped — the Flutter
+  /// mirror of the TUI's "message click opens the sender's Peer Info" rule.
+  /// Optional so widget tests can pump without a host callback; when absent,
+  /// sender names are plain (non-interactive) labels.
+  final void Function(String)? onOpenPeerInfo;
 
   @override
   State<GroupChatScreen> createState() => _GroupChatScreenState();
@@ -311,6 +318,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             unreadCount: unreadCount,
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
+            onOpenPeerInfo: widget.onOpenPeerInfo,
             onOpenAttachment: _openAttachment,
             onReact: _onReact,
           ),

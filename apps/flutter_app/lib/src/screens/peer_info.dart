@@ -24,6 +24,7 @@ class PeerInfoScreen extends StatefulWidget {
     this.isBlocked = false,
     this.loadBlocked,
     this.toggleBlock,
+    this.onOpenPeerInfo,
   });
   final MobilePeerRecord peer;
   final bool serviceRunning;
@@ -61,6 +62,10 @@ class PeerInfoScreen extends StatefulWidget {
   /// Toggles the persisted blocklist entry and returns the new state. Optional:
   /// when null, no block/unblock action is rendered.
   final Future<bool> Function(String peerId)? toggleBlock;
+
+  /// Opens a sender's Peer Info from a message tap in the DM chat this page
+  /// pushes. Optional so standalone widget tests need no host callback.
+  final void Function(String)? onOpenPeerInfo;
 
   @override
   State<PeerInfoScreen> createState() => _PeerInfoScreenState();
@@ -373,6 +378,7 @@ class _PeerInfoScreenState extends State<PeerInfoScreen> {
                   serviceRunning: widget.serviceRunning,
                   onNavigate: widget.onNavigate,
                   currentTab: widget.currentTab,
+                  onOpenPeerInfo: widget.onOpenPeerInfo,
                 ),
               ),
             ),
