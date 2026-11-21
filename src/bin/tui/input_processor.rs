@@ -1433,6 +1433,15 @@ async fn handle_key_dispatch(
         {
             handle_groups_key(c, s);
         }
+        // `c` clears the in-memory log buffer on the Log tab, mirroring
+        // Flutter's Log-tab "Clear" action. The Log tab has no input box, so
+        // the key is free here; no log line is pushed after clearing so the
+        // pane is visibly empty (matching Flutter's "No logs yet" state).
+        crossterm::event::KeyCode::Char('c')
+            if !is_ctrl && matches!(&tab, p2p_app::tui_tabs::TabContent::Log) =>
+        {
+            p2p_app::clear_tui_logs();
+        }
         // Remaining Contacts-tab keys: `/` opens the search box (which then owns
         // every keystroke, so typing never re-sorts) and anything else is a
         // column-sort shortcut; `e`/`i`/`c` were handled above.

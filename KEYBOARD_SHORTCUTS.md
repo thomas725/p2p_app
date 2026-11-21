@@ -179,6 +179,15 @@ of the history.
 | `b` | Block / unblock that peer (mute: its traffic is dropped at the network boundary) |
 | `Esc` | Return to the Chat tab |
 
+## Log tab
+
+| Key/Action | Behavior |
+|------------|----------|
+| `PgUp` / `PgDn` | Page the log lines |
+| `Home` / `End` | Jump to the first / last line |
+| `c` | Clear the in-memory log buffer (same action as Flutter's Log tab "Clear") |
+| `Mouse wheel` | Scroll the log lines |
+
 ## DM / Direct tab
 
 | Key | Action |

@@ -1771,6 +1771,46 @@ fn test_d_key_on_peer_info_sends_device_intro() {
     p2p_app::db::reset_db_url();
 }
 
+#[test]
+#[serial(logging)]
+fn test_c_key_on_log_tab_clears_logs() {
+    p2p_app::init_logging();
+    p2p_app::clear_tui_logs();
+    p2p_app::push_log("a line to be cleared");
+    assert!(
+        p2p_app::get_tui_logs()
+            .iter()
+            .any(|l| l.contains("a line to be cleared"))
+    );
+
+    let mut state = test_app_state();
+    // With no dynamic tabs, Log is the first tab after the three fixed ones.
+    state.active_tab = p2p_app::tui_tabs::FIXED_TAB_COUNT;
+    assert_eq!(
+        state.dynamic_tabs.tab_index_to_content(state.active_tab),
+        TabContent::Log
+    );
+    let state = Arc::new(Mutex::new(state));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _) = mpsc::channel(1);
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('c'), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+    });
+
+    assert!(
+        p2p_app::get_tui_logs().is_empty(),
+        "Log tab `c` must clear the buffer"
+    );
+}
+
 // ── call overlay (start / accept / decline / cancel / hang up) ─────────────
 
 fn call_state(peer: &str, state: p2p_app::CallState) -> AppState {
