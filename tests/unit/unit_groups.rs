@@ -482,6 +482,18 @@ fn backfill_topic_helpers_roundtrip() {
 }
 
 #[test]
+fn backfill_topic_predicate_requires_group_prefix() {
+    // The predicate must agree with the extractor it guards: a foreign topic
+    // that merely ends in `:backfill` must fall through to normal routing
+    // instead of being sent to `group_id_from_backfill_topic` and rejected.
+    assert!(!is_backfill_topic("notifications:backfill"));
+    assert!(!is_backfill_topic(":backfill"));
+    assert!(!is_backfill_topic("backfill"));
+    assert!(is_backfill_topic("group:abc:backfill"));
+    assert!(!is_backfill_topic("group:abc"));
+}
+
+#[test]
 fn backfill_request_serializes_both_ways() {
     let req = crate::GroupBackfillRequest {
         group_id: "abc123".to_string(),

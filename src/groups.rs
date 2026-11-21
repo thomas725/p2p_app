@@ -69,9 +69,13 @@ pub fn group_backfill_topic(group_id: &str) -> String {
 }
 
 /// True if `topic` is a per-group backfill topic.
+///
+/// Defined in terms of [`group_id_from_backfill_topic`] so the routing
+/// predicate and the id extractor can never drift apart: a topic ending in
+/// `:backfill` but without the `group:` prefix is *not* a backfill topic.
 #[must_use]
 pub fn is_backfill_topic(topic: &str) -> bool {
-    topic.ends_with(GROUP_BACKFILL_TOPIC_SUFFIX)
+    group_id_from_backfill_topic(topic).is_some()
 }
 
 /// Extract the group id from a backfill topic string.
