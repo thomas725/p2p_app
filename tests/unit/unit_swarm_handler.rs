@@ -8,6 +8,25 @@ fn test_file_id(seed: &str) -> String {
 }
 
 #[test]
+fn test_gossipsub_author_prefers_signed_publisher_over_relay() {
+    // Gossipsub signs messages (`MessageAuthenticity::Signed`), so `source` is
+    // the authenticated publisher. A relayed message must be attributed to the
+    // publisher, not the last hop that forwarded it to us.
+    let publisher = libp2p::identity::Keypair::generate_ed25519()
+        .public()
+        .to_peer_id();
+    let relay = libp2p::identity::Keypair::generate_ed25519()
+        .public()
+        .to_peer_id();
+    assert_ne!(publisher, relay);
+
+    assert_eq!(gossipsub_author(Some(publisher), relay), publisher);
+    // Unsigned/local messages have no source; the relay is the best available
+    // attribution (and the peer that can serve any attachment).
+    assert_eq!(gossipsub_author(None, relay), relay);
+}
+
+#[test]
 fn test_newly_persisted_gates_duplicate_and_failed_saves() {
     // A mesh retransmit (Ok(None)) or a failed write must never produce a live
     // frontend event: the TUI appends group events to in-memory history without

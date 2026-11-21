@@ -28,6 +28,26 @@ fn peer_is_blocked(peer_id: &libp2p::PeerId) -> bool {
     crate::blocklist::is_blocked(&peer_id.to_string())
 }
 
+/// Resolve the authenticated author of a gossipsub message.
+///
+/// Gossipsub runs with [`gossipsub::MessageAuthenticity::Signed`], so `source`
+/// is the signature-verified publisher. `propagation_source` is only the last
+/// hop that forwarded the message to us. Attributing a relayed message to the
+/// last hop would show the wrong sender, record the wrong group member, give
+/// the same message a different synthetic id on each relay path (breaking
+/// dedup), and send the delivery receipt to a peer that never recorded the
+/// broadcast recipient row. Unsigned/local messages have no `source`, in which
+/// case the last hop is the best available attribution.
+const fn gossipsub_author(
+    source: Option<libp2p::PeerId>,
+    propagation_source: libp2p::PeerId,
+) -> libp2p::PeerId {
+    match source {
+        Some(author) => author,
+        None => propagation_source,
+    }
+}
+
 /// Peer id embedded in a multiaddr, if any (manual dial guard, US-054).
 fn multiaddr_peer_id(addr: &libp2p::Multiaddr) -> Option<libp2p::PeerId> {
     use libp2p::multiaddr::Protocol;
@@ -37,13 +57,14 @@ fn multiaddr_peer_id(addr: &libp2p::Multiaddr) -> Option<libp2p::PeerId> {
     })
 }
 
-/// Dispatch a decoded broadcast: surface it as an event, pull its attachment
-/// from the propagation source (files lane §12), and send a best-effort
-/// receipt confirmation back.
+/// Dispatch a decoded broadcast: surface it as an event attributed to the
+/// signed publisher, pull its attachment from the relay that forwarded it
+/// (files lane §12), and send a best-effort receipt confirmation to the
+/// publisher so it can confirm the right `broadcast_recipients` row.
 async fn handle_broadcast_message(
     bcast: BroadcastMessage,
-    peer_id: libp2p::PeerId,
-    peer_id_str: String,
+    author: libp2p::PeerId,
+    relay: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
 ) {
@@ -52,7 +73,7 @@ async fn handle_broadcast_message(
     let _ = event_tx
         .send(SwarmEvent::BroadcastMessage(crate::MessageEvent {
             content: bcast.content,
-            peer_id: peer_id_str,
+            peer_id: author.to_string(),
             latency,
             nickname: bcast.nickname.clone(),
             msg_id: bcast.msg_id.clone(),
@@ -62,21 +83,21 @@ async fn handle_broadcast_message(
         }))
         .await;
 
-    // Attachments are pulled from the propagation source — the peer that
-    // re-sent the message retains the blob on disk to serve the chunk
-    // requests.
+    // Attachments are pulled from the relay — the last hop that re-sent the
+    // message keeps the blob on disk to serve the chunk requests.
     if let Some(attachment) = bcast.attachment.as_ref() {
-        maybe_start_fetch(&peer_id, attachment, swarm);
+        maybe_start_fetch(&relay, attachment, swarm);
     }
 
     // Best-effort receipt confirmation for broadcasts: send a receipt-only
-    // DM back to the propagation source.
+    // DM to the publisher, whose `broadcast_recipients` row can then be
+    // confirmed. A relay never recorded that row, so acking it would be lost.
     if let Some(ack_for) = bcast.msg_id.clone() {
         let receipt = make_ack_dm(String::new(), Some(ack_for));
         swarm
             .behaviour_mut()
             .request_response
-            .send_request(&peer_id, receipt);
+            .send_request(&author, receipt);
     }
 }
 
@@ -280,18 +301,23 @@ async fn handle_behaviour_event(
 ) {
     match swarm_event {
         Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(gossipsub::Event::Message {
-            propagation_source: peer_id,
+            propagation_source,
             message,
             ..
         })) => {
-            let peer_id_str = peer_id.to_string();
+            // Gossipsub verifies the signature of every message (Signed
+            // authenticity), so `source` is the true publisher and
+            // `propagation_source` is only the peer that relayed it to us.
+            let author = gossipsub_author(message.source, propagation_source);
+            let propagation_str = propagation_source.to_string();
 
             // Blocklist (US-054): a muted peer's traffic never reaches the
-            // parsers, so nothing it sends can be persisted — this covers
-            // broadcast, group and backfill topics alike.
-            if crate::blocklist::is_blocked(&peer_id_str) {
+            // parsers, so nothing it sends can be persisted. Check both the
+            // relay (a muted forwarder) and the signed author (a muted
+            // publisher whose message arrived via an unmuted relay).
+            if peer_is_blocked(&propagation_source) || peer_is_blocked(&author) {
                 p2plog_debug(format!(
-                    "Dropped gossipsub traffic from blocked peer {peer_id_str}"
+                    "Dropped gossipsub traffic from blocked peer (relay {propagation_str}, author {author})"
                 ));
                 return;
             }
@@ -301,19 +327,19 @@ async fn handle_behaviour_event(
             // Backfill goes first: `group:X:backfill` also starts with the
             // group prefix, so the more specific check must win.
             if crate::groups::is_backfill_topic(&message.topic.to_string()) {
-                handle_backfill_request(&message, peer_id, swarm);
+                handle_backfill_request(&message, author, swarm);
                 return;
             }
             if crate::groups::is_group_topic(&message.topic.to_string()) {
-                handle_group_message(message, peer_id, event_tx, swarm).await;
+                handle_group_message(message, author, propagation_source, event_tx, swarm).await;
                 return;
             }
 
             if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
-                handle_broadcast_message(bcast, peer_id, peer_id_str, event_tx, swarm).await;
+                handle_broadcast_message(bcast, author, propagation_source, event_tx, swarm).await;
             } else {
                 p2plog_debug(format!(
-                    "Failed to parse broadcast message from peer {peer_id_str}"
+                    "Failed to parse broadcast message from peer {author}"
                 ));
             }
         }
@@ -703,11 +729,16 @@ const fn newly_persisted<T, E>(saved: &Result<Option<T>, E>) -> bool {
 
 async fn handle_group_message(
     message: gossipsub::Message,
-    peer_id: libp2p::PeerId,
+    author: libp2p::PeerId,
+    relay: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
 ) {
-    let peer_id_str = peer_id.to_string();
+    // `author` is the signed publisher; `relay` is only the last hop that
+    // forwarded this message to us. Attribution, membership and the synthetic
+    // id must use the author so the same message gets the same id on every
+    // path (and dedup holds); only the attachment fetch uses the relay.
+    let peer_id_str = author.to_string();
     let topic = message.topic.to_string();
     let Some(group_id) = crate::groups::group_id_from_topic(&topic) else {
         p2plog_debug(format!("Ignoring malformed group topic: {topic:?}"));
@@ -761,9 +792,11 @@ async fn handle_group_message(
                 return;
             }
 
-            // Attachments (files lane §12) are pulled from the group sender.
+            // Attachments (files lane §12) are pulled from the last hop that
+            // can serve the blob, not from the signed publisher (which may be
+            // several relays away).
             if let Some(attachment) = group_msg.attachment.as_ref() {
-                maybe_start_fetch(&peer_id, attachment, swarm);
+                maybe_start_fetch(&relay, attachment, swarm);
             }
 
             let _ = event_tx
