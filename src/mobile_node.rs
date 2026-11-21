@@ -163,15 +163,12 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     // broadcast channel. Side effects (saving peers, nickname exchange, ...)
     // run exactly once in the forwarder task so consumers stay read-only.
     let (broadcast_tx, _) = tokio::sync::broadcast::channel::<SwarmEvent>(256);
-    let mut rx = event_rx;
-    let cmd_for_forwarder = cmd_tx.clone();
     let broadcast_for_forwarder = broadcast_tx.clone();
-    runtime.spawn(async move {
-        while let Some(ev) = rx.recv().await {
-            process_event_for_mobile(&ev, Some(&cmd_for_forwarder));
-            let _ = broadcast_for_forwarder.send(ev);
-        }
-    });
+    runtime.spawn(forward_swarm_events(
+        event_rx,
+        cmd_tx.clone(),
+        broadcast_for_forwarder,
+    ));
 
     let new_node = MobileNode {
         event_broadcast: Some(broadcast_tx.clone()),
@@ -301,8 +298,28 @@ const fn is_nickname_only_dm(ev: &SwarmEvent) -> bool {
     )
 }
 
-/// Process a swarm event for side effects: save peers, send nickname, store received nicknames.
-fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmCommand>>) {
+/// Fan out swarm events to consumers, running each event's synchronous side
+/// effects exactly once. Kept as a named function so the async/sync boundary is
+/// explicit: the nickname greeting is sent with `send().await` here, never with
+/// `blocking_send` (which panics inside this Tokio task).
+async fn forward_swarm_events(
+    mut rx: mpsc::Receiver<SwarmEvent>,
+    cmd_tx: mpsc::Sender<SwarmCommand>,
+    broadcast_tx: tokio::sync::broadcast::Sender<SwarmEvent>,
+) {
+    while let Some(ev) = rx.recv().await {
+        if let Some(greeting) = process_event_for_mobile(&ev) {
+            let _ = cmd_tx.send(greeting).await;
+        }
+        let _ = broadcast_tx.send(ev);
+    }
+}
+
+/// Perform the synchronous side effects for one swarm event (save peers, store
+/// nicknames, persist receipts). Returns the nickname-greeting command to send
+/// on a new connection; the caller owns *how* it is sent so this stays safe to
+/// call from both sync FRB entry points and the async forwarder.
+fn process_event_for_mobile(ev: &SwarmEvent) -> Option<SwarmCommand> {
     match ev {
         SwarmEvent::PeerConnected(peer_id) => {
             // Track connected peers for broadcast attribution.
@@ -316,20 +333,20 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             if let Err(e) = save_peer(peer_id, &[]) {
                 p2plog_debug(format!("Failed to save peer: {e}"));
             }
-            // Send our nickname to the peer (nickname exchange)
-            if let Some(tx) = cmd_tx {
-                let nickname = get_self_nickname().ok().flatten();
-                let msg_id = gen_msg_id();
-                let _ = tx.blocking_send(SwarmCommand::SendDm {
-                    peer_id: peer_id.clone(),
-                    content: String::new(),
-                    nickname,
-                    msg_id: Some(msg_id),
-                    ack_for: None,
-                    attachment: None,
-                    reply_to: None,
-                });
-            }
+            // Send our nickname to the peer (nickname exchange). Return the
+            // command rather than sending it here: the async forwarder awaits
+            // the send, and sync FRB callers can use `blocking_send` safely.
+            let nickname = get_self_nickname().ok().flatten();
+            let msg_id = gen_msg_id();
+            Some(SwarmCommand::SendDm {
+                peer_id: peer_id.clone(),
+                content: String::new(),
+                nickname,
+                msg_id: Some(msg_id),
+                ack_for: None,
+                attachment: None,
+                reply_to: None,
+            })
         }
         SwarmEvent::PeerDisconnected(peer_id) => {
             if let Ok(mut set) = CONNECTED_PEERS.lock() {
@@ -338,6 +355,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
                 let _ =
                     crate::peers::record_peer_session(i32::try_from(set.len()).unwrap_or(i32::MAX));
             }
+            None
         }
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
@@ -353,6 +371,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             if let Err(e) = crate::messages::save_receipt(ack_for, peer_id, kind, at) {
                 p2plog_debug(format!("Failed to save receipt: {e}"));
             }
+            None
         }
         SwarmEvent::BroadcastMessage(m) | SwarmEvent::DirectMessage(m) => {
             // Store the sender's announced nickname
@@ -364,6 +383,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             // Nickname-only DMs are fully handled here (nickname stored above)
             // and are filtered out of the event stream by `poll_event`
             // (`is_nickname_only_dm`) so they never reach Dart or the DB.
+            None
         }
         SwarmEvent::GroupMessage(m) => {
             // Store the sender's announced nickname (the group message itself is
@@ -373,6 +393,7 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             {
                 let _ = record_peer_received_name_change(&m.peer_id, nick);
             }
+            None
         }
         // Inbound attachment finished downloading (files lane §12). The blob is
         // content-addressed on disk, so there is nothing to persist here — the
@@ -389,11 +410,13 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             p2plog_debug(format!(
                 "Received file {name} ({file_id}) from {peer_id} at {path}"
             ));
+            None
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => {
             // Mirrors the TUI's log line (mDNS's peer-expiry notice).
             p2plog_debug(format!("Peer expired: {peer_id}"));
+            None
         }
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => {
@@ -401,8 +424,9 @@ fn process_event_for_mobile(ev: &SwarmEvent, cmd_tx: Option<&mpsc::Sender<SwarmC
             if let Err(e) = save_peer(peer_id, &addrs) {
                 p2plog_debug(format!("Failed to save discovered peer: {e}"));
             }
+            None
         }
-        _ => {}
+        _ => None,
     }
 }
 
@@ -2007,7 +2031,7 @@ mod tests {
             reply_to: None,
             encrypted: false,
         });
-        process_event_for_mobile(&ev, None);
+        let _ = process_event_for_mobile(&ev);
     }
 
     #[test]
@@ -2022,22 +2046,19 @@ mod tests {
             reply_to: None,
             encrypted: false,
         });
-        process_event_for_mobile(&ev, None);
+        let _ = process_event_for_mobile(&ev);
     }
 
     #[test]
     fn test_process_event_logs_file_received() {
         // Unique markers avoid clashing with other tests writing to the shared
         // in-memory log buffer in parallel.
-        process_event_for_mobile(
-            &SwarmEvent::FileReceived {
-                peer_id: "peer-file-log".into(),
-                file_id: "file-id-log-marker".into(),
-                name: "log-marker.bin".into(),
-                path: "/tmp/log-marker.bin".into(),
-            },
-            None,
-        );
+        let _ = process_event_for_mobile(&SwarmEvent::FileReceived {
+            peer_id: "peer-file-log".into(),
+            file_id: "file-id-log-marker".into(),
+            name: "log-marker.bin".into(),
+            path: "/tmp/log-marker.bin".into(),
+        });
         let logs = crate::logging::get_tui_logs();
         assert!(
             logs.iter().any(|l| l.contains(
@@ -2050,12 +2071,9 @@ mod tests {
     #[cfg(feature = "mdns")]
     #[test]
     fn test_process_event_logs_peer_expired() {
-        process_event_for_mobile(
-            &SwarmEvent::PeerExpired {
-                peer_id: "peer-expired-log-marker".into(),
-            },
-            None,
-        );
+        let _ = process_event_for_mobile(&SwarmEvent::PeerExpired {
+            peer_id: "peer-expired-log-marker".into(),
+        });
         let logs = crate::logging::get_tui_logs();
         assert!(
             logs.iter()
@@ -2065,24 +2083,30 @@ mod tests {
     }
 
     #[test]
-    fn test_process_event_peer_connected_no_sender() {
-        process_event_for_mobile(&SwarmEvent::PeerConnected("p1".into()), None);
+    fn test_process_event_peer_connected_returns_greeting() {
+        let cmd = process_event_for_mobile(&SwarmEvent::PeerConnected("p1".into()));
+        match cmd {
+            Some(SwarmCommand::SendDm { peer_id, .. }) => assert_eq!(peer_id, "p1"),
+            other => panic!("PeerConnected must return a nickname greeting, got {other:?}"),
+        }
     }
 
     #[test]
     fn test_process_event_ignored_variants() {
-        process_event_for_mobile(&SwarmEvent::PeerDisconnected("p1".into()), None);
-        process_event_for_mobile(
-            &SwarmEvent::ListenAddrEstablished("/ip4/0.0.0.0/tcp/0".into()),
-            None,
+        assert!(process_event_for_mobile(&SwarmEvent::PeerDisconnected("p1".into())).is_none());
+        assert!(
+            process_event_for_mobile(&SwarmEvent::ListenAddrEstablished(
+                "/ip4/0.0.0.0/tcp/0".into()
+            ))
+            .is_none()
         );
-        process_event_for_mobile(
-            &SwarmEvent::Receipt {
+        assert!(
+            process_event_for_mobile(&SwarmEvent::Receipt {
                 peer_id: "p1".into(),
                 ack_for: "m1".into(),
                 received_at: None,
-            },
-            None,
+            })
+            .is_none()
         );
     }
 
@@ -2094,7 +2118,52 @@ mod tests {
             peer_id: "p-disc".into(),
             addresses: vec![addr],
         };
-        process_event_for_mobile(&ev, None);
+        let _ = process_event_for_mobile(&ev);
+    }
+
+    // ── forward_swarm_events ──────────────────────────────────────────
+
+    #[tokio::test]
+    #[serial(db)]
+    async fn test_forward_swarm_events_sends_greeting_without_blocking() {
+        // Regression: the forwarder runs *inside* a Tokio task. The old
+        // implementation called `blocking_send` for the nickname greeting,
+        // which panics ("Cannot block the current thread from within a
+        // runtime") and killed the whole event pipeline on first connect.
+        let guard = crate::db::shared_db_test_lock().lock().unwrap();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let db_path = dir.path().join("forwarder_test.sqlite");
+        crate::reset_db_url();
+        crate::db::set_db_url(&db_path.to_string_lossy());
+        let _ = crate::init_database();
+        // `#[serial(db)]` holds the DB namespace across the whole async test;
+        // drop the raw guard so it is not held across the awaits below. The
+        // forwarder's DB writes are best-effort and not asserted here anyway.
+        drop(guard);
+
+        let (event_tx, event_rx) = mpsc::channel(4);
+        let (cmd_tx, mut cmd_rx) = mpsc::channel(4);
+        let (broadcast_tx, mut broadcast_rx) = tokio::sync::broadcast::channel(4);
+
+        let task = tokio::spawn(forward_swarm_events(event_rx, cmd_tx, broadcast_tx));
+
+        event_tx
+            .send(SwarmEvent::PeerConnected("forwarder-peer".into()))
+            .await
+            .expect("feed event");
+        drop(event_tx);
+
+        // The greeting must arrive on the async command channel.
+        let cmd = cmd_rx.recv().await.expect("greeting delivered");
+        match cmd {
+            SwarmCommand::SendDm { peer_id, .. } => assert_eq!(peer_id, "forwarder-peer"),
+            other => panic!("expected nickname greeting, got {other:?}"),
+        }
+        // The same event is fanned out to broadcast consumers.
+        let forwarded = broadcast_rx.recv().await.expect("event broadcast");
+        assert!(matches!(forwarded, SwarmEvent::PeerConnected(id) if id == "forwarder-peer"));
+
+        task.await.expect("forwarder task completes cleanly");
     }
 
     // ── is_nickname_only_dm ───────────────────────────────────────────
