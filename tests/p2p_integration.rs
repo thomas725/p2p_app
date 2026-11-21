@@ -654,10 +654,14 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
 -> Result<(), Box<dyn std::error::Error>> {
     init_test_tracing();
 
-    let db_path_1 = "test_stale_db_1.db";
-    let db_path_2 = "test_stale_db_2.db";
-    let _ = std::fs::remove_file(db_path_1);
-    let _ = std::fs::remove_file(db_path_2);
+    // TempDirs clean up on drop, including when the assertions below return
+    // early — fixed paths used to leak `test_stale_db_*.db` files after a fail.
+    let db_dir_1 = tempfile::TempDir::new()?;
+    let db_dir_2 = tempfile::TempDir::new()?;
+    let db_file_1 = db_dir_1.path().join("stale.db");
+    let db_file_2 = db_dir_2.path().join("stale.db");
+    let db_path_1 = db_file_1.to_str().ok_or("non-UTF-8 temp path")?;
+    let db_path_2 = db_file_2.to_str().ok_or("non-UTF-8 temp path")?;
 
     let mut node_a = create_node_with_db(db_path_1)?;
     let peer_a = node_a.peer_id;
@@ -713,9 +717,6 @@ async fn test_connection_with_stale_db_address_and_mdns_recovery()
     }
 
     eprintln!("Test passed: connection established despite stale DB address");
-
-    let _ = std::fs::remove_file(db_path_1);
-    let _ = std::fs::remove_file(db_path_2);
 
     Ok(())
 }
