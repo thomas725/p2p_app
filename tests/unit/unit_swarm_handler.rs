@@ -40,6 +40,30 @@ fn test_file_id(seed: &str) -> String {
 }
 
 #[test]
+fn announced_connections_balance_connects_and_disconnects() {
+    // A blocked peer is never announced, so its close must not emit an
+    // unmatched PeerDisconnected. Multi-connection peers must stay balanced:
+    // each announced connect is released by exactly one disconnect.
+    let mut announced = AnnouncedConnections::default();
+    assert!(
+        !announced.on_disconnected("blocked-peer"),
+        "a peer we never announced cannot emit a disconnect"
+    );
+
+    announced.on_connected("peer-a");
+    announced.on_connected("peer-a");
+    assert!(announced.on_disconnected("peer-a"));
+    assert!(
+        announced.on_disconnected("peer-a"),
+        "two announced connects need two disconnects"
+    );
+    assert!(
+        !announced.on_disconnected("peer-a"),
+        "a third close has no matching connect"
+    );
+}
+
+#[test]
 fn test_gossipsub_author_prefers_signed_publisher_over_relay() {
     // Gossipsub signs messages (`MessageAuthenticity::Signed`), so `source` is
     // the authenticated publisher. A relayed message must be attributed to the

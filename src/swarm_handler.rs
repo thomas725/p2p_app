@@ -8,6 +8,7 @@ use crate::{
 use libp2p::futures::StreamExt;
 use libp2p::gossipsub;
 use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
+use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::SystemTime;
 use tokio::sync::mpsc;
@@ -283,13 +284,14 @@ async fn handle_swarm_event(
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
+    announced: &mut AnnouncedConnections,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::Behaviour(_) => {
             handle_behaviour_event(swarm_event, event_tx, swarm).await;
         }
         _ => {
-            handle_connection_event(swarm_event, event_tx, swarm, relays).await;
+            handle_connection_event(swarm_event, event_tx, swarm, relays, announced).await;
         }
     }
 }
@@ -492,16 +494,53 @@ async fn handle_behaviour_event(
     }
 }
 
+/// Connections we have actually announced to the frontends as `PeerConnected`.
+///
+/// A blocked peer is disconnected in `handle_connection_established` *before*
+/// `PeerConnected` is sent, but libp2p still emits its `ConnectionClosed`. Without
+/// this tracker that close would emit an unmatched `PeerDisconnected`, decrementing
+/// the frontends' connection count (and recording a phantom session sample) for a
+/// peer that was never counted. The count handles libp2p's multiple connections
+/// to one peer: every announced connect is balanced by exactly one disconnect.
+#[derive(Default)]
+struct AnnouncedConnections(HashMap<String, usize>);
+
+impl AnnouncedConnections {
+    /// Record a connection that is about to be announced as `PeerConnected`.
+    fn on_connected(&mut self, peer_id: &str) {
+        let count = self.0.entry(peer_id.to_string()).or_default();
+        *count = count.saturating_add(1);
+    }
+
+    /// Record a closed connection. Returns `true` only when a matching
+    /// `PeerConnected` was previously announced, so the caller may emit a
+    /// `PeerDisconnected` event.
+    fn on_disconnected(&mut self, peer_id: &str) -> bool {
+        match self.0.get_mut(peer_id) {
+            Some(count) if *count > 1 => {
+                *count = count.saturating_sub(1);
+                true
+            }
+            Some(_) => {
+                self.0.remove(peer_id);
+                true
+            }
+            None => false,
+        }
+    }
+}
+
 async fn handle_connection_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
+    announced: &mut AnnouncedConnections,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::ConnectionEstablished { peer_id, .. } => {
             let peer_id_str = peer_id.to_string();
-            handle_connection_established(peer_id, event_tx, swarm, relays).await;
+            handle_connection_established(peer_id, event_tx, swarm, relays, announced).await;
             // Store-and-forward: retry any sealed DMs addressed to this peer
             // that were parked while it was offline.
             match crate::dm_outbox::pending_for(&peer_id_str) {
@@ -512,7 +551,7 @@ async fn handle_connection_event(
             }
         }
         Libp2pSwarmEvent::ConnectionClosed { peer_id, .. } => {
-            handle_connection_closed(peer_id, event_tx, swarm).await;
+            handle_connection_closed(peer_id, event_tx, swarm, announced).await;
         }
         Libp2pSwarmEvent::NewListenAddr { address, .. } => {
             handle_new_listen_addr(address, event_tx).await;
@@ -547,15 +586,18 @@ async fn handle_connection_established(
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
+    announced: &mut AnnouncedConnections,
 ) {
     // Blocklist (US-054): refuse the connection instead of tracking it. The
     // peer can still resolve us via mDNS/DHT, so dropping the inbound dial is
-    // the only way to keep it from meshing with us.
+    // the only way to keep it from meshing with us. Never announce it as
+    // connected — otherwise its close emits an unmatched disconnect.
     if peer_is_blocked(&peer_id) {
         p2plog_debug(format!("Disconnecting blocked peer {peer_id}"));
         let _ = swarm.disconnect_peer_id(peer_id);
         return;
     }
+    announced.on_connected(&peer_id.to_string());
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
@@ -573,15 +615,18 @@ async fn handle_connection_established(
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
+    announced: &mut AnnouncedConnections,
 ) {
     // Blocklist (US-054): refuse the connection instead of tracking it. The
     // peer can still resolve us via mDNS/DHT, so dropping the inbound dial is
-    // the only way to keep it from meshing with us.
+    // the only way to keep it from meshing with us. Never announce it as
+    // connected — otherwise its close emits an unmatched disconnect.
     if peer_is_blocked(&peer_id) {
         p2plog_debug(format!("Disconnecting blocked peer {peer_id}"));
         let _ = swarm.disconnect_peer_id(peer_id);
         return;
     }
+    announced.on_connected(&peer_id.to_string());
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
@@ -592,10 +637,16 @@ async fn handle_connection_closed(
     peer_id: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    announced: &mut AnnouncedConnections,
 ) {
-    let _ = event_tx
-        .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
-        .await;
+    // Only a peer we actually announced as connected may emit a disconnect.
+    // A blocked peer is disconnected before `PeerConnected`, so its close must
+    // not decrement the frontends' counts or record a phantom session sample.
+    if announced.on_disconnected(&peer_id.to_string()) {
+        let _ = event_tx
+            .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
+            .await;
+    }
     // Ping samples only describe a live connection: drop the peer's once its
     // last connection is gone so Peer Info never shows a stale RTT.
     if !swarm.is_connected(&peer_id) {
@@ -2334,6 +2385,7 @@ pub fn spawn_swarm_handler(
         // after a restart); `Skip` keeps a busy node from stacking catch-ups.
         let mut flush_ticker = tokio::time::interval(std::time::Duration::from_secs(30));
         flush_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        let mut announced = AnnouncedConnections::default();
 
         loop {
             let event = tokio::select! {
@@ -2345,7 +2397,14 @@ pub fn spawn_swarm_handler(
 
             match event {
                 Some(Event::Swarm(swarm_event)) => {
-                    handle_swarm_event(*swarm_event, &event_tx, &mut swarm, &mut relays).await;
+                    handle_swarm_event(
+                        *swarm_event,
+                        &event_tx,
+                        &mut swarm,
+                        &mut relays,
+                        &mut announced,
+                    )
+                    .await;
                 }
                 Some(Event::Command(cmd)) => {
                     handle_command(*cmd, &mut swarm, &topic);
