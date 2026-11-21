@@ -287,7 +287,6 @@ async fn handle_swarm_event(
     }
 }
 
-#[allow(clippy::too_many_lines)]
 async fn handle_behaviour_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
@@ -299,49 +298,12 @@ async fn handle_behaviour_event(
             message,
             ..
         })) => {
-            // Gossipsub verifies the signature of every message (Signed
-            // authenticity), so `source` is the true publisher and
-            // `propagation_source` is only the peer that relayed it to us.
-            let author = gossipsub_author(message.source, propagation_source);
-            let propagation_str = propagation_source.to_string();
-
-            // Blocklist (US-054): a muted peer's traffic never reaches the
-            // parsers, so nothing it sends can be persisted. Check both the
-            // relay (a muted forwarder) and the signed author (a muted
-            // publisher whose message arrived via an unmuted relay).
-            if peer_is_blocked(&propagation_source) || peer_is_blocked(&author) {
-                p2plog_debug(format!(
-                    "Dropped gossipsub traffic from blocked peer (relay {propagation_str}, author {author})"
-                ));
-                return;
-            }
-
-            // Route per-group control/chat topics (group:<group_id> and the
-            // derived group:<group_id>:backfill) before the broadcast path.
-            // Backfill goes first: `group:X:backfill` also starts with the
-            // group prefix, so the more specific check must win.
-            if crate::groups::is_backfill_topic(&message.topic.to_string()) {
-                handle_backfill_request(&message, author, swarm);
-                return;
-            }
-            if crate::groups::is_group_topic(&message.topic.to_string()) {
-                handle_group_message(message, author, propagation_source, event_tx, swarm).await;
-                return;
-            }
-
-            if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
-                handle_broadcast_message(bcast, author, propagation_source, event_tx, swarm).await;
-            } else {
-                p2plog_debug(format!(
-                    "Failed to parse broadcast message from peer {author}"
-                ));
-            }
+            handle_gossipsub_message(message, propagation_source, event_tx, swarm).await;
         }
         Libp2pSwarmEvent::Behaviour(AppEv::RequestResponse(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!("Dropped DM from blocked peer {peer}"));
+            if drop_blocked_lane("DM", &peer) {
                 return;
             }
             handle_request_response(message, peer, event_tx, swarm).await;
@@ -349,10 +311,7 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::DeviceBinding(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!(
-                    "Dropped device-binding traffic from blocked peer {peer}"
-                ));
+            if drop_blocked_lane("device-binding traffic", &peer) {
                 return;
             }
             handle_device_binding(message, peer, event_tx, swarm).await;
@@ -360,8 +319,7 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::CallSignaling(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!("Dropped call signal from blocked peer {peer}"));
+            if drop_blocked_lane("call signal", &peer) {
                 return;
             }
             handle_call_signal(message, peer, event_tx, swarm).await;
@@ -371,8 +329,7 @@ async fn handle_behaviour_event(
             message,
             ..
         })) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!("Dropped typing signal from blocked peer {peer}"));
+            if drop_blocked_lane("typing signal", &peer) {
                 return;
             }
             handle_typing_signal(message, peer, event_tx, swarm).await;
@@ -380,8 +337,7 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::Reactions(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!("Dropped reaction signal from blocked peer {peer}"));
+            if drop_blocked_lane("reaction signal", &peer) {
                 return;
             }
             handle_reaction_signal(message, peer, event_tx, swarm).await;
@@ -389,12 +345,81 @@ async fn handle_behaviour_event(
         Libp2pSwarmEvent::Behaviour(AppEv::FileTransfer(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
-            if peer_is_blocked(&peer) {
-                p2plog_debug(format!("Dropped file transfer from blocked peer {peer}"));
+            if drop_blocked_lane("file transfer", &peer) {
                 return;
             }
             handle_file_transfer(message, peer, event_tx, swarm).await;
         }
+        other => handle_discovery_event(other, event_tx, swarm).await,
+    }
+}
+
+/// Blocklist gate shared by every request-response lane (US-054). Keeping the
+/// log text assembled from one label makes it obvious no lane is unguarded.
+fn drop_blocked_lane(label: &str, peer: &libp2p::PeerId) -> bool {
+    if peer_is_blocked(peer) {
+        p2plog_debug(format!("Dropped {label} from blocked peer {peer}"));
+        true
+    } else {
+        false
+    }
+}
+
+/// Route a verified gossipsub message: blocklist gate first (relay *and*
+/// signed publisher), then group/backfill topics, then the broadcast path.
+async fn handle_gossipsub_message(
+    message: gossipsub::Message,
+    propagation_source: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    // Gossipsub verifies the signature of every message (Signed
+    // authenticity), so `source` is the true publisher and
+    // `propagation_source` is only the peer that relayed it to us.
+    let author = gossipsub_author(message.source, propagation_source);
+    let propagation_str = propagation_source.to_string();
+
+    // Blocklist (US-054): a muted peer's traffic never reaches the
+    // parsers, so nothing it sends can be persisted. Check both the
+    // relay (a muted forwarder) and the signed author (a muted
+    // publisher whose message arrived via an unmuted relay).
+    if peer_is_blocked(&propagation_source) || peer_is_blocked(&author) {
+        p2plog_debug(format!(
+            "Dropped gossipsub traffic from blocked peer (relay {propagation_str}, author {author})"
+        ));
+        return;
+    }
+
+    // Route per-group control/chat topics (group:<group_id> and the
+    // derived group:<group_id>:backfill) before the broadcast path.
+    // Backfill goes first: `group:X:backfill` also starts with the
+    // group prefix, so the more specific check must win.
+    if crate::groups::is_backfill_topic(&message.topic.to_string()) {
+        handle_backfill_request(&message, author, swarm);
+        return;
+    }
+    if crate::groups::is_group_topic(&message.topic.to_string()) {
+        handle_group_message(message, author, propagation_source, event_tx, swarm).await;
+        return;
+    }
+
+    if let Ok(bcast) = serde_json::from_slice::<BroadcastMessage>(&message.data) {
+        handle_broadcast_message(bcast, author, propagation_source, event_tx, swarm).await;
+    } else {
+        p2plog_debug(format!(
+            "Failed to parse broadcast message from peer {author}"
+        ));
+    }
+}
+
+/// Handle discovery, connection-quality and diagnostic behaviour events:
+/// `mDNS`, `ping`, `Identify`, `Kademlia`, `relay`, `AutoNAT` and `DCUtR`.
+async fn handle_discovery_event(
+    swarm_event: Libp2pSwarmEvent<AppEv>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    match swarm_event {
         #[cfg(feature = "mdns")]
         Libp2pSwarmEvent::Behaviour(AppEv::Mdns(libp2p::mdns::Event::Discovered(list))) => {
             handle_mdns_discovered(list, event_tx, swarm).await;

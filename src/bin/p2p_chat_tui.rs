@@ -147,7 +147,6 @@ impl WebOptions {
 }
 
 #[tokio::main]
-#[allow(clippy::large_futures)]
 async fn main() -> color_eyre::Result<()> {
     run_tui().await
 }
@@ -156,7 +155,6 @@ async fn main() -> color_eyre::Result<()> {
 ///
 /// # Errors
 /// Returns an error if terminal/database/swarm setup fails.
-#[allow(clippy::large_futures)]
 pub async fn run_tui() -> color_eyre::Result<()> {
     color_eyre::install()?;
     init_logging();

@@ -1268,8 +1268,8 @@ fn sync_contact_search(s: &mut super::state::AppState) {
 ///
 /// Tab lookups and modifier flags are computed once up front; shared
 /// terminal-key semantics (Ctrl+I / Ctrl+P vs bare Tab) live with
-/// [`handle_peer_info_control_chord`].
-#[allow(clippy::too_many_lines)]
+/// [`handle_peer_info_control_chord`]. The match itself only routes to the
+/// focused helpers so no single function owns every frontend shortcut.
 async fn handle_key_dispatch(
     key_event: crossterm::event::KeyEvent,
     s: &mut super::state::AppState,
@@ -1284,157 +1284,23 @@ async fn handle_key_dispatch(
     let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let on_contacts = matches!(&tab, p2p_app::tui_tabs::TabContent::Contacts);
     let on_peer_info = matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_));
+    let on_direct = matches!(&tab, p2p_app::tui_tabs::TabContent::Direct(_));
     let dm_peer_id = match &tab {
         p2p_app::tui_tabs::TabContent::Direct(peer_id) => Some(peer_id.clone()),
         _ => None,
     };
-    let on_direct = dm_peer_id.is_some();
-    let on_settings = matches!(&tab, p2p_app::tui_tabs::TabContent::Settings);
-    let on_groups = matches!(&tab, p2p_app::tui_tabs::TabContent::Groups);
     let input_enabled = tab.is_input_enabled();
 
+    if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
+        return;
+    }
+    if handle_chat_action_shortcut(key_event.code, is_ctrl, s, &tab) {
+        return;
+    }
+
     match key_event.code {
-        // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
-        crossterm::event::KeyCode::Char('i' | 'p')
-            if !s.is_editing_nickname()
-                && !s.is_editing_message()
-                && !s.is_adding_reaction()
-                && is_ctrl
-                && on_direct =>
-        {
-            handle_peer_info_control_chord(&key_event, s);
-        }
-        // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
-        // non-Direct tabs falls through to the chat-input branch, as before.
-        crossterm::event::KeyCode::Char('p')
-            if !s.is_editing_nickname()
-                && !s.is_editing_message()
-                && !s.is_adding_reaction()
-                && is_ctrl =>
-        {
-            p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
-        }
-        crossterm::event::KeyCode::BackTab => {
-            handle_navigation_key(key_event.code, s).await;
-        }
-        // Tab carries two meanings: bare Tab cycles tabs on every terminal (a
-        // bare 0x09 — Ctrl+I collapses to the same byte on non-kitty terminals,
-        // but there Ctrl+P is the distinct Peer Info binding instead, so Tab is
-        // always free to cycle). Tab+CONTROL is the CSI-u spelling of Ctrl+I on
-        // terminals that send it as an explicitly-modified Tab; it is a no-op.
-        crossterm::event::KeyCode::Tab => {
-            if is_ctrl {
-                p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
-            } else {
-                handle_navigation_key(key_event.code, s).await;
-            }
-        }
-        crossterm::event::KeyCode::Up
-        | crossterm::event::KeyCode::Down
-        | crossterm::event::KeyCode::PageUp
-        | crossterm::event::KeyCode::PageDown
-        | crossterm::event::KeyCode::Home
-        | crossterm::event::KeyCode::End => {
-            handle_scroll_key(key_event.code, s).await;
-        }
-        crossterm::event::KeyCode::F(12) => {
-            toggle_mouse_capture(s);
-        }
-        // `Ctrl+R` captures the newest replyable message in a chat as this
-        // conversation's reply draft; `Esc` clears it, and sending consumes it.
-        crossterm::event::KeyCode::Char('r')
-            if is_ctrl
-                && s.input_mode == p2p_app::InputMode::Chat
-                && matches!(
-                    tab,
-                    p2p_app::tui_tabs::TabContent::Chat
-                        | p2p_app::tui_tabs::TabContent::Direct(_)
-                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
-                ) =>
-        {
-            if let Some(reply) = s.begin_reply(&tab) {
-                p2plog_debug(format!("Replying to {}", reply.msg_id));
-            }
-        }
-        // `Delete` arms local-only deletion of the newest sent message in a
-        // chat. Text editors and the Contacts/Settings/Groups tabs don't own a
-        // message queue, so the key is a no-op there.
-        crossterm::event::KeyCode::Delete
-            if s.input_mode == p2p_app::InputMode::Chat
-                && matches!(
-                    tab,
-                    p2p_app::tui_tabs::TabContent::Chat
-                        | p2p_app::tui_tabs::TabContent::Direct(_)
-                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
-                ) =>
-        {
-            arm_delete_prompt(s, &tab);
-        }
-        // `Ctrl+E` opens the local-edit editor for the newest sent message in a
-        // chat. A bare printable key would swallow the letter while composing.
-        crossterm::event::KeyCode::Char('e')
-            if is_ctrl
-                && s.input_mode == p2p_app::InputMode::Chat
-                && matches!(
-                    tab,
-                    p2p_app::tui_tabs::TabContent::Chat
-                        | p2p_app::tui_tabs::TabContent::Direct(_)
-                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
-                ) =>
-        {
-            arm_edit_prompt(s, &tab);
-        }
-        // `Ctrl+Y` opens the shared emoji editor for a reaction on the newest
-        // message in a chat (US-008). Any message with a stable wire id can be
-        // reacted to, incoming rows included, unlike local edit/delete.
-        crossterm::event::KeyCode::Char('y')
-            if is_ctrl
-                && s.input_mode == p2p_app::InputMode::Chat
-                && matches!(
-                    tab,
-                    p2p_app::tui_tabs::TabContent::Chat
-                        | p2p_app::tui_tabs::TabContent::Direct(_)
-                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
-                ) =>
-        {
-            if s.begin_reaction(&tab) {
-                p2plog_debug("Reaction editor opened".to_string());
-            } else {
-                s.popup = Some("No message to react to in this conversation".to_string());
-            }
-        }
-        // `Ctrl+O` opens the newest downloaded attachment in a chat, matching
-        // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
-        // the modifier keeps the chat composer untouched.
-        crossterm::event::KeyCode::Char('o')
-            if is_ctrl
-                && s.input_mode == p2p_app::InputMode::Chat
-                && matches!(
-                    tab,
-                    p2p_app::tui_tabs::TabContent::Chat
-                        | p2p_app::tui_tabs::TabContent::Direct(_)
-                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
-                ) =>
-        {
-            open_newest_attachment(s, &tab);
-        }
         crossterm::event::KeyCode::Enter => {
-            if s.is_searching_contacts() {
-                s.end_contact_search(true);
-                p2plog_debug("Applied Contacts search".to_string());
-            } else if s.is_editing_nickname() {
-                handle_nickname_submission(s, swarm_cmd_tx).await;
-            } else if s.is_editing_message() {
-                confirm_edit_message(s);
-            } else if s.is_adding_reaction() {
-                confirm_reaction(s, swarm_cmd_tx).await;
-            } else if s.is_dialing_peer() {
-                handle_dial_peer_submission(s, swarm_cmd_tx).await;
-            } else if s.is_adding_network_peer() {
-                handle_add_network_peer_submission(s);
-            } else {
-                handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
-            }
+            handle_enter_dispatch(s, swarm_cmd_tx, shift_held, tab).await;
         }
         crossterm::event::KeyCode::Char('w') if is_ctrl => {
             if let Some(peer_id) = dm_peer_id.as_deref() {
@@ -1460,36 +1326,16 @@ async fn handle_key_dispatch(
                     swarm_cmd_tx,
                 )
                 .await => {}
-        crossterm::event::KeyCode::Char('n')
+        crossterm::event::KeyCode::Char(_)
             if !is_ctrl
-                && !s.is_editing_nickname()
-                && matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
-        {
-            handle_nickname_key(s, &tab);
-        }
-        crossterm::event::KeyCode::Char(c)
-            if !is_ctrl
-                && !s.is_editing_nickname()
-                && !s.is_dialing_peer()
-                && !s.is_adding_network_peer()
-                && on_settings =>
-        {
-            handle_settings_shortcut(c, s);
-        }
-        crossterm::event::KeyCode::Char(c)
-            if !is_ctrl && on_groups && !s.is_editing_nickname() && !s.is_creating_group() =>
-        {
-            handle_groups_key(c, s);
-        }
-        // `c` clears the in-memory log buffer on the Log tab, mirroring
-        // Flutter's Log-tab "Clear" action. The Log tab has no input box, so
-        // the key is free here; no log line is pushed after clearing so the
-        // pane is visibly empty (matching Flutter's "No logs yet" state).
-        crossterm::event::KeyCode::Char('c')
-            if !is_ctrl && matches!(&tab, p2p_app::tui_tabs::TabContent::Log) =>
-        {
-            p2p_app::clear_tui_logs();
-        }
+                && (on_peer_info
+                    || matches!(
+                        &tab,
+                        p2p_app::tui_tabs::TabContent::Settings
+                            | p2p_app::tui_tabs::TabContent::Groups
+                            | p2p_app::tui_tabs::TabContent::Log
+                    ))
+                && handle_tab_specific_shortcut(key_event.code, s, &tab) => {}
         // Remaining Contacts-tab keys: `/` opens the search box (which then owns
         // every keystroke, so typing never re-sorts) and anything else is a
         // column-sort shortcut; `e`/`i`/`c` were handled above.
@@ -1499,29 +1345,225 @@ async fn handle_key_dispatch(
             handle_contacts_tab_key(key_event, is_ctrl, s);
         }
         _ => {
-            if input_enabled
-                || s.is_editing_nickname()
-                || s.is_editing_message()
-                || s.is_adding_reaction()
-                || s.is_creating_group()
-                || s.is_dialing_peer()
-                || s.is_adding_network_peer()
-            {
-                s.chat_input.input(key_event);
-                if input_enabled
-                    && s.input_mode == p2p_app::InputMode::Chat
-                    && matches!(
-                        key_event.code,
-                        crossterm::event::KeyCode::Char(_)
-                            | crossterm::event::KeyCode::Backspace
-                            | crossterm::event::KeyCode::Delete
-                    )
-                    && let Some(peer_id) = dm_peer_id.as_deref()
-                {
-                    let composing = !s.chat_input.lines().join("\n").trim().is_empty();
-                    super::message_handlers::send_typing(s, swarm_cmd_tx, peer_id, composing);
-                }
+            handle_default_input(
+                key_event,
+                s,
+                swarm_cmd_tx,
+                dm_peer_id.as_deref(),
+                input_enabled,
+            );
+        }
+    }
+}
+
+/// Terminal-level keys: the Peer Info control chords, tab cycling, scrolling
+/// and F12's mouse-capture toggle. Returns `true` when the key was consumed.
+async fn handle_global_navigation(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    on_direct: bool,
+    s: &mut super::state::AppState,
+) -> bool {
+    let editing = s.is_editing_nickname() || s.is_editing_message() || s.is_adding_reaction();
+    match key_event.code {
+        // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
+        crossterm::event::KeyCode::Char('i' | 'p') if !editing && is_ctrl && on_direct => {
+            handle_peer_info_control_chord(key_event, s);
+            return true;
+        }
+        // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
+        // non-Direct tabs falls through to the chat-input branch, as before.
+        crossterm::event::KeyCode::Char('p') if !editing && is_ctrl => {
+            p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
+            return true;
+        }
+        crossterm::event::KeyCode::BackTab => {
+            handle_navigation_key(key_event.code, s).await;
+            return true;
+        }
+        // Tab carries two meanings: bare Tab cycles tabs on every terminal (a
+        // bare 0x09 — Ctrl+I collapses to the same byte on non-kitty terminals,
+        // but there Ctrl+P is the distinct Peer Info binding instead, so Tab is
+        // always free to cycle). Tab+CONTROL is the CSI-u spelling of Ctrl+I on
+        // terminals that send it as an explicitly-modified Tab; it is a no-op.
+        crossterm::event::KeyCode::Tab => {
+            if is_ctrl {
+                p2plog_debug("Ctrl+I (Tab+CONTROL) ignored: no-op on this tab".to_string());
+            } else {
+                handle_navigation_key(key_event.code, s).await;
             }
+            return true;
+        }
+        crossterm::event::KeyCode::Up
+        | crossterm::event::KeyCode::Down
+        | crossterm::event::KeyCode::PageUp
+        | crossterm::event::KeyCode::PageDown
+        | crossterm::event::KeyCode::Home
+        | crossterm::event::KeyCode::End => {
+            handle_scroll_key(key_event.code, s).await;
+            return true;
+        }
+        crossterm::event::KeyCode::F(12) => {
+            toggle_mouse_capture(s);
+            return true;
+        }
+        _ => {}
+    }
+    false
+}
+
+/// Chat composer actions that must not consume a bare printable key.
+/// Returns `true` when the key was consumed.
+fn handle_chat_action_shortcut(
+    code: crossterm::event::KeyCode,
+    is_ctrl: bool,
+    s: &mut super::state::AppState,
+    tab: &p2p_app::tui_tabs::TabContent,
+) -> bool {
+    let in_chat = s.input_mode == p2p_app::InputMode::Chat
+        && matches!(
+            tab,
+            p2p_app::tui_tabs::TabContent::Chat
+                | p2p_app::tui_tabs::TabContent::Direct(_)
+                | p2p_app::tui_tabs::TabContent::GroupChat(_)
+        );
+    if !in_chat {
+        return false;
+    }
+    match code {
+        // `Ctrl+R` captures the newest replyable message in a chat as this
+        // conversation's reply draft; `Esc` clears it, and sending consumes it.
+        crossterm::event::KeyCode::Char('r') if is_ctrl => {
+            if let Some(reply) = s.begin_reply(tab) {
+                p2plog_debug(format!("Replying to {}", reply.msg_id));
+            }
+        }
+        // `Delete` arms local-only deletion of the newest sent message in a
+        // chat. Text editors and the Contacts/Settings/Groups tabs don't own a
+        // message queue, so the key is a no-op there.
+        crossterm::event::KeyCode::Delete => arm_delete_prompt(s, tab),
+        // `Ctrl+E` opens the local-edit editor for the newest sent message in a
+        // chat. A bare printable key would swallow the letter while composing.
+        crossterm::event::KeyCode::Char('e') if is_ctrl => arm_edit_prompt(s, tab),
+        // `Ctrl+Y` opens the shared emoji editor for a reaction on the newest
+        // message in a chat (US-008). Any message with a stable wire id can be
+        // reacted to, incoming rows included, unlike local edit/delete.
+        crossterm::event::KeyCode::Char('y') if is_ctrl => {
+            if s.begin_reaction(tab) {
+                p2plog_debug("Reaction editor opened".to_string());
+            } else {
+                s.popup = Some("No message to react to in this conversation".to_string());
+            }
+        }
+        // `Ctrl+O` opens the newest downloaded attachment in a chat, matching
+        // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
+        // the modifier keeps the chat composer untouched.
+        crossterm::event::KeyCode::Char('o') if is_ctrl => open_newest_attachment(s, tab),
+        _ => return false,
+    }
+    true
+}
+
+/// Enter commits whichever editor or prompt is open, or sends the draft.
+async fn handle_enter_dispatch(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    shift_held: bool,
+    tab: p2p_app::tui_tabs::TabContent,
+) {
+    if s.is_searching_contacts() {
+        s.end_contact_search(true);
+        p2plog_debug("Applied Contacts search".to_string());
+    } else if s.is_editing_nickname() {
+        handle_nickname_submission(s, swarm_cmd_tx).await;
+    } else if s.is_editing_message() {
+        confirm_edit_message(s);
+    } else if s.is_adding_reaction() {
+        confirm_reaction(s, swarm_cmd_tx).await;
+    } else if s.is_dialing_peer() {
+        handle_dial_peer_submission(s, swarm_cmd_tx).await;
+    } else if s.is_adding_network_peer() {
+        handle_add_network_peer_submission(s);
+    } else {
+        handle_enter_key(s, swarm_cmd_tx, shift_held, tab).await;
+    }
+}
+
+/// Shortcuts owned by Peer Info, Settings, Groups and Log (in that order of
+/// precedence). Returns `true` when the key was consumed.
+fn handle_tab_specific_shortcut(
+    code: crossterm::event::KeyCode,
+    s: &mut super::state::AppState,
+    tab: &p2p_app::tui_tabs::TabContent,
+) -> bool {
+    match code {
+        crossterm::event::KeyCode::Char('n')
+            if !s.is_editing_nickname()
+                && matches!(tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
+        {
+            handle_nickname_key(s, tab);
+            true
+        }
+        crossterm::event::KeyCode::Char(c)
+            if !s.is_dialing_peer()
+                && !s.is_adding_network_peer()
+                && matches!(tab, p2p_app::tui_tabs::TabContent::Settings) =>
+        {
+            handle_settings_shortcut(c, s);
+            true
+        }
+        crossterm::event::KeyCode::Char(c)
+            if !s.is_editing_nickname()
+                && !s.is_creating_group()
+                && matches!(tab, p2p_app::tui_tabs::TabContent::Groups) =>
+        {
+            handle_groups_key(c, s);
+            true
+        }
+        // `c` clears the in-memory log buffer on the Log tab, mirroring
+        // Flutter's Log-tab "Clear" action. The Log tab has no input box, so
+        // the key is free here; no log line is pushed after clearing so the
+        // pane is visibly empty (matching Flutter's "No logs yet" state).
+        crossterm::event::KeyCode::Char('c')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Log) =>
+        {
+            p2p_app::clear_tui_logs();
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Unclaimed keys feed the active text editor, with the typing indicator on
+/// DM tabs.
+fn handle_default_input(
+    key_event: crossterm::event::KeyEvent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    dm_peer_id: Option<&str>,
+    input_enabled: bool,
+) {
+    if input_enabled
+        || s.is_editing_nickname()
+        || s.is_editing_message()
+        || s.is_adding_reaction()
+        || s.is_creating_group()
+        || s.is_dialing_peer()
+        || s.is_adding_network_peer()
+    {
+        s.chat_input.input(key_event);
+        if input_enabled
+            && s.input_mode == p2p_app::InputMode::Chat
+            && matches!(
+                key_event.code,
+                crossterm::event::KeyCode::Char(_)
+                    | crossterm::event::KeyCode::Backspace
+                    | crossterm::event::KeyCode::Delete
+            )
+            && let Some(peer_id) = dm_peer_id
+        {
+            let composing = !s.chat_input.lines().join("\n").trim().is_empty();
+            super::message_handlers::send_typing(s, swarm_cmd_tx, peer_id, composing);
         }
     }
 }
