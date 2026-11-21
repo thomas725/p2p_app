@@ -175,11 +175,19 @@ pub fn recipients_for_message(msg_id: &str) -> Vec<String> {
         .ok()
         .flatten();
     if let Some(group_id) = group_id {
+        // The local device is recorded as a group member when we accept an
+        // invite, but reacting is a local action — echoing the signal back to
+        // ourselves would just re-emit a redundant reaction event. Match the
+        // broadcast branch, which excludes self via `load_peers()`.
+        let local_peer = crate::peers::local_peer_id_string();
         return group_members::table
             .filter(group_members::group_id.eq(group_id))
             .select(group_members::peer_id)
             .load::<String>(&mut conn)
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|peer| local_peer.as_ref() != Some(peer))
+            .collect();
     }
 
     Vec::new()
@@ -370,6 +378,43 @@ mod tests {
         with_test_db(|| {
             let too_long = "x".repeat(MAX_EMOJI_LEN + 1);
             assert!(apply("m1", "peer-a", &too_long, false).is_err());
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn group_reaction_fanout_excludes_local_peer() {
+        with_test_db(|| {
+            let local = crate::get_local_peer_id()
+                .expect("local identity")
+                .to_string();
+            let remote = libp2p_identity::Keypair::generate_ed25519()
+                .public()
+                .to_peer_id()
+                .to_string();
+
+            crate::groups::ensure_group_for_invite("g-react").expect("group");
+            crate::groups::record_group_member("g-react", &local).expect("local member");
+            crate::groups::record_group_member("g-react", &remote).expect("remote member");
+            crate::groups::save_outgoing_group_message(
+                "g-react",
+                "hello",
+                crate::groups::GroupMessageMeta {
+                    msg_id: Some("gm-1".into()),
+                    ..Default::default()
+                },
+            )
+            .expect("group message");
+
+            let recipients = recipients_for_message("gm-1");
+            assert!(
+                recipients.contains(&remote),
+                "the remote member must receive the reaction"
+            );
+            assert!(
+                !recipients.contains(&local),
+                "the local peer must never receive its own reaction"
+            );
         });
     }
 }
