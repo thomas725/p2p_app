@@ -408,6 +408,9 @@ fn handle_close_dm_tab(
     state: &mut super::state::AppState,
     tab_content: &p2p_app::tui_tabs::TabContent,
 ) {
+    if let p2p_app::tui_tabs::TabContent::Direct(peer_id) = tab_content {
+        state.clear_typing(peer_id);
+    }
     if let Some(closed_idx) = state.dynamic_tabs.remove_tab(tab_content) {
         state.active_tab = if closed_idx > 0 {
             closed_idx.saturating_sub(1)
@@ -1121,7 +1124,11 @@ async fn handle_key_dispatch(
     let tab = s.dynamic_tabs.tab_index_to_content(s.active_tab);
     let on_contacts = matches!(&tab, p2p_app::tui_tabs::TabContent::Contacts);
     let on_peer_info = matches!(&tab, p2p_app::tui_tabs::TabContent::PeerInfo(_));
-    let on_direct = matches!(&tab, p2p_app::tui_tabs::TabContent::Direct(_));
+    let dm_peer_id = match &tab {
+        p2p_app::tui_tabs::TabContent::Direct(peer_id) => Some(peer_id.clone()),
+        _ => None,
+    };
+    let on_direct = dm_peer_id.is_some();
     let on_settings = matches!(&tab, p2p_app::tui_tabs::TabContent::Settings);
     let on_groups = matches!(&tab, p2p_app::tui_tabs::TabContent::Groups);
     let input_enabled = tab.is_input_enabled();
@@ -1227,6 +1234,9 @@ async fn handle_key_dispatch(
             }
         }
         crossterm::event::KeyCode::Char('w') if is_ctrl => {
+            if let Some(peer_id) = dm_peer_id.as_deref() {
+                super::message_handlers::send_typing(s, swarm_cmd_tx, peer_id, false);
+            }
             handle_close_dm_tab(s, &tab);
         }
         // The Contacts search box owns every printable key while it is open, so
@@ -1285,6 +1295,19 @@ async fn handle_key_dispatch(
                 || s.is_adding_network_peer()
             {
                 s.chat_input.input(key_event);
+                if input_enabled
+                    && s.input_mode == p2p_app::InputMode::Chat
+                    && matches!(
+                        key_event.code,
+                        crossterm::event::KeyCode::Char(_)
+                            | crossterm::event::KeyCode::Backspace
+                            | crossterm::event::KeyCode::Delete
+                    )
+                    && let Some(peer_id) = dm_peer_id.as_deref()
+                {
+                    let composing = !s.chat_input.lines().join("\n").trim().is_empty();
+                    super::message_handlers::send_typing(s, swarm_cmd_tx, peer_id, composing);
+                }
             }
         }
     }

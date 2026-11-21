@@ -89,6 +89,11 @@ pub fn render_dm_content(
     let dm_usable_height = usize::from(dm_area.height.saturating_sub(2));
 
     let short_id = crate::get_peer_display_name_or_short(peer_id);
+    let dm_title = if state.typing_peer_ids.contains(peer_id) {
+        format!("DM: {short_id} — typing…")
+    } else {
+        format!("DM: {short_id}")
+    };
 
     let broadcast_messages: VecDeque<String> = state
         .messages
@@ -159,11 +164,10 @@ pub fn render_dm_content(
             })
             .collect();
 
-        let dm_list = List::new(visible_msgs).block(bordered_block(format!("DM: {short_id}")));
+        let dm_list = List::new(visible_msgs).block(bordered_block(dm_title));
         f.render_widget(dm_list, dm_area);
     } else {
-        let dm_para =
-            Paragraph::new("No direct messages").block(bordered_block(format!("DM: {short_id}")));
+        let dm_para = Paragraph::new("No direct messages").block(bordered_block(dm_title));
         f.render_widget(dm_para, dm_area);
     }
 }

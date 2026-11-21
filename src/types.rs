@@ -166,6 +166,14 @@ pub enum SwarmEvent {
         /// Timestamp (seconds since epoch) when the peer received the message
         received_at: Option<f64>,
     },
+    /// Transient DM typing state from a peer (US-009). Frontends apply their
+    /// own short TTL; nothing is persisted.
+    Typing {
+        /// Peer ID of the person typing (or who just stopped).
+        peer_id: String,
+        /// Whether the peer is currently composing a DM.
+        is_typing: bool,
+    },
     /// Peer connected to the network
     PeerConnected(String),
     /// Peer disconnected from the network
@@ -341,6 +349,15 @@ pub enum SwarmCommand {
         peer_id: String,
         /// The call-signaling payload (boxed: keeps the command channel small)
         signal: Box<crate::behavior::CallSignal>,
+    },
+    /// Send a transient typing state to a peer over the dedicated typing lane
+    /// (US-009). Fire-and-forget from the UI's perspective: no message row,
+    /// receipt, or persisted state is created.
+    SendTyping {
+        /// Recipient's peer ID
+        peer_id: String,
+        /// Whether the local user started or stopped composing.
+        is_typing: bool,
     },
     /// Drop the live connection to a peer (blocklist toggle, US-054). New
     /// connections from a blocked peer are refused by the swarm handler anyway;

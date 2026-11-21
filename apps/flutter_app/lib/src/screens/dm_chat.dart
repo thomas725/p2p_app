@@ -14,6 +14,11 @@ import 'package:p2p_app_flutter/src/util/event_bus.dart';
 import 'package:p2p_app_flutter/src/util/attachments.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
+/// How long an incoming "is typing" indicator stays visible without a refresh.
+const _typingTtl = Duration(seconds: 3);
+/// Minimum gap between outgoing "started typing" signals in one conversation.
+const _typingThrottle = Duration(milliseconds: 700);
+
 /// Full-screen DM chat for a single peer (history + live incoming DMs while
 /// open), with selection/copy and an unread "jump to latest" banner.
 class DmChatScreen extends StatefulWidget {
@@ -39,6 +44,12 @@ class _DmChatScreenState extends State<DmChatScreen>
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
+
+  /// Live typing state for this conversation (US-009). Incoming signals are
+  /// frontend-only and expire locally; nothing is persisted.
+  bool _peerTyping = false;
+  Timer? _typingTimer;
+  DateTime? _lastTypingStart;
 
   /// Frozen quote for the next DM we send; independent of selection mode.
   ReplyRef? _replyTo;
@@ -69,6 +80,10 @@ class _DmChatScreenState extends State<DmChatScreen>
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
+    if (_lastTypingStart != null) {
+      unawaited(_emitTyping(false));
+    }
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
@@ -96,8 +111,49 @@ class _DmChatScreenState extends State<DmChatScreen>
     }
   }
 
+  /// Send a transient typing state, throttling repeated "start" signals while
+  /// always forwarding an explicit "stop".
+  Future<void> _emitTyping(bool isTyping) async {
+    if (!widget.serviceRunning) return;
+    final now = DateTime.now();
+    if (isTyping &&
+        _lastTypingStart != null &&
+        now.difference(_lastTypingStart!) < _typingThrottle) {
+      return;
+    }
+    _lastTypingStart = isTyping ? now : null;
+    try {
+      await nodeApi.sendTyping(peerId: _peerId, isTyping: isTyping);
+    } catch (e) {
+      debugPrint('Typing signal failed: $e');
+    }
+  }
+
+  void _onComposerChanged(String text) {
+    unawaited(_emitTyping(text.trim().isNotEmpty));
+  }
+
+  void _applyTypingEvent(SwarmEventJson event) {
+    final typing = event.content == 'start';
+    _typingTimer?.cancel();
+    setState(() => _peerTyping = typing);
+    if (typing) {
+      _typingTimer = Timer(_typingTtl, () {
+        if (mounted) setState(() => _peerTyping = false);
+      });
+    }
+  }
+
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted) return;
+    if (event.eventType == 'typing') {
+      if (event.peerId == _peerId) {
+        _applyTypingEvent(event);
+      } else {
+        _previousSink?.call(event);
+      }
+      return;
+    }
     if (event.eventType == 'receipt') {
       // The peer acknowledged one of our DMs (or someone acknowledged a
       // broadcast): tick our own copy, then keep forwarding so the broadcast
@@ -155,6 +211,7 @@ class _DmChatScreenState extends State<DmChatScreen>
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    unawaited(_emitTyping(false));
     final reply = _replyTo;
     try {
       final msg = await nodeApi.saveOutgoingDm(
@@ -178,6 +235,7 @@ class _DmChatScreenState extends State<DmChatScreen>
   Future<void> _pickAndSend() async {
     final picked = await pickFileOverride();
     if (picked == null) return;
+    unawaited(_emitTyping(false));
     final reply = _replyTo;
     try {
       final msg = await nodeApi.saveOutgoingDm(
@@ -216,7 +274,19 @@ class _DmChatScreenState extends State<DmChatScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.peer.displayName),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(widget.peer.displayName),
+            if (_peerTyping)
+              const Text(
+                'typing…',
+                key: Key('peer-typing'),
+                style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic),
+              ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -284,6 +354,7 @@ class _DmChatScreenState extends State<DmChatScreen>
             hintText: widget.serviceRunning ? 'Message $_label...' : 'Offline',
             onSend: _send,
             onPickFile: _pickAndSend,
+            onChanged: _onComposerChanged,
             replyTo: _replyTo,
             onCancelReply: _cancelReply,
           ),

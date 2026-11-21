@@ -261,6 +261,25 @@ pub async fn send_file_message(
     }
 }
 
+/// Send a transient typing state for a DM conversation (US-009).
+///
+/// Outgoing "started" signals are throttled in [`AppState`]; "stopped" signals
+/// are always sent so a remote indicator is cleared immediately.
+pub fn send_typing(
+    state: &mut AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    peer_id: &str,
+    is_typing: bool,
+) {
+    if !state.note_typing_sent(peer_id, is_typing) {
+        return;
+    }
+    let _ = swarm_cmd_tx.try_send(SwarmCommand::SendTyping {
+        peer_id: peer_id.to_string(),
+        is_typing,
+    });
+}
+
 /// Send a direct message: push to the DM chat state, dispatch over the swarm,
 /// and persist with receipt metadata. The sender nickname is the per-peer
 /// override when one exists, else our own nickname.
@@ -313,6 +332,10 @@ async fn send_dm_message(
             reply_to: reply_to.clone(),
         })
         .await;
+    // Clear the remote indicator only after the message itself is queued, so
+    // a peer sees "typing…" until the DM arrives. Fire-and-forget: a full lane
+    // never blocks the message send.
+    send_typing(state, swarm_cmd_tx, &peer_id, false);
 
     let meta = p2p_app::MessageMeta {
         sender_nickname: Some(own_nickname),

@@ -233,6 +233,25 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_dm_content_shows_typing_indicator() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.add_dm_message("Alice", "<Alice> Hello!");
+        state.typing_peer_ids.insert("Alice".to_string());
+
+        terminal
+            .draw(|f| render_dm_content(f, f.area(), "Alice", &mut state))
+            .unwrap();
+        let buf = terminal.backend().buffer();
+        let text: String = buf
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("typing…"), "buffer: {text}");
+    }
+
+    #[test]
     fn test_render_log_content_library() {
         let mut terminal = create_test_terminal();
         let state = TuiRenderState::with_sample_data();

@@ -1009,6 +1009,29 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
     Ok(())
 }
 
+/// Queue a transient typing state (`true` on first keystroke, `false` on send,
+/// empty input, or leaving the DM) over the dedicated typing lane.
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn send_typing(peer_id: String, is_typing: bool) -> Result<(), String> {
+    let mut queued = false;
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            // Fire-and-forget: never block the UI if the command lane is busy.
+            queued = tx
+                .try_send(SwarmCommand::SendTyping { peer_id, is_typing })
+                .is_ok();
+        }
+    }
+    if !queued {
+        return Err("Failed to queue typing signal: node not running".into());
+    }
+    Ok(())
+}
+
 // --- Group chat types and functions ---
 
 /// A saved group shown in the group list.
@@ -1309,6 +1332,7 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
         } => group_invite_event_json(group_id, inviter_peer),
         SwarmEvent::BroadcastMessage(m) => message_event_json("broadcast", m),
         SwarmEvent::DirectMessage(m) => message_event_json("dm", m),
+        SwarmEvent::Typing { peer_id, is_typing } => typing_event_json(peer_id, is_typing),
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
             event_type: "peer_connected".into(),
             peer_id: Some(id),
@@ -1401,6 +1425,16 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             nickname: Some(name),
             ..default_event()
         },
+    }
+}
+
+/// JSON envelope for a DM typing signal: `content` is `"start"`/`"stop"`.
+fn typing_event_json(peer_id: String, is_typing: bool) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: "typing".into(),
+        peer_id: Some(peer_id),
+        content: Some(if is_typing { "start" } else { "stop" }.to_string()),
+        ..default_event()
     }
 }
 
@@ -1575,6 +1609,19 @@ mod tests {
         assert_eq!(j.event_type, "receipt");
         assert_eq!(j.peer_id.as_deref(), Some("p1"));
         assert_eq!(j.msg_id.as_deref(), Some("msg-42"));
+    }
+
+    #[test]
+    fn test_event_to_json_typing() {
+        for (is_typing, expected) in [(true, "start"), (false, "stop")] {
+            let j = event_to_json(SwarmEvent::Typing {
+                peer_id: "p9".into(),
+                is_typing,
+            });
+            assert_eq!(j.event_type, "typing");
+            assert_eq!(j.peer_id.as_deref(), Some("p9"));
+            assert_eq!(j.content.as_deref(), Some(expected));
+        }
     }
 
     #[cfg(feature = "mdns")]

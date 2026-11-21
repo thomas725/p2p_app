@@ -433,3 +433,35 @@ fn test_send_group_saves_sent_row_and_db_id() {
         });
     });
 }
+
+#[test]
+fn test_send_typing_throttles_starts_and_always_sends_stops() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        let mut state = test_app_state();
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+
+        send_typing(&mut state, &swarm_cmd_tx, "peer-a", true);
+        send_typing(&mut state, &swarm_cmd_tx, "peer-a", true);
+        send_typing(&mut state, &swarm_cmd_tx, "peer-a", false);
+        send_typing(&mut state, &swarm_cmd_tx, "peer-a", true);
+
+        for (expected, label) in [
+            (true, "start"),
+            (false, "stop"),
+            (true, "fresh start after stop"),
+        ] {
+            match swarm_cmd_rx.try_recv().unwrap() {
+                p2p_app::SwarmCommand::SendTyping {
+                    ref peer_id,
+                    is_typing,
+                } => {
+                    assert_eq!(peer_id, "peer-a");
+                    assert_eq!(is_typing, expected, "{label}");
+                }
+                _ => panic!("expected SendTyping"),
+            }
+        }
+        assert!(swarm_cmd_rx.try_recv().is_err(), "repeats are throttled");
+    });
+}

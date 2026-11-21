@@ -4,6 +4,7 @@ use p2p_app::messages::PeerMessageStats;
 use p2p_app::tui_helpers::PeerMessageMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 /// Channel capacity for inter-task communication (events per task)
 pub const CHANNEL_CAPACITY: usize = 100;
@@ -13,6 +14,10 @@ pub use p2p_app::types::MAX_DM_HISTORY;
 pub use p2p_app::types::MAX_MESSAGE_HISTORY;
 /// Input poll interval in milliseconds
 pub const FRAME_TIME_MS: u64 = 16;
+/// How long a received "is typing" signal stays visible without a refresh.
+pub const TYPING_TTL: Duration = Duration::from_secs(3);
+/// Minimum interval between outgoing "started typing" signals per conversation.
+pub const TYPING_THROTTLE: Duration = Duration::from_millis(700);
 
 /// Trim a `VecDeque` to a maximum length, removing oldest (front) items.
 pub fn trim_history<T>(queue: &mut VecDeque<T>, limit: usize) {
@@ -108,6 +113,12 @@ pub struct AppState {
     pub dm_message_db_ids: HashMap<String, VecDeque<Option<i32>>>,
     // DM receipts: msg_id -> (peer_id, received_at epoch seconds).
     pub dm_receipts: HashMap<String, (String, f64)>,
+    // Peers currently shown as typing in their DM pane (US-009), with the
+    // expiry instant of the latest received signal.
+    pub typing_peers: HashMap<String, Instant>,
+    // Last outgoing "started typing" signal per peer, used to throttle key
+    // repeats without suppressing an explicit stop.
+    pub typing_sent_at: HashMap<String, Instant>,
 
     // Peer Management
     pub peers: VecDeque<p2p_app::PeerRecord>,
@@ -1049,6 +1060,8 @@ impl AppState {
             dm_message_ids: HashMap::new(),
             dm_message_db_ids: HashMap::new(),
             dm_receipts: data.dm_receipts,
+            typing_peers: HashMap::new(),
+            typing_sent_at: HashMap::new(),
             peers: data.peers,
             contacts: Vec::new(),
             contacts_all: Vec::new(),
@@ -1117,6 +1130,53 @@ impl AppState {
         state.rebuild_contacts();
         state.contacts_all.clone_from(&state.contacts);
         state
+    }
+
+    /// Apply a received typing signal (US-009). Returns whether the visible
+    /// state changed, so the caller can request a redraw.
+    pub fn receive_typing(&mut self, peer_id: &str, is_typing: bool) -> bool {
+        if is_typing {
+            let deadline = Instant::now()
+                .checked_add(TYPING_TTL)
+                .unwrap_or_else(Instant::now);
+            self.typing_peers.insert(peer_id.to_string(), deadline);
+            true
+        } else {
+            self.typing_peers.remove(peer_id).is_some()
+        }
+    }
+
+    /// Drop expired typing indicators and report whether anything changed.
+    pub fn expire_typing(&mut self) -> bool {
+        let now = Instant::now();
+        let before = self.typing_peers.len();
+        self.typing_peers.retain(|_, deadline| *deadline > now);
+        self.typing_peers.len() != before
+    }
+
+    /// Throttle outgoing "started typing" signals; stops are always sent.
+    pub fn note_typing_sent(&mut self, peer_id: &str, is_typing: bool) -> bool {
+        if !is_typing {
+            self.typing_sent_at.remove(peer_id);
+            return true;
+        }
+        let now = Instant::now();
+        if self
+            .typing_sent_at
+            .get(peer_id)
+            .is_some_and(|last| last.elapsed() < TYPING_THROTTLE)
+        {
+            return false;
+        }
+        self.typing_sent_at.insert(peer_id.to_string(), now);
+        true
+    }
+
+    /// Forget both sides of a conversation's transient typing state.
+    pub fn clear_typing(&mut self, peer_id: &str) -> bool {
+        let removed = self.typing_peers.remove(peer_id).is_some();
+        self.typing_sent_at.remove(peer_id);
+        removed
     }
 
     /// Refresh the muted-peer set from the `blocked_peers` table (US-054).

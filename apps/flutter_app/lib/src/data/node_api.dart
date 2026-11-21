@@ -95,6 +95,13 @@ abstract class NodeApi {
     required String content,
   });
 
+  /// Send a transient DM typing state (`true` = started, `false` = stopped)
+  /// over the dedicated fire-and-forget lane (US-009).
+  Future<void> sendTyping({
+    required String peerId,
+    required bool isTyping,
+  });
+
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
   /// uploads to the node first (files lane §12). [replyTo] is an immutable

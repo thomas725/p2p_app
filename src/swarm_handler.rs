@@ -342,6 +342,17 @@ async fn handle_behaviour_event(
             }
             handle_call_signal(message, peer, event_tx, swarm).await;
         }
+        Libp2pSwarmEvent::Behaviour(AppEv::Typing(libp2p::request_response::Event::Message {
+            peer,
+            message,
+            ..
+        })) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!("Dropped typing signal from blocked peer {peer}"));
+                return;
+            }
+            handle_typing_signal(message, peer, event_tx, swarm).await;
+        }
         Libp2pSwarmEvent::Behaviour(AppEv::FileTransfer(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
@@ -1259,6 +1270,38 @@ async fn handle_call_signal(
     }
 }
 
+/// Receive a transient typing signal and surface it to both frontends.
+///
+/// The response only closes the request stream; typing state is never persisted
+/// and has no delivery semantics beyond the frontend's short TTL.
+async fn handle_typing_signal(
+    message: libp2p::request_response::Message<
+        crate::behavior::TypingSignal,
+        crate::behavior::TypingAck,
+    >,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    match message {
+        libp2p::request_response::Message::Request {
+            request, channel, ..
+        } => {
+            let _ = event_tx
+                .send(SwarmEvent::Typing {
+                    peer_id: peer.to_string(),
+                    is_typing: request.is_typing,
+                })
+                .await;
+            let _ = swarm
+                .behaviour_mut()
+                .typing
+                .send_response(channel, crate::behavior::TypingAck { ok: true });
+        }
+        libp2p::request_response::Message::Response { .. } => {}
+    }
+}
+
 /// Process-wide receiver state for in-flight attachment pulls.
 ///
 /// The files lane (§12) is receiver-driven: each `"chunk"` request is a
@@ -1721,6 +1764,9 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         SwarmCommand::SendCallSignal { peer_id, signal } => {
             send_call_signal(&peer_id, *signal, swarm);
         }
+        SwarmCommand::SendTyping { peer_id, is_typing } => {
+            send_typing(&peer_id, is_typing, swarm);
+        }
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
         SwarmCommand::Dial { address } => dial_peer(&address, swarm),
         SwarmCommand::DisconnectPeer { peer_id } => disconnect_peer(&peer_id, swarm),
@@ -1956,6 +2002,23 @@ fn send_call_signal(
             .behaviour_mut()
             .call_signaling
             .send_request(&peer, signal);
+    }
+}
+
+/// Send a transient typing state on the dedicated lane. Blocked peers are
+/// skipped at the swarm boundary like every other outbound lane.
+fn send_typing(peer_id: &str, is_typing: bool, swarm: &mut Swarm<AppBehaviour>) {
+    if let Ok(peer) = peer_id.parse::<libp2p::PeerId>() {
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            p2plog_debug(format!(
+                "Refusing to send typing signal to blocked peer {peer_id}"
+            ));
+            return;
+        }
+        let _ = swarm
+            .behaviour_mut()
+            .typing
+            .send_request(&peer, crate::behavior::TypingSignal::new(is_typing));
     }
 }
 

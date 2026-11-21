@@ -253,6 +253,81 @@ void main() {
     expect(find.byIcon(Icons.done_all), findsOneWidget);
   });
 
+  testWidgets('an incoming typing event shows and expires the indicator', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi();
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('peer-typing')), findsNothing);
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'typing',
+        peerId: 'peer-abc',
+        content: 'start',
+        encrypted: false,
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('peer-typing')), findsOneWidget);
+
+    // The frontend-only TTL clears a stale indicator without a stop signal.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.byKey(const Key('peer-typing')), findsNothing);
+  });
+
+  testWidgets('composer edits send throttled typing starts and stops', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi();
+    fake.loadDmMessagesOverride = (_, _) => [];
+    fake.saveOutgoingDmOverride =
+        (peerId, content, replyTo) => chatMessage(id: 9, content: content);
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final composer = find.byType(TextField);
+    await tester.enterText(composer, 'h');
+    await tester.pump();
+    await tester.enterText(composer, 'hi');
+    await tester.pump();
+    expect(
+      fake.typingSends.map((signal) => signal.isTyping).toList(),
+      [true],
+      reason: 'rapid edits are throttled',
+    );
+
+    await tester.enterText(composer, '');
+    await tester.pump();
+    await tester.enterText(composer, 'hey');
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+
+    expect(
+      fake.typingSends.map((signal) => signal.isTyping).toList(),
+      [true, false, true, false],
+    );
+    expect(
+      fake.typingSends.every((signal) => signal.peerId == 'peer-abc'),
+      isTrue,
+    );
+  });
+
   testWidgets('a receipt for an unknown id leaves the DM untouched', (
     tester,
   ) async {

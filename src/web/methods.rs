@@ -40,6 +40,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "loadDmMessages"
         | "deleteMessage"
         | "editMessage"
+        | "sendTyping"
         | "saveOutgoingBroadcast"
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
@@ -162,6 +163,10 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         "editMessage" => {
             let p: EditMessageParams = parse(params)?;
             json(api::edit_message(p.message_id, p.is_group, &p.content))
+        }
+        "sendTyping" => {
+            let p: TypingParams = parse(params)?;
+            json(api::send_typing(p.peer_id, p.is_typing))
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
@@ -412,6 +417,13 @@ struct GroupLimitParams {
 #[serde(rename_all = "camelCase")]
 struct PeerIdParams {
     peer_id: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TypingParams {
+    peer_id: String,
+    is_typing: bool,
 }
 
 #[derive(serde::Deserialize)]

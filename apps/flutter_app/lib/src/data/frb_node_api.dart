@@ -120,6 +120,10 @@ class FrbNodeApi implements NodeApi {
   );
 
   @override
+  Future<void> sendTyping({required String peerId, required bool isTyping}) =>
+      bridge.sendTyping(peerId: peerId, isTyping: isTyping);
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,

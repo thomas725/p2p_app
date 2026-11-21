@@ -495,6 +495,16 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
     crate::mobile_node::send_call_signal(peer_id, call_id, kind)
 }
 
+/// Send a transient DM typing state (`true` = started, `false` = stopped) on the
+/// dedicated typing lane (US-009). Fire-and-forget: no message is persisted or
+/// receipt expected by the caller.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+pub fn send_typing(peer_id: String, is_typing: bool) -> Result<(), String> {
+    crate::mobile_node::send_typing(peer_id, is_typing)
+}
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

@@ -86,7 +86,7 @@ src/
 
 ## Protocols and transport
 
-Seven libp2p behaviours (`src/behavior.rs`):
+The libp2p behaviour set (`src/behavior.rs`):
 
 | Behaviour | Protocol | Carries |
 |---|---|---|
@@ -94,6 +94,7 @@ Seven libp2p behaviours (`src/behavior.rs`):
 | `request_response` | `/p2p-chat/dm/1.0.0` | direct messages |
 | `device_binding` | `/p2p-chat/device-binding/1.0.0` | intro + signed claim exchange |
 | `call_signaling` | `/p2p-chat/call/1.0.0` | call setup/accept/decline/end |
+| `typing` | `/p2p-chat/typing/1.0.0` | fire-and-forget DM typing start/stop (US-009) |
 | `file_transfer` | `/p2p-chat/files/1.0.0` | attachment meta / chunk / error (cbor) |
 | `mdns` | — | peer discovery on the LAN |
 | `identify` | — | peer info + listen addresses (feeds Kademlia) |
@@ -114,6 +115,12 @@ lifecycle and the limits.
 Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the
 bytes move over the separate `file_transfer` lane.
+
+Typing indicators (US-009) also get their own `request_response` lane so a
+keystroke burst never occupies a DM request slot. `TypingSignal` is
+fire-and-forget, unpersisted and blocklist-gated; each frontend applies a short
+TTL. See [`archive/2026-11-21_typing_indicators.md`](archive/2026-11-21_typing_indicators.md)
+for the full slice.
 
 Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
 message payload rather than a foreign key. `src/reply.rs` owns the bounded
@@ -202,12 +209,12 @@ outbound path:
 
 - gossipsub messages (broadcast, group chat **and** group backfill topics) are
   discarded before parsing, so nothing a muted peer sends is persisted;
-- DM, device-binding, call-signaling and file-transfer `request_response`
+- DM, device-binding, call-signaling, typing and file-transfer `request_response`
   messages are discarded; Identify results are not applied (no DHT/roster
   entry), mDNS discoveries are not dialed, and a connection from a blocked
   peer is disconnected immediately;
-- outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` and manual dials
-  whose multiaddr carries `/p2p/<blocked-id>` are refused.
+- outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` / `SendTyping` and
+  manual dials whose multiaddr carries `/p2p/<blocked-id>` are refused.
 
 Blocking also queues `SwarmCommand::DisconnectPeer`, so the connection that
 existed *before* the block is closed instead of waiting for its next message.

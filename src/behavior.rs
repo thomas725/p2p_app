@@ -34,6 +34,14 @@ pub const DEVICE_BINDING_PROTOCOL_NAME: &str = "/p2p-chat/device-binding/1.0.0";
 /// `CallSignal::descriptor` is reserved for the later offer/answer payload.
 pub const CALL_PROTOCOL_NAME: &str = "/p2p-chat/call/1.0.0";
 
+/// Typing-indicator protocol name (US-009).
+///
+/// A dedicated `request_response` lane keeps fire-and-forget typing updates out
+/// of the DM request slots: each signal occupies its own short-lived stream and
+/// is acknowledged immediately. Nothing is persisted — both frontends apply a
+/// short TTL to the received signal.
+pub const TYPING_PROTOCOL_NAME: &str = "/p2p-chat/typing/1.0.0";
+
 /// File-transfer protocol name (files lane §12).
 ///
 /// A dedicated `request_response` lane for content-addressed attachments. The
@@ -289,6 +297,42 @@ pub struct CallSignalAck {
 /// JSON codec for the call-signaling protocol
 pub type CallSignalCodec = libp2p::request_response::json::codec::Codec<CallSignal, CallSignalAck>;
 
+/// A transient typing state for one DM conversation (US-009).
+///
+/// `timestamp` is the sender's `current_timestamp()`; receivers apply their own
+/// short TTL, so a delayed or reordered stop can never stick forever.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+#[serde(default)]
+pub struct TypingSignal {
+    /// `true` when the sender is composing, `false` when they stopped.
+    pub is_typing: bool,
+    /// Sender wall-clock timestamp (seconds since epoch).
+    pub timestamp: f64,
+}
+
+impl TypingSignal {
+    /// Build a typing state stamped with the current time.
+    #[must_use]
+    pub fn new(is_typing: bool) -> Self {
+        Self {
+            is_typing,
+            timestamp: crate::current_timestamp(),
+        }
+    }
+}
+
+/// Ack for a typing signal. Typing is fire-and-forget from the UI's point of
+/// view; the ack only closes the request-response stream promptly.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct TypingAck {
+    /// Whether the signal was understood.
+    pub ok: bool,
+}
+
+/// JSON codec for the typing-indicator protocol.
+pub type TypingCodec = libp2p::request_response::json::codec::Codec<TypingSignal, TypingAck>;
+
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
@@ -302,6 +346,9 @@ pub struct AppBehaviour {
     /// Request-response protocol handler for call signaling (calls lane:
     /// invite/accept/reject/end; media transport lands on a later slice)
     pub call_signaling: request_response::Behaviour<CallSignalCodec>,
+    /// Request-response protocol handler for transient DM typing indicators
+    /// (US-009): a separate lane so signals never consume a DM request slot.
+    pub typing: request_response::Behaviour<TypingCodec>,
     /// Request-response protocol handler for content-addressed file transfers
     /// (files lane §12): the receiver pulls metadata and chunks, the sender
     /// serves them from its on-disk store.
@@ -361,6 +408,46 @@ fn build_gossipsub(
         .map_err(|e| format!("Failed to create gossipsub behavior: {e}"))
 }
 
+/// The five `request_response` behaviours, one per protocol lane.
+type RequestResponseLanes = (
+    request_response::Behaviour<ChatCodec>,
+    request_response::Behaviour<DeviceBindingCodec>,
+    request_response::Behaviour<CallSignalCodec>,
+    request_response::Behaviour<TypingCodec>,
+    request_response::Behaviour<FileTransferCodec>,
+);
+
+/// Build the five `request_response` lanes.
+///
+/// Each lane has its own protocol name so a burst of transient traffic (typing,
+/// calls, device binding, file chunks) can never occupy a DM request slot.
+fn build_request_response_lanes() -> RequestResponseLanes {
+    fn lane<C>(protocol: &'static str) -> request_response::Behaviour<C>
+    where
+        C: libp2p::request_response::Codec<Protocol = libp2p::StreamProtocol>
+            + Default
+            + Clone
+            + Send
+            + 'static,
+    {
+        request_response::Behaviour::new(
+            [(
+                libp2p::StreamProtocol::new(protocol),
+                request_response::ProtocolSupport::Full,
+            )],
+            request_response::Config::default(),
+        )
+    }
+
+    (
+        lane(DM_PROTOCOL_NAME),
+        lane(DEVICE_BINDING_PROTOCOL_NAME),
+        lane(CALL_PROTOCOL_NAME),
+        lane(TYPING_PROTOCOL_NAME),
+        lane(FILE_TRANSFER_PROTOCOL_NAME),
+    )
+}
+
 /// Build the app behavior with appropriate protocols and configurations
 ///
 /// # Arguments
@@ -382,38 +469,8 @@ pub fn build_behaviour(
     // history and a slower heartbeat to avoid redundant re-broadcasts.
     let gossipsub = build_gossipsub(key, network_size)?;
 
-    let request_response = request_response::Behaviour::new(
-        [(
-            libp2p::StreamProtocol::new(DM_PROTOCOL_NAME),
-            request_response::ProtocolSupport::Full,
-        )],
-        request_response::Config::default(),
-    );
-
-    let device_binding = request_response::Behaviour::new(
-        [(
-            libp2p::StreamProtocol::new(DEVICE_BINDING_PROTOCOL_NAME),
-            request_response::ProtocolSupport::Full,
-        )],
-        request_response::Config::default(),
-    );
-
-    let call_signaling = request_response::Behaviour::new(
-        [(
-            libp2p::StreamProtocol::new(CALL_PROTOCOL_NAME),
-            request_response::ProtocolSupport::Full,
-        )],
-        request_response::Config::default(),
-    );
-
-    // Chunk payloads ride in the response (cbor cap: 10 MiB); requests are tiny.
-    let file_transfer = request_response::Behaviour::new(
-        [(
-            libp2p::StreamProtocol::new(FILE_TRANSFER_PROTOCOL_NAME),
-            request_response::ProtocolSupport::Full,
-        )],
-        request_response::Config::default(),
-    );
+    let (request_response, device_binding, call_signaling, typing, file_transfer) =
+        build_request_response_lanes();
 
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
     // dead connection. This surfaces killed/disconnected peers within ~10-20s
@@ -477,6 +534,7 @@ pub fn build_behaviour(
         request_response,
         device_binding,
         call_signaling,
+        typing,
         file_transfer,
         #[cfg(feature = "mdns")]
         mdns,

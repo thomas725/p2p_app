@@ -436,6 +436,15 @@ Future<void> sendCallSignal({
   kind: kind,
 );
 
+/// Send a transient DM typing state (`true` = started, `false` = stopped) on the
+/// dedicated typing lane (US-009). Fire-and-forget: no message is persisted or
+/// receipt expected by the caller.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+Future<void> sendTyping({required String peerId, required bool isTyping}) =>
+    RustLib.instance.api.crateApiSendTyping(peerId: peerId, isTyping: isTyping);
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

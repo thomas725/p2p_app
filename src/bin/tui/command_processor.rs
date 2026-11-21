@@ -4,6 +4,7 @@ use super::main_loop::RenderEvent;
 use super::state::{AppState, SharedState};
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 enum Event {
@@ -356,6 +357,11 @@ async fn process_swarm_event(
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
         } => handle_receipt(state, peer_id, ack_for).await,
+        SwarmEvent::Typing { peer_id, is_typing } => {
+            let mut s = state.lock().await;
+            s.receive_typing(&peer_id, is_typing);
+            drop(s);
+        }
         SwarmEvent::PeerConnected(peer_id) => {
             handle_peer_connected(state, swarm_cmd_tx, peer_id).await;
         }
@@ -566,6 +572,7 @@ async fn handle_peer_disconnected(state: &SharedState, peer_id: String) {
         let count = apply_peer_disconnected_count(&mut s);
         s.connected
             .on_peer_disconnected(&peer_id, p2p_app::current_timestamp());
+        s.clear_typing(&peer_id);
         count
     };
     p2plog_debug(format!("Peer disconnected: {peer_id} (total: {count})"));
@@ -610,6 +617,24 @@ pub fn spawn_command_processor(
     swarm_cmd_tx: mpsc::Sender<SwarmCommand>,
 ) -> (tokio::task::JoinHandle<()>, mpsc::Sender<SwarmCommand>) {
     let cmd_tx_for_return = swarm_cmd_tx.clone();
+
+    // Typing TTLs are wall-clock state, not input events: a small detached task
+    // expires them and asks for a redraw when an indicator disappears.
+    let typing_state = Arc::clone(&state);
+    let typing_render_tx = render_tx.clone();
+    drop(tokio::spawn(async move {
+        let mut tick = tokio::time::interval(std::time::Duration::from_millis(500));
+        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            tick.tick().await;
+            if typing_state.lock().await.expire_typing()
+                && typing_render_tx.send(RenderEvent).await.is_err()
+            {
+                break;
+            }
+        }
+    }));
+
     let handle = tokio::spawn(async move {
         p2plog_debug("CommandProcessor task started".to_string());
 

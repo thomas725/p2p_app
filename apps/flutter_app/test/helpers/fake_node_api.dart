@@ -215,6 +215,15 @@ class FakeNodeApi implements NodeApi {
     if (override != null) return override(messageId, isGroup, content);
   }
 
+  /// Every typing signal emitted by the UI, in call order.
+  final List<({String peerId, bool isTyping})> typingSends = [];
+
+  @override
+  Future<void> sendTyping({required String peerId, required bool isTyping}) async {
+    _record('sendTyping', (peerId: peerId, isTyping: isTyping));
+    typingSends.add((peerId: peerId, isTyping: isTyping));
+  }
+
   /// Recorded outgoing sends, in call order. Each includes the frozen reply
   /// draft (when one was active) so a test can assert the quote was threaded
   /// through to the transport.

@@ -150,6 +150,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         dm_messages: cloned_log(&state.dm_messages),
         dm_message_ids: cloned_log(&state.dm_message_ids),
         dm_receipts: state.dm_receipts.clone(),
+        typing_peer_ids: state.typing_peers.keys().cloned().collect(),
         input_text: state.chat_input.lines().join("\n"),
         log_messages: get_tui_logs().into_iter().collect(),
         input_mode: state.input_mode,

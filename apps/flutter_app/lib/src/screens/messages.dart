@@ -571,6 +571,7 @@ class MessageInputBar extends StatelessWidget {
     required this.hintText,
     required this.onSend,
     this.onPickFile,
+    this.onChanged,
     this.replyTo,
     this.onCancelReply,
   });
@@ -580,6 +581,10 @@ class MessageInputBar extends StatelessWidget {
   final String hintText;
   final VoidCallback onSend;
   final VoidCallback? onPickFile;
+
+  /// Notified on every composer edit; DM screens use it to send transient
+  /// typing signals (US-009).
+  final ValueChanged<String>? onChanged;
 
   /// Frozen quote shown above the field until the user sends or cancels it.
   final ReplyRef? replyTo;
@@ -641,6 +646,7 @@ class MessageInputBar extends StatelessWidget {
                       enabled: enabled,
                     ),
                     onSubmitted: (_) => onSend(),
+                    onChanged: onChanged,
                   ),
                 ),
                 const SizedBox(width: 8),

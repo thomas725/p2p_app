@@ -524,6 +524,10 @@ class HttpNodeApi implements NodeApi {
   });
 
   @override
+  Future<void> sendTyping({required String peerId, required bool isTyping}) =>
+      _call('sendTyping', {'peerId': peerId, 'isTyping': isTyping});
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,

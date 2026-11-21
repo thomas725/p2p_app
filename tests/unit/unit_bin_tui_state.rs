@@ -790,3 +790,65 @@ fn test_move_network_peer_selection_clamps() {
     state.move_network_peer_selection(KeyCode::PageUp);
     assert_eq!(state.network_peer_selection, 0);
 }
+
+// ── transient DM typing indicators (US-009) ─────────────────────────────
+
+#[test]
+fn test_receive_and_expire_typing() {
+    use std::time::{Duration, Instant};
+
+    let mut state = test_app_state();
+    assert!(state.typing_peers.is_empty());
+
+    assert!(state.receive_typing("peer-a", true));
+    assert!(state.typing_peers.contains_key("peer-a"));
+    assert!(!state.expire_typing(), "a fresh signal stays visible");
+
+    // Force expiry without sleeping for the whole TTL.
+    state.typing_peers.insert(
+        "peer-a".to_string(),
+        Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("current time is after one second"),
+    );
+    assert!(state.expire_typing());
+    assert!(state.typing_peers.is_empty());
+    assert!(!state.expire_typing());
+
+    assert!(!state.receive_typing("peer-a", false), "already absent");
+    assert!(state.receive_typing("peer-a", true));
+    assert!(state.receive_typing("peer-a", false));
+    assert!(state.typing_peers.is_empty());
+}
+
+#[test]
+fn test_outgoing_typing_is_throttled_but_stops_are_immediate() {
+    let mut state = test_app_state();
+
+    assert!(state.note_typing_sent("peer-a", true));
+    assert!(
+        !state.note_typing_sent("peer-a", true),
+        "key repeats are throttled"
+    );
+    assert!(state.note_typing_sent("peer-a", false));
+    assert!(
+        state.note_typing_sent("peer-a", true),
+        "a fresh edit after stopping starts a new signal"
+    );
+    assert!(
+        state.note_typing_sent("peer-b", true),
+        "throttling is per conversation"
+    );
+}
+
+#[test]
+fn test_clear_typing_forgets_both_directions() {
+    let mut state = test_app_state();
+    state.receive_typing("peer-a", true);
+    state.note_typing_sent("peer-a", true);
+
+    assert!(state.clear_typing("peer-a"));
+    assert!(state.typing_peers.is_empty());
+    assert!(state.typing_sent_at.is_empty());
+    assert!(!state.clear_typing("peer-a"));
+}

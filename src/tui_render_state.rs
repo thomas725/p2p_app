@@ -51,6 +51,8 @@ pub struct TuiRenderState {
     pub dm_message_ids: BTreeMap<String, VecDeque<Option<String>>>,
     /// DM receipt status per peer: (`source_peer`, timestamp)
     pub dm_receipts: HashMap<String, (String, f64)>,
+    /// Peer IDs currently showing a live typing indicator (US-009).
+    pub typing_peer_ids: std::collections::HashSet<String>,
     /// Current input text in message box
     pub input_text: String,
     /// Logs shown in the debug tab
@@ -170,6 +172,7 @@ impl TuiRenderState {
             dm_messages: BTreeMap::new(),
             dm_message_ids: BTreeMap::new(),
             dm_receipts: HashMap::new(),
+            typing_peer_ids: std::collections::HashSet::new(),
             group_summaries: Vec::new(),
             group_messages: BTreeMap::new(),
             group_message_ids: BTreeMap::new(),

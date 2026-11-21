@@ -12,6 +12,29 @@ fn call_protocol_name_is_stable() {
 }
 
 #[test]
+fn typing_protocol_name_is_stable() {
+    assert_eq!(TYPING_PROTOCOL_NAME, "/p2p-chat/typing/1.0.0");
+}
+
+#[test]
+fn typing_signal_builder_and_json_roundtrip() {
+    let started = TypingSignal::new(true);
+    assert!(started.is_typing);
+    assert!(started.timestamp > 0.0);
+    let json = serde_json::to_string(&started).expect("serialize");
+    let parsed: TypingSignal = serde_json::from_str(&json).expect("deserialize");
+    assert_eq!(parsed.is_typing, started.is_typing);
+    // JSON round-trips of an f64 can lose a few ULPs; compare with a tolerance.
+    assert!((parsed.timestamp - started.timestamp).abs() < f64::EPSILON * started.timestamp);
+
+    let stopped: TypingSignal =
+        serde_json::from_str(r#"{"is_typing":false}"#).expect("default timestamp");
+    assert!(!stopped.is_typing);
+    assert_eq!(stopped.timestamp, 0.0);
+    assert!(!TypingAck::default().ok, "the wire handler sends ok = true");
+}
+
+#[test]
 fn call_signal_builder_and_json_roundtrip() {
     let sig = CallSignal::new("invite", "c1".into());
     assert_eq!(sig.kind, "invite");
