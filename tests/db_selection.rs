@@ -21,6 +21,10 @@ use tempfile::TempDir;
 #[serial]
 #[test]
 fn test_two_instances_get_different_databases_parallel() {
+    // `set_current_dir` is process-global. Save the original so it can be
+    // restored below — otherwise this test leaves the whole process pointing
+    // at a temp dir that is deleted on drop, making later tests order-dependent.
+    let old_cwd = std::env::current_dir().unwrap();
     let temp_dir = TempDir::new().unwrap();
     let cwd = temp_dir.path().to_path_buf();
 
@@ -33,7 +37,7 @@ fn test_two_instances_get_different_databases_parallel() {
     let cwd_clone = cwd.clone();
     let errors_clone = errors.clone();
     let barrier_clone = barrier.clone();
-    thread::spawn(move || {
+    let a = thread::spawn(move || {
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
         let url = p2p_app::db::get_database_url();
@@ -45,7 +49,7 @@ fn test_two_instances_get_different_databases_parallel() {
     let cwd_clone = cwd;
     let errors_clone = errors.clone();
     let barrier_clone = barrier;
-    thread::spawn(move || {
+    let b = thread::spawn(move || {
         thread::sleep(Duration::from_millis(50));
         barrier_clone.wait();
         std::env::set_current_dir(&cwd_clone).ok();
@@ -55,7 +59,11 @@ fn test_two_instances_get_different_databases_parallel() {
         }
     });
 
-    thread::sleep(Duration::from_millis(200));
+    // Join the workers instead of guessing a sleep duration, then restore the
+    // process CWD before the temp dir is dropped.
+    a.join().unwrap();
+    b.join().unwrap();
+    std::env::set_current_dir(&old_cwd).unwrap();
 
     let urls = errors.lock().unwrap();
     println!("URLs: {urls:?}");
