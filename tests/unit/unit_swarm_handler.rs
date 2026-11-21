@@ -117,7 +117,7 @@ fn test_apply_chunk_without_data_aborts_transfer() {
     // for the same chunk forever).
     let id = test_file_id("apply-chunk-no-data-test");
     let file_id = id.as_str();
-    assert!(begin_receive(file_id, "no-data.bin", None, 10));
+    assert!(begin_receive("peer-a", file_id, "no-data.bin", None, 10));
     assert!(
         receiving_files()
             .lock()
@@ -165,8 +165,8 @@ fn clear_transfer(file_id: &str) {
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .remove(file_id);
-    if let Some(receiving) = removed {
-        receiving.discard();
+    if let Some(transfer) = removed {
+        transfer.file.discard();
     }
 }
 
@@ -176,12 +176,12 @@ fn test_apply_chunk_empty_data_aborts_transfer() {
     // making the handler re-request that chunk forever.
     let id = test_file_id("apply-chunk-empty-data-test");
     let file_id = id.as_str();
-    assert!(begin_receive(file_id, "empty.txt", None, 10));
+    assert!(begin_receive("peer-a", file_id, "empty.txt", None, 10));
     let part_path = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .get(file_id)
-        .map(|r| r.path.clone())
+        .map(|r| r.file.path.clone())
         .expect("in-flight transfer");
 
     let outcome = apply_chunk(file_id, chunk_response(file_id, Some(0), Some(vec![])));
@@ -202,7 +202,7 @@ fn test_apply_chunk_wrong_index_aborts_transfer() {
     // instead of being appended out of order.
     let id = test_file_id("apply-chunk-wrong-index-test");
     let file_id = id.as_str();
-    assert!(begin_receive(file_id, "indexed.bin", None, 10));
+    assert!(begin_receive("peer-a", file_id, "indexed.bin", None, 10));
     let outcome = apply_chunk(
         file_id,
         chunk_response(file_id, Some(4), Some(vec![1u8; 10])),
@@ -224,12 +224,12 @@ fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
     let id = test_file_id("apply-chunk-valid-test");
     let file_id = id.as_str();
     let data = vec![0xABu8; 10];
-    assert!(begin_receive(file_id, "valid.bin", None, 10));
+    assert!(begin_receive("peer-a", file_id, "valid.bin", None, 10));
     let part_path = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .get(file_id)
-        .map(|r| r.path.clone())
+        .map(|r| r.file.path.clone())
         .expect("in-flight transfer");
 
     let outcome = apply_chunk(file_id, chunk_response(file_id, Some(0), Some(data)));
@@ -250,13 +250,13 @@ fn test_abandon_transfer_discards_partial_bytes() {
     // would otherwise corrupt a later transfer of the same content address.
     let id = test_file_id("abandon-transfer-test");
     let file_id = id.as_str();
-    assert!(begin_receive(file_id, "partial.bin", None, 10));
+    assert!(begin_receive("peer-a", file_id, "partial.bin", None, 10));
     let mut transfers = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
-    let receiving = transfers.get_mut(file_id).expect("in-flight transfer");
-    receiving.write_chunk(&[1u8; 5]).expect("write partial");
-    let part_path = receiving.path.clone();
+    let transfer = transfers.get_mut(file_id).expect("in-flight transfer");
+    transfer.file.write_chunk(&[1u8; 5]).expect("write partial");
+    let part_path = transfer.file.path.clone();
     drop(transfers);
     assert!(part_path.exists());
 
@@ -266,14 +266,80 @@ fn test_abandon_transfer_discards_partial_bytes() {
 }
 
 #[test]
+fn test_abandon_transfers_from_only_affects_the_disconnected_peer() {
+    // A peer that disconnects can no longer serve its pulls. Its transfers must
+    // be reclaimed while other peers' in-flight pulls survive intact.
+    let id_a = test_file_id("abandon-from-peer-a");
+    let id_b = test_file_id("abandon-from-peer-b");
+    assert!(begin_receive("peer-a", &id_a, "a.bin", None, 10));
+    assert!(begin_receive("peer-b", &id_b, "b.bin", None, 10));
+
+    abandon_transfers_from("peer-a");
+
+    assert!(
+        !receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&id_a),
+        "the disconnected peer's transfer must be abandoned"
+    );
+    assert!(
+        receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&id_b),
+        "another peer's transfer must survive"
+    );
+    clear_transfer(&id_b);
+}
+
+#[test]
+fn test_abandon_idle_transfers_prunes_only_stale_pulls() {
+    // A failed request that never reaches an "error" response would otherwise
+    // wedge the transfer forever. Only pulls idle beyond the timeout are
+    // reclaimed; a recently active one must survive.
+    let stale_id = test_file_id("abandon-idle-stale");
+    let fresh_id = test_file_id("abandon-idle-fresh");
+    assert!(begin_receive("peer-a", &stale_id, "stale.bin", None, 10));
+    assert!(begin_receive("peer-b", &fresh_id, "fresh.bin", None, 10));
+    let long_ago = Instant::now()
+        .checked_sub(Duration::from_secs(600))
+        .expect("600s is within Instant's range");
+    receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get_mut(&stale_id)
+        .expect("stale transfer")
+        .last_activity = long_ago;
+
+    abandon_idle_transfers(Duration::from_secs(300));
+
+    assert!(
+        !receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&stale_id),
+        "a transfer idle beyond the timeout must be abandoned"
+    );
+    assert!(
+        receiving_files()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .contains_key(&fresh_id),
+        "a recently active transfer must survive"
+    );
+    clear_transfer(&fresh_id);
+}
+
+#[test]
 fn test_begin_receive_refuses_duplicate_meta() {
     // A repeated `meta` response must not replace a live transfer: the fresh
     // `ReceivingFile` would reset `received` to 0 while the `.part` bytes stayed
     // on disk, corrupting the assembled file.
     let id = test_file_id("begin-receive-duplicate-test");
     let file_id = id.as_str();
-    assert!(begin_receive(file_id, "first.txt", None, 10));
-    assert!(!begin_receive(file_id, "second.txt", None, 10));
+    assert!(begin_receive("peer-a", file_id, "first.txt", None, 10));
+    assert!(!begin_receive("peer-a", file_id, "second.txt", None, 10));
 
     {
         let transfers = receiving_files()
@@ -282,7 +348,7 @@ fn test_begin_receive_refuses_duplicate_meta() {
         assert!(
             transfers
                 .get(file_id)
-                .is_some_and(|receiving| receiving.name == "first.txt"),
+                .is_some_and(|transfer| transfer.file.name == "first.txt"),
             "the first meta response must still own the in-flight transfer"
         );
         drop(transfers);

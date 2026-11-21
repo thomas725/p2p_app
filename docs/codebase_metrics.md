@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,680 |
-| Total Rust Chars      | 1,274,116 |
-| Avg Lines/Rust File   |       526 |
-| Avg Chars/Rust File   |    19,908 |
+| Total Rust Lines      |    33,755 |
+| Total Rust Chars      | 1,277,435 |
+| Avg Lines/Rust File   |       527 |
+| Avg Chars/Rust File   |    19,959 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,195 lines, 1,840,518 characters
+**Grand Total:** 106 files, 51,270 lines, 1,843,837 characters
 
 ## Rust Source Files
 
@@ -65,7 +65,7 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 93639 |  2425 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 96958 |  2500 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,680 lines, 1,274,116 characters
+**Total:** 64 files, 33,755 lines, 1,277,435 characters
 
 ## Rust Test Files
 
@@ -154,14 +154,14 @@
 | unit   | unit_relay.rs                     |    62 |  1806 |     2 | Test file                             |
 | unit   | unit_reply.rs                     |    98 |  3436 |     3 | Test file                             |
 | unit   | unit_settings.rs                  |    88 |  2766 |     3 | Test file                             |
-| unit   | unit_swarm_handler.rs             |   433 | 14842 |     4 | Unit tests for swarm_handler module   |
+| unit   | unit_swarm_handler.rs             |   499 | 17244 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs          |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   323 |  9859 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,534 lines, 848,292 characters
+**Total:** 63 test files, 25,600 lines, 850,694 characters
 
 ## Dart Source Files
 

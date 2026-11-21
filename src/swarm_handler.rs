@@ -10,7 +10,7 @@ use libp2p::gossipsub;
 use libp2p::swarm::{Swarm, SwarmEvent as Libp2pSwarmEvent};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock, PoisonError};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 use tokio::sync::mpsc;
 
 enum Event {
@@ -647,10 +647,13 @@ async fn handle_connection_closed(
             .send(SwarmEvent::PeerDisconnected(peer_id.to_string()))
             .await;
     }
-    // Ping samples only describe a live connection: drop the peer's once its
-    // last connection is gone so Peer Info never shows a stale RTT.
+    // Once the peer's last connection is gone it can no longer serve any pull
+    // it started: drop its stale ping samples and abandon its in-flight file
+    // transfers so they neither wedge future fetches nor block blob GC.
     if !swarm.is_connected(&peer_id) {
-        crate::net_diag::clear_peer_quality(&peer_id.to_string());
+        let peer_id_str = peer_id.to_string();
+        crate::net_diag::clear_peer_quality(&peer_id_str);
+        abandon_transfers_from(&peer_id_str);
     }
     #[cfg(feature = "kad")]
     refresh_dht_routing(swarm);
@@ -1456,9 +1459,26 @@ async fn handle_reaction_signal(
 /// The files lane (§12) is receiver-driven: each `"chunk"` request is a
 /// separate round-trip, so the partial blob and its metadata must live outside
 /// any single handler frame. Keyed by content address (the `file_id`).
-static RECEIVING_FILES: OnceLock<Mutex<StringMap<crate::files::ReceivingFile>>> = OnceLock::new();
+static RECEIVING_FILES: OnceLock<Mutex<StringMap<InFlightReceive>>> = OnceLock::new();
 
-fn receiving_files() -> &'static Mutex<StringMap<crate::files::ReceivingFile>> {
+/// How long a transfer may make no progress before the flush tick abandons it.
+/// One round-trip is a single 1 MiB chunk, so five minutes without any chunk is
+/// unambiguously a failed pull (e.g. a `request_response` outbound failure that
+/// never surfaces as a disconnect). A parameter on `abandon_idle_transfers` so
+/// the sweep is testable without waiting.
+const FILE_TRANSFER_IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// One in-flight receive plus the bookkeeping needed to reclaim it when its
+/// source disappears. `peer` ties the pull to the connection serving it (so a
+/// disconnect abandons exactly that peer's transfers); `last_activity` is the
+/// backstop for requests that fail without any disconnect.
+struct InFlightReceive {
+    file: crate::files::ReceivingFile,
+    peer: String,
+    last_activity: Instant,
+}
+
+fn receiving_files() -> &'static Mutex<StringMap<InFlightReceive>> {
     RECEIVING_FILES.get_or_init(|| Mutex::new(StringMap::default()))
 }
 
@@ -1492,17 +1512,56 @@ pub fn gc_stale_attachments() -> color_eyre::Result<crate::files::GcStats> {
 }
 
 /// Remove an in-flight transfer and discard its `.part` blob. Every abort path
-/// (malformed chunk, peer error, oversized meta) must go through here so a
-/// later transfer of the same content address cannot append to stale bytes.
-fn abandon_transfer(file_id: &str) -> Option<crate::files::ReceivingFile> {
+/// (malformed chunk, peer error, oversized meta, disconnect, idle sweep) must go
+/// through here so a later transfer of the same content address cannot append
+/// to stale bytes.
+fn abandon_transfer(file_id: &str) -> Option<InFlightReceive> {
     let partial = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
         .remove(file_id);
     if let Some(partial) = partial.as_ref() {
-        partial.discard();
+        partial.file.discard();
     }
     partial
+}
+
+/// Abandon every in-flight pull being served by `peer`. A disconnecting peer can
+/// no longer send the remaining chunks, so leaving its entries in the map wedges
+/// `maybe_start_fetch` (which skips addresses already in flight) and keeps the
+/// startup GC from reclaiming the stale `.part` blob.
+fn abandon_transfers_from(peer: &str) {
+    let stale: Vec<String> = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .iter()
+        .filter(|(_, transfer)| transfer.peer == peer)
+        .map(|(file_id, _)| file_id.clone())
+        .collect();
+    for file_id in stale {
+        p2plog_debug(format!(
+            "abandoning file transfer {file_id}: peer {peer} disconnected"
+        ));
+        abandon_transfer(&file_id);
+    }
+}
+
+/// Abandon transfers that have made no progress for longer than `timeout`.
+/// Covers failures that never reach an `"error"` response — notably a
+/// `request_response` outbound failure (timeout/protocol error) with no peer
+/// disconnect — which would otherwise leave a transfer wedged until restart.
+fn abandon_idle_transfers(timeout: Duration) {
+    let stale: Vec<String> = receiving_files()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .iter()
+        .filter(|(_, transfer)| transfer.last_activity.elapsed() > timeout)
+        .map(|(file_id, _)| file_id.clone())
+        .collect();
+    for file_id in stale {
+        p2plog_debug(format!("abandoning idle file transfer {file_id}"));
+        abandon_transfer(&file_id);
+    }
 }
 
 /// What applying one chunk response should do next.
@@ -1548,7 +1607,7 @@ fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOut
     let mut transfers = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
-    let Some(receiving) = transfers.get_mut(file_id) else {
+    let Some(transfer) = transfers.get_mut(file_id) else {
         p2plog_debug(format!("chunk for unknown transfer {file_id}"));
         return ChunkOutcome::Failed;
     };
@@ -1560,7 +1619,7 @@ fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOut
     };
     let data_len = u64::try_from(data.len()).unwrap_or(u64::MAX);
     if !chunk_is_expected(
-        receiving,
+        &transfer.file,
         response.chunk_index,
         response.total_chunks,
         response.chunk_size,
@@ -1571,24 +1630,27 @@ fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOut
         abandon_transfer(file_id);
         return ChunkOutcome::Failed;
     }
-    if let Err(e) = receiving.write_chunk(&data) {
+    if let Err(e) = transfer.file.write_chunk(&data) {
         p2plog_debug(format!("failed to write chunk for {file_id}: {e}"));
         drop(transfers);
         abandon_transfer(file_id);
         return ChunkOutcome::Failed;
     }
-    let complete = receiving.is_complete();
-    let received = receiving.received;
+    let complete = transfer.file.is_complete();
+    let received = transfer.file.received;
+    // Every accepted chunk proves the peer is still serving the pull, so the
+    // idle sweep must count from the latest one, not from the meta handshake.
+    transfer.last_activity = Instant::now();
     if complete {
         let partial = transfers.remove(file_id);
         drop(transfers);
-        return partial.map_or(ChunkOutcome::Failed, ChunkOutcome::Complete);
+        return partial.map_or(ChunkOutcome::Failed, |t| ChunkOutcome::Complete(t.file));
     }
     drop(transfers);
     ChunkOutcome::Continue(received.div_euclid(crate::files::FILE_CHUNK_SIZE))
 }
 
-/// Atomically register a fresh in-flight receive for `file_id`.
+/// Atomically register a fresh in-flight receive for `file_id` from `peer`.
 ///
 /// Returns `true` when a new transfer was registered, `false` when one is
 /// already in flight (a duplicate `meta` response) or the partial file could
@@ -1596,7 +1658,7 @@ fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOut
 /// `ReceivingFile::new` resets `received` to 0 but leaves the `.part` bytes on
 /// disk, so later chunks would append after stale data and the final hash
 /// check would fail.
-fn begin_receive(file_id: &str, name: &str, mime: Option<String>, size: u64) -> bool {
+fn begin_receive(peer: &str, file_id: &str, name: &str, mime: Option<String>, size: u64) -> bool {
     let mut transfers = receiving_files()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
@@ -1604,14 +1666,21 @@ fn begin_receive(file_id: &str, name: &str, mime: Option<String>, size: u64) -> 
         p2plog_debug(format!("ignoring duplicate meta for transfer {file_id}"));
         return false;
     }
-    let receiving = match crate::files::ReceivingFile::new(file_id, name, mime, size) {
-        Ok(receiving) => receiving,
+    let file = match crate::files::ReceivingFile::new(file_id, name, mime, size) {
+        Ok(file) => file,
         Err(e) => {
             p2plog_debug(format!("failed to open receiving file for {file_id}: {e}"));
             return false;
         }
     };
-    transfers.insert(file_id.to_string(), receiving);
+    transfers.insert(
+        file_id.to_string(),
+        InFlightReceive {
+            file,
+            peer: peer.to_string(),
+            last_activity: Instant::now(),
+        },
+    );
     true
 }
 
@@ -1785,6 +1854,7 @@ async fn handle_file_transfer_response(
                 return;
             }
             if !begin_receive(
+                &peer_id_str,
                 &file_id,
                 response.name.as_deref().unwrap_or("attachment"),
                 response.mime.clone(),
@@ -1797,7 +1867,8 @@ async fn handle_file_transfer_response(
                 let receiving = receiving_files()
                     .lock()
                     .unwrap_or_else(PoisonError::into_inner)
-                    .remove(&file_id);
+                    .remove(&file_id)
+                    .map(|transfer| transfer.file);
                 if let Some(receiving) = receiving {
                     finish_received_file(receiving, peer_id_str, event_tx).await;
                 }
@@ -2411,6 +2482,10 @@ pub fn spawn_swarm_handler(
                 }
                 Some(Event::Flush) => {
                     flush_pending_outbox(&mut swarm);
+                    // Backstop for pulls whose request failed without a
+                    // disconnect (an outbound timeout/protocol error produces
+                    // no `"error"` response in the files lane).
+                    abandon_idle_transfers(FILE_TRANSFER_IDLE_TIMEOUT);
                 }
                 None => break,
             }
