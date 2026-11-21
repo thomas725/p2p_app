@@ -80,13 +80,14 @@ pub fn for_message(
     content: &str,
     group_id: Option<&str>,
 ) -> Option<Notification> {
+    // Reject control/call events before any DB access: `conversation_key` is
+    // pure, while `settings()` below reads two persisted values. A receipt or
+    // call signal must never pay for a settings lookup it cannot use.
+    let conversation_key = conversation_key(event_type, peer_id, group_id)?;
     let channels = settings();
     if !channels.sound && !channels.desktop {
         return None;
     }
-    // Reject control/call events before the DB-backed display-name lookup below,
-    // so a receipt never pays for a resolution it cannot use.
-    let conversation_key = conversation_key(event_type, peer_id, group_id)?;
 
     let sender = nickname.filter(|name| !name.is_empty()).map_or_else(
         || crate::nickname::get_peer_display_name_or_short(peer_id),

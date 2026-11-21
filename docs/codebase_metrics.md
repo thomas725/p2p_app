@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    32,905 |
-| Total Rust Chars      | 1,241,558 |
+| Total Rust Lines      |    32,906 |
+| Total Rust Chars      | 1,241,641 |
 | Avg Lines/Rust File   |       514 |
-| Avg Chars/Rust File   |    19,399 |
+| Avg Chars/Rust File   |    19,400 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    16,975 |
 | Total Dart Chars      |   544,430 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,183 lines, 1,796,978 characters
+**Grand Total:** 106 files, 50,184 lines, 1,797,061 characters
 
 ## Rust Source Files
 
@@ -56,7 +56,7 @@
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
 | src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
 | src                     | nickname.rs          |     5 | 12519 |   328 |        - |       - | Nickname management                    |
-| src                     | notifications.rs     |     4 |  8130 |   240 |        - |       - | Source file                            |
+| src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                            |
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
 | src                     | peers.rs             |     5 |  5265 |   126 |        - |       - | TUI peers-table renderer               |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 32,905 lines, 1,241,558 characters
+**Total:** 64 files, 32,906 lines, 1,241,641 characters
 
 ## Rust Test Files
 
