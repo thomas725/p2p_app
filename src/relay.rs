@@ -33,7 +33,7 @@ pub fn parse_relay_addrs(input: &str) -> Vec<Multiaddr> {
             continue;
         }
         match entry.parse::<Multiaddr>() {
-            Ok(addr) if relay_peer_id(&addr).is_some() => {
+            Ok(addr) if crate::network_config::multiaddr_peer_id(&addr).is_some() => {
                 if !relays.contains(&addr) {
                     relays.push(addr);
                 }
@@ -75,15 +75,6 @@ pub fn effective_relay_addrs() -> Vec<Multiaddr> {
     addrs
 }
 
-/// Peer id embedded in a multiaddr, if any.
-#[must_use]
-pub fn relay_peer_id(addr: &Multiaddr) -> Option<libp2p::PeerId> {
-    addr.iter().find_map(|protocol| match protocol {
-        Protocol::P2p(peer_id) => Some(peer_id),
-        _ => None,
-    })
-}
-
 /// The relayed listen address that requests a reservation with the relay in
 /// `relay`.
 ///
@@ -92,7 +83,7 @@ pub fn relay_peer_id(addr: &Multiaddr) -> Option<libp2p::PeerId> {
 /// untouched.
 #[must_use]
 pub fn relayed_listen_addr(relay: &Multiaddr) -> Option<Multiaddr> {
-    relay_peer_id(relay)?;
+    crate::network_config::multiaddr_peer_id(relay)?;
     if relay.iter().any(|p| matches!(p, Protocol::P2pCircuit)) {
         return Some(relay.clone());
     }

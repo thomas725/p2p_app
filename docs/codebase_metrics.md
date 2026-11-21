@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,876 |
-| Total Rust Chars      | 1,284,233 |
+| Total Rust Lines      |    33,860 |
+| Total Rust Chars      | 1,283,835 |
 | Avg Lines/Rust File   |       529 |
-| Avg Chars/Rust File   |    20,066 |
+| Avg Chars/Rust File   |    20,059 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,391 lines, 1,850,635 characters
+**Grand Total:** 106 files, 51,375 lines, 1,850,237 characters
 
 ## Rust Source Files
 
@@ -54,18 +54,18 @@
 | src                     | mod.rs               |     7 | 63191 |  1650 |        - |       - | Web server (axum HTTP+WS)              |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                            |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
-| src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
+| src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                            |
 | src                     | nickname.rs          |     5 | 12838 |   333 |        - |       - | Nickname management                    |
 | src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                            |
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
 | src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer               |
 | src                     | reactions.rs         |     5 | 15943 |   420 |        - |       - | Source file                            |
-| src                     | relay.rs             |     5 |  3965 |   104 |        - |       - | Source file                            |
+| src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                            |
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 100355 |  2564 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 100088 |  2555 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,876 lines, 1,284,233 characters
+**Total:** 64 files, 33,860 lines, 1,283,835 characters
 
 ## Rust Test Files
 
@@ -148,10 +148,10 @@
 | unit   | unit_messages.rs                  |   580 | 21994 |     4 | Unit tests for messages module        |
 | unit   | unit_net_diag.rs                  |   483 | 15776 |     3 | Test file                             |
 | unit   | unit_network.rs                   |    38 |  1098 |     2 | Unit tests for network module         |
-| unit   | unit_network_config.rs            |   153 |  5151 |     4 | Test file                             |
+| unit   | unit_network_config.rs            |   167 |  5564 |     4 | Test file                             |
 | unit   | unit_nickname.rs                  |   173 |  5791 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                     |   113 |  3428 |     3 | Unit tests for peers module           |
-| unit   | unit_relay.rs                     |    62 |  1806 |     2 | Test file                             |
+| unit   | unit_relay.rs                     |    51 |  1450 |     2 | Test file                             |
 | unit   | unit_reply.rs                     |    98 |  3436 |     3 | Test file                             |
 | unit   | unit_settings.rs                  |    88 |  2766 |     3 | Test file                             |
 | unit   | unit_swarm_handler.rs             |   585 | 19825 |     4 | Unit tests for swarm_handler module   |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,845 lines, 858,727 characters
+**Total:** 63 test files, 25,848 lines, 858,784 characters
 
 ## Dart Source Files
 

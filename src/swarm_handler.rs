@@ -50,15 +50,6 @@ pub const fn gossipsub_author(
     }
 }
 
-/// Peer id embedded in a multiaddr, if any (manual dial guard, US-054).
-fn multiaddr_peer_id(addr: &libp2p::Multiaddr) -> Option<libp2p::PeerId> {
-    use libp2p::multiaddr::Protocol;
-    addr.iter().find_map(|protocol| match protocol {
-        Protocol::P2p(peer_id) => Some(peer_id),
-        _ => None,
-    })
-}
-
 /// Dispatch a decoded broadcast: surface it as an event attributed to the
 /// signed publisher, pull its attachment from the relay that forwarded it
 /// (files lane §12), and send a best-effort receipt confirmation to the
@@ -221,7 +212,7 @@ impl RelayState {
         let peers: Vec<libp2p::PeerId> = self
             .addrs
             .iter()
-            .filter_map(crate::relay::relay_peer_id)
+            .filter_map(crate::network_config::multiaddr_peer_id)
             .collect();
         for peer_id in peers {
             self.request_reservation(peer_id, swarm);
@@ -240,7 +231,7 @@ impl RelayState {
         let Some(addr) = self
             .addrs
             .iter()
-            .find(|addr| crate::relay::relay_peer_id(addr) == Some(peer_id))
+            .find(|addr| crate::network_config::multiaddr_peer_id(addr) == Some(peer_id))
         else {
             return;
         };
@@ -2152,7 +2143,7 @@ fn disconnect_peer(peer_id: &str, swarm: &mut Swarm<AppBehaviour>) {
 fn dial_peer(address: &str, swarm: &mut Swarm<AppBehaviour>) {
     match address.trim().parse::<libp2p::Multiaddr>() {
         Ok(addr) => {
-            if multiaddr_peer_id(&addr)
+            if crate::network_config::multiaddr_peer_id(&addr)
                 .is_some_and(|peer| crate::blocklist::is_blocked(&peer.to_string()))
             {
                 p2plog_debug(format!("Refusing to dial blocked peer in {addr}"));

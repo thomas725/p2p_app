@@ -99,7 +99,7 @@ pub fn validate_network_peer(kind: NetworkPeerKind, multiaddr: &str) -> Result<S
     let addr = trimmed
         .parse::<Multiaddr>()
         .map_err(|e| format!("invalid multiaddr: {e}"))?;
-    if kind == NetworkPeerKind::Relay && peer_id_in(&addr).is_none() {
+    if kind == NetworkPeerKind::Relay && multiaddr_peer_id(&addr).is_none() {
         return Err("relay address needs a /p2p/<peer-id> suffix".to_string());
     }
     Ok(addr.to_string())
@@ -107,9 +107,11 @@ pub fn validate_network_peer(kind: NetworkPeerKind, multiaddr: &str) -> Result<S
 
 /// Peer id embedded in a multiaddr, if any.
 ///
-/// Local copy of `relay::relay_peer_id` so this module compiles without the
-/// `relay` feature (the validation rule applies whenever a relay entry exists).
-fn peer_id_in(addr: &Multiaddr) -> Option<libp2p::PeerId> {
+/// Canonical helper shared by relay setup, the manual-dial blocklist guard and
+/// network-peer validation. Lives here (not in `relay.rs`) so every caller
+/// compiles without the `relay` feature.
+#[must_use]
+pub fn multiaddr_peer_id(addr: &Multiaddr) -> Option<libp2p::PeerId> {
     use libp2p::multiaddr::Protocol;
     addr.iter().find_map(|protocol| match protocol {
         Protocol::P2p(peer_id) => Some(peer_id),

@@ -40,6 +40,20 @@ fn kind_roundtrips_through_its_stored_string() {
 }
 
 #[test]
+fn multiaddr_peer_id_reads_the_embedded_peer() {
+    let peer = peer_id();
+    let addr = format!("/ip4/1.2.3.4/tcp/4001/p2p/{peer}")
+        .parse::<Multiaddr>()
+        .expect("parse relay");
+    assert_eq!(multiaddr_peer_id(&addr), Some(peer));
+
+    let plain = "/ip4/1.2.3.4/tcp/4001"
+        .parse::<Multiaddr>()
+        .expect("parse plain");
+    assert_eq!(multiaddr_peer_id(&plain), None);
+}
+
+#[test]
 fn bootstrap_validation_only_requires_a_parseable_multiaddr() {
     let addr = validate_network_peer(NetworkPeerKind::Bootstrap, " /ip4/1.2.3.4/tcp/4001 ")
         .expect("valid bootstrap");

@@ -34,17 +34,6 @@ fn parse_relay_addrs_keeps_valid_entries_and_dedupes() {
 }
 
 #[test]
-fn relay_peer_id_reads_the_embedded_peer() {
-    let peer = peer_id();
-    let addr = format!("/ip4/1.2.3.4/tcp/4001/p2p/{peer}")
-        .parse::<Multiaddr>()
-        .unwrap();
-    assert_eq!(relay_peer_id(&addr), Some(peer));
-    let plain = "/ip4/1.2.3.4/tcp/4001".parse::<Multiaddr>().unwrap();
-    assert_eq!(relay_peer_id(&plain), None);
-}
-
-#[test]
 fn relayed_listen_addr_appends_the_circuit_protocol_once() {
     let peer = peer_id();
     let relay = format!("/ip4/1.2.3.4/tcp/4001/p2p/{peer}")
