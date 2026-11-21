@@ -363,6 +363,53 @@ fn test_begin_receive_refuses_duplicate_meta() {
 }
 
 #[test]
+fn dispatched_dms_closes_the_async_persist_window() {
+    // Two deliveries of the same DM can reach the swarm before the frontend
+    // persists either. The in-memory mark must reject the second immediately
+    // (while the DB still has no row), scoped per (peer, msg_id).
+    let now = Instant::now();
+    let mut dispatched = DispatchedDms::default();
+    assert!(
+        !dispatched.mark("peer-a", "msg-1", now),
+        "first dispatch is accepted"
+    );
+    assert!(
+        dispatched.mark("peer-a", "msg-1", now),
+        "replay in the persist window is rejected"
+    );
+    assert!(
+        !dispatched.mark("peer-b", "msg-1", now),
+        "the same id from another peer is independent"
+    );
+    assert!(
+        !dispatched.mark("peer-a", "msg-2", now),
+        "a different id from the same peer is independent"
+    );
+}
+
+#[test]
+fn dispatched_dms_prunes_only_expired_markers() {
+    let now = Instant::now();
+    let old = now
+        .checked_sub(Duration::from_secs(120))
+        .expect("120s is within Instant's range");
+    let mut dispatched = DispatchedDms::default();
+    dispatched.mark("peer-a", "stale", old);
+    dispatched.mark("peer-b", "fresh", now);
+
+    dispatched.prune(now, Duration::from_secs(60));
+
+    assert!(
+        !dispatched.mark("peer-a", "stale", now),
+        "expired marker was pruned and can be dispatched again"
+    );
+    assert!(
+        dispatched.mark("peer-b", "fresh", now),
+        "recent marker is retained"
+    );
+}
+
+#[test]
 fn retry_transient_recovers_from_transient_failures() {
     // Gossipsub never redelivers a seen message id, so the receive path must
     // survive a transient DB hiccup instead of losing the message forever.

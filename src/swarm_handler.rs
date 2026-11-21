@@ -1102,6 +1102,55 @@ async fn dispatch_incoming_dm(
     }
 }
 
+/// (peer, `msg_id`) markers for DMs already dispatched to a frontend, with the
+/// dispatch time. The `incoming_dm_exists` DB check happens before dispatch,
+/// but the frontend persists asynchronously after receiving the event; a
+/// store-and-forward replay arriving in that window passes the DB check again
+/// and renders twice (the `messages` table has no unique `(peer, msg_id)` key).
+/// Marking at dispatch time — inside the single-threaded swarm loop — makes the
+/// check-and-mark atomic; the marker is only needed until the frontend has had
+/// time to persist, after which the DB dedup takes over and the marker is pruned.
+#[derive(Default)]
+struct DispatchedDms(HashMap<(String, String), Instant>);
+
+impl DispatchedDms {
+    /// Returns `true` if this `(peer, msg_id)` was already dispatched. Otherwise
+    /// records it at `now` and returns `false`.
+    fn mark(&mut self, peer_id: &str, msg_id: &str, now: Instant) -> bool {
+        self.0
+            .insert((peer_id.to_string(), msg_id.to_string()), now)
+            .is_some()
+    }
+
+    /// Drop markers older than `ttl` so the set stays bounded. A message whose
+    /// marker is gone is either long persisted (DB dedup still catches a replay)
+    /// or was never a real message; either way it needs no in-memory guard.
+    fn prune(&mut self, now: Instant, ttl: Duration) {
+        self.0
+            .retain(|_, dispatched| now.saturating_duration_since(*dispatched) <= ttl);
+    }
+}
+
+static DISPATCHED_DMS: OnceLock<Mutex<DispatchedDms>> = OnceLock::new();
+
+/// How long a dispatch marker is kept before the flush tick prunes it. Two
+/// flush intervals comfortably exceed the time for a frontend to persist an
+/// event while still bounding the set to recently seen messages.
+const DM_DISPATCH_MARKER_TTL: Duration = Duration::from_secs(60);
+
+fn dispatched_dms() -> &'static Mutex<DispatchedDms> {
+    DISPATCHED_DMS.get_or_init(|| Mutex::new(DispatchedDms::default()))
+}
+
+/// Atomically check-and-mark an incoming DM as dispatched. Returns `true` when
+/// it is a replay of one already dispatched (and must therefore be dropped).
+fn dm_already_dispatched(peer_id: &str, msg_id: &str) -> bool {
+    dispatched_dms()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .mark(peer_id, msg_id, Instant::now())
+}
+
 /// Handle one inbound DM request: open a sealed body, drop control/replay
 /// traffic, dispatch real messages, start any attachment pull, and ack once.
 async fn handle_dm_request(
@@ -1136,8 +1185,14 @@ async fn handle_dm_request(
     }
     // Store-and-forward: a reconnect replay can deliver the same sealed
     // envelope twice. Drop a DM we already persisted but still ack it.
+    // `dm_already_dispatched` also marks this id as in-flight, closing the
+    // window between this check and the frontend's async persist: a replay in
+    // that window is caught by the marker before the DB row exists. Short-circuit
+    // means a DB-confirmed duplicate is never marked, and a fresh id is marked
+    // exactly once before dispatch.
     if let Some(id) = request.msg_id.clone()
-        && crate::messages::incoming_dm_exists(&peer_id_str, &id)
+        && (crate::messages::incoming_dm_exists(&peer_id_str, &id)
+            || dm_already_dispatched(&peer_id_str, &id))
     {
         p2plog_debug(format!("Dropped duplicate DM {id} from {peer_id_str}"));
         send_dm_ack(swarm, channel, Some(id));
@@ -2512,6 +2567,12 @@ pub fn spawn_swarm_handler(
                     // disconnect (an outbound timeout/protocol error produces
                     // no `"error"` response in the files lane).
                     abandon_idle_transfers(FILE_TRANSFER_IDLE_TIMEOUT);
+                    // Dispatch markers only bridge the async-persist window;
+                    // older ones are covered by the DB dedup and can be freed.
+                    dispatched_dms()
+                        .lock()
+                        .unwrap_or_else(PoisonError::into_inner)
+                        .prune(Instant::now(), DM_DISPATCH_MARKER_TTL);
                 }
                 None => break,
             }
