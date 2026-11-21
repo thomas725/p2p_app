@@ -1,6 +1,16 @@
 use super::*;
 
 #[test]
+fn test_newly_persisted_gates_duplicate_and_failed_saves() {
+    // A mesh retransmit (Ok(None)) or a failed write must never produce a live
+    // frontend event: the TUI appends group events to in-memory history without
+    // its own dedup, and an unsaved row would vanish on the next reload.
+    assert!(newly_persisted(&Ok::<Option<u8>, ()>(Some(1))));
+    assert!(!newly_persisted(&Ok::<Option<u8>, ()>(None)));
+    assert!(!newly_persisted(&Err::<Option<u8>, ()>(())));
+}
+
+#[test]
 fn test_group_topics_covers_main_and_backfill() {
     // Both subscribe and unsubscribe derive their topics from this helper, so
     // it must always yield exactly the main topic + the backfill topic. This

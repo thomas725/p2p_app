@@ -690,6 +690,17 @@ fn handle_relay_client_event(event: &libp2p::relay::client::Event) {
     }
 }
 
+/// Whether an incoming-message save actually inserted a new row.
+///
+/// `Ok(None)` is a mesh retransmit already persisted on an earlier delivery;
+/// `Err` is a failed write. Neither may be forwarded to a frontend: the TUI
+/// appends live events to its in-memory history without its own dedup, and a
+/// row that never persisted would vanish on the next reload. Mirrors the DM
+/// replay guard (`messages::incoming_dm_exists`).
+const fn newly_persisted<T, E>(saved: &Result<Option<T>, E>) -> bool {
+    matches!(saved, Ok(Some(_)))
+}
+
 async fn handle_group_message(
     message: gossipsub::Message,
     peer_id: libp2p::PeerId,
@@ -720,7 +731,7 @@ async fn handle_group_message(
                 group_msg.sent_at,
                 group_msg.msg_id.clone(),
             );
-            match crate::groups::save_incoming_group_message(
+            let saved = crate::groups::save_incoming_group_message(
                 group_id,
                 &peer_id_str,
                 &group_msg.content,
@@ -731,13 +742,23 @@ async fn handle_group_message(
                     attachment: group_msg.attachment.clone(),
                     reply_to: group_msg.reply_to.clone(),
                 },
-            ) {
+            );
+            // Only a freshly persisted row reaches a frontend. The DB is the
+            // single source of truth for group history, and the TUI appends
+            // live events to its in-memory history without its own dedup — so
+            // a mesh retransmit (Ok(None)) would render twice. This mirrors the
+            // DM replay guard (`incoming_dm_exists`). A failed save must not
+            // surface a row that is absent on the next reload either.
+            match &saved {
                 Ok(Some(_)) => {}
                 Ok(None) => p2plog_debug(format!(
                     "Dropped duplicate group message {} in {group_id}",
                     group_msg.msg_id.clone().unwrap_or_default()
                 )),
                 Err(e) => p2plog_debug(format!("Failed to save group message: {e:?}")),
+            }
+            if !newly_persisted(&saved) {
+                return;
             }
 
             // Attachments (files lane §12) are pulled from the group sender.
