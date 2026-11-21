@@ -119,6 +119,7 @@ expandable device sub-rows.
 | `i` | Open the selected row's Peer Info |
 | `e` | Expand / collapse the selected contact's device rows |
 | `c` | Call the selected contact's best device |
+| `d` | Send this install's device-binding intro to the selected device (see [Sending a device intro](#sending-a-device-intro)) |
 | `/` | Open the search box |
 | `Esc` | Clear the search box (when open), otherwise return to the Chat tab |
 | `Click` a row | Open a DM with that contact or device |
@@ -174,6 +175,7 @@ of the history.
 | `Enter` | Open a DM with that peer |
 | `n` | Edit the **local** nickname for that peer (the name only this install shows) |
 | `c` | Call that peer |
+| `d` | Send this install's device-binding intro to that peer (see [Sending a device intro](#sending-a-device-intro)) |
 | `b` | Block / unblock that peer (mute: its traffic is dropped at the network boundary) |
 | `Esc` | Return to the Chat tab |
 
@@ -272,6 +274,16 @@ appears. It takes priority over every other input.
 
 One prompt at a time: a second request arriving while one is active is
 dropped (and logged).
+
+### Sending a device intro
+
+To add this install as a second device of an account, press `d` on the
+**Contacts** tab (with the account holder's device selected) or on a
+**Peer Info** tab. That sends this install's signed device-binding intro to the
+selected peer; their account holder can then accept it with `a`. This is the
+same "send my identity" action Flutter exposes on each contact's device row and
+the web client exposes on its contact card. The recipient must already be in
+your roster — run this on the *new* device, targeting the account holder.
 
 ## Calls
 

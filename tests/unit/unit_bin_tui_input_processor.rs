@@ -1670,6 +1670,107 @@ fn test_device_binding_accept_mints_and_queues_claim() {
     p2p_app::db::reset_db_url();
 }
 
+#[test]
+#[serial]
+fn test_d_key_on_contacts_sends_device_intro() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().expect("db path").to_string();
+    p2p_app::db::set_db_url(&db_str);
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.contacts = vec![p2p_app::contacts::ContactRow {
+            contact_id: "bob".to_string(),
+            is_user: false,
+            display_name: "Bob".to_string(),
+            device_count: 1,
+            device_rows: vec![p2p_app::contacts::ContactDevice {
+                peer_id: "bob-d1".to_string(),
+                display_name: "Laptop".to_string(),
+                received_nickname: None,
+                local_nickname: None,
+                first_seen: "s".to_string(),
+                last_seen: "l".to_string(),
+            }],
+            first_seen: "s".to_string(),
+            last_seen: "l".to_string(),
+            dm_count: 0,
+            broadcast_sent_to_peer: 0,
+        }];
+        state.peer_selection = 0;
+        state.active_tab = 1; // Contacts tab
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+        let (render_tx, _) = mpsc::channel(1);
+
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+
+        match swarm_cmd_rx.try_recv().expect("intro queued") {
+            SwarmCommand::SendDeviceBinding { peer_id, request } => {
+                assert_eq!(peer_id, "bob-d1");
+                assert_eq!(request.kind, "intro");
+            }
+            other => panic!("expected SendDeviceBinding intro, got: {other:?}"),
+        }
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+#[serial]
+fn test_d_key_on_peer_info_sends_device_intro() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    let db_str = db_path.to_str().expect("db path").to_string();
+    p2p_app::db::set_db_url(&db_str);
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = test_app_state();
+        state.active_tab = state.dynamic_tabs.add_peer_info_tab("bob-d1".to_string());
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+        let (render_tx, _) = mpsc::channel(1);
+
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('d'), KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+
+        match swarm_cmd_rx.try_recv().expect("intro queued") {
+            SwarmCommand::SendDeviceBinding { peer_id, request } => {
+                assert_eq!(peer_id, "bob-d1");
+                assert_eq!(request.kind, "intro");
+            }
+            other => panic!("expected SendDeviceBinding intro, got: {other:?}"),
+        }
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
 // ── call overlay (start / accept / decline / cancel / hang up) ─────────────
 
 fn call_state(peer: &str, state: p2p_app::CallState) -> AppState {

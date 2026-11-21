@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,037 |
-| Total Rust Chars      | 1,246,541 |
-| Avg Lines/Rust File   |       516 |
-| Avg Chars/Rust File   |    19,477 |
+| Total Rust Lines      |    33,094 |
+| Total Rust Chars      | 1,249,149 |
+| Avg Lines/Rust File   |       517 |
+| Avg Chars/Rust File   |    19,517 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,053 |
 | Total Dart Chars      |   548,204 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,393 lines, 1,805,735 characters
+**Grand Total:** 106 files, 50,450 lines, 1,808,343 characters
 
 ## Rust Source Files
 
@@ -50,12 +50,12 @@
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
 | src                     | mobile_node.rs       |     5 | 91630 |  2455 |        - |       - | Mobile node lifecycle & swarm          |
 | src                     | mod.rs               |     4 | 25712 |   741 |        - |       - | FRB API surface                        |
-| src                     | mod.rs               |     4 | 10902 |   286 |        - |       - | TUI render chrome & dispatch           |
+| src                     | mod.rs               |     4 | 10977 |   286 |        - |       - | TUI render chrome & dispatch           |
 | src                     | mod.rs               |     7 | 55266 |  1453 |        - |       - | Web server (axum HTTP+WS)              |
 | src                     | net_diag.rs          |     4 | 21711 |   605 |        - |       - | Source file                            |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
 | src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
-| src                     | nickname.rs          |     5 | 12519 |   328 |        - |       - | Nickname management                    |
+| src                     | nickname.rs          |     5 | 12838 |   333 |        - |       - | Nickname management                    |
 | src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                            |
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
@@ -77,7 +77,7 @@
 | src/bin/tui             | click_handlers.rs    |     7 | 21557 |   519 |        - |       - | Click handlers & index mapping         |
 | src/bin/tui             | command_processor.rs |     6 | 26081 |   725 |        - |       - | Event routing & state updates          |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
-| src/bin/tui             | input_processor.rs   |     7 | 63512 |  1644 |        - |       - | Input event routing & processing       |
+| src/bin/tui             | input_processor.rs   |     7 | 65726 |  1696 |        - |       - | Input event routing & processing       |
 | src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |        - |       - | Keyboard enhancement probe             |
 | src/bin/tui             | main_loop.rs         |     6 | 15810 |   398 |        - |       - | Task orchestration & async             |
 | src/bin/tui             | message_handlers.rs  |     4 | 16779 |   516 |        - |       - | Message sending logic                  |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,037 lines, 1,246,541 characters
+**Total:** 64 files, 33,094 lines, 1,249,149 characters
 
 ## Rust Test Files
 
@@ -126,7 +126,7 @@
 | unit   | unit_bin_tui_click_handlers.rs    |   645 | 23639 |     3 | Unit tests for TUI click handlers     |
 | unit   | unit_bin_tui_command_processor.rs |  1228 | 41026 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1352 |     2 | Unit tests for TUI event source       |
-| unit   | unit_bin_tui_input_processor.rs   |  2784 | 95147 |     5 | Unit tests for TUI input processor    |
+| unit   | unit_bin_tui_input_processor.rs   |  2885 | 98887 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs         |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs  |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_mod.rs   |   408 | 14566 |     3 | Unit tests for TUI render loop        |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 24,878 lines, 823,181 characters
+**Total:** 63 test files, 24,979 lines, 826,921 characters
 
 ## Dart Source Files
 

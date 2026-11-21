@@ -1513,7 +1513,59 @@ async fn handle_contacts_action_key(
             start_call_for_tab(tab, s, swarm_cmd_tx).await;
             true
         }
+        // `d` sends this install's device-binding intro to the selected peer so
+        // their account holder can bind us as one of their devices (the "add my
+        // second device" direction, mirroring Flutter/web).
+        crossterm::event::KeyCode::Char('d')
+            if on_contacts || matches!(tab, p2p_app::tui_tabs::TabContent::PeerInfo(_)) =>
+        {
+            send_device_intro_for_tab(tab, s, swarm_cmd_tx);
+            true
+        }
         _ => false,
+    }
+}
+
+/// `d` sends our device-binding intro to the peer targeted by `tab`: the
+/// selected contact/device on Contacts, or the Peer Info owner. The intro is
+/// built from the local identity (no provisioning required) and queued on the
+/// device-binding swarm lane. Errors surface in a popup so a failed send is
+/// never mistaken for success.
+fn send_device_intro_for_tab(
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let Some(peer_id) = (match tab {
+        p2p_app::tui_tabs::TabContent::Contacts => s.selected_contact_peer_id(),
+        p2p_app::tui_tabs::TabContent::PeerInfo(pid) => Some(pid.clone()),
+        _ => None,
+    }) else {
+        return;
+    };
+    match p2p_app::identity::intro_device_binding_request() {
+        Ok(request) => {
+            match swarm_cmd_tx.try_send(SwarmCommand::SendDeviceBinding {
+                peer_id: peer_id.clone(),
+                request: Box::new(request),
+            }) {
+                Ok(()) => {
+                    s.popup = Some(format!(
+                        "Device intro sent to {}",
+                        p2p_app::fmt::peer_id_suffix(&peer_id)
+                    ));
+                    p2plog_debug(format!("Sent device-binding intro to {peer_id}"));
+                }
+                Err(e) => {
+                    s.popup = Some(format!("Could not queue device intro: {e}"));
+                    p2plog_debug(format!("Failed to queue device-binding intro: {e}"));
+                }
+            }
+        }
+        Err(e) => {
+            s.popup = Some(format!("Could not build device intro: {e}"));
+            p2plog_debug(format!("Failed to build device-binding intro: {e}"));
+        }
     }
 }
 

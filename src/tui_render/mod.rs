@@ -160,10 +160,10 @@ pub fn render_input_section(
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
         TabContent::Contacts => {
-            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | /: search | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Up/Down: select | Enter: open DM | i: Peer Info | c: call | d: link device | /: search | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::PeerInfo(_) => {
-            "Tab: next | Enter: open DM | c: call | b: block/unblock | n: set local nickname | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | Enter: open DM | c: call | d: link device | b: block/unblock | n: set local nickname | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Groups => {
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -206,9 +206,9 @@ Chat / DM / Group: Del -> delete newest sent message (local only)
 Chat / DM / Group: Ctrl+E -> edit newest sent message (local only)
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 
-Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse
+Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
-Peer Info: n local nickname | b block / unblock
+Peer Info: n local nickname | c call | d link device | b block / unblock
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent color
 
 Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
