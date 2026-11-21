@@ -1989,8 +1989,19 @@ fn publish_group(
     }
 }
 
+/// The gossipsub topics a group membership spans: the main chat topic and the
+/// store-and-forward backfill topic (§11.5). Both [`subscribe_to_group`] and
+/// [`unsubscribe_from_group`] derive their topics from this one list, so
+/// leaving a group can never forget a topic that joining it subscribed to.
+fn group_topics(group_id: &str) -> [gossipsub::IdentTopic; 2] {
+    [
+        gossipsub::IdentTopic::new(crate::groups::group_topic(group_id)),
+        gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(group_id)),
+    ]
+}
+
 fn subscribe_to_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
-    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(group_id));
+    let [topic, backfill_topic] = group_topics(group_id);
     match swarm.behaviour_mut().gossipsub.subscribe(&topic) {
         Ok(true) => p2plog_debug(format!("Subscribed to group {group_id}")),
         Ok(false) => p2plog_debug(format!("Already subscribed to group {group_id}")),
@@ -2008,7 +2019,6 @@ fn subscribe_to_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
             .flatten()
             .unwrap_or(0.0),
     };
-    let backfill_topic = gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(group_id));
     if let Err(e) = swarm.behaviour_mut().gossipsub.subscribe(&backfill_topic) {
         p2plog_error(format!(
             "Failed to subscribe to backfill topic for {group_id}: {e:?}"
@@ -2103,11 +2113,19 @@ fn send_reaction(
 }
 
 fn unsubscribe_from_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {
-    let topic = gossipsub::IdentTopic::new(crate::groups::group_topic(group_id));
+    // `subscribe_to_group` joins both topics (§11.5), so leaving must drop
+    // both: leaving only the main topic kept stale mesh membership for a
+    // group whose row is already gone.
+    let [topic, backfill_topic] = group_topics(group_id);
     if swarm.behaviour_mut().gossipsub.unsubscribe(&topic) {
         p2plog_debug(format!("Unsubscribed from group {group_id}"));
     } else {
         p2plog_debug(format!("Was not subscribed to group {group_id}"));
+    }
+    if swarm.behaviour_mut().gossipsub.unsubscribe(&backfill_topic) {
+        p2plog_debug(format!(
+            "Unsubscribed from backfill topic for group {group_id}"
+        ));
     }
 }
 

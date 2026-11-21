@@ -1,6 +1,24 @@
 use super::*;
 
 #[test]
+fn test_group_topics_covers_main_and_backfill() {
+    // Both subscribe and unsubscribe derive their topics from this helper, so
+    // it must always yield exactly the main topic + the backfill topic. This
+    // guards the group-leave bug where only the main topic was dropped.
+    let id = "group-abc";
+    let [main, backfill] = group_topics(id);
+    assert_eq!(
+        main.hash(),
+        gossipsub::IdentTopic::new(crate::groups::group_topic(id)).hash()
+    );
+    assert_eq!(
+        backfill.hash(),
+        gossipsub::IdentTopic::new(crate::groups::group_backfill_topic(id)).hash()
+    );
+    assert_ne!(main.hash(), backfill.hash());
+}
+
+#[test]
 fn test_build_broadcast_message() {
     let msg = build_broadcast_message(
         "Hello world".to_string(),
