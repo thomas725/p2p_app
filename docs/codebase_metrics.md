@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,850 |
-| Total Rust Chars      | 1,283,583 |
+| Total Rust Lines      |    33,851 |
+| Total Rust Chars      | 1,283,702 |
 | Avg Lines/Rust File   |       528 |
-| Avg Chars/Rust File   |    20,055 |
+| Avg Chars/Rust File   |    20,057 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,365 lines, 1,849,985 characters
+**Grand Total:** 106 files, 51,366 lines, 1,850,104 characters
 
 ## Rust Source Files
 
@@ -41,15 +41,15 @@
 | src                     | frb_generated.rs     |     6 | 193360 |  4652 |        - |       - | flutter_rust_bridge codegen            |
 | src                     | groups.rs            |     3 | 23346 |   618 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4661 |   124 |        - |       - | TUI groups renderer                    |
-| src                     | identity.rs          |     4 | 28876 |   762 |        - |       - | Users, account keys & device bindings  |
+| src                     | identity.rs          |     4 | 28935 |   763 |        - |       - | Users, account keys & device bindings  |
 | src                     | lib.rs               |     1 |  7348 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     5 | 20431 |   534 |        - |       - | Message persistence & retrieval        |
 | src                     | methods.rs           |     4 | 21745 |   714 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
-| src                     | mobile_node.rs       |     5 | 89858 |  2392 |        - |       - | Mobile node lifecycle & swarm          |
-| src                     | mod.rs               |     4 | 25712 |   741 |        - |       - | FRB API surface                        |
+| src                     | mobile_node.rs       |     5 | 89860 |  2392 |        - |       - | Mobile node lifecycle & swarm          |
+| src                     | mod.rs               |     4 | 25770 |   741 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 | 11236 |   289 |        - |       - | TUI render chrome & dispatch           |
 | src                     | mod.rs               |     7 | 63191 |  1650 |        - |       - | Web server (axum HTTP+WS)              |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                            |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,850 lines, 1,283,583 characters
+**Total:** 64 files, 33,851 lines, 1,283,702 characters
 
 ## Rust Test Files
 
@@ -142,7 +142,7 @@
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
 | unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   624 | 22507 |     5 | Unit tests for groups module          |
-| unit   | unit_identity.rs                  |   747 | 29220 |     4 | identity module tests                 |
+| unit   | unit_identity.rs                  |   747 | 29217 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                       |   278 |  7955 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                   |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                  |   580 | 21994 |     4 | Unit tests for messages module        |
@@ -159,9 +159,9 @@
 | unit   | unit_tui_render_state.rs          |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   330 | 10365 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
-| unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
+| unit   | unit_types.rs                     |   376 | 10991 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,855 lines, 859,290 characters
+**Total:** 63 test files, 25,864 lines, 859,621 characters
 
 ## Dart Source Files
 

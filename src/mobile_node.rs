@@ -994,7 +994,7 @@ pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
 /// Returns an error if the install has not been provisioned, the claim cannot
 /// be minted, or the request is refused by the running node.
 #[flutter_rust_bridge::frb(ignore)]
-pub fn accept_device_binding(peer_id: String, device_pubkey: &[u8]) -> Result<(), String> {
+pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<(), String> {
     let request =
         crate::identity::mint_device_binding(&peer_id, device_pubkey).map_err(|e| e.to_string())?;
     if !blocking_send_cmd(SwarmCommand::SendDeviceBinding {

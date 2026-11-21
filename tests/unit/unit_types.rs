@@ -189,18 +189,21 @@ fn test_swarm_event_peer_expired() {
 }
 
 #[test]
-#[allow(clippy::redundant_clone)]
 fn test_swarm_event_clone() {
     let event = SwarmEvent::PeerConnected("peer1".to_string());
     let cloned = Clone::clone(&event);
+    // Consume the original as well, so the clone is genuinely needed and the
+    // test checks that cloning preserves the payload (not just that it builds).
+    let SwarmEvent::PeerConnected(original_id) = event else {
+        panic!("expected PeerConnected")
+    };
     match cloned {
-        SwarmEvent::PeerConnected(id) => assert_eq!(id, "peer1"),
+        SwarmEvent::PeerConnected(id) => assert_eq!(id, original_id),
         _ => panic!("expected PeerConnected"),
     }
 }
 
 #[test]
-#[allow(clippy::redundant_clone)]
 fn test_swarm_command_clone() {
     let cmd = SwarmCommand::Publish {
         content: "test".to_string(),
@@ -210,8 +213,14 @@ fn test_swarm_command_clone() {
         reply_to: None,
     };
     let cloned = Clone::clone(&cmd);
+    let SwarmCommand::Publish {
+        content: original, ..
+    } = cmd
+    else {
+        panic!("expected Publish")
+    };
     match cloned {
-        SwarmCommand::Publish { content, .. } => assert_eq!(content, "test"),
+        SwarmCommand::Publish { content, .. } => assert_eq!(content, original),
         SwarmCommand::SendDm { .. }
         | SwarmCommand::PublishGroup { .. }
         | SwarmCommand::SubscribeGroup { .. }

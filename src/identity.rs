@@ -698,8 +698,9 @@ pub fn intro_device_binding_request() -> color_eyre::Result<crate::behavior::Dev
 /// be signed or stored, or the local binding insert fails.
 pub fn mint_device_binding(
     peer_id: &str,
-    device_pubkey: &[u8],
+    device_pubkey: impl AsRef<[u8]>,
 ) -> color_eyre::Result<crate::behavior::DeviceBindingRequest> {
+    let device_pubkey = device_pubkey.as_ref();
     let local_peer = crate::get_local_peer_id()?.to_string();
     let Some(user_id) = find_user_id_for_peer(&local_peer)? else {
         return Err(color_eyre::eyre::eyre!(

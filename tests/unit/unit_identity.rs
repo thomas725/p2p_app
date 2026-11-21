@@ -251,8 +251,8 @@ fn mint_device_binding_signs_claim_for_foreign_device() {
         let user_id = crate::identity::provision_my_user(None, None).expect("provision");
         let target_peer = "12D3Koootarget-device";
         let target_pubkey = [0x99u8; 32];
-        let request = crate::identity::mint_device_binding(target_peer, &target_pubkey)
-            .expect("mint binding");
+        let request =
+            crate::identity::mint_device_binding(target_peer, target_pubkey).expect("mint binding");
         assert_eq!(request.kind, "claim");
         assert_eq!(request.user_id.as_deref(), Some(user_id.as_str()));
         assert_eq!(request.peer_id, target_peer);
@@ -578,7 +578,7 @@ fn sibling_device_can_mint_claim_without_account_key() {
 
         let target_peer = "12D3Koosibling-target";
         let target_pubkey = [0x55u8; 32];
-        let request = crate::identity::mint_device_binding(target_peer, &target_pubkey)
+        let request = crate::identity::mint_device_binding(target_peer, target_pubkey)
             .expect("mint as sibling");
         assert_eq!(request.kind, "claim");
         assert_eq!(request.user_id.as_deref(), Some(user_id.as_str()));

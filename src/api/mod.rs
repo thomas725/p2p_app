@@ -521,11 +521,11 @@ pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
 /// # Errors
 /// Returns an error if this install has no user, the claim cannot be minted,
 /// or the request cannot be queued.
-#[allow(clippy::needless_pass_by_value)]
 pub fn accept_device_binding(peer_id: String, device_pubkey: Vec<u8>) -> Result<(), String> {
     // FFI boundary: FRB's Dart `List<int>` only deserializes into an owned
-    // `Vec<u8>`; `&[u8]` is unsupported by codegen 2.13.0.
-    crate::mobile_node::accept_device_binding(peer_id, &device_pubkey)
+    // `Vec<u8>`; `&[u8]` is unsupported by codegen 2.13.0. The owned bytes are
+    // moved all the way into `mint_device_binding`, so nothing needs an allow.
+    crate::mobile_node::accept_device_binding(peer_id, device_pubkey)
 }
 
 /// Place an outgoing call: mint a session id, queue its `invite`.
