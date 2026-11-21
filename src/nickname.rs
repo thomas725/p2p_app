@@ -297,9 +297,13 @@ fn ensure_generated_nickname(peer_id: &str) -> color_eyre::Result<String> {
 /// # Errors
 /// Returns an error if any database query fails.
 pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
-    let cached = display_cache().get(peer_id).cloned();
-    if let Some(cached) = cached {
-        return Ok(cached);
+    // Hold the cache lock across resolution. A nickname change invalidates this
+    // same cache after writing the DB; if we released the lock between the
+    // lookup and the insert, a concurrent setter's invalidation could land in
+    // that gap and our stale insert would resurrect the old display name.
+    let mut cache = display_cache();
+    if let Some(cached) = cache.get(peer_id) {
+        return Ok(cached.clone());
     }
     let suffix = crate::fmt::peer_id_suffix(peer_id);
     let display = if let Some(local_nick) = get_peer_local_nickname(peer_id)? {
@@ -312,7 +316,8 @@ pub fn get_peer_display_name(peer_id: &str) -> color_eyre::Result<String> {
         let generated = ensure_generated_nickname(peer_id)?;
         format!("{generated} ({suffix})")
     };
-    display_cache().insert(peer_id.to_string(), display.clone());
+    cache.insert(peer_id.to_string(), display.clone());
+    drop(cache);
     Ok(display)
 }
 
