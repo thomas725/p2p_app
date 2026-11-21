@@ -451,15 +451,20 @@ pub fn sign_device_binding_claim(
 
 /// Provision this install as a user.
 ///
-/// Mints a fresh account keypair, derives the root `user_id` from it, persists
-/// the account, stores the account key, and signs our own first device-binding
-/// claim so the install's peer ID is bound into its own user's device-set.
+/// Mints a fresh account keypair (unless a previous interrupted attempt left
+/// one stored), derives the root `user_id` from it, stores the account key,
+/// persists the account, and signs our own first device-binding claim so the
+/// install's peer ID is bound into its own user's device-set.
 ///
-/// Idempotent: if this install is already bound into a user, returns that
-/// existing `user_id` without touching anything.
+/// Idempotent and retry-safe: if this install is already bound into a user,
+/// returns that `user_id` without touching anything; otherwise a stored account
+/// key is reused, so a retry after a partial failure converges on the same
+/// account root instead of replacing it with a fresh one.
 ///
 /// # Errors
-/// Returns an error if any persistence or signing step fails.
+/// Returns an error if any persistence or signing step fails, including when a
+/// stored account key exists but cannot be decoded (rather than silently
+/// replacing the account root with a different key).
 pub fn provision_my_user(
     self_username: Option<&str>,
     self_nickname: Option<&str>,
@@ -468,15 +473,22 @@ pub fn provision_my_user(
     if let Some(user_id) = find_user_id_for_peer(&peer_id)? {
         return Ok(user_id);
     }
-    let account_key = libp2p_identity::Keypair::generate_ed25519();
+    // Resume an interrupted provisioning from the stored key rather than
+    // minting a new root: the key is written before the user row, so any partial
+    // state carries the root we must keep.
+    let account_key =
+        get_stored_account_key()?.unwrap_or_else(libp2p_identity::Keypair::generate_ed25519);
     let user_id = user_id_from_account_pubkey(&account_key.public());
+    // Store the key first: a crash before `save_user` leaves only a key, which
+    // the next attempt reuses. Storing it last would orphan user rows and let a
+    // retry overwrite the stored key with a different account root.
+    store_account_key(&account_key)?;
     save_user(
         &user_id,
         &account_key.public().encode_protobuf(),
         self_username,
         self_nickname,
     )?;
-    store_account_key(&account_key)?;
     // The device-binding FK requires the peer row to exist: ensure ours does.
     crate::peers::save_peer(&peer_id, &[])?;
     let device_pubkey = crate::get_libp2p_identity()?.public().encode_protobuf();

@@ -1,3 +1,4 @@
+use diesel::prelude::*;
 use serial_test::serial;
 use std::sync::{Mutex, OnceLock};
 use tempfile::TempDir;
@@ -163,6 +164,83 @@ fn provisioning_is_idempotent_and_keeps_the_root() {
                 .len(),
             1
         );
+    });
+}
+
+#[test]
+#[serial]
+fn provisioning_resumes_from_a_stored_key_after_a_partial_failure() {
+    with_test_db(|| {
+        // Ensure the identity row exists so the key has somewhere to land.
+        let local_peer = crate::get_local_peer_id().expect("local peer").to_string();
+        let stored_key = libp2p_identity::Keypair::generate_ed25519();
+        let expected_id = crate::identity::user_id_from_account_pubkey(&stored_key.public());
+        // Simulate a crash after the account key is stored but before the user
+        // row and self-binding are written.
+        crate::identity::store_account_key(&stored_key).expect("store key");
+
+        let user_id = crate::identity::provision_my_user(None, None).expect("provision");
+        assert_eq!(user_id, expected_id, "retry must keep the stored root");
+
+        let after = crate::identity::get_stored_account_key()
+            .expect("read key")
+            .expect("key present");
+        assert_eq!(
+            after.public().encode_protobuf(),
+            stored_key.public().encode_protobuf(),
+            "retry must not overwrite the account key"
+        );
+        assert_eq!(
+            crate::identity::find_user_id_for_peer(&local_peer)
+                .expect("resolve local")
+                .as_deref(),
+            Some(expected_id.as_str())
+        );
+        // No orphan user rows: exactly the one resumed root exists.
+        let user = crate::identity::find_user(&expected_id)
+            .expect("find user")
+            .expect("user exists");
+        assert_eq!(user.account_pubkey, stored_key.public().encode_protobuf());
+        let count: i64 = {
+            let conn = &mut crate::sqlite_connect().expect("connect");
+            crate::generated::schema::users::table
+                .count()
+                .get_result(conn)
+                .expect("count users")
+        };
+        assert_eq!(count, 1, "a partial retry must not leak user rows");
+    });
+}
+
+#[test]
+#[serial]
+fn provisioning_with_user_row_but_no_binding_reuses_the_root() {
+    with_test_db(|| {
+        let local_peer = crate::get_local_peer_id().expect("local peer").to_string();
+        let stored_key = libp2p_identity::Keypair::generate_ed25519();
+        let user_id = crate::identity::user_id_from_account_pubkey(&stored_key.public());
+        // Older interrupted attempts could leave both the key and user row but
+        // no self-binding; recovery must resume rather than mint a new root.
+        crate::identity::store_account_key(&stored_key).expect("store key");
+        crate::identity::save_user(&user_id, &stored_key.public().encode_protobuf(), None, None)
+            .expect("save user");
+
+        let resumed = crate::identity::provision_my_user(None, None).expect("provision");
+        assert_eq!(resumed, user_id);
+        assert_eq!(
+            crate::identity::find_user_id_for_peer(&local_peer)
+                .expect("resolve local")
+                .as_deref(),
+            Some(user_id.as_str())
+        );
+        let count: i64 = {
+            let conn = &mut crate::sqlite_connect().expect("connect");
+            crate::generated::schema::users::table
+                .count()
+                .get_result(conn)
+                .expect("count users")
+        };
+        assert_eq!(count, 1, "the resumed root must be the only user row");
     });
 }
 
