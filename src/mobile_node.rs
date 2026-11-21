@@ -289,12 +289,16 @@ pub fn command_sender() -> Result<mpsc::Sender<SwarmCommand>, String> {
 /// nickname. These are the outgoing nickname-exchange DM we send on connect
 /// (echoed back by the peer) and similar name-only messages: the nickname is
 /// a peer-record update (handled by [`process_event_for_mobile`]), never a
-/// chat message to persist or surface in the UI.
+/// chat message to persist or surface in the UI. A reply snapshot makes the
+/// message real user traffic (US-006) even with an empty body.
 const fn is_nickname_only_dm(ev: &SwarmEvent) -> bool {
     matches!(
         ev,
         SwarmEvent::DirectMessage(m)
-            if m.content.is_empty() && m.nickname.is_some() && m.attachment.is_none()
+            if m.content.is_empty()
+                && m.nickname.is_some()
+                && m.attachment.is_none()
+                && m.reply_to.is_none()
     )
 }
 

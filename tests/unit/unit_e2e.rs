@@ -296,6 +296,35 @@ fn seal_dm_payload_seals_user_traffic_and_keeps_control_plaintext() {
 }
 
 #[test]
+fn seal_dm_payload_seals_an_empty_body_when_it_carries_a_reply() {
+    let recipient = keypair();
+    let peer_id = recipient.public().to_peer_id();
+    let secret = device_secret(&recipient).expect("secret");
+    let reply = crate::ReplyRef::new("source-1".into(), "bob".into(), "private preview");
+    let mut msg = crate::DirectMessage {
+        content: String::new(),
+        msg_id: Some("reply-only".to_string()),
+        reply_to: Some(reply.clone()),
+        ..Default::default()
+    };
+
+    seal_dm_payload(&mut msg, &peer_id);
+    let envelope = msg.encrypted.expect("a reply is user traffic, not control");
+    assert_eq!(msg.content, "");
+    assert!(msg.reply_to.is_none());
+    assert!(!envelope.ciphertext.contains("private preview"));
+    assert_eq!(
+        open_body(&envelope, &secret, Some("reply-only")).expect("open"),
+        SealedDmBody {
+            content: String::new(),
+            nickname: None,
+            attachment: None,
+            reply_to: Some(reply),
+        }
+    );
+}
+
+#[test]
 fn seal_dm_payload_falls_back_to_plaintext_without_an_ed25519_peer_id() {
     let mut raw = vec![0x12u8, 0x20];
     raw.extend_from_slice(&[3u8; 32]);

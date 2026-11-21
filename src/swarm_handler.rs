@@ -925,6 +925,145 @@ async fn handle_empty_dm_control(
     }
 }
 
+/// Ack a DM request so the sender can clear its outbox row, closing the
+/// one-shot response channel. Every inbound DM path answers exactly once.
+fn send_dm_ack(
+    swarm: &mut Swarm<AppBehaviour>,
+    channel: libp2p::request_response::ResponseChannel<crate::DirectMessage>,
+    ack_for: Option<String>,
+) {
+    let response = make_ack_dm("ok".to_string(), ack_for);
+    let _ = swarm
+        .behaviour_mut()
+        .request_response
+        .send_response(channel, response);
+}
+
+/// Route one persisted-worthy DM to the frontends. Group traffic goes to the
+/// group topic (or becomes an invite when we are not a member); everything
+/// else is a direct-message event.
+async fn dispatch_incoming_dm(
+    request: crate::DirectMessage,
+    peer_id_str: String,
+    local_peer: String,
+    encrypted: bool,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    let msg_id = request.msg_id;
+    let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
+    if let Some(group_id) = request.group_id {
+        if crate::groups::is_group_member(&group_id, &local_peer).unwrap_or(false) {
+            let _ = event_tx
+                .send(SwarmEvent::GroupMessage(crate::GroupMessageEvent {
+                    group_id,
+                    content: request.content,
+                    peer_id: peer_id_str,
+                    nickname: request.nickname,
+                    msg_id,
+                    attachment: request.attachment,
+                    reply_to: request.reply_to,
+                }))
+                .await;
+        } else {
+            let _ = event_tx
+                .send(SwarmEvent::GroupInvite {
+                    group_id,
+                    inviter_peer: peer_id_str,
+                })
+                .await;
+        }
+    } else {
+        let _ = event_tx
+            .send(SwarmEvent::DirectMessage(crate::MessageEvent {
+                content: request.content,
+                peer_id: peer_id_str,
+                latency,
+                nickname: request.nickname,
+                msg_id,
+                attachment: request.attachment,
+                encrypted,
+                reply_to: request.reply_to,
+            }))
+            .await;
+    }
+}
+
+/// Handle one inbound DM request: open a sealed body, drop control/replay
+/// traffic, dispatch real messages, start any attachment pull, and ack once.
+async fn handle_dm_request(
+    mut request: crate::DirectMessage,
+    peer: &libp2p::PeerId,
+    peer_id_str: String,
+    channel: libp2p::request_response::ResponseChannel<crate::DirectMessage>,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    // US-042: open a sealed body *before* any control check — the plaintext
+    // fields of an envelope are deliberately empty. A malformed/foreign
+    // envelope is acked (so it is not retransmitted) and never reaches a UI.
+    let encrypted = match open_encrypted_request(&mut request) {
+        Ok(encrypted) => encrypted,
+        Err(e) => {
+            p2plog_debug(format!("Dropped sealed DM we could not open: {e}"));
+            send_dm_ack(swarm, channel, request.msg_id);
+            return;
+        }
+    };
+    // Attachment-only and reply-only DMs are real messages despite empty
+    // content (files lane §12 / US-006): a reply's quote snapshot is user
+    // content, so the nickname/greeting paths only apply when neither rides.
+    if request.content.trim().is_empty()
+        && request.attachment.is_none()
+        && request.reply_to.is_none()
+    {
+        handle_empty_dm_control(&request, &peer_id_str, event_tx).await;
+        send_dm_ack(swarm, channel, request.msg_id);
+        return;
+    }
+    // Store-and-forward: a reconnect replay can deliver the same sealed
+    // envelope twice. Drop a DM we already persisted but still ack it.
+    if let Some(id) = request.msg_id.clone()
+        && crate::messages::incoming_dm_exists(&peer_id_str, &id)
+    {
+        p2plog_debug(format!("Dropped duplicate DM {id} from {peer_id_str}"));
+        send_dm_ack(swarm, channel, Some(id));
+        return;
+    }
+    let ack_for = request.msg_id.clone();
+    let attachment = request.attachment.clone();
+    let local_peer = swarm.local_peer_id().to_string();
+    dispatch_incoming_dm(request, peer_id_str, local_peer, encrypted, event_tx).await;
+    // Attachments (files lane §12) are pulled from the sender of the DM — the
+    // peer that has the blob staged to serve it.
+    if let Some(attachment) = attachment.as_ref() {
+        maybe_start_fetch(peer, attachment, swarm);
+    }
+    send_dm_ack(swarm, channel, ack_for);
+}
+
+/// Handle an ack from the recipient: clear the outbox row and notify the UI.
+async fn handle_dm_response(
+    response: crate::DirectMessage,
+    peer_id_str: &str,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) {
+    if let Some(ack_for) = response.ack_for {
+        // Store-and-forward: the recipient confirmed receipt, so the sealed
+        // envelope is no longer needed. Best-effort — a missing row (e.g. a
+        // broadcast receipt) is a harmless no-op.
+        if let Err(e) = crate::dm_outbox::remove(peer_id_str, &ack_for) {
+            p2plog_debug(format!("Failed to clear outbox row for ack {ack_for}: {e}"));
+        }
+        let _ = event_tx
+            .send(SwarmEvent::Receipt {
+                peer_id: peer_id_str.to_string(),
+                ack_for,
+                received_at: response.received_at,
+            })
+            .await;
+    }
+}
+
 async fn handle_request_response(
     message: libp2p::request_response::Message<crate::DirectMessage, crate::DirectMessage>,
     peer: libp2p::PeerId,
@@ -934,115 +1073,12 @@ async fn handle_request_response(
     let peer_id_str = peer.to_string();
     match message {
         libp2p::request_response::Message::Request {
-            mut request,
-            channel,
-            ..
+            request, channel, ..
         } => {
-            // US-042: open an inbound sealed body *before* any control check —
-            // the plaintext fields of an envelope are deliberately empty. A
-            // malformed/foreign envelope is acked (so it is not retransmitted)
-            // and dropped; it never reaches a frontend.
-            let encrypted = match open_encrypted_request(&mut request) {
-                Ok(encrypted) => encrypted,
-                Err(e) => {
-                    p2plog_debug(format!("Dropped sealed DM we could not open: {e}"));
-                    let response = make_ack_dm("ok".to_string(), request.msg_id);
-                    let _ = swarm
-                        .behaviour_mut()
-                        .request_response
-                        .send_response(channel, response);
-                    return;
-                }
-            };
-            // An attachment-only DM is a real message despite empty content
-            // (files lane §12), so the empty-content control paths only apply
-            // when no attachment rides along.
-            if request.content.trim().is_empty() && request.attachment.is_none() {
-                handle_empty_dm_control(&request, &peer_id_str, event_tx).await;
-            } else {
-                // Store-and-forward: a reconnect replay can deliver the same
-                // sealed envelope twice. Drop a DM we already persisted (we
-                // still ack below) so no duplicate row reaches a frontend.
-                if let Some(id) = request.msg_id.as_deref()
-                    && crate::messages::incoming_dm_exists(&peer_id_str, id)
-                {
-                    p2plog_debug(format!("Dropped duplicate DM {id} from {peer_id_str}"));
-                    let response = make_ack_dm("ok".to_string(), request.msg_id);
-                    let _ = swarm
-                        .behaviour_mut()
-                        .request_response
-                        .send_response(channel, response);
-                    return;
-                }
-                let msg_id = request.msg_id.clone();
-                let latency = Some(crate::format_latency(request.sent_at, SystemTime::now()));
-                if let Some(group_id) = request.group_id.clone() {
-                    let local_peer = swarm.local_peer_id().to_string();
-                    if crate::groups::is_group_member(&group_id, &local_peer).unwrap_or(false) {
-                        let _ = event_tx
-                            .send(SwarmEvent::GroupMessage(crate::GroupMessageEvent {
-                                group_id,
-                                content: request.content,
-                                peer_id: peer_id_str,
-                                nickname: request.nickname,
-                                msg_id,
-                                attachment: request.attachment.clone(),
-                                reply_to: request.reply_to.clone(),
-                            }))
-                            .await;
-                    } else {
-                        let inviter_peer = peer_id_str;
-                        let _ = event_tx
-                            .send(SwarmEvent::GroupInvite {
-                                group_id,
-                                inviter_peer,
-                            })
-                            .await;
-                    }
-                } else {
-                    let _ = event_tx
-                        .send(SwarmEvent::DirectMessage(crate::MessageEvent {
-                            content: request.content,
-                            peer_id: peer_id_str,
-                            latency,
-                            nickname: request.nickname,
-                            msg_id,
-                            attachment: request.attachment.clone(),
-                            encrypted,
-                            reply_to: request.reply_to,
-                        }))
-                        .await;
-                }
-
-                // Attachments (files lane §12) are pulled from the sender of
-                // the DM — the peer that has the blob staged to serve it.
-                if let Some(attachment) = request.attachment.as_ref() {
-                    maybe_start_fetch(&peer, attachment, swarm);
-                }
-            }
-
-            let response = make_ack_dm("ok".to_string(), request.msg_id);
-            let _ = swarm
-                .behaviour_mut()
-                .request_response
-                .send_response(channel, response);
+            handle_dm_request(request, &peer, peer_id_str, channel, event_tx, swarm).await;
         }
         libp2p::request_response::Message::Response { response, .. } => {
-            if let Some(ack_for) = response.ack_for {
-                // Store-and-forward: the recipient confirmed receipt, so the
-                // sealed envelope is no longer needed. Best-effort — a missing
-                // row (e.g. a broadcast receipt) is a harmless no-op.
-                if let Err(e) = crate::dm_outbox::remove(&peer_id_str, &ack_for) {
-                    p2plog_debug(format!("Failed to clear outbox row for ack {ack_for}: {e}"));
-                }
-                let _ = event_tx
-                    .send(SwarmEvent::Receipt {
-                        peer_id: peer_id_str,
-                        ack_for,
-                        received_at: response.received_at,
-                    })
-                    .await;
-            }
+            handle_dm_response(response, &peer_id_str, event_tx).await;
         }
     }
 }

@@ -299,7 +299,8 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         s.received_nicknames.insert(peer_id.clone(), n.to_string());
         let _ = p2p_app::set_peer_received_nickname(&peer_id, n);
     }
-    if content.trim().is_empty() && nickname.is_some() && attachment.is_none() {
+    if content.trim().is_empty() && nickname.is_some() && attachment.is_none() && reply_to.is_none()
+    {
         upsert_peer_last_seen(s, &peer_id, chrono::Utc::now().naive_utc());
         s.resort_peers();
         return;

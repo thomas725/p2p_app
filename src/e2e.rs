@@ -186,9 +186,14 @@ pub fn can_encrypt_to_str(peer_id: &str) -> bool {
 ///
 /// * delivery acks (`ack_for` set) carry no user content, and a peer must be
 ///   able to answer a message it could not open;
-/// * the nickname-only exchange (empty content, no attachment) is how a peer
-///   announces its name on connect, and every peer must understand it;
+/// * the nickname-only exchange (empty content, no attachment, no reply) is
+///   how a peer announces its name on connect, and every peer must understand
+///   it;
 /// * DM-lane group messages (`group_id` set) are membership/invite control.
+///
+/// An empty body with a [`crate::ReplyRef`] is *not* control traffic: the quote
+/// carries a sender label and a preview of the original message, so it is
+/// sealed along with the rest of the reply snapshot.
 ///
 /// A peer whose identity is not Ed25519, or a sealing failure, also falls back
 /// to plaintext so the lane keeps working with builds that predate it. In both
@@ -196,7 +201,7 @@ pub fn can_encrypt_to_str(peer_id: &str) -> bool {
 pub fn seal_dm_payload(msg: &mut crate::DirectMessage, peer: &libp2p::PeerId) {
     let is_control = msg.ack_for.is_some()
         || msg.group_id.is_some()
-        || (msg.content.trim().is_empty() && msg.attachment.is_none());
+        || (msg.reply_to.is_none() && msg.content.trim().is_empty() && msg.attachment.is_none());
     if is_control {
         return;
     }
