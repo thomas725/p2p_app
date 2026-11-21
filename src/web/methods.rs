@@ -90,7 +90,12 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
 fn node_state(method: &str, params: Value) -> Result<Value, String> {
     match method {
         "getMobilePeerStatus" => json(api::get_mobile_peer_status()),
-        "startNode" => json(api::start_node(parse(params)?)),
+        "startNode" => {
+            // The shared Dart `NodeApi.startNode({required String dbPath})` —
+            // and FRB's named argument — send an object, not a bare string.
+            let p: StartNodeParams = parse(params)?;
+            json(api::start_node(p.db_path))
+        }
         "startNodeAuto" => json(api::start_node_auto()),
         "stopNode" => json(api::stop_node()),
         "getLogs" => ok(api::get_logs()),
@@ -398,6 +403,14 @@ fn parse<T: DeserializeOwned>(params: Value) -> Result<T, String> {
 
 // --- Parameter shapes (camelCase on the wire) ---
 
+/// `startNode` takes a named argument (`dbPath`) on both FRB and Dart, so the
+/// web arm must accept an object rather than a bare string.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StartNodeParams {
+    db_path: String,
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LimitParams {
@@ -678,4 +691,24 @@ struct SortContactsParams {
     contacts: Vec<mobile_api::ContactSortInput>,
     sort_column: u32,
     ascending: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn start_node_params_accept_dart_object_shape() {
+        // HttpNodeApi sends `{'dbPath': dbPath}`, matching FRB's named arg.
+        let p: StartNodeParams = parse(json!({"dbPath": "/tmp/p2p-test.db"})).expect("object");
+        assert_eq!(p.db_path, "/tmp/p2p-test.db");
+    }
+
+    #[test]
+    fn start_node_params_reject_old_bare_string_shape() {
+        // The previous web arm parsed a bare String, which is not what any
+        // frontend sends — keep the mismatch documented so it cannot regress.
+        assert!(parse::<StartNodeParams>(json!("/tmp/p2p-test.db")).is_err());
+    }
 }
