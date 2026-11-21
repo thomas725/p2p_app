@@ -55,6 +55,34 @@ ChatMessage chatMessage({
   reactions: reactions,
 );
 
+/// A broadcast authored by a peer (incoming), as `loadBroadcastMessages`
+/// returns it: `isBroadcast: true` with the sender in `peerId`.
+ChatMessage broadcastMessage({
+  required int id,
+  required String content,
+  required String peerId,
+  required String msgId,
+  String? senderNickname,
+}) => ChatMessage(
+  id: id,
+  content: content,
+  peerId: peerId,
+  isBroadcast: true,
+  targetPeer: null,
+  sent: false,
+  msgId: msgId,
+  replyTo: null,
+  sentAt: '10:00',
+  createdAt: '2026-01-01 10:00:00',
+  senderNickname: senderNickname,
+  attachment: null,
+  encrypted: false,
+  confirmed: false,
+  edited: false,
+  latency: null,
+  reactions: const [],
+);
+
 MobilePeerRecord peerRecord() => MobilePeerRecord(
   peerId: 'peer-abc',
   firstSeen: '',
@@ -644,6 +672,88 @@ void main() {
     expect(seenMsgId, 'new-wire-id');
     expect(seenReply, quote);
     expect(find.text('↳ Bob: an earlier broadcast'), findsOneWidget);
+  });
+
+  testWidgets('a DM screen shows only the open peer\'s broadcasts as context', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi();
+    fake.loadDmMessagesOverride = (_, _) => [
+      chatMessage(
+        id: 1,
+        content: 'private hello',
+        peerId: 'peer-abc',
+        sent: false,
+      ),
+    ];
+    fake.loadBroadcastMessagesOverride = (_) => [
+      broadcastMessage(
+        id: 10,
+        content: 'public from Alice',
+        peerId: 'peer-abc',
+        msgId: 'bc-alice',
+        senderNickname: 'Alice',
+      ),
+      broadcastMessage(
+        id: 11,
+        content: 'public from someone else',
+        peerId: 'peer-other',
+        msgId: 'bc-other',
+      ),
+    ];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dm-broadcast-pane')), findsOneWidget);
+    expect(find.text('Broadcast from Alice'), findsOneWidget);
+    expect(find.text('public from Alice'), findsOneWidget);
+    expect(find.text('public from someone else'), findsNothing);
+    // The DM thread still renders below the context pane.
+    expect(find.text('private hello'), findsOneWidget);
+  });
+
+  testWidgets('a live broadcast from the open peer is mirrored without being persisted twice', (
+    tester,
+  ) async {
+    final forwarded = <SwarmEventJson>[];
+    setEventSink(forwarded.add);
+    final fake = FakeNodeApi();
+    fake.loadDmMessagesOverride = (_, _) => [];
+    fake.loadBroadcastMessagesOverride = (_) => [];
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pumpAndSettle();
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'broadcast',
+        peerId: 'peer-abc',
+        content: 'live public hello',
+        msgId: 'bc-live',
+        encrypted: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('live public hello'), findsOneWidget);
+    // The DM screen never persists broadcasts itself (home owns that via the
+    // forwarded sink), so there is exactly one persistence path.
+    expect(
+      fake.calls.where((c) => c.method == 'saveIncomingMessage'),
+      isEmpty,
+    );
+    // The event is still forwarded so the broadcast tab underneath stays live.
+    expect(forwarded, hasLength(1));
+    expect(forwarded.single.eventType, 'broadcast');
   });
 
   testWidgets('the reply action builds a draft and a DM send forwards it', (

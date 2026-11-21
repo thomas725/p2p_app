@@ -157,16 +157,12 @@ class FakeNodeApi implements NodeApi {
   @override
   Future<List<ChatMessage>> loadBroadcastMessages({required int limit}) async {
     _record('loadBroadcastMessages', limit);
-    final override = loadBroadcastMessagesOverride;
-    if (override == null) {
-      throw UnimplementedError(
-        'set loadBroadcastMessagesOverride in this test',
-      );
-    }
-    return override(limit);
+    // Every DM screen loads this feed for its broadcast-context pane, so an
+    // empty default is the sensible baseline; tests that need rows override it.
+    return loadBroadcastMessagesOverride?.call(limit) ?? const [];
   }
 
-  /// Returned by [loadBroadcastMessages] when set; otherwise the call throws.
+  /// Returned by [loadBroadcastMessages] when set; otherwise it yields [].
   List<ChatMessage> Function(int limit)? loadBroadcastMessagesOverride;
 
   @override

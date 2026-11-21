@@ -10,17 +10,17 @@
 | Avg Lines/Rust File   |       525 |
 | Avg Chars/Rust File   |    19,873 |
 | Total Dart Files      |        39 |
-| Total Dart Lines      |    17,103 |
-| Total Dart Chars      |   550,687 |
-| Avg Lines/Dart File   |       438 |
-| Avg Chars/Dart File   |    14,120 |
+| Total Dart Lines      |    17,240 |
+| Total Dart Chars      |   556,015 |
+| Avg Lines/Dart File   |       442 |
+| Avg Chars/Dart File   |    14,256 |
 | Total Kotlin Files    |         3 |
 | Total Kotlin Lines    |       303 |
 | Total Kotlin Chars    |    10,990 |
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,043 lines, 1,833,610 characters
+**Grand Total:** 106 files, 51,180 lines, 1,838,938 characters
 
 ## Rust Source Files
 
@@ -188,7 +188,7 @@
 | lib/src/rust | theme.dart                      |     5 |  1851 |    68 |        - |       - | Dart source file                 |
 | lib          | call_screen.dart                |     8 |  9650 |   323 |        - |       - | Call overlay screen              |
 | lib          | contact_list.dart               |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
-| lib          | dm_chat.dart                    |     8 | 14742 |   438 |        - |       - | Direct-message chat screen       |
+| lib          | dm_chat.dart                    |     8 | 20070 |   575 |        - |       - | Direct-message chat screen       |
 | lib          | group_chat.dart                 |     8 | 12371 |   367 |        - |       - | Group chat screen                |
 | lib          | group_list.dart                 |    17 |  7931 |   235 |        - |       - | Group list screen                |
 | lib          | home.dart                       |     7 | 41038 |  1224 |        - |       - | App shell & broadcast chat       |
@@ -207,13 +207,13 @@
 | lib          | theme.dart                      |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                   |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 39 files, 17,103 lines, 550,687 characters
+**Total:** 39 files, 17,240 lines, 556,015 characters
 
 ## Dart Test Files
 
 | Folder  | File                             | Lines | Chars | Depth | Description                           |
 |:--------|:---------------------------------|------:|------:|------:|--------------------------------------:|
-| helpers | fake_node_api.dart               |   658 | 20111 |     4 | In-memory node fake                   |
+| helpers | fake_node_api.dart               |   654 | 20120 |     4 | In-memory node fake                   |
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   134 |  3997 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
@@ -224,13 +224,13 @@
 | widget  | contact_list_test.dart           |   661 | 22484 |     7 | Contacts roster widget tests          |
 | widget  | device_binding_test.dart         |    72 |  1990 |     5 | Device-binding prompt tests           |
 | widget  | group_list_test.dart             |   233 |  7128 |     5 | Group list widget tests               |
-| widget  | messages_test.dart               |  1077 | 31615 |    10 | Chat widget tests                     |
+| widget  | messages_test.dart               |  1187 | 34812 |    10 | Chat widget tests                     |
 | widget  | peer_info_test.dart              |   306 |  9464 |     6 | Peer Info widget tests                |
 | widget  | settings_network_peers_test.dart |   128 |  4028 |     3 | Dart test file                        |
 | widget  | settings_test.dart               |   285 |  9080 |     6 | Settings widget tests                 |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 16 test files, 4,931 lines, 155,070 characters
+**Total:** 16 test files, 5,037 lines, 158,276 characters
 
 ## Kotlin Source Files
 

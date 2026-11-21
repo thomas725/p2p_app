@@ -50,6 +50,16 @@ class DmChatScreen extends StatefulWidget {
 class _DmChatScreenState extends State<DmChatScreen>
     with MessageChatMixin<DmChatScreen> {
   final List<ChatMessage> _messages = [];
+
+  /// The conversation partner's public broadcasts, shown above the DM thread
+  /// as context. Mirrors the TUI's `Broadcast from …` pane. Loaded from
+  /// the same DB-backed broadcast feed the home tab shows, filtered by sender;
+  /// live events from this peer are added in memory only (home still owns
+  /// persistence via the forwarded event sink).
+  final List<ChatMessage> _broadcasts = [];
+  final _broadcastScrollController = ScrollController();
+  int _liveBroadcastId = -1;
+
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _loading = true;
@@ -104,6 +114,7 @@ class _DmChatScreenState extends State<DmChatScreen>
     _scrollController.removeListener(_onScroll);
     _controller.dispose();
     _scrollController.dispose();
+    _broadcastScrollController.dispose();
     setEventSink(_previousSink);
     super.dispose();
   }
@@ -134,6 +145,81 @@ class _DmChatScreenState extends State<DmChatScreen>
       if (!mounted || generation != _historyGeneration) return;
       setState(() => _loading = false);
     }
+    // The TUI's Direct tab shows the peer's public broadcasts above the DM
+    // thread as context. Load that slice from the same DB-backed feed the home
+    // tab shows; a failure here must never blank the DM thread.
+    unawaited(_loadPeerBroadcasts(generation));
+  }
+
+  /// Load this peer's broadcasts for the context pane. Filter by sender here
+  /// (Dart) rather than adding a dedicated FRB binding: `loadBroadcastMessages`
+  /// is already the canonical loader and the filter mirrors the TUI's in-memory
+  /// `state.messages` filter in `render_dm_content`.
+  Future<void> _loadPeerBroadcasts(int generation) async {
+    try {
+      final all = await nodeApi.loadBroadcastMessages(limit: 200);
+      if (!mounted || generation != _historyGeneration) return;
+      final mine = all
+          .where((m) => m.isBroadcast && m.peerId == _peerId)
+          .toList();
+      setState(() {
+        // Preserve broadcasts that arrived live while the fetch was in flight
+        // (dedup by wire id, the same key the DB rows carry).
+        final loadedIds = mine.map((m) => m.msgId).whereType<String>().toSet();
+        final live = _broadcasts
+            .where((m) => m.msgId == null || !loadedIds.contains(m.msgId))
+            .toList();
+        _broadcasts
+          ..clear()
+          ..addAll(mine)
+          ..addAll(live);
+      });
+      _scrollBroadcastsToBottom();
+    } catch (e) {
+      debugPrint('Failed to load peer broadcasts: $e');
+    }
+  }
+
+  /// Jump the read-only broadcast pane to its newest row after the framework
+  /// has laid out the freshly loaded list.
+  void _scrollBroadcastsToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_broadcastScrollController.hasClients) {
+        _broadcastScrollController.jumpTo(
+          _broadcastScrollController.position.maxScrollExtent,
+        );
+      }
+    });
+  }
+
+  /// Mirror a live broadcast from this peer into the context pane. The event is
+  /// still forwarded to the home sink (which persists it); this in-memory copy
+  /// is a display decoration only — like the TUI's live message list — so it is
+  /// never written to the DB here and cannot double-persist.
+  void _appendLiveBroadcast(SwarmEventJson event) {
+    final msg = ChatMessage(
+      id: _liveBroadcastId--,
+      content: event.content ?? '',
+      peerId: event.peerId,
+      isBroadcast: true,
+      sent: false,
+      msgId: event.msgId,
+      replyTo: event.replyTo,
+      createdAt: '',
+      senderNickname: event.nickname,
+      encrypted: event.encrypted,
+      confirmed: false,
+      edited: false,
+      latency: event.latency,
+      reactions: const [],
+    );
+    setState(() {
+      if (msg.msgId == null ||
+          !_broadcasts.any((m) => m.msgId == msg.msgId)) {
+        _broadcasts.add(msg);
+      }
+    });
+    _scrollBroadcastsToBottom();
   }
 
   /// Send a transient typing state, throttling repeated "start" signals while
@@ -196,6 +282,17 @@ class _DmChatScreenState extends State<DmChatScreen>
       if (event.msgId != null) {
         _markConfirmed(event.msgId!);
       }
+      _previousSink?.call(event);
+      return;
+    }
+    if (event.eventType == 'broadcast' &&
+        event.content != null &&
+        event.peerId == _peerId) {
+      // Mirror this peer's public broadcast into the context pane, then hand
+      // the event to home so it stays the single owner of persistence (and the
+      // broadcast tab stays current). Never persist here: `save_message_with_meta`
+      // is a plain INSERT, so persisting twice would duplicate the row.
+      _appendLiveBroadcast(event);
       _previousSink?.call(event);
       return;
     }
@@ -353,6 +450,44 @@ class _DmChatScreenState extends State<DmChatScreen>
     );
   }
 
+  /// Read-only context pane showing the conversation partner's public
+  /// broadcasts, mirroring the TUI Direct tab's "Broadcast from …" pane. No
+  /// selection, reply/edit/react, or composer — those belong to the DM thread.
+  Widget _buildBroadcastPane() {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      key: const Key('dm-broadcast-pane'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          color: cs.secondaryContainer,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            'Broadcast from ${widget.peer.displayName}',
+            key: const Key('dm-broadcast-header'),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: cs.onSecondaryContainer,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            controller: _broadcastScrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            itemCount: _broadcasts.length,
+            itemBuilder: (context, i) => MessageBubble(
+              message: _broadcasts[i],
+              isOwn: false,
+              onOpenPeerInfo: _openPeerInfo,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -397,6 +532,8 @@ class _DmChatScreenState extends State<DmChatScreen>
       ),
       body: Column(
         children: [
+          if (_broadcasts.isNotEmpty)
+            Expanded(flex: 1, child: _buildBroadcastPane()),
           MessageChatBody(
             messages: _messages,
             scrollController: _scrollController,
