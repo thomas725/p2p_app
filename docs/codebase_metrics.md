@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,014 |
-| Total Rust Chars      | 1,245,276 |
-| Avg Lines/Rust File   |       515 |
-| Avg Chars/Rust File   |    19,457 |
+| Total Rust Lines      |    33,037 |
+| Total Rust Chars      | 1,246,541 |
+| Avg Lines/Rust File   |       516 |
+| Avg Chars/Rust File   |    19,477 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,053 |
 | Total Dart Chars      |   548,204 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,370 lines, 1,804,470 characters
+**Grand Total:** 106 files, 50,393 lines, 1,805,735 characters
 
 ## Rust Source Files
 
@@ -36,13 +36,13 @@
 | src                     | db.rs                |     5 | 25331 |   652 |        - |       - | Database connection & identity mgmt    |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                            |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                            |
-| src                     | files.rs             |     6 | 27137 |   725 |        - |       - | Content-addressed attachment store     |
-| src                     | fmt.rs               |     4 |  6248 |   193 |        - |       - | Formatting & display utilities         |
+| src                     | files.rs             |     6 | 28869 |   762 |        - |       - | Content-addressed attachment store     |
+| src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities         |
 | src                     | frb_generated.rs     |     6 | 193360 |  4652 |        - |       - | flutter_rust_bridge codegen            |
 | src                     | groups.rs            |     3 | 21995 |   585 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4310 |   112 |        - |       - | TUI groups renderer                    |
 | src                     | identity.rs          |     4 | 22668 |   601 |        - |       - | Users, account keys & device bindings  |
-| src                     | lib.rs               |     1 |  7351 |   195 |        - |       - | Module declarations & re-exports       |
+| src                     | lib.rs               |     1 |  7330 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
 | src                     | messages.rs          |     5 | 19315 |   506 |        - |       - | Message persistence & retrieval        |
@@ -60,16 +60,16 @@
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                 |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking             |
 | src                     | peers.rs             |     5 |  5265 |   126 |        - |       - | TUI peers-table renderer               |
-| src                     | reactions.rs         |     5 | 14595 |   386 |        - |       - | Source file                            |
+| src                     | reactions.rs         |     5 | 14127 |   375 |        - |       - | Source file                            |
 | src                     | relay.rs             |     5 |  3965 |   104 |        - |       - | Source file                            |
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8073 |   219 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 90699 |  2387 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 90976 |  2391 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 24891 |   677 |        - |       - | TUI render state & tab content         |
-| src                     | tui_tabs.rs          |     6 | 11922 |   348 |        - |       - | Tab management & navigation            |
+| src                     | tui_tabs.rs          |     6 | 11711 |   342 |        - |       - | Tab management & navigation            |
 | src                     | types.rs             |     2 | 15094 |   394 |        - |       - | Event & command type defs              |
 | src/bin                 | p2p_chat.rs          |     7 |  5032 |   136 |        - |       - | CLI chat application                   |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,014 lines, 1,245,276 characters
+**Total:** 64 files, 33,037 lines, 1,246,541 characters
 
 ## Rust Test Files
 
@@ -110,7 +110,7 @@
 | tests  | messages.rs                       |   492 | 14988 |     4 | messages module tests                 |
 | tests  | network.rs                        |    49 |  1638 |     1 | network module tests                  |
 | tests  | nickname.rs                       |   516 | 17397 |     4 | nickname module tests                 |
-| tests  | p2p_integration.rs                |  1088 | 38894 |    10 | P2P integration tests                 |
+| tests  | p2p_integration.rs                |  1099 | 39657 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   317 |  9240 |     4 | peers module tests                    |
 | tests  | swarm_handler.rs                  |   808 | 27490 |     8 | swarm_handler module tests            |
 | tests  | test_utils.rs                     |    53 |  1864 |     2 | Test utilities                        |
@@ -140,7 +140,7 @@
 | unit   | unit_db.rs                        |   273 |  8611 |     3 | Unit tests for database module        |
 | unit   | unit_dm_outbox.rs                 |   169 |  5739 |     4 | Test file                             |
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
-| unit   | unit_files.rs                     |   427 | 15983 |     4 | files module tests                    |
+| unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   589 | 21435 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                  |   516 | 19595 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                       |   255 |  6980 |     2 | Unit tests for library re-exports/api |
@@ -154,14 +154,14 @@
 | unit   | unit_relay.rs                     |    62 |  1806 |     2 | Test file                             |
 | unit   | unit_reply.rs                     |    74 |  2384 |     2 | Test file                             |
 | unit   | unit_settings.rs                  |    88 |  2766 |     3 | Test file                             |
-| unit   | unit_swarm_handler.rs             |   345 | 11593 |     4 | Unit tests for swarm_handler module   |
+| unit   | unit_swarm_handler.rs             |   358 | 12151 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs          |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   323 |  9859 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 24,778 lines, 819,130 characters
+**Total:** 63 test files, 24,878 lines, 823,181 characters
 
 ## Dart Source Files
 
