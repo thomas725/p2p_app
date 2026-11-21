@@ -277,20 +277,27 @@ fn test_remove_tab_group_chat() {
 
 #[test]
 fn test_all_titles_with_dms() {
+    // The display-name cache is process-global while test DBs are per-thread.
+    // A peer id shared with another unit test can be invalidated and re-resolved
+    // against that other thread's DB between `all_titles` and the expectation
+    // below, yielding a different generated petname. Use an id unique to this
+    // test and pin a deterministic local nickname so cache clears are harmless.
+    let peer_id = "tab-title-dm-peer";
+    crate::set_peer_local_nickname(peer_id, "tab-title").unwrap();
     let mut tabs = DynamicTabs::new();
     let titles = tabs.all_titles();
     assert_eq!(
         titles,
         vec!["Chat", "Contacts", "Groups", "Log", "Settings"]
     );
-    tabs.add_dm_tab("peer1".to_string());
+    tabs.add_dm_tab(peer_id.to_string());
     let titles = tabs.all_titles();
     assert_eq!(titles.len(), 6);
     assert_eq!(titles[0], "Chat");
     assert_eq!(titles[1], "Contacts");
     assert_eq!(titles[2], "Groups");
-    let expected_label = crate::get_peer_display_name("peer1")
-        .unwrap_or_else(|_| crate::fmt::short_peer_id("peer1"));
+    let expected_label = crate::get_peer_display_name(peer_id)
+        .unwrap_or_else(|_| crate::fmt::short_peer_id(peer_id));
     assert_eq!(titles[3], format!("{expected_label} [X]"));
     assert_eq!(titles[4], "Log");
     assert_eq!(titles[5], "Settings");

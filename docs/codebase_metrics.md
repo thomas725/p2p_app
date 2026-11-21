@@ -157,11 +157,11 @@
 | unit   | unit_swarm_handler.rs             |   585 | 19825 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs          |   365 | 11174 |     2 | Unit tests for TUI render state       |
-| unit   | unit_tui_tabs.rs                  |   323 |  9859 |     3 | Unit tests for TUI tabs               |
+| unit   | unit_tui_tabs.rs                  |   330 | 10365 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,848 lines, 858,784 characters
+**Total:** 63 test files, 25,855 lines, 859,290 characters
 
 ## Dart Source Files
 
