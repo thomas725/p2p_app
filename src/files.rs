@@ -574,15 +574,6 @@ impl ReceivingFile {
     }
 }
 
-/// Look up the stored attachment a received message's descriptor refers to.
-///
-/// Used by frontends to resolve a descriptor to a local path (and to skip the
-/// transfer when the content is already on disk).
-#[must_use]
-pub fn attachment_path(attachment: &MessageAttachment) -> Option<String> {
-    file_path(&attachment.file_id)
-}
-
 /// Minimum age a blob must reach before the GC is allowed to delete it.
 ///
 /// Guards the brief window after `ReceivingFile::finalize` renames a blob into

@@ -169,7 +169,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Settings => {
-            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -204,13 +204,14 @@ Chat / DM / Group: Ctrl+R -> reply to newest message (Esc clears)
 Chat / DM / Group: Ctrl+Y -> react to newest message with an emoji
 Chat / DM / Group: Del -> delete newest sent message (local only)
 Chat / DM / Group: Ctrl+E -> edit newest sent message (local only)
+Chat / DM / Group: /file <path> -> attach and send a local file
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
 Log: c clear logs
-Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent color
+Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 
 Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
 }

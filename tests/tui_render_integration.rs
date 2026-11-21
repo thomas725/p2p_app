@@ -536,11 +536,21 @@ mod render_tests {
             "i Info",
             "g create/join",
             "b block / unblock",
+            "s sound",
+            "o desktop alert",
+            "/file <path>",
             "Ctrl+Q",
             "KEYBOARD_SHORTCUTS.md",
         ] {
             assert!(help.contains(expected), "missing {expected}");
         }
+    }
+
+    #[test]
+    fn test_shortcuts_settings_bar_documents_notification_keys() {
+        let text = shortcuts_text(&TabContent::Settings, false);
+        assert!(text.contains("s: sound"), "missing sound hint");
+        assert!(text.contains("o: desktop alert"), "missing desktop hint");
     }
 
     #[test]
