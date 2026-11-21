@@ -28,7 +28,14 @@ One job, `pipeline`. It installs the Rust toolchain, `libsqlite3-dev` and
 > both compile the same code; what can differ is the clippy/rustfmt lint set,
 > which moves between releases. A lint that only exists on nightly will not be
 > seen by CI, and vice versa — treat the local nightly `cargo ct` as the
-> stricter gate.
+> stricter gate. If no nightly override is installed, the local *stable* can
+> also be older than CI's rolling stable: on 2026-11-21 CI (1.100.0) promoted
+> `clippy::map_unwrap_or` to an error while the local default (1.99.1) did not,
+> so seven checks passed and clippy alone failed every push. When a CI lint
+> failure does not reproduce locally, install that workflow's exact toolchain
+> and run `cargo +<version> fmt --all --check`,
+> `cargo +<version> clippy --all-targets --all-features` and
+> `CARGO_BUILD_JOBS=2 cargo +<version> test --all-features` before pushing.
 
 1. `cargo fmt -- --check`
 2. `cargo clippy --all-targets --all-features`
