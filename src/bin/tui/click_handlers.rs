@@ -123,6 +123,7 @@ pub fn load_dm_messages(state: &mut AppState, peer_id: &str) {
             &state.local_nicknames,
             &state.received_nicknames,
         );
+        p2p_app::reactions::hydrate_into(&mut state.reactions, message_ids.iter().cloned());
         state.dm_messages.insert(peer_id.to_string(), messages);
         state
             .dm_message_ids
@@ -206,6 +207,7 @@ pub fn load_group_messages_for(state: &mut AppState, group_id: &str) {
             &state.received_nicknames,
             &state.own_nickname,
         );
+        p2p_app::reactions::hydrate_into(&mut state.reactions, message_ids.iter().cloned());
         // Opening a group replaces every aligned queue, so a reloaded history
         // never mixes stale ids with the fresh rows (US-005).
         state.group_messages.insert(group_id.to_string(), messages);

@@ -146,6 +146,16 @@ class _DmChatScreenState extends State<DmChatScreen>
 
   void _handleDmEvent(SwarmEventJson event) {
     if (!mounted) return;
+    if (event.eventType == 'reaction') {
+      // The event carries only the wire id; Rust owns the aggregated chips.
+      // Apply to this conversation, then forward so the broadcast view (and a
+      // group screen underneath) can update any rows with the same id too.
+      if (event.msgId != null) {
+        unawaited(_applyReaction(event.msgId!));
+      }
+      _previousSink?.call(event);
+      return;
+    }
     if (event.eventType == 'typing') {
       if (event.peerId == _peerId) {
         _applyTypingEvent(event);
@@ -183,6 +193,20 @@ class _DmChatScreenState extends State<DmChatScreen>
     final idx = confirmedMessageIndex(_messages, msgId);
     if (idx < 0 || _messages[idx].confirmed) return;
     setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
+  }
+
+  /// Refresh the chips for a live reaction event (US-008) on any row with the
+  /// matching wire id. No-op for ids this screen does not display.
+  Future<void> _applyReaction(String msgId) async {
+    await applyReactionEvent(_messages, msgId);
+    if (mounted) setState(() {});
+  }
+
+  /// Toggle a reaction from a chip tap, applying the canonical returned chips
+  /// to just that row (US-008).
+  Future<void> _onReact(int index, String emoji) async {
+    await toggleReactionAt(_messages, index, emoji);
+    if (mounted) setState(() {});
   }
 
   Future<void> _persistIncomingDm(SwarmEventJson event) async {
@@ -347,6 +371,7 @@ class _DmChatScreenState extends State<DmChatScreen>
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
             onOpenAttachment: _openAttachment,
+            onReact: _onReact,
           ),
           MessageInputBar(
             controller: _controller,

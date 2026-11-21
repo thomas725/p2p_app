@@ -2,7 +2,7 @@
 
 use crate::tui_helpers::peer_table_visible_range;
 use crate::tui_render::bordered_block;
-use crate::tui_render_state::{TuiRenderState, calc_visible_list_items};
+use crate::tui_render_state::{TuiRenderState, calc_visible_list_items, reaction_suffix};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -89,7 +89,17 @@ pub fn render_group_chat_content(
             .iter()
             .skip(effective_offset)
             .take(visible)
-            .map(|m| ListItem::new(m.as_str()))
+            .enumerate()
+            .map(|(visible_idx, m)| {
+                let global_idx = effective_offset.saturating_add(visible_idx);
+                let msg_id = state
+                    .group_message_ids
+                    .get(group_id)
+                    .and_then(|ids| ids.get(global_idx))
+                    .and_then(|id| id.as_deref());
+                let reactions = reaction_suffix(msg_id, &state.reactions);
+                ListItem::new(format!("{m}{reactions}"))
+            })
             .collect();
 
         let list = List::new(items).block(bordered_block(format!("Group: {display_name}")));

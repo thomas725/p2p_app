@@ -362,6 +362,7 @@ async fn process_swarm_event(
             s.receive_typing(&peer_id, is_typing);
             drop(s);
         }
+        SwarmEvent::Reaction { msg_id } => handle_reaction_event(state, msg_id).await,
         SwarmEvent::PeerConnected(peer_id) => {
             handle_peer_connected(state, swarm_cmd_tx, peer_id).await;
         }
@@ -423,6 +424,17 @@ async fn process_swarm_event(
             ));
         }
     }
+}
+
+/// Refresh the aggregated reactions for a message after a live event. Fetching
+/// through the canonical store keeps this identical to a history load and needs
+/// no summary shape duplicated in the event envelope.
+async fn handle_reaction_event(state: &SharedState, msg_id: String) {
+    let Ok(summaries) = p2p_app::reactions::summaries_for(&msg_id) else {
+        return;
+    };
+    let mut s = state.lock().await;
+    s.reactions.insert(msg_id, summaries);
 }
 
 /// Route a remote call-signaling event into the single `call_session` slot.

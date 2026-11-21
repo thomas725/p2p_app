@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/screens/dm_chat.dart';
 import 'package:p2p_app_flutter/src/screens/group_chat.dart';
@@ -33,6 +34,7 @@ ChatMessage chatMessage({
   String? latency,
   ReplyRef? replyTo,
   MobileAttachment? attachment,
+  List<ReactionSummary> reactions = const [],
 }) => ChatMessage(
   id: id,
   content: content,
@@ -50,6 +52,7 @@ ChatMessage chatMessage({
   confirmed: confirmed,
   edited: edited,
   latency: latency,
+  reactions: reactions,
 );
 
 MobilePeerRecord peerRecord() => MobilePeerRecord(
@@ -801,6 +804,7 @@ void main() {
           sent: true,
           edited: false,
           createdAt: '2026-01-01 10:00:00',
+          reactions: const [],
         ),
       ];
     nodeApi = fake;
@@ -874,5 +878,103 @@ void main() {
     expect(persistedEncrypted, isTrue);
     expect(find.text('sealed hello'), findsOneWidget);
     expect(find.byIcon(Icons.lock), findsOneWidget);
+  });
+
+  testWidgets('reaction chips render canonical counts and mine marker', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(
+              reactions: const [
+                ReactionSummary(emoji: '👍', count: 2, mine: true),
+                ReactionSummary(emoji: '🎉', count: 1, mine: false),
+              ],
+            ),
+            isOwn: true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('👍 2'), findsOneWidget);
+    expect(find.text('🎉 1'), findsOneWidget);
+    expect(find.byKey(const Key('reaction-👍')), findsOneWidget);
+    expect(find.byKey(const Key('reaction-🎉')), findsOneWidget);
+  });
+
+  testWidgets('tapping a reaction chip asks the owning screen to toggle', (
+    tester,
+  ) async {
+    String? toggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(
+              reactions: const [ReactionSummary(emoji: '👍', count: 1, mine: false)],
+            ),
+            isOwn: true,
+            onReact: (emoji) => toggled = emoji,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('reaction-👍')));
+    await tester.pump();
+    expect(toggled, '👍');
+  });
+
+  testWidgets('a live reaction event refreshes the broadcast chips', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final fake = FakeNodeApi(isRemoteTransport: true);
+    fake.mobilePeerStatus = const MobilePeerStatus(
+      databaseUrl: ':memory:',
+      localPeerId: 'me',
+    );
+    fake.loadBroadcastMessagesOverride = (_) => [chatMessage(msgId: 'bc-rx')];
+    fake.getReactionsOverride = (msgId) async => const [
+      ReactionSummary(emoji: '🎉', count: 3, mine: false),
+    ];
+    nodeApi = fake;
+
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('🎉 3'), findsNothing);
+
+    fake.deliverEvent(
+      const SwarmEventJson(
+        eventType: 'reaction',
+        peerId: 'peer-abc',
+        encrypted: false,
+        msgId: 'bc-rx',
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('🎉 3'), findsOneWidget);
+  });
+
+  test('toggleReactionAt applies canonical summaries to the row', () async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..toggleReactionOverride = (msgId, emoji) async => const [
+        ReactionSummary(emoji: '❤️', count: 1, mine: true),
+      ];
+    nodeApi = fake;
+    final messages = [chatMessage(msgId: 'm-tgl')];
+
+    await toggleReactionAt(messages, 0, '❤️');
+
+    expect(fake.reactionToggles, [
+      (msgId: 'm-tgl', emoji: '❤️'),
+    ]);
+    expect(messages[0].reactions, [
+      const ReactionSummary(emoji: '❤️', count: 1, mine: true),
+    ]);
+    expect(messages[0].content, 'hello', reason: 'only chips change');
   });
 }

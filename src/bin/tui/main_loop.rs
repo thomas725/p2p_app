@@ -241,6 +241,9 @@ fn initialize_state(
             groups: initial_groups.clone(),
         },
     );
+    // Hydrate stored reaction chips once for the loaded broadcast history
+    // (US-008); live events and other chats extend the same map.
+    p2p_app::reactions::hydrate_into(&mut state.reactions, state.message_ids.iter().cloned());
     state.env.kitty_keyboard_active = keyboard_enhanced;
     state.db_url.clone_from(&db_info);
     state.platform = format!("Terminal ({})", std::env::consts::OS);

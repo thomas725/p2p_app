@@ -10,7 +10,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 
 | Crate | Requirement | Resolved | Why it is here |
 |---|---|---|---|
-| `libp2p` | `=0.57.1` | 0.57.1 | The whole peer-to-peer layer: transports, muxing, discovery, and the five `request_response` protocols. Features: `tokio`, `gossipsub`, `noise`, `macros`, `tcp`, `yamux`, `quic`, `request-response`, `serde`, `json`, `cbor`, `ping`. Optional — behind `basic` (and `mdns`/`quic`). |
+| `libp2p` | `=0.57.1` | 0.57.1 | The whole peer-to-peer layer: transports, muxing, discovery, and the six `request_response` protocols. Features: `tokio`, `gossipsub`, `noise`, `macros`, `tcp`, `yamux`, `quic`, `request-response`, `serde`, `json`, `cbor`, `ping`. Optional — behind `basic` (and `mdns`/`quic`). |
 | `libp2p-identity` | `=0.3.0` | 0.3.0 | Keypair generation and peer-id derivation. Pinned to keep a single copy of `libp2p-identity` in the tree (a second copy would mean two incompatible `PeerId` types). |
 | `tokio` | `1.53.1` | 1.54.1 | The async runtime libp2p runs on. Features: `macros`, `rt-multi-thread`, `io-util`, `io-std`. 1.54.1 also carries the `AsyncFd` I/O-safety fix (RUSTSEC-2026-0386, patched from 1.53.3). |
 | `axum` | `0.8` | 0.8.9 | The web frontend's HTTP + WebSocket server (`src/web/`). Features: `ws`, `json`, `query`, `tokio`, `http1`, `macros`. Optional — behind `web`. |

@@ -100,6 +100,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     confirmed: false,
     // …and the group wire format carries no latency either.
     latency: null,
+    reactions: m.reactions,
   );
 
   Future<void> _loadHistory() async {
@@ -153,8 +154,29 @@ class _GroupChatScreenState extends State<GroupChatScreen>
     }
   }
 
+  /// Refresh chips for a live reaction event (US-008) on any matching row.
+  Future<void> _applyReaction(String msgId) async {
+    await applyReactionEvent(_messages, msgId);
+    if (mounted) setState(() {});
+  }
+
+  /// Toggle a reaction from a chip tap, applying the canonical returned chips.
+  Future<void> _onReact(int index, String emoji) async {
+    await toggleReactionAt(_messages, index, emoji);
+    if (mounted) setState(() {});
+  }
+
   void _handleGroupEvent(SwarmEventJson event) {
     if (!mounted) return;
+    if (event.eventType == 'reaction') {
+      // Rust owns the aggregated chips; apply them to any row with the wire id
+      // and forward so other open chat views see the same change.
+      if (event.msgId != null) {
+        unawaited(_applyReaction(event.msgId!));
+      }
+      _previousSink?.call(event);
+      return;
+    }
     if (event.eventType != 'group_message') {
       _previousSink?.call(event);
       return;
@@ -285,6 +307,7 @@ class _GroupChatScreenState extends State<GroupChatScreen>
             unreadLabel: '$unreadCount new',
             onJumpToBottom: () => forceJumpToBottom(_scrollController),
             onOpenAttachment: _openAttachment,
+            onReact: _onReact,
           ),
           MessageInputBar(
             controller: _controller,

@@ -78,6 +78,7 @@ pub mod network;
 pub mod network_config;
 pub mod nickname;
 pub mod peers;
+pub mod reactions;
 #[cfg(feature = "relay")]
 pub mod relay;
 pub mod reply;

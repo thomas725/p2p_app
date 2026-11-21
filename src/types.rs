@@ -38,6 +38,8 @@ pub enum InputMode {
     EditingLocalNickname,
     /// Capturing a replacement body for a sent message edited locally (US-005).
     EditingMessage,
+    /// Capturing an emoji token to react with on the newest message (US-008).
+    AddingReaction,
     /// Capturing a group name for create/join on the Groups tab.
     CreatingGroup,
     /// Capturing a Contacts-tab search query (filters the contact table).
@@ -173,6 +175,14 @@ pub enum SwarmEvent {
         peer_id: String,
         /// Whether the peer is currently composing a DM.
         is_typing: bool,
+    },
+    /// A reaction was added to or removed from a message (US-008). Frontends
+    /// fetch the fresh aggregated chips via `get_reactions(msg_id)`; carrying
+    /// only the id keeps the event small and avoids duplicating the summary
+    /// shape in the flattened Dart event envelope.
+    Reaction {
+        /// Stable wire id of the message that changed.
+        msg_id: String,
     },
     /// Peer connected to the network
     PeerConnected(String),
@@ -358,6 +368,16 @@ pub enum SwarmCommand {
         peer_id: String,
         /// Whether the local user started or stopped composing.
         is_typing: bool,
+    },
+    /// Send a reaction change to a peer over the dedicated reaction lane
+    /// (US-008). The command carries full peer lists because a DM reaction goes
+    /// only to the partner while a broadcast/group reaction fans out to every
+    /// peer that may hold the message.
+    SendReaction {
+        /// Peers that should receive the reaction change
+        peer_ids: Vec<String>,
+        /// The reaction change (boxed: keeps the command channel small)
+        signal: Box<crate::behavior::ReactionSignal>,
     },
     /// Drop the live connection to a peer (blocklist toggle, US-054). New
     /// connections from a blocked peer are refused by the swarm handler anyway;

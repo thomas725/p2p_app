@@ -33,6 +33,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-19_store_and_forward_dm_outbox.md](2026-11-19_store_and_forward_dm_outbox.md) | Sealed-DM outbox: retry on reconnect, ack cleanup, dedup, expiry | 2026-11-19 |
 | [2026-11-20_local_message_edits.md](2026-11-20_local_message_edits.md) | Local-only sent-message edits with a persisted `(edited)` marker (US-005 edit half) | 2026-11-20 |
 | [2026-11-21_typing_indicators.md](2026-11-21_typing_indicators.md) | Fire-and-forget DM typing indicators on a dedicated lane (US-009) | 2026-11-21 |
+| [2026-11-21_message_reactions.md](2026-11-21_message_reactions.md) | Persistent per-message reactions synced on a dedicated lane (US-008) | 2026-11-21 |
 
 ### Completed planning
 

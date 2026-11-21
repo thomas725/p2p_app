@@ -32,6 +32,7 @@ ChatMessage messageWithAttachment(String fileId) => ChatMessage(
   encrypted: false,
   confirmed: false,
   edited: false,
+  reactions: const [],
 );
 
 void main() {
@@ -105,6 +106,7 @@ void main() {
         encrypted: false,
         confirmed: false,
         edited: false,
+        reactions: const [],
       );
 
       expect(await openAttachedFile(message), isNull);

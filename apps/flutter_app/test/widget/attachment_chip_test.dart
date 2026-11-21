@@ -39,6 +39,7 @@ void main() {
               encrypted: false,
               confirmed: false,
               edited: false,
+              reactions: const [],
             ),
             isOwn: false,
             selectionMode: selectionMode,

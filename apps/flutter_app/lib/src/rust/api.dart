@@ -9,6 +9,7 @@ import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'reactions.dart';
 import 'reply.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
@@ -444,6 +445,23 @@ Future<void> sendCallSignal({
 /// Returns an error if the request cannot be queued by the running node.
 Future<void> sendTyping({required String peerId, required bool isTyping}) =>
     RustLib.instance.api.crateApiSendTyping(peerId: peerId, isTyping: isTyping);
+
+/// Toggle this install's reaction on a message and return the fresh aggregated
+/// chips (US-008).
+///
+/// The change is applied locally first, then synced to the peers holding the
+/// message on the dedicated reaction lane.
+///
+/// # Errors
+/// Returns an error if the emoji is invalid or the local change cannot be saved.
+Future<List<ReactionSummary>> toggleReaction({
+  required String msgId,
+  required String emoji,
+}) => RustLib.instance.api.crateApiToggleReaction(msgId: msgId, emoji: emoji);
+
+/// Load the aggregated reactions for one message (US-008).
+Future<List<ReactionSummary>> getReactions({required String msgId}) =>
+    RustLib.instance.api.crateApiGetReactions(msgId: msgId);
 
 /// Verify a raw device-binding claim against the user's stored account key.
 ///

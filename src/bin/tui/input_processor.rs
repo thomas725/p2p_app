@@ -403,6 +403,70 @@ fn confirm_edit_message(s: &mut super::state::AppState) {
     }
 }
 
+/// Apply the emoji typed in the shared editor as a reaction on the newest
+/// message of the active chat (US-008). The local change is applied before the
+/// signal is queued, so chips refresh even when the node is offline; a failed
+/// queue only delays peer sync.
+async fn confirm_reaction(
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) {
+    let Some(prompt) = s.adding_reaction.clone() else {
+        return;
+    };
+    let raw = s.chat_input.lines().join("\n").trim().to_string();
+    let emoji = match p2p_app::reactions::validate_emoji(&raw) {
+        Ok(emoji) => emoji,
+        Err(e) => {
+            s.popup = Some(format!("Invalid reaction: {e}"));
+            return;
+        }
+    };
+    let Some(actor) = p2p_app::peers::local_peer_id_string() else {
+        s.popup = Some("Local peer id is not available".to_string());
+        return;
+    };
+    // Recipients come from the message's scope, never from the emoji itself.
+    let recipients = p2p_app::reactions::recipients_for_message(&prompt.msg_id);
+    let remove = match p2p_app::reactions::has_reaction(&prompt.msg_id, &actor, &emoji) {
+        Ok(remove) => remove,
+        Err(e) => {
+            s.popup = Some(format!("Could not read reactions: {e}"));
+            return;
+        }
+    };
+    if let Err(e) = p2p_app::reactions::apply(&prompt.msg_id, &actor, &emoji, remove) {
+        s.popup = Some(format!("Could not save reaction: {e}"));
+        return;
+    }
+    let action = if remove { "Removed" } else { "Added" };
+    if !recipients.is_empty() {
+        let _ = swarm_cmd_tx
+            .send(SwarmCommand::SendReaction {
+                peer_ids: recipients,
+                signal: Box::new(p2p_app::behavior::ReactionSignal::new(
+                    prompt.msg_id.clone(),
+                    emoji.clone(),
+                    actor,
+                    remove,
+                )),
+            })
+            .await;
+    }
+    match p2p_app::reactions::summaries_for(&prompt.msg_id) {
+        Ok(summaries) => {
+            s.reactions.insert(prompt.msg_id.clone(), summaries);
+        }
+        Err(e) => {
+            s.popup = Some(format!("Reaction saved, but chips could not refresh: {e}"));
+        }
+    }
+    s.adding_reaction = None;
+    s.input_mode = p2p_app::InputMode::Chat;
+    s.chat_input = super::TextArea::default();
+    p2plog_debug(format!("{action} reaction {emoji} on {}", prompt.msg_id));
+}
+
 /// Handles Ctrl+W (close DM or Peer Info tab)
 fn handle_close_dm_tab(
     state: &mut super::state::AppState,
@@ -558,6 +622,8 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
         p2plog_debug("Cancelled message deletion".to_string());
     } else if s.cancel_edit_message() {
         p2plog_debug("Cancelled message edit".to_string());
+    } else if s.cancel_reaction() {
+        p2plog_debug("Cancelled reaction".to_string());
     } else if s.is_searching_contacts() {
         s.end_contact_search(false);
         p2plog_debug("Cleared Contacts search".to_string());
@@ -1136,14 +1202,21 @@ async fn handle_key_dispatch(
     match key_event.code {
         // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
         crossterm::event::KeyCode::Char('i' | 'p')
-            if !s.is_editing_nickname() && !s.is_editing_message() && is_ctrl && on_direct =>
+            if !s.is_editing_nickname()
+                && !s.is_editing_message()
+                && !s.is_adding_reaction()
+                && is_ctrl
+                && on_direct =>
         {
             handle_peer_info_control_chord(&key_event, s);
         }
         // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
         // non-Direct tabs falls through to the chat-input branch, as before.
         crossterm::event::KeyCode::Char('p')
-            if !s.is_editing_nickname() && !s.is_editing_message() && is_ctrl =>
+            if !s.is_editing_nickname()
+                && !s.is_editing_message()
+                && !s.is_adding_reaction()
+                && is_ctrl =>
         {
             p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
         }
@@ -1217,6 +1290,25 @@ async fn handle_key_dispatch(
         {
             arm_edit_prompt(s, &tab);
         }
+        // `Ctrl+Y` opens the shared emoji editor for a reaction on the newest
+        // message in a chat (US-008). Any message with a stable wire id can be
+        // reacted to, incoming rows included, unlike local edit/delete.
+        crossterm::event::KeyCode::Char('y')
+            if is_ctrl
+                && s.input_mode == p2p_app::InputMode::Chat
+                && matches!(
+                    tab,
+                    p2p_app::tui_tabs::TabContent::Chat
+                        | p2p_app::tui_tabs::TabContent::Direct(_)
+                        | p2p_app::tui_tabs::TabContent::GroupChat(_)
+                ) =>
+        {
+            if s.begin_reaction(&tab) {
+                p2plog_debug("Reaction editor opened".to_string());
+            } else {
+                s.popup = Some("No message to react to in this conversation".to_string());
+            }
+        }
         crossterm::event::KeyCode::Enter => {
             if s.is_searching_contacts() {
                 s.end_contact_search(true);
@@ -1225,6 +1317,8 @@ async fn handle_key_dispatch(
                 handle_nickname_submission(s, swarm_cmd_tx).await;
             } else if s.is_editing_message() {
                 confirm_edit_message(s);
+            } else if s.is_adding_reaction() {
+                confirm_reaction(s, swarm_cmd_tx).await;
             } else if s.is_dialing_peer() {
                 handle_dial_peer_submission(s, swarm_cmd_tx).await;
             } else if s.is_adding_network_peer() {
@@ -1290,6 +1384,7 @@ async fn handle_key_dispatch(
             if input_enabled
                 || s.is_editing_nickname()
                 || s.is_editing_message()
+                || s.is_adding_reaction()
                 || s.is_creating_group()
                 || s.is_dialing_peer()
                 || s.is_adding_network_peer()

@@ -3,6 +3,7 @@
 use crate::tui_render::bordered_block;
 use crate::tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, dm_receipt_prefix,
+    reaction_suffix,
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -35,7 +36,8 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
                 .get(global_idx)
                 .and_then(|id| id.as_deref());
             let prefix = broadcast_receipt_prefix(msg_id, &state.broadcast_receipts);
-            ListItem::new(format!("{prefix}{msg}"))
+            let reactions = reaction_suffix(msg_id, &state.reactions);
+            ListItem::new(format!("{prefix}{msg}{reactions}"))
         })
         .collect();
 
@@ -160,7 +162,8 @@ pub fn render_dm_content(
                     .and_then(|ids| ids.get(global_idx))
                     .and_then(|id| id.as_deref());
                 let prefix = dm_receipt_prefix(msg_id, &state.dm_receipts);
-                ListItem::new(format!("{prefix}{m}"))
+                let reactions = reaction_suffix(msg_id, &state.reactions);
+                ListItem::new(format!("{prefix}{m}{reactions}"))
             })
             .collect();
 

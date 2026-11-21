@@ -32,6 +32,19 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: per-message reactions (US-008). Keyed by the wire `msg_id`
+// so broadcasts, DMs and group messages share one table; `(msg_id, peer_id,
+// emoji)` is unique so toggles and replays are idempotent.
+diesel::table! {
+    message_reactions (id) {
+        id -> Integer,
+        msg_id -> Text,
+        peer_id -> Text,
+        emoji -> Text,
+        created_at -> Timestamp,
+    }
+}
+
 diesel::table! {
     messages (id) {
         id -> Integer,
@@ -253,6 +266,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     group_messages,
     groups,
     identities,
+    message_reactions,
     message_receipts,
     messages,
     network_peers,

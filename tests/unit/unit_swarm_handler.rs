@@ -77,6 +77,7 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::SendCallSignal { .. }
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
+        | SwarmCommand::SendReaction { .. }
         | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
     }
 
@@ -116,6 +117,7 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::SendCallSignal { .. }
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
+        | SwarmCommand::SendReaction { .. }
         | SwarmCommand::DisconnectPeer { .. } => panic!("expected SendDm"),
     }
 }

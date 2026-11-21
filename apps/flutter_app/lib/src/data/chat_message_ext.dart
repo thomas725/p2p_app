@@ -1,6 +1,7 @@
 // Hand-written helpers over the FRB-generated chat models.
 
 import '../rust/mobile_node.dart';
+import '../rust/reactions.dart';
 
 /// FRB 2.13 emits data classes without `copyWith`, but a live `receipt` event
 /// must flip [ChatMessage.confirmed] without reloading history — so this
@@ -29,6 +30,7 @@ extension ChatMessageExt on ChatMessage {
     confirmed: value,
     edited: edited,
     latency: latency,
+    reactions: reactions,
   );
 
   /// A copy with the body replaced and the local-edit marker set (US-005).
@@ -51,5 +53,29 @@ extension ChatMessageExt on ChatMessage {
     confirmed: confirmed,
     edited: true,
     latency: latency,
+    reactions: reactions,
+  );
+
+  /// A copy with only the reaction chips replaced (US-008). Both a local toggle
+  /// and a live `reaction` event use this to refresh one row without reloading
+  /// the whole history, mirroring the TUI's in-memory chip map.
+  ChatMessage withReactions(List<ReactionSummary> next) => ChatMessage(
+    id: id,
+    content: content,
+    peerId: peerId,
+    isBroadcast: isBroadcast,
+    targetPeer: targetPeer,
+    sent: sent,
+    msgId: msgId,
+    replyTo: replyTo,
+    sentAt: sentAt,
+    createdAt: createdAt,
+    senderNickname: senderNickname,
+    attachment: attachment,
+    encrypted: encrypted,
+    confirmed: confirmed,
+    edited: edited,
+    latency: latency,
+    reactions: next,
   );
 }

@@ -95,6 +95,7 @@ The libp2p behaviour set (`src/behavior.rs`):
 | `device_binding` | `/p2p-chat/device-binding/1.0.0` | intro + signed claim exchange |
 | `call_signaling` | `/p2p-chat/call/1.0.0` | call setup/accept/decline/end |
 | `typing` | `/p2p-chat/typing/1.0.0` | fire-and-forget DM typing start/stop (US-009) |
+| `reactions` | `/p2p-chat/reactions/1.0.0` | per-message reaction add/remove sync (US-008) |
 | `file_transfer` | `/p2p-chat/files/1.0.0` | attachment meta / chunk / error (cbor) |
 | `mdns` | — | peer discovery on the LAN |
 | `identify` | — | peer info + listen addresses (feeds Kademlia) |
@@ -120,6 +121,17 @@ Typing indicators (US-009) also get their own `request_response` lane so a
 keystroke burst never occupies a DM request slot. `TypingSignal` is
 fire-and-forget, unpersisted and blocklist-gated; each frontend applies a short
 TTL. See [`archive/2026-11-21_typing_indicators.md`](archive/2026-11-21_typing_indicators.md)
+for the full slice.
+
+Reactions (US-008) are persisted per `(msg_id, peer_id, emoji)` in the
+`message_reactions` table — keying on the wire `msg_id` lets one table serve
+broadcast, DM and group messages. A `request_response` lane syncs each change to
+the peers holding that message (DM partner, all known peers, or group members);
+the reactor applies its own change locally first, and inbound signals ignore the
+claimed actor in favour of the connection peer id. `SwarmEvent::Reaction` carries
+only the `msg_id`; each frontend fetches typed `ReactionSummary` values from Rust
+(`get_reactions`), so neither parses reaction JSON itself. See
+[`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md)
 for the full slice.
 
 Replies (US-006) carry a canonical `ReplyRef { msg_id, sender, preview }` in the
@@ -209,12 +221,13 @@ outbound path:
 
 - gossipsub messages (broadcast, group chat **and** group backfill topics) are
   discarded before parsing, so nothing a muted peer sends is persisted;
-- DM, device-binding, call-signaling, typing and file-transfer `request_response`
-  messages are discarded; Identify results are not applied (no DHT/roster
-  entry), mDNS discoveries are not dialed, and a connection from a blocked
-  peer is disconnected immediately;
-- outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` / `SendTyping` and
-  manual dials whose multiaddr carries `/p2p/<blocked-id>` are refused.
+- DM, device-binding, call-signaling, typing, reaction and file-transfer
+  `request_response` messages are discarded; Identify results are not applied
+  (no DHT/roster entry), mDNS discoveries are not dialed, and a connection from
+  a blocked peer is disconnected immediately;
+- outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` / `SendTyping` /
+  reaction fan-out and manual dials whose multiaddr carries `/p2p/<blocked-id>`
+  are refused.
 
 Blocking also queues `SwarmCommand::DisconnectPeer`, so the connection that
 existed *before* the block is closed instead of waiting for its next message.

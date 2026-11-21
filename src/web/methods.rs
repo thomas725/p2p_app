@@ -41,6 +41,8 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "deleteMessage"
         | "editMessage"
         | "sendTyping"
+        | "toggleReaction"
+        | "getReactions"
         | "saveOutgoingBroadcast"
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
@@ -167,6 +169,14 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         "sendTyping" => {
             let p: TypingParams = parse(params)?;
             json(api::send_typing(p.peer_id, p.is_typing))
+        }
+        "toggleReaction" => {
+            let p: ReactionParams = parse(params)?;
+            json(api::toggle_reaction(p.msg_id, p.emoji))
+        }
+        "getReactions" => {
+            let p: MsgIdParams = parse(params)?;
+            ok(api::get_reactions(&p.msg_id))
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
@@ -424,6 +434,21 @@ struct PeerIdParams {
 struct TypingParams {
     peer_id: String,
     is_typing: bool,
+}
+
+/// Toggle a reaction on a message (US-008).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReactionParams {
+    msg_id: String,
+    emoji: String,
+}
+
+/// Fetch aggregated reactions for one message (US-008).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MsgIdParams {
+    msg_id: String,
 }
 
 #[derive(serde::Deserialize)]

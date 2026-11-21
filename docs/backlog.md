@@ -127,12 +127,6 @@ transport is still to come.
   lean. Do **not** gate the signaling behind it; that already happened once and
   was corrected.
 
-### Message reactions (US-008)
-
-A per-message reaction set. Needs a new table plus a wire type; reactions are
-small, so a gossipsub topic is viable, but the DM lane is the simpler first
-step.
-
 ### Public bootstrap nodes (US-050) — **stage 1 shipped (Kademlia + Identify)**
 
 Discovery was mDNS only, so the network was LAN-scoped by construction. Stage 1
@@ -276,6 +270,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Message reactions (US-008) | 2026-11-21 | [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md) |
 | DM typing indicators (US-009) | 2026-11-21 | [`archive/2026-11-21_typing_indicators.md`](archive/2026-11-21_typing_indicators.md) |
 | Local sent-message edits (US-005, edit half) | 2026-11-20 | [`archive/2026-11-20_local_message_edits.md`](archive/2026-11-20_local_message_edits.md) |
 | Store-and-forward DM outbox (sealed envelopes, retry on reconnect, dedup, expiry) | 2026-11-19 | [`archive/2026-11-19_store_and_forward_dm_outbox.md`](archive/2026-11-19_store_and_forward_dm_outbox.md) |

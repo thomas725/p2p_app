@@ -42,6 +42,14 @@ pub const CALL_PROTOCOL_NAME: &str = "/p2p-chat/call/1.0.0";
 /// short TTL to the received signal.
 pub const TYPING_PROTOCOL_NAME: &str = "/p2p-chat/typing/1.0.0";
 
+/// Message-reaction protocol name (US-008).
+///
+/// Reactions are persistent social data, so unlike typing they receive a real
+/// ack: the sender applies its change locally and the ack only confirms the peer
+/// accepted the signal. A dedicated lane keeps a burst of reacts out of the DM
+/// and typing slots.
+pub const REACTION_PROTOCOL_NAME: &str = "/p2p-chat/reactions/1.0.0";
+
 /// File-transfer protocol name (files lane §12).
 ///
 /// A dedicated `request_response` lane for content-addressed attachments. The
@@ -333,6 +341,50 @@ pub struct TypingAck {
 /// JSON codec for the typing-indicator protocol.
 pub type TypingCodec = libp2p::request_response::json::codec::Codec<TypingSignal, TypingAck>;
 
+/// A reaction added to or removed from a message (US-008).
+///
+/// `msg_id` is the stable wire id shared by broadcast, DM and group messages;
+/// `actor` is the reactor's transport peer id (not spoofable by the receiver,
+/// which uses the connection's peer id). `remove` distinguishes a toggle-off
+/// from a toggle-on so a replay is idempotent.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(default)]
+pub struct ReactionSignal {
+    /// Stable wire id of the message being reacted to.
+    pub msg_id: String,
+    /// Emoji token (glyph or shortcode).
+    pub emoji: String,
+    /// Reactor's transport peer id.
+    pub actor: String,
+    /// `false` = add the reaction, `true` = remove it.
+    pub remove: bool,
+}
+
+impl ReactionSignal {
+    /// Build a reaction change stamped with the reactor's peer id.
+    #[must_use]
+    pub const fn new(msg_id: String, emoji: String, actor: String, remove: bool) -> Self {
+        Self {
+            msg_id,
+            emoji,
+            actor,
+            remove,
+        }
+    }
+}
+
+/// Ack for a reaction signal. The ack only closes the request-response stream;
+/// the sender already applied its own change locally before sending.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ReactionAck {
+    /// Whether the signal was accepted.
+    pub ok: bool,
+}
+
+/// JSON codec for the message-reaction protocol.
+pub type ReactionCodec = libp2p::request_response::json::codec::Codec<ReactionSignal, ReactionAck>;
+
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
@@ -349,6 +401,9 @@ pub struct AppBehaviour {
     /// Request-response protocol handler for transient DM typing indicators
     /// (US-009): a separate lane so signals never consume a DM request slot.
     pub typing: request_response::Behaviour<TypingCodec>,
+    /// Request-response protocol handler for persistent message reactions
+    /// (US-008): a separate lane so a burst of reacts cannot starve DMs.
+    pub reactions: request_response::Behaviour<ReactionCodec>,
     /// Request-response protocol handler for content-addressed file transfers
     /// (files lane §12): the receiver pulls metadata and chunks, the sender
     /// serves them from its on-disk store.
@@ -408,19 +463,21 @@ fn build_gossipsub(
         .map_err(|e| format!("Failed to create gossipsub behavior: {e}"))
 }
 
-/// The five `request_response` behaviours, one per protocol lane.
+/// The six `request_response` behaviours, one per protocol lane.
 type RequestResponseLanes = (
     request_response::Behaviour<ChatCodec>,
     request_response::Behaviour<DeviceBindingCodec>,
     request_response::Behaviour<CallSignalCodec>,
     request_response::Behaviour<TypingCodec>,
+    request_response::Behaviour<ReactionCodec>,
     request_response::Behaviour<FileTransferCodec>,
 );
 
-/// Build the five `request_response` lanes.
+/// Build the six `request_response` lanes.
 ///
 /// Each lane has its own protocol name so a burst of transient traffic (typing,
-/// calls, device binding, file chunks) can never occupy a DM request slot.
+/// reactions, calls, device binding, file chunks) can never occupy a DM request
+/// slot.
 fn build_request_response_lanes() -> RequestResponseLanes {
     fn lane<C>(protocol: &'static str) -> request_response::Behaviour<C>
     where
@@ -444,6 +501,7 @@ fn build_request_response_lanes() -> RequestResponseLanes {
         lane(DEVICE_BINDING_PROTOCOL_NAME),
         lane(CALL_PROTOCOL_NAME),
         lane(TYPING_PROTOCOL_NAME),
+        lane(REACTION_PROTOCOL_NAME),
         lane(FILE_TRANSFER_PROTOCOL_NAME),
     )
 }
@@ -469,7 +527,7 @@ pub fn build_behaviour(
     // history and a slower heartbeat to avoid redundant re-broadcasts.
     let gossipsub = build_gossipsub(key, network_size)?;
 
-    let (request_response, device_binding, call_signaling, typing, file_transfer) =
+    let (request_response, device_binding, call_signaling, typing, reactions, file_transfer) =
         build_request_response_lanes();
 
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
@@ -535,6 +593,7 @@ pub fn build_behaviour(
         device_binding,
         call_signaling,
         typing,
+        reactions,
         file_transfer,
         #[cfg(feature = "mdns")]
         mdns,

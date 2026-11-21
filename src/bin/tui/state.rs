@@ -113,6 +113,9 @@ pub struct AppState {
     pub dm_message_db_ids: HashMap<String, VecDeque<Option<i32>>>,
     // DM receipts: msg_id -> (peer_id, received_at epoch seconds).
     pub dm_receipts: HashMap<String, (String, f64)>,
+    // Aggregated reactions by wire msg_id (US-008), refreshed on history loads
+    // and on live `reaction` events from the swarm.
+    pub reactions: HashMap<String, Vec<p2p_app::reactions::ReactionSummary>>,
     // Peers currently shown as typing in their DM pane (US-009), with the
     // expiry instant of the latest received signal.
     pub typing_peers: HashMap<String, Instant>,
@@ -235,6 +238,10 @@ pub struct AppState {
     /// applies the edit, Esc cancels. Device-only, like deletion (US-005).
     pub editing_message: Option<EditMessagePrompt>,
 
+    /// A message being reacted to, pending an emoji token in the shared editor
+    /// (US-008). Enter toggles the reaction locally and fans it out; Esc cancels.
+    pub adding_reaction: Option<ReactionPrompt>,
+
     /// Live call session (calls lane). One session at a time, mirroring the
     /// single-slot device-binding prompt; `None` = no active/ringing call.
     /// Advanced here on call events; the interactive surface (accept/reject/
@@ -294,6 +301,13 @@ pub struct EditMessagePrompt {
     pub message_id: i32,
     pub is_group: bool,
     pub tab_content: p2p_app::tui_tabs::TabContent,
+}
+
+/// The message being reacted to in the shared emoji editor (US-008). Only the
+/// wire `msg_id` is needed: `reactions` is keyed by it across all chat kinds.
+#[derive(Clone, Debug)]
+pub struct ReactionPrompt {
+    pub msg_id: String,
 }
 
 /// Index + DB id of the newest outgoing row in an aligned id queue.
@@ -486,6 +500,12 @@ impl AppState {
         self.delete_message_prompt.take().is_some()
     }
 
+    /// True while the shared text input is capturing a reaction emoji (US-008).
+    #[must_use]
+    pub const fn is_adding_reaction(&self) -> bool {
+        self.adding_reaction.is_some()
+    }
+
     /// True while the shared text input is replacing a sent message's body.
     #[must_use]
     pub const fn is_editing_message(&self) -> bool {
@@ -517,6 +537,45 @@ impl AppState {
             self.chat_input = TextArea::default();
         }
         was_editing
+    }
+
+    /// Open the shared editor for a reaction on the newest message in `tab`.
+    /// Returns `false` when the conversation has no stable wire id to react to.
+    pub fn begin_reaction(&mut self, tab: &p2p_app::tui_tabs::TabContent) -> bool {
+        let Some(msg_id) = self.newest_message_id(tab) else {
+            return false;
+        };
+        self.input_mode = p2p_app::InputMode::AddingReaction;
+        self.adding_reaction = Some(ReactionPrompt { msg_id });
+        self.chat_input = TextArea::default();
+        true
+    }
+
+    /// Cancel an in-progress reaction, leaving the stored reactions untouched.
+    pub fn cancel_reaction(&mut self) -> bool {
+        let was_adding = self.adding_reaction.take().is_some();
+        if was_adding {
+            self.input_mode = p2p_app::InputMode::Chat;
+            self.chat_input = TextArea::default();
+        }
+        was_adding
+    }
+
+    /// Wire id of the newest message with a stable id in `tab` (US-008).
+    #[must_use]
+    pub fn newest_message_id(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        use p2p_app::tui_tabs::TabContent;
+        let ids = match tab {
+            TabContent::Chat => Some(&self.message_ids),
+            TabContent::Direct(peer_id) => self.dm_message_ids.get(peer_id),
+            TabContent::GroupChat(group_id) => self.group_message_ids.get(group_id),
+            _ => None,
+        }?;
+        ids.iter().rev().find_map(|id| {
+            id.as_deref()
+                .filter(|id| !id.trim().is_empty())
+                .map(str::to_owned)
+        })
     }
 
     /// The most recent outgoing message in the conversation shown by `tab`,
@@ -1060,6 +1119,7 @@ impl AppState {
             dm_message_ids: HashMap::new(),
             dm_message_db_ids: HashMap::new(),
             dm_receipts: data.dm_receipts,
+            reactions: HashMap::new(),
             typing_peers: HashMap::new(),
             typing_sent_at: HashMap::new(),
             peers: data.peers,
@@ -1116,6 +1176,7 @@ impl AppState {
             group_leave_prompt: None,
             delete_message_prompt: None,
             editing_message: None,
+            adding_reaction: None,
             call_session: None,
             db_url: String::new(),
             platform: String::new(),

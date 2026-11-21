@@ -353,6 +353,15 @@ async fn handle_behaviour_event(
             }
             handle_typing_signal(message, peer, event_tx, swarm).await;
         }
+        Libp2pSwarmEvent::Behaviour(AppEv::Reactions(
+            libp2p::request_response::Event::Message { peer, message, .. },
+        )) => {
+            if peer_is_blocked(&peer) {
+                p2plog_debug(format!("Dropped reaction signal from blocked peer {peer}"));
+                return;
+            }
+            handle_reaction_signal(message, peer, event_tx, swarm).await;
+        }
         Libp2pSwarmEvent::Behaviour(AppEv::FileTransfer(
             libp2p::request_response::Event::Message { peer, message, .. },
         )) => {
@@ -1302,6 +1311,44 @@ async fn handle_typing_signal(
     }
 }
 
+/// Apply an inbound reaction (US-008) and surface the updated summary to both
+/// frontends. The reactor is taken from the connection's peer id, never the
+/// signal's `actor` field, so a peer cannot post a reaction on another's behalf.
+async fn handle_reaction_signal(
+    message: libp2p::request_response::Message<
+        crate::behavior::ReactionSignal,
+        crate::behavior::ReactionAck,
+    >,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    match message {
+        libp2p::request_response::Message::Request {
+            request, channel, ..
+        } => {
+            let actor = peer.to_string();
+            match crate::reactions::apply(&request.msg_id, &actor, &request.emoji, request.remove) {
+                Ok(_) => {
+                    let _ = event_tx
+                        .send(SwarmEvent::Reaction {
+                            msg_id: request.msg_id,
+                        })
+                        .await;
+                }
+                Err(err) => {
+                    p2plog_debug(format!("Rejected reaction from {actor}: {err}"));
+                }
+            }
+            let _ = swarm
+                .behaviour_mut()
+                .reactions
+                .send_response(channel, crate::behavior::ReactionAck { ok: true });
+        }
+        libp2p::request_response::Message::Response { .. } => {}
+    }
+}
+
 /// Process-wide receiver state for in-flight attachment pulls.
 ///
 /// The files lane (§12) is receiver-driven: each `"chunk"` request is a
@@ -1767,6 +1814,9 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         SwarmCommand::SendTyping { peer_id, is_typing } => {
             send_typing(&peer_id, is_typing, swarm);
         }
+        SwarmCommand::SendReaction { peer_ids, signal } => {
+            send_reaction(&peer_ids, signal.as_ref(), swarm);
+        }
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
         SwarmCommand::Dial { address } => dial_peer(&address, swarm),
         SwarmCommand::DisconnectPeer { peer_id } => disconnect_peer(&peer_id, swarm),
@@ -2019,6 +2069,30 @@ fn send_typing(peer_id: &str, is_typing: bool, swarm: &mut Swarm<AppBehaviour>) 
             .behaviour_mut()
             .typing
             .send_request(&peer, crate::behavior::TypingSignal::new(is_typing));
+    }
+}
+
+/// Fan a reaction change out to every peer that may hold the message (US-008).
+/// Blocked peers are skipped at the swarm boundary like every other lane.
+fn send_reaction(
+    peer_ids: &[String],
+    signal: &crate::behavior::ReactionSignal,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    for peer_id in peer_ids {
+        let Ok(peer) = peer_id.parse::<libp2p::PeerId>() else {
+            continue;
+        };
+        if crate::blocklist::is_blocked(&peer.to_string()) {
+            p2plog_debug(format!(
+                "Refusing to send reaction to blocked peer {peer_id}"
+            ));
+            continue;
+        }
+        let _ = swarm
+            .behaviour_mut()
+            .reactions
+            .send_request(&peer, signal.clone());
     }
 }
 

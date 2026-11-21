@@ -16,6 +16,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart' as node;
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
@@ -122,6 +123,16 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> sendTyping({required String peerId, required bool isTyping}) =>
       bridge.sendTyping(peerId: peerId, isTyping: isTyping);
+
+  @override
+  Future<List<ReactionSummary>> toggleReaction({
+    required String msgId,
+    required String emoji,
+  }) => bridge.toggleReaction(msgId: msgId, emoji: emoji);
+
+  @override
+  Future<List<ReactionSummary>> getReactions({required String msgId}) =>
+      bridge.getReactions(msgId: msgId);
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({

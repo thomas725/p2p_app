@@ -19,6 +19,7 @@ import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
@@ -101,6 +102,17 @@ abstract class NodeApi {
     required String peerId,
     required bool isTyping,
   });
+
+  /// Toggle this install's reaction on a message and return the fresh
+  /// aggregated chips (US-008). The canonical summaries come from Rust on every
+  /// transport; Dart never assembles counts or "mine" flags itself.
+  Future<List<ReactionSummary>> toggleReaction({
+    required String msgId,
+    required String emoji,
+  });
+
+  /// Load the aggregated reaction chips for one message (US-008).
+  Future<List<ReactionSummary>> getReactions({required String msgId});
 
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport

@@ -7,7 +7,8 @@
 
 use crate::generated::schema::{
     blocked_peers, contacts, device_bindings, dm_outbox, files, group_members, group_messages,
-    groups, identities, message_receipts, messages, network_peers, peer_sessions, peers, users,
+    groups, identities, message_reactions, message_receipts, messages, network_peers,
+    peer_sessions, peers, users,
 };
 
 use chrono::NaiveDateTime;
@@ -286,6 +287,22 @@ pub struct NetworkPeerRow {
     /// Canonical text form of the peer multiaddr
     pub multiaddr: String,
     /// Timestamp when this peer was added
+    pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `message_reactions` table (US-008)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = message_reactions)]
+pub struct MessageReactionRow {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Stable wire id of the message being reacted to
+    pub msg_id: String,
+    /// Reactor's transport peer id
+    pub peer_id: String,
+    /// Emoji shortcode or glyph
+    pub emoji: String,
+    /// When the reaction was added
     pub created_at: NaiveDateTime,
 }
 

@@ -505,6 +505,27 @@ pub fn send_typing(peer_id: String, is_typing: bool) -> Result<(), String> {
     crate::mobile_node::send_typing(peer_id, is_typing)
 }
 
+/// Toggle this install's reaction on a message and return the fresh aggregated
+/// chips (US-008).
+///
+/// The change is applied locally first, then synced to the peers holding the
+/// message on the dedicated reaction lane.
+///
+/// # Errors
+/// Returns an error if the emoji is invalid or the local change cannot be saved.
+pub fn toggle_reaction(
+    msg_id: String,
+    emoji: String,
+) -> Result<Vec<crate::reactions::ReactionSummary>, String> {
+    crate::mobile_node::toggle_reaction(msg_id, emoji)
+}
+
+/// Load the aggregated reactions for one message (US-008).
+#[must_use]
+pub fn get_reactions(msg_id: &str) -> Vec<crate::reactions::ReactionSummary> {
+    crate::mobile_node::get_reactions(msg_id)
+}
+
 /// Verify a raw device-binding claim against the user's stored account key.
 ///
 /// The claim is the raw signature over `user_id ‖ device_pubkey ‖ claim_id`;

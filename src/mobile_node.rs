@@ -515,6 +515,10 @@ pub struct ChatMessage {
     /// messages, group messages, and every row read back from the database —
     /// the TUI measures it in memory only and never persists it.
     pub latency: Option<String>,
+    /// Aggregated reactions on this message (US-008). Empty on a freshly sent
+    /// row; history loaders fill it in one batched query via the internal
+    /// `hydrate_reactions` helper.
+    pub reactions: Vec<crate::reactions::ReactionSummary>,
 }
 
 /// Dial a peer by multiaddr (manual peer address entry, US-053).
@@ -642,6 +646,7 @@ fn message_to_chat(msg: crate::generated::models_queryable::Message) -> ChatMess
         confirmed: false,
         edited: msg.edited_at.is_some(),
         latency: None,
+        reactions: Vec::new(),
     }
 }
 
@@ -671,6 +676,28 @@ fn mark_confirmed(messages: &mut [ChatMessage]) {
     }
 }
 
+/// Fill reaction chips for a batch of messages in one query (US-008).
+fn hydrate_reactions(messages: &mut [ChatMessage]) {
+    let ids: Vec<String> = messages.iter().filter_map(|m| m.msg_id.clone()).collect();
+    let all = crate::reactions::summaries_for_many(&ids);
+    for m in messages.iter_mut() {
+        if let Some(id) = &m.msg_id {
+            m.reactions = all.get(id).cloned().unwrap_or_default();
+        }
+    }
+}
+
+/// Fill reaction chips for a batch of group messages in one query (US-008).
+fn hydrate_group_reactions(messages: &mut [MobileGroupMessage]) {
+    let ids: Vec<String> = messages.iter().filter_map(|m| m.msg_id.clone()).collect();
+    let all = crate::reactions::summaries_for_many(&ids);
+    for m in messages.iter_mut() {
+        if let Some(id) = &m.msg_id {
+            m.reactions = all.get(id).cloned().unwrap_or_default();
+        }
+    }
+}
+
 /// Load broadcast messages (newest-first from DB, reversed to chronological).
 #[flutter_rust_bridge::frb(ignore)]
 pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
@@ -680,6 +707,7 @@ pub fn load_broadcast_messages(limit: i64) -> Result<Vec<ChatMessage>, String> {
     let msgs = load_messages(CHAT_TOPIC, limit_usize).map_err(|e| e.to_string())?;
     let mut out: Vec<ChatMessage> = msgs.into_iter().rev().map(message_to_chat).collect();
     mark_confirmed(&mut out);
+    hydrate_reactions(&mut out);
     Ok(out)
 }
 
@@ -692,6 +720,7 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
     let msgs = load_direct_messages(&peer_id, limit_usize).map_err(|e| e.to_string())?;
     let mut out: Vec<ChatMessage> = msgs.into_iter().map(message_to_chat).collect();
     mark_confirmed(&mut out);
+    hydrate_reactions(&mut out);
     Ok(out)
 }
 
@@ -1032,6 +1061,52 @@ pub fn send_typing(peer_id: String, is_typing: bool) -> Result<(), String> {
     Ok(())
 }
 
+/// Toggle this install's reaction on a message and sync the change to the peers
+/// that hold it (US-008). The local change is applied before queueing, so the UI
+/// can refresh from the returned summaries even if the node is offline; a failed
+/// queue only means peers will hear about it on a later action.
+///
+/// # Errors
+/// Returns an error if the emoji is invalid, the DB write fails, or the local
+/// identity is not yet available.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn toggle_reaction(
+    msg_id: String,
+    emoji: String,
+) -> Result<Vec<crate::reactions::ReactionSummary>, String> {
+    let emoji = crate::reactions::validate_emoji(&emoji)?;
+    let actor = crate::peers::local_peer_id_string()
+        .ok_or_else(|| "local peer id is not available".to_string())?;
+    // Compute recipients from the *current* row before applying the change:
+    // the message lookup is independent of reactions, but doing it first keeps
+    // the intent obvious and the send consistent with the message's scope.
+    let recipients = crate::reactions::recipients_for_message(&msg_id);
+    let remove = crate::reactions::has_reaction(&msg_id, &actor, &emoji)?;
+    crate::reactions::apply(&msg_id, &actor, &emoji, remove)?;
+
+    if let Some(m) = NODE.get() {
+        let node = lock_node_mutex(m);
+        if let Some(tx) = node.cmd_tx.as_ref() {
+            let _ = tx.try_send(SwarmCommand::SendReaction {
+                peer_ids: recipients,
+                signal: Box::new(crate::behavior::ReactionSignal::new(
+                    msg_id.clone(),
+                    emoji,
+                    actor,
+                    remove,
+                )),
+            });
+        }
+    }
+    crate::reactions::summaries_for(&msg_id)
+}
+
+/// Load the aggregated reactions for one message (US-008).
+#[must_use]
+pub fn get_reactions(msg_id: &str) -> Vec<crate::reactions::ReactionSummary> {
+    crate::reactions::summaries_for(msg_id).unwrap_or_default()
+}
+
 // --- Group chat types and functions ---
 
 /// A saved group shown in the group list.
@@ -1075,6 +1150,9 @@ pub struct MobileGroupMessage {
     pub sender_nickname: Option<String>,
     /// Attachment descriptor, if the message carries a file.
     pub attachment: Option<MobileAttachment>,
+    /// Aggregated reactions on this message (US-008). Empty on a freshly sent
+    /// row; history loaders fill it in one batched query.
+    pub reactions: Vec<crate::reactions::ReactionSummary>,
 }
 
 fn group_to_mobile(
@@ -1117,6 +1195,7 @@ fn group_message_to_mobile(
             .to_string(),
         sender_nickname,
         attachment: attachment_from_row(msg.attachment_json.as_deref()),
+        reactions: Vec::new(),
     }
 }
 
@@ -1221,11 +1300,13 @@ pub fn load_group_messages(
     let limit_usize = usize::try_from(limit).unwrap_or(usize::MAX);
     let msgs =
         crate::groups::load_group_messages(&group_id, limit_usize).map_err(|e| e.to_string())?;
-    Ok(msgs
+    let mut out: Vec<MobileGroupMessage> = msgs
         .into_iter()
         .rev()
         .map(group_message_to_mobile)
-        .collect())
+        .collect();
+    hydrate_group_reactions(&mut out);
+    Ok(out)
 }
 
 /// Save an outgoing group message, persist to DB, and publish via the swarm.
@@ -1323,6 +1404,15 @@ pub struct SwarmEventJson {
     pub device_pubkey: Option<Vec<u8>>,
 }
 
+/// Build an event envelope with only `event_type` populated, so match arms
+/// only need to set their event-specific fields via struct update syntax.
+fn event_with_type(event_type: &str) -> SwarmEventJson {
+    SwarmEventJson {
+        event_type: event_type.into(),
+        ..default_event()
+    }
+}
+
 fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
     match ev {
         SwarmEvent::GroupMessage(m) => group_message_event_json(m),
@@ -1333,68 +1423,62 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
         SwarmEvent::BroadcastMessage(m) => message_event_json("broadcast", m),
         SwarmEvent::DirectMessage(m) => message_event_json("dm", m),
         SwarmEvent::Typing { peer_id, is_typing } => typing_event_json(peer_id, is_typing),
+        SwarmEvent::Reaction { msg_id } => SwarmEventJson {
+            msg_id: Some(msg_id),
+            ..event_with_type("reaction")
+        },
         SwarmEvent::PeerConnected(id) => SwarmEventJson {
-            event_type: "peer_connected".into(),
             peer_id: Some(id),
-            ..default_event()
+            ..event_with_type("peer_connected")
         },
         SwarmEvent::PeerDisconnected(id) => SwarmEventJson {
-            event_type: "peer_disconnected".into(),
             peer_id: Some(id),
-            ..default_event()
+            ..event_with_type("peer_disconnected")
         },
         SwarmEvent::ListenAddrEstablished(addr) => SwarmEventJson {
-            event_type: "listen_addr".into(),
             address: Some(addr),
-            ..default_event()
+            ..event_with_type("listen_addr")
         },
         SwarmEvent::ExternalAddressAdded(addr) => SwarmEventJson {
-            event_type: "external_address".into(),
             address: Some(addr),
-            ..default_event()
+            ..event_with_type("external_address")
         },
         #[cfg(feature = "nat")]
         SwarmEvent::NatStatusChanged(status) => SwarmEventJson {
-            event_type: "nat_status".into(),
             content: Some(status),
-            ..default_event()
+            ..event_with_type("nat_status")
         },
         #[cfg(feature = "nat")]
         SwarmEvent::HolePunchResult { peer_id, success } => hole_punch_event_json(peer_id, success),
         SwarmEvent::Receipt {
             peer_id, ack_for, ..
         } => SwarmEventJson {
-            event_type: "receipt".into(),
             peer_id: Some(peer_id),
             msg_id: Some(ack_for),
-            ..default_event()
+            ..event_with_type("receipt")
         },
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerDiscovered { peer_id, addresses } => SwarmEventJson {
-            event_type: "peer_discovered".into(),
             peer_id: Some(peer_id),
             address: addresses.first().map(ToString::to_string),
-            ..default_event()
+            ..event_with_type("peer_discovered")
         },
         #[cfg(feature = "mdns")]
         SwarmEvent::PeerExpired { peer_id } => SwarmEventJson {
-            event_type: "peer_expired".into(),
             peer_id: Some(peer_id),
-            ..default_event()
+            ..event_with_type("peer_expired")
         },
         SwarmEvent::DeviceBindingIntro {
             peer_id,
             device_pubkey,
         } => SwarmEventJson {
-            event_type: "device_binding_intro".into(),
             peer_id: Some(peer_id),
             device_pubkey: Some(device_pubkey),
-            ..default_event()
+            ..event_with_type("device_binding_intro")
         },
         SwarmEvent::DeviceBindingReceived { user_id } => SwarmEventJson {
-            event_type: "device_binding_received".into(),
             content: Some(user_id),
-            ..default_event()
+            ..event_with_type("device_binding_received")
         },
         // Call-signaling events (calls lane). `content` carries the
         // end-to-end `call_id`; Dart keys its call screen/rings on
@@ -1419,11 +1503,10 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             name,
             path: _,
         } => SwarmEventJson {
-            event_type: "file_received".into(),
             peer_id: Some(peer_id),
             content: Some(file_id),
             nickname: Some(name),
-            ..default_event()
+            ..event_with_type("file_received")
         },
     }
 }

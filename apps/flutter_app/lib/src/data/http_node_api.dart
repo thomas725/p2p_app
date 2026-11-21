@@ -15,6 +15,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
@@ -236,7 +237,25 @@ class HttpNodeApi implements NodeApi {
       confirmed: m['confirmed'] as bool? ?? false,
       edited: m['edited'] as bool? ?? false,
       latency: m['latency'] as String?,
+      reactions: reactionSummariesFromJson(m['reactions']),
     );
+  }
+
+  /// Parse the aggregated reaction chips attached to a JSON message row. The
+  /// canonical shape is produced by Rust (`ReactionSummary`), so the web client
+  /// only decodes it; it never assembles counts or "mine" flags itself.
+  static List<ReactionSummary> reactionSummariesFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (m) => ReactionSummary(
+            emoji: m['emoji'] as String,
+            count: (m['count'] as num).toInt(),
+            mine: m['mine'] as bool? ?? false,
+          ),
+        )
+        .toList();
   }
 
   static MobileGroup groupFromJson(dynamic raw) {
@@ -265,6 +284,7 @@ class HttpNodeApi implements NodeApi {
       attachment: m['attachment'] == null
           ? null
           : attachmentFromJson(m['attachment']),
+      reactions: reactionSummariesFromJson(m['reactions']),
     );
   }
 
@@ -526,6 +546,24 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<void> sendTyping({required String peerId, required bool isTyping}) =>
       _call('sendTyping', {'peerId': peerId, 'isTyping': isTyping});
+
+  @override
+  Future<List<ReactionSummary>> toggleReaction({
+    required String msgId,
+    required String emoji,
+  }) async {
+    final raw = await _call('toggleReaction', {
+      'msgId': msgId,
+      'emoji': emoji,
+    });
+    return reactionSummariesFromJson(raw);
+  }
+
+  @override
+  Future<List<ReactionSummary>> getReactions({required String msgId}) async {
+    final raw = await _call('getReactions', {'msgId': msgId});
+    return reactionSummariesFromJson(raw);
+  }
 
   @override
   Future<ChatMessage> saveOutgoingBroadcast({

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 import 'package:p2p_app_flutter/src/util/reply.dart';
 
@@ -345,6 +346,41 @@ Future<int> _copyMessages(
 int confirmedMessageIndex(List<ChatMessage> messages, String msgId) =>
     messages.indexWhere((m) => m.sent && m.msgId == msgId);
 
+/// The small palette offered when a user adds a reaction. Kept as a plain
+/// constant in the UI: the canonical *counts* and `mine` flags always come from
+/// Rust, so a frontend palette is purely an affordance and can never diverge
+/// from the stored data.
+const List<String> quickReactions = ['👍', '❤️', '😂', '🎉', '😮', '😢'];
+
+/// Toggle [emoji] on the message at [index] through Rust and replace just that
+/// row with the returned canonical chips. The owning [messages] list is mutated
+/// in place so the caller can `setState`; a reply that arrives after the row was
+/// removed is ignored.
+Future<void> toggleReactionAt(
+  List<ChatMessage> messages,
+  int index,
+  String emoji,
+) async {
+  final msgId = messages[index].msgId;
+  if (msgId == null || msgId.isEmpty) return;
+  final summaries = await nodeApi.toggleReaction(msgId: msgId, emoji: emoji);
+  if (index >= 0 && index < messages.length && messages[index].msgId == msgId) {
+    messages[index] = messages[index].withReactions(summaries);
+  }
+}
+
+/// Apply fresh chips from a live `reaction` event (US-008) to every row with the
+/// matching wire id. Mirrors the TUI's `msg_id`-keyed in-memory chip map: the
+/// event carries only the id, and Rust is the single source of the summary.
+Future<void> applyReactionEvent(List<ChatMessage> messages, String msgId) async {
+  final summaries = await nodeApi.getReactions(msgId: msgId);
+  for (var i = 0; i < messages.length; i++) {
+    if (messages[i].msgId == msgId) {
+      messages[i] = messages[i].withReactions(summaries);
+    }
+  }
+}
+
 /// The scrollable message list with its overlays — tap-selection toolbar or the
 /// unread "jump to latest" banner — shared by the broadcast tab, DM chat, and
 /// group chat.
@@ -369,6 +405,7 @@ class MessageChatBody extends StatelessWidget {
     required this.onJumpToBottom,
     this.onOpenPeerInfo,
     this.onOpenAttachment,
+    this.onReact,
   });
 
   final List<ChatMessage> messages;
@@ -395,6 +432,10 @@ class MessageChatBody extends StatelessWidget {
   final VoidCallback onJumpToBottom;
   final void Function(String)? onOpenPeerInfo;
   final void Function(ChatMessage)? onOpenAttachment;
+
+  /// Called with `(message index, emoji)` when a reaction chip is tapped. The
+  /// owning screen applies the change through Rust and replaces just that row.
+  final void Function(int, String)? onReact;
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +488,9 @@ class MessageChatBody extends StatelessWidget {
                         onOpenAttachment: onOpenAttachment == null
                             ? null
                             : () => onOpenAttachment!(messages[i]),
+                        onReact: onReact == null
+                            ? null
+                            : (emoji) => onReact!(i, emoji),
                       ),
                   ],
                 ),
@@ -699,6 +743,7 @@ class BroadcastChat extends StatefulWidget {
     this.onCancelReply,
     this.onPickFile,
     this.onOpenAttachment,
+    this.onReact,
   });
 
   final List<ChatMessage> messages;
@@ -721,6 +766,7 @@ class BroadcastChat extends StatefulWidget {
   final VoidCallback? onCancelReply;
   final VoidCallback? onPickFile;
   final void Function(ChatMessage)? onOpenAttachment;
+  final void Function(int, String)? onReact;
 
   @override
   State<BroadcastChat> createState() => _BroadcastChatState();
@@ -790,6 +836,7 @@ class _BroadcastChatState extends State<BroadcastChat> {
           onJumpToBottom: widget.onJumpToBottom,
           onOpenPeerInfo: widget.onOpenPeerInfo,
           onOpenAttachment: widget.onOpenAttachment,
+          onReact: widget.onReact,
         ),
         MessageInputBar(
           controller: _controller,
@@ -819,6 +866,7 @@ class MessageBubble extends StatelessWidget {
     this.onTap,
     this.onOpenPeerInfo,
     this.onOpenAttachment,
+    this.onReact,
   });
   final ChatMessage message;
   final bool isOwn;
@@ -828,6 +876,22 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onTap;
   final void Function(String)? onOpenPeerInfo;
   final VoidCallback? onOpenAttachment;
+  final void Function(String)? onReact;
+
+  /// Show the small quick-reaction palette and forward the chosen token to the
+  /// owning screen. Kept here so every bubble gets the same affordance without
+  /// the three chat screens duplicating a menu.
+  Future<void> _pickReaction(BuildContext context, void Function(String) react) async {
+    final emoji = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(0, 0, 0, 0),
+      items: [
+        for (final token in quickReactions)
+          PopupMenuItem<String>(value: token, child: Text(token, style: const TextStyle(fontSize: 18))),
+      ],
+    );
+    if (emoji != null) react(emoji);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -911,6 +975,51 @@ class MessageBubble extends StatelessWidget {
                   onOpen: (selectionMode || onOpenAttachment == null)
                       ? null
                       : onOpenAttachment,
+                ),
+              if ((message.reactions.isNotEmpty || onReact != null) &&
+                  !selectionMode &&
+                  message.msgId != null)
+                Padding(
+                  key: const Key('reaction-chips'),
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      for (final reaction in message.reactions)
+                        _ReactionChip(
+                          reaction: reaction,
+                          foreground: fg,
+                          onTap: onReact == null
+                              ? null
+                              : () => onReact!(reaction.emoji),
+                        ),
+                      if (onReact != null)
+                        InkWell(
+                          key: const Key('add-reaction'),
+                          onTap: () => _pickReaction(context, onReact!),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: fg.withAlpha(18),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: fg.withAlpha(70)),
+                            ),
+                            child: Icon(
+                              Icons.add_reaction_outlined,
+                              size: 14,
+                              color: fg.withAlpha(160),
+                              semanticLabel: 'Add reaction',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -1029,6 +1138,55 @@ class _AttachmentChip extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One aggregated reaction chip (US-008). The emoji/count/`mine` fields come
+/// straight from Rust's [ReactionSummary]; the chip is tappable to toggle this
+/// install's reaction and is visually marked when we are among the reactors.
+class _ReactionChip extends StatelessWidget {
+  const _ReactionChip({
+    required this.reaction,
+    required this.foreground,
+    this.onTap,
+  });
+
+  final ReactionSummary reaction;
+  final Color foreground;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final active = reaction.mine;
+    final color = active ? cs.primary : foreground.withAlpha(150);
+    return Semantics(
+      label: '${reaction.emoji} ${reaction.count}',
+      button: onTap != null,
+      child: InkWell(
+        key: Key('reaction-${reaction.emoji}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: active ? cs.primary.withAlpha(30) : foreground.withAlpha(18),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: active ? cs.primary : foreground.withAlpha(70),
+            ),
+          ),
+          child: Text(
+            '${reaction.emoji} ${reaction.count}',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              color: color,
+            ),
+          ),
         ),
       ),
     );

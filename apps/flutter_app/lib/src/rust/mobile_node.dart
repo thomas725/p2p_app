@@ -5,12 +5,13 @@
 
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'reactions.dart';
 import 'reply.dart';
 
-// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`
+// These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `call_event_json`, `default_event`, `event_to_json`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `typing_event_json`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `IncomingMessageData`, `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`, `toggle_reaction`
 
 /// Get the local peer ID.
 ///
@@ -18,6 +19,10 @@ import 'reply.dart';
 /// Returns an error if the node has not been started yet.
 Future<String> getNodePeerId() =>
     RustLib.instance.api.crateMobileNodeGetNodePeerId();
+
+/// Load the aggregated reactions for one message (US-008).
+Future<List<ReactionSummary>> getReactions({required String msgId}) =>
+    RustLib.instance.api.crateMobileNodeGetReactions(msgId: msgId);
 
 /// Leave a group: drop the local row (messages, membership, the group itself)
 /// and unsubscribe from its gossipsub topic so the swarm stops delivering it.
@@ -100,6 +105,11 @@ class ChatMessage {
   /// the TUI measures it in memory only and never persists it.
   final String? latency;
 
+  /// Aggregated reactions on this message (US-008). Empty on a freshly sent
+  /// row; history loaders fill it in one batched query via
+  /// [`hydrate_reactions`].
+  final List<ReactionSummary> reactions;
+
   const ChatMessage({
     required this.id,
     required this.content,
@@ -117,6 +127,7 @@ class ChatMessage {
     required this.confirmed,
     required this.edited,
     this.latency,
+    required this.reactions,
   });
 
   @override
@@ -136,7 +147,8 @@ class ChatMessage {
       encrypted.hashCode ^
       confirmed.hashCode ^
       edited.hashCode ^
-      latency.hashCode;
+      latency.hashCode ^
+      reactions.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -158,7 +170,8 @@ class ChatMessage {
           encrypted == other.encrypted &&
           confirmed == other.confirmed &&
           edited == other.edited &&
-          latency == other.latency;
+          latency == other.latency &&
+          reactions == other.reactions;
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
@@ -290,6 +303,10 @@ class MobileGroupMessage {
   /// Attachment descriptor, if the message carries a file.
   final MobileAttachment? attachment;
 
+  /// Aggregated reactions on this message (US-008). Empty on a freshly sent
+  /// row; history loaders fill it in one batched query.
+  final List<ReactionSummary> reactions;
+
   const MobileGroupMessage({
     required this.id,
     required this.content,
@@ -302,6 +319,7 @@ class MobileGroupMessage {
     required this.createdAt,
     this.senderNickname,
     this.attachment,
+    required this.reactions,
   });
 
   @override
@@ -316,7 +334,8 @@ class MobileGroupMessage {
       sentAt.hashCode ^
       createdAt.hashCode ^
       senderNickname.hashCode ^
-      attachment.hashCode;
+      attachment.hashCode ^
+      reactions.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -333,7 +352,8 @@ class MobileGroupMessage {
           sentAt == other.sentAt &&
           createdAt == other.createdAt &&
           senderNickname == other.senderNickname &&
-          attachment == other.attachment;
+          attachment == other.attachment &&
+          reactions == other.reactions;
 }
 
 /// A known peer with the nickname fields needed by the mobile Peer Info page.

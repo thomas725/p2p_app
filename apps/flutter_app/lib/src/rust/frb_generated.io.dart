@@ -13,6 +13,7 @@ import 'mobile_node.dart';
 import 'net_diag.dart';
 import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
+import 'reactions.dart';
 import 'reply.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -113,6 +114,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ReactionSummary> dco_decode_list_reaction_summary(dynamic raw);
+
+  @protected
   MobileAttachment dco_decode_mobile_attachment(dynamic raw);
 
   @protected
@@ -177,6 +181,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerWithStats dco_decode_peer_with_stats(dynamic raw);
+
+  @protected
+  ReactionSummary dco_decode_reaction_summary(dynamic raw);
 
   @protected
   ReplyRef dco_decode_reply_ref(dynamic raw);
@@ -311,6 +318,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ReactionSummary> sse_decode_list_reaction_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   MobileAttachment sse_decode_mobile_attachment(SseDeserializer deserializer);
 
   @protected
@@ -387,6 +399,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   PeerWithStats sse_decode_peer_with_stats(SseDeserializer deserializer);
+
+  @protected
+  ReactionSummary sse_decode_reaction_summary(SseDeserializer deserializer);
 
   @protected
   ReplyRef sse_decode_reply_ref(SseDeserializer deserializer);
@@ -551,6 +566,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_reaction_summary(
+    List<ReactionSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_mobile_attachment(
     MobileAttachment self,
     SseSerializer serializer,
@@ -660,6 +681,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_peer_with_stats(PeerWithStats self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_reaction_summary(
+    ReactionSummary self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_reply_ref(ReplyRef self, SseSerializer serializer);

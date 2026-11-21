@@ -690,6 +690,8 @@ mod tests {
             "deleteMessage",
             "editMessage",
             "sendTyping",
+            "toggleReaction",
+            "getReactions",
             "saveOutgoingBroadcast",
             "saveOutgoingDm",
             "saveIncomingMessage",

@@ -9,6 +9,7 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
+import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
@@ -222,6 +223,35 @@ class FakeNodeApi implements NodeApi {
   Future<void> sendTyping({required String peerId, required bool isTyping}) async {
     _record('sendTyping', (peerId: peerId, isTyping: isTyping));
     typingSends.add((peerId: peerId, isTyping: isTyping));
+  }
+
+  /// Overrides reaction toggle/get; when unset, toggles are recorded and return
+  /// an empty summary list, and gets return the last stored summaries.
+  Future<List<ReactionSummary>> Function(String msgId, String emoji)?
+  toggleReactionOverride;
+  Future<List<ReactionSummary>> Function(String msgId)? getReactionsOverride;
+
+  /// Every reaction toggle emitted by the UI, in call order.
+  final List<({String msgId, String emoji})> reactionToggles = [];
+
+  @override
+  Future<List<ReactionSummary>> toggleReaction({
+    required String msgId,
+    required String emoji,
+  }) async {
+    _record('toggleReaction', (msgId: msgId, emoji: emoji));
+    reactionToggles.add((msgId: msgId, emoji: emoji));
+    final override = toggleReactionOverride;
+    if (override != null) return override(msgId, emoji);
+    return const [];
+  }
+
+  @override
+  Future<List<ReactionSummary>> getReactions({required String msgId}) async {
+    _record('getReactions', msgId);
+    final override = getReactionsOverride;
+    if (override != null) return override(msgId);
+    return const [];
   }
 
   /// Recorded outgoing sends, in call order. Each includes the frozen reply

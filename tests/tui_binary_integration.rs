@@ -85,6 +85,7 @@ fn test_swarm_command_variants() {
         | SwarmCommand::SendCallSignal { .. }
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
+        | SwarmCommand::SendReaction { .. }
         | SwarmCommand::DisconnectPeer { .. } => panic!("Expected Publish"),
     }
 

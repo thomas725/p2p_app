@@ -7,8 +7,8 @@
 
 use crate::generated::schema::{
     blocked_peers, broadcast_recipients, contacts, device_bindings, dm_outbox, files,
-    group_members, group_messages, groups, identities, message_receipts, messages, network_peers,
-    peer_sessions, peers, users,
+    group_members, group_messages, groups, identities, message_reactions, message_receipts,
+    messages, network_peers, peer_sessions, peers, users,
 };
 use diesel::Insertable;
 
@@ -228,6 +228,18 @@ pub struct NewNetworkPeer {
     pub kind: String,
     /// Canonical text form of the peer multiaddr
     pub multiaddr: String,
+}
+
+/// Insertable struct for the `message_reactions` table (US-008)
+#[derive(Insertable, Debug)]
+#[diesel(table_name = message_reactions)]
+pub struct NewMessageReaction {
+    /// Stable wire id of the message being reacted to
+    pub msg_id: String,
+    /// Reactor's transport peer id
+    pub peer_id: String,
+    /// Emoji shortcode or glyph (e.g. `👍`)
+    pub emoji: String,
 }
 
 /// Insertable struct for the `dm_outbox` table (store-and-forward DMs)

@@ -14,7 +14,9 @@ pub fn render_input_section(
     state: &AppState,
     tab_content: &TabContent,
 ) {
-    let title = if state.is_editing_message() {
+    let title = if state.is_adding_reaction() {
+        "Reaction emoji - Enter to toggle, Esc to cancel".to_string()
+    } else if state.is_editing_message() {
         "Edit sent message - Enter to save locally, Esc to cancel".to_string()
     } else if state.is_dialing_peer() {
         "Dial peer address - Enter to dial, Esc to cancel".to_string()
@@ -51,6 +53,7 @@ pub fn render_input_section(
     if tab_content.is_input_enabled()
         || state.is_editing_nickname()
         || state.is_editing_message()
+        || state.is_adding_reaction()
         || state.is_creating_group()
         || state.is_dialing_peer()
         || state.is_adding_network_peer()

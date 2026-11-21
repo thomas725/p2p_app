@@ -564,6 +564,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _markConfirmed(event.msgId!);
         }
         break;
+      case 'reaction':
+        // A reaction changed on a message this view may show. Rust owns the
+        // aggregated chips; the event carries only the wire id.
+        if (event.msgId != null) {
+          unawaited(_applyReaction(event.msgId!));
+        }
+        break;
       case 'peer_disconnected':
         setState(() {
           if (event.peerId != null) {
@@ -605,6 +612,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final idx = confirmedMessageIndex(_messages, msgId);
     if (idx < 0 || _messages[idx].confirmed) return;
     setState(() => _messages[idx] = _messages[idx].withConfirmed(true));
+  }
+
+  /// Refresh chips for a live reaction event (US-008) on any matching row.
+  Future<void> _applyReaction(String msgId) async {
+    await applyReactionEvent(_messages, msgId);
+    if (mounted) setState(() {});
+  }
+
+  /// Toggle a reaction from a chip tap, applying the canonical returned chips.
+  Future<void> _onReact(int index, String emoji) async {
+    await toggleReactionAt(_messages, index, emoji);
+    if (mounted) setState(() {});
   }
 
   Future<void> _handleCallInvite(String peerId, String callId) async {
@@ -1094,6 +1113,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onOpenPeerInfo: _openPeerInfoForPeerId,
         onPickFile: _pickAndSendBroadcast,
         onOpenAttachment: _openBroadcastAttachment,
+        onReact: _onReact,
       ),
       ContactList(
         rows: _contacts,

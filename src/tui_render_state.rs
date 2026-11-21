@@ -31,6 +31,8 @@ pub struct TuiRenderState {
     pub message_ids: VecDeque<Option<String>>,
     /// Receipt status for broadcast messages: `peer_id` -> (`msg_id` -> timestamp)
     pub broadcast_receipts: HashMap<String, HashMap<String, f64>>,
+    /// Aggregated reaction chips by wire `msg_id` (US-008).
+    pub reactions: HashMap<String, Vec<crate::reactions::ReactionSummary>>,
     /// Known peers (the raw device list backing `contacts`)
     pub peers: Vec<PeerRecord>,
     /// Canonical Contacts-tab rows (from `contacts::build_contact_rows`).
@@ -163,6 +165,7 @@ impl TuiRenderState {
             message_peer_ids: VecDeque::new(),
             message_ids: VecDeque::new(),
             broadcast_receipts: HashMap::new(),
+            reactions: HashMap::new(),
             peers: Vec::new(),
             contacts: Vec::new(),
             expanded_contact_ids: std::collections::HashSet::new(),
@@ -237,6 +240,12 @@ impl TuiRenderState {
     #[must_use]
     pub const fn is_editing_message(&self) -> bool {
         matches!(self.input_mode, crate::InputMode::EditingMessage)
+    }
+
+    /// True while the shared input captures a reaction emoji (US-008).
+    #[must_use]
+    pub const fn is_adding_reaction(&self) -> bool {
+        matches!(self.input_mode, crate::InputMode::AddingReaction)
     }
 
     /// True while the editor sets the local display name of `nickname_peer_id`.
@@ -571,6 +580,34 @@ pub fn dm_receipt_prefix(
         Some(msg_id) if dm_receipts.contains_key(msg_id) => "v ",
         _ => "  ",
     }
+}
+
+/// Render the aggregated reactions on one message as a compact inline suffix,
+/// e.g. `"  [👍 2] [❤️ 1*]"`.
+///
+/// A trailing `*` marks a chip this install reacted with. Returns an empty
+/// string when the message has no reactions, so callers can append it verbatim
+/// to a rendered message line (US-008).
+#[must_use]
+pub fn reaction_suffix<S: std::hash::BuildHasher>(
+    msg_id: Option<&str>,
+    reactions: &HashMap<String, Vec<crate::reactions::ReactionSummary>, S>,
+) -> String {
+    let Some(summaries) = msg_id.and_then(|id| reactions.get(id)) else {
+        return String::new();
+    };
+    let mut out = String::new();
+    for summary in summaries {
+        out.push_str(" [");
+        out.push_str(&summary.emoji);
+        out.push(' ');
+        out.push_str(&summary.count.to_string());
+        if summary.mine {
+            out.push('*');
+        }
+        out.push(']');
+    }
+    out
 }
 
 /// Maps a clicked terminal row to the message index it falls within.
