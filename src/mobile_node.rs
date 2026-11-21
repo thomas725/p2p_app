@@ -63,6 +63,32 @@ fn lock_node_mutex(mu: &Mutex<MobileNode>) -> MutexGuard<'_, MobileNode> {
     }
 }
 
+/// Run `f` with the running node's command sender, or return `None` when the
+/// node has not started or its command lane has closed (during shutdown).
+///
+/// Every command-queueing surface used to repeat the `NODE.get()` → lock →
+/// `cmd_tx.as_ref()` dance; this keeps that lifecycle check in one place and
+/// holds the node lock only for the duration of `f`.
+fn with_cmd_tx<T>(f: impl FnOnce(&mpsc::Sender<SwarmCommand>) -> T) -> Option<T> {
+    let tx = {
+        let node = lock_node_mutex(NODE.get()?);
+        node.cmd_tx.clone()?
+    }; // release the node lock before a potentially blocking send
+    Some(f(&tx))
+}
+
+/// Queue a command without blocking, returning whether it was accepted.
+/// Fire-and-forget callers can ignore the bool; `send_typing` uses it to report
+/// a stopped node.
+fn try_send_cmd(cmd: SwarmCommand) -> bool {
+    with_cmd_tx(|tx| tx.try_send(cmd).is_ok()).unwrap_or(false)
+}
+
+/// Queue a command that must reach the swarm, returning whether it was accepted.
+fn blocking_send_cmd(cmd: SwarmCommand) -> bool {
+    with_cmd_tx(|tx| tx.blocking_send(cmd).is_ok()).unwrap_or(false)
+}
+
 fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
     if let Some(existing) = NODE.get() {
         let node = lock_node_mutex(existing);
@@ -555,14 +581,7 @@ pub struct ChatMessage {
 /// Returns an error if the address is invalid or the node is not running.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn dial_peer(address: String) -> Result<(), String> {
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx.blocking_send(SwarmCommand::Dial { address }).is_ok();
-        }
-    }
-    if !queued {
+    if !blocking_send_cmd(SwarmCommand::Dial { address }) {
         return Err("Failed to queue dial: node not running".into());
     }
     Ok(())
@@ -574,14 +593,9 @@ pub fn dial_peer(address: String) -> Result<(), String> {
 /// `try_send` keeps this callable from the sync FRB surface.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn disconnect_peer(peer_id: &str) {
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.try_send(SwarmCommand::DisconnectPeer {
-                peer_id: peer_id.to_string(),
-            });
-        }
-    }
+    let _ = try_send_cmd(SwarmCommand::DisconnectPeer {
+        peer_id: peer_id.to_string(),
+    });
 }
 
 /// Mobile mirror of [`crate::files::MessageAttachment`] (files lane §12).
@@ -803,21 +817,13 @@ pub(crate) fn save_outgoing_broadcast_attached(
         .map_err(|e| e.to_string())?;
 
     // Send via swarm
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::Publish {
-                    content,
-                    nickname,
-                    msg_id: Some(msg_id.clone()),
-                    attachment,
-                    reply_to,
-                })
-                .is_ok();
-        }
-    }
+    let queued = blocking_send_cmd(SwarmCommand::Publish {
+        content,
+        nickname,
+        msg_id: Some(msg_id.clone()),
+        attachment,
+        reply_to,
+    });
 
     let chat = message_to_chat(msg);
     // Only claim transmission if the swarm actually accepted the command; a
@@ -875,23 +881,15 @@ pub(crate) fn save_outgoing_dm_attached(
         .map_err(|e| e.to_string())?;
 
     // Send via swarm
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::SendDm {
-                    peer_id,
-                    content,
-                    nickname,
-                    msg_id: Some(msg_id),
-                    ack_for: None,
-                    attachment,
-                    reply_to,
-                })
-                .is_ok();
-        }
-    }
+    let queued = blocking_send_cmd(SwarmCommand::SendDm {
+        peer_id,
+        content,
+        nickname,
+        msg_id: Some(msg_id),
+        ack_for: None,
+        attachment,
+        reply_to,
+    });
 
     let chat = message_to_chat(msg);
     if queued {
@@ -979,19 +977,10 @@ pub fn save_incoming_message(data: IncomingMessageData) -> Result<ChatMessage, S
 #[flutter_rust_bridge::frb(ignore)]
 pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
     let request = crate::identity::intro_device_binding_request().map_err(|e| e.to_string())?;
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::SendDeviceBinding {
-                    peer_id,
-                    request: Box::new(request),
-                })
-                .is_ok();
-        }
-    }
-    if !queued {
+    if !blocking_send_cmd(SwarmCommand::SendDeviceBinding {
+        peer_id,
+        request: Box::new(request),
+    }) {
         return Err("Failed to queue device-binding intro: node not running".into());
     }
     Ok(())
@@ -1008,19 +997,10 @@ pub fn send_device_binding_intro(peer_id: String) -> Result<(), String> {
 pub fn accept_device_binding(peer_id: String, device_pubkey: &[u8]) -> Result<(), String> {
     let request =
         crate::identity::mint_device_binding(&peer_id, device_pubkey).map_err(|e| e.to_string())?;
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::SendDeviceBinding {
-                    peer_id,
-                    request: Box::new(request),
-                })
-                .is_ok();
-        }
-    }
-    if !queued {
+    if !blocking_send_cmd(SwarmCommand::SendDeviceBinding {
+        peer_id,
+        request: Box::new(request),
+    }) {
         return Err("Failed to queue device-binding claim: node not running".into());
     }
     Ok(())
@@ -1048,19 +1028,10 @@ pub fn start_call(peer_id: String) -> Result<String, String> {
 /// Returns an error if the request is refused by the running node.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Result<(), String> {
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            queued = tx
-                .blocking_send(SwarmCommand::SendCallSignal {
-                    peer_id,
-                    signal: Box::new(crate::behavior::CallSignal::new(&kind, call_id)),
-                })
-                .is_ok();
-        }
-    }
-    if !queued {
+    if !blocking_send_cmd(SwarmCommand::SendCallSignal {
+        peer_id,
+        signal: Box::new(crate::behavior::CallSignal::new(&kind, call_id)),
+    }) {
         return Err("Failed to queue call signal: node not running".into());
     }
     Ok(())
@@ -1073,17 +1044,8 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
 /// Returns an error if the request is refused by the running node.
 #[flutter_rust_bridge::frb(ignore)]
 pub fn send_typing(peer_id: String, is_typing: bool) -> Result<(), String> {
-    let mut queued = false;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            // Fire-and-forget: never block the UI if the command lane is busy.
-            queued = tx
-                .try_send(SwarmCommand::SendTyping { peer_id, is_typing })
-                .is_ok();
-        }
-    }
-    if !queued {
+    // Fire-and-forget: never block the UI if the command lane is busy.
+    if !try_send_cmd(SwarmCommand::SendTyping { peer_id, is_typing }) {
         return Err("Failed to queue typing signal: node not running".into());
     }
     Ok(())
@@ -1112,20 +1074,15 @@ pub fn toggle_reaction(
     let remove = crate::reactions::has_reaction(&msg_id, &actor, &emoji)?;
     crate::reactions::apply(&msg_id, &actor, &emoji, remove)?;
 
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.try_send(SwarmCommand::SendReaction {
-                peer_ids: recipients,
-                signal: Box::new(crate::behavior::ReactionSignal::new(
-                    msg_id.clone(),
-                    emoji,
-                    actor,
-                    remove,
-                )),
-            });
-        }
-    }
+    let _ = try_send_cmd(SwarmCommand::SendReaction {
+        peer_ids: recipients,
+        signal: Box::new(crate::behavior::ReactionSignal::new(
+            msg_id.clone(),
+            emoji,
+            actor,
+            remove,
+        )),
+    });
     crate::reactions::summaries_for(&msg_id)
 }
 
@@ -1249,14 +1206,9 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
     // The swarm only receives traffic for subscribed topics, so (like
     // `create_group`) re-subscribe now or the accepted group stays silent
     // until the next restart re-joins saved groups.
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::SubscribeGroup {
-                group_id: group_id.clone(),
-            });
-        }
-    }
+    let _ = blocking_send_cmd(SwarmCommand::SubscribeGroup {
+        group_id: group_id.clone(),
+    });
     let member_count = crate::groups::get_group_member_count(&group_id)
         .unwrap_or_default()
         .max(0);
@@ -1274,14 +1226,9 @@ pub fn accept_group_invite(group_id: String) -> Result<MobileGroup, String> {
 #[flutter_rust_bridge::frb(ignore)]
 pub fn create_group(name: &str) -> Result<MobileGroup, String> {
     let group = crate::groups::create_public_group(name).map_err(|e| e.to_string())?;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::SubscribeGroup {
-                group_id: group.group_id.clone(),
-            });
-        }
-    }
+    let _ = blocking_send_cmd(SwarmCommand::SubscribeGroup {
+        group_id: group.group_id.clone(),
+    });
     let member_count = crate::groups::get_group_member_count(&group.group_id)
         .unwrap_or_default()
         .max(0);
@@ -1298,12 +1245,7 @@ pub fn create_group(name: &str) -> Result<MobileGroup, String> {
 /// Returns an error if the group rows cannot be deleted.
 pub fn delete_group(group_id: String) -> Result<(), String> {
     crate::groups::delete_group(&group_id).map_err(|e| e.to_string())?;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::UnsubscribeGroup { group_id });
-        }
-    }
+    let _ = blocking_send_cmd(SwarmCommand::UnsubscribeGroup { group_id });
     Ok(())
 }
 
@@ -1369,19 +1311,14 @@ pub(crate) fn save_outgoing_group_attached(
     };
     let msg = crate::groups::save_outgoing_group_message(&group_id, &content, meta)
         .map_err(|e| e.to_string())?;
-    if let Some(m) = NODE.get() {
-        let node = lock_node_mutex(m);
-        if let Some(tx) = node.cmd_tx.as_ref() {
-            let _ = tx.blocking_send(SwarmCommand::PublishGroup {
-                group_id,
-                content,
-                nickname,
-                msg_id: Some(msg_id),
-                attachment,
-                reply_to,
-            });
-        }
-    }
+    let _ = blocking_send_cmd(SwarmCommand::PublishGroup {
+        group_id,
+        content,
+        nickname,
+        msg_id: Some(msg_id),
+        attachment,
+        reply_to,
+    });
     Ok(group_message_to_mobile(msg))
 }
 
