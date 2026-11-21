@@ -1842,17 +1842,6 @@ pub fn build_broadcast_message_with_reply(
     }
 }
 
-/// Build a `GroupMessage` from component parts
-#[must_use]
-pub fn build_group_message(
-    group_id: String,
-    content: String,
-    nickname: Option<String>,
-    msg_id: Option<String>,
-) -> crate::GroupMessage {
-    build_group_message_with_attachment(group_id, content, nickname, msg_id, None)
-}
-
 /// Build a `GroupMessage` from component parts, optionally with an attachment
 /// descriptor (files lane §12).
 #[must_use]

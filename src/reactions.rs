@@ -111,17 +111,6 @@ pub fn apply(msg_id: &str, peer_id: &str, emoji: &str, remove: bool) -> Result<b
     }
 }
 
-/// Toggle a reaction from this install's own peer. Returns whether it is now on.
-///
-/// # Errors
-/// Returns an error if the identity is unavailable or the write fails.
-pub fn toggle_local(msg_id: &str, emoji: &str) -> Result<bool, String> {
-    let peer = crate::peers::local_peer_id_string()
-        .ok_or_else(|| "local peer id is not available".to_string())?;
-    let existing = has_reaction(msg_id, &peer, emoji)?;
-    apply(msg_id, &peer, emoji, existing)
-}
-
 /// Whether a given peer currently uses an emoji on a message.
 ///
 /// # Errors

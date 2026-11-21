@@ -5,7 +5,6 @@ use std::time::SystemTime;
 
 /// Marker appended to a locally edited message (US-005). Both frontends use
 /// this exact text so a sent-message edit reads the same in the TUI and Flutter.
-pub const EDITED_MARKER: &str = "(edited)";
 const EDITED_MARKER_SUFFIX: &str = " (edited)";
 
 /// Append the local-edit marker to a rendered message line, replacing a

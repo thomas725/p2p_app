@@ -211,12 +211,6 @@ impl DynamicTabs {
         }
     }
 
-    /// Get peer-info tab by peer ID (read-only)
-    #[must_use]
-    pub fn get_peer_info_tab(&self, peer_id: &str) -> Option<&String> {
-        self.peer_info_tabs.iter().find(|p| p.as_str() == peer_id)
-    }
-
     /// Count of active peer-info tabs
     #[must_use]
     pub const fn peer_info_tab_count(&self) -> usize {
