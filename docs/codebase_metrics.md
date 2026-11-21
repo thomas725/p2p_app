@@ -104,13 +104,13 @@
 | tests  | additional_coverage.rs            |   146 |  4516 |     2 | Additional coverage tests             |
 | tests  | behavior.rs                       |   252 |  7228 |     5 | behavior module tests                 |
 | tests  | db.rs                             |   281 |  8625 |     4 | database module tests                 |
-| tests  | db_selection.rs                   |    65 |  1771 |     3 | Database selection tests              |
+| tests  | db_selection.rs                   |    73 |  2253 |     3 | Database selection tests              |
 | tests  | fmt.rs                            |   301 |  8151 |     2 | fmt module tests                      |
 | tests  | logging.rs                        |   335 |  9679 |     3 | logging module tests                  |
 | tests  | messages.rs                       |   492 | 14988 |     4 | messages module tests                 |
 | tests  | network.rs                        |    49 |  1638 |     1 | network module tests                  |
 | tests  | nickname.rs                       |   516 | 17397 |     4 | nickname module tests                 |
-| tests  | p2p_integration.rs                |  1087 | 38661 |    10 | P2P integration tests                 |
+| tests  | p2p_integration.rs                |  1088 | 38894 |    10 | P2P integration tests                 |
 | tests  | peers.rs                          |   317 |  9240 |     4 | peers module tests                    |
 | tests  | swarm_handler.rs                  |   808 | 27490 |     8 | swarm_handler module tests            |
 | tests  | test_utils.rs                     |    53 |  1864 |     2 | Test utilities                        |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 24,589 lines, 812,053 characters
+**Total:** 63 test files, 24,598 lines, 812,768 characters
 
 ## Dart Source Files
 
