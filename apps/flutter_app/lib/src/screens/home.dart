@@ -100,6 +100,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _listenAddresses = [];
   DateTime? _lastConnectionAt;
 
+  /// Peer whose loss produced [_lastConnectionAt], so Settings can name the
+  /// last peer as well as the time (mirrors the TUI's last-connected line).
+  String? _lastConnectionPeerId;
+
   /// Device-binding intros already being prompted for (peer_id → device_pubkey),
   /// so repeated `device_binding_intro` events never stack dialogs.
   final Map<String, Uint8List> _pendingDeviceBindings = {};
@@ -124,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
       connectedPeerIds: [],
       listenAddresses: [],
       lastConnectionAt: null,
+      lastConnectionPeerId: null,
     ),
   );
 
@@ -157,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
       connectedPeerIds: List<String>.from(_connectedPeerIds),
       listenAddresses: List<String>.from(_listenAddresses),
       lastConnectionAt: _lastConnectionAt,
+      lastConnectionPeerId: _lastConnectionPeerId,
     );
   }
 
@@ -601,6 +607,9 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _connectedCount = _connectedPeerIds.length;
           _lastConnectionAt = DateTime.now();
+          // The event already carries the peer id; keep it so Settings can
+          // name the last peer (the TUI's last-connected row does the same).
+          _lastConnectionPeerId = event.peerId;
         });
         _refreshRoster();
         break;
@@ -890,6 +899,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _connectedPeerIds.clear();
           _listenAddresses.clear();
           _lastConnectionAt = null;
+          _lastConnectionPeerId = null;
         });
         final status = await nodeApi.getMobilePeerStatus();
         setState(() => _status = status);

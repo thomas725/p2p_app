@@ -26,12 +26,18 @@ class LiveStatus {
     required this.connectedPeerIds,
     required this.listenAddresses,
     required this.lastConnectionAt,
+    this.lastConnectionPeerId,
   });
 
   final int connectedCount;
   final List<String> connectedPeerIds;
   final List<String> listenAddresses;
   final DateTime? lastConnectionAt;
+
+  /// Peer whose loss produced [lastConnectionAt]. The `peer_disconnected`
+  /// event already carries it, so the Settings row can name the peer as well
+  /// as the time — matching the TUI's "Last connected … to peer …" line.
+  final String? lastConnectionPeerId;
 }
 
 /// Honest controls reference for the touch-first Flutter/Web UI.
@@ -697,11 +703,7 @@ class _SettingsState extends State<Settings> {
                 else
                   ..._connectedPeerRows(),
                 if (_live.connectedCount == 0)
-                  _statusRow(
-                    Icons.history,
-                    'Last connection lost',
-                    formatTimestamp(_live.lastConnectionAt),
-                  ),
+                  _statusRow(Icons.history, 'Last connection lost', _lastConnectionLabel()),
                 _statusRow(
                   Icons.network_cell,
                   'Network name',
@@ -885,8 +887,25 @@ class _SettingsState extends State<Settings> {
     );
   }
 
+  /// Resolve a peer id to its roster display name, falling back to the raw id
+  /// for peers that have left the roster (e.g. the last-disconnected peer).
+  String _peerDisplay(String peerId) {
+    for (final p in widget.peers) {
+      if (p.peerId == peerId) return p.displayName;
+    }
+    return peerId;
+  }
+
+  /// The "Last connection lost" value: timestamp plus the peer's display name
+  /// when the disconnect event carried one, mirroring the TUI's
+  /// "Last connected … to peer …" line.
+  String _lastConnectionLabel() {
+    final ts = formatTimestamp(_live.lastConnectionAt);
+    final peerId = _live.lastConnectionPeerId;
+    return peerId == null ? ts : '$ts · ${_peerDisplay(peerId)}';
+  }
+
   List<Widget> _connectedPeerRows() {
-    final byId = {for (final p in widget.peers) p.peerId: p};
     return [
       for (final id in _live.connectedPeerIds)
         InkWell(
@@ -897,7 +916,7 @@ class _SettingsState extends State<Settings> {
               children: [
                 const Icon(Icons.person, size: 16),
                 const SizedBox(width: 8),
-                Expanded(child: Text(byId[id]?.displayName ?? id)),
+                Expanded(child: Text(_peerDisplay(id))),
                 const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
               ],
             ),

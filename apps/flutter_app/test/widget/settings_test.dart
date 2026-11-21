@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
+import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 
@@ -22,16 +23,18 @@ Widget _app({
   required List<MobileDeviceInfo> devices,
   List<String> peerInfoOpened = const [],
   ValueNotifier<NetworkDetails?>? networkDetails,
+  LiveStatus liveStatus = _live,
+  List<MobilePeerRecord> peers = const [],
 }) {
   return MaterialApp(
     home: Settings(
-      liveStatus: ValueNotifier(_live),
+      liveStatus: ValueNotifier(liveStatus),
       status: ValueNotifier<MobilePeerStatus?>(null),
       serviceRunning: false,
       onToggleService: () {},
       onShareApk: () {},
       isAndroid: false,
-      peers: const [],
+      peers: peers,
       networkName: 'test',
       onOpenPeerInfo: (id) => peerInfoOpened.add(id),
       userId: userId,
@@ -178,6 +181,35 @@ void main() {
 
     await tester.tap(find.textContaining('12D3KooWpeer-1'));
     expect(opened, ['12D3KooWpeer-1']);
+  });
+
+  testWidgets('Last connection lost names the peer from the event', (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(
+      _app(
+        userId: 'user-abc',
+        devices: const [],
+        liveStatus: const LiveStatus(
+          connectedCount: 0,
+          connectedPeerIds: [],
+          listenAddresses: [],
+          lastConnectionAt: null,
+          lastConnectionPeerId: '12D3KooWLastPeer',
+        ),
+        peers: const [
+          MobilePeerRecord(
+            peerId: '12D3KooWLastPeer',
+            firstSeen: '2026-11-20 10:00:00',
+            lastSeen: '2026-11-21 09:00:00',
+            displayName: 'Brave Otter (er9)',
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Last connection lost'), findsOneWidget);
+    expect(find.text('Never · Brave Otter (er9)'), findsOneWidget);
   });
 
   testWidgets('Help card opens and closes the controls dialog', (tester) async {
