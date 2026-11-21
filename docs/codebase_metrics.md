@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,842 |
-| Total Rust Chars      | 1,281,730 |
+| Total Rust Lines      |    33,839 |
+| Total Rust Chars      | 1,281,293 |
 | Avg Lines/Rust File   |       528 |
-| Avg Chars/Rust File   |    20,027 |
+| Avg Chars/Rust File   |    20,020 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,357 lines, 1,848,132 characters
+**Grand Total:** 106 files, 51,354 lines, 1,847,695 characters
 
 ## Rust Source Files
 
@@ -36,16 +36,16 @@
 | src                     | db.rs                |     5 | 25331 |   652 |        - |       - | Database connection & identity mgmt    |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                            |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                            |
-| src                     | files.rs             |     6 | 28869 |   762 |        - |       - | Content-addressed attachment store     |
+| src                     | files.rs             |     6 | 29342 |   776 |        - |       - | Content-addressed attachment store     |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities         |
 | src                     | frb_generated.rs     |     6 | 193360 |  4652 |        - |       - | flutter_rust_bridge codegen            |
-| src                     | groups.rs            |     3 | 22811 |   601 |        - |       - | Group management & persistence         |
+| src                     | groups.rs            |     3 | 22805 |   604 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4661 |   124 |        - |       - | TUI groups renderer                    |
 | src                     | identity.rs          |     4 | 28876 |   762 |        - |       - | Users, account keys & device bindings  |
 | src                     | lib.rs               |     1 |  7348 |   195 |        - |       - | Module declarations & re-exports       |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                       |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup              |
-| src                     | messages.rs          |     5 | 19642 |   512 |        - |       - | Message persistence & retrieval        |
+| src                     | messages.rs          |     5 | 19636 |   515 |        - |       - | Message persistence & retrieval        |
 | src                     | methods.rs           |     4 | 21745 |   714 |        - |       - | Web JSON method dispatch               |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                 |
 | src                     | mobile_node.rs       |     5 | 91630 |  2455 |        - |       - | Mobile node lifecycle & swarm          |
@@ -65,7 +65,7 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 101253 |  2587 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 100355 |  2564 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,842 lines, 1,281,730 characters
+**Total:** 64 files, 33,839 lines, 1,281,293 characters
 
 ## Rust Test Files
 

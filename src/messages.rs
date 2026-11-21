@@ -239,8 +239,11 @@ pub fn message_display_body(id: i32) -> Result<Option<String>, String> {
         .optional()
         .map_err(|e| format!("failed to read message {id}: {e}"))?;
     Ok(row.map(|(content, attachment_json, edited_at)| {
-        let body = crate::files::render_stored_body(&content, attachment_json.as_deref());
-        crate::fmt::with_edited_marker_if(edited_at.is_some(), &body)
+        crate::files::render_stored_display_body(
+            &content,
+            attachment_json.as_deref(),
+            edited_at.is_some(),
+        )
     }))
 }
 

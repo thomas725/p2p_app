@@ -580,7 +580,6 @@ async fn handle_connection_event(
     }
 }
 
-#[cfg(feature = "kad")]
 async fn handle_connection_established(
     peer_id: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
@@ -601,36 +600,14 @@ async fn handle_connection_established(
     let _ = event_tx
         .send(SwarmEvent::PeerConnected(peer_id.to_string()))
         .await;
+    #[cfg(feature = "kad")]
     if !crate::settings::lan_only() {
         let _ = swarm.behaviour_mut().kad.bootstrap();
         refresh_dht_routing(swarm);
     }
     relays.request_reservation(peer_id, swarm);
+    #[cfg(feature = "kad")]
     maybe_announce(swarm);
-}
-
-#[cfg(not(feature = "kad"))]
-async fn handle_connection_established(
-    peer_id: libp2p::PeerId,
-    event_tx: &mpsc::Sender<SwarmEvent>,
-    swarm: &mut Swarm<AppBehaviour>,
-    relays: &mut RelayState,
-    announced: &mut AnnouncedConnections,
-) {
-    // Blocklist (US-054): refuse the connection instead of tracking it. The
-    // peer can still resolve us via mDNS/DHT, so dropping the inbound dial is
-    // the only way to keep it from meshing with us. Never announce it as
-    // connected — otherwise its close emits an unmatched disconnect.
-    if peer_is_blocked(&peer_id) {
-        p2plog_debug(format!("Disconnecting blocked peer {peer_id}"));
-        let _ = swarm.disconnect_peer_id(peer_id);
-        return;
-    }
-    announced.on_connected(&peer_id.to_string());
-    let _ = event_tx
-        .send(SwarmEvent::PeerConnected(peer_id.to_string()))
-        .await;
-    relays.request_reservation(peer_id, swarm);
 }
 
 async fn handle_connection_closed(

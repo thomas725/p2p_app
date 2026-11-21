@@ -130,6 +130,20 @@ pub fn render_stored_body(content: &str, attachment_json: Option<&str>) -> Strin
     )
 }
 
+/// Hydrate and decorate a stored chat row body (US-005).
+///
+/// Adds the attachment chip and local-edit marker. Shared by the DM and group
+/// edit paths so the in-memory transcript after an edit matches the next reload.
+#[must_use]
+pub fn render_stored_display_body(
+    content: &str,
+    attachment_json: Option<&str>,
+    edited: bool,
+) -> String {
+    let body = render_stored_body(content, attachment_json);
+    crate::fmt::with_edited_marker_if(edited, &body)
+}
+
 /// SHA-256 of `data` as a lowercase hex string — the content address
 /// (`file_id`) for the bytes.
 #[must_use]
