@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,637 |
-| Total Rust Chars      | 1,271,933 |
+| Total Rust Lines      |    33,615 |
+| Total Rust Chars      | 1,271,225 |
 | Avg Lines/Rust File   |       525 |
-| Avg Chars/Rust File   |    19,873 |
+| Avg Chars/Rust File   |    19,862 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,212 |
 | Total Dart Chars      |   555,412 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,152 lines, 1,838,335 characters
+**Grand Total:** 106 files, 51,130 lines, 1,837,627 characters
 
 ## Rust Source Files
 
@@ -52,7 +52,7 @@
 | src                     | mod.rs               |     4 | 25712 |   741 |        - |       - | FRB API surface                        |
 | src                     | mod.rs               |     4 | 10997 |   287 |        - |       - | TUI render chrome & dispatch           |
 | src                     | mod.rs               |     7 | 63191 |  1650 |        - |       - | Web server (axum HTTP+WS)              |
-| src                     | net_diag.rs          |     4 | 21711 |   605 |        - |       - | Source file                            |
+| src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                            |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification            |
 | src                     | network_config.rs    |     3 |  7681 |   214 |        - |       - | Source file                            |
 | src                     | nickname.rs          |     5 | 12838 |   333 |        - |       - | Nickname management                    |
@@ -65,7 +65,7 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 91503 |  2379 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 91057 |  2366 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,637 lines, 1,271,933 characters
+**Total:** 64 files, 33,615 lines, 1,271,225 characters
 
 ## Rust Test Files
 
@@ -146,7 +146,7 @@
 | unit   | unit_lib.rs                       |   278 |  7955 |     3 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                   |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                  |   580 | 21994 |     4 | Unit tests for messages module        |
-| unit   | unit_net_diag.rs                  |   479 | 15624 |     3 | Test file                             |
+| unit   | unit_net_diag.rs                  |   483 | 15776 |     3 | Test file                             |
 | unit   | unit_network.rs                   |    38 |  1098 |     2 | Unit tests for network module         |
 | unit   | unit_network_config.rs            |   153 |  5151 |     4 | Test file                             |
 | unit   | unit_nickname.rs                  |   173 |  5791 |     3 | Unit tests for nickname module        |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,492 lines, 846,801 characters
+**Total:** 63 test files, 25,496 lines, 846,953 characters
 
 ## Dart Source Files
 

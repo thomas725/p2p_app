@@ -216,7 +216,11 @@ fn announcement_lifecycle_and_rate_limit() {
     assert_eq!(details.dht_announce_status, "Published to DHT");
     assert!(details.dht_announce_at.is_some());
 
-    clear_announcement();
+    with_live(|live| {
+        live.dht_announced = false;
+        live.dht_announce_status = "Not announced yet".to_string();
+        live.last_announce_attempt = None;
+    });
     let details = snapshot();
     assert!(!details.dht_announced);
     assert_eq!(details.dht_announce_status, "Not announced yet");

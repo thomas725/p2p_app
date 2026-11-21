@@ -480,15 +480,6 @@ pub fn record_dht_announce_result(ok: bool, message: &str) {
     });
 }
 
-/// Mark the node as not announced (node stopped).
-pub fn clear_announcement() {
-    with_live(|live| {
-        live.dht_announced = false;
-        live.dht_announce_status = "Not announced yet".to_string();
-        live.last_announce_attempt = None;
-    });
-}
-
 /// Serialize the DHT announcement payload for our peer record.
 #[must_use]
 pub fn announce_record_json(peer_id: &str, addresses: &[String], public: bool) -> Option<Vec<u8>> {
