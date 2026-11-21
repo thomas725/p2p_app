@@ -3,19 +3,25 @@
 import '../rust/mobile_node.dart';
 import '../rust/reactions.dart';
 
-/// FRB 2.13 emits data classes without `copyWith`, but a live `receipt` event
-/// must flip [ChatMessage.confirmed] without reloading history — so this
-/// rebuilds the message with the new flag. Kept in a hand-written file (the
-/// generated one is overwritten by every regen); a field change on `ChatMessage`
-/// turns this into a compile error, which is the intent (it caught both
-/// `replyTo` and `latency` when they were added).
+/// FRB 2.13 emits data classes without `copyWith`, but live events must flip a
+/// flag or swap a field without reloading history — so we rebuild the message.
+/// Kept in a hand-written file (the generated one is overwritten by every
+/// regen); a field change on `ChatMessage` turns the single [_copy] call into a
+/// compile error, which is the intent (it caught `replyTo` and `latency` when
+/// they were added).
 extension ChatMessageExt on ChatMessage {
-  /// A copy of this message with [confirmed] set to [value]. Every other field
-  /// — including the immutable quote snapshot and the live latency decoration —
-  /// is preserved verbatim.
-  ChatMessage withConfirmed(bool value) => ChatMessage(
+  /// Rebuild this row, overriding only the supplied fields. Centralising the
+  /// constructor here means the full field list lives in exactly one place.
+  /// `??` is safe for the nullable overrides: an explicit `false` is not null,
+  /// so `confirmed: false` overrides correctly.
+  ChatMessage _copy({
+    String? content,
+    bool? confirmed,
+    bool? edited,
+    List<ReactionSummary>? reactions,
+  }) => ChatMessage(
     id: id,
-    content: content,
+    content: content ?? this.content,
     peerId: peerId,
     isBroadcast: isBroadcast,
     targetPeer: targetPeer,
@@ -27,55 +33,21 @@ extension ChatMessageExt on ChatMessage {
     senderNickname: senderNickname,
     attachment: attachment,
     encrypted: encrypted,
-    confirmed: value,
-    edited: edited,
+    confirmed: confirmed ?? this.confirmed,
+    edited: edited ?? this.edited,
     latency: latency,
-    reactions: reactions,
+    reactions: reactions ?? this.reactions,
   );
+
+  /// A copy with [confirmed] set to [value]. Every other field — including the
+  /// immutable quote snapshot and live latency — is preserved verbatim.
+  ChatMessage withConfirmed(bool value) => _copy(confirmed: value);
 
   /// A copy with the body replaced and the local-edit marker set (US-005).
-  /// Everything else — quote snapshot, attachment, receipts, latency — stays
-  /// verbatim, mirroring the TUI's in-place line replacement.
-  ChatMessage withEditedBody(String newContent) => ChatMessage(
-    id: id,
-    content: newContent,
-    peerId: peerId,
-    isBroadcast: isBroadcast,
-    targetPeer: targetPeer,
-    sent: sent,
-    msgId: msgId,
-    replyTo: replyTo,
-    sentAt: sentAt,
-    createdAt: createdAt,
-    senderNickname: senderNickname,
-    attachment: attachment,
-    encrypted: encrypted,
-    confirmed: confirmed,
-    edited: true,
-    latency: latency,
-    reactions: reactions,
-  );
+  ChatMessage withEditedBody(String newContent) =>
+      _copy(content: newContent, edited: true);
 
-  /// A copy with only the reaction chips replaced (US-008). Both a local toggle
-  /// and a live `reaction` event use this to refresh one row without reloading
-  /// the whole history, mirroring the TUI's in-memory chip map.
-  ChatMessage withReactions(List<ReactionSummary> next) => ChatMessage(
-    id: id,
-    content: content,
-    peerId: peerId,
-    isBroadcast: isBroadcast,
-    targetPeer: targetPeer,
-    sent: sent,
-    msgId: msgId,
-    replyTo: replyTo,
-    sentAt: sentAt,
-    createdAt: createdAt,
-    senderNickname: senderNickname,
-    attachment: attachment,
-    encrypted: encrypted,
-    confirmed: confirmed,
-    edited: edited,
-    latency: latency,
-    reactions: next,
-  );
+  /// A copy with only the reaction chips replaced (US-008).
+  ChatMessage withReactions(List<ReactionSummary> next) =>
+      _copy(reactions: next);
 }

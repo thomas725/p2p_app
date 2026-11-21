@@ -10,17 +10,17 @@
 | Avg Lines/Rust File   |       525 |
 | Avg Chars/Rust File   |    19,873 |
 | Total Dart Files      |        39 |
-| Total Dart Lines      |    17,240 |
-| Total Dart Chars      |   556,015 |
-| Avg Lines/Dart File   |       442 |
-| Avg Chars/Dart File   |    14,256 |
+| Total Dart Lines      |    17,212 |
+| Total Dart Chars      |   555,412 |
+| Avg Lines/Dart File   |       441 |
+| Avg Chars/Dart File   |    14,241 |
 | Total Kotlin Files    |         3 |
 | Total Kotlin Lines    |       303 |
 | Total Kotlin Chars    |    10,990 |
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 51,180 lines, 1,838,938 characters
+**Grand Total:** 106 files, 51,152 lines, 1,838,335 characters
 
 ## Rust Source Files
 
@@ -168,7 +168,7 @@
 | Folder       | File                            | Depth | Chars | Lines | Testable | Covered | Purpose                          |
 |:-------------|:--------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
 | lib          | main.dart                       |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
-| lib          | chat_message_ext.dart           |     2 |  2638 |    81 |        - |       - | Hand-written message helpers     |
+| lib          | chat_message_ext.dart           |     3 |  2035 |    53 |        - |       - | Hand-written message helpers     |
 | lib          | frb_node_api.dart               |     5 | 12174 |   408 |        - |       - | In-process FRB transport         |
 | lib          | http_node_api.dart              |     7 | 30758 |   929 |        - |       - | WebSocket/HTTP transport         |
 | lib          | node_api.dart                   |     2 | 10774 |   308 |        - |       - | Transport-agnostic node API      |
@@ -207,7 +207,7 @@
 | lib          | theme.dart                      |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                   |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 39 files, 17,240 lines, 556,015 characters
+**Total:** 39 files, 17,212 lines, 555,412 characters
 
 ## Dart Test Files
 
