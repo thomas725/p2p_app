@@ -72,3 +72,27 @@ fn replacing_a_quoted_line_keeps_the_quote_header() {
 fn undecodable_storage_json_is_ignored() {
     assert_eq!(decode("not json"), None);
 }
+
+#[test]
+fn flutter_reply_preview_chars_match_rust() {
+    // Flutter's hand-written `replyPreviewLine` bounds a quote to the same
+    // number of characters as Rust's `preview_line`, so a snapshot frozen on
+    // either frontend renders identically. Guard the Dart constant against the
+    // canonical Rust bound (the unit tests are a child module of `reply`, so
+    // the private const is in scope).
+    let source = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("apps/flutter_app/lib/src/util/reply.dart"),
+    )
+    .expect("reply.dart is readable");
+    let line = source
+        .lines()
+        .find(|line| line.contains("replyPreviewChars"))
+        .expect("replyPreviewChars declaration is present");
+    let dart_value: usize = line
+        .split_once("= ")
+        .and_then(|(_, rest)| rest.split(';').next())
+        .and_then(|value| value.trim().parse().ok())
+        .expect("replyPreviewChars is a usize literal");
+    assert_eq!(dart_value, crate::reply::PREVIEW_CHARS);
+}

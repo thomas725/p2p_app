@@ -152,7 +152,7 @@
 | unit   | unit_nickname.rs                  |   173 |  5791 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                     |   113 |  3428 |     3 | Unit tests for peers module           |
 | unit   | unit_relay.rs                     |    62 |  1806 |     2 | Test file                             |
-| unit   | unit_reply.rs                     |    74 |  2384 |     2 | Test file                             |
+| unit   | unit_reply.rs                     |    98 |  3436 |     3 | Test file                             |
 | unit   | unit_settings.rs                  |    88 |  2766 |     3 | Test file                             |
 | unit   | unit_swarm_handler.rs             |   409 | 14000 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   694 | 23223 |     5 | Unit tests for TUI helpers            |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,468 lines, 845,749 characters
+**Total:** 63 test files, 25,492 lines, 846,801 characters
 
 ## Dart Source Files
 
