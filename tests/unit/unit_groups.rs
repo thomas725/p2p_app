@@ -455,6 +455,41 @@ fn delete_group_removes_messages_and_members() {
     });
 }
 
+#[test]
+#[serial(db)]
+fn delete_group_removes_reactions_on_its_messages() {
+    with_test_db(|| {
+        let group = create_public_group("react-lobby").expect("create");
+        let msg_id = "group-msg-with-reaction";
+        save_outgoing_group_message(
+            &group.group_id,
+            "react to me",
+            GroupMessageMeta {
+                msg_id: Some(msg_id.to_string()),
+                ..GroupMessageMeta::default()
+            },
+        )
+        .expect("save");
+        crate::reactions::apply(msg_id, "reactor-peer", "👍", false).expect("react");
+
+        assert!(
+            !crate::reactions::summaries_for(msg_id)
+                .expect("summaries before")
+                .is_empty(),
+            "reaction exists before the delete"
+        );
+
+        delete_group(&group.group_id).expect("delete");
+
+        assert!(
+            crate::reactions::summaries_for(msg_id)
+                .expect("summaries after")
+                .is_empty(),
+            "reactions must not outlive the group message they belong to"
+        );
+    });
+}
+
 // ── Backfill (§11.5) ──────────────────────────────────────────────────────
 
 #[test]

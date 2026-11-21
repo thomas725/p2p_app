@@ -10,7 +10,7 @@
 
 use crate::generated::models_insertable::{NewGroup, NewGroupMember, NewGroupMessage};
 use crate::generated::models_queryable::{Group, GroupMessage};
-use crate::generated::schema::{group_members, group_messages, groups};
+use crate::generated::schema::{group_members, group_messages, groups, message_reactions};
 use color_eyre::eyre::Context;
 use diesel::dsl::count;
 use diesel::{
@@ -238,6 +238,22 @@ pub fn list_groups_with_member_counts() -> color_eyre::Result<Vec<GroupSummary>>
 /// Returns an error if the database operation fails.
 pub fn delete_group(group_id: &str) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
+    // Reactions are keyed by the wire `msg_id`, with no group column or FK, so
+    // deleting the messages would otherwise strand their reaction rows as
+    // orphans. Collect the ids on this connection before removing the rows and
+    // drop the matching reactions first — a re-created group with the same
+    // deterministic id must not inherit stale reactions from the old one.
+    let msg_ids: Vec<String> = group_messages::table
+        .filter(group_messages::group_id.eq(group_id))
+        .select(group_messages::msg_id)
+        .load::<Option<String>>(conn)?
+        .into_iter()
+        .flatten()
+        .collect();
+    if !msg_ids.is_empty() {
+        diesel::delete(message_reactions::table.filter(message_reactions::msg_id.eq_any(&msg_ids)))
+            .execute(conn)?;
+    }
     diesel::delete(group_messages::table.filter(group_messages::group_id.eq(group_id)))
         .execute(conn)?;
     diesel::delete(group_members::table.filter(group_members::group_id.eq(group_id)))

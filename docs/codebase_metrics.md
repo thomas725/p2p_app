@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        64 |
-| Total Rust Lines      |    33,463 |
-| Total Rust Chars      | 1,265,076 |
-| Avg Lines/Rust File   |       522 |
-| Avg Chars/Rust File   |    19,766 |
+| Total Rust Lines      |    33,479 |
+| Total Rust Chars      | 1,265,892 |
+| Avg Lines/Rust File   |       523 |
+| Avg Chars/Rust File   |    19,779 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    17,082 |
 | Total Dart Chars      |   549,551 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 106 files, 50,848 lines, 1,825,617 characters
+**Grand Total:** 106 files, 50,864 lines, 1,826,433 characters
 
 ## Rust Source Files
 
@@ -39,7 +39,7 @@
 | src                     | files.rs             |     6 | 28869 |   762 |        - |       - | Content-addressed attachment store     |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities         |
 | src                     | frb_generated.rs     |     6 | 193360 |  4652 |        - |       - | flutter_rust_bridge codegen            |
-| src                     | groups.rs            |     3 | 21995 |   585 |        - |       - | Group management & persistence         |
+| src                     | groups.rs            |     3 | 22811 |   601 |        - |       - | Group management & persistence         |
 | src                     | groups.rs            |     5 |  4661 |   124 |        - |       - | TUI groups renderer                    |
 | src                     | identity.rs          |     4 | 28876 |   762 |        - |       - | Users, account keys & device bindings  |
 | src                     | lib.rs               |     1 |  7330 |   195 |        - |       - | Module declarations & re-exports       |
@@ -91,7 +91,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 64 files, 33,463 lines, 1,265,076 characters
+**Total:** 64 files, 33,479 lines, 1,265,892 characters
 
 ## Rust Test Files
 
@@ -141,7 +141,7 @@
 | unit   | unit_dm_outbox.rs                 |   169 |  5739 |     4 | Test file                             |
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
 | unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
-| unit   | unit_groups.rs                    |   589 | 21435 |     5 | Unit tests for groups module          |
+| unit   | unit_groups.rs                    |   624 | 22507 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                  |   747 | 29220 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                       |   255 |  6980 |     2 | Unit tests for library re-exports/api |
 | unit   | unit_logging.rs                   |   205 |  5217 |     4 | Unit tests for logging module         |
@@ -161,7 +161,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   367 | 10657 |     3 | Unit tests for types module           |
 
-**Total:** 63 test files, 25,372 lines, 842,102 characters
+**Total:** 63 test files, 25,407 lines, 843,174 characters
 
 ## Dart Source Files
 
