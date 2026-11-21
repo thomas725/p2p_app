@@ -65,8 +65,14 @@ The **last** step, *Fail the run if any check failed*, exits 1 when
 `summary.txt` is missing or says `overall: FAIL`. It runs **after** the results
 push, so the full report is already on `ci-results` before the run goes red:
 an agent without GitHub credentials loses nothing, and humans get a red run
-instead of a silently-green one. Nothing blocks a push yet (no branch
-protection, no PR workflow) — see the backlog.
+instead of a silently-green one. Because the per-check steps all look green
+(`continue-on-error`), this final step is the only red one GitHub includes in
+failure emails — so it also reads the failing sections back out of the
+consolidated results file, prints the error lines in a grouped log section and
+emits a `::error::` annotation per failed check. The email then names the check
+and the actual compiler/lint error instead of just "some check failed".
+Nothing blocks a push yet (no branch protection, no PR workflow) — see the
+backlog.
 
 > The `ci-results` branch is a rolling "latest run" record that CI force-pushes.
 > Do not branch work off it.

@@ -283,6 +283,11 @@ jobs:
       # checks), and the results are already pushed to `ci-results` before this
       # step runs. This last step only turns the run red, so a failing check is
       # visible in the Actions list too — it does not block a push.
+      #
+      # This is the only red step, so GitHub failure emails point here. Print the
+      # failing checks' actual error lines as annotations + grouped log output;
+      # otherwise the email says only that *some* check failed (the per-check
+      # steps all look green because of `continue-on-error`).
       - name: Fail the run if any check failed
         if: always()
         run: |
@@ -292,7 +297,38 @@ jobs:
           fi
           cat .github/ci-results/summary.txt
           if grep -q '^overall: FAIL' .github/ci-results/summary.txt; then
-            echo "::error::one or more CI checks failed (summary above; full log on the ci-results branch)"
+            RESULTS_FILE=$(ls -1 .github/ci-results/results_*_${{ github.run_id }}.txt 2>/dev/null | tail -n 1 || true)
+            for check in fmt clippy test build minimal audit doclinks docs; do
+              if grep -q "^${check}[[:space:]].*FAIL" .github/ci-results/summary.txt; then
+                echo "::group::Failure details: ${check}"
+                : > /tmp/ci-failed-check.log
+                if [ -n "$RESULTS_FILE" ]; then
+                  awk -v section="--- ${check} [" '
+                    index($0, section) == 1 { in_section = 1; next }
+                    /^--- / { in_section = 0 }
+                    in_section { print }
+                  ' "$RESULTS_FILE" > /tmp/ci-failed-check.log || true
+                  grep -E '^(error|warning|thread |test result: FAILED|panicked|could not compile|No space)' /tmp/ci-failed-check.log | head -20 || true
+                  echo "... last 20 lines of ${check} log ..."
+                else
+                  echo "Consolidated results file missing; see the ci-results branch."
+                fi
+                tail -n 20 /tmp/ci-failed-check.log || true
+                echo "::endgroup::"
+                # Workflow commands need %/CR/LF escaped or a multi-line error
+                # can break the annotation (and the email that quotes it).
+                first_error=$(grep -m1 -E '^(error|warning|thread |test result: FAILED|panicked)' /tmp/ci-failed-check.log || true)
+                first_error=${first_error//'%'/%25}
+                first_error=${first_error//$'\r'/%0D}
+                first_error=${first_error//$'\n'/%0A}
+                if [ -n "$first_error" ]; then
+                  echo "::error title=${check} failed::${first_error}"
+                else
+                  echo "::error title=${check} failed::see details above and the ci-results branch"
+                fi
+              fi
+            done
+            echo "::error::one or more CI checks failed (details above; full log on the ci-results branch)"
             exit 1
           fi
           echo "All CI checks passed."
