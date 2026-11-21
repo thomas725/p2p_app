@@ -185,6 +185,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         network_size: state.network_size.clone(),
         network: p2p_app::net_diag::snapshot(),
         network_peers: state.network_peers.clone(),
+        palette: state.palette,
         network_peer_selection: state.network_peer_selection,
         network_peer_kind: state.network_peer_kind.map(|kind| kind.as_str().to_owned()),
         last_connection_lost,
@@ -303,7 +304,7 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     // call overlay wins over the ad-hoc `AppState.popup`), which is what
     // `render_popup_text` folded into `render_state.popup`.
     if let Some(ref text) = render_state.popup {
-        render_popup(f, text.clone());
+        render_popup(f, text.clone(), render_state.palette);
     }
 }
 

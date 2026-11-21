@@ -116,12 +116,6 @@ Re-run `cargo outdated --depth 1` before assuming this lane is empty.
 
 Details: [`dependencies.md`](dependencies.md).
 
-### Dark / light theme (US-025) and custom color scheme (US-026)
-
-The TUI uses ratatui styles directly and Flutter uses Material themes. A theme
-toggle means threading a palette through both renderers — the TUI is the
-cheaper half.
-
 ### Notification sounds (US-027) and desktop notifications (US-028)
 
 Neither frontend has a notification dependency today. Android already runs a

@@ -18,6 +18,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
@@ -214,6 +215,13 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> setLanOnly({required bool enabled}) =>
       bridge.setLanOnly(enabled: enabled);
+
+  @override
+  Future<AppTheme> getTheme() => bridge.getTheme();
+
+  @override
+  Future<void> setTheme({required bool dark, required String accentName}) =>
+      bridge.setTheme(dark: dark, accentName: accentName);
 
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────
 

@@ -7,7 +7,7 @@ use crate::tui_render_state::{
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use std::collections::VecDeque;
@@ -64,7 +64,7 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
         );
         let banner = Paragraph::new(label).style(
             Style::default()
-                .fg(Color::Cyan)
+                .fg(state.palette.accent())
                 .add_modifier(Modifier::BOLD),
         );
         f.render_widget(banner, banner_area);

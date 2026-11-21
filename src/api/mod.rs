@@ -99,6 +99,26 @@ pub fn set_lan_only(enabled: bool) -> Result<(), String> {
     crate::settings::set_lan_only(enabled)
 }
 
+/// Resolved theme snapshot for the active palette (US-025/US-026).
+///
+/// Carries the accent swatch list so a frontend renders exactly the options
+/// Rust accepts — no colour values or valid names are duplicated in Dart.
+#[must_use]
+pub fn get_theme() -> crate::theme::AppTheme {
+    crate::theme::current()
+}
+
+/// Persist the dark/light + accent theme choice (US-025/US-026).
+///
+/// The accent name is validated before any write; an unknown colour is an
+/// error rather than a silently ignored value.
+///
+/// # Errors
+/// Returns an error for an unknown accent name or a failed database write.
+pub fn set_theme(dark: bool, accent_name: &str) -> Result<(), String> {
+    crate::theme::set(dark, accent_name)
+}
+
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///
 /// # Errors

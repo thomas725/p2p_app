@@ -19,7 +19,7 @@ use crate::tui_render_state::{TuiRenderState, get_tab_content};
 use crate::tui_tabs::TabContent;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, Clear, Paragraph, Tabs, Wrap},
 };
 
@@ -54,9 +54,9 @@ pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
 
     if let Some(ref text) = state.popup {
         if text.as_str() == shortcuts_help_text() {
-            render_shortcuts_help_popup(f, text.clone());
+            render_shortcuts_help_popup(f, text.clone(), state.palette);
         } else {
-            render_popup(f, text.clone());
+            render_popup(f, text.clone(), state.palette);
         }
     }
 }
@@ -69,7 +69,7 @@ pub fn render_tabs(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
         .map(std::string::String::as_str)
         .collect();
     let tabs = Tabs::new(titles)
-        .style(Style::default().fg(Color::Cyan))
+        .style(Style::default().fg(state.palette.accent()))
         .select(state.active_tab)
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
     f.render_widget(tabs, area);
@@ -169,7 +169,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Settings => {
-            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN only | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -209,14 +209,25 @@ DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 Contacts: i Info | e expand | c call | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | b block / unblock
-Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only
+Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent color
 
 Prompts own the input; Esc cancels. Full reference: KEYBOARD_SHORTCUTS.md"
 }
 
 /// Render the dedicated, larger popup used by [`shortcuts_help_text`].
-pub fn render_shortcuts_help_popup(f: &mut ratatui::Frame, text: String) {
-    render_bordered_popup(f, text, 90, 80, "Keyboard shortcuts — any key to close");
+pub fn render_shortcuts_help_popup(
+    f: &mut ratatui::Frame,
+    text: String,
+    palette: crate::theme::Palette,
+) {
+    render_bordered_popup(
+        f,
+        text,
+        90,
+        80,
+        "Keyboard shortcuts — any key to close",
+        palette,
+    );
 }
 
 /// Render shortcuts help, tailored to the active tab
@@ -238,8 +249,8 @@ pub fn render_status_bar(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderSt
 }
 
 /// Render an ordinary informational popup.
-pub fn render_popup(f: &mut ratatui::Frame, text: String) {
-    render_bordered_popup(f, text, 70, 40, "Details");
+pub fn render_popup(f: &mut ratatui::Frame, text: String, palette: crate::theme::Palette) {
+    render_bordered_popup(f, text, 70, 40, "Details", palette);
 }
 
 /// Shared centered popup geometry for notices and the shortcut-help overlay.
@@ -249,6 +260,7 @@ fn render_bordered_popup(
     width_percent: u16,
     height_percent: u16,
     title: &'static str,
+    palette: crate::theme::Palette,
 ) {
     let area = f.area();
     let w = area.width.saturating_mul(width_percent) / 100;
@@ -266,7 +278,7 @@ fn render_bordered_popup(
             Block::default()
                 .title(title)
                 .borders(Borders::ALL)
-                .style(Style::default().bg(Color::Black)),
+                .style(Style::default().bg(palette.popup_bg())),
         )
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: false });

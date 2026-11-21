@@ -5,7 +5,7 @@ use crate::tui_render::bordered_block;
 use crate::tui_render_state::{TuiRenderState, calc_visible_list_items, reaction_suffix};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
@@ -34,7 +34,7 @@ pub fn render_groups_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
                 .title(format!("Groups ({total})"))
                 .borders(Borders::ALL),
         )
-        .highlight_style(Style::default().bg(Color::DarkGray));
+        .highlight_style(Style::default().bg(state.palette.selection_bg()));
 
     let inner = Layout::default()
         .direction(Direction::Vertical)

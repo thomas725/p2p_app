@@ -5,6 +5,8 @@ import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
+import 'package:p2p_app_flutter/src/rust/theme.dart';
+import 'package:p2p_app_flutter/src/util/theme.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 
 /// Immutable snapshot of the live connection state shown on the Settings page.
@@ -107,6 +109,7 @@ class _SettingsState extends State<Settings> {
   List<NetworkPeer>? _networkPeers;
   String? _networkPeersError;
   bool _lanOnly = false;
+  AppTheme _theme = themeNotifier.value;
 
   @override
   void initState() {
@@ -118,6 +121,7 @@ class _SettingsState extends State<Settings> {
     widget.liveStatus.addListener(_onLive);
     widget.status.addListener(_onStatus);
     widget.networkDetails?.addListener(_onNetwork);
+    themeNotifier.addListener(_onTheme);
     _refreshNetworkSize();
     _refreshNetworkPeers();
     _refreshLanOnly();
@@ -154,10 +158,24 @@ class _SettingsState extends State<Settings> {
     widget.liveStatus.removeListener(_onLive);
     widget.status.removeListener(_onStatus);
     widget.networkDetails?.removeListener(_onNetwork);
+    themeNotifier.removeListener(_onTheme);
     super.dispose();
   }
 
   void _onNetwork() => setState(() => _network = widget.networkDetails?.value);
+
+  void _onTheme() => setState(() => _theme = themeNotifier.value);
+
+  /// Persist a theme choice through the shared notifier helper. Rust owns the
+  /// palette; this only forwards the validated choice and shows errors.
+  Future<void> _applyTheme({required bool dark, required String accentName}) async {
+    final error = await setTheme(dark: dark, accentName: accentName);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Theme not saved: $error')),
+      );
+    }
+  }
 
   void _onLive() {
     setState(() => _live = widget.liveStatus.value);
@@ -426,6 +444,43 @@ class _SettingsState extends State<Settings> {
             ),
             value: _lanOnly,
             onChanged: _setLanOnly,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Theme: dark/light + accent (US-025/US-026). Palette lives in Rust.
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Theme', style: Theme.of(context).textTheme.titleSmall),
+                SwitchListTile(
+                  key: const Key('theme-dark-toggle'),
+                  title: const Text('Dark theme'),
+                  value: _theme.dark,
+                  onChanged: (v) =>
+                      _applyTheme(dark: v, accentName: _theme.accentName),
+                ),
+                const SizedBox(height: 8),
+                Text('Accent color', style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final swatch in _theme.accents)
+                      _AccentSwatch(
+                        swatch: swatch,
+                        selected: swatch.name == _theme.accentName,
+                        onTap: () => _applyTheme(
+                          dark: _theme.dark,
+                          accentName: swatch.name,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -948,6 +1003,44 @@ class _NetworkPeerDialogState extends State<_NetworkPeerDialog> {
           child: const Text('Add'),
         ),
       ],
+    );
+  }
+}
+
+/// A single accent swatch in the Settings palette picker. The colour comes
+/// from Rust's canonical ARGB value; Dart only renders it.
+class _AccentSwatch extends StatelessWidget {
+  const _AccentSwatch({
+    required this.swatch,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AccentOption swatch;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Accent ${swatch.name}',
+      child: GestureDetector(
+        key: Key('accent-${swatch.name}'),
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: Color(swatch.argb),
+            shape: BoxShape.circle,
+            border: selected
+                ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
+                : null,
+          ),
+        ),
+      ),
     );
   }
 }

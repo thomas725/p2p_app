@@ -15,6 +15,7 @@ import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'theme.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustLibApiImplPlatform({
@@ -32,6 +33,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  AccentOption dco_decode_accent_option(dynamic raw);
+
+  @protected
+  AppTheme dco_decode_app_theme(dynamic raw);
 
   @protected
   bool dco_decode_bool(dynamic raw);
@@ -65,6 +72,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<AccentOption> dco_decode_list_accent_option(dynamic raw);
 
   @protected
   List<ChatMessage> dco_decode_list_chat_message(dynamic raw);
@@ -216,6 +226,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AccentOption sse_decode_accent_option(SseDeserializer deserializer);
+
+  @protected
+  AppTheme sse_decode_app_theme(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
@@ -251,6 +267,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<AccentOption> sse_decode_list_accent_option(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<ChatMessage> sse_decode_list_chat_message(SseDeserializer deserializer);
@@ -434,6 +455,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_accent_option(AccentOption self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_app_theme(AppTheme self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
@@ -477,6 +504,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_accent_option(
+    List<AccentOption> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_chat_message(

@@ -48,3 +48,41 @@ fn set_lan_only_is_an_upsert_not_a_second_row() {
         assert_eq!(count, 1, "the key has one row regardless of writes");
     });
 }
+
+#[test]
+#[serial]
+fn theme_defaults_to_dark_teal_and_roundtrips() {
+    with_test_db(|| {
+        assert!(theme_dark(), "a fresh install keeps the dark palette");
+        assert_eq!(theme_accent(), crate::theme::Accent::TEAL);
+        crate::theme::set(false, "violet").expect("set light violet");
+        assert!(!theme_dark());
+        assert_eq!(theme_accent().as_str(), "violet");
+        crate::theme::set(true, "amber").expect("set dark amber");
+        assert!(theme_dark());
+        assert_eq!(theme_accent().as_str(), "amber");
+    });
+}
+
+#[test]
+#[serial]
+fn theme_rejects_unknown_accent_without_writing() {
+    with_test_db(|| {
+        crate::theme::set(false, "teal").expect("seed");
+        assert!(crate::theme::set(true, "not-a-color").is_err());
+        assert!(
+            !theme_dark(),
+            "a bad accent leaves the dark setting untouched"
+        );
+        assert_eq!(theme_accent().as_str(), "teal");
+    });
+}
+
+#[test]
+fn accent_cycles_wraps_around() {
+    let mut accent = crate::theme::Accent::TEAL;
+    for expected in ["blue", "violet", "rose", "amber", "green", "teal"] {
+        accent = accent.next();
+        assert_eq!(accent.as_str(), expected);
+    }
+}

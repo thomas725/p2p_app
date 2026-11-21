@@ -12,6 +12,7 @@ import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 class FakeNodeApi implements NodeApi {
   FakeNodeApi({this.isRemoteTransport = false});
@@ -425,6 +426,39 @@ class FakeNodeApi implements NodeApi {
   Future<void> setLanOnly({required bool enabled}) async {
     _record('setLanOnly', enabled);
     lanOnly = enabled;
+  }
+
+  /// In-memory theme snapshot; [setTheme] updates it so widget tests can
+  /// toggle dark/accent and read the result back without FFI.
+  AppTheme theme = const AppTheme(
+    dark: true,
+    accentName: 'teal',
+    accentArgb: 0xff2f5d50,
+    accents: [
+      AccentOption(name: 'teal', argb: 0xff2f5d50),
+      AccentOption(name: 'blue', argb: 0xff2f5d9e),
+    ],
+  );
+
+  @override
+  Future<AppTheme> getTheme() async {
+    _record('getTheme');
+    return theme;
+  }
+
+  @override
+  Future<void> setTheme({required bool dark, required String accentName}) async {
+    _record('setTheme', {'dark': dark, 'accentName': accentName});
+    final swatch = theme.accents
+        .where((a) => a.name == accentName)
+        .cast<AccentOption>()
+        .toList();
+    theme = AppTheme(
+      dark: dark,
+      accentName: accentName,
+      accentArgb: swatch.isNotEmpty ? swatch.first.argb : theme.accentArgb,
+      accents: theme.accents,
+    );
   }
 
   // --- peer blocklist / mute ---

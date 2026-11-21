@@ -719,6 +719,7 @@ mod tests {
             "addNetworkPeer",
             "removeNetworkPeer",
             "setLanOnly",
+            "setTheme",
             "blockPeer",
             "unblockPeer",
             "formatTimeHhmm",
@@ -918,6 +919,7 @@ mod tests {
             "getMyUserId",
             "listNetworkPeers",
             "getLanOnly",
+            "getTheme",
             "listBlockedPeers",
         ] {
             assert!(

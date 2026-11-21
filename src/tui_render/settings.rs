@@ -165,6 +165,11 @@ pub fn render_settings_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRe
         "LAN only: {} (press 'l' to toggle; applies on next node start)",
         if lan_only { "yes" } else { "no" }
     ));
+    lines.push(format!(
+        "Theme: {} / {} (press 't' for dark/light, 'c' for accent color)",
+        if state.palette.dark { "dark" } else { "light" },
+        state.palette.accent.as_str()
+    ));
     lines.push(format!("Database: {}", state.db_url));
     lines.push(format!("Platform: {}", state.platform));
     lines.push(format!("Node: {node_status}"));

@@ -22,6 +22,7 @@ import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
 /// swaps in [HttpNodeApi] for the web build. Tests may replace it with a
@@ -170,6 +171,13 @@ abstract class NodeApi {
 
   /// Persist the LAN-only toggle (US-051). Applies on next node start.
   Future<void> setLanOnly({required bool enabled});
+
+  /// Resolved theme (US-025/US-026), including the available accent swatches.
+  Future<AppTheme> getTheme();
+
+  /// Persist the dark/light + accent choice. An unknown accent is rejected in
+  /// Rust, so the palette cannot drift between frontends.
+  Future<void> setTheme({required bool dark, required String accentName});
 
   // --- Peer blocklist / mute (US-054) ---
 

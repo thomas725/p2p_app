@@ -126,6 +126,9 @@ pub struct TuiRenderState {
     pub network: crate::net_diag::NetworkDetails,
     /// Persisted bootstrap/relay multiaddrs (Settings tab).
     pub network_peers: Vec<crate::network_config::NetworkPeer>,
+    /// Canonical palette used by every renderer (US-025/US-026). Snapshotted
+    /// from Rust settings so the TUI and Flutter share one colour definition.
+    pub palette: crate::theme::Palette,
     /// Highlighted row in the Settings network-peers list.
     pub network_peer_selection: usize,
     /// Kind captured by the active add prompt (`None` = not adding), used by
@@ -215,6 +218,7 @@ impl TuiRenderState {
             network_size: String::new(),
             network: crate::net_diag::NetworkDetails::default(),
             network_peers: Vec::new(),
+            palette: crate::theme::Palette::default(),
             network_peer_selection: 0,
             network_peer_kind: None,
             last_connection_lost: None,

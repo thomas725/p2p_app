@@ -13,7 +13,7 @@ use crate::tui_helpers::{
 use crate::tui_render_state::TuiRenderState;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
 };
 
@@ -78,7 +78,7 @@ pub fn render_peers_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRende
                 .title(format!("Contacts ({})", state.contacts.len()))
                 .borders(Borders::ALL),
         )
-        .row_highlight_style(Style::default().bg(Color::DarkGray));
+        .row_highlight_style(Style::default().bg(state.palette.selection_bg()));
 
     // Reserve the last row of the block's inner area for a sort hint.
     let inner = Layout::default()

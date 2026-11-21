@@ -263,6 +263,10 @@ pub struct AppState {
     /// ([`p2p_app::InputMode::AddingNetworkPeer`]); `None` otherwise.
     pub network_peer_kind: Option<p2p_app::network_config::NetworkPeerKind>,
 
+    /// Canonical palette snapshotted from Rust settings (US-025/US-026), so
+    /// every renderer uses the same dark/light + accent choice as Flutter.
+    pub palette: p2p_app::theme::Palette,
+
     /// This install's user ID (None before provisioning) — Settings tab.
     pub own_user_id: Option<String>,
     /// Devices bound into this install's user: `(peer_id, bound_at)` —
@@ -1182,6 +1186,7 @@ impl AppState {
             platform: String::new(),
             network_size: String::new(),
             network_peers: Vec::new(),
+            palette: p2p_app::theme::Palette::current(),
             network_peer_selection: 0,
             network_peer_kind: None,
             own_user_id: None,

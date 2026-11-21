@@ -11,6 +11,7 @@ import 'network_config.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'theme.dart';
 
 /// Initialize the mobile database at the given path and return peer info.
 ///
@@ -89,6 +90,22 @@ Future<bool> getLanOnly() => RustLib.instance.api.crateApiGetLanOnly();
 /// Returns an error if the database write fails.
 Future<void> setLanOnly({required bool enabled}) =>
     RustLib.instance.api.crateApiSetLanOnly(enabled: enabled);
+
+/// Resolved theme snapshot for the active palette (US-025/US-026).
+///
+/// Carries the accent swatch list so a frontend renders exactly the options
+/// Rust accepts — no colour values or valid names are duplicated in Dart.
+Future<AppTheme> getTheme() => RustLib.instance.api.crateApiGetTheme();
+
+/// Persist the dark/light + accent theme choice (US-025/US-026).
+///
+/// The accent name is validated before any write; an unknown colour is an
+/// error rather than a silently ignored value.
+///
+/// # Errors
+/// Returns an error for an unknown accent name or a failed database write.
+Future<void> setTheme({required bool dark, required String accentName}) =>
+    RustLib.instance.api.crateApiSetTheme(dark: dark, accentName: accentName);
 
 /// Start the p2p node: init DB, build swarm, begin listening.
 ///

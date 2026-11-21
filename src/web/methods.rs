@@ -73,7 +73,10 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {
             blocklist(m, params)
         }
-        m @ ("formatTimeHhmm" | "isAtBottom" | "parseLastSeenMs") => ui_helpers(m, params),
+        "getTheme" => ok(api::get_theme()),
+        m @ ("formatTimeHhmm" | "isAtBottom" | "parseLastSeenMs" | "setTheme") => {
+            ui_helpers(m, params)
+        }
         other => Err(format!("unknown method: {other}")),
     }
 }
@@ -369,6 +372,10 @@ fn ui_helpers(method: &str, params: Value) -> Result<Value, String> {
             let p: ParseLastSeenParams = parse(params)?;
             ok(mobile_api::parse_last_seen_ms(&p.last_seen))
         }
+        "setTheme" => {
+            let p: ThemeParams = parse(params)?;
+            json(api::set_theme(p.dark, &p.accent_name))
+        }
         other => Err(format!("method not routed to ui_helpers: {other}")),
     }
 }
@@ -577,6 +584,13 @@ struct IdParams {
 #[serde(rename_all = "camelCase")]
 struct LanOnlyParams {
     enabled: bool,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ThemeParams {
+    dark: bool,
+    accent_name: String,
 }
 
 #[derive(serde::Deserialize)]

@@ -203,8 +203,13 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 | `r` | Add a relay multiaddr (must end in `/p2p/<peer-id>`) |
 | `x` | Remove the highlighted network peer |
 | `↑` / `↓`, `Home` / `End` | Move the network-peer highlight |
+| `l` | Toggle LAN-only mode (applies on next node start) |
+| `t` | Toggle dark / light theme |
+| `c` | Cycle the accent color |
 
-The dial prompt uses the shared input box; `Esc` cancels it without dialing.
+The theme is a single persisted choice shared with Flutter; Rust owns the
+palette, so both frontends always agree on the valid accents. The dial prompt
+uses the shared input box; `Esc` cancels it without dialing.
 The same box serves `b`/`r`; saved network peers are only read when the node
 starts, so an added or removed entry applies on the next start. Outside the
 add prompt these keys act immediately, so `b`/`r`/`x` cannot be typed into a

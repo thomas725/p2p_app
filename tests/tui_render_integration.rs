@@ -483,7 +483,7 @@ mod render_tests {
         let help = shortcuts_help_text().to_string();
 
         terminal
-            .draw(|f| render_shortcuts_help_popup(f, help))
+            .draw(|f| render_shortcuts_help_popup(f, help, p2p_app::theme::Palette::default()))
             .unwrap();
 
         let buffer = terminal.backend().buffer();
@@ -511,7 +511,13 @@ mod render_tests {
         let mut terminal = create_test_terminal();
 
         terminal
-            .draw(|f| render_popup(f, "Test popup message".to_string()))
+            .draw(|f| {
+                render_popup(
+                    f,
+                    "Test popup message".to_string(),
+                    p2p_app::theme::Palette::default(),
+                );
+            })
             .unwrap();
     }
 

@@ -16,6 +16,7 @@ import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
+import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
@@ -364,6 +365,23 @@ class HttpNodeApi implements NodeApi {
     );
   }
 
+  static AppTheme appThemeFromJson(dynamic raw) {
+    final m = raw as Map<String, dynamic>;
+    return AppTheme(
+      dark: m['dark'] as bool,
+      accentName: m['accentName'] as String,
+      accentArgb: m['accentArgb'] as int,
+      accents: (m['accents'] as List<dynamic>)
+          .map(
+            (a) => AccentOption(
+              name: (a as Map<String, dynamic>)['name'] as String,
+              argb: a['argb'] as int,
+            ),
+          )
+          .toList(),
+    );
+  }
+
   static MobileDeviceInfo deviceInfoFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     return MobileDeviceInfo(
@@ -667,6 +685,15 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<void> setLanOnly({required bool enabled}) async {
     await _call('setLanOnly', {'enabled': enabled});
+  }
+
+  @override
+  Future<AppTheme> getTheme() async =>
+      HttpNodeApi.appThemeFromJson(await _call('getTheme'));
+
+  @override
+  Future<void> setTheme({required bool dark, required String accentName}) async {
+    await _call('setTheme', {'dark': dark, 'accentName': accentName});
   }
 
   // ── Peer blocklist / mute (US-054) ───────────────────────────────────────

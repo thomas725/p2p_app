@@ -7,6 +7,7 @@ import 'src/data/node_api.dart';
 import 'src/rust/frb_generated.dart';
 import 'src/screens/home.dart';
 import 'src/util/event_bus.dart';
+import 'src/util/theme.dart';
 import 'src/util/ui_utils.dart';
 
 Future<void> main() async {
@@ -25,6 +26,7 @@ Future<void> main() async {
       serviceChannel.setMethodCallHandler(_handleServiceCall);
     }
   }
+  await loadTheme();
   runApp(const P2pApp());
 }
 
@@ -49,25 +51,49 @@ Future<dynamic> _handleServiceCall(MethodCall call) async {
 }
 
 /// Root application widget: theme + home screen.
-class P2pApp extends StatelessWidget {
+///
+/// Rebuilds on theme changes so a Settings toggle repaints the whole app. The
+/// seed colour is Rust's canonical accent ARGB; Dart never defines a palette.
+class P2pApp extends StatefulWidget {
   const P2pApp({super.key});
 
   @override
+  State<P2pApp> createState() => _P2pAppState();
+}
+
+class _P2pAppState extends State<P2pApp> {
+  @override
+  void initState() {
+    super.initState();
+    themeNotifier.addListener(_onTheme);
+  }
+
+  @override
+  void dispose() {
+    themeNotifier.removeListener(_onTheme);
+    super.dispose();
+  }
+
+  void _onTheme() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final theme = themeNotifier.value;
+    final seed = Color(theme.accentArgb);
     return MaterialApp(
       title: 'p2p_app',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff2f5d50)),
+        colorScheme: ColorScheme.fromSeed(seedColor: seed),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xff2f5d50),
+          seedColor: seed,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.system,
+      themeMode: theme.dark ? ThemeMode.dark : ThemeMode.light,
       home: const HomeScreen(),
     );
   }

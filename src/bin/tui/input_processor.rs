@@ -875,6 +875,8 @@ fn handle_settings_shortcut(c: char, s: &mut super::state::AppState) {
     match c {
         'n' => handle_nickname_key(s, &p2p_app::tui_tabs::TabContent::Settings),
         'l' => toggle_lan_only(s),
+        't' => toggle_theme_dark(s),
+        'c' => cycle_theme_accent(s),
         'd' if !s.is_dialing_peer() => {
             s.begin_dial_peer();
             p2plog_debug("Started peer dial".to_string());
@@ -931,6 +933,32 @@ fn toggle_lan_only(s: &mut super::state::AppState) {
     match p2p_app::settings::set_lan_only(next) {
         Ok(()) => p2plog_debug(format!("LAN-only mode set to {next}")),
         Err(error) => s.popup = Some(format!("LAN-only setting not saved: {error}")),
+    }
+}
+
+/// Toggle dark/light (Settings `t`). Persist via the canonical theme accessor
+/// and update the in-memory palette immediately so the next frame reflects it.
+fn toggle_theme_dark(s: &mut super::state::AppState) {
+    let next = !s.palette.dark;
+    match p2p_app::theme::set(next, s.palette.accent.as_str()) {
+        Ok(()) => {
+            s.palette.dark = next;
+            p2plog_debug(format!("Theme set to dark={next}"));
+        }
+        Err(error) => s.popup = Some(format!("Theme not saved: {error}")),
+    }
+}
+
+/// Cycle the accent colour (Settings `c`), same persistence + immediate update
+/// as [`toggle_theme_dark`].
+fn cycle_theme_accent(s: &mut super::state::AppState) {
+    let next = s.palette.accent.next();
+    match p2p_app::theme::set(s.palette.dark, next.as_str()) {
+        Ok(()) => {
+            s.palette.accent = next;
+            p2plog_debug(format!("Accent set to {}", next.as_str()));
+        }
+        Err(error) => s.popup = Some(format!("Theme not saved: {error}")),
     }
 }
 
