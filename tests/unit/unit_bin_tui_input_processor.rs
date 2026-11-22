@@ -2997,3 +2997,217 @@ async fn test_ctrl_o_is_inert_on_non_chat_tabs() {
     let s = state.lock().await;
     assert!(s.popup.is_none());
 }
+
+// ── Reaction editor (US-008) ────────────────────────────────────────────
+//
+// These drive the real interactive key path (`process_key_event`), mirroring
+// the Flutter widget tests for the same user story: Ctrl+Y opens the shared
+// editor on the newest message, Enter validates + persists + refreshes chips,
+// Esc cancels, and invalid tokens are rejected without touching stored data.
+
+/// Point the active tab at the DM tab the helper created, so key dispatch
+/// resolves the transcript (and its wire ids) the reaction editor reads.
+fn focus_dm_tab(state: &mut AppState) {
+    let idx = (0..state.dynamic_tabs.total_tab_count())
+        .find(|&i| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(i),
+                TabContent::Direct(_)
+            )
+        })
+        .expect("helper created a DM tab");
+    state.active_tab = idx;
+}
+
+#[tokio::test]
+async fn test_ctrl_y_opens_reaction_editor_on_newest_message() {
+    let mut state = app_state_with_dm_messages("react-peer", 3);
+    focus_dm_tab(&mut state);
+    let state = Arc::new(Mutex::new(state));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+    assert!(!exited);
+
+    let s = state.lock().await;
+    assert!(s.is_adding_reaction(), "editor opened");
+    assert_eq!(s.input_mode, p2p_app::InputMode::AddingReaction);
+    assert_eq!(
+        s.adding_reaction.as_ref().map(|p| p.msg_id.as_str()),
+        Some("dm-2"),
+        "targets the newest wire id in the DM transcript"
+    );
+    assert_eq!(s.chat_input.lines().join(""), "", "editor starts empty");
+}
+
+#[tokio::test]
+async fn test_ctrl_y_without_a_message_shows_a_popup() {
+    // The Chat tab of a fresh state has no transcript, so there is nothing to
+    // react to; the shortcut must explain that instead of opening an editor.
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(!s.is_adding_reaction());
+    assert_eq!(
+        s.popup.as_deref(),
+        Some("No message to react to in this conversation")
+    );
+}
+
+#[tokio::test]
+async fn test_esc_cancels_the_reaction_editor() {
+    let mut state = app_state_with_dm_messages("react-peer", 1);
+    focus_dm_tab(&mut state);
+    let state = Arc::new(Mutex::new(state));
+    let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+    let (render_tx, _render_rx) = mpsc::channel(4);
+
+    let open = KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL);
+    let _ = process_key_event(open, &state, &swarm_cmd_tx, &render_tx).await;
+    assert!(state.lock().await.is_adding_reaction(), "precondition");
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::empty()),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    let s = state.lock().await;
+    assert!(!s.is_adding_reaction(), "editor closed");
+    assert_eq!(s.input_mode, p2p_app::InputMode::Chat);
+    assert_eq!(s.chat_input.lines().join(""), "");
+    assert!(s.reactions.is_empty(), "cancelling stored nothing");
+}
+
+#[test]
+#[serial]
+fn test_enter_persists_reaction_and_refreshes_chips() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = app_state_with_dm_messages("react-peer", 1);
+        focus_dm_tab(&mut state);
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+        let (render_tx, _render_rx) = mpsc::channel(4);
+
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+        // Whitespace around a pasted token is trimmed by the canonical rule.
+        state.lock().await.chat_input.insert_str("  🚀  ");
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+
+        let s = state.lock().await;
+        assert!(!s.is_adding_reaction(), "editor consumed on success");
+        assert_eq!(s.input_mode, p2p_app::InputMode::Chat);
+        assert!(s.popup.is_none(), "unexpected popup: {:?}", s.popup);
+        assert!(
+            p2p_app::reactions::has_reaction("dm-0", &local_peer, "🚀").expect("has_reaction"),
+            "reaction persisted under the trimmed token"
+        );
+        let chips = s.reactions.get("dm-0").expect("chips refreshed");
+        assert_eq!(chips.len(), 1);
+        assert_eq!(chips[0].emoji, "🚀");
+        assert_eq!(chips[0].count, 1);
+        assert!(chips[0].mine, "own reaction is marked mine");
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+#[serial]
+fn test_enter_rejects_invalid_reaction_and_keeps_editor() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = app_state_with_dm_messages("react-peer", 1);
+        focus_dm_tab(&mut state);
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+        let (render_tx, _render_rx) = mpsc::channel(4);
+
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+        let too_long = "x".repeat(p2p_app::reactions::MAX_EMOJI_LEN + 1);
+        state.lock().await.chat_input.insert_str(&too_long);
+        let _ = process_key_event(
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()),
+            &state,
+            &swarm_cmd_tx,
+            &render_tx,
+        )
+        .await;
+
+        let s = state.lock().await;
+        assert!(s.is_adding_reaction(), "editor stays open for correction");
+        assert!(
+            s.popup
+                .as_deref()
+                .is_some_and(|p| p.starts_with("Invalid reaction:")),
+            "validation error surfaced: {:?}",
+            s.popup
+        );
+        assert!(s.reactions.is_empty(), "nothing stored on rejection");
+        assert!(
+            !p2p_app::reactions::has_reaction("dm-0", &local_peer, &too_long)
+                .expect("has_reaction"),
+            "invalid token never reached the database"
+        );
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
