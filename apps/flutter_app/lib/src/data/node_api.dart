@@ -340,6 +340,9 @@ abstract class NodeApi {
 
   Future<ShareManifest?> loadShareManifest(String shareId);
 
+  /// Native-only raw store write. Web clients must use
+  /// [publishShareSnapshot], which enforces ACLs and `base_revision`; the web
+  /// transport rejects this method.
   Future<void> saveShareManifest({
     required String shareId,
     required ShareManifest manifest,

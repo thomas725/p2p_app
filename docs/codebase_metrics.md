@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        68 |
-| Total Rust Lines      |    39,262 |
-| Total Rust Chars      | 1,485,131 |
+| Total Rust Lines      |    39,282 |
+| Total Rust Chars      | 1,486,022 |
 | Avg Lines/Rust File   |       577 |
-| Avg Chars/Rust File   |    21,840 |
+| Avg Chars/Rust File   |    21,853 |
 | Total Dart Files      |        46 |
-| Total Dart Lines      |    21,013 |
-| Total Dart Chars      |   673,121 |
+| Total Dart Lines      |    21,016 |
+| Total Dart Chars      |   673,293 |
 | Avg Lines/Dart File   |       456 |
-| Avg Chars/Dart File   |    14,633 |
+| Avg Chars/Dart File   |    14,636 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
 | Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 118 files, 60,887 lines, 2,180,351 characters
+**Grand Total:** 118 files, 60,910 lines, 2,181,414 characters
 
 ## Rust Source Files
 
@@ -48,7 +48,7 @@
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                                   |
 | src                     | logging.rs           |     8 | 13626 |   411 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 20431 |   534 |        - |       - | Message persistence & retrieval                    |
-| src                     | methods.rs           |     4 | 31534 |  1023 |        - |       - | Web JSON method dispatch                           |
+| src                     | methods.rs           |     4 | 32425 |  1043 |        - |       - | Web JSON method dispatch                           |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 95015 |  2535 |        - |       - | Mobile node lifecycle & swarm                      |
 | src                     | mod.rs               |     5 | 44846 |  1293 |        - |       - | FRB API surface                                    |
@@ -95,7 +95,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 68 files, 39,262 lines, 1,485,131 characters
+**Total:** 68 files, 39,282 lines, 1,486,022 characters
 
 ## Rust Test Files
 
@@ -179,7 +179,7 @@
 | lib          | chat_message_ext.dart            |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
 | lib          | frb_node_api.dart                |     5 | 15495 |   519 |        - |       - | In-process FRB transport         |
 | lib          | http_node_api.dart               |     7 | 35898 |  1105 |        - |       - | WebSocket/HTTP transport         |
-| lib          | node_api.dart                    |     2 | 13510 |   397 |        - |       - | Transport-agnostic node API      |
+| lib          | node_api.dart                    |     2 | 13682 |   400 |        - |       - | Transport-agnostic node API      |
 | lib          | node_transport.dart              |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
 | lib          | shares_json.dart                 |     5 |  3082 |    90 |        - |       - | Dart source file                 |
 | lib/src/rust | api.dart                         |     5 | 34188 |   979 |        - |       - | FRB API bindings (generated)     |
@@ -222,7 +222,7 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 46 files, 21,013 lines, 673,121 characters
+**Total:** 46 files, 21,016 lines, 673,293 characters
 
 ## Dart Test Files
 

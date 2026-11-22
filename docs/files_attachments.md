@@ -119,7 +119,9 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `acceptShareOffer`, `snapshotShare`, `requestPeerShares`,
   `requestShareManifest`, `sendShareOffer` and `publishShareSnapshot`.
   `src/web/methods.rs` mirrors all of them; `createShare`/`bindShare`/
-  `snapshotShare` reject client-supplied server paths on the web transport.
+  `snapshotShare` reject client-supplied server paths on the web transport, and
+  `saveShareManifest` is native-only because it skips ACLs and `base_revision`
+  checks — web clients use `publishShareSnapshot` instead.
   The generated Dart bindings live in `lib/src/rust/shares.dart`; the JSON↔DTO
   conversion for the browser lives in `lib/src/data/shares_json.dart`, and both
   transports expose the same methods through `NodeApi`.

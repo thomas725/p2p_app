@@ -125,6 +125,8 @@ Implemented and verified end to end:
   exposed through the same `NodeApi` on both Dart transports via
   `lib/src/data/shares_json.dart`. Web calls cannot pass a server-local path:
   `createShare`/`bindShare`/`snapshotShare` reject such parameters before touching the DB.
+  `saveShareManifest` is also native-only: the raw store write skips ACLs and
+  `base_revision` checks, so web clients must use `publishShareSnapshot`.
 
 Verified by the in-module tests in `src/web/mod.rs`: frame protocol, every routed
 method, the HTTP routes, HTTP Basic (denied / wrong pair / accepted + `Set-Cookie`),

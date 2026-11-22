@@ -236,8 +236,12 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             json(api::load_share_manifest(&p.share_id))
         }
         "saveShareManifest" => {
-            let p: SaveShareManifestParams = parse(params)?;
-            json(api::save_share_manifest(&p.share_id, p.manifest))
+            // The raw store write bypasses ACLs and base_revision checks. Web
+            // clients must use publishShareSnapshot, which goes through the
+            // owner's swarm handler and rejects stale submissions.
+            let SaveShareManifestParams { share_id, manifest } = parse(params)?;
+            let _ = (share_id, manifest);
+            Err("direct share manifest writes are not supported over the web transport; use publishShareSnapshot".into())
         }
         "acceptShareOffer" => {
             let p: AcceptShareOfferParams = parse(params)?;
@@ -998,6 +1002,22 @@ mod tests {
         )
         .expect_err("snapshotting a server directory must fail");
         assert!(err.contains("server-local share roots"), "{err}");
+    }
+
+    #[test]
+    fn web_manifest_writes_must_go_through_the_revision_checked_lane() {
+        let manifest = crate::shares::ShareManifest {
+            share_id: "s".to_string(),
+            name: "S".to_string(),
+            revision: 1,
+            entries: vec![],
+        };
+        let err = dispatch(
+            "saveShareManifest",
+            json!({"shareId": "s", "manifest": manifest}),
+        )
+        .expect_err("the raw store write bypasses ACLs and revisions");
+        assert!(err.contains("publishShareSnapshot"), "{err}");
     }
 
     #[test]
