@@ -1366,6 +1366,24 @@ async fn handle_device_binding(
     }
 }
 
+/// Whether an inbound call signal may tear down the live media session.
+///
+/// Only a `reject`/`end` from the session's own peer echoing its own
+/// caller-minted `call_id` ends the media. Both frontends ignore signals with a
+/// foreign/stale id, so clearing the session for those would silently kill a
+/// healthy call's audio while the UI still shows "In call". Kept pure so the
+/// gate is directly testable without a live `Swarm`.
+#[must_use]
+fn media_ends_for_signal(
+    media: Option<&MediaSession>,
+    kind: &str,
+    call_id: &str,
+    peer_id: &str,
+) -> bool {
+    matches!(kind, "reject" | "end")
+        && media.is_some_and(|session| session.is_for(call_id, peer_id))
+}
+
 /// Handle a call-signaling exchange (calls lane).
 ///
 /// Requests are surfaced as [`SwarmEvent`]s (invite → ringing prompt on the
@@ -1388,6 +1406,13 @@ async fn handle_call_signal(
         libp2p::request_response::Message::Request {
             request, channel, ..
         } => {
+            // Decide before the match consumes `peer_id_str` into the event.
+            let ends_media = media_ends_for_signal(
+                media.as_ref(),
+                request.kind.as_str(),
+                &request.call_id,
+                &peer_id_str,
+            );
             let (event, ack) = match request.kind.as_str() {
                 "invite" => (
                     Some(SwarmEvent::CallInvite {
@@ -1440,10 +1465,10 @@ async fn handle_call_signal(
             if let Some(ev) = event {
                 let _ = event_tx.send(ev).await;
             }
-            // A rejected or ended call has no audio left to carry. Dropping the
-            // session here keeps a late frame from the old call out of a later
-            // one even if the UI forgets to send `StopCallMedia`.
-            if matches!(request.kind.as_str(), "reject" | "end") {
+            // A rejected or ended call has no audio left to carry. Drop the
+            // session only when the signal belongs to it; a foreign/stale
+            // reject or end must not silently kill a healthy call's audio.
+            if ends_media {
                 *media = None;
             }
             let _ = swarm
@@ -1487,7 +1512,7 @@ async fn handle_call_media(
     let call_id = request.call_id.clone();
     let peer_id_str = peer.to_string();
     let (accepted, pcm) = match media.as_mut() {
-        Some(session) if session.peer_id == peer_id_str && session.call_id == call_id => {
+        Some(session) if session.is_for(&call_id, &peer_id_str) => {
             let accepted = session.accept(request);
             (accepted, session.take_pcm())
         }

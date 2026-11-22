@@ -126,6 +126,17 @@ fn session_rejects_foreign_and_stale_frames() {
 }
 
 #[test]
+fn session_identity_requires_both_call_id_and_peer() {
+    let session = MediaSession::new("c1".into(), "peer-1".into());
+    assert!(session.is_for("c1", "peer-1"));
+    // A stale call id from the same peer, or a foreign peer echoing the live
+    // id, are both outside the session — neither may end or feed its media.
+    assert!(!session.is_for("c2", "peer-1"));
+    assert!(!session.is_for("c1", "peer-2"));
+    assert!(!session.is_for("c2", "peer-2"));
+}
+
+#[test]
 fn muted_session_sends_nothing_but_still_receives() {
     let mut session = MediaSession::new("c1".into(), "peer-1".into());
     session.set_muted(true);

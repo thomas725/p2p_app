@@ -22,6 +22,55 @@ fn with_test_db(f: impl FnOnce()) {
 }
 
 #[test]
+fn only_the_active_calls_own_reject_or_end_ends_media() {
+    // A foreign or stale `reject`/`end` must not tear down a healthy call's
+    // audio: both frontends ignore such signals, so doing so would desync the
+    // UI ("In call") from the swarm (no media session).
+    let media = Some(MediaSession::new("call-1".into(), "peer-a".into()));
+    assert!(media_ends_for_signal(
+        media.as_ref(),
+        "reject",
+        "call-1",
+        "peer-a"
+    ));
+    assert!(media_ends_for_signal(
+        media.as_ref(),
+        "end",
+        "call-1",
+        "peer-a"
+    ));
+
+    // Foreign peer echoing the live id, or the right peer with a stale id.
+    assert!(!media_ends_for_signal(
+        media.as_ref(),
+        "end",
+        "call-1",
+        "peer-b"
+    ));
+    assert!(!media_ends_for_signal(
+        media.as_ref(),
+        "reject",
+        "call-2",
+        "peer-a"
+    ));
+    // Non-terminal signal kinds never tear down media.
+    assert!(!media_ends_for_signal(
+        media.as_ref(),
+        "accept",
+        "call-1",
+        "peer-a"
+    ));
+    assert!(!media_ends_for_signal(
+        media.as_ref(),
+        "invite",
+        "call-1",
+        "peer-a"
+    ));
+    // No live session: nothing to tear down.
+    assert!(!media_ends_for_signal(None, "end", "call-1", "peer-a"));
+}
+
+#[test]
 #[serial]
 fn apply_inbound_reaction_reports_rejection() {
     // A rejected reaction (empty emoji) must return false so the caller does

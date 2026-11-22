@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        65 |
-| Total Rust Lines      |    34,985 |
-| Total Rust Chars      | 1,326,124 |
+| Total Rust Lines      |    35,020 |
+| Total Rust Chars      | 1,327,451 |
 | Avg Lines/Rust File   |       538 |
-| Avg Chars/Rust File   |    20,401 |
+| Avg Chars/Rust File   |    20,422 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    18,133 |
 | Total Dart Chars      |   584,578 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 107 files, 53,421 lines, 1,921,692 characters
+**Grand Total:** 107 files, 53,456 lines, 1,923,019 characters
 
 ## Rust Source Files
 
@@ -29,7 +29,7 @@
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                           |
 | src                     | behavior.rs          |     6 | 28125 |   697 |        - |       - | Network behavior definitions           |
 | src                     | blocklist.rs         |     2 |  4185 |   110 |        - |       - | Source file                            |
-| src                     | call_media.rs        |     3 |  7974 |   226 |        - |       - | Source file                            |
+| src                     | call_media.rs        |     3 |  8393 |   236 |        - |       - | Source file                            |
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling) |
 | src                     | chat.rs              |     5 |  6324 |   176 |        - |       - | TUI chat & DM pane renderer            |
 | src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
@@ -66,7 +66,7 @@
 | src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                            |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                            |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                  |
-| src                     | swarm_handler.rs     |     7 | 105164 |  2702 |        - |       - | Network event translation              |
+| src                     | swarm_handler.rs     |     7 | 106072 |  2727 |        - |       - | Network event translation              |
 | src                     | theme.rs             |     4 |  7223 |   234 |        - |       - | Source file                            |
 | src                     | tui_helpers.rs       |     5 | 21932 |   663 |        - |       - | TUI helper functions & utilities       |
 | src                     | tui_render_state.rs  |     4 | 25356 |   684 |        - |       - | TUI render state & tab content         |
@@ -92,7 +92,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 65 files, 34,985 lines, 1,326,124 characters
+**Total:** 65 files, 35,020 lines, 1,327,451 characters
 
 ## Rust Test Files
 
@@ -135,7 +135,7 @@
 | unit   | unit_bin_tui_state.rs             |   961 | 31076 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs      |    66 |  2330 |     3 | Unit tests for TUI test helpers       |
 | unit   | unit_blocklist.rs                 |   112 |  3932 |     3 | Test file                             |
-| unit   | unit_call_media.rs                |   137 |  4263 |     3 | Test file                             |
+| unit   | unit_call_media.rs                |   148 |  4734 |     3 | Test file                             |
 | unit   | unit_calls.rs                     |    90 |  2797 |     1 | calls module tests                    |
 | unit   | unit_connected.rs                 |    65 |  2019 |     1 | Unit tests for connected module       |
 | unit   | unit_contacts.rs                  |   357 | 12111 |     4 | contacts module tests                 |
@@ -156,14 +156,14 @@
 | unit   | unit_relay.rs                     |    51 |  1450 |     2 | Test file                             |
 | unit   | unit_reply.rs                     |    98 |  3436 |     3 | Test file                             |
 | unit   | unit_settings.rs                  |    88 |  2766 |     3 | Test file                             |
-| unit   | unit_swarm_handler.rs             |   593 | 20179 |     4 | Unit tests for swarm_handler module   |
+| unit   | unit_swarm_handler.rs             |   642 | 21503 |     4 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs               |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs          |   365 | 11174 |     2 | Unit tests for TUI render state       |
 | unit   | unit_tui_tabs.rs                  |   330 | 10365 |     3 | Unit tests for TUI tabs               |
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   388 | 11522 |     3 | Unit tests for types module           |
 
-**Total:** 64 test files, 26,512 lines, 883,401 characters
+**Total:** 64 test files, 26,572 lines, 885,196 characters
 
 ## Dart Source Files
 

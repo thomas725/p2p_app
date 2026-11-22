@@ -176,6 +176,16 @@ impl MediaSession {
         }
     }
 
+    /// Whether a signal or frame with these ids belongs to this live session.
+    ///
+    /// Both the caller-minted `call_id` and the pinned peer must match: a
+    /// foreign peer or a stale call id must never tear down or inject into a
+    /// different call's audio.
+    #[must_use]
+    pub fn is_for(&self, call_id: &str, peer_id: &str) -> bool {
+        self.call_id == call_id && self.peer_id == peer_id
+    }
+
     /// Whether outgoing audio is currently muted.
     #[must_use]
     pub const fn is_muted(&self) -> bool {
