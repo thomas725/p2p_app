@@ -113,10 +113,18 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `tests/unit/unit_shares.rs` covers revocation, stale writes with changed
   entries, superseded pending applies and disconnect cleanup. A real blob-pull
   → apply test with separate per-node databases is still open.
+- **Facade**: `src/api/mod.rs` exposes the share store as `createShare`,
+  `listShares`, `getShare`, `bindShare`, `deleteShare`, `listShareGrants`,
+  `setShareGrant`, `removeShareGrant`, `loadShareManifest`, `saveShareManifest`,
+  `acceptShareOffer`, `snapshotShare`, `requestPeerShares`,
+  `requestShareManifest`, `sendShareOffer` and `publishShareSnapshot`.
+  `src/web/methods.rs` mirrors all of them; `createShare`/`bindShare`/
+  `snapshotShare` reject client-supplied server paths on the web transport.
+  The generated Dart bindings live in `lib/src/rust/shares.dart`.
 - **Frontend surface (deferred)**: share events are serialized in
   `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
-  for a later UI slice; the TUI currently logs them. No FRB methods or web
-  methods exist yet.
+  for a later UI slice; the TUI currently logs them. No share screens exist in
+  either frontend yet.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

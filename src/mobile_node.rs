@@ -1580,6 +1580,15 @@ fn share_event_json(ev: SwarmEvent) -> SwarmEventJson {
     }
 }
 
+/// Queue a share-lane command on the running node. Kept crate-visible: FRB
+/// exposes the typed wrappers in `api`, never this transport detail.
+pub(crate) fn queue_share_command(cmd: SwarmCommand) -> Result<(), String> {
+    if !blocking_send_cmd(cmd) {
+        return Err("failed to queue share command: node not running".to_string());
+    }
+    Ok(())
+}
+
 /// Call-signaling and media events. `content` carries the end-to-end `call_id`
 /// (and `audio` the decoded PCM), which Dart keys its call screen on alongside
 /// `event_type` and `peer_id`.

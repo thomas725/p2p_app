@@ -78,6 +78,22 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {
             blocklist(m, params)
         }
+        m @ ("createShare"
+        | "listShares"
+        | "getShare"
+        | "bindShare"
+        | "deleteShare"
+        | "listShareGrants"
+        | "setShareGrant"
+        | "removeShareGrant"
+        | "loadShareManifest"
+        | "saveShareManifest"
+        | "acceptShareOffer"
+        | "snapshotShare"
+        | "requestPeerShares"
+        | "requestShareManifest"
+        | "sendShareOffer"
+        | "publishShareSnapshot") => shares(m, params),
         "getTheme" => ok(api::get_theme()),
         "getNotificationSettings" => ok(api::get_notification_settings()),
         m @ ("formatTimeHhmm"
@@ -166,6 +182,100 @@ fn blocklist(method: &str, params: Value) -> Result<Value, String> {
         "listBlockedPeers" => json(api::list_blocked_peers()),
         other => Err(format!("method not routed to blocklist: {other}")),
     }
+}
+
+/// Versioned file shares / folder sync. Local folder paths are a native-only
+/// capability: the browser transport can list, grant and negotiate shares but
+/// must never let a client pick a directory on the server.
+fn shares(method: &str, params: Value) -> Result<Value, String> {
+    match method {
+        "createShare" => {
+            let p: WebCreateShareParams = parse(params)?;
+            reject_web_share_root(p.local_root.as_deref())?;
+            json(api::create_share(api::CreateShareParams {
+                name: p.name,
+                kind: p.kind,
+                public_write: p.public_write,
+                local_root: None,
+            }))
+        }
+        "listShares" => json(api::list_shares()),
+        "getShare" => {
+            let p: ShareIdParams = parse(params)?;
+            json(api::get_share(&p.share_id))
+        }
+        "bindShare" => {
+            let p: WebBindShareParams = parse(params)?;
+            reject_web_share_root(p.local_root.as_deref())?;
+            json(api::bind_share(api::BindShareParams {
+                share_id: p.share_id,
+                local_root: None,
+            }))
+        }
+        "deleteShare" => {
+            let p: ShareIdParams = parse(params)?;
+            json(api::delete_share(&p.share_id))
+        }
+        "listShareGrants" => {
+            let p: ShareIdParams = parse(params)?;
+            json(api::list_share_grants(&p.share_id))
+        }
+        "setShareGrant" => {
+            let p: ShareGrantParams = parse(params)?;
+            let mode = p
+                .mode
+                .ok_or_else(|| "invalid params: missing mode".to_string())?;
+            json(api::set_share_grant(&p.share_id, &p.user_id, &mode))
+        }
+        "removeShareGrant" => {
+            let p: ShareGrantParams = parse(params)?;
+            json(api::remove_share_grant(&p.share_id, &p.user_id))
+        }
+        "loadShareManifest" => {
+            let p: ShareIdParams = parse(params)?;
+            json(api::load_share_manifest(&p.share_id))
+        }
+        "saveShareManifest" => {
+            let p: SaveShareManifestParams = parse(params)?;
+            json(api::save_share_manifest(&p.share_id, p.manifest))
+        }
+        "acceptShareOffer" => {
+            let p: AcceptShareOfferParams = parse(params)?;
+            json(api::accept_share_offer(p.offer))
+        }
+        "snapshotShare" => {
+            let _root = parse::<SnapshotShareParams>(params)?.root;
+            Err("server-local share roots are not supported over the web transport".into())
+        }
+        "requestPeerShares" => {
+            let p: PeerIdParams = parse(params)?;
+            json(api::request_peer_shares(&p.peer_id))
+        }
+        "requestShareManifest" => {
+            let p: RequestShareManifestParams = parse(params)?;
+            json(api::request_share_manifest(&p.peer_id, &p.share_id))
+        }
+        "sendShareOffer" => {
+            let p: SendShareOfferParams = parse(params)?;
+            json(api::send_share_offer(p.peer_ids, p.offer))
+        }
+        "publishShareSnapshot" => {
+            let p: PublishShareSnapshotParams = parse(params)?;
+            json(api::publish_share_snapshot(
+                &p.peer_id,
+                p.base_revision,
+                p.manifest,
+            ))
+        }
+        other => Err(format!("method not routed to shares: {other}")),
+    }
+}
+
+fn reject_web_share_root(root: Option<&str>) -> Result<(), String> {
+    if root.is_some() {
+        return Err("server-local share roots are not supported over the web transport".into());
+    }
+    Ok(())
 }
 
 /// Broadcast + DM message history and sends.
@@ -744,6 +854,80 @@ struct SortContactsParams {
     ascending: bool,
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ShareIdParams {
+    share_id: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WebCreateShareParams {
+    name: String,
+    kind: String,
+    public_write: bool,
+    #[serde(default)]
+    local_root: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WebBindShareParams {
+    share_id: String,
+    #[serde(default)]
+    local_root: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ShareGrantParams {
+    share_id: String,
+    user_id: String,
+    #[serde(default)]
+    mode: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveShareManifestParams {
+    share_id: String,
+    manifest: crate::shares::ShareManifest,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AcceptShareOfferParams {
+    offer: crate::shares::ShareOffer,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SnapshotShareParams {
+    root: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RequestShareManifestParams {
+    peer_id: String,
+    share_id: String,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SendShareOfferParams {
+    peer_ids: Vec<String>,
+    offer: crate::shares::ShareOffer,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PublishShareSnapshotParams {
+    peer_id: String,
+    base_revision: i64,
+    manifest: crate::shares::ShareManifest,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -761,6 +945,59 @@ mod tests {
         // The previous web arm parsed a bare String, which is not what any
         // frontend sends — keep the mismatch documented so it cannot regress.
         assert!(parse::<StartNodeParams>(json!("/tmp/p2p-test.db")).is_err());
+    }
+
+    #[test]
+    fn share_methods_are_routed_and_validate_params() {
+        // Parsing happens before any DB/node work, so `Null` is a safe probe
+        // that every with-params share method is actually reachable.
+        for method in [
+            "createShare",
+            "getShare",
+            "bindShare",
+            "deleteShare",
+            "listShareGrants",
+            "setShareGrant",
+            "removeShareGrant",
+            "loadShareManifest",
+            "saveShareManifest",
+            "acceptShareOffer",
+            "snapshotShare",
+            "requestPeerShares",
+            "requestShareManifest",
+            "sendShareOffer",
+            "publishShareSnapshot",
+        ] {
+            let err = dispatch(method, Value::Null).expect_err("missing params must fail");
+            assert!(
+                err.starts_with("invalid params:"),
+                "{method}: unexpected error: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn web_share_roots_are_rejected_before_any_db_access() {
+        let err = dispatch(
+            "createShare",
+            json!({"name": "Docs", "kind": "public", "publicWrite": false, "localRoot": "/srv/private"}),
+        )
+        .expect_err("a client must not pick a server directory");
+        assert!(err.contains("server-local share roots"), "{err}");
+
+        let err = dispatch(
+            "bindShare",
+            json!({"shareId": "s", "localRoot": "/srv/private"}),
+        )
+        .expect_err("binding a server directory must fail");
+        assert!(err.contains("server-local share roots"), "{err}");
+
+        let err = dispatch(
+            "snapshotShare",
+            json!({"shareId": "s", "root": "/srv/private"}),
+        )
+        .expect_err("snapshotting a server directory must fail");
+        assert!(err.contains("server-local share roots"), "{err}");
     }
 
     #[test]

@@ -12,9 +12,11 @@ import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'shares.dart';
 import 'theme.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `local_share_owner`, `parse_share_kind`, `parse_share_mode`, `share_kind_label`, `share_mode_label`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 /// Initialize the mobile database at the given path and return peer info.
 ///
@@ -372,8 +374,11 @@ Future<void> deleteGroup({required String groupId}) =>
 
 /// Set the local user's nickname.
 ///
+/// Validated against the canonical nickname rules ([`validate_nickname`]) just
+/// like [`set_peer_local_nickname`], so every frontend accepts the same input.
+///
 /// # Errors
-/// Returns an error if the nickname cannot be persisted.
+/// Returns an error if the nickname is invalid or cannot be persisted.
 Future<void> setSelfNickname({required String nickname}) =>
     RustLib.instance.api.crateApiSetSelfNickname(nickname: nickname);
 
@@ -615,6 +620,295 @@ Future<void> removeContact({required String contactUserId}) =>
 /// Returns an error if the roster cannot be loaded.
 Future<List<MobileContactRow>> getContactsWithStats() =>
     RustLib.instance.api.crateApiGetContactsWithStats();
+
+/// Create a share owned by this install's verified user.
+///
+/// # Errors
+/// Returns an error for an invalid name/kind, a missing local user, or a DB failure.
+Future<MobileShare> createShare({required CreateShareParams params}) =>
+    RustLib.instance.api.crateApiCreateShare(params: params);
+
+/// List every locally known share, owned or accepted from a peer.
+///
+/// # Errors
+/// Returns an error if the share table cannot be read.
+Future<List<MobileShare>> listShares() =>
+    RustLib.instance.api.crateApiListShares();
+
+/// Load one share by id.
+///
+/// # Errors
+/// Returns an error if the share table cannot be read.
+Future<MobileShare?> getShare({required String shareId}) =>
+    RustLib.instance.api.crateApiGetShare(shareId: shareId);
+
+/// Bind (or clear) the real local folder backing a share.
+///
+/// # Errors
+/// Returns an error for a missing share or a DB failure.
+Future<void> bindShare({required BindShareParams params}) =>
+    RustLib.instance.api.crateApiBindShare(params: params);
+
+/// Delete a share row. Blobs and the bound folder are left untouched.
+///
+/// # Errors
+/// Returns an error if the DB delete fails.
+Future<void> deleteShare({required String shareId}) =>
+    RustLib.instance.api.crateApiDeleteShare(shareId: shareId);
+
+/// List the per-user grants on a share.
+///
+/// # Errors
+/// Returns an error if the grant table cannot be read.
+Future<List<MobileShareGrant>> listShareGrants({required String shareId}) =>
+    RustLib.instance.api.crateApiListShareGrants(shareId: shareId);
+
+/// Grant (or upgrade) one verified user's access to a private share.
+///
+/// # Errors
+/// Returns an error for an invalid mode or a DB failure.
+Future<void> setShareGrant({
+  required String shareId,
+  required String userId,
+  required String mode,
+}) => RustLib.instance.api.crateApiSetShareGrant(
+  shareId: shareId,
+  userId: userId,
+  mode: mode,
+);
+
+/// Revoke one user's grant immediately.
+///
+/// # Errors
+/// Returns an error if the DB delete fails.
+Future<void> removeShareGrant({
+  required String shareId,
+  required String userId,
+}) => RustLib.instance.api.crateApiRemoveShareGrant(
+  shareId: shareId,
+  userId: userId,
+);
+
+/// Load a share's current versioned manifest.
+///
+/// # Errors
+/// Returns an error if the share has no manifest or the DB read fails.
+Future<ShareManifest?> loadShareManifest({required String shareId}) =>
+    RustLib.instance.api.crateApiLoadShareManifest(shareId: shareId);
+
+/// Persist a validated manifest and bump the share's revision.
+///
+/// # Errors
+/// Returns an error for an invalid/mismatched manifest or a DB failure.
+Future<void> saveShareManifest({
+  required String shareId,
+  required ShareManifest manifest,
+}) => RustLib.instance.api.crateApiSaveShareManifest(
+  shareId: shareId,
+  manifest: manifest,
+);
+
+/// Materialise a received offer as a local share row.
+///
+/// # Errors
+/// Returns an error for an invalid offer or a DB failure.
+Future<MobileShare> acceptShareOffer({required ShareOffer offer}) =>
+    RustLib.instance.api.crateApiAcceptShareOffer(offer: offer);
+
+/// Snapshot a real local folder into content-addressed blobs and save the
+/// resulting manifest. Only native installs can call this with a server path.
+///
+/// # Errors
+/// Returns an error if the folder cannot be read, a blob cannot be stored, or
+/// the share is unknown.
+Future<ShareManifest> snapshotShare({
+  required String shareId,
+  required String root,
+}) => RustLib.instance.api.crateApiSnapshotShare(shareId: shareId, root: root);
+
+/// Ask a peer for every share we are allowed to read.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+Future<void> requestPeerShares({required String peerId}) =>
+    RustLib.instance.api.crateApiRequestPeerShares(peerId: peerId);
+
+/// Ask a share owner for its current manifest.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+Future<void> requestShareManifest({
+  required String peerId,
+  required String shareId,
+}) => RustLib.instance.api.crateApiRequestShareManifest(
+  peerId: peerId,
+  shareId: shareId,
+);
+
+/// Advertise one or more shares to connected peers.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+Future<void> sendShareOffer({
+  required List<String> peerIds,
+  required ShareOffer offer,
+}) =>
+    RustLib.instance.api.crateApiSendShareOffer(peerIds: peerIds, offer: offer);
+
+/// Submit a new snapshot based on a specific revision. The owner rejects stale
+/// writes so the caller must refresh and retry.
+///
+/// # Errors
+/// Returns an error for a negative base revision or a node that is not running.
+Future<void> publishShareSnapshot({
+  required String peerId,
+  required PlatformInt64 baseRevision,
+  required ShareManifest manifest,
+}) => RustLib.instance.api.crateApiPublishShareSnapshot(
+  peerId: peerId,
+  baseRevision: baseRevision,
+  manifest: manifest,
+);
+
+/// Input for [`bind_share`]. Grouping the optional native path keeps the FRB
+/// signature stable while letting the wrapper consume every owned argument.
+class BindShareParams {
+  /// Share to bind.
+  final String shareId;
+
+  /// Real local directory, or `None` to clear the binding.
+  final String? localRoot;
+
+  const BindShareParams({required this.shareId, this.localRoot});
+
+  @override
+  int get hashCode => shareId.hashCode ^ localRoot.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BindShareParams &&
+          runtimeType == other.runtimeType &&
+          shareId == other.shareId &&
+          localRoot == other.localRoot;
+}
+
+/// Input for [`create_share`]. Grouping the optional native path keeps the FRB
+/// signature stable while letting the wrapper consume every owned argument.
+class CreateShareParams {
+  /// Human-readable share name.
+  final String name;
+
+  /// `private` or `public`.
+  final String kind;
+
+  /// Whether a public share accepts writes.
+  final bool publicWrite;
+
+  /// Real local directory bound to this share, if any.
+  final String? localRoot;
+
+  const CreateShareParams({
+    required this.name,
+    required this.kind,
+    required this.publicWrite,
+    this.localRoot,
+  });
+
+  @override
+  int get hashCode =>
+      name.hashCode ^ kind.hashCode ^ publicWrite.hashCode ^ localRoot.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CreateShareParams &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          kind == other.kind &&
+          publicWrite == other.publicWrite &&
+          localRoot == other.localRoot;
+}
+
+/// One share as both frontends see it. The domain type is deliberately not
+/// serializable, so this DTO keeps the FRB and web JSON shapes identical.
+class MobileShare {
+  /// Stable id shared with peers on the wire.
+  final String shareId;
+
+  /// Verified id of the owning account.
+  final String ownerUserId;
+
+  /// Human-readable share name.
+  final String name;
+
+  /// `private` or `public`.
+  final String kind;
+
+  /// Whether a public share accepts writes.
+  final bool publicWrite;
+
+  /// Real local directory bound to this share, if any.
+  final String? localRoot;
+
+  /// Current manifest revision.
+  final PlatformInt64 revision;
+
+  const MobileShare({
+    required this.shareId,
+    required this.ownerUserId,
+    required this.name,
+    required this.kind,
+    required this.publicWrite,
+    this.localRoot,
+    required this.revision,
+  });
+
+  @override
+  int get hashCode =>
+      shareId.hashCode ^
+      ownerUserId.hashCode ^
+      name.hashCode ^
+      kind.hashCode ^
+      publicWrite.hashCode ^
+      localRoot.hashCode ^
+      revision.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileShare &&
+          runtimeType == other.runtimeType &&
+          shareId == other.shareId &&
+          ownerUserId == other.ownerUserId &&
+          name == other.name &&
+          kind == other.kind &&
+          publicWrite == other.publicWrite &&
+          localRoot == other.localRoot &&
+          revision == other.revision;
+}
+
+/// One target user's permission on a share.
+class MobileShareGrant {
+  /// Verified target user id.
+  final String userId;
+
+  /// `readonly` or `readwrite`.
+  final String mode;
+
+  const MobileShareGrant({required this.userId, required this.mode});
+
+  @override
+  int get hashCode => userId.hashCode ^ mode.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MobileShareGrant &&
+          runtimeType == other.runtimeType &&
+          userId == other.userId &&
+          mode == other.mode;
+}
 
 /// Fields for persisting one incoming broadcast or DM.
 ///

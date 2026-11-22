@@ -728,6 +728,321 @@ pub fn get_contacts_with_stats() -> Result<Vec<MobileContactRow>, String> {
     crate::mobile_api::get_contacts_with_stats()
 }
 
+// --- File shares / folder sync ---
+
+/// One share as both frontends see it. The domain type is deliberately not
+/// serializable, so this DTO keeps the FRB and web JSON shapes identical.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MobileShare {
+    /// Stable id shared with peers on the wire.
+    pub share_id: String,
+    /// Verified id of the owning account.
+    pub owner_user_id: String,
+    /// Human-readable share name.
+    pub name: String,
+    /// `private` or `public`.
+    pub kind: String,
+    /// Whether a public share accepts writes.
+    pub public_write: bool,
+    /// Real local directory bound to this share, if any.
+    pub local_root: Option<String>,
+    /// Current manifest revision.
+    pub revision: i64,
+}
+
+impl From<crate::shares::Share> for MobileShare {
+    fn from(share: crate::shares::Share) -> Self {
+        Self {
+            share_id: share.share_id,
+            owner_user_id: share.owner_user_id,
+            name: share.name,
+            kind: share_kind_label(share.kind).to_string(),
+            public_write: share.public_write,
+            local_root: share.local_root,
+            revision: i64::try_from(share.revision).unwrap_or(i64::MAX),
+        }
+    }
+}
+
+/// One target user's permission on a share.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MobileShareGrant {
+    /// Verified target user id.
+    pub user_id: String,
+    /// `readonly` or `readwrite`.
+    pub mode: String,
+}
+
+impl From<crate::shares::ShareGrant> for MobileShareGrant {
+    fn from(grant: crate::shares::ShareGrant) -> Self {
+        Self {
+            user_id: grant.user_id,
+            mode: share_mode_label(grant.mode).to_string(),
+        }
+    }
+}
+
+const fn share_kind_label(kind: crate::shares::ShareKind) -> &'static str {
+    match kind {
+        crate::shares::ShareKind::Private => "private",
+        crate::shares::ShareKind::Public => "public",
+    }
+}
+
+const fn share_mode_label(mode: crate::shares::ShareMode) -> &'static str {
+    match mode {
+        crate::shares::ShareMode::ReadOnly => "readonly",
+        crate::shares::ShareMode::ReadWrite => "readwrite",
+    }
+}
+
+fn parse_share_kind(kind: &str) -> Result<crate::shares::ShareKind, String> {
+    match kind {
+        "private" => Ok(crate::shares::ShareKind::Private),
+        "public" => Ok(crate::shares::ShareKind::Public),
+        other => Err(format!("invalid share kind: {other}")),
+    }
+}
+
+fn parse_share_mode(mode: &str) -> Result<crate::shares::ShareMode, String> {
+    match mode {
+        "readonly" => Ok(crate::shares::ShareMode::ReadOnly),
+        "readwrite" => Ok(crate::shares::ShareMode::ReadWrite),
+        other => Err(format!("invalid share mode: {other}")),
+    }
+}
+
+fn local_share_owner() -> Result<String, String> {
+    get_my_user_id()?.ok_or_else(|| "local user is not provisioned".to_string())
+}
+
+/// Input for [`create_share`]. Grouping the optional native path keeps the FRB
+/// signature stable while letting the wrapper consume every owned argument.
+#[derive(Debug, Clone)]
+pub struct CreateShareParams {
+    /// Human-readable share name.
+    pub name: String,
+    /// `private` or `public`.
+    pub kind: String,
+    /// Whether a public share accepts writes.
+    pub public_write: bool,
+    /// Real local directory bound to this share, if any.
+    pub local_root: Option<String>,
+}
+
+/// Create a share owned by this install's verified user.
+///
+/// # Errors
+/// Returns an error for an invalid name/kind, a missing local user, or a DB failure.
+pub fn create_share(params: CreateShareParams) -> Result<MobileShare, String> {
+    let CreateShareParams {
+        name,
+        kind,
+        public_write,
+        local_root,
+    } = params;
+    let owner = local_share_owner()?;
+    let share = crate::shares::create_share(
+        &name,
+        &owner,
+        parse_share_kind(&kind)?,
+        public_write,
+        local_root.as_deref(),
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(share.into())
+}
+
+/// List every locally known share, owned or accepted from a peer.
+///
+/// # Errors
+/// Returns an error if the share table cannot be read.
+pub fn list_shares() -> Result<Vec<MobileShare>, String> {
+    let shares = crate::shares::list_shares().map_err(|error| error.to_string())?;
+    Ok(shares.into_iter().map(Into::into).collect())
+}
+
+/// Load one share by id.
+///
+/// # Errors
+/// Returns an error if the share table cannot be read.
+pub fn get_share(share_id: &str) -> Result<Option<MobileShare>, String> {
+    let share = crate::shares::get_share(share_id).map_err(|error| error.to_string())?;
+    Ok(share.map(Into::into))
+}
+
+/// Input for [`bind_share`]. Grouping the optional native path keeps the FRB
+/// signature stable while letting the wrapper consume every owned argument.
+#[derive(Debug, Clone)]
+pub struct BindShareParams {
+    /// Share to bind.
+    pub share_id: String,
+    /// Real local directory, or `None` to clear the binding.
+    pub local_root: Option<String>,
+}
+
+/// Bind (or clear) the real local folder backing a share.
+///
+/// # Errors
+/// Returns an error for a missing share or a DB failure.
+pub fn bind_share(params: BindShareParams) -> Result<(), String> {
+    let BindShareParams {
+        share_id,
+        local_root,
+    } = params;
+    crate::shares::set_local_root(&share_id, local_root.as_deref())
+        .map_err(|error| error.to_string())
+}
+
+/// Delete a share row. Blobs and the bound folder are left untouched.
+///
+/// # Errors
+/// Returns an error if the DB delete fails.
+pub fn delete_share(share_id: &str) -> Result<(), String> {
+    crate::shares::delete_share(share_id).map_err(|error| error.to_string())
+}
+
+/// List the per-user grants on a share.
+///
+/// # Errors
+/// Returns an error if the grant table cannot be read.
+pub fn list_share_grants(share_id: &str) -> Result<Vec<MobileShareGrant>, String> {
+    let grants = crate::shares::list_grants(share_id).map_err(|error| error.to_string())?;
+    Ok(grants.into_iter().map(Into::into).collect())
+}
+
+/// Grant (or upgrade) one verified user's access to a private share.
+///
+/// # Errors
+/// Returns an error for an invalid mode or a DB failure.
+pub fn set_share_grant(share_id: &str, user_id: &str, mode: &str) -> Result<(), String> {
+    crate::shares::set_grant(share_id, user_id, parse_share_mode(mode)?)
+        .map_err(|error| error.to_string())
+}
+
+/// Revoke one user's grant immediately.
+///
+/// # Errors
+/// Returns an error if the DB delete fails.
+pub fn remove_share_grant(share_id: &str, user_id: &str) -> Result<(), String> {
+    crate::shares::remove_grant(share_id, user_id).map_err(|error| error.to_string())
+}
+
+/// Load a share's current versioned manifest.
+///
+/// # Errors
+/// Returns an error if the share has no manifest or the DB read fails.
+pub fn load_share_manifest(share_id: &str) -> Result<Option<crate::shares::ShareManifest>, String> {
+    match crate::shares::get_share(share_id).map_err(|error| error.to_string())? {
+        Some(share) => Ok(share.manifest),
+        None => Ok(None),
+    }
+}
+
+/// Persist a validated manifest and bump the share's revision.
+///
+/// # Errors
+/// Returns an error for an invalid/mismatched manifest or a DB failure.
+pub fn save_share_manifest(
+    share_id: &str,
+    manifest: crate::shares::ShareManifest,
+) -> Result<(), String> {
+    let manifest = Box::new(manifest);
+    crate::shares::save_manifest(share_id, &manifest).map_err(|error| error.to_string())
+}
+
+/// Materialise a received offer as a local share row.
+///
+/// # Errors
+/// Returns an error for an invalid offer or a DB failure.
+pub fn accept_share_offer(offer: crate::shares::ShareOffer) -> Result<MobileShare, String> {
+    let offer = Box::new(offer);
+    let share = crate::shares::accept_offer(&offer, None).map_err(|error| error.to_string())?;
+    Ok(share.into())
+}
+
+/// Snapshot a real local folder into content-addressed blobs and save the
+/// resulting manifest. Only native installs can call this with a server path.
+///
+/// # Errors
+/// Returns an error if the folder cannot be read, a blob cannot be stored, or
+/// the share is unknown.
+pub fn snapshot_share(
+    share_id: String,
+    root: &str,
+) -> Result<crate::shares::ShareManifest, String> {
+    let entries = crate::shares::snapshot_tree(std::path::Path::new(root))
+        .map_err(|error| error.to_string())?;
+    let share = crate::shares::get_share(&share_id)
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| format!("unknown share: {share_id}"))?;
+    let manifest = crate::shares::ShareManifest {
+        share_id,
+        name: share.name,
+        revision: share.revision.saturating_add(1),
+        entries,
+    };
+    crate::shares::save_manifest(&manifest.share_id, &manifest)
+        .map_err(|error| error.to_string())?;
+    Ok(manifest)
+}
+
+/// Ask a peer for every share we are allowed to read.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+pub fn request_peer_shares(peer_id: &str) -> Result<(), String> {
+    crate::mobile_node::queue_share_command(crate::SwarmCommand::ListShares {
+        peer_id: peer_id.to_string(),
+    })
+}
+
+/// Ask a share owner for its current manifest.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+pub fn request_share_manifest(peer_id: &str, share_id: &str) -> Result<(), String> {
+    crate::mobile_node::queue_share_command(crate::SwarmCommand::RequestShareManifest {
+        peer_id: peer_id.to_string(),
+        share_id: share_id.to_string(),
+    })
+}
+
+/// Advertise one or more shares to connected peers.
+///
+/// # Errors
+/// Returns an error if the node is not running.
+pub fn send_share_offer(
+    peer_ids: Vec<String>,
+    offer: crate::shares::ShareOffer,
+) -> Result<(), String> {
+    crate::mobile_node::queue_share_command(crate::SwarmCommand::SendShareOffer {
+        peer_ids,
+        offer: Box::new(offer),
+    })
+}
+
+/// Submit a new snapshot based on a specific revision. The owner rejects stale
+/// writes so the caller must refresh and retry.
+///
+/// # Errors
+/// Returns an error for a negative base revision or a node that is not running.
+pub fn publish_share_snapshot(
+    peer_id: &str,
+    base_revision: i64,
+    manifest: crate::shares::ShareManifest,
+) -> Result<(), String> {
+    let base_revision = u64::try_from(base_revision)
+        .map_err(|_| "base revision must be non-negative".to_string())?;
+    crate::mobile_node::queue_share_command(crate::SwarmCommand::PublishShareSnapshot {
+        peer_id: peer_id.to_string(),
+        base_revision,
+        manifest: Box::new(manifest),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -852,5 +1167,127 @@ mod tests {
 
         // Unknown group: idempotent success (nothing to delete).
         delete_group("does-not-exist".to_string()).expect("idempotent leave");
+    }
+
+    #[test]
+    #[serial(db)]
+    fn share_facade_covers_the_full_local_lifecycle() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        crate::db::reset_db_url();
+        crate::mobile_api::init_mobile_database(
+            dir.path().join("api.sqlite").to_string_lossy().into_owned(),
+        )
+        .expect("mobile init");
+        let owner = provision_my_user(None, None).expect("provision");
+
+        let created = create_share(CreateShareParams {
+            name: "Photos".to_string(),
+            kind: "private".to_string(),
+            public_write: false,
+            local_root: None,
+        })
+        .expect("create share");
+        assert_eq!(created.owner_user_id, owner);
+        assert_eq!(created.kind, "private");
+        assert_eq!(created.revision, 0);
+
+        assert_eq!(list_shares().expect("list").len(), 1);
+        assert_eq!(
+            get_share(&created.share_id)
+                .expect("get")
+                .expect("present")
+                .name,
+            "Photos"
+        );
+        assert!(get_share("missing").expect("get missing").is_none());
+
+        let root = dir.path().join("photos");
+        std::fs::create_dir(&root).expect("root dir");
+        bind_share(BindShareParams {
+            share_id: created.share_id.clone(),
+            local_root: Some(root.to_string_lossy().into_owned()),
+        })
+        .expect("bind");
+        assert_eq!(
+            get_share(&created.share_id)
+                .expect("get")
+                .expect("present")
+                .local_root
+                .as_deref(),
+            Some(root.to_str().expect("root str"))
+        );
+
+        set_share_grant(&created.share_id, "alice", "readwrite").expect("grant");
+        let grants = list_share_grants(&created.share_id).expect("grants");
+        assert_eq!(grants.len(), 1);
+        assert_eq!(grants[0].user_id, "alice");
+        assert_eq!(grants[0].mode, "readwrite");
+        assert!(set_share_grant(&created.share_id, "alice", "bogus").is_err());
+        remove_share_grant(&created.share_id, "alice").expect("revoke");
+        assert!(
+            list_share_grants(&created.share_id)
+                .expect("grants")
+                .is_empty()
+        );
+
+        let manifest = crate::shares::ShareManifest {
+            share_id: created.share_id.clone(),
+            name: created.name.clone(),
+            revision: 1,
+            entries: vec![],
+        };
+        save_share_manifest(&created.share_id, manifest.clone()).expect("save manifest");
+        assert_eq!(
+            load_share_manifest(&created.share_id)
+                .expect("load manifest")
+                .as_ref(),
+            Some(&manifest)
+        );
+        assert!(
+            load_share_manifest("missing")
+                .expect("load missing")
+                .is_none()
+        );
+
+        let offer = crate::shares::ShareOffer {
+            share_id: "remote-share".to_string(),
+            name: "Remote".to_string(),
+            kind: crate::shares::ShareKind::Public,
+            revision: 3,
+            public_write: false,
+            owner_user_id: Some("bob".to_string()),
+        };
+        let accepted = accept_share_offer(offer).expect("accept offer");
+        assert_eq!(accepted.share_id, "remote-share");
+        // The offer's revision is remote metadata; the local row starts at 0
+        // until its manifest is fetched and saved.
+        assert_eq!(accepted.revision, 0);
+
+        delete_share(&accepted.share_id).expect("delete");
+        assert!(get_share(&accepted.share_id).expect("get").is_none());
+    }
+
+    #[test]
+    fn share_facade_rejects_invalid_inputs_without_a_node() {
+        assert!(parse_share_kind("secret").is_err());
+        assert!(parse_share_mode("admin").is_err());
+        assert!(
+            publish_share_snapshot(
+                "peer-1",
+                -1,
+                crate::shares::ShareManifest {
+                    share_id: "s".to_string(),
+                    name: "S".to_string(),
+                    revision: 1,
+                    entries: vec![],
+                },
+            )
+            .unwrap_err()
+            .contains("non-negative")
+        );
+        // Command wrappers fail cleanly when the node is not running.
+        assert!(request_peer_shares("peer-1").is_err());
+        assert!(request_share_manifest("peer-1", "s").is_err());
     }
 }

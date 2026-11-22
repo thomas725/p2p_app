@@ -18,6 +18,7 @@ import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'shares.dart';
 import 'theme.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -44,13 +45,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AppTheme dco_decode_app_theme(dynamic raw);
 
   @protected
+  BindShareParams dco_decode_bind_share_params(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  BindShareParams dco_decode_box_autoadd_bind_share_params(dynamic raw);
+
+  @protected
+  CreateShareParams dco_decode_box_autoadd_create_share_params(dynamic raw);
 
   @protected
   double dco_decode_box_autoadd_f_64(dynamic raw);
 
   @protected
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw);
+
+  @protected
+  MobileShare dco_decode_box_autoadd_mobile_share(dynamic raw);
 
   @protected
   Notification dco_decode_box_autoadd_notification(dynamic raw);
@@ -64,6 +77,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ShareManifest dco_decode_box_autoadd_share_manifest(dynamic raw);
+
+  @protected
+  ShareOffer dco_decode_box_autoadd_share_offer(dynamic raw);
+
+  @protected
   SwarmEventJson dco_decode_box_autoadd_swarm_event_json(dynamic raw);
 
   @protected
@@ -74,6 +93,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContactSortInput dco_decode_contact_sort_input(dynamic raw);
+
+  @protected
+  CreateShareParams dco_decode_create_share_params(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
@@ -121,6 +143,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<MobilePeerRecord> dco_decode_list_mobile_peer_record(dynamic raw);
 
   @protected
+  List<MobileShare> dco_decode_list_mobile_share(dynamic raw);
+
+  @protected
+  List<MobileShareGrant> dco_decode_list_mobile_share_grant(dynamic raw);
+
+  @protected
   List<NetworkInterfaceInfo> dco_decode_list_network_interface_info(
     dynamic raw,
   );
@@ -148,6 +176,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ReactionSummary> dco_decode_list_reaction_summary(dynamic raw);
+
+  @protected
+  List<ShareEntry> dco_decode_list_share_entry(dynamic raw);
 
   @protected
   MobileAttachment dco_decode_mobile_attachment(dynamic raw);
@@ -180,6 +211,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobilePeerStatus dco_decode_mobile_peer_status(dynamic raw);
 
   @protected
+  MobileShare dco_decode_mobile_share(dynamic raw);
+
+  @protected
+  MobileShareGrant dco_decode_mobile_share_grant(dynamic raw);
+
+  @protected
   NetworkDetails dco_decode_network_details(dynamic raw);
 
   @protected
@@ -204,10 +241,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobileAttachment? dco_decode_opt_box_autoadd_mobile_attachment(dynamic raw);
 
   @protected
+  MobileShare? dco_decode_opt_box_autoadd_mobile_share(dynamic raw);
+
+  @protected
   Notification? dco_decode_opt_box_autoadd_notification(dynamic raw);
 
   @protected
   ReplyRef? dco_decode_opt_box_autoadd_reply_ref(dynamic raw);
+
+  @protected
+  ShareManifest? dco_decode_opt_box_autoadd_share_manifest(dynamic raw);
 
   @protected
   SwarmEventJson? dco_decode_opt_box_autoadd_swarm_event_json(dynamic raw);
@@ -237,6 +280,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SaveIncomingMessageParams dco_decode_save_incoming_message_params(
     dynamic raw,
   );
+
+  @protected
+  ShareEntry dco_decode_share_entry(dynamic raw);
+
+  @protected
+  ShareKind dco_decode_share_kind(dynamic raw);
+
+  @protected
+  ShareManifest dco_decode_share_manifest(dynamic raw);
+
+  @protected
+  ShareOffer dco_decode_share_offer(dynamic raw);
 
   @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw);
@@ -272,7 +327,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AppTheme sse_decode_app_theme(SseDeserializer deserializer);
 
   @protected
+  BindShareParams sse_decode_bind_share_params(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  BindShareParams sse_decode_box_autoadd_bind_share_params(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CreateShareParams sse_decode_box_autoadd_create_share_params(
+    SseDeserializer deserializer,
+  );
 
   @protected
   double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
@@ -281,6 +349,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobileAttachment sse_decode_box_autoadd_mobile_attachment(
     SseDeserializer deserializer,
   );
+
+  @protected
+  MobileShare sse_decode_box_autoadd_mobile_share(SseDeserializer deserializer);
 
   @protected
   Notification sse_decode_box_autoadd_notification(
@@ -294,6 +365,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SaveIncomingMessageParams sse_decode_box_autoadd_save_incoming_message_params(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ShareManifest sse_decode_box_autoadd_share_manifest(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ShareOffer sse_decode_box_autoadd_share_offer(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_box_autoadd_swarm_event_json(
@@ -310,6 +389,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContactSortInput sse_decode_contact_sort_input(SseDeserializer deserializer);
+
+  @protected
+  CreateShareParams sse_decode_create_share_params(
+    SseDeserializer deserializer,
+  );
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
@@ -373,6 +457,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<MobileShare> sse_decode_list_mobile_share(SseDeserializer deserializer);
+
+  @protected
+  List<MobileShareGrant> sse_decode_list_mobile_share_grant(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<NetworkInterfaceInfo> sse_decode_list_network_interface_info(
     SseDeserializer deserializer,
   );
@@ -406,6 +498,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ReactionSummary> sse_decode_list_reaction_summary(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<ShareEntry> sse_decode_list_share_entry(SseDeserializer deserializer);
 
   @protected
   MobileAttachment sse_decode_mobile_attachment(SseDeserializer deserializer);
@@ -444,6 +539,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   MobilePeerStatus sse_decode_mobile_peer_status(SseDeserializer deserializer);
 
   @protected
+  MobileShare sse_decode_mobile_share(SseDeserializer deserializer);
+
+  @protected
+  MobileShareGrant sse_decode_mobile_share_grant(SseDeserializer deserializer);
+
+  @protected
   NetworkDetails sse_decode_network_details(SseDeserializer deserializer);
 
   @protected
@@ -474,12 +575,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  MobileShare? sse_decode_opt_box_autoadd_mobile_share(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Notification? sse_decode_opt_box_autoadd_notification(
     SseDeserializer deserializer,
   );
 
   @protected
   ReplyRef? sse_decode_opt_box_autoadd_reply_ref(SseDeserializer deserializer);
+
+  @protected
+  ShareManifest? sse_decode_opt_box_autoadd_share_manifest(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SwarmEventJson? sse_decode_opt_box_autoadd_swarm_event_json(
@@ -511,6 +622,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   SaveIncomingMessageParams sse_decode_save_incoming_message_params(
     SseDeserializer deserializer,
   );
+
+  @protected
+  ShareEntry sse_decode_share_entry(SseDeserializer deserializer);
+
+  @protected
+  ShareKind sse_decode_share_kind(SseDeserializer deserializer);
+
+  @protected
+  ShareManifest sse_decode_share_manifest(SseDeserializer deserializer);
+
+  @protected
+  ShareOffer sse_decode_share_offer(SseDeserializer deserializer);
 
   @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer);
@@ -546,7 +669,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_app_theme(AppTheme self, SseSerializer serializer);
 
   @protected
+  void sse_encode_bind_share_params(
+    BindShareParams self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_bind_share_params(
+    BindShareParams self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_create_share_params(
+    CreateShareParams self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
@@ -554,6 +695,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_mobile_attachment(
     MobileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_mobile_share(
+    MobileShare self,
     SseSerializer serializer,
   );
 
@@ -576,6 +723,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_share_manifest(
+    ShareManifest self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_share_offer(
+    ShareOffer self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_swarm_event_json(
     SwarmEventJson self,
     SseSerializer serializer,
@@ -593,6 +752,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_contact_sort_input(
     ContactSortInput self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_create_share_params(
+    CreateShareParams self,
     SseSerializer serializer,
   );
 
@@ -672,6 +837,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_mobile_share(
+    List<MobileShare> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_mobile_share_grant(
+    List<MobileShareGrant> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_network_interface_info(
     List<NetworkInterfaceInfo> self,
     SseSerializer serializer,
@@ -719,6 +896,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_reaction_summary(
     List<ReactionSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_share_entry(
+    List<ShareEntry> self,
     SseSerializer serializer,
   );
 
@@ -780,6 +963,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_mobile_share(MobileShare self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_mobile_share_grant(
+    MobileShareGrant self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_network_details(
     NetworkDetails self,
     SseSerializer serializer,
@@ -816,6 +1008,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_opt_box_autoadd_mobile_share(
+    MobileShare? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_notification(
     Notification? self,
     SseSerializer serializer,
@@ -824,6 +1022,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_opt_box_autoadd_reply_ref(
     ReplyRef? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_share_manifest(
+    ShareManifest? self,
     SseSerializer serializer,
   );
 
@@ -868,6 +1072,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     SaveIncomingMessageParams self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_share_entry(ShareEntry self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_share_kind(ShareKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_share_manifest(ShareManifest self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_share_offer(ShareOffer self, SseSerializer serializer);
 
   @protected
   void sse_encode_swarm_event_json(

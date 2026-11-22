@@ -17,6 +17,7 @@ import 'notifications.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'reactions.dart';
 import 'reply.dart';
+import 'shares.dart';
 import 'theme.dart';
 
 /// Main entrypoint of the Rust API
@@ -72,7 +73,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -597260959;
+  int get rustContentHash => 1193120378;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -90,6 +91,8 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<MobileGroup> crateApiAcceptGroupInvite({required String groupId});
+
+  Future<MobileShare> crateApiAcceptShareOffer({required ShareOffer offer});
 
   Future<void> crateApiAddContact({
     required String contactUserId,
@@ -111,11 +114,15 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateMobileNodeAttachmentFilePath({required String fileId});
 
+  Future<void> crateApiBindShare({required BindShareParams params});
+
   Future<bool> crateApiBlockPeer({required String peerId});
 
   Future<void> crateApiClearLogs();
 
   Future<MobileGroup> crateApiCreateGroup({required String name});
+
+  Future<MobileShare> crateApiCreateShare({required CreateShareParams params});
 
   Future<void> crateApiDeleteGroup({required String groupId});
 
@@ -125,6 +132,8 @@ abstract class RustLibApi extends BaseApi {
     required int messageId,
     required bool isGroup,
   });
+
+  Future<void> crateApiDeleteShare({required String shareId});
 
   Future<void> crateApiDialPeer({required String address});
 
@@ -166,6 +175,8 @@ abstract class RustLibApi extends BaseApi {
     required String msgId,
   });
 
+  Future<MobileShare?> crateApiGetShare({required String shareId});
+
   Future<AppTheme> crateApiGetTheme();
 
   Future<List<MobileDeviceInfo>> crateApiGetUserDevices({
@@ -188,6 +199,12 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<NetworkPeer>> crateApiListNetworkPeers();
 
+  Future<List<MobileShareGrant>> crateApiListShareGrants({
+    required String shareId,
+  });
+
+  Future<List<MobileShare>> crateApiListShares();
+
   Future<List<ChatMessage>> crateApiLoadBroadcastMessages({
     required PlatformInt64 limit,
   });
@@ -202,6 +219,8 @@ abstract class RustLibApi extends BaseApi {
     required PlatformInt64 limit,
   });
 
+  Future<ShareManifest?> crateApiLoadShareManifest({required String shareId});
+
   Future<String> crateApiNetworkSizeLabel({required PlatformInt64 peerCount});
 
   int crateMobileApiParseLastSeenMs({required String lastSeen});
@@ -213,9 +232,27 @@ abstract class RustLibApi extends BaseApi {
     String? selfNickname,
   });
 
+  Future<void> crateApiPublishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required ShareManifest manifest,
+  });
+
   Future<void> crateApiRemoveContact({required String contactUserId});
 
   Future<bool> crateApiRemoveNetworkPeer({required int id});
+
+  Future<void> crateApiRemoveShareGrant({
+    required String shareId,
+    required String userId,
+  });
+
+  Future<void> crateApiRequestPeerShares({required String peerId});
+
+  Future<void> crateApiRequestShareManifest({
+    required String peerId,
+    required String shareId,
+  });
 
   Future<ChatMessage> crateApiSaveIncomingMessage({
     required SaveIncomingMessageParams params,
@@ -241,6 +278,11 @@ abstract class RustLibApi extends BaseApi {
     ReplyRef? replyTo,
   });
 
+  Future<void> crateApiSaveShareManifest({
+    required String shareId,
+    required ShareManifest manifest,
+  });
+
   Future<void> crateApiSendCallMedia({
     required String callId,
     required List<int> pcm,
@@ -253,6 +295,11 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<void> crateApiSendDeviceBindingIntro({required String peerId});
+
+  Future<void> crateApiSendShareOffer({
+    required List<String> peerIds,
+    required ShareOffer offer,
+  });
 
   Future<void> crateApiSendTyping({
     required String peerId,
@@ -275,9 +322,20 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiSetSelfNickname({required String nickname});
 
+  Future<void> crateApiSetShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  });
+
   Future<void> crateApiSetTheme({
     required bool dark,
     required String accentName,
+  });
+
+  Future<ShareManifest> crateApiSnapshotShare({
+    required String shareId,
+    required String root,
   });
 
   List<ContactSortInput> crateMobileApiSortContacts({
@@ -400,6 +458,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<MobileShare> crateApiAcceptShareOffer({required ShareOffer offer}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_share_offer(offer, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mobile_share,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiAcceptShareOfferConstMeta,
+        argValues: [offer],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiAcceptShareOfferConstMeta =>
+      const TaskConstMeta(debugName: "accept_share_offer", argNames: ["offer"]);
+
+  @override
   Future<void> crateApiAddContact({
     required String contactUserId,
     String? nicknameOverride,
@@ -413,7 +499,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -453,7 +539,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -487,7 +573,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -517,7 +603,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -539,6 +625,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiBindShare({required BindShareParams params}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_bind_share_params(params, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiBindShareConstMeta,
+        argValues: [params],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiBindShareConstMeta =>
+      const TaskConstMeta(debugName: "bind_share", argNames: ["params"]);
+
+  @override
   Future<bool> crateApiBlockPeer({required String peerId}) {
     return handler.executeNormal(
       NormalTask(
@@ -548,7 +662,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -575,7 +689,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -603,7 +717,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -622,6 +736,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "create_group", argNames: ["name"]);
 
   @override
+  Future<MobileShare> crateApiCreateShare({required CreateShareParams params}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_create_share_params(params, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_mobile_share,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiCreateShareConstMeta,
+        argValues: [params],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCreateShareConstMeta =>
+      const TaskConstMeta(debugName: "create_share", argNames: ["params"]);
+
+  @override
   Future<void> crateApiDeleteGroup({required String groupId}) {
     return handler.executeNormal(
       NormalTask(
@@ -631,7 +773,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 13,
             port: port_,
           );
         },
@@ -659,7 +801,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 14,
             port: port_,
           );
         },
@@ -691,7 +833,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -712,6 +854,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiDeleteShare({required String shareId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiDeleteShareConstMeta,
+        argValues: [shareId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiDeleteShareConstMeta =>
+      const TaskConstMeta(debugName: "delete_share", argNames: ["shareId"]);
+
+  @override
   Future<void> crateApiDialPeer({required String address}) {
     return handler.executeNormal(
       NormalTask(
@@ -721,7 +891,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 17,
             port: port_,
           );
         },
@@ -755,7 +925,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 18,
             port: port_,
           );
         },
@@ -782,7 +952,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(dt, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -807,7 +977,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 20,
             port: port_,
           );
         },
@@ -834,7 +1004,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 21,
             port: port_,
           );
         },
@@ -861,7 +1031,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 22,
             port: port_,
           );
         },
@@ -888,7 +1058,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 23,
             port: port_,
           );
         },
@@ -915,7 +1085,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 24,
             port: port_,
           );
         },
@@ -942,7 +1112,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 25,
             port: port_,
           );
         },
@@ -969,7 +1139,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 26,
             port: port_,
           );
         },
@@ -996,7 +1166,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1023,7 +1193,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1050,7 +1220,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1078,7 +1248,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1105,7 +1275,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1133,7 +1303,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1163,7 +1333,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1182,6 +1352,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "get_reactions", argNames: ["msgId"]);
 
   @override
+  Future<MobileShare?> crateApiGetShare({required String shareId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 34,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_mobile_share,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiGetShareConstMeta,
+        argValues: [shareId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiGetShareConstMeta =>
+      const TaskConstMeta(debugName: "get_share", argNames: ["shareId"]);
+
+  @override
   Future<AppTheme> crateApiGetTheme() {
     return handler.executeNormal(
       NormalTask(
@@ -1190,7 +1388,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1220,7 +1418,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 36,
             port: port_,
           );
         },
@@ -1250,7 +1448,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1283,7 +1481,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_CastedPrimitive_usize(scrollOffset, serializer);
           sse_encode_CastedPrimitive_usize(total, serializer);
           sse_encode_CastedPrimitive_usize(visible, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -1311,7 +1509,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 34,
+            funcId: 39,
             port: port_,
           );
         },
@@ -1338,7 +1536,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 35,
+            funcId: 40,
             port: port_,
           );
         },
@@ -1365,7 +1563,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 41,
             port: port_,
           );
         },
@@ -1392,7 +1590,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 37,
+            funcId: 42,
             port: port_,
           );
         },
@@ -1411,6 +1609,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "list_network_peers", argNames: []);
 
   @override
+  Future<List<MobileShareGrant>> crateApiListShareGrants({
+    required String shareId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 43,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mobile_share_grant,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiListShareGrantsConstMeta,
+        argValues: [shareId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiListShareGrantsConstMeta => const TaskConstMeta(
+    debugName: "list_share_grants",
+    argNames: ["shareId"],
+  );
+
+  @override
+  Future<List<MobileShare>> crateApiListShares() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 44,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_mobile_share,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiListSharesConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiListSharesConstMeta =>
+      const TaskConstMeta(debugName: "list_shares", argNames: []);
+
+  @override
   Future<List<ChatMessage>> crateApiLoadBroadcastMessages({
     required PlatformInt64 limit,
   }) {
@@ -1422,7 +1679,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 38,
+            funcId: 45,
             port: port_,
           );
         },
@@ -1457,7 +1714,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 39,
+            funcId: 46,
             port: port_,
           );
         },
@@ -1491,7 +1748,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 40,
+            funcId: 47,
             port: port_,
           );
         },
@@ -1512,6 +1769,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<ShareManifest?> crateApiLoadShareManifest({required String shareId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 48,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_share_manifest,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLoadShareManifestConstMeta,
+        argValues: [shareId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLoadShareManifestConstMeta => const TaskConstMeta(
+    debugName: "load_share_manifest",
+    argNames: ["shareId"],
+  );
+
+  @override
   Future<String> crateApiNetworkSizeLabel({required PlatformInt64 peerCount}) {
     return handler.executeNormal(
       NormalTask(
@@ -1521,7 +1808,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 41,
+            funcId: 49,
             port: port_,
           );
         },
@@ -1548,7 +1835,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(lastSeen, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_CastedPrimitive_u_64,
@@ -1576,7 +1863,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 43,
+            funcId: 51,
             port: port_,
           );
         },
@@ -1608,7 +1895,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 44,
+            funcId: 52,
             port: port_,
           );
         },
@@ -1629,6 +1916,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiPublishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required ShareManifest manifest,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(peerId, serializer);
+          sse_encode_i_64(baseRevision, serializer);
+          sse_encode_box_autoadd_share_manifest(manifest, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 53,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiPublishShareSnapshotConstMeta,
+        argValues: [peerId, baseRevision, manifest],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiPublishShareSnapshotConstMeta =>
+      const TaskConstMeta(
+        debugName: "publish_share_snapshot",
+        argNames: ["peerId", "baseRevision", "manifest"],
+      );
+
+  @override
   Future<void> crateApiRemoveContact({required String contactUserId}) {
     return handler.executeNormal(
       NormalTask(
@@ -1638,7 +1962,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 45,
+            funcId: 54,
             port: port_,
           );
         },
@@ -1668,7 +1992,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 46,
+            funcId: 55,
             port: port_,
           );
         },
@@ -1687,6 +2011,105 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "remove_network_peer", argNames: ["id"]);
 
   @override
+  Future<void> crateApiRemoveShareGrant({
+    required String shareId,
+    required String userId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          sse_encode_String(userId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 56,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRemoveShareGrantConstMeta,
+        argValues: [shareId, userId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRemoveShareGrantConstMeta => const TaskConstMeta(
+    debugName: "remove_share_grant",
+    argNames: ["shareId", "userId"],
+  );
+
+  @override
+  Future<void> crateApiRequestPeerShares({required String peerId}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(peerId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 57,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRequestPeerSharesConstMeta,
+        argValues: [peerId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRequestPeerSharesConstMeta => const TaskConstMeta(
+    debugName: "request_peer_shares",
+    argNames: ["peerId"],
+  );
+
+  @override
+  Future<void> crateApiRequestShareManifest({
+    required String peerId,
+    required String shareId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(peerId, serializer);
+          sse_encode_String(shareId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 58,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiRequestShareManifestConstMeta,
+        argValues: [peerId, shareId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiRequestShareManifestConstMeta =>
+      const TaskConstMeta(
+        debugName: "request_share_manifest",
+        argNames: ["peerId", "shareId"],
+      );
+
+  @override
   Future<ChatMessage> crateApiSaveIncomingMessage({
     required SaveIncomingMessageParams params,
   }) {
@@ -1701,7 +2124,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 47,
+            funcId: 59,
             port: port_,
           );
         },
@@ -1738,7 +2161,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 48,
+            funcId: 60,
             port: port_,
           );
         },
@@ -1777,7 +2200,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 49,
+            funcId: 61,
             port: port_,
           );
         },
@@ -1815,7 +2238,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 50,
+            funcId: 62,
             port: port_,
           );
         },
@@ -1836,6 +2259,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiSaveShareManifest({
+    required String shareId,
+    required ShareManifest manifest,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          sse_encode_box_autoadd_share_manifest(manifest, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 63,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSaveShareManifestConstMeta,
+        argValues: [shareId, manifest],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSaveShareManifestConstMeta => const TaskConstMeta(
+    debugName: "save_share_manifest",
+    argNames: ["shareId", "manifest"],
+  );
+
+  @override
   Future<void> crateApiSendCallMedia({
     required String callId,
     required List<int> pcm,
@@ -1849,7 +2306,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 51,
+            funcId: 64,
             port: port_,
           );
         },
@@ -1885,7 +2342,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 52,
+            funcId: 65,
             port: port_,
           );
         },
@@ -1915,7 +2372,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 53,
+            funcId: 66,
             port: port_,
           );
         },
@@ -1937,6 +2394,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiSendShareOffer({
+    required List<String> peerIds,
+    required ShareOffer offer,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_list_String(peerIds, serializer);
+          sse_encode_box_autoadd_share_offer(offer, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 67,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSendShareOfferConstMeta,
+        argValues: [peerIds, offer],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSendShareOfferConstMeta => const TaskConstMeta(
+    debugName: "send_share_offer",
+    argNames: ["peerIds", "offer"],
+  );
+
+  @override
   Future<void> crateApiSendTyping({
     required String peerId,
     required bool isTyping,
@@ -1950,7 +2441,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 54,
+            funcId: 68,
             port: port_,
           );
         },
@@ -1980,7 +2471,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 55,
+            funcId: 69,
             port: port_,
           );
         },
@@ -2010,7 +2501,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 56,
+            funcId: 70,
             port: port_,
           );
         },
@@ -2042,7 +2533,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 57,
+            funcId: 71,
             port: port_,
           );
         },
@@ -2077,7 +2568,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 58,
+            funcId: 72,
             port: port_,
           );
         },
@@ -2108,7 +2599,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 59,
+            funcId: 73,
             port: port_,
           );
         },
@@ -2129,6 +2620,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<void> crateApiSetShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          sse_encode_String(userId, serializer);
+          sse_encode_String(mode, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 74,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSetShareGrantConstMeta,
+        argValues: [shareId, userId, mode],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSetShareGrantConstMeta => const TaskConstMeta(
+    debugName: "set_share_grant",
+    argNames: ["shareId", "userId", "mode"],
+  );
+
+  @override
   Future<void> crateApiSetTheme({
     required bool dark,
     required String accentName,
@@ -2142,7 +2669,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 60,
+            funcId: 75,
             port: port_,
           );
         },
@@ -2163,6 +2690,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<ShareManifest> crateApiSnapshotShare({
+    required String shareId,
+    required String root,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(shareId, serializer);
+          sse_encode_String(root, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 76,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_share_manifest,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiSnapshotShareConstMeta,
+        argValues: [shareId, root],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiSnapshotShareConstMeta => const TaskConstMeta(
+    debugName: "snapshot_share",
+    argNames: ["shareId", "root"],
+  );
+
+  @override
   List<ContactSortInput> crateMobileApiSortContacts({
     required List<ContactSortInput> contacts,
     required int sortColumn,
@@ -2175,7 +2736,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_contact_sort_input(contacts, serializer);
           sse_encode_u_32(sortColumn, serializer);
           sse_encode_bool(ascending, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 77)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_contact_sort_input,
@@ -2206,7 +2767,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_list_peer_sort_input(peers, serializer);
           sse_encode_u_32(sortColumn, serializer);
           sse_encode_bool(ascending, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 78)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_peer_sort_input,
@@ -2234,7 +2795,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 63,
+            funcId: 79,
             port: port_,
           );
         },
@@ -2266,7 +2827,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 64,
+            funcId: 80,
             port: port_,
           );
         },
@@ -2296,7 +2857,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 65,
+            funcId: 81,
             port: port_,
           );
         },
@@ -2323,7 +2884,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 66,
+            funcId: 82,
             port: port_,
           );
         },
@@ -2350,7 +2911,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 67,
+            funcId: 83,
             port: port_,
           );
         },
@@ -2377,7 +2938,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 68,
+            funcId: 84,
             port: port_,
           );
         },
@@ -2409,7 +2970,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 69,
+            funcId: 85,
             port: port_,
           );
         },
@@ -2439,7 +3000,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 70,
+            funcId: 86,
             port: port_,
           );
         },
@@ -2467,7 +3028,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 71,
+            funcId: 87,
             port: port_,
           );
         },
@@ -2495,7 +3056,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 72,
+            funcId: 88,
             port: port_,
           );
         },
@@ -2533,7 +3094,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 73,
+            funcId: 89,
             port: port_,
           );
         },
@@ -2603,9 +3164,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BindShareParams dco_decode_bind_share_params(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return BindShareParams(
+      shareId: dco_decode_String(arr[0]),
+      localRoot: dco_decode_opt_String(arr[1]),
+    );
+  }
+
+  @protected
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
+  }
+
+  @protected
+  BindShareParams dco_decode_box_autoadd_bind_share_params(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_bind_share_params(raw);
+  }
+
+  @protected
+  CreateShareParams dco_decode_box_autoadd_create_share_params(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_create_share_params(raw);
   }
 
   @protected
@@ -2618,6 +3203,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   MobileAttachment dco_decode_box_autoadd_mobile_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_mobile_attachment(raw);
+  }
+
+  @protected
+  MobileShare dco_decode_box_autoadd_mobile_share(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_mobile_share(raw);
   }
 
   @protected
@@ -2638,6 +3229,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_save_incoming_message_params(raw);
+  }
+
+  @protected
+  ShareManifest dco_decode_box_autoadd_share_manifest(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_share_manifest(raw);
+  }
+
+  @protected
+  ShareOffer dco_decode_box_autoadd_share_offer(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_share_offer(raw);
   }
 
   @protected
@@ -2697,6 +3300,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       firstSeen: dco_decode_String(arr[3]),
       dmCount: dco_decode_i_64(arr[4]),
       broadcastSentToPeer: dco_decode_i_64(arr[5]),
+    );
+  }
+
+  @protected
+  CreateShareParams dco_decode_create_share_params(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return CreateShareParams(
+      name: dco_decode_String(arr[0]),
+      kind: dco_decode_String(arr[1]),
+      publicWrite: dco_decode_bool(arr[2]),
+      localRoot: dco_decode_opt_String(arr[3]),
     );
   }
 
@@ -2793,6 +3410,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MobileShare> dco_decode_list_mobile_share(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mobile_share).toList();
+  }
+
+  @protected
+  List<MobileShareGrant> dco_decode_list_mobile_share_grant(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_mobile_share_grant).toList();
+  }
+
+  @protected
   List<NetworkInterfaceInfo> dco_decode_list_network_interface_info(
     dynamic raw,
   ) {
@@ -2848,6 +3477,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<ReactionSummary> dco_decode_list_reaction_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_reaction_summary).toList();
+  }
+
+  @protected
+  List<ShareEntry> dco_decode_list_share_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_share_entry).toList();
   }
 
   @protected
@@ -3008,6 +3643,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MobileShare dco_decode_mobile_share(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return MobileShare(
+      shareId: dco_decode_String(arr[0]),
+      ownerUserId: dco_decode_String(arr[1]),
+      name: dco_decode_String(arr[2]),
+      kind: dco_decode_String(arr[3]),
+      publicWrite: dco_decode_bool(arr[4]),
+      localRoot: dco_decode_opt_String(arr[5]),
+      revision: dco_decode_i_64(arr[6]),
+    );
+  }
+
+  @protected
+  MobileShareGrant dco_decode_mobile_share_grant(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return MobileShareGrant(
+      userId: dco_decode_String(arr[0]),
+      mode: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   NetworkDetails dco_decode_network_details(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -3113,6 +3777,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MobileShare? dco_decode_opt_box_autoadd_mobile_share(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_mobile_share(raw);
+  }
+
+  @protected
   Notification? dco_decode_opt_box_autoadd_notification(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_notification(raw);
@@ -3122,6 +3792,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ReplyRef? dco_decode_opt_box_autoadd_reply_ref(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_reply_ref(raw);
+  }
+
+  @protected
+  ShareManifest? dco_decode_opt_box_autoadd_share_manifest(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_share_manifest(raw);
   }
 
   @protected
@@ -3240,6 +3916,56 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ShareEntry dco_decode_share_entry(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ShareEntry(
+      path: dco_decode_String(arr[0]),
+      fileId: dco_decode_String(arr[1]),
+      size: dco_decode_u_64(arr[2]),
+      mime: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
+  ShareKind dco_decode_share_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ShareKind.values[raw as int];
+  }
+
+  @protected
+  ShareManifest dco_decode_share_manifest(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ShareManifest(
+      shareId: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      revision: dco_decode_u_64(arr[2]),
+      entries: dco_decode_list_share_entry(arr[3]),
+    );
+  }
+
+  @protected
+  ShareOffer dco_decode_share_offer(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return ShareOffer(
+      shareId: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      kind: dco_decode_share_kind(arr[2]),
+      revision: dco_decode_u_64(arr[3]),
+      publicWrite: dco_decode_bool(arr[4]),
+      ownerUserId: dco_decode_opt_String(arr[5]),
+    );
+  }
+
+  @protected
   SwarmEventJson dco_decode_swarm_event_json(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -3337,9 +4063,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BindShareParams sse_decode_bind_share_params(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_shareId = sse_decode_String(deserializer);
+    var var_localRoot = sse_decode_opt_String(deserializer);
+    return BindShareParams(shareId: var_shareId, localRoot: var_localRoot);
+  }
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  BindShareParams sse_decode_box_autoadd_bind_share_params(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_bind_share_params(deserializer));
+  }
+
+  @protected
+  CreateShareParams sse_decode_box_autoadd_create_share_params(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_create_share_params(deserializer));
   }
 
   @protected
@@ -3354,6 +4104,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_mobile_attachment(deserializer));
+  }
+
+  @protected
+  MobileShare sse_decode_box_autoadd_mobile_share(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_mobile_share(deserializer));
   }
 
   @protected
@@ -3376,6 +4134,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_save_incoming_message_params(deserializer));
+  }
+
+  @protected
+  ShareManifest sse_decode_box_autoadd_share_manifest(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_share_manifest(deserializer));
+  }
+
+  @protected
+  ShareOffer sse_decode_box_autoadd_share_offer(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_share_offer(deserializer));
   }
 
   @protected
@@ -3453,6 +4225,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       firstSeen: var_firstSeen,
       dmCount: var_dmCount,
       broadcastSentToPeer: var_broadcastSentToPeer,
+    );
+  }
+
+  @protected
+  CreateShareParams sse_decode_create_share_params(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_name = sse_decode_String(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_publicWrite = sse_decode_bool(deserializer);
+    var var_localRoot = sse_decode_opt_String(deserializer);
+    return CreateShareParams(
+      name: var_name,
+      kind: var_kind,
+      publicWrite: var_publicWrite,
+      localRoot: var_localRoot,
     );
   }
 
@@ -3629,6 +4418,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<MobileShare> sse_decode_list_mobile_share(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MobileShare>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mobile_share(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<MobileShareGrant> sse_decode_list_mobile_share_grant(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <MobileShareGrant>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_mobile_share_grant(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   List<NetworkInterfaceInfo> sse_decode_list_network_interface_info(
     SseDeserializer deserializer,
   ) {
@@ -3720,6 +4535,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ReactionSummary>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_reaction_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ShareEntry> sse_decode_list_share_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ShareEntry>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_share_entry(deserializer));
     }
     return ans_;
   }
@@ -3917,6 +4744,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MobileShare sse_decode_mobile_share(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_shareId = sse_decode_String(deserializer);
+    var var_ownerUserId = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_publicWrite = sse_decode_bool(deserializer);
+    var var_localRoot = sse_decode_opt_String(deserializer);
+    var var_revision = sse_decode_i_64(deserializer);
+    return MobileShare(
+      shareId: var_shareId,
+      ownerUserId: var_ownerUserId,
+      name: var_name,
+      kind: var_kind,
+      publicWrite: var_publicWrite,
+      localRoot: var_localRoot,
+      revision: var_revision,
+    );
+  }
+
+  @protected
+  MobileShareGrant sse_decode_mobile_share_grant(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_userId = sse_decode_String(deserializer);
+    var var_mode = sse_decode_String(deserializer);
+    return MobileShareGrant(userId: var_userId, mode: var_mode);
+  }
+
+  @protected
   NetworkDetails sse_decode_network_details(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_interfaces = sse_decode_list_network_interface_info(deserializer);
@@ -4062,6 +4918,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  MobileShare? sse_decode_opt_box_autoadd_mobile_share(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_mobile_share(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   Notification? sse_decode_opt_box_autoadd_notification(
     SseDeserializer deserializer,
   ) {
@@ -4080,6 +4949,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
     if (sse_decode_bool(deserializer)) {
       return (sse_decode_box_autoadd_reply_ref(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ShareManifest? sse_decode_opt_box_autoadd_share_manifest(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_share_manifest(deserializer));
     } else {
       return null;
     }
@@ -4229,6 +5111,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ShareEntry sse_decode_share_entry(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_path = sse_decode_String(deserializer);
+    var var_fileId = sse_decode_String(deserializer);
+    var var_size = sse_decode_u_64(deserializer);
+    var var_mime = sse_decode_opt_String(deserializer);
+    return ShareEntry(
+      path: var_path,
+      fileId: var_fileId,
+      size: var_size,
+      mime: var_mime,
+    );
+  }
+
+  @protected
+  ShareKind sse_decode_share_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ShareKind.values[inner];
+  }
+
+  @protected
+  ShareManifest sse_decode_share_manifest(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_shareId = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_entries = sse_decode_list_share_entry(deserializer);
+    return ShareManifest(
+      shareId: var_shareId,
+      name: var_name,
+      revision: var_revision,
+      entries: var_entries,
+    );
+  }
+
+  @protected
+  ShareOffer sse_decode_share_offer(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_shareId = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_kind = sse_decode_share_kind(deserializer);
+    var var_revision = sse_decode_u_64(deserializer);
+    var var_publicWrite = sse_decode_bool(deserializer);
+    var var_ownerUserId = sse_decode_opt_String(deserializer);
+    return ShareOffer(
+      shareId: var_shareId,
+      name: var_name,
+      kind: var_kind,
+      revision: var_revision,
+      publicWrite: var_publicWrite,
+      ownerUserId: var_ownerUserId,
+    );
+  }
+
+  @protected
   SwarmEventJson sse_decode_swarm_event_json(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_eventType = sse_decode_String(deserializer);
@@ -4327,9 +5265,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_bind_share_params(
+    BindShareParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.shareId, serializer);
+    sse_encode_opt_String(self.localRoot, serializer);
+  }
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_bind_share_params(
+    BindShareParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bind_share_params(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_create_share_params(
+    CreateShareParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_create_share_params(self, serializer);
   }
 
   @protected
@@ -4345,6 +5311,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_mobile_attachment(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_mobile_share(
+    MobileShare self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_mobile_share(self, serializer);
   }
 
   @protected
@@ -4372,6 +5347,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_save_incoming_message_params(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_share_manifest(
+    ShareManifest self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_share_manifest(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_share_offer(
+    ShareOffer self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_share_offer(self, serializer);
   }
 
   @protected
@@ -4426,6 +5419,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.firstSeen, serializer);
     sse_encode_i_64(self.dmCount, serializer);
     sse_encode_i_64(self.broadcastSentToPeer, serializer);
+  }
+
+  @protected
+  void sse_encode_create_share_params(
+    CreateShareParams self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_bool(self.publicWrite, serializer);
+    sse_encode_opt_String(self.localRoot, serializer);
   }
 
   @protected
@@ -4582,6 +5587,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_mobile_share(
+    List<MobileShare> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mobile_share(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_mobile_share_grant(
+    List<MobileShareGrant> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_mobile_share_grant(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_network_interface_info(
     List<NetworkInterfaceInfo> self,
     SseSerializer serializer,
@@ -4682,6 +5711,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_reaction_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_share_entry(
+    List<ShareEntry> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_share_entry(item, serializer);
     }
   }
 
@@ -4820,6 +5861,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_mobile_share(MobileShare self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.shareId, serializer);
+    sse_encode_String(self.ownerUserId, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_bool(self.publicWrite, serializer);
+    sse_encode_opt_String(self.localRoot, serializer);
+    sse_encode_i_64(self.revision, serializer);
+  }
+
+  @protected
+  void sse_encode_mobile_share_grant(
+    MobileShareGrant self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.userId, serializer);
+    sse_encode_String(self.mode, serializer);
+  }
+
+  @protected
   void sse_encode_network_details(
     NetworkDetails self,
     SseSerializer serializer,
@@ -4924,6 +5987,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_mobile_share(
+    MobileShare? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_mobile_share(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_notification(
     Notification? self,
     SseSerializer serializer,
@@ -4946,6 +6022,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_box_autoadd_reply_ref(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_share_manifest(
+    ShareManifest? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_share_manifest(self, serializer);
     }
   }
 
@@ -5063,6 +6152,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.msgId, serializer);
     sse_encode_opt_box_autoadd_reply_ref(self.replyTo, serializer);
     sse_encode_bool(self.encrypted, serializer);
+  }
+
+  @protected
+  void sse_encode_share_entry(ShareEntry self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.path, serializer);
+    sse_encode_String(self.fileId, serializer);
+    sse_encode_u_64(self.size, serializer);
+    sse_encode_opt_String(self.mime, serializer);
+  }
+
+  @protected
+  void sse_encode_share_kind(ShareKind self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_share_manifest(ShareManifest self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.shareId, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_list_share_entry(self.entries, serializer);
+  }
+
+  @protected
+  void sse_encode_share_offer(ShareOffer self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.shareId, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_share_kind(self.kind, serializer);
+    sse_encode_u_64(self.revision, serializer);
+    sse_encode_bool(self.publicWrite, serializer);
+    sse_encode_opt_String(self.ownerUserId, serializer);
   }
 
   @protected

@@ -142,20 +142,24 @@ Shipped in core:
 - blocklist-gated `request_response` lane, fail-closed ACLs, and deferred
   application once all manifest blobs arrive.
 
+Shipped after the core:
+
+- FRB/web facade parity for create/list/bind/delete/snapshot/grants, manifest
+  load/save, offer acceptance and the four share commands. Web clients cannot
+  pass a server-local path; only native installs can bind or snapshot a folder;
+- wire-level coverage for offer → list → manifest → stale rejection → retry
+  with the refreshed revision, plus unit coverage for grant revocation,
+  superseded/deferred applies and disconnect cleanup.
+
 Still open (UI/integration, not protocol work):
 
-- FRB facade and web method parity for create/list/bind/snapshot/grants and the
-  share commands, then FRB regeneration;
 - TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
   offer/manifest/publish actions, and visible update/rejection events;
 - Flutter/web share screens: list/detail, permission editor, manual refresh and
   publish. The browser remains a display client — only native installs can bind
   a real local folder;
-- wire-level coverage has landed for offer → list → manifest → stale rejection
-  → retry with the refreshed revision, and unit coverage for grant revocation,
-  superseded/deferred applies and disconnect cleanup;
-- still open: a true two-node blob-pull → apply test with separate per-node
-  databases, so the files lane is exercised instead of pre-seeded local blobs.
+- a true two-node blob-pull → apply test with separate per-node databases, so
+  the files lane is exercised instead of pre-seeded local blobs.
 
 ### Public bootstrap nodes (US-050) — **shipped**
 
