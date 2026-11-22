@@ -167,19 +167,23 @@ web-free TUI-only build and forwards its arguments.
 bundle, from a single `cargo build --bin p2p_chat_tui --bin p2p_chat_server` (one feature
 resolution, shared dependency graph) plus `flutter build web`. The node stays native in the Rust
 web server in both cases — the browser bundle is a display client only. `--tui-only` /
-`--web-only` build one half.
+`--web-only` build one half. `--tui-audio` adds the opt-in `cpal` mic/speaker adapter to the TUI
+and builds the server in a second invocation **without** it, so host audio libraries stay out of
+the headless node (Linux needs `libasound2-dev` for that build).
 
 ## Out of scope
 
 - Compiling the Rust core to WASM (browser-as-node); revisit only if a fully self-contained
   browser node is ever wanted.
-- Device-level call audio on the TUI and non-Android native Flutter targets.
-  The μ-law media transport and the
+- Device-level call audio on non-Android native Flutter targets. The μ-law
+  media transport and the
   `startCallMedia`/`stopCallMedia`/`sendCallMedia`/`setCallMediaMute` JSON arms
   ship like every other frontend (in-process FRB on mobile, WS/HTTP in the
   browser). The **browser** owns a mic/speaker adapter (`getUserMedia` + Web
   Audio, raw `dart:js_interop`, no new deps; capture needs HTTPS/localhost), and
   **Android** owns one via `CallAudio.kt` (`AudioRecord`/`AudioTrack` at 16 kHz
   over two method channels). Both live under
-  `apps/flutter_app/lib/src/util/call_audio*.dart`; Rust still owns framing,
-  jitter and mute.
+  `apps/flutter_app/lib/src/util/call_audio*.dart`. The **TUI** has a `cpal`
+  adapter behind the opt-in `tui-audio` feature (off by default, so server and
+  Android builds stay free of host audio deps). Rust still owns framing, jitter
+  and mute everywhere; adapters only move PCM.

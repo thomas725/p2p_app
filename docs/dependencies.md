@@ -47,6 +47,7 @@ version; `Cargo.toml` is the authority on the *requirement*.
 | `ratatui` | `=0.30.2` | 0.30.2 | The TUI's rendering library. Optional — behind `tui`. |
 | `ratatui-textarea` | `0.9` | 0.9.4 | The multi-line text input widget. Optional — behind `tui`. |
 | `crossterm` | `=0.29` | 0.29.0 | Terminal raw mode, key events, and mouse capture. Optional — behind `tui`. |
+| `cpal` | `0.18` | 0.18.2 | The opt-in TUI microphone/speaker adapter (`src/bin/tui/call_audio.rs`). Behind `tui-audio`, which is **not** in `default` or `tui`: the headless server, the Android library and normal TUI builds compile no `cpal` code. On Linux the `tui-audio` build needs ALSA headers (`libasound2-dev`); CI installs them because its canonical gates use `--all-features`. |
 | `flutter_rust_bridge` | `=2.13.0` | 2.13.0 | The FFI bridge for the Flutter app. Pinned exactly: FRB's codegen and the Rust crate must agree on the version. Optional — behind `mobile`. |
 
 ## Naming, formatting, and crypto helpers

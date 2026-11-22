@@ -453,9 +453,8 @@ async fn process_swarm_event(
             handle_call_event(state, swarm_cmd_tx, "end", &call_id, &peer_id).await;
         }
         SwarmEvent::CallMediaFrame { call_id, pcm, .. } => {
-            // No audio device in the TUI yet: count decoded frames so the
-            // overlay can show that media is flowing (and that the peer/call
-            // filters in the swarm loop accepted them).
+            // The frame counter is the transport-level signal in every build;
+            // with `tui-audio` the same PCM also feeds the speaker adapter.
             let mut s = state.lock().await;
             if s.call_session
                 .as_ref()
@@ -463,6 +462,7 @@ async fn process_swarm_event(
                 && pcm.len() == p2p_app::call_media::SAMPLES_PER_FRAME
             {
                 s.call_media.frames_received = s.call_media.frames_received.saturating_add(1);
+                s.call_audio.play(&pcm);
             }
         }
         SwarmEvent::FileReceived {
@@ -507,6 +507,7 @@ async fn handle_call_event(
     // Decide under the lock, send after dropping it — never await with the
     // state guard held (significant-drop-tightening + no lock across a send).
     let mut decline_foreign = false;
+    let mut accepted_now = false;
     let mut s = state.lock().await;
     let mut settled = false;
     match kind {
@@ -525,7 +526,13 @@ async fn handle_call_event(
         }
         _ => {
             if let Some(session) = s.call_session.as_mut() {
-                session.on_signal(&p2p_app::CallSignal::new(kind, call_id.to_string()));
+                let was_in_call = session.state == p2p_app::CallState::InCall;
+                let matched =
+                    session.on_signal(&p2p_app::CallSignal::new(kind, call_id.to_string()));
+                accepted_now = matched
+                    && kind == "accept"
+                    && !was_in_call
+                    && session.state == p2p_app::CallState::InCall;
                 settled = !session.is_active();
             }
         }
@@ -533,8 +540,23 @@ async fn handle_call_event(
     if settled {
         s.call_session = None;
         s.call_media = CallMediaStatus::default();
+        s.call_audio.stop();
     }
     drop(s);
+
+    // The callee only opens its media session after accepting locally; the
+    // caller opens it here on the peer's `accept`, mirroring the Flutter path.
+    if accepted_now {
+        let _ = swarm_cmd_tx
+            .send(SwarmCommand::StartCallMedia {
+                call_id: call_id.to_owned(),
+                peer_id: peer_id.to_owned(),
+            })
+            .await;
+        let s = state.lock().await;
+        s.call_audio.start(call_id, peer_id, swarm_cmd_tx);
+        drop(s);
+    }
 
     if decline_foreign {
         let _ = swarm_cmd_tx

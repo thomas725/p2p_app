@@ -1,3 +1,4 @@
+use super::call_audio::TuiAudioHandle;
 use super::{DynamicTabs, TextArea};
 use p2p_app::contacts::ContactDeviceInput;
 use p2p_app::messages::PeerMessageStats;
@@ -38,14 +39,16 @@ pub type SharedState = Arc<tokio::sync::Mutex<AppState>>;
 /// - **`SwarmHandler`**: No direct access, sends `SwarmEvent` to `CommandProcessor`
 ///
 /// Live media transport status for the TUI's active call (calls lane, US-044).
-/// The terminal owns no audio device adapter, so this mirrors the Rust media
-/// session's observable state instead of pretending to capture or play audio.
-#[derive(Clone, Copy, Debug, Default)]
+/// With the `tui-audio` feature the terminal also owns a real device adapter;
+/// without it this mirrors the Rust media session's observable state only.
+#[derive(Clone, Debug, Default)]
 pub struct CallMediaStatus {
     /// Whether outgoing audio is muted in the Rust media session.
     pub muted: bool,
     /// Number of decoded peer frames received since the call was opened.
     pub frames_received: u64,
+    /// First device error from the optional audio adapter, if any.
+    pub audio_error: Option<String>,
 }
 
 /// Terminal input/output environment flags for the TUI runtime.
@@ -265,10 +268,13 @@ pub struct AppState {
     /// hangup keys + prompt overlay + status line) lands in the TUI slice.
     pub call_session: Option<p2p_app::CallSession>,
 
-    /// Media transport status for the active call (calls lane, US-044). The TUI
-    /// owns no audio device yet, so this mirrors what the Rust media session
-    /// reports: our mic's mute state and the count of decoded peer frames.
+    /// Media transport status for the active call (calls lane, US-044). With
+    /// `tui-audio` the terminal also owns a device adapter; without it this
+    /// mirrors the mic's mute state and the count of decoded peer frames.
     pub call_media: CallMediaStatus,
+
+    /// Optional desktop audio adapter; a no-op handle when `tui-audio` is off.
+    pub call_audio: TuiAudioHandle,
 
     // Settings tab (read-only node/network diagnostics)
     pub db_url: String,
@@ -1258,6 +1264,7 @@ impl AppState {
             adding_reaction: None,
             call_session: None,
             call_media: CallMediaStatus::default(),
+            call_audio: TuiAudioHandle::default(),
             db_url: String::new(),
             platform: String::new(),
             network_size: String::new(),

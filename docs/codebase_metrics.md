@@ -4,11 +4,11 @@
 
 | Metric                |     Value |
 |:----------------------|:----------|
-| Total Rust Files      |        66 |
-| Total Rust Lines      |    35,145 |
-| Total Rust Chars      | 1,332,944 |
-| Avg Lines/Rust File   |       532 |
-| Avg Chars/Rust File   |    20,196 |
+| Total Rust Files      |        67 |
+| Total Rust Lines      |    35,736 |
+| Total Rust Chars      | 1,354,290 |
+| Avg Lines/Rust File   |       533 |
+| Avg Chars/Rust File   |    20,213 |
 | Total Dart Files      |        44 |
 | Total Dart Lines      |    18,631 |
 | Total Dart Chars      |   603,607 |
@@ -16,11 +16,11 @@
 | Avg Chars/Dart File   |    13,718 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
-| Total Kotlin Chars    |    22,089 |
+| Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
-| Avg Chars/Kotlin File |     5,522 |
+| Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 114 files, 54,388 lines, 1,958,640 characters
+**Grand Total:** 115 files, 54,979 lines, 1,979,996 characters
 
 ## Rust Source Files
 
@@ -75,25 +75,26 @@
 | src                     | types.rs             |     2 | 16230 |   424 |        - |       - | Event & command type defs              |
 | src/bin                 | p2p_chat.rs          |     7 |  6917 |   192 |        - |       - | CLI chat application                   |
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
-| src/bin                 | p2p_chat_tui.rs      |     6 |  9847 |   276 |        - |       - | Main TUI application entry point       |
+| src/bin                 | p2p_chat_tui.rs      |     6 |  9871 |   277 |        - |       - | Main TUI application entry point       |
+| src/bin/tui             | call_audio.rs        |     6 | 19279 |   540 |        - |       - | Source file                            |
 | src/bin/tui             | click_handlers.rs    |     7 | 21862 |   523 |        - |       - | Click handlers & index mapping         |
-| src/bin/tui             | command_processor.rs |     6 | 28110 |   769 |        - |       - | Event routing & state updates          |
+| src/bin/tui             | command_processor.rs |     6 | 28957 |   791 |        - |       - | Event routing & state updates          |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
-| src/bin/tui             | input_processor.rs   |     7 | 70869 |  1829 |        - |       - | Input event routing & processing       |
+| src/bin/tui             | input_processor.rs   |     7 | 71232 |  1836 |        - |       - | Input event routing & processing       |
 | src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |        - |       - | Keyboard enhancement probe             |
 | src/bin/tui             | main_loop.rs         |     6 | 15810 |   398 |        - |       - | Task orchestration & async             |
 | src/bin/tui             | message_handlers.rs  |     4 | 16779 |   516 |        - |       - | Message sending logic                  |
 | src/bin/tui             | scroll_handlers.rs   |     5 | 16156 |   425 |        - |       - | Scroll & hover-aware navigation        |
-| src/bin/tui             | state.rs             |     8 | 60100 |  1424 |        - |       - | Shared application state               |
+| src/bin/tui             | state.rs             |     8 | 60399 |  1431 |        - |       - | Shared application state               |
 | src/bin/tui/render_loop | layout.rs            |     5 |  3173 |    89 |        - |       - | UI layout component rendering          |
-| src/bin/tui/render_loop | mod.rs               |     6 | 14044 |   372 |        - |       - | Render loop orchestration (60 FPS)     |
+| src/bin/tui/render_loop | mod.rs               |     6 | 14578 |   386 |        - |       - | Render loop orchestration (60 FPS)     |
 | src/generated           | columns.rs           |     1 |  4107 |    97 |        - |       - | Auto-generated column definitions      |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                    |
 | src/generated           | models_insertable.rs |     1 |  9589 |   267 |        - |       - | Insertable data models                 |
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 66 files, 35,145 lines, 1,332,944 characters
+**Total:** 67 files, 35,736 lines, 1,354,290 characters
 
 ## Rust Test Files
 
@@ -248,12 +249,12 @@
 
 | Folder                      | File                    | Depth | Chars | Lines | Testable | Covered | Purpose                                      |
 |:----------------------------|:------------------------|------:|------:|------:|---------:|--------:|---------------------------------------------:|
-| com/example/p2p_app_flutter | CallAudio.kt            |     6 | 10240 |   286 |        - |       - | Kotlin source file                           |
+| com/example/p2p_app_flutter | CallAudio.kt            |     6 | 10250 |   286 |        - |       - | Kotlin source file                           |
 | com/example/p2p_app_flutter | MainActivity.kt         |     5 |  4136 |   114 |        - |       - | Flutter activity & method channel bridge     |
 | com/example/p2p_app_flutter | MessageNotifications.kt |     4 |  3431 |    85 |        - |       - | Kotlin source file                           |
 | com/example/p2p_app_flutter | P2pForegroundService.kt |     4 |  4282 |   127 |        - |       - | Foreground service for background networking |
 
-**Total:** 4 files, 612 lines, 22,089 characters
+**Total:** 4 files, 612 lines, 22,099 characters
 
 ## Kotlin Test Files
 

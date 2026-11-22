@@ -76,7 +76,7 @@ per-message E2E lane (US-042) is not it.
 - **Blocked on**: a decision on key management (identity-derived vs.
   passphrase) and whether to ship SQLCipher as a bundled dep.
 
-### Call media transport — **transport shipped; browser + Android adapters shipped**
+### Call media transport — **transport shipped; browser + Android + TUI adapters shipped**
 
 The transport half of US-044 shipped: G.711 μ-law voice frames over a dedicated
 `/p2p-chat/call-media/1.0.0` lane, with Rust owning the session, jitter buffer
@@ -84,7 +84,7 @@ and mute state in `src/call_media.rs`. Both frontends hand raw 16 kHz mono PCM
 to Rust and receive decoded PCM back. Full record:
 [`archive/2026-11-22_call_media_transport.md`](archive/2026-11-22_call_media_transport.md).
 
-Two device adapters now exist under
+Two Flutter device adapters now exist under
 `apps/flutter_app/lib/src/util/call_audio*.dart`, both wired in `CallScreen`:
 
 - **Flutter web browser** — `getUserMedia` + Web Audio capture resampled to
@@ -99,14 +99,20 @@ Two device adapters now exist under
   activity-scoped — backgrounding the app ends it rather than leaving the mic
   open (no microphone foreground-service type).
 
-Rust still owns framing, jitter and mute in both cases; the adapters only move
+- **TUI (opt-in)** — `src/bin/tui/call_audio.rs` drives `cpal`
+  capture/playback on a dedicated thread, resampling the device rate to the
+  16 kHz mono wire format and back. It lives behind the new `tui-audio`
+  feature, which is deliberately **not** in `default` or `tui`: without it the
+  TUI compiles a no-op handle (the frame counter remains the transport signal),
+  and the headless server and Android library compile no audio code or `cpal`
+  dependency at all. `scripts/build-all.sh --tui-audio` enables it for the TUI
+  only and builds the server separately; Linux needs `libasound2-dev`.
+
+Rust still owns framing, jitter and mute in every case; the adapters only move
 PCM.
 
 Still open (device adapters, not protocol work):
 
-- **TUI device audio** — the frame counter in the call overlay is still the
-  only signal; a `cpal` adapter would add Cargo deps and system audio libraries
-  to CI/Android builds.
 - **iOS / native desktop Flutter audio** — `call_audio_platform.dart` is still a
   no-op stub off Android; these targets get transport only.
 - **Background mic on Android** — would need a microphone-type foreground
@@ -163,7 +169,7 @@ here so they are not mistaken for unfinished work.
 |---|---|
 | Group backfill only reaches members that were online | There is no external store-and-forward; a backfill answer is served by a history-holding member that is currently connected. See `archive/2026-09-02_backlog.md` §11.5. |
 | No message sync between a user's own devices | A user's devices are separate peers; syncing them needs one of the user's own devices online within the gap window. Out of scope by decision (`archive/2026-09-02_backlog.md` §11). |
-| Calls have no device audio on TUI / iOS / native desktop | The media transport ships (μ-law frames over the calls lane); Flutter web and Android have real mic/speaker adapters. The TUI and non-Android native targets still have none (see US-044 above). |
+| Calls have no device audio on iOS / native desktop | The media transport ships (μ-law frames over the calls lane); Flutter web and Android have real mic/speaker adapters, and the TUI has an opt-in `cpal` adapter (`tui-audio`). Non-Android native Flutter targets still have transport only (see US-044 above). |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | Native Flutter desktop builds deliver no notification sound/system alert | The primary desktop path is the browser frontend, which delivers both channels through the WebAudio/`Notification` adapters. Android uses the MethodChannel. The `flutter build linux` artifact is currently a display shell without a native notification plugin; TUI users get bell/OSC 777. |
 | DMs are readable by a store-and-forward holder | US-042 seals DM bodies per recipient; a holder sees only the envelope (see `e2e_encryption.md`). |

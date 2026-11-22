@@ -78,16 +78,27 @@ fn call_overlay_text(state: &AppState) -> Option<String> {
             "Calling {peer} \u{2026}\n\
              \nCancel with 'c' or Esc"
         )),
-        p2p_app::CallState::InCall => Some(format!(
-            "In call with {peer}\n\
-             \nMic: {} \u{b7} peer frames: {}\n\
-             'm' toggles mute \u{b7} Esc hangs up",
-            if state.call_media.muted {
-                "muted"
-            } else {
-                "on"
+        p2p_app::CallState::InCall => Some(state.call_media.audio_error.as_deref().map_or_else(
+            || {
+                format!(
+                    "In call with {peer}\n\
+                     \nMic: {} \u{b7} peer frames: {}\n\
+                     'm' toggles mute \u{b7} Esc hangs up",
+                    if state.call_media.muted {
+                        "muted"
+                    } else {
+                        "on"
+                    },
+                    state.call_media.frames_received
+                )
             },
-            state.call_media.frames_received
+            |error| {
+                format!(
+                    "In call with {peer}\n\
+                     \nAudio unavailable: {error}\n\
+                     Esc hangs up"
+                )
+            },
         )),
         p2p_app::CallState::Ended => None,
     }
@@ -326,6 +337,9 @@ pub fn spawn_render_loop(
     tokio::spawn(async move {
         while render_rx.recv().await.is_some() {
             let mut s = state.lock().await;
+            if let Some(error) = s.call_audio.take_error() {
+                s.call_media.audio_error = Some(error);
+            }
             let _ = terminal.draw(|f| {
                 s.terminal_width = usize::from(f.area().width);
                 s.chat_area_height = usize::from(f.area().height.saturating_sub(10));

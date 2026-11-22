@@ -65,6 +65,7 @@ mod tui {
     pub use p2p_app::tui_tabs::DynamicTabs;
     use ratatui_textarea::TextArea;
 
+    pub mod call_audio;
     pub mod click_handlers;
     mod command_processor;
     pub mod event_source;

@@ -629,6 +629,11 @@ async fn handle_call_overlay_key(
                         peer_id: peer_id.clone(),
                     })
                     .await;
+                // Start the device adapter only after the session command is
+                // queued, so an early capture frame cannot be dropped.
+                let s = state.lock().await;
+                s.call_audio.start(&call_id, &peer_id, swarm_cmd_tx);
+                drop(s);
             }
             p2plog_debug(if accept {
                 format!("Accepted call {call_id}")
@@ -643,6 +648,7 @@ async fn handle_call_overlay_key(
             if cancel {
                 let mut s = state.lock().await;
                 s.call_session = None;
+                s.call_audio.stop();
                 drop(s);
                 send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
                 let _ = swarm_cmd_tx.send(SwarmCommand::StopCallMedia).await;
@@ -666,6 +672,7 @@ async fn handle_call_overlay_key(
                 let mut s = state.lock().await;
                 s.call_session = None;
                 s.call_media = CallMediaStatus::default();
+                s.call_audio.stop();
                 drop(s);
                 send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
                 let _ = swarm_cmd_tx.send(SwarmCommand::StopCallMedia).await;

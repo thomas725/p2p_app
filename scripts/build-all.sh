@@ -8,15 +8,20 @@
 # is compiled to WASM, so the web half is just a normal Rust build plus
 # `flutter build web`.
 #
-# Both Rust binaries come out of ONE cargo invocation, so the shared dependency
-# graph is compiled once and the two frontends get an identical feature set
-# (same migrations, same attachment GC, same node behaviour).
+# Both Rust binaries come out of ONE cargo invocation by default, so the shared
+# dependency graph is compiled once and the two frontends get an identical
+# feature set (same migrations, same attachment GC, same node behaviour). The
+# optional `--tui-audio` flag is the one exception: `cpal` and its host audio
+# libraries belong to the TUI only, so the server is built in a second
+# invocation without that feature.
 #
 # Usage:
 #   scripts/build-all.sh                  # release build of both frontends
 #   scripts/build-all.sh --debug          # fast debug build
 #   scripts/build-all.sh --tui-only       # only the TUI binary
 #   scripts/build-all.sh --web-only       # only the server binary + web bundle
+#   scripts/build-all.sh --tui-audio      # TUI with microphone/speaker support
+#                                         (needs ALSA headers on Linux)
 #
 # Then run (from the repo root):
 #   ./target/release/p2p_chat_tui
@@ -31,6 +36,7 @@ cargo_flags=(--release)
 flutter_flags=()
 build_tui=1
 build_web=1
+tui_audio=0
 
 usage() {
     # Print the leading comment block (everything after the shebang line),
@@ -55,6 +61,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         --web-only)
             build_tui=0
+            ;;
+        --tui-audio)
+            tui_audio=1
             ;;
         -h | --help)
             usage
@@ -82,8 +91,17 @@ fi
 
 # ---- Rust: the TUI binary and/or the node server binary --------------------
 # `web` is in the default feature set (Cargo.toml), so no --features needed.
-# One invocation for both bins keeps a single feature resolution.
-if [[ $build_tui -eq 1 && $build_web -eq 1 ]]; then
+# One invocation for both bins keeps a single feature resolution; with
+# `--tui-audio` the server is built separately so `cpal` stays out of it.
+if [[ $tui_audio -eq 1 && $build_tui -eq 1 && $build_web -eq 1 ]]; then
+    printf '==> cargo build --bin p2p_chat_tui --features tui-audio (%s)\n' "$profile"
+    cargo build "${cargo_flags[@]}" --bin p2p_chat_tui --features tui-audio
+    printf '==> cargo build --bin p2p_chat_server (%s)\n' "$profile"
+    cargo build "${cargo_flags[@]}" --bin p2p_chat_server
+elif [[ $tui_audio -eq 1 && $build_tui -eq 1 ]]; then
+    printf '==> cargo build --bin p2p_chat_tui --features tui-audio (%s)\n' "$profile"
+    cargo build "${cargo_flags[@]}" --bin p2p_chat_tui --features tui-audio
+elif [[ $build_tui -eq 1 && $build_web -eq 1 ]]; then
     printf '==> cargo build --bin p2p_chat_tui --bin p2p_chat_server (%s)\n' "$profile"
     cargo build "${cargo_flags[@]}" --bin p2p_chat_tui --bin p2p_chat_server
 elif [[ $build_tui -eq 1 ]]; then
@@ -105,7 +123,11 @@ fi
 # ---- Summary ---------------------------------------------------------------
 printf '\nBuilt:\n'
 if [[ $build_tui -eq 1 ]]; then
-    printf '  tui    : %s/target/%s/p2p_chat_tui\n' "$repo_root" "$profile"
+    printf '  tui    : %s/target/%s/p2p_chat_tui' "$repo_root" "$profile"
+    if [[ $tui_audio -eq 1 ]]; then
+        printf ' (audio enabled via tui-audio)'
+    fi
+    printf '\n'
 fi
 if [[ $build_web -eq 1 ]]; then
     printf '  node   : %s/target/%s/p2p_chat_server\n' "$repo_root" "$profile"
