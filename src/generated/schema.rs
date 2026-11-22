@@ -265,6 +265,45 @@ diesel::table! {
     }
 }
 
+// Hand-maintained: file shares / folder sync (share lane). `shares` holds one
+// row per owned or accepted share, `share_grants` the per-user ACL, and
+// `share_entries` the current snapshot (also the GC reference set for blobs).
+diesel::table! {
+    shares (share_id) {
+        share_id -> Text,
+        owner_user_id -> Text,
+        name -> Text,
+        kind -> Integer,
+        public_write -> Integer,
+        local_root -> Nullable<Text>,
+        revision -> BigInt,
+        manifest_json -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    share_grants (id) {
+        id -> Integer,
+        share_id -> Text,
+        user_id -> Text,
+        mode -> Integer,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    share_entries (id) {
+        id -> Integer,
+        share_id -> Text,
+        path -> Text,
+        file_id -> Text,
+        size -> BigInt,
+        mime -> Nullable<Text>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     app_settings,
     blocked_peers,
@@ -284,5 +323,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     peer_name_history,
     peer_sessions,
     peers,
+    share_entries,
+    share_grants,
+    shares,
     users,
 );

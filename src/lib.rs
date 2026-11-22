@@ -47,6 +47,7 @@
 //! - [`nickname`] - nickname management
 //! - [`fmt`] - formatting utilities
 //! - [`reply`] - immutable reply/quote snapshots (US-006)
+//! - [`shares`] - versioned file/folder shares, grants and ACLs
 //! - [`logging`] - tracing-based logging with TUI callback
 
 #[cfg(feature = "mobile")]
@@ -80,6 +81,7 @@ pub mod network;
 pub mod network_config;
 pub mod nickname;
 pub mod notifications;
+pub mod shares;
 pub mod peers;
 pub mod reactions;
 #[cfg(feature = "relay")]

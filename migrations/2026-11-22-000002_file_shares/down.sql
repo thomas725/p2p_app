@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS share_entries;
+DROP TABLE IF EXISTS share_grants;
+DROP TABLE IF EXISTS shares;

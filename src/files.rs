@@ -745,6 +745,10 @@ fn referenced_file_ids() -> color_eyre::Result<HashSet<String>> {
             referenced.insert(file_id.to_string());
         }
     }
+    // A live share manifest references blobs just like a message does. Without
+    // this union the startup GC would sweep a shared tree's bytes as orphans.
+    // A share-DB error is fatal here (conservative: skip GC rather than delete).
+    referenced.extend(crate::shares::referenced_file_ids()?);
     Ok(referenced)
 }
 

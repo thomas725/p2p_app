@@ -8,7 +8,7 @@
 use crate::generated::schema::{
     app_settings, blocked_peers, contacts, device_bindings, dm_outbox, files, group_members,
     group_messages, groups, identities, message_reactions, message_receipts, messages,
-    network_peers, peer_sessions, peers, users,
+    network_peers, peer_sessions, peers, share_entries, share_grants, shares, users,
 };
 
 use chrono::NaiveDateTime;
@@ -334,4 +334,64 @@ pub struct DmOutboxRow {
     pub expires_at: NaiveDateTime,
     /// Number of delivery attempts made so far
     pub attempts: i32,
+}
+
+/// Queryable struct for the `shares` table (file share / folder sync lane)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = shares)]
+pub struct ShareRow {
+    /// Stable share id shared with peers on the wire
+    pub share_id: String,
+    /// Verified user id of the share owner
+    pub owner_user_id: String,
+    /// Display name
+    pub name: String,
+    /// 0 = private (grant-gated), 1 = public
+    pub kind: i32,
+    /// Whether a public share accepts writes (0/1)
+    pub public_write: i32,
+    /// Real local directory bound to this share, if any
+    pub local_root: Option<String>,
+    /// Current manifest revision (optimistic-concurrency token)
+    pub revision: i64,
+    /// Last accepted `ShareManifest` as JSON
+    pub manifest_json: Option<String>,
+    /// When the share was created
+    pub created_at: NaiveDateTime,
+    /// When the share or its manifest last changed
+    pub updated_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `share_grants` table (per-user ACL)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = share_grants)]
+pub struct ShareGrantRow {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Share this grant belongs to
+    pub share_id: String,
+    /// Verified target user id
+    pub user_id: String,
+    /// 0 = read-only, 1 = read-write
+    pub mode: i32,
+    /// When the grant was created
+    pub created_at: NaiveDateTime,
+}
+
+/// Queryable struct for the `share_entries` table (current manifest entries)
+#[derive(Queryable, Selectable, Debug, Clone)]
+#[diesel(table_name = share_entries)]
+pub struct ShareEntryRow {
+    /// Auto-incremented primary key
+    pub id: i32,
+    /// Share this entry belongs to
+    pub share_id: String,
+    /// Validated relative path (forward slashes)
+    pub path: String,
+    /// Content address of the file bytes
+    pub file_id: String,
+    /// Byte length
+    pub size: i64,
+    /// Best-effort MIME type hint
+    pub mime: Option<String>,
 }
