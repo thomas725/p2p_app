@@ -352,7 +352,7 @@ pub async fn run_new_tui() -> color_eyre::Result<()> {
     // Groups are re-subscribed by mobile_node::start_node_impl already.
 
     // Sweep dead attachment blobs (files lane §12).
-    if let Err(e) = p2p_app::swarm_handler::gc_stale_attachments() {
+    if let Err(e) = p2p_app::file_transfer::gc_stale_attachments() {
         p2plog_debug(format!("attachment GC failed: {e}"));
     }
 

@@ -143,7 +143,7 @@ fn start_node_impl(db_path: Option<String>) -> Result<String, String> {
         // Sweep dead attachment blobs (files lane §12): `.part` partials from
         // interrupted pulls plus orphaned blobs nothing references any more.
         // No-op unless the `attachment-gc` Cargo feature is on.
-        if let Err(e) = crate::swarm_handler::gc_stale_attachments() {
+        if let Err(e) = crate::file_transfer::gc_stale_attachments() {
             p2plog_debug(format!("attachment GC failed: {e}"));
         }
 

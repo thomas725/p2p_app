@@ -602,7 +602,7 @@ pub struct GcStats {
 ///
 /// `active` is the set of `file_id`s currently being pulled (never swept) and
 /// `grace` the minimum blob age before removal. Invocation is the knob: the
-/// feature-gated `crate::swarm_handler::gc_stale_attachments` only runs it when
+/// feature-gated `crate::file_transfer::gc_stale_attachments` only runs it when
 /// the `attachment-gc` Cargo feature is on.
 ///
 /// # Errors

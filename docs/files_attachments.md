@@ -75,7 +75,7 @@ the blob lifecycle. The code is the authority; open work is listed in
 
 Blob cleanup is real and behind an on/off switch: the `attachment-gc` Cargo
 feature (part of `default` and `mobile`) is the enable/disable knob — disabled,
-`swarm_handler::gc_stale_attachments()` is a `Ok(GcStats::default())` no-op and
+`file_transfer::gc_stale_attachments()` is a `Ok(GcStats::default())` no-op and
 the store never deletes anything.
 
 - `files::gc(active, grace)` sweeps two classes: **incomplete** `.part` partials

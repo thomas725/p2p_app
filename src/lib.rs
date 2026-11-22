@@ -64,6 +64,7 @@ pub mod contacts;
 pub mod db;
 pub mod dm_outbox;
 pub mod e2e;
+pub mod file_transfer;
 pub mod files;
 pub mod fmt;
 pub mod groups;
