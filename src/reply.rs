@@ -69,6 +69,34 @@ pub fn decode(raw: &str) -> Option<ReplyRef> {
     serde_json::from_str(raw).ok()
 }
 
+/// Locate the sender tag and the start of its body in a rendered transcript.
+///
+/// A transcript row is `{time} {latency}? [{sender}] {body}`, optionally
+/// preceded by a `↳ sender: preview` quoted-header line. The body may itself
+/// span several lines (multiline messages composed in either frontend). The
+/// row carrying the sender tag is therefore the **last** `\n`-separated line
+/// containing a `[sender] ` tag; everything from just after that tag to the end
+/// of the text is the body, continuation lines included. Returning a byte offset
+/// (rather than a body slice) lets callers keep the full multiline remainder
+/// without allocating and without indexing into the string.
+fn sender_and_body_offset(text: &str) -> Option<(&str, usize)> {
+    let mut line_offset = 0usize;
+    let mut found = None;
+    for line in text.split_inclusive('\n') {
+        if let Some((sender, body)) = line
+            .split_once('[')
+            .and_then(|(_, after_open)| after_open.split_once("] "))
+        {
+            let body_offset = line_offset
+                .saturating_add(line.len())
+                .saturating_sub(body.len());
+            found = Some((sender, body_offset));
+        }
+        line_offset = line_offset.saturating_add(line.len());
+    }
+    found
+}
+
 /// Build a snapshot from a formatted TUI transcript line and its wire id.
 ///
 /// TUI lines look like `{time} [sender] body` (an optional latency string sits
@@ -79,21 +107,21 @@ pub fn from_display_line(line: &str, msg_id: &str) -> Option<ReplyRef> {
     if msg_id.trim().is_empty() {
         return None;
     }
-    // A message that is itself a reply has a quoted header on the first line;
-    // capture only the actual transcript line below it.
-    let line = line.rsplit('\n').next().unwrap_or(line);
-    let (sender, body) = split_display_line(line);
+    let (sender, offset) = sender_and_body_offset(line)?;
+    let body = line.get(offset..).unwrap_or(line);
     Some(ReplyRef::new(msg_id.to_string(), sender.to_string(), body))
 }
 
-/// Split a TUI transcript line into `(sender tag, body)`, ignoring any quoted
-/// header above it. The body is what the local-edit editor shows and replaces.
+/// Split a TUI transcript line into `(sender tag, body)`.
+///
+/// Any quoted header above it is ignored. The body includes every continuation
+/// line, so the local-edit editor sees the full multiline body rather than only
+/// its last line.
 #[must_use]
 pub fn split_display_line(line: &str) -> (&str, &str) {
-    let line = line.rsplit('\n').next().unwrap_or(line);
-    line.split_once('[')
-        .and_then(|(_, rest)| rest.split_once("] "))
-        .map_or(("", line), |(sender, body)| (sender, body))
+    sender_and_body_offset(line).map_or(("", line), |(sender, offset)| {
+        (sender, line.get(offset..).unwrap_or(line))
+    })
 }
 
 /// The body of a TUI transcript line (see [`split_display_line`]).
@@ -102,17 +130,17 @@ pub fn display_body(line: &str) -> String {
     split_display_line(line).1.to_string()
 }
 
-/// Replace the body of a TUI transcript line while keeping its timestamp,
-/// sender tag and quoted header. Used after a local edit (US-005).
+/// Replace the body of a TUI transcript line.
+///
+/// Keeps its timestamp, sender tag and quoted header. Used after a local edit
+/// (US-005). When the original body spanned several lines, the entire block is
+/// replaced, not just its final line.
 #[must_use]
 pub fn with_body(line: &str, body: &str) -> String {
-    let (headers, row) = line
-        .rsplit_once('\n')
-        .map_or(("", line), |(headers, row)| (headers, row));
-    let old_body = split_display_line(row).1;
-    let prefix = row.strip_suffix(old_body).unwrap_or(row);
-    let separator = if headers.is_empty() { "" } else { "\n" };
-    format!("{headers}{separator}{prefix}{body}")
+    sender_and_body_offset(line).map_or_else(
+        || body.to_string(),
+        |(_, offset)| format!("{}{}", line.get(..offset).unwrap_or(line), body),
+    )
 }
 
 /// Prepend the canonical quoted header to a rendered transcript line.

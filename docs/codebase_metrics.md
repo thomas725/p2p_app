@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        69 |
-| Total Rust Lines      |    39,735 |
-| Total Rust Chars      | 1,503,100 |
-| Avg Lines/Rust File   |       575 |
-| Avg Chars/Rust File   |    21,784 |
+| Total Rust Lines      |    39,763 |
+| Total Rust Chars      | 1,504,198 |
+| Avg Lines/Rust File   |       576 |
+| Avg Chars/Rust File   |    21,799 |
 | Total Dart Files      |        46 |
 | Total Dart Lines      |    21,024 |
 | Total Dart Chars      |   673,786 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 119 files, 61,371 lines, 2,198,985 characters
+**Grand Total:** 119 files, 61,399 lines, 2,200,083 characters
 
 ## Rust Source Files
 
@@ -64,7 +64,7 @@
 | src                     | peers.rs             |     5 |  5890 |   136 |        - |       - | TUI peers-table renderer                           |
 | src                     | reactions.rs         |     5 | 15921 |   419 |        - |       - | Source file                                        |
 | src                     | relay.rs             |     5 |  3764 |    95 |        - |       - | Source file                                        |
-| src                     | reply.rs             |     3 |  4683 |   129 |        - |       - | Source file                                        |
+| src                     | reply.rs             |     4 |  5781 |   157 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     3 |  5562 |   146 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                              |
 | src                     | shares.rs            |     6 | 44545 |  1199 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
@@ -96,7 +96,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 69 files, 39,735 lines, 1,503,100 characters
+**Total:** 69 files, 39,763 lines, 1,504,198 characters
 
 ## Rust Test Files
 
@@ -160,7 +160,7 @@
 | unit   | unit_nickname.rs                   |   173 |  5791 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                      |   113 |  3428 |     3 | Unit tests for peers module           |
 | unit   | unit_relay.rs                      |    51 |  1450 |     2 | Test file                             |
-| unit   | unit_reply.rs                      |    98 |  3436 |     3 | Test file                             |
+| unit   | unit_reply.rs                      |   134 |  4907 |     3 | Test file                             |
 | unit   | unit_settings.rs                   |    88 |  2766 |     3 | Test file                             |
 | unit   | unit_shares.rs                     |   894 | 31899 |     4 | shares module tests                   |
 | unit   | unit_swarm_handler.rs              |   422 | 14373 |     4 | Unit tests for swarm_handler module   |
@@ -170,7 +170,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 27,958 lines, 935,263 characters
+**Total:** 67 test files, 27,994 lines, 936,734 characters
 
 ## Dart Source Files
 

@@ -69,6 +69,42 @@ fn replacing_a_quoted_line_keeps_the_quote_header() {
 }
 
 #[test]
+fn multiline_body_keeps_its_sender_and_every_line() {
+    // A message composed across several lines stores its sender tag on the
+    // first row only; the old last-line parser captured an empty sender and
+    // just the final line. The body must survive in full.
+    let line = "12:34 [Alice (abc)] line one\nline two\nline three";
+    assert_eq!(
+        split_display_line(line),
+        ("Alice (abc)", "line one\nline two\nline three")
+    );
+    assert_eq!(display_body(line), "line one\nline two\nline three");
+
+    let reply = from_display_line(line, "msg-multi").expect("capture multiline reply");
+    assert_eq!(reply.sender, "Alice (abc)");
+    assert_eq!(reply.preview, "line one line two line three");
+}
+
+#[test]
+fn multiline_reply_capture_skips_the_quote_header() {
+    let line = "↳ Bob: earlier text\n12:34 [Alice] line one\nline two";
+    let reply = from_display_line(line, "msg-multi").expect("capture quoted multiline reply");
+    assert_eq!(reply.sender, "Alice");
+    assert_eq!(reply.preview, "line one line two");
+}
+
+#[test]
+fn replacing_a_multiline_body_drops_every_old_line() {
+    // A local edit replaces the whole body block, not merely its last line,
+    // while the quoted header, timestamp and sender tag stay untouched.
+    let line = "↳ Bob: earlier text\n12:34 [Alice] line one\nline two\nline three";
+    assert_eq!(
+        with_body(line, "replacement"),
+        "↳ Bob: earlier text\n12:34 [Alice] replacement"
+    );
+}
+
+#[test]
 fn undecodable_storage_json_is_ignored() {
     assert_eq!(decode("not json"), None);
 }
