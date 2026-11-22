@@ -215,10 +215,11 @@ fn apply_chunk(file_id: &str, response: crate::FileTransferResponse) -> ChunkOut
 ///
 /// Returns `true` when a new transfer was registered, `false` when one is
 /// already in flight (a duplicate `meta` response) or the partial file could
-/// not be opened. A duplicate must never replace the live transfer:
-/// `ReceivingFile::new` resets `received` to 0 but leaves the `.part` bytes on
-/// disk, so later chunks would append after stale data and the final hash
-/// check would fail.
+/// not be opened. A duplicate must never replace the live transfer: a fresh
+/// `ReceivingFile` would reset `received` to 0 and discard the `.part` bytes
+/// the live transfer is still assembling, desyncing the chunk index from the
+/// peer. (A stale `.part` from a *killed* process is handled separately by
+/// [`ReceivingFile::new`](crate::files::ReceivingFile::new).)
 fn begin_receive(peer: &str, file_id: &str, name: &str, mime: Option<String>, size: u64) -> bool {
     let mut transfers = receiving_files()
         .lock()

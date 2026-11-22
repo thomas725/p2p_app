@@ -229,9 +229,9 @@ fn test_abandon_idle_transfers_prunes_only_stale_pulls() {
 
 #[test]
 fn test_begin_receive_refuses_duplicate_meta() {
-    // A repeated `meta` response must not replace a live transfer: the fresh
-    // `ReceivingFile` would reset `received` to 0 while the `.part` bytes stayed
-    // on disk, corrupting the assembled file.
+    // A repeated `meta` response must not replace a live transfer: a fresh
+    // `ReceivingFile` would reset `received` to 0 and discard the `.part` bytes
+    // the live transfer is still assembling, desyncing the chunk index.
     let id = test_file_id("begin-receive-duplicate-test");
     let file_id = id.as_str();
     assert!(begin_receive("peer-a", file_id, "first.txt", None, 10));

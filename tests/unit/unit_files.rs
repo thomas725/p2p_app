@@ -332,6 +332,41 @@ fn store_outgoing_file_rejects_oversize() {
 
 #[test]
 #[serial(db)]
+fn receiving_file_new_discards_a_stale_partial_from_a_killed_transfer() {
+    with_test_db(|| {
+        let bytes = b"fresh content after a crash".to_vec();
+        let file_id = hash_bytes(&bytes);
+
+        // A transfer was killed mid-flight, leaving its `.part` on disk. Build
+        // that state through the real producer so the test mirrors a restart.
+        let size = u64::try_from(bytes.len()).unwrap();
+        let mut stale = ReceivingFile::new(&file_id, "stale.txt", None, size).expect("stale new");
+        stale
+            .write_chunk(b"bytes from the killed transfer")
+            .expect("write stale");
+        let partial_path = stale.path.clone();
+        // Process death drops the in-memory receive map; only the partial
+        // survives. The fast restart happens inside `GC_GRACE`, so GC cannot
+        // be relied on to clear it first.
+        drop(stale);
+        assert!(
+            partial_path.exists(),
+            "stale partial must survive the crash"
+        );
+
+        // A fresh transfer for the same content address must start from an
+        // empty partial, otherwise `write_chunk` appends after the stale bytes
+        // and `finalize`'s hash check fails, dropping the attachment silently.
+        let mut fresh = ReceivingFile::new(&file_id, "fresh.txt", None, size).expect("fresh new");
+        assert_eq!(fresh.received, 0);
+        fresh.write_chunk(&bytes).expect("write fresh");
+        let stored = fresh.finalize().expect("finalize after restart");
+        assert_eq!(std::fs::read(&stored).expect("read blob"), bytes);
+    });
+}
+
+#[test]
+#[serial(db)]
 fn receiving_file_finalizes_content_addressed() {
     with_test_db(|| {
         let bytes = b"received bytes to verify".to_vec();

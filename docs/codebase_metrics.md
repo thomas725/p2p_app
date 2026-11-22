@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        66 |
-| Total Rust Lines      |    35,045 |
-| Total Rust Chars      | 1,328,537 |
-| Avg Lines/Rust File   |       530 |
-| Avg Chars/Rust File   |    20,129 |
+| Total Rust Lines      |    35,066 |
+| Total Rust Chars      | 1,329,649 |
+| Avg Lines/Rust File   |       531 |
+| Avg Chars/Rust File   |    20,146 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    18,133 |
 | Total Dart Chars      |   584,578 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 108 files, 53,481 lines, 1,924,105 characters
+**Grand Total:** 108 files, 53,502 lines, 1,925,217 characters
 
 ## Rust Source Files
 
@@ -37,8 +37,8 @@
 | src                     | db.rs                |     5 | 27253 |   686 |        - |       - | Database connection & identity mgmt    |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                            |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                            |
-| src                     | file_transfer.rs     |     5 | 19379 |   492 |        - |       - | Source file                            |
-| src                     | files.rs             |     6 | 29006 |   767 |        - |       - | Content-addressed attachment store     |
+| src                     | file_transfer.rs     |     5 | 19505 |   493 |        - |       - | Source file                            |
+| src                     | files.rs             |     6 | 29992 |   787 |        - |       - | Content-addressed attachment store     |
 | src                     | fmt.rs               |     4 |  6204 |   192 |        - |       - | Formatting & display utilities         |
 | src                     | frb_generated.rs     |     6 | 206196 |  4970 |        - |       - | flutter_rust_bridge codegen            |
 | src                     | groups.rs            |     3 | 23346 |   618 |        - |       - | Group management & persistence         |
@@ -93,7 +93,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 66 files, 35,045 lines, 1,328,537 characters
+**Total:** 66 files, 35,066 lines, 1,329,649 characters
 
 ## Rust Test Files
 
@@ -143,8 +143,8 @@
 | unit   | unit_db.rs                        |   312 | 10040 |     3 | Unit tests for database module        |
 | unit   | unit_dm_outbox.rs                 |   169 |  5739 |     4 | Test file                             |
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
-| unit   | unit_file_transfer.rs             |   259 |  8949 |     4 | Test file                             |
-| unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
+| unit   | unit_file_transfer.rs             |   259 |  8972 |     4 | Test file                             |
+| unit   | unit_files.rs                     |   538 | 20323 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   624 | 22507 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                  |   747 | 29217 |     4 | identity module tests                 |
 | unit   | unit_lib.rs                       |   278 |  7955 |     3 | Unit tests for library re-exports/api |
@@ -165,7 +165,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   388 | 11522 |     3 | Unit tests for types module           |
 
-**Total:** 65 test files, 26,572 lines, 885,136 characters
+**Total:** 65 test files, 26,607 lines, 886,769 characters
 
 ## Dart Source Files
 

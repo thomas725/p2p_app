@@ -87,7 +87,11 @@ the store never deletes anything.
   `start_node_impl`). In-flight transfers are excluded by the active `file_id`
   set; blobs younger than `files::GC_GRACE` (1 min) are skipped.
 - A transfer interrupted mid-run keeps its `.part` until the next restart clears
-  the in-flight map; the restart sweep then removes it as stale.
+  the in-flight map; the restart sweep then removes it as stale. Independently
+  of GC, starting a fresh receive for the same content address discards any
+  leftover `.part` in `ReceivingFile::new` — so a crash plus a fast restart
+  (inside `GC_GRACE`) cannot append new chunks after stale bytes and fail the
+  final hash check.
 
 ## Open follow-ups
 

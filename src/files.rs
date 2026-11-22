@@ -447,9 +447,17 @@ pub struct ReceivingFile {
 impl ReceivingFile {
     /// Start assembling a transfer in the store directory.
     ///
+    /// A partial left by a process killed mid-transfer is removed here: the
+    /// in-memory receive map does not survive a restart, so a fast restart
+    /// (inside [`GC_GRACE`], before GC can reclaim it) would otherwise append
+    /// fresh chunks after the stale bytes and fail the final hash check. Every
+    /// call is a genuinely fresh transfer — duplicate `meta` responses are
+    /// rejected by the receiver before reaching here — so any existing `.part`
+    /// at this content address is stale by definition.
+    ///
     /// # Errors
-    /// Returns an error if `file_id` is not a canonical content address or the
-    /// store directory cannot be created.
+    /// Returns an error if `file_id` is not a canonical content address, the
+    /// store directory cannot be created, or a stale partial cannot be removed.
     pub fn new(
         file_id: &str,
         name: &str,
@@ -460,6 +468,18 @@ impl ReceivingFile {
             return Err(eyre!("invalid attachment file id: {file_id:?}"));
         }
         let path = files_dir()?.join(format!("{file_id}.part"));
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(e).wrap_err_with(|| {
+                    format!(
+                        "failed to discard stale attachment partial {}",
+                        path.display()
+                    )
+                });
+            }
+        }
         Ok(Self {
             file_id: file_id.to_string(),
             name: name.to_string(),
