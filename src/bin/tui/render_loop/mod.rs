@@ -80,7 +80,14 @@ fn call_overlay_text(state: &AppState) -> Option<String> {
         )),
         p2p_app::CallState::InCall => Some(format!(
             "In call with {peer}\n\
-             \nHang up with Esc"
+             \nMic: {} \u{b7} peer frames: {}\n\
+             'm' toggles mute \u{b7} Esc hangs up",
+            if state.call_media.muted {
+                "muted"
+            } else {
+                "on"
+            },
+            state.call_media.frames_received
         )),
         p2p_app::CallState::Ended => None,
     }

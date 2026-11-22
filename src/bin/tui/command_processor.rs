@@ -1,7 +1,7 @@
 use super::event_source::InputEvent;
 use super::input_processor::process_input_event;
 use super::main_loop::RenderEvent;
-use super::state::{AppState, SharedState};
+use super::state::{AppState, CallMediaStatus, SharedState};
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
 use std::sync::Arc;
@@ -448,6 +448,19 @@ async fn process_swarm_event(
         SwarmEvent::CallEnded { call_id, peer_id } => {
             handle_call_event(state, "end", &call_id, &peer_id).await;
         }
+        SwarmEvent::CallMediaFrame { call_id, pcm, .. } => {
+            // No audio device in the TUI yet: count decoded frames so the
+            // overlay can show that media is flowing (and that the peer/call
+            // filters in the swarm loop accepted them).
+            let mut s = state.lock().await;
+            if s.call_session
+                .as_ref()
+                .is_some_and(|session| session.is_active() && session.call_id == call_id)
+                && pcm.len() == p2p_app::call_media::SAMPLES_PER_FRAME
+            {
+                s.call_media.frames_received = s.call_media.frames_received.saturating_add(1);
+            }
+        }
         SwarmEvent::FileReceived {
             peer_id,
             file_id,
@@ -488,6 +501,7 @@ async fn handle_call_event(state: &SharedState, kind: &str, call_id: &str, peer_
                 .is_some_and(p2p_app::CallSession::is_active)
             {
                 s.call_session = Some(p2p_app::CallSession::incoming(call_id, peer_id));
+                s.call_media = CallMediaStatus::default();
             }
         }
         _ => {
@@ -499,6 +513,7 @@ async fn handle_call_event(state: &SharedState, kind: &str, call_id: &str, peer_
     }
     if settled {
         s.call_session = None;
+        s.call_media = CallMediaStatus::default();
     }
     drop(s);
     p2plog_debug(match kind {

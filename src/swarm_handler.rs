@@ -1,5 +1,6 @@
 //! Swarm event handler that translates libp2p events to application events
 
+use crate::call_media::{AudioFrame, FrameAck, MediaSession};
 use crate::types::{StringMap, SwarmCommand, SwarmEvent};
 use crate::{
     AppBehaviour, BroadcastMessage, behavior::AppBehaviourEvent as AppEv, current_timestamp,
@@ -276,10 +277,11 @@ async fn handle_swarm_event(
     swarm: &mut Swarm<AppBehaviour>,
     relays: &mut RelayState,
     announced: &mut AnnouncedConnections,
+    media: &mut Option<MediaSession>,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::Behaviour(_) => {
-            handle_behaviour_event(swarm_event, event_tx, swarm).await;
+            handle_behaviour_event(swarm_event, event_tx, swarm, media).await;
         }
         _ => {
             handle_connection_event(swarm_event, event_tx, swarm, relays, announced).await;
@@ -291,6 +293,7 @@ async fn handle_behaviour_event(
     swarm_event: Libp2pSwarmEvent<AppEv>,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    media: &mut Option<MediaSession>,
 ) {
     match swarm_event {
         Libp2pSwarmEvent::Behaviour(AppEv::Gossipsub(gossipsub::Event::Message {
@@ -322,7 +325,15 @@ async fn handle_behaviour_event(
             if drop_blocked_lane("call signal", &peer) {
                 return;
             }
-            handle_call_signal(message, peer, event_tx, swarm).await;
+            handle_call_signal(message, peer, event_tx, swarm, media).await;
+        }
+        Libp2pSwarmEvent::Behaviour(AppEv::CallMedia(
+            libp2p::request_response::Event::Message { peer, message, .. },
+        )) => {
+            if drop_blocked_lane("call media", &peer) {
+                return;
+            }
+            handle_call_media(message, peer, event_tx, swarm, media).await;
         }
         Libp2pSwarmEvent::Behaviour(AppEv::Typing(libp2p::request_response::Event::Message {
             peer,
@@ -1370,6 +1381,7 @@ async fn handle_call_signal(
     peer: libp2p::PeerId,
     event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
+    media: &mut Option<MediaSession>,
 ) {
     let peer_id_str = peer.to_string();
     match message {
@@ -1428,6 +1440,12 @@ async fn handle_call_signal(
             if let Some(ev) = event {
                 let _ = event_tx.send(ev).await;
             }
+            // A rejected or ended call has no audio left to carry. Dropping the
+            // session here keeps a late frame from the old call out of a later
+            // one even if the UI forgets to send `StopCallMedia`.
+            if matches!(request.kind.as_str(), "reject" | "end") {
+                *media = None;
+            }
             let _ = swarm
                 .behaviour_mut()
                 .call_signaling
@@ -1443,6 +1461,52 @@ async fn handle_call_signal(
             }
         }
     }
+}
+
+/// Receive one voice frame (calls lane, US-044).
+///
+/// A frame is only accepted while a media session is open, from the exact peer
+/// and call that session was opened for. Every frame gets an ack so the sender
+/// can distinguish a live receiver from a dead one; decoded PCM is forwarded to
+/// the frontend once the jitter buffer has a complete, in-order block. Nothing
+/// here is logged per frame — at 50 Hz that would drown the log tab.
+async fn handle_call_media(
+    message: libp2p::request_response::Message<AudioFrame, FrameAck>,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+    media: &mut Option<MediaSession>,
+) {
+    let libp2p::request_response::Message::Request {
+        request, channel, ..
+    } = message
+    else {
+        // The ack to one of our own frames carries no application data.
+        return;
+    };
+    let call_id = request.call_id.clone();
+    let peer_id_str = peer.to_string();
+    let (accepted, pcm) = match media.as_mut() {
+        Some(session) if session.peer_id == peer_id_str && session.call_id == call_id => {
+            let accepted = session.accept(request);
+            (accepted, session.take_pcm())
+        }
+        _ => (false, None),
+    };
+    if let Some(pcm) = pcm {
+        let _ = event_tx
+            .send(SwarmEvent::CallMediaFrame {
+                call_id,
+                peer_id: peer_id_str,
+                pcm,
+            })
+            .await;
+    }
+    let ack = FrameAck {
+        ok: accepted,
+        reason: (!accepted).then(|| "no active media session for this frame".into()),
+    };
+    let _ = swarm.behaviour_mut().call_media.send_response(channel, ack);
 }
 
 /// Receive a transient typing signal and surface it to both frontends.
@@ -2062,7 +2126,12 @@ pub fn build_group_message_with_reply(
     }
 }
 
-fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &str) {
+fn handle_command(
+    cmd: SwarmCommand,
+    swarm: &mut Swarm<AppBehaviour>,
+    topic: &str,
+    media: &mut Option<MediaSession>,
+) {
     match cmd {
         SwarmCommand::Publish {
             content,
@@ -2115,6 +2184,28 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         SwarmCommand::SendCallSignal { peer_id, signal } => {
             send_call_signal(&peer_id, *signal, swarm);
         }
+        SwarmCommand::StartCallMedia { call_id, peer_id } => {
+            if peer_id.parse::<libp2p::PeerId>().is_err() {
+                p2plog_error(format!("Invalid peer id for call media session: {peer_id}"));
+                return;
+            }
+            p2plog_debug(format!(
+                "Started call media session {call_id} with {peer_id}"
+            ));
+            *media = Some(MediaSession::new(call_id, peer_id));
+        }
+        SwarmCommand::StopCallMedia => {
+            p2plog_debug("Stopped call media session");
+            *media = None;
+        }
+        SwarmCommand::SendCallMedia { call_id, pcm } => {
+            send_call_media(&call_id, &pcm, swarm, media);
+        }
+        SwarmCommand::SetCallMediaMute { muted } => {
+            if let Some(session) = media.as_mut() {
+                session.set_muted(muted);
+            }
+        }
         SwarmCommand::SendTyping { peer_id, is_typing } => {
             send_typing(&peer_id, is_typing, swarm);
         }
@@ -2125,6 +2216,32 @@ fn handle_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>, topic: &st
         SwarmCommand::Dial { address } => dial_peer(&address, swarm),
         SwarmCommand::DisconnectPeer { peer_id } => disconnect_peer(&peer_id, swarm),
     }
+}
+
+/// Encode and send one PCM block on the active media session (calls lane).
+///
+/// A stale call id (a UI that queued frames just before a hang-up) is ignored
+/// rather than leaking audio into the next call. Likewise a muted session or an
+/// empty block produces no frame, so silence costs no bandwidth.
+fn send_call_media(
+    call_id: &str,
+    pcm: &[i16],
+    swarm: &mut Swarm<AppBehaviour>,
+    media: &mut Option<MediaSession>,
+) {
+    let Some(session) = media.as_mut() else {
+        return;
+    };
+    if session.call_id != call_id {
+        return;
+    }
+    let Ok(peer) = session.peer_id.parse::<libp2p::PeerId>() else {
+        return;
+    };
+    let Some(frame) = session.next_frame(pcm) else {
+        return;
+    };
+    let _ = swarm.behaviour_mut().call_media.send_request(&peer, frame);
 }
 
 fn publish_broadcast(
@@ -2532,6 +2649,10 @@ pub fn spawn_swarm_handler(
         flush_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut announced = AnnouncedConnections::default();
 
+        // One media session at a time, owned by the swarm loop like the call
+        // signaling state: frontends only send commands and receive decoded
+        // PCM events, they never hold a session of their own.
+        let mut media: Option<MediaSession> = None;
         loop {
             let event = tokio::select! {
                 swarm_event = swarm.select_next_some() => Some(Event::Swarm(Box::new(swarm_event))),
@@ -2548,11 +2669,12 @@ pub fn spawn_swarm_handler(
                         &mut swarm,
                         &mut relays,
                         &mut announced,
+                        &mut media,
                     )
                     .await;
                 }
                 Some(Event::Command(cmd)) => {
-                    handle_command(*cmd, &mut swarm, &topic);
+                    handle_command(*cmd, &mut swarm, &topic, &mut media);
                 }
                 Some(Event::Flush) => {
                     flush_pending_outbox(&mut swarm);

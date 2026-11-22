@@ -18,7 +18,7 @@ What shipped:
 | Signed device-binding claims | `src/identity.rs` (`mint_device_binding`, `sign_device_binding_claim`, `verify_device_binding_claim`, `save_device_binding`) |
 | Contact roster | `src/contacts.rs` |
 | Device-binding protocol | `src/behavior.rs` (`/p2p-chat/device-binding/1.0.0`), `src/swarm_handler.rs` |
-| Call signaling | `src/calls.rs` (`CallSession`, `CallState`) — **signaling only**, media is future work |
+| Calls | `src/calls.rs` (`CallSession`, `CallState`) + `src/call_media.rs` (μ-law frames, jitter buffer) |
 | Frontends | TUI Contacts tab, Flutter ContactList, and the web mirror of both |
 
 An already-bound *sibling* device of the same user may add another device to
@@ -109,10 +109,13 @@ implementation slice documented further down.
 - **Backfill** (store-and-forward for offline members) shipped 2026-09-26 as anonymous
   gossipsub traffic on a derived `group:<group_id>:backfill` topic; the watermark is recomputed
   per request (no row). See *Group-message backfill* below and §11.5 of the archived backlog.
-- **Calls/videocalls** shipped as **un-gated signaling** (`request_response`,
-  `/p2p-chat/call/1.0.0`). The `calls` Cargo feature is an **empty** placeholder reserved for
-  the future media deps (WebRTC/audio codecs) so default/mobile builds stay lean — the same
-  device-binding precedent. Signaling is deliberately **not** gated behind it.
+- **Calls/videocalls** ship un-gated: signaling on `/p2p-chat/call/1.0.0` and
+  G.711 μ-law media frames on `/p2p-chat/call-media/1.0.0` (both `request_response`).
+  The `calls` Cargo feature stays an **empty** placeholder for future media
+  dependencies (device audio adapters/codecs) so default/mobile builds stay lean —
+  the same device-binding precedent. Neither signaling nor transport is gated
+  behind it. The transport slice is recorded in
+  [`archive/2026-11-22_call_media_transport.md`](archive/2026-11-22_call_media_transport.md).
 
 ## Sequencing — contacts first, calls later
 
@@ -122,8 +125,8 @@ Design-time ordering, kept for the record; all three steps have since landed
 1. **Identity layer**: `users` + `device_bindings` + signed-claim verification (the root-of-trust
    prerequisite). New bindings listed above (minus contacts).
 2. **Contacts**: `contacts` table + `get_contacts`/`add_contact`/`remove_contact` + Dart surface.
-3. **Calls/videocalls** (later, media behind the `calls` gate): the signaling half shipped
-   **un-gated** first, with the empty `calls` feature kept for the media deps. Uses the call vs.
+3. **Calls/videocalls** (later): signaling and μ-law transport both ship **un-gated**,
+   with the empty `calls` feature kept for future device/audio deps. Uses the call vs.
    user identity; multi-device lanes follow §11.
 
 ## Contacts tab (replaces the Peers tab) — user decision (2026-09-24)

@@ -64,7 +64,8 @@ src/
 ├── groups.rs           groups, members, group messages, backfill watermark
 ├── identity.rs         users, account keys, device bindings, signed claims
 ├── contacts.rs         the contact roster
-├── calls.rs            call session model (signaling only; media is future work)
+├── calls.rs            call session model (caller-minted call_id, state machine)
+├── call_media.rs       voice media transport: μ-law frames, jitter buffer, mute (US-044)
 ├── files.rs            content-addressed attachment store
 ├── connected.rs        ConnectedTracker
 ├── logging.rs          log helpers
@@ -103,6 +104,7 @@ The libp2p behaviour set (`src/behavior.rs`):
 | `request_response` | `/p2p-chat/dm/1.0.0` | direct messages |
 | `device_binding` | `/p2p-chat/device-binding/1.0.0` | intro + signed claim exchange |
 | `call_signaling` | `/p2p-chat/call/1.0.0` | call setup/accept/decline/end |
+| `call_media` | `/p2p-chat/call-media/1.0.0` | μ-law voice frames + acks (cbor, US-044) |
 | `typing` | `/p2p-chat/typing/1.0.0` | fire-and-forget DM typing start/stop (US-009) |
 | `reactions` | `/p2p-chat/reactions/1.0.0` | per-message reaction add/remove sync (US-008) |
 | `file_transfer` | `/p2p-chat/files/1.0.0` | attachment meta / chunk / error (cbor) |
@@ -246,10 +248,10 @@ outbound path:
 
 - gossipsub messages (broadcast, group chat **and** group backfill topics) are
   discarded before parsing, so nothing a muted peer sends is persisted;
-- DM, device-binding, call-signaling, typing, reaction and file-transfer
-  `request_response` messages are discarded; Identify results are not applied
-  (no DHT/roster entry), mDNS discoveries are not dialed, and a connection from
-  a blocked peer is disconnected immediately;
+- DM, device-binding, call-signaling, call-media, typing, reaction and
+  file-transfer `request_response` messages are discarded; Identify results are
+  not applied (no DHT/roster entry), mDNS discoveries are not dialed, and a
+  connection from a blocked peer is disconnected immediately;
 - outbound `SendDm` / `SendDeviceBinding` / `SendCallSignal` / `SendTyping` /
   reaction fan-out and manual dials whose multiaddr carries `/p2p/<blocked-id>`
   are refused.
@@ -332,7 +334,7 @@ API sets the path per thread with `db::set_db_url`.
 | `kad` | Kademlia DHT + Identify (internet-wide discovery, DHT announcements) |
 | `relay` | circuit-relay v2 server + client |
 | `nat` | AutoNAT reachability detection + DCUtR hole punching |
-| `calls` | **empty placeholder** reserved for future call-media dependencies. Call *signaling* is un-gated and ships in the default build. |
+| `calls` | **empty placeholder** reserved for future media dependencies (codecs/device adapters). Call signaling *and* μ-law media transport are un-gated and ship in the default build. |
 | `test-utils` | test-only helpers |
 
 Note that `default` includes `web`, which includes `mobile` — so the default

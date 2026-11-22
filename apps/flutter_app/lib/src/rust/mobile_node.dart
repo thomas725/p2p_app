@@ -12,7 +12,7 @@ import 'reply.dart';
 // These functions are ignored because they are not marked as `pub`: `attachment_from_row`, `blocking_send_cmd`, `call_event_json`, `default_event`, `event_to_json`, `event_with_type`, `forward_swarm_events`, `group_invite_event_json`, `group_message_event_json`, `group_message_to_mobile`, `group_to_mobile`, `hole_punch_event_json`, `hydrate_group_reactions`, `hydrate_reactions`, `is_nickname_only_dm`, `lock_node_mutex`, `mark_confirmed`, `message_event_json`, `message_to_chat`, `mobile_attachment`, `process_event_for_mobile`, `save_outgoing_broadcast_attached`, `save_outgoing_dm_attached`, `save_outgoing_group_attached`, `sender_nickname_label`, `start_node_impl`, `store_send_attachment`, `try_send_cmd`, `typing_event_json`, `with_cmd_tx`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `IncomingMessageData`, `MobileNode`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `start_call`, `start_node_auto`, `start_node`, `stop_node`, `subscribe_events`, `toggle_reaction`
+// These functions are ignored (category: IgnoreBecauseExplicitAttribute): `accept_device_binding`, `accept_group_invite`, `command_sender`, `create_group`, `dial_peer`, `disconnect_peer`, `get_known_peers`, `list_groups`, `load_broadcast_messages`, `load_dm_messages`, `load_group_messages`, `poll_event`, `save_incoming_message`, `save_outgoing_broadcast`, `save_outgoing_dm`, `save_outgoing_group`, `send_call_media`, `send_call_signal`, `send_device_binding_intro`, `send_typing`, `set_call_media_mute`, `start_call_media`, `start_call`, `start_node_auto`, `start_node`, `stop_call_media`, `stop_node`, `subscribe_events`, `toggle_reaction`
 
 /// Get the local peer ID.
 ///
@@ -466,6 +466,9 @@ class SwarmEventJson {
   /// Raw device public key of a device-binding intro.
   final Uint8List? devicePubkey;
 
+  /// Decoded 16 kHz mono PCM from a `call_media` event (calls lane, US-044).
+  final Int16List? audio;
+
   /// Notification built in Rust for incoming messages (US-027/US-028).
   /// `None` when both channels are off or the event is not a user message.
   final Notification? notification;
@@ -482,6 +485,7 @@ class SwarmEventJson {
     this.address,
     this.groupId,
     this.devicePubkey,
+    this.audio,
     this.notification,
   });
 
@@ -498,6 +502,7 @@ class SwarmEventJson {
       address.hashCode ^
       groupId.hashCode ^
       devicePubkey.hashCode ^
+      audio.hashCode ^
       notification.hashCode;
 
   @override
@@ -516,5 +521,6 @@ class SwarmEventJson {
           address == other.address &&
           groupId == other.groupId &&
           devicePubkey == other.devicePubkey &&
+          audio == other.audio &&
           notification == other.notification;
 }

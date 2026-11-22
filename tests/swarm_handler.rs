@@ -670,6 +670,66 @@ async fn test_spawn_handler_broadcast_receipt() {
     assert_eq!(receipt.1, "bcast-ack-1");
 }
 
+/// Two media sessions exchange CBOR μ-law frames on the dedicated lane; the
+/// receiver's jitter buffer releases the first frame once the second arrives,
+/// and the frontend gets decoded PCM with the authenticated peer/call ids.
+#[tokio::test]
+async fn test_spawn_handler_call_media_roundtrip() {
+    let (mut swarm_a, peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm();
+    connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
+
+    let (_handle_a, _event_rx_a, cmd_tx_a) = spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::StartCallMedia {
+            call_id: "call-media-1".to_string(),
+            peer_id: peer_b.to_string(),
+        })
+        .await
+        .unwrap();
+    cmd_tx_b
+        .send(SwarmCommand::StartCallMedia {
+            call_id: "call-media-1".to_string(),
+            peer_id: peer_a.to_string(),
+        })
+        .await
+        .unwrap();
+
+    // The receiver holds back one frame for reordering, so send two.
+    for sample in [100_i16, 200] {
+        cmd_tx_a
+            .send(SwarmCommand::SendCallMedia {
+                call_id: "call-media-1".to_string(),
+                pcm: vec![sample; p2p_app::call_media::SAMPLES_PER_FRAME],
+            })
+            .await
+            .unwrap();
+    }
+
+    let (call_id, sender, pcm) = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::CallMediaFrame {
+                call_id,
+                peer_id,
+                pcm,
+            }) = event_rx_b.recv().await
+            {
+                break (call_id, peer_id, pcm);
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for media frame on B");
+
+    assert_eq!(call_id, "call-media-1");
+    assert_eq!(sender, peer_a.to_string());
+    assert_eq!(pcm.len(), p2p_app::call_media::SAMPLES_PER_FRAME);
+    assert!((i32::from(pcm[0]) - 100).abs() <= 1024);
+}
+
 /// `SendDm` with a peer ID that doesn't parse as a valid `PeerId` is silently
 /// ignored: no request is sent and the handler keeps running.
 #[tokio::test]

@@ -173,4 +173,7 @@ web server in both cases — the browser bundle is a display client only. `--tui
 
 - Compiling the Rust core to WASM (browser-as-node); revisit only if a fully self-contained
   browser node is ever wanted.
-- Call media (signaling only, same as every other frontend).
+- Device-level call audio capture/playback. The μ-law media transport and the
+  `startCallMedia`/`stopCallMedia`/`sendCallMedia`/`setCallMediaMute` JSON arms ship
+  like every other frontend (in-process FRB on mobile, WS/HTTP in the browser);
+  only a real microphone/speaker adapter is out of scope.

@@ -892,6 +892,25 @@ class HttpNodeApi implements NodeApi {
     'kind': kind,
   });
 
+  @override
+  Future<void> startCallMedia({
+    required String callId,
+    required String peerId,
+  }) => _call('startCallMedia', {'callId': callId, 'peerId': peerId});
+
+  @override
+  Future<void> stopCallMedia() => _call('stopCallMedia', {});
+
+  @override
+  Future<void> sendCallMedia({
+    required String callId,
+    required List<int> pcm,
+  }) => _call('sendCallMedia', {'callId': callId, 'pcm': pcm});
+
+  @override
+  Future<void> setCallMediaMute({required bool muted}) =>
+      _call('setCallMediaMute', {'muted': muted});
+
   // ── Pure UI helpers (Rust is the single source) ───────────────────────────
 
   @override

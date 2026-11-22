@@ -120,7 +120,11 @@ fn test_swarm_command_publish() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
     }
 }
 
@@ -155,7 +159,11 @@ fn test_swarm_command_send_dm() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("expected SendDm"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -230,7 +238,11 @@ fn test_swarm_command_clone() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
     }
 }
 

@@ -753,6 +753,9 @@ mod tests {
             "sortContacts",
             "startCall",
             "sendCallSignal",
+            "startCallMedia",
+            "sendCallMedia",
+            "setCallMediaMute",
             "addNetworkPeer",
             "removeNetworkPeer",
             "setLanOnly",
@@ -1029,6 +1032,7 @@ mod tests {
             "getTheme",
             "getNotificationSettings",
             "listBlockedPeers",
+            "stopCallMedia",
         ] {
             assert!(
                 source.contains(&format!("\"{method}\"")),

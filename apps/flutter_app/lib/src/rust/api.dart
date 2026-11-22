@@ -473,6 +473,34 @@ Future<void> sendCallSignal({
   kind: kind,
 );
 
+/// Open the Rust-owned media session for an accepted call (calls lane, US-044).
+/// Inbound voice arrives as a `call_media` event with decoded PCM in `audio`.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+Future<void> startCallMedia({required String callId, required String peerId}) =>
+    RustLib.instance.api.crateApiStartCallMedia(callId: callId, peerId: peerId);
+
+/// Close the active media session (hang-up, reject, or leaving the call screen).
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+Future<void> stopCallMedia() => RustLib.instance.api.crateApiStopCallMedia();
+
+/// Encode and send one 16 kHz mono PCM block on the active session.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+Future<void> sendCallMedia({required String callId, required List<int> pcm}) =>
+    RustLib.instance.api.crateApiSendCallMedia(callId: callId, pcm: pcm);
+
+/// Mute or unmute outgoing audio without tearing the session down.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+Future<void> setCallMediaMute({required bool muted}) =>
+    RustLib.instance.api.crateApiSetCallMediaMute(muted: muted);
+
 /// Send a transient DM typing state (`true` = started, `false` = stopped) on the
 /// dedicated typing lane (US-009). Fire-and-forget: no message is persisted or
 /// receipt expected by the caller.

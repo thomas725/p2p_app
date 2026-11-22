@@ -26,6 +26,30 @@ enum CallScreenPhase {
 typedef SendCallSignalOverride =
     FutureOr<void> Function(String peerId, String callId, String kind);
 
+/// Test/platform seams for the Rust-owned media session (calls lane, US-044).
+///
+/// The commands normally go through [NodeApi] to Rust; the `audio` callback is
+/// where a future device adapter would hand decoded peer PCM to a speaker.
+/// Widget tests install all four so they never load the Rust library.
+@visibleForTesting
+class CallMediaOverrides {
+  const CallMediaOverrides({
+    this.start,
+    this.stop,
+    this.sendPcm,
+    this.mute,
+    this.audio,
+  });
+
+  final FutureOr<void> Function(String callId, String peerId)? start;
+  final FutureOr<void> Function()? stop;
+  final FutureOr<void> Function(String callId, List<int> pcm)? sendPcm;
+  final FutureOr<void> Function(bool muted)? mute;
+
+  /// Receives decoded 16 kHz mono i16 PCM from the peer.
+  final void Function(List<int> pcm)? audio;
+}
+
 /// Full-screen call session UI. Takes over the event sink while open (like the
 /// DM chat screen) so call-signaling events route here, filtering session
 /// events on `peer_id` + the echoed `call_id` (`content`) and forwarding
@@ -41,6 +65,7 @@ class CallScreen extends StatefulWidget {
     this.onNavigate,
     this.currentTab = 1,
     this.sendSignalOverride,
+    this.mediaOverrides,
   });
 
   /// The remote peer on the other side of this session.
@@ -67,6 +92,10 @@ class CallScreen extends StatefulWidget {
   @visibleForTesting
   final SendCallSignalOverride? sendSignalOverride;
 
+  /// Test-only seams for the media session and its audio callbacks.
+  @visibleForTesting
+  final CallMediaOverrides? mediaOverrides;
+
   @override
   State<CallScreen> createState() => CallScreenState();
 }
@@ -78,17 +107,77 @@ class CallScreenState extends State<CallScreen> {
 
   late CallScreenPhase _phase;
 
+  // Media transport is opened only once the call is live and closed on every
+  // exit path. The counter mirrors the TUI overlay: with no device adapter
+  // yet, it is the visible proof that peer audio is actually flowing.
+  bool _mediaStarted = false;
+  bool _muted = false;
+  int _audioFrames = 0;
+
   @override
   void initState() {
     super.initState();
     _phase = widget.initialPhase;
     _previousSink = pushEventSink(_handleSwarmEvent);
+    if (_phase == CallScreenPhase.inCall) unawaited(_startMedia());
   }
 
   @override
   void dispose() {
+    unawaited(_stopMedia());
     setEventSink(_previousSink);
     super.dispose();
+  }
+
+  /// Run one media command through its test seam, or the Rust API. A failed
+  /// command never takes the call UI down: signaling remains usable and the
+  /// swarm loop tears the session down when the call ends.
+  Future<void> _media(FutureOr<void> Function() action) async {
+    try {
+      await action();
+    } catch (e) {
+      debugPrint('Call media command failed: $e');
+    }
+  }
+
+  Future<void> _startMedia() {
+    if (_mediaStarted) return Future<void>.value();
+    _mediaStarted = true;
+    final override = widget.mediaOverrides?.start;
+    return _media(() => override != null
+        ? override(widget.callId, widget.peerId)
+        : nodeApi.startCallMedia(callId: widget.callId, peerId: widget.peerId));
+  }
+
+  Future<void> _stopMedia() {
+    if (!_mediaStarted) return Future<void>.value();
+    _mediaStarted = false;
+    final override = widget.mediaOverrides?.stop;
+    return _media(
+      () => override != null ? override() : nodeApi.stopCallMedia(),
+    );
+  }
+
+  /// Hand one 16 kHz mono PCM block from a future microphone adapter to Rust.
+  /// The session filter lives in Rust, so a stale call's audio is ignored
+  /// there; this guard just avoids pointless FFI traffic.
+  Future<void> sendPcm(List<int> pcm) {
+    if (_phase != CallScreenPhase.inCall || pcm.isEmpty) {
+      return Future<void>.value();
+    }
+    final override = widget.mediaOverrides?.sendPcm;
+    return _media(() => override != null
+        ? override(widget.callId, pcm)
+        : nodeApi.sendCallMedia(callId: widget.callId, pcm: pcm));
+  }
+
+  Future<void> _toggleMute() async {
+    final muted = !_muted;
+    if (mounted) setState(() => _muted = muted);
+    final override = widget.mediaOverrides?.mute;
+    await _media(
+      () => override != null ? override(muted) : nodeApi.setCallMediaMute(muted: muted),
+    );
   }
 
   /// Send a call signal over the calls lane (accept/reject/end), using the
@@ -110,7 +199,12 @@ class CallScreenState extends State<CallScreen> {
   void _handleSwarmEvent(SwarmEventJson event) {
     if (!mounted) return;
     final isCallEvent = switch (event.eventType) {
-      'call_invite' || 'call_accepted' || 'call_rejected' || 'call_ended' => true,
+      'call_invite' ||
+      'call_accepted' ||
+      'call_rejected' ||
+      'call_ended' ||
+      'call_media' =>
+        true,
       _ => false,
     };
     if (!isCallEvent) {
@@ -130,7 +224,20 @@ class CallScreenState extends State<CallScreen> {
       }
       return;
     }
+    if (event.eventType == 'call_media') {
+      _acceptPeerAudio(event.audio);
+      return;
+    }
     _applySessionEvent(event.eventType);
+  }
+
+  /// Deliver decoded peer PCM to the audio adapter (or the test seam) and
+  /// refresh the status line at most once per second — not once per 20 ms frame.
+  void _acceptPeerAudio(List<int>? pcm) {
+    if (pcm == null || pcm.isEmpty) return;
+    widget.mediaOverrides?.audio?.call(pcm);
+    _audioFrames++;
+    if (_audioFrames % 50 == 1 && mounted) setState(() {});
   }
 
   /// Accept this session's call events and forward everything else downstream.
@@ -157,6 +264,7 @@ class CallScreenState extends State<CallScreen> {
     switch (eventType) {
       case 'call_accepted':
         setState(() => _phase = CallScreenPhase.inCall);
+        unawaited(_startMedia());
         break;
       case 'call_rejected':
         _endSession('Call declined');
@@ -176,6 +284,7 @@ class CallScreenState extends State<CallScreen> {
   /// Pop the screen (with an optional note), clearing the live session.
   void _endSession([String? message]) {
     if (!mounted) return;
+    unawaited(_stopMedia());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message ?? 'Call ended'),
@@ -188,10 +297,12 @@ class CallScreenState extends State<CallScreen> {
   void _accept() {
     unawaited(_sendSignal('accept'));
     setState(() => _phase = CallScreenPhase.inCall);
+    unawaited(_startMedia());
   }
 
   void _leaveTab(int index) {
     unawaited(_sendSignal('end'));
+    unawaited(_stopMedia());
     Navigator.of(context).pop();
     widget.onNavigate?.call(index);
   }
@@ -246,6 +357,13 @@ class CallScreenState extends State<CallScreen> {
         ),
         [
           _CallButton(
+            key: const Key('mute-toggle'),
+            label: _muted ? 'Unmute' : 'Mute',
+            icon: _muted ? Icons.mic_off : Icons.mic,
+            color: Colors.blue,
+            onPressed: () => unawaited(_toggleMute()),
+          ),
+          _CallButton(
             key: const Key('hang-up'),
             label: 'Hang up',
             icon: Icons.call_end,
@@ -269,6 +387,15 @@ class CallScreenState extends State<CallScreen> {
                 Text(lines.$1, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text(lines.$2, style: Theme.of(context).textTheme.bodyMedium),
+                if (_phase == CallScreenPhase.inCall)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Mic ${_muted ? 'muted' : 'on'} · peer frames $_audioFrames',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
               ],
             ),
           ),

@@ -651,4 +651,32 @@ class FakeNodeApi implements NodeApi {
     required String callId,
     required String kind,
   }) => throw UnimplementedError();
+
+  // --- Calls: Rust-owned media transport (recorded, no FFI) ---
+
+  @override
+  Future<void> startCallMedia({
+    required String callId,
+    required String peerId,
+  }) async {
+    _record('startCallMedia', (callId: callId, peerId: peerId));
+  }
+
+  @override
+  Future<void> stopCallMedia() async {
+    _record('stopCallMedia');
+  }
+
+  @override
+  Future<void> sendCallMedia({
+    required String callId,
+    required List<int> pcm,
+  }) async {
+    _record('sendCallMedia', (callId: callId, pcm: pcm));
+  }
+
+  @override
+  Future<void> setCallMediaMute({required bool muted}) async {
+    _record('setCallMediaMute', muted);
+  }
 }

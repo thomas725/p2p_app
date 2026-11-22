@@ -314,12 +314,15 @@ your roster — run this on the *new* device, targeting the account holder.
 | any other key | (ringing overlay) Decline the incoming call |
 | `c` / `C` / `Esc` | (calling overlay) Cancel the outgoing call |
 | `Esc` | (in-call overlay) Hang up |
+| `m` / `M` | (in-call overlay) Toggle the microphone mute |
 
 One call at a time: a live call overlay swallows all other input until it
 resolves, and a second incoming invitation is auto-declined while one is
 live.
 
-Call **signaling** is implemented; audio/video media is not. See
+Call signaling and the μ-law **media transport** are implemented (Rust owns the
+session; the in-call overlay shows mic state and the decoded-frame count).
+No device-level microphone/speaker adapter ships yet. See
 [docs/backlog.md](docs/backlog.md) (US-044).
 
 ## DM tab layout

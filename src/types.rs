@@ -264,6 +264,15 @@ pub enum SwarmEvent {
         /// Peer ID the call was with
         peer_id: String,
     },
+    /// Decoded PCM from a peer's voice frame, ready for the audio adapter.
+    CallMediaFrame {
+        /// Session this audio belongs to.
+        call_id: String,
+        /// Peer whose microphone produced it.
+        peer_id: String,
+        /// 16 kHz mono PCM samples (i16).
+        pcm: Vec<i16>,
+    },
     /// An inbound attachment finished downloading (files lane §12). The message
     /// it rode on was already delivered; this fires when the bytes are stored
     /// and verifiable, so frontends can refresh their chip status/open affordance.
@@ -359,6 +368,27 @@ pub enum SwarmCommand {
         peer_id: String,
         /// The call-signaling payload (boxed: keeps the command channel small)
         signal: Box<crate::behavior::CallSignal>,
+    },
+    /// Open the media session of an accepted call (calls lane, US-044).
+    StartCallMedia {
+        /// Session id minted by the caller.
+        call_id: String,
+        /// Peer whose audio is exchanged in this session.
+        peer_id: String,
+    },
+    /// Tear down the active media session (hang-up, reject or tab change).
+    StopCallMedia,
+    /// Encode and send one PCM block on the active media session.
+    SendCallMedia {
+        /// Session id the audio belongs to; mismatches are ignored.
+        call_id: String,
+        /// 16 kHz mono PCM samples (i16) from the local audio adapter.
+        pcm: Vec<i16>,
+    },
+    /// Mute or unmute outgoing audio without tearing the session down.
+    SetCallMediaMute {
+        /// `true` stops sending frames; inbound audio keeps playing.
+        muted: bool,
     },
     /// Send a transient typing state to a peer over the dedicated typing lane
     /// (US-009). Fire-and-forget from the UI's perspective: no message row,

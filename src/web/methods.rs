@@ -65,7 +65,11 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "getContactsWithStats"
         | "sortContacts"
         | "startCall"
-        | "sendCallSignal") => contacts_calls(m, params),
+        | "sendCallSignal"
+        | "startCallMedia"
+        | "stopCallMedia"
+        | "sendCallMedia"
+        | "setCallMediaMute") => contacts_calls(m, params),
         m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer" | "setLanOnly") => {
             network_config(m, params)
         }
@@ -348,6 +352,19 @@ fn contacts_calls(method: &str, params: Value) -> Result<Value, String> {
         "sendCallSignal" => {
             let p: CallSignalParams = parse(params)?;
             json(api::send_call_signal(p.peer_id, p.call_id, p.kind))
+        }
+        "startCallMedia" => {
+            let p: StartCallMediaParams = parse(params)?;
+            json(api::start_call_media(p.call_id, p.peer_id))
+        }
+        "stopCallMedia" => json(api::stop_call_media()),
+        "sendCallMedia" => {
+            let p: SendCallMediaParams = parse(params)?;
+            json(api::send_call_media(p.call_id, p.pcm))
+        }
+        "setCallMediaMute" => {
+            let p: CallMediaMuteParams = parse(params)?;
+            json(api::set_call_media_mute(p.muted))
         }
         other => Err(format!("method not routed to contacts_calls: {other}")),
     }
@@ -653,6 +670,28 @@ struct CallSignalParams {
     peer_id: String,
     call_id: String,
     kind: String,
+}
+
+/// Open the Rust-owned voice session for an accepted call (calls lane, US-044).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StartCallMediaParams {
+    call_id: String,
+    peer_id: String,
+}
+
+/// One 16 kHz mono PCM block from the local audio adapter.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SendCallMediaParams {
+    call_id: String,
+    pcm: Vec<i16>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CallMediaMuteParams {
+    muted: bool,
 }
 
 #[derive(serde::Deserialize)]

@@ -1,6 +1,6 @@
 use super::event_source::InputEvent;
 use super::main_loop::RenderEvent;
-use super::state::SharedState;
+use super::state::{CallMediaStatus, SharedState};
 use p2p_app::{SwarmCommand, p2plog_debug};
 use tokio::sync::mpsc;
 
@@ -554,6 +554,7 @@ async fn start_call_to_peer(
     let call_id = session.call_id.clone();
     send_call_signal(swarm_cmd_tx, peer_id, &call_id, "invite").await;
     state.call_session = Some(session);
+    state.call_media = CallMediaStatus::default();
     p2plog_debug(format!("Placing call to {peer_id} ({call_id})"));
 }
 
@@ -577,7 +578,7 @@ async fn start_call_for_tab(
 /// until it resolves (mirrors the device-binding prompt):
 ///   * `Ringing` — `a`/`A` accepts; any other key (Esc included) declines.
 ///   * `Calling` — `c`/`C`/Esc cancels the outgoing ring; other keys ignored.
-///   * `InCall`  — Esc hangs up; other keys ignored.
+///   * `InCall`  — `m`/`M` toggles the mic mute, Esc hangs up; other keys ignored.
 ///
 /// Always consumes the key (the caller short-circuits before generic dispatch).
 async fn handle_call_overlay_key(
@@ -611,6 +612,16 @@ async fn handle_call_overlay_key(
             }
             drop(s);
             send_call_signal(swarm_cmd_tx, &peer_id, &call_id, kind).await;
+            if accept {
+                // Opening the media session on accept (rather than on invite)
+                // pins sender/receiver call ids before any frame can arrive.
+                let _ = swarm_cmd_tx
+                    .send(SwarmCommand::StartCallMedia {
+                        call_id: call_id.clone(),
+                        peer_id: peer_id.clone(),
+                    })
+                    .await;
+            }
             p2plog_debug(if accept {
                 format!("Accepted call {call_id}")
             } else {
@@ -626,15 +637,30 @@ async fn handle_call_overlay_key(
                 s.call_session = None;
                 drop(s);
                 send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
+                let _ = swarm_cmd_tx.send(SwarmCommand::StopCallMedia).await;
                 p2plog_debug(format!("Cancelled outgoing call {call_id}"));
             }
         }
         p2p_app::CallState::InCall => {
-            if key_event.code == crossterm::event::KeyCode::Esc {
+            if matches!(key_event.code, crossterm::event::KeyCode::Char('m' | 'M')) {
+                let mut s = state.lock().await;
+                let muted = !s.call_media.muted;
+                s.call_media.muted = muted;
+                drop(s);
+                let _ = swarm_cmd_tx
+                    .send(SwarmCommand::SetCallMediaMute { muted })
+                    .await;
+                p2plog_debug(format!(
+                    "Call {call_id} mic {}",
+                    if muted { "muted" } else { "unmuted" }
+                ));
+            } else if key_event.code == crossterm::event::KeyCode::Esc {
                 let mut s = state.lock().await;
                 s.call_session = None;
+                s.call_media = CallMediaStatus::default();
                 drop(s);
                 send_call_signal(swarm_cmd_tx, &peer_id, &call_id, "end").await;
+                let _ = swarm_cmd_tx.send(SwarmCommand::StopCallMedia).await;
                 p2plog_debug(format!("Hanging up call {call_id}"));
             }
         }

@@ -1050,6 +1050,55 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
     Ok(())
 }
 
+/// Open the Rust-owned media session for an accepted call (calls lane, US-044).
+/// Decoded peer audio then arrives as `call_media` swarm events.
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn start_call_media(call_id: String, peer_id: String) -> Result<(), String> {
+    if !blocking_send_cmd(SwarmCommand::StartCallMedia { call_id, peer_id }) {
+        return Err("Failed to queue call media start: node not running".into());
+    }
+    Ok(())
+}
+
+/// Close the active media session (hang-up, reject, or leaving the call screen).
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn stop_call_media() -> Result<(), String> {
+    if !blocking_send_cmd(SwarmCommand::StopCallMedia) {
+        return Err("Failed to queue call media stop: node not running".into());
+    }
+    Ok(())
+}
+
+/// Encode and send one 16 kHz mono PCM block on the active session.
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn send_call_media(call_id: String, pcm: Vec<i16>) -> Result<(), String> {
+    if !blocking_send_cmd(SwarmCommand::SendCallMedia { call_id, pcm }) {
+        return Err("Failed to queue call media frame: node not running".into());
+    }
+    Ok(())
+}
+
+/// Mute or unmute outgoing audio; inbound audio keeps playing.
+///
+/// # Errors
+/// Returns an error if the request is refused by the running node.
+#[flutter_rust_bridge::frb(ignore)]
+pub fn set_call_media_mute(muted: bool) -> Result<(), String> {
+    if !try_send_cmd(SwarmCommand::SetCallMediaMute { muted }) {
+        return Err("Failed to queue call media mute: node not running".into());
+    }
+    Ok(())
+}
+
 /// Queue a transient typing state (`true` on first keystroke, `false` on send,
 /// empty input, or leaving the DM) over the dedicated typing lane.
 ///
@@ -1380,6 +1429,8 @@ pub struct SwarmEventJson {
     pub group_id: Option<String>,
     /// Raw device public key of a device-binding intro.
     pub device_pubkey: Option<Vec<u8>>,
+    /// Decoded 16 kHz mono PCM from a `call_media` event (calls lane, US-044).
+    pub audio: Option<Vec<i16>>,
     /// Notification built in Rust for incoming messages (US-027/US-028).
     /// `None` when both channels are off or the event is not a user message.
     pub notification: Option<crate::notifications::Notification>,
@@ -1476,6 +1527,18 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
         SwarmEvent::CallEnded { call_id, peer_id } => {
             call_event_json("call_ended", call_id, peer_id)
         }
+        // Decoded voice frames (calls lane, US-044). `content` is the call id,
+        // `peer_id` the speaker and `audio` the PCM for the local adapter.
+        SwarmEvent::CallMediaFrame {
+            call_id,
+            peer_id,
+            pcm,
+        } => SwarmEventJson {
+            peer_id: Some(peer_id),
+            content: Some(call_id),
+            audio: Some(pcm),
+            ..event_with_type("call_media")
+        },
         // An attachment finished downloading (files lane §12). `content` is the
         // content address and `nickname` the original filename.
         SwarmEvent::FileReceived {
@@ -1538,6 +1601,7 @@ const fn default_event() -> SwarmEventJson {
         address: None,
         group_id: None,
         device_pubkey: None,
+        audio: None,
         notification: None,
     }
 }
@@ -1564,6 +1628,7 @@ fn message_event_json(event_type: &str, m: crate::MessageEvent) -> SwarmEventJso
         address: None,
         group_id: None,
         device_pubkey: None,
+        audio: None,
         notification,
     }
 }

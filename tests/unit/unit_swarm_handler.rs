@@ -526,7 +526,11 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("expected Publish"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -566,7 +570,11 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("expected SendDm"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected SendDm"),
     }
 }
 

@@ -86,7 +86,11 @@ fn test_swarm_command_variants() {
         | SwarmCommand::Dial { .. }
         | SwarmCommand::SendTyping { .. }
         | SwarmCommand::SendReaction { .. }
-        | SwarmCommand::DisconnectPeer { .. } => panic!("Expected Publish"),
+        | SwarmCommand::DisconnectPeer { .. }
+        | SwarmCommand::StartCallMedia { .. }
+        | SwarmCommand::StopCallMedia
+        | SwarmCommand::SendCallMedia { .. }
+        | SwarmCommand::SetCallMediaMute { .. } => panic!("Expected Publish"),
     }
 
     // Test SendDm

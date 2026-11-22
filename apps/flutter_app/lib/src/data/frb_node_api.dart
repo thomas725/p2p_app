@@ -370,6 +370,25 @@ class FrbNodeApi implements NodeApi {
     required String kind,
   }) => bridge.sendCallSignal(peerId: peerId, callId: callId, kind: kind);
 
+  @override
+  Future<void> startCallMedia({
+    required String callId,
+    required String peerId,
+  }) => bridge.startCallMedia(callId: callId, peerId: peerId);
+
+  @override
+  Future<void> stopCallMedia() => bridge.stopCallMedia();
+
+  @override
+  Future<void> sendCallMedia({
+    required String callId,
+    required List<int> pcm,
+  }) => bridge.sendCallMedia(callId: callId, pcm: pcm);
+
+  @override
+  Future<void> setCallMediaMute({required bool muted}) =>
+      bridge.setCallMediaMute(muted: muted);
+
   // ── Pure UI helpers (Rust is the single source) ───────────────────────────
 
   @override

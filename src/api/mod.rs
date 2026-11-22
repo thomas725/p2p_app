@@ -570,6 +570,39 @@ pub fn send_call_signal(peer_id: String, call_id: String, kind: String) -> Resul
     crate::mobile_node::send_call_signal(peer_id, call_id, kind)
 }
 
+/// Open the Rust-owned media session for an accepted call (calls lane, US-044).
+/// Inbound voice arrives as a `call_media` event with decoded PCM in `audio`.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+pub fn start_call_media(call_id: String, peer_id: String) -> Result<(), String> {
+    crate::mobile_node::start_call_media(call_id, peer_id)
+}
+
+/// Close the active media session (hang-up, reject, or leaving the call screen).
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+pub fn stop_call_media() -> Result<(), String> {
+    crate::mobile_node::stop_call_media()
+}
+
+/// Encode and send one 16 kHz mono PCM block on the active session.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+pub fn send_call_media(call_id: String, pcm: Vec<i16>) -> Result<(), String> {
+    crate::mobile_node::send_call_media(call_id, pcm)
+}
+
+/// Mute or unmute outgoing audio without tearing the session down.
+///
+/// # Errors
+/// Returns an error if the request cannot be queued by the running node.
+pub fn set_call_media_mute(muted: bool) -> Result<(), String> {
+    crate::mobile_node::set_call_media_mute(muted)
+}
+
 /// Send a transient DM typing state (`true` = started, `false` = stopped) on the
 /// dedicated typing lane (US-009). Fire-and-forget: no message is persisted or
 /// receipt expected by the caller.

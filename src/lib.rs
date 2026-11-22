@@ -57,6 +57,7 @@ pub mod api;
 #[allow(missing_docs)]
 pub mod behavior;
 pub mod blocklist;
+pub mod call_media;
 pub mod calls;
 pub mod connected;
 pub mod contacts;
@@ -112,10 +113,10 @@ pub mod tui_render;
 pub mod tui_render_state; /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 
 pub use behavior::{
-    AppBehaviour, BroadcastMessage, CALL_PROTOCOL_NAME, CHAT_TOPIC, CallSignal, CallSignalAck,
-    ChatCodec, DM_PROTOCOL_NAME, DirectMessage, FILE_TRANSFER_PROTOCOL_NAME, FileTransfer,
-    FileTransferCodec, FileTransferResponse, GroupBackfillRequest, GroupMessage, build_behaviour,
-    build_swarm,
+    AppBehaviour, BroadcastMessage, CALL_MEDIA_PROTOCOL_NAME, CALL_PROTOCOL_NAME, CHAT_TOPIC,
+    CallSignal, CallSignalAck, ChatCodec, DM_PROTOCOL_NAME, DirectMessage,
+    FILE_TRANSFER_PROTOCOL_NAME, FileTransfer, FileTransferCodec, FileTransferResponse,
+    GroupBackfillRequest, GroupMessage, build_behaviour, build_swarm,
 };
 pub use calls::{CallSession, CallState};
 #[cfg(any(test, feature = "test-utils"))]

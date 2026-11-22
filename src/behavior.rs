@@ -34,6 +34,12 @@ pub const DEVICE_BINDING_PROTOCOL_NAME: &str = "/p2p-chat/device-binding/1.0.0";
 /// `CallSignal::descriptor` is reserved for the later offer/answer payload.
 pub const CALL_PROTOCOL_NAME: &str = "/p2p-chat/call/1.0.0";
 
+/// Voice media protocol name (calls lane; US-044).
+///
+/// One CBOR-encoded μ-law frame per request, with a lightweight ack. A separate
+/// lane keeps 50 frames/second from occupying signaling, DM or typing slots.
+pub const CALL_MEDIA_PROTOCOL_NAME: &str = "/p2p-chat/call-media/1.0.0";
+
 /// Typing-indicator protocol name (US-009).
 ///
 /// A dedicated `request_response` lane keeps fire-and-forget typing updates out
@@ -398,8 +404,10 @@ pub struct AppBehaviour {
     /// (identity lane §11: intro + account-signed claims)
     pub device_binding: request_response::Behaviour<DeviceBindingCodec>,
     /// Request-response protocol handler for call signaling (calls lane:
-    /// invite/accept/reject/end; media transport lands on a later slice)
+    /// invite/accept/reject/end).
     pub call_signaling: request_response::Behaviour<CallSignalCodec>,
+    /// Request-response protocol handler for voice frames (calls lane, US-044).
+    pub call_media: request_response::Behaviour<crate::call_media::MediaCodec>,
     /// Request-response protocol handler for transient DM typing indicators
     /// (US-009): a separate lane so signals never consume a DM request slot.
     pub typing: request_response::Behaviour<TypingCodec>,
@@ -465,17 +473,18 @@ fn build_gossipsub(
         .map_err(|e| format!("Failed to create gossipsub behavior: {e}"))
 }
 
-/// The six `request_response` behaviours, one per protocol lane.
+/// The seven `request_response` behaviours, one per protocol lane.
 type RequestResponseLanes = (
     request_response::Behaviour<ChatCodec>,
     request_response::Behaviour<DeviceBindingCodec>,
     request_response::Behaviour<CallSignalCodec>,
+    request_response::Behaviour<crate::call_media::MediaCodec>,
     request_response::Behaviour<TypingCodec>,
     request_response::Behaviour<ReactionCodec>,
     request_response::Behaviour<FileTransferCodec>,
 );
 
-/// Build the six `request_response` lanes.
+/// Build the seven `request_response` lanes.
 ///
 /// Each lane has its own protocol name so a burst of transient traffic (typing,
 /// reactions, calls, device binding, file chunks) can never occupy a DM request
@@ -502,6 +511,7 @@ fn build_request_response_lanes() -> RequestResponseLanes {
         lane(DM_PROTOCOL_NAME),
         lane(DEVICE_BINDING_PROTOCOL_NAME),
         lane(CALL_PROTOCOL_NAME),
+        lane(CALL_MEDIA_PROTOCOL_NAME),
         lane(TYPING_PROTOCOL_NAME),
         lane(REACTION_PROTOCOL_NAME),
         lane(FILE_TRANSFER_PROTOCOL_NAME),
@@ -529,8 +539,15 @@ pub fn build_behaviour(
     // history and a slower heartbeat to avoid redundant re-broadcasts.
     let gossipsub = build_gossipsub(key, network_size)?;
 
-    let (request_response, device_binding, call_signaling, typing, reactions, file_transfer) =
-        build_request_response_lanes();
+    let (
+        request_response,
+        device_binding,
+        call_signaling,
+        call_media,
+        typing,
+        reactions,
+        file_transfer,
+    ) = build_request_response_lanes();
 
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
     // dead connection. This surfaces killed/disconnected peers within ~10-20s
@@ -595,6 +612,7 @@ pub fn build_behaviour(
         request_response,
         device_binding,
         call_signaling,
+        call_media,
         typing,
         reactions,
         file_transfer,

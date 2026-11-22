@@ -37,6 +37,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-21_lan_only_mode.md](2026-11-21_lan_only_mode.md) | Persisted LAN-only toggle gating DHT, relays and internet bootstrap at node start (US-051) | 2026-11-21 |
 | [2026-11-21_themes.md](2026-11-21_themes.md) | Rust-owned dark/light + accent palette shared by the TUI and Flutter/web (US-025/US-026) | 2026-11-21 |
 | [2026-11-21_notifications.md](2026-11-21_notifications.md) | Rust-owned notification payload/policy with thin TUI, Android and browser delivery adapters (US-027/US-028) | 2026-11-21 |
+| [2026-11-22_call_media_transport.md](2026-11-22_call_media_transport.md) | Rust-owned μ-law voice frame transport on a dedicated lane with jitter buffer/mute + TUI/Flutter parity (US-044) | 2026-11-22 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

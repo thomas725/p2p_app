@@ -1838,6 +1838,27 @@ fn assert_send_call_signal(
     }
 }
 
+/// The media session opens on accept (calls lane, US-044), pinning the peer and
+/// call id before any frame can arrive.
+fn assert_start_call_media(rx: &mut mpsc::Receiver<SwarmCommand>, expected_peer: &str) {
+    match rx.try_recv().expect("start media command queued") {
+        SwarmCommand::StartCallMedia { call_id, peer_id } => {
+            assert_eq!(peer_id, expected_peer);
+            assert_eq!(call_id, "call-1");
+        }
+        other => panic!("expected StartCallMedia, got: {other:?}"),
+    }
+}
+
+/// Every hang-up path closes the media session so the swarm loop drops late
+/// frames from the settled call (calls lane, US-044).
+fn assert_stop_call_media(rx: &mut mpsc::Receiver<SwarmCommand>) {
+    match rx.try_recv().expect("stop media command queued") {
+        SwarmCommand::StopCallMedia => {}
+        other => panic!("expected StopCallMedia, got: {other:?}"),
+    }
+}
+
 #[tokio::test]
 async fn test_c_key_on_contacts_starts_outgoing_call() {
     let state = Arc::new(Mutex::new(test_app_state()));
@@ -1917,7 +1938,10 @@ async fn test_call_overlay_a_accepts_ringing() {
         "bob-d1",
         p2p_app::CallState::Ringing,
     )));
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    // Accept queues both the signal and the media start; capacity 1 would
+    // deadlock the second `send().await` (the swarm loop drains continuously
+    // in production, but this test drives the processor directly).
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
     let (render_tx, _) = mpsc::channel(1);
 
     let exited = process_key_event(
@@ -1935,6 +1959,7 @@ async fn test_call_overlay_a_accepts_ringing() {
     );
     drop(s);
     assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "accept");
+    assert_start_call_media(&mut swarm_cmd_rx, "bob-d1");
 }
 
 #[tokio::test]
@@ -1989,7 +2014,7 @@ async fn test_call_overlay_c_cancels_calling() {
         "bob-d1",
         p2p_app::CallState::Calling,
     )));
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
     let (render_tx, _) = mpsc::channel(1);
 
     let _ = process_key_event(
@@ -2003,6 +2028,7 @@ async fn test_call_overlay_c_cancels_calling() {
     assert!(s.call_session.is_none());
     drop(s);
     assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+    assert_stop_call_media(&mut swarm_cmd_rx);
 }
 
 #[tokio::test]
@@ -2011,7 +2037,7 @@ async fn test_call_overlay_esc_cancels_calling() {
         "bob-d1",
         p2p_app::CallState::Calling,
     )));
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
     let (render_tx, _) = mpsc::channel(1);
 
     let _ = process_key_event(
@@ -2025,6 +2051,7 @@ async fn test_call_overlay_esc_cancels_calling() {
     assert!(s.call_session.is_none());
     drop(s);
     assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+    assert_stop_call_media(&mut swarm_cmd_rx);
 }
 
 #[tokio::test]
@@ -2056,7 +2083,7 @@ async fn test_call_overlay_typing_ignored_while_calling() {
 #[tokio::test]
 async fn test_call_overlay_esc_hangs_up_incall() {
     let state = Arc::new(Mutex::new(call_state("bob-d1", p2p_app::CallState::InCall)));
-    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
     let (render_tx, _) = mpsc::channel(1);
 
     let _ = process_key_event(
@@ -2070,6 +2097,7 @@ async fn test_call_overlay_esc_hangs_up_incall() {
     assert!(s.call_session.is_none());
     drop(s);
     assert_send_call_signal(&mut swarm_cmd_rx, "bob-d1", "end");
+    assert_stop_call_media(&mut swarm_cmd_rx);
 }
 
 #[tokio::test]

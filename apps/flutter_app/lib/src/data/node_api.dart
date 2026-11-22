@@ -272,7 +272,7 @@ abstract class NodeApi {
     required bool ascending,
   });
 
-  // --- Calls (signaling only) ---
+  // --- Calls (signaling + Rust-owned media transport) ---
 
   Future<String> startCall({required String peerId});
 
@@ -281,6 +281,24 @@ abstract class NodeApi {
     required String callId,
     required String kind,
   });
+
+  /// Open the media session for an accepted call; peer audio then arrives as a
+  /// `call_media` event with decoded PCM in `audio` (calls lane, US-044).
+  Future<void> startCallMedia({
+    required String callId,
+    required String peerId,
+  });
+
+  Future<void> stopCallMedia();
+
+  /// Encode and send one 16 kHz mono PCM block (i16 samples) on the session.
+  Future<void> sendCallMedia({
+    required String callId,
+    required List<int> pcm,
+  });
+
+  /// Mute or unmute outgoing audio; inbound audio keeps playing.
+  Future<void> setCallMediaMute({required bool muted});
 
   // --- Pure UI helpers (executed in Rust on every transport) ---
 
