@@ -399,6 +399,16 @@ Future<void> setPeerLocalNickname({
 Future<bool> validateNickname({required String nickname}) =>
     RustLib.instance.api.crateApiValidateNickname(nickname: nickname);
 
+/// Validate a reaction token before the Flutter UI sends it.
+///
+/// Single source of truth shared with the TUI/TUI reaction editor
+/// ([`crate::reactions::validate_emoji`]). Exposed so the Flutter "Custom…"
+/// reaction dialog can reject empty or overlong tokens without re-implementing
+/// the rules in Dart. [`crate::toggle_reaction`] re-validates on write, so this
+/// is purely an early, user-facing check.
+Future<bool> validateEmoji({required String emoji}) =>
+    RustLib.instance.api.crateApiValidateEmoji(emoji: emoji);
+
 /// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
 /// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't
 /// re-derive the thresholds in Dart.

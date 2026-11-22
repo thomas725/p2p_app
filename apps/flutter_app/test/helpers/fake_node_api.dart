@@ -590,6 +590,18 @@ class FakeNodeApi implements NodeApi {
   Future<bool> validateNickname({required String nickname}) =>
       throw UnimplementedError();
 
+  /// Override the custom-reaction validation result. Defaults to accepting
+  /// any non-empty token; tests can force a rejection to exercise the dialog.
+  Future<bool> Function(String emoji)? validateEmojiOverride;
+
+  @override
+  Future<bool> validateEmoji({required String emoji}) {
+    _record('validateEmoji', emoji);
+    final override = validateEmojiOverride;
+    if (override != null) return override(emoji);
+    return Future.value(emoji.trim().isNotEmpty && emoji.trim().length <= 32);
+  }
+
   @override
   Future<String> networkSizeLabel({required int peerCount}) =>
       throw UnimplementedError();

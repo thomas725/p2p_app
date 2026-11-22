@@ -489,6 +489,18 @@ pub fn validate_nickname(nickname: &str) -> bool {
     crate::nickname::validate_nickname(nickname)
 }
 
+/// Validate a reaction token before the Flutter UI sends it.
+///
+/// Single source of truth shared with the TUI/TUI reaction editor
+/// ([`crate::reactions::validate_emoji`]). Exposed so the Flutter "Custom…"
+/// reaction dialog can reject empty or overlong tokens without re-implementing
+/// the rules in Dart. [`crate::toggle_reaction`] re-validates on write, so this
+/// is purely an early, user-facing check.
+#[must_use]
+pub fn validate_emoji(emoji: &str) -> bool {
+    crate::reactions::validate_emoji(emoji).is_ok()
+}
+
 /// Human-readable network-size class ("Small" / "Medium" / "Large") for a peer
 /// count. Mirrors [`crate::network::NetworkSize`] so the Flutter UI doesn't
 /// re-derive the thresholds in Dart.

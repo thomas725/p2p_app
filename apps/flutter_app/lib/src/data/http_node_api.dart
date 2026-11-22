@@ -603,6 +603,10 @@ class HttpNodeApi implements NodeApi {
   }
 
   @override
+  Future<bool> validateEmoji({required String emoji}) async =>
+      await _call('validateEmoji', {'emoji': emoji}) as bool;
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,

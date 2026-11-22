@@ -116,6 +116,10 @@ abstract class NodeApi {
   /// Load the aggregated reaction chips for one message (US-008).
   Future<List<ReactionSummary>> getReactions({required String msgId});
 
+  /// Validate a custom reaction token against the canonical Rust rule before
+  /// sending it through [toggleReaction] (empty/overlong rejected, max 32 chars).
+  Future<bool> validateEmoji({required String emoji});
+
   /// Send a broadcast. Attachments arrive either as a server-local path (FFI)
   /// or as raw [attachmentBytes] + [attachmentName] that the remote transport
   /// uploads to the node first (files lane §12). [replyTo] is an immutable

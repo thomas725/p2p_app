@@ -72,7 +72,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 237036356;
+  int get rustContentHash => -597260959;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -313,6 +313,8 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<bool> crateApiUnblockPeer({required String peerId});
+
+  Future<bool> crateApiValidateEmoji({required String emoji});
 
   Future<bool> crateApiValidateNickname({required String nickname});
 
@@ -2456,6 +2458,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "unblock_peer", argNames: ["peerId"]);
 
   @override
+  Future<bool> crateApiValidateEmoji({required String emoji}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(emoji, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 71,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiValidateEmojiConstMeta,
+        argValues: [emoji],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiValidateEmojiConstMeta =>
+      const TaskConstMeta(debugName: "validate_emoji", argNames: ["emoji"]);
+
+  @override
   Future<bool> crateApiValidateNickname({required String nickname}) {
     return handler.executeNormal(
       NormalTask(
@@ -2465,7 +2495,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 71,
+            funcId: 72,
             port: port_,
           );
         },
@@ -2503,7 +2533,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 72,
+            funcId: 73,
             port: port_,
           );
         },

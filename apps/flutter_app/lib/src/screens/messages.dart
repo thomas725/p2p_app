@@ -872,19 +872,80 @@ class MessageBubble extends StatelessWidget {
   final VoidCallback? onOpenAttachment;
   final void Function(String)? onReact;
 
-  /// Show the small quick-reaction palette and forward the chosen token to the
-  /// owning screen. Kept here so every bubble gets the same affordance without
-  /// the three chat screens duplicating a menu.
+  /// Menu value for the "Custom…" entry. The NUL prefix means no valid reaction
+  /// token (which Rust validates as trimmed, non-empty text) can collide with it.
+  static const String _customReaction = '\u0000custom';
+
+  /// Show the quick-reaction palette plus a "Custom…" entry and forward the
+  /// chosen token to the owning screen. Custom tokens are validated by Rust
+  /// before they reach [react], so Dart never duplicates the rule. Kept here so
+  /// every bubble gets the same affordance without the three chat screens
+  /// duplicating a menu.
   Future<void> _pickReaction(BuildContext context, void Function(String) react) async {
-    final emoji = await showMenu<String>(
+    final choice = await showMenu<String>(
       context: context,
       position: const RelativeRect.fromLTRB(0, 0, 0, 0),
       items: [
         for (final token in quickReactions)
           PopupMenuItem<String>(value: token, child: Text(token, style: const TextStyle(fontSize: 18))),
+        const PopupMenuItem<String>(value: _customReaction, child: Text('Custom…')),
       ],
     );
-    if (emoji != null) react(emoji);
+    if (choice == null) return;
+    if (choice != _customReaction) {
+      react(choice);
+      return;
+    }
+    if (!context.mounted) return;
+    await _showCustomReactionDialog(context, react);
+  }
+
+  /// Prompt for an arbitrary reaction token, validate it through the Rust
+  /// single source of truth, and forward the trimmed token on success.
+  Future<void> _showCustomReactionDialog(
+    BuildContext context,
+    void Function(String) react,
+  ) async {
+    final controller = TextEditingController();
+    String? error;
+    final token = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> submit() async {
+            final raw = controller.text.trim();
+            final valid = await nodeApi.validateEmoji(emoji: raw);
+            if (!ctx.mounted) return;
+            if (valid) {
+              Navigator.pop(ctx, raw);
+            } else {
+              setDialogState(() => error = 'Enter 1–32 characters');
+            }
+          }
+
+          return AlertDialog(
+            title: const Text('Custom reaction'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Emoji or short token',
+                errorText: error,
+              ),
+              onSubmitted: (_) => submit(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(onPressed: submit, child: const Text('Add')),
+            ],
+          );
+        },
+      ),
+    );
+    if (token != null) react(token);
   }
 
   @override

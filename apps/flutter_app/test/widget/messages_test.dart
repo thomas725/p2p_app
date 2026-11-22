@@ -1055,6 +1055,85 @@ void main() {
     expect(toggled, '👍');
   });
 
+  testWidgets('the reaction menu offers a Custom entry', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(),
+            isOwn: true,
+            onReact: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('add-reaction')));
+    await tester.pumpAndSettle();
+    expect(find.text('Custom…'), findsOneWidget);
+    expect(find.text('👍'), findsOneWidget);
+  });
+
+  testWidgets('a valid custom reaction token is forwarded trimmed', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi(isRemoteTransport: true);
+    nodeApi = fake;
+    String? toggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(),
+            isOwn: true,
+            onReact: (emoji) => toggled = emoji,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('add-reaction')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Custom…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '  🚀  ');
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+    expect(toggled, '🚀');
+    // The dialog trims before validating so the forwarded token is canonical.
+    expect(
+      fake.calls.where((c) => c.method == 'validateEmoji').single.argument,
+      '🚀',
+    );
+  });
+
+  testWidgets('an invalid custom reaction shows an error and does not react', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..validateEmojiOverride = (_) => Future.value(false);
+    nodeApi = fake;
+    String? toggled;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(
+            message: chatMessage(),
+            isOwn: true,
+            onReact: (emoji) => toggled = emoji,
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('add-reaction')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Custom…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'nope');
+    await tester.tap(find.text('Add'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter 1–32 characters'), findsOneWidget);
+    expect(toggled, isNull);
+  });
+
   testWidgets('a live reaction event refreshes the broadcast chips', (
     tester,
   ) async {

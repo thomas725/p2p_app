@@ -729,6 +729,7 @@ mod tests {
             "sendTyping",
             "toggleReaction",
             "getReactions",
+            "validateEmoji",
             "saveOutgoingBroadcast",
             "saveOutgoingDm",
             "saveIncomingMessage",

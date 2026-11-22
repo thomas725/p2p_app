@@ -43,6 +43,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "sendTyping"
         | "toggleReaction"
         | "getReactions"
+        | "validateEmoji"
         | "saveOutgoingBroadcast"
         | "saveOutgoingDm"
         | "saveIncomingMessage") => messages(m, params),
@@ -197,6 +198,10 @@ fn messages(method: &str, params: Value) -> Result<Value, String> {
         "getReactions" => {
             let p: MsgIdParams = parse(params)?;
             ok(api::get_reactions(&p.msg_id))
+        }
+        "validateEmoji" => {
+            let p: EmojiParams = parse(params)?;
+            ok(api::validate_emoji(&p.emoji))
         }
         "saveOutgoingBroadcast" => {
             let p: SendParams = parse(params)?;
@@ -493,6 +498,13 @@ struct MsgIdParams {
     msg_id: String,
 }
 
+/// Validate a reaction token from the Flutter "Custom…" dialog.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmojiParams {
+    emoji: String,
+}
+
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PeerNickParams {
@@ -749,5 +761,26 @@ mod tests {
         // The previous web arm parsed a bare String, which is not what any
         // frontend sends — keep the mismatch documented so it cannot regress.
         assert!(parse::<StartNodeParams>(json!("/tmp/p2p-test.db")).is_err());
+    }
+
+    #[test]
+    fn validate_emoji_uses_the_canonical_reaction_rule() {
+        // Same rule as the TUI reaction editor and `toggle_reaction` on write.
+        assert_eq!(
+            dispatch("validateEmoji", json!({"emoji": "👍"})),
+            Ok(json!(true))
+        );
+        assert_eq!(
+            dispatch("validateEmoji", json!({"emoji": "  🎉  "})),
+            Ok(json!(true))
+        );
+        assert_eq!(
+            dispatch("validateEmoji", json!({"emoji": ""})),
+            Ok(json!(false))
+        );
+        assert_eq!(
+            dispatch("validateEmoji", json!({"emoji": "x".repeat(33)})),
+            Ok(json!(false))
+        );
     }
 }

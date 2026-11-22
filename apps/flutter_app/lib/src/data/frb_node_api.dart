@@ -137,6 +137,10 @@ class FrbNodeApi implements NodeApi {
       bridge.getReactions(msgId: msgId);
 
   @override
+  Future<bool> validateEmoji({required String emoji}) =>
+      bridge.validateEmoji(emoji: emoji);
+
+  @override
   Future<ChatMessage> saveOutgoingBroadcast({
     required String content,
     String? attachmentPath,

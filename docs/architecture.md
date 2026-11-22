@@ -141,7 +141,11 @@ the peers holding that message (DM partner, all known peers, or group members);
 the reactor applies its own change locally first, and inbound signals ignore the
 claimed actor in favour of the connection peer id. `SwarmEvent::Reaction` carries
 only the `msg_id`; each frontend fetches typed `ReactionSummary` values from Rust
-(`get_reactions`), so neither parses reaction JSON itself. See
+(`get_reactions`), so neither parses reaction JSON itself. Token validation is
+Rust-owned too: `reactions::validate_emoji` (non-empty, ≤32 chars after trim) is
+re-applied on write and exposed to both frontends — the TUI reaction editor and
+Flutter's "Custom…" token dialog (`validateEmoji` binding) call the same rule,
+so neither frontend duplicates it. See
 [`archive/2026-11-21_message_reactions.md`](archive/2026-11-21_message_reactions.md)
 for the full slice.
 
