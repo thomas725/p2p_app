@@ -3187,6 +3187,88 @@ fn test_enter_persists_reaction_and_refreshes_chips() {
 
 #[test]
 #[serial]
+fn test_reapplying_reaction_toggles_off_and_signals_remove() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init db");
+    p2p_app::identity::provision_my_user(None, None).expect("provision");
+    let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+    p2p_app::messages::save_message_with_meta(
+        "hello",
+        Some("react-peer"),
+        "dm",
+        true,
+        None,
+        p2p_app::messages::MessageMeta {
+            msg_id: Some("dm-0".to_string()),
+            ..Default::default()
+        },
+    )
+    .expect("seed dm message");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let mut state = app_state_with_dm_messages("react-peer", 1);
+        focus_dm_tab(&mut state);
+        let state = Arc::new(Mutex::new(state));
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
+        let (render_tx, _render_rx) = mpsc::channel(4);
+
+        // Apply the same emoji twice through the real key path; the second
+        // activation must toggle it off, not inflate the count.
+        for expected_remove in [false, true] {
+            let _ = process_key_event(
+                KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+                &state,
+                &swarm_cmd_tx,
+                &render_tx,
+            )
+            .await;
+            state.lock().await.chat_input.insert_str("👍");
+            let _ = process_key_event(
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::empty()),
+                &state,
+                &swarm_cmd_tx,
+                &render_tx,
+            )
+            .await;
+
+            let cmd =
+                tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+                    .await
+                    .expect("timeout")
+                    .expect("expected SendReaction");
+            match cmd {
+                SwarmCommand::SendReaction { peer_ids, signal } => {
+                    assert_eq!(peer_ids, vec!["react-peer".to_string()]);
+                    assert_eq!(signal.emoji, "👍");
+                    assert_eq!(signal.actor, local_peer);
+                    assert_eq!(signal.remove, expected_remove);
+                }
+                _ => panic!("expected SendReaction"),
+            }
+        }
+
+        let s = state.lock().await;
+        assert!(
+            !p2p_app::reactions::has_reaction("dm-0", &local_peer, "👍").expect("has_reaction"),
+            "re-applying removed the reaction"
+        );
+        assert!(
+            s.reactions.get("dm-0").is_none_or(Vec::is_empty),
+            "chips refreshed to empty after toggle-off"
+        );
+    });
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+#[serial]
 fn test_enter_rejects_invalid_reaction_and_keeps_editor() {
     let _guard = p2p_app::db::shared_db_test_lock()
         .lock()
