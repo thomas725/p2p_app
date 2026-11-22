@@ -469,6 +469,7 @@ class HttpNodeApi implements NodeApi {
   static SwarmEventJson eventFromJson(dynamic raw) {
     final m = raw as Map<String, dynamic>;
     final pubkey = m['devicePubkey'];
+    final audio = m['audio'];
     return SwarmEventJson(
       eventType: m['eventType'] as String,
       peerId: m['peerId'] as String?,
@@ -483,6 +484,12 @@ class HttpNodeApi implements NodeApi {
       devicePubkey: pubkey == null
           ? null
           : Uint8List.fromList((pubkey as List<dynamic>).cast<int>()),
+      // Rust sends Vec<i16> as a JSON int array; decode it exactly like the
+      // native FRB transport's i16 list so `call_media` audio reaches the
+      // call screen instead of being silently dropped on web.
+      audio: audio == null
+          ? null
+          : Int16List.fromList((audio as List<dynamic>).cast<int>()),
       notification: notificationFromJson(m['notification']),
     );
   }

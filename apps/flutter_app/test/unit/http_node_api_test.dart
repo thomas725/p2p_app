@@ -499,6 +499,29 @@ void main() {
       );
     });
 
+    test('call_media events preserve decoded PCM audio on the web transport', () {
+      final event = HttpNodeApi.eventFromJson({
+        'eventType': 'call_media',
+        'peerId': 'peer-a',
+        'audio': [0, 128, -128, 32767, -32768],
+      });
+      expect(event.eventType, 'call_media');
+      expect(event.audio, isA<Int16List>());
+      expect(event.audio, [0, 128, -128, 32767, -32768]);
+
+      // Events without audio (including a null from Rust) stay null, so the
+      // call screen's `_acceptPeerAudio` still no-ops for non-media events.
+      expect(
+        HttpNodeApi.eventFromJson({'eventType': 'peer_connected'}).audio,
+        isNull,
+      );
+      expect(
+        HttpNodeApi.eventFromJson({'eventType': 'call_media', 'audio': null})
+            .audio,
+        isNull,
+      );
+    });
+
     test(
       'getContactsWithStats parses rows, devices, and stat counts',
       () async {
