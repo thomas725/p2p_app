@@ -675,15 +675,23 @@ class MessageInputBar extends StatelessWidget {
             Row(
               children: [
                 Expanded(
+                  // Multiline like the TUI composer (Shift+Enter there): the
+                  // return key inserts a line break, and the filled send button
+                  // below is the only send affordance. A single-line field with
+                  // `onSubmitted` would silently truncate every body at its
+                  // first newline.
                   child: TextField(
                     controller: controller,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    minLines: 1,
+                    maxLines: null,
                     decoration: InputDecoration(
                       hintText: hintText,
                       border: const OutlineInputBorder(),
                       isDense: true,
                       enabled: enabled,
                     ),
-                    onSubmitted: (_) => onSend(),
                     onChanged: onChanged,
                   ),
                 ),

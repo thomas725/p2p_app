@@ -357,6 +357,67 @@ void main() {
     );
   });
 
+  testWidgets('multiline composer sends the whole body with line breaks', (
+    tester,
+  ) async {
+    final fake = FakeNodeApi();
+    fake.loadDmMessagesOverride = (_, _) => [];
+    fake.saveOutgoingDmOverride =
+        (peerId, content, replyTo) => chatMessage(id: 10, content: content);
+    nodeApi = fake;
+    startEventPolling();
+
+    await tester.pumpWidget(
+      MaterialApp(home: DmChatScreen(peer: peerRecord(), serviceRunning: true)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final composer = find.byType(TextField);
+    final field = tester.widget<TextField>(composer);
+    expect(
+      field.maxLines,
+      isNull,
+      reason: 'the field grows with the body instead of clipping at line one',
+    );
+    expect(field.minLines, 1, reason: 'starts compact at one line');
+    expect(
+      field.textInputAction,
+      TextInputAction.newline,
+      reason: 'return inserts a line break; the send button is the send action',
+    );
+
+    const body = 'first line\nsecond line\nthird line';
+    await tester.enterText(composer, body);
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+
+    expect(fake.dmSends, hasLength(1));
+    expect(fake.dmSends.single.content, body);
+  });
+
+  testWidgets('a bubble renders every line of a multiline body', (tester) async {
+    const body = 'line one\nline two\nline three';
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessageBubble(message: chatMessage(content: body), isOwn: true),
+        ),
+      ),
+    );
+
+    final bodyText = find.text(body);
+    expect(bodyText, findsOneWidget);
+    final text = tester.widget<Text>(bodyText);
+    expect(
+      text.maxLines,
+      isNull,
+      reason: 'no single-line clamp — the bubble grows vertically',
+    );
+    expect(text.overflow, isNull);
+  });
+
   testWidgets('a receipt for an unknown id leaves the DM untouched', (
     tester,
   ) async {
