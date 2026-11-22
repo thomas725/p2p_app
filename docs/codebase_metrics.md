@@ -143,7 +143,7 @@
 | unit   | unit_db.rs                        |   312 | 10040 |     3 | Unit tests for database module        |
 | unit   | unit_dm_outbox.rs                 |   169 |  5739 |     4 | Test file                             |
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
-| unit   | unit_file_transfer.rs             |   259 |  8972 |     4 | Test file                             |
+| unit   | unit_file_transfer.rs             |   276 |  9628 |     4 | Test file                             |
 | unit   | unit_files.rs                     |   538 | 20323 |     4 | files module tests                    |
 | unit   | unit_groups.rs                    |   624 | 22507 |     5 | Unit tests for groups module          |
 | unit   | unit_identity.rs                  |   747 | 29217 |     4 | identity module tests                 |
@@ -165,7 +165,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   388 | 11522 |     3 | Unit tests for types module           |
 
-**Total:** 65 test files, 26,607 lines, 886,769 characters
+**Total:** 65 test files, 26,624 lines, 887,425 characters
 
 ## Dart Source Files
 

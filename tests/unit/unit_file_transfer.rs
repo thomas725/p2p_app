@@ -1,4 +1,13 @@
 use super::*;
+use serial_test::serial;
+
+// Every test in this module mutates the process-wide `RECEIVING_FILES` map. The
+// sweeps are the dangerous part: `abandon_transfers_from` and
+// `abandon_idle_transfers` can reap transfers another test just registered. A
+// shared `#[serial(file_transfer)]` key keeps these tests off each other's
+// toes without slowing the rest of the suite (no other module touches it).
+//
+// Keep the key identical on every `#[test]` below.
 
 /// Attachment ids on the wire are SHA-256 hex, so these chunk/transfer tests
 /// must use real-looking addresses rather than human-readable placeholders.
@@ -7,6 +16,7 @@ fn test_file_id(seed: &str) -> String {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_apply_chunk_without_data_aborts_transfer() {
     // A malformed `chunk` response with `data: None` must abandon the transfer
     // instead of being treated as zero progress (which made the receiver ask
@@ -67,6 +77,7 @@ fn clear_transfer(file_id: &str) {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_apply_chunk_empty_data_aborts_transfer() {
     // `Some(vec![])` used to append zero bytes and return the same chunk index,
     // making the handler re-request that chunk forever.
@@ -93,6 +104,7 @@ fn test_apply_chunk_empty_data_aborts_transfer() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_apply_chunk_wrong_index_aborts_transfer() {
     // A chunk for any index other than the next expected one must be rejected
     // instead of being appended out of order.
@@ -114,6 +126,7 @@ fn test_apply_chunk_wrong_index_aborts_transfer() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
     // The strict checks must still admit a correct chunk so a transfer can
     // finish; the assembled `.part` is only consumed by the finalizer.
@@ -141,6 +154,7 @@ fn test_apply_chunk_valid_chunk_completes_and_discards_partial() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_abandon_transfer_discards_partial_bytes() {
     // Every abort path funnels through `abandon_transfer`: stale `.part` bytes
     // would otherwise corrupt a later transfer of the same content address.
@@ -162,6 +176,7 @@ fn test_abandon_transfer_discards_partial_bytes() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_abandon_transfers_from_only_affects_the_disconnected_peer() {
     // A peer that disconnects can no longer serve its pulls. Its transfers must
     // be reclaimed while other peers' in-flight pulls survive intact.
@@ -190,6 +205,7 @@ fn test_abandon_transfers_from_only_affects_the_disconnected_peer() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_abandon_idle_transfers_prunes_only_stale_pulls() {
     // A failed request that never reaches an "error" response would otherwise
     // wedge the transfer forever. Only pulls idle beyond the timeout are
@@ -228,6 +244,7 @@ fn test_abandon_idle_transfers_prunes_only_stale_pulls() {
 }
 
 #[test]
+#[serial(file_transfer)]
 fn test_begin_receive_refuses_duplicate_meta() {
     // A repeated `meta` response must not replace a live transfer: a fresh
     // `ReceivingFile` would reset `received` to 0 and discard the `.part` bytes
