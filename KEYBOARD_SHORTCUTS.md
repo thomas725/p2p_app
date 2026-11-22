@@ -67,6 +67,7 @@ newest message; the counter clears.
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
+| `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
 | `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
@@ -80,6 +81,16 @@ message you send carries it as an immutable snapshot (`sender` + short preview)
 alongside the source id. The quote renders as a `↳` header above the body in all
 three frontends, even if the original row was later deleted locally. `Esc`
 clears the draft without sending; switching tabs keeps drafts separate.
+
+### Reactions
+
+`Ctrl+Y` opens a prompt to react to the newest message with a stable wire id in
+the current conversation. Type an emoji and press `Enter` to add it; applying
+the same emoji again removes it. The reaction is stored locally and fanned out
+to the message's recipients over the swarm, so it appears as a chip after the
+message body in the TUI and Flutter. `Esc` cancels without saving. Only the
+newest message can be reacted to from the TUI; Flutter's per-message chips can
+target any message.
 
 ### Local message deletion
 
@@ -198,6 +209,7 @@ of the history.
 | `Ctrl+I` | Open the DM partner's Peer Info — **kitty-keyboard terminals only** (WezTerm) |
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
 | `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
+| `Ctrl+Y` | Add or remove an emoji reaction on the newest DM in this conversation |
 | `Delete` | Hide your most recent sent DM locally (with confirmation) |
 | `Ctrl+E` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
 

@@ -137,7 +137,7 @@
 | unit   | unit_bin_tui_render_loop_layout.rs |    70 |  2251 |     2 | Test file                             |
 | unit   | unit_bin_tui_render_loop_mod.rs    |   408 | 14566 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs    |   657 | 21507 |     3 | Unit tests for TUI scroll handlers    |
-| unit   | unit_bin_tui_state.rs              |  1009 | 33107 |     3 | Unit tests for TUI state              |
+| unit   | unit_bin_tui_state.rs              |  1070 | 35411 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs       |    66 |  2330 |     3 | Unit tests for TUI test helpers       |
 | unit   | unit_blocklist.rs                  |   112 |  3932 |     3 | Test file                             |
 | unit   | unit_call_media.rs                 |   148 |  4734 |     3 | Test file                             |
@@ -170,7 +170,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 27,994 lines, 936,734 characters
+**Total:** 67 test files, 28,055 lines, 939,038 characters
 
 ## Dart Source Files
 

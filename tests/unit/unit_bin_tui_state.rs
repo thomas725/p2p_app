@@ -98,6 +98,23 @@ fn test_reply_draft_capture_clear_and_consume() {
 }
 
 #[test]
+fn test_reply_capture_keeps_multiline_body_and_collapses_preview() {
+    let mut s = test_app_state();
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] line one\nline two\nline three".to_string(),
+        sender_peer_id: Some("peer-a".to_string()),
+    });
+    s.message_ids.push_back(Some("wire-multi".to_string()));
+    let tab = p2p_app::tui_tabs::TabContent::Chat;
+
+    let reply = s.begin_reply(&tab).expect("newest row is replyable");
+    assert_eq!(reply.msg_id, "wire-multi");
+    assert_eq!(reply.sender, "Alice");
+    assert_eq!(reply.preview, "line one line two line three");
+    assert_eq!(s.reply_draft(&tab), Some(&reply));
+}
+
+#[test]
 fn test_reply_drafts_are_scoped_to_a_conversation() {
     let mut s = test_app_state();
     s.messages.push_back(p2p_app::DisplayMessage {
@@ -462,6 +479,50 @@ fn test_edit_prompt_prefill_cancel_and_in_place_replacement() {
     assert!(!state.is_editing_message());
     assert_eq!(state.input_mode, p2p_app::InputMode::Chat);
     assert!(!state.cancel_edit_message());
+}
+
+#[test]
+fn test_edit_flow_keeps_multiline_body_through_prefill_and_replacement() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut state = test_app_state();
+    let original = "first line\nsecond line\nthird line";
+    state.messages.push_back(p2p_app::DisplayMessage {
+        text: format!("10:00 [Alice] {original}"),
+        sender_peer_id: None,
+    });
+    state.message_ids.push_back(Some("wire-multi".to_string()));
+    // A distinctive id that has no DB row, so `replace_edited_message` uses the
+    // editor content directly (the edited marker is added in memory).
+    let db_id = 910_043;
+    state.message_db_ids.push_back(Some(db_id));
+
+    assert_eq!(
+        state.last_sent_message_raw(&TabContent::Chat),
+        Some((db_id, original.to_string())),
+        "the full multiline body - not just its last line - is pre-filled"
+    );
+
+    state.begin_edit_message(db_id, false, original.to_string(), TabContent::Chat);
+    assert!(state.is_editing_message());
+    assert_eq!(
+        state.chat_input.lines().first().map(String::as_str),
+        Some(original),
+        "the editor keeps every embedded newline in its single pre-filled row"
+    );
+
+    let prompt = crate::tui::state::EditMessagePrompt {
+        message_id: db_id,
+        is_group: false,
+        tab_content: TabContent::Chat,
+    };
+    let edited = "replacement one\nreplacement two";
+    assert!(state.replace_edited_message(&prompt, edited));
+    assert_eq!(
+        state.messages[0].text,
+        format!("10:00 [Alice] {edited} (edited)"),
+        "editing replaces the entire multiline block, not just its last line"
+    );
 }
 
 // ── AppState ────────────────────────────────────────────────────────────
