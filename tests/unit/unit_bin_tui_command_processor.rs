@@ -1045,19 +1045,52 @@ async fn test_call_invite_adopts_ringing_session() {
 }
 
 #[tokio::test]
-async fn test_call_invite_ignored_while_on_live_call() {
+async fn test_call_invite_while_on_live_call_sends_reject_and_keeps_first() {
     let mut app = test_app_state();
     app.call_session = Some(p2p_app::CallSession::incoming("live-call", "alice-d1"));
     let state = Arc::new(Mutex::new(app));
-    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
     process_swarm_event(
         call_event("invite", "other-call", "bob-d1"),
         &state,
         &swarm_cmd_tx,
     )
     .await;
+    // A silent ignore would leave the second caller ringing forever; the TUI
+    // must actively decline it (parity with Flutter's _handleCallInvite).
+    match swarm_cmd_rx.try_recv() {
+        Ok(SwarmCommand::SendCallSignal { peer_id, signal }) => {
+            assert_eq!(peer_id, "bob-d1");
+            assert_eq!(signal.kind, "reject");
+            assert_eq!(signal.call_id, "other-call");
+        }
+        other => panic!("expected a reject signal, got {other:?}"),
+    }
     let session = assert_call_session(&state, Some(p2p_app::CallState::Ringing)).await;
     assert_eq!(session.call_id, "live-call", "first call wins");
+}
+
+#[tokio::test]
+async fn test_call_invite_retransmit_of_active_call_is_not_rejected() {
+    let mut app = test_app_state();
+    app.call_session = Some(p2p_app::CallSession::incoming("live-call", "alice-d1"));
+    let state = Arc::new(Mutex::new(app));
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+    process_swarm_event(
+        call_event("invite", "live-call", "alice-d1"),
+        &state,
+        &swarm_cmd_tx,
+    )
+    .await;
+    // Rejecting our own live call would hang up on ourselves and desync both
+    // sides. A retransmit of the active id is swallowed with no signal sent.
+    assert!(
+        swarm_cmd_rx.try_recv().is_err(),
+        "a retransmit of the active call must not be rejected"
+    );
+    let session = assert_call_session(&state, Some(p2p_app::CallState::Ringing)).await;
+    assert_eq!(session.call_id, "live-call");
+    assert_eq!(session.peer_id, "alice-d1");
 }
 
 #[tokio::test]

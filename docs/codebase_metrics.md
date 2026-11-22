@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        65 |
-| Total Rust Lines      |    34,837 |
-| Total Rust Chars      | 1,320,025 |
-| Avg Lines/Rust File   |       535 |
-| Avg Chars/Rust File   |    20,308 |
+| Total Rust Lines      |    34,862 |
+| Total Rust Chars      | 1,321,028 |
+| Avg Lines/Rust File   |       536 |
+| Avg Chars/Rust File   |    20,323 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    18,013 |
 | Total Dart Chars      |   580,188 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 107 files, 53,153 lines, 1,911,203 characters
+**Grand Total:** 107 files, 53,178 lines, 1,912,206 characters
 
 ## Rust Source Files
 
@@ -76,7 +76,7 @@
 | src/bin                 | p2p_chat_server.rs   |     4 |  4836 |   138 |        - |       - | Headless node + web server entry point |
 | src/bin                 | p2p_chat_tui.rs      |     6 |  9847 |   276 |        - |       - | Main TUI application entry point       |
 | src/bin/tui             | click_handlers.rs    |     7 | 21862 |   523 |        - |       - | Click handlers & index mapping         |
-| src/bin/tui             | command_processor.rs |     6 | 26873 |   740 |        - |       - | Event routing & state updates          |
+| src/bin/tui             | command_processor.rs |     6 | 27876 |   765 |        - |       - | Event routing & state updates          |
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)        |
 | src/bin/tui             | input_processor.rs   |     7 | 70388 |  1821 |        - |       - | Input event routing & processing       |
 | src/bin/tui             | key_probe.rs         |     8 |  6178 |   162 |        - |       - | Keyboard enhancement probe             |
@@ -92,7 +92,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 65 files, 34,837 lines, 1,320,025 characters
+**Total:** 65 files, 34,862 lines, 1,321,028 characters
 
 ## Rust Test Files
 
@@ -125,7 +125,7 @@
 | tests  | types.rs                          |   662 | 20562 |     3 | types module tests                    |
 | unit   | unit_behavior.rs                  |   122 |  3894 |     3 | Unit tests for behavior module        |
 | unit   | unit_bin_tui_click_handlers.rs    |   648 | 23912 |     3 | Unit tests for TUI click handlers     |
-| unit   | unit_bin_tui_command_processor.rs |  1228 | 41026 |     4 | Unit tests for TUI command processor  |
+| unit   | unit_bin_tui_command_processor.rs |  1261 | 42458 |     4 | Unit tests for TUI command processor  |
 | unit   | unit_bin_tui_event_source.rs      |    44 |  1352 |     2 | Unit tests for TUI event source       |
 | unit   | unit_bin_tui_input_processor.rs   |  2999 | 102711 |     5 | Unit tests for TUI input processor    |
 | unit   | unit_bin_tui_main_loop.rs         |   233 |  7007 |     3 | Unit tests for TUI main loop          |
@@ -163,7 +163,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   388 | 11522 |     3 | Unit tests for types module           |
 
-**Total:** 64 test files, 26,113 lines, 868,316 characters
+**Total:** 64 test files, 26,146 lines, 869,748 characters
 
 ## Dart Source Files
 

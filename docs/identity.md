@@ -307,8 +307,11 @@ proposal above are bolded):
     `startCall`/`sendCallSignal`. The full-screen `CallScreen` takes over the event sink while
     open (like `DmChatScreen`, restored on dispose) and keys session events on `peer_id` + echoed
     `call_id` (`content`); non-call events forward downstream; a second incoming invite while one
-    session is live is auto-declined (`reject`). Affordances: per-device call button in the
-    Contacts table + an AppBar call action on PeerInfo; one `_activeCallId` guard in `home.dart`.
+    session is live is auto-declined (`reject`). The TUI mirrors this in
+    `handle_call_event`: a foreign invite during a live call sends `reject` (so the other caller
+    stops ringing) while a retransmit of the active call's own id is a no-op. Affordances:
+    per-device call button in the Contacts table + an AppBar call action on PeerInfo; one
+    `_activeCallId` guard in `home.dart`.
     `CallScreen` carries `@visibleForTesting` seams (`sendSignalOverride`,
     `state.deliverEvent`) like `SortContactsOverride`, exercised by 8 widget tests.
   - **Parity note:** Flutter keys on `event_type` + `peer_id` + `content` (call_id) — exactly how

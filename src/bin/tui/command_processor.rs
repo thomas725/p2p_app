@@ -437,16 +437,16 @@ async fn process_swarm_event(
             handle_device_binding_received(state, user_id).await;
         }
         SwarmEvent::CallInvite { call_id, peer_id } => {
-            handle_call_event(state, "invite", &call_id, &peer_id).await;
+            handle_call_event(state, swarm_cmd_tx, "invite", &call_id, &peer_id).await;
         }
         SwarmEvent::CallAccepted { call_id, peer_id } => {
-            handle_call_event(state, "accept", &call_id, &peer_id).await;
+            handle_call_event(state, swarm_cmd_tx, "accept", &call_id, &peer_id).await;
         }
         SwarmEvent::CallRejected { call_id, peer_id } => {
-            handle_call_event(state, "reject", &call_id, &peer_id).await;
+            handle_call_event(state, swarm_cmd_tx, "reject", &call_id, &peer_id).await;
         }
         SwarmEvent::CallEnded { call_id, peer_id } => {
-            handle_call_event(state, "end", &call_id, &peer_id).await;
+            handle_call_event(state, swarm_cmd_tx, "end", &call_id, &peer_id).await;
         }
         SwarmEvent::CallMediaFrame { call_id, pcm, .. } => {
             // No audio device in the TUI yet: count decoded frames so the
@@ -487,19 +487,34 @@ async fn handle_reaction_event(state: &SharedState, msg_id: String) {
 
 /// Route a remote call-signaling event into the single `call_session` slot.
 /// An `invite` is adopted only while idle — a settled (ended) session never
-/// blocks a fresh ring, and a live one implicitly declines (one call at a
-/// time). `accept`/`reject`/`end` transition the matching session, and the
-/// slot is dropped once it settles so the caller can ring again.
-async fn handle_call_event(state: &SharedState, kind: &str, call_id: &str, peer_id: &str) {
+/// blocks a fresh ring. A live one actively declines any *other* call (one
+/// call at a time) by sending `reject` so the other caller stops ringing,
+/// matching Flutter's `_handleCallInvite`. A retransmit of the active call's
+/// own id is a no-op: rejecting it would abandon our own live call and desync
+/// both sides. `accept`/`reject`/`end` transition the matching session, and
+/// the slot is dropped once it settles so the caller can ring again.
+async fn handle_call_event(
+    state: &SharedState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+    kind: &str,
+    call_id: &str,
+    peer_id: &str,
+) {
+    // Decide under the lock, send after dropping it — never await with the
+    // state guard held (significant-drop-tightening + no lock across a send).
+    let mut decline_foreign = false;
     let mut s = state.lock().await;
     let mut settled = false;
     match kind {
         "invite" => {
-            if !s
+            let active = s
                 .call_session
                 .as_ref()
-                .is_some_and(p2p_app::CallSession::is_active)
-            {
+                .filter(|session| session.is_active())
+                .map(|session| session.call_id.clone());
+            if let Some(active_id) = active {
+                decline_foreign = active_id != call_id;
+            } else {
                 s.call_session = Some(p2p_app::CallSession::incoming(call_id, peer_id));
                 s.call_media = CallMediaStatus::default();
             }
@@ -516,6 +531,16 @@ async fn handle_call_event(state: &SharedState, kind: &str, call_id: &str, peer_
         s.call_media = CallMediaStatus::default();
     }
     drop(s);
+
+    if decline_foreign {
+        let _ = swarm_cmd_tx
+            .send(SwarmCommand::SendCallSignal {
+                peer_id: peer_id.to_string(),
+                signal: Box::new(p2p_app::CallSignal::new("reject", call_id.to_string())),
+            })
+            .await;
+    }
+
     p2plog_debug(match kind {
         "invite" => format!("Incoming call {call_id} from {peer_id}"),
         "accept" => format!("Call {call_id} accepted by {peer_id}"),
