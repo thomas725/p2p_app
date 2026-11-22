@@ -146,6 +146,14 @@ async fn handle_nickname_submission(
         state.cancel_nickname_edit();
         return;
     };
+    // Validate with the canonical Rust rule every other frontend uses, so the
+    // TUI cannot persist a nickname a web/mobile client would reject. Keep the
+    // editor open with a hint on bad input (same UX as the local-nickname path).
+    let new_nickname = new_nickname.trim().to_string();
+    if !p2p_app::nickname::validate_nickname(&new_nickname) {
+        state.popup = Some("Nickname: letters, numbers or dashes (max 20 characters)".to_string());
+        return;
+    }
 
     if let Some(peer_id) = peer_id {
         state

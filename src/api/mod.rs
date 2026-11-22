@@ -460,9 +460,16 @@ pub fn delete_group(group_id: String) -> Result<(), String> {
 
 /// Set the local user's nickname.
 ///
+/// Validated against the canonical nickname rules ([`validate_nickname`]) just
+/// like [`set_peer_local_nickname`], so every frontend accepts the same input.
+///
 /// # Errors
-/// Returns an error if the nickname cannot be persisted.
+/// Returns an error if the nickname is invalid or cannot be persisted.
 pub fn set_self_nickname(nickname: &str) -> Result<(), String> {
+    let nickname = nickname.trim();
+    if !validate_nickname(nickname) {
+        return Err(format!("invalid nickname: {nickname}"));
+    }
     crate::set_self_nickname(nickname).map_err(|e| e.to_string())
 }
 
@@ -763,6 +770,48 @@ mod tests {
         // A rejected name never overwrites the stored one.
         assert_eq!(
             crate::nickname::get_peer_local_nickname("peer-1")
+                .expect("read back")
+                .as_deref(),
+            Some("alice-1")
+        );
+    }
+
+    #[test]
+    #[serial(db)]
+    fn set_self_nickname_validates_and_persists() {
+        let _guard = db_lock();
+        let dir = tempfile::tempdir().expect("tempdir");
+        crate::db::reset_db_url();
+        crate::mobile_api::init_mobile_database(
+            dir.path().join("api.sqlite").to_string_lossy().into_owned(),
+        )
+        .expect("mobile init");
+
+        // Valid: trimmed and readable back through the canonical getter.
+        set_self_nickname("  alice-1  ").expect("valid nickname");
+        assert_eq!(
+            crate::nickname::get_self_nickname()
+                .expect("read back")
+                .as_deref(),
+            Some("alice-1")
+        );
+
+        // Invalid input is rejected by the same canonical rules the Flutter and
+        // TUI frontends use, and never overwrites the stored nickname.
+        for bad in [
+            "",
+            "a-very-long-nickname-over-20",
+            "has space",
+            "bad!",
+            "Alice👋",
+        ] {
+            assert!(
+                set_self_nickname(bad).is_err(),
+                "expected rejection for {bad:?}"
+            );
+        }
+        assert_eq!(
+            crate::nickname::get_self_nickname()
                 .expect("read back")
                 .as_deref(),
             Some("alice-1")

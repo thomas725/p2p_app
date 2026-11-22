@@ -1222,6 +1222,63 @@ async fn test_n_key_outside_nickname_tabs_stays_plain_input() {
     assert_eq!(s.chat_input.lines().join(""), "n");
 }
 
+/// The global (Settings-tab) and per-peer "self nickname" paths used to bypass
+/// the canonical validator entirely: they persisted whatever text was typed.
+/// Invalid input must now keep the editor open with a hint, exactly like the
+/// local-nickname path, and must not touch state or emit a nickname DM.
+#[test]
+fn test_nickname_submission_rejects_invalid_and_keeps_open() {
+    let mut s = test_app_state();
+    s.input_mode = p2p_app::InputMode::EditingNickname;
+    s.own_nickname = "OldGlobal".to_string();
+    s.chat_input.insert_str("bad name!");
+    let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(1);
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(handle_nickname_submission(&mut s, &swarm_cmd_tx));
+
+    assert!(
+        s.is_editing_nickname(),
+        "editor must stay open on invalid input"
+    );
+    assert_eq!(s.own_nickname, "OldGlobal", "nothing must be persisted");
+    let popup = s.popup.as_deref().expect("popup");
+    assert!(popup.contains("letters, numbers or dashes"));
+    assert!(
+        swarm_cmd_rx.try_recv().is_err(),
+        "no nickname DM on invalid input"
+    );
+}
+
+/// A valid global nickname is trimmed before validation/persistence, matching
+/// Flutter's `ctrl.text.trim()` at the FRB boundary.
+#[test]
+fn test_nickname_submission_trims_valid_input() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = TempDir::new().unwrap();
+    let db_path = _dir.path().join("trim-nick.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let mut s = test_app_state();
+    s.input_mode = p2p_app::InputMode::EditingNickname;
+    s.chat_input.insert_str("  Good-Name  ");
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(handle_nickname_submission(&mut s, &swarm_cmd_tx));
+
+    assert!(!s.is_editing_nickname());
+    assert_eq!(s.own_nickname, "Good-Name");
+    assert_eq!(
+        p2p_app::nickname::get_self_nickname().unwrap().as_deref(),
+        Some("Good-Name")
+    );
+    p2p_app::db::reset_db_url();
+}
+
 #[test]
 fn test_local_nickname_submission_rejects_invalid_and_keeps_open() {
     let mut s = test_app_state();

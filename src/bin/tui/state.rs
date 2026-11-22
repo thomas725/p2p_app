@@ -961,6 +961,10 @@ impl AppState {
     /// column/order while keeping the selected contact (by id) selected. A
     /// device-row selection collapses onto its contact row here.
     pub fn resort_peers(&mut self) {
+        // Capture the selection BEFORE rebuilding/re-sorting. Rebuilding changes
+        // row order, so reading the id afterwards (the old index into the new
+        // list) would select whichever contact now occupies that position.
+        let selected_contact_id = self.selected_contact_id();
         self.broadcast_sent_to_peer =
             p2p_app::messages::get_all_peer_stats().map_or_default(|stats| {
                 stats
@@ -975,7 +979,7 @@ impl AppState {
             self.peer_sort_ascending,
         );
         self.contacts_all.clone_from(&self.contacts);
-        self.apply_contact_search();
+        self.apply_contact_search_with(selected_contact_id);
     }
 
     /// Re-derive [`Self::contacts`] from the unfiltered [`Self::contacts_all`]
@@ -984,6 +988,13 @@ impl AppState {
     /// to the first row).
     pub fn apply_contact_search(&mut self) {
         let previous = self.selected_contact_id();
+        self.apply_contact_search_with(previous);
+    }
+
+    /// Shared filter+restore step for [`Self::apply_contact_search`] and
+    /// [`Self::resort_peers`]. `previous` is the contact id selected before the
+    /// list changed; callers that re-sort must capture it before rebuilding.
+    fn apply_contact_search_with(&mut self, previous: Option<String>) {
         if self.contact_search.is_empty() {
             self.contacts.clone_from(&self.contacts_all);
         } else {

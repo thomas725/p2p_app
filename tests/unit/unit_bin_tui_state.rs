@@ -638,6 +638,54 @@ fn test_contact_search_mode_begin_and_end() {
     assert_eq!(state.contact_search, "");
 }
 
+/// Re-sorting the Contacts tab must keep the selected *contact*, not the row
+/// index. `resort_peers` rebuilds and re-orders the table, so the id has to be
+/// captured before that mutation — otherwise a sort flip silently selects a
+/// different peer (the regression this guards).
+#[test]
+fn test_resort_peers_keeps_selected_contact_across_sort_flip() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = tempfile::TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let mut state = test_app_state();
+    // Distinct last-seen values make the ascending/descending order unambiguous
+    // (column 3 sorts on last_seen, parsed from the in-memory peer records).
+    for (peer_id, seen) in [
+        ("alice", "2024-01-03 12:00:00"),
+        ("bob", "2024-01-02 12:00:00"),
+        ("carol", "2024-01-01 12:00:00"),
+    ] {
+        state.peers.push_back(p2p_app::PeerRecord {
+            peer_id: peer_id.to_string(),
+            first_seen: "2024-01-01 12:00:00".to_string(),
+            last_seen: seen.to_string(),
+        });
+    }
+    state.peer_sort_column = 3; // last seen
+    state.peer_sort_ascending = true; // oldest first: carol, bob, alice
+    state.resort_peers();
+    assert_eq!(state.contacts.len(), 3);
+    assert_eq!(state.contacts[0].contact_id, "carol");
+
+    state.peer_selection = 0; // carol
+    assert_eq!(state.selected_contact_id().as_deref(), Some("carol"));
+
+    // Flip to newest-first: alice, bob, carol. Carol moved to the last row;
+    // the selection must follow her instead of staying on the first row (alice).
+    state.peer_sort_ascending = false;
+    state.resort_peers();
+    assert_eq!(state.contacts[0].contact_id, "alice");
+    assert_eq!(state.selected_contact_id().as_deref(), Some("carol"));
+    assert_eq!(state.peer_selection, 2);
+
+    p2p_app::db::reset_db_url();
+}
+
 #[test]
 fn toggle_expand_on_device_row_or_single_device_is_noop() {
     let mut state = test_app_state();

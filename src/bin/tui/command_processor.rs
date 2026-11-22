@@ -365,6 +365,10 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         p2plog_debug(format!("Failed to save: {e}"));
     }
     upsert_peer_last_seen(s, &peer_id, chrono::Utc::now().naive_utc());
+    // The Contacts rows carry last-seen too; rebuild and re-sort so an incoming
+    // message moves its sender to the top of the Contacts tab immediately, the
+    // same way a connection refresh already does.
+    s.resort_peers();
 }
 
 /// Processes network (swarm) events and updates application state

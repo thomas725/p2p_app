@@ -30,6 +30,8 @@ pub fn render_input_section(
         )
     } else if state.is_creating_group() {
         "Create or Join Group - Enter to confirm, Esc to cancel".to_string()
+    } else if state.is_searching_contacts() {
+        "Search Contacts - Enter to keep, Esc to clear".to_string()
     } else if state.is_editing_nickname() {
         let (label, target) = if state.is_editing_local_nickname() {
             (
@@ -57,6 +59,7 @@ pub fn render_input_section(
         || state.is_creating_group()
         || state.is_dialing_peer()
         || state.is_adding_network_peer()
+        || state.is_searching_contacts()
     {
         let inner_area = input_block.inner(input_area);
         f.render_widget(input_block, input_area);
@@ -80,3 +83,7 @@ pub fn render_status_bar(f: &mut Frame, status_area: Rect, state: &AppState) {
     let status = Paragraph::new(format!("{conn} [Mouse: {mouse_mode}]"));
     f.render_widget(status, status_area);
 }
+
+#[cfg(test)]
+#[path = "../../../../tests/unit/unit_bin_tui_render_loop_layout.rs"]
+mod tests;

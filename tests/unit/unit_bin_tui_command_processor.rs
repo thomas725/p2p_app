@@ -435,6 +435,60 @@ fn test_handle_incoming_broadcast_adds_message() {
     p2p_app::db::reset_db_url();
 }
 
+/// An incoming message refreshes `state.peers` last-seen, but the Contacts rows
+/// are a separate derived view. The handler must rebuild/re-sort them so the
+/// Contacts tab shows the fresh activity immediately (Flutter does the
+/// equivalent `getPeersWithStats` refresh on every message event).
+#[test]
+fn test_handle_incoming_message_refreshes_contacts_last_seen() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _dir = tempfile::TempDir::new().unwrap();
+    let db_path = _dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+
+    let mut state = test_app_state();
+    state.peers.push_back(PeerRecord {
+        peer_id: "alice".to_string(),
+        first_seen: "2019-01-01 12:00:00".to_string(),
+        last_seen: "2020-01-01 12:00:00".to_string(),
+    });
+    state.peers.push_back(PeerRecord {
+        peer_id: "bob".to_string(),
+        first_seen: "2019-01-01 12:00:00".to_string(),
+        last_seen: "2020-01-02 12:00:00".to_string(),
+    });
+    state.resort_peers();
+    // Default Contacts sort is last-seen descending: bob leads.
+    assert_eq!(state.contacts[0].contact_id, "bob");
+
+    handle_incoming_message(
+        &mut state,
+        p2p_app::MessageEvent {
+            content: "fresh".to_string(),
+            peer_id: "alice".to_string(),
+            latency: None,
+            nickname: None,
+            msg_id: Some("fresh-1".to_string()),
+            attachment: None,
+            reply_to: None,
+            encrypted: false,
+        },
+        false,
+    );
+
+    // alice's last-seen is now "today", ahead of bob's fixed 2020 timestamp.
+    assert_eq!(state.contacts[0].contact_id, "alice");
+    assert_ne!(state.contacts[0].last_seen, "2020-01-01 12:00:00");
+    assert_eq!(
+        state.contacts[0].last_seen, state.peers[0].last_seen,
+        "Contacts row must mirror the refreshed peer record"
+    );
+    p2p_app::db::reset_db_url();
+}
+
 #[test]
 fn test_handle_incoming_dm_adds_message_and_tab() {
     let _guard = p2p_app::db::shared_db_test_lock()
