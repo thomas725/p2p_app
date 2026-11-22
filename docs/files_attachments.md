@@ -108,6 +108,11 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   lands (and emits `ShareUpdated`), dropping it if the serving peer disappears
   or a newer revision won. The event fan-out is in `file_transfer.rs` and
   `swarm_handler.rs`, so folder convergence does not depend on a frontend.
+- **Coverage**: `tests/swarm_handler.rs` drives the offer/list/manifest wire
+  handshake and a stale submission followed by a successful retry;
+  `tests/unit/unit_shares.rs` covers revocation, stale writes with changed
+  entries, superseded pending applies and disconnect cleanup. A real blob-pull
+  → apply test with separate per-node databases is still open.
 - **Frontend surface (deferred)**: share events are serialized in
   `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
   for a later UI slice; the TUI currently logs them. No FRB methods or web

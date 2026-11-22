@@ -151,8 +151,11 @@ Still open (UI/integration, not protocol work):
 - Flutter/web share screens: list/detail, permission editor, manual refresh and
   publish. The browser remains a display client — only native installs can bind
   a real local folder;
-- two-node integration tests for offer → manifest → blob pull → apply, stale
-  write rejection/retry, and grant revocation.
+- wire-level coverage has landed for offer → list → manifest → stale rejection
+  → retry with the refreshed revision, and unit coverage for grant revocation,
+  superseded/deferred applies and disconnect cleanup;
+- still open: a true two-node blob-pull → apply test with separate per-node
+  databases, so the files lane is exercised instead of pre-seeded local blobs.
 
 ### Public bootstrap nodes (US-050) — **shipped**
 

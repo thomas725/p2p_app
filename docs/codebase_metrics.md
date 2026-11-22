@@ -116,7 +116,7 @@
 | tests  | nickname.rs                        |   516 | 17397 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                 |  1099 | 39657 |    10 | P2P integration tests                 |
 | tests  | peers.rs                           |   317 |  9240 |     4 | peers module tests                    |
-| tests  | swarm_handler.rs                   |   868 | 29546 |     8 | swarm_handler module tests            |
+| tests  | swarm_handler.rs                   |  1014 | 33808 |     8 | swarm_handler module tests            |
 | tests  | test_utils.rs                      |    53 |  1864 |     2 | Test utilities                        |
 | tests  | tui_binary_integration.rs          |   327 | 10202 |     3 | TUI binary integration tests          |
 | tests  | tui_chat.rs                        |   739 | 23504 |     4 | TUI chat functionality tests          |
@@ -161,7 +161,7 @@
 | unit   | unit_relay.rs                      |    51 |  1450 |     2 | Test file                             |
 | unit   | unit_reply.rs                      |    98 |  3436 |     3 | Test file                             |
 | unit   | unit_settings.rs                   |    88 |  2766 |     3 | Test file                             |
-| unit   | unit_shares.rs                     |   556 | 19254 |     4 | shares module tests                   |
+| unit   | unit_shares.rs                     |   743 | 26138 |     4 | shares module tests                   |
 | unit   | unit_swarm_handler.rs              |   391 | 12878 |     3 | Unit tests for swarm_handler module   |
 | unit   | unit_tui_helpers.rs                |   694 | 23223 |     5 | Unit tests for TUI helpers            |
 | unit   | unit_tui_render_state.rs           |   365 | 11174 |     2 | Unit tests for TUI render state       |
@@ -169,7 +169,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 27,433 lines, 916,347 characters
+**Total:** 67 test files, 27,766 lines, 927,493 characters
 
 ## Dart Source Files
 

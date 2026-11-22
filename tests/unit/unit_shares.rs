@@ -231,6 +231,7 @@ fn grants_are_upserted_and_listed() {
     with_test_db(|| {
         let share =
             create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        bind_peer("peer-alice-1", "alice");
         set_grant(&share.share_id, "alice", ShareMode::ReadOnly).expect("read grant");
         set_grant(&share.share_id, "alice", ShareMode::ReadWrite).expect("write grant");
         set_grant(&share.share_id, "bob", ShareMode::ReadOnly).expect("bob grant");
@@ -241,10 +242,18 @@ fn grants_are_upserted_and_listed() {
             Some(ShareMode::ReadWrite)
         );
 
+        assert!(can_read(&share.share_id, "peer-alice-1"));
+        assert!(can_write(&share.share_id, "peer-alice-1"));
+
         remove_grant(&share.share_id, "alice").expect("remove");
         let grants = list_grants(&share.share_id).expect("list grants");
         assert_eq!(grants.len(), 1);
         assert_eq!(grants[0].user_id, "bob");
+
+        // Revocation is immediate: the verified binding still exists, but the
+        // grant row that authorised it does not.
+        assert!(!can_read(&share.share_id, "peer-alice-1"));
+        assert!(!can_write(&share.share_id, "peer-alice-1"));
     });
 }
 
@@ -468,6 +477,184 @@ fn accept_submitted_manifest_enforces_permission_and_revision() {
 
         // An unbound peer cannot write even with a stale revision.
         assert!(accept_submitted_manifest(&share.share_id, "stranger", 1, &first).is_err());
+    });
+}
+
+#[test]
+#[serial(db)]
+fn stale_snapshot_with_changed_entries_is_rejected_until_rebased() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        let share = create_share(
+            "Writable",
+            "owner",
+            ShareKind::Public,
+            true,
+            Some(dir.path().to_str().expect("root")),
+        )
+        .expect("create share");
+        let first = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 0,
+            entries: vec![],
+        };
+        accept_submitted_manifest(&share.share_id, "any-peer", 0, &first).expect("first submit");
+
+        let id = crate::files::hash_bytes(b"abc");
+        crate::files::store_outgoing_bytes("changed.txt", b"abc").expect("store blob");
+        let changed = ShareManifest {
+            revision: 0,
+            entries: vec![entry("changed.txt", id.clone())],
+            ..first.clone()
+        };
+
+        let stale = accept_submitted_manifest(&share.share_id, "any-peer", 0, &changed)
+            .expect_err("stale submission");
+        assert!(stale.to_string().contains("stale share revision"));
+        assert!(!dir.path().join("changed.txt").exists());
+        assert!(!referenced_file_ids().expect("gc refs").contains(&id));
+
+        // Refreshing the base revision lets the same snapshot through and the
+        // accepted revision is derived from the share, not the submitted value.
+        let stats = accept_submitted_manifest(&share.share_id, "any-peer", 1, &changed)
+            .expect("retry at current revision");
+        assert_eq!(stats.written, 1);
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
+            2
+        );
+        assert_eq!(
+            load_manifest(&share.share_id).expect("manifest").revision,
+            2
+        );
+        assert_eq!(
+            std::fs::read(dir.path().join("changed.txt")).expect("installed"),
+            b"abc"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn newer_manifest_supersedes_a_pending_apply() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        let share = create_share(
+            "Remote",
+            "owner",
+            ShareKind::Public,
+            false,
+            Some(dir.path().to_str().expect("root")),
+        )
+        .expect("create share");
+        let old_a = crate::files::hash_bytes(b"old-a");
+        let old_b = crate::files::hash_bytes(b"old-b");
+        let new = crate::files::hash_bytes(b"new");
+        let old = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("a.txt", old_a.clone()), entry("b.txt", old_b.clone())],
+        };
+        let newer = ShareManifest {
+            revision: 2,
+            entries: vec![entry("c.txt", new.clone())],
+            ..old.clone()
+        };
+        save_manifest(&share.share_id, &newer).expect("save newest manifest");
+
+        let mut queued = queue_apply("serving-peer".into(), None, old.clone());
+        queued.sort();
+        let mut expected = vec![old_a.clone(), old_b.clone()];
+        expected.sort();
+        assert_eq!(queued, expected);
+        assert_eq!(
+            queue_apply("serving-peer".into(), Some(old), newer.clone()),
+            vec![new.clone()]
+        );
+
+        // Blobs from the superseded snapshot no longer trigger an apply.
+        assert!(note_blob_available(&old_a).is_empty());
+        assert!(note_blob_available(&old_b).is_empty());
+        assert!(!dir.path().join("a.txt").exists());
+
+        crate::files::store_outgoing_bytes("c.txt", b"new").expect("store newest blob");
+        let applied = note_blob_available(&new);
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].revision, 2);
+        assert_eq!(applied[0].stats.written, 1);
+        assert_eq!(
+            std::fs::read(dir.path().join("c.txt")).expect("newest"),
+            b"new"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn disconnect_abandons_only_that_peers_pending_apply() {
+    with_test_db(|| {
+        let gone_dir = TempDir::new().expect("gone root");
+        let stay_dir = TempDir::new().expect("stay root");
+        let gone_share = create_share(
+            "Gone",
+            "owner",
+            ShareKind::Public,
+            false,
+            Some(gone_dir.path().to_str().expect("root")),
+        )
+        .expect("create gone share");
+        let stay_share = create_share(
+            "Stay",
+            "owner",
+            ShareKind::Public,
+            false,
+            Some(stay_dir.path().to_str().expect("root")),
+        )
+        .expect("create stay share");
+
+        let gone_id = crate::files::hash_bytes(b"gone");
+        let stay_id = crate::files::hash_bytes(b"stay");
+        let gone_manifest = ShareManifest {
+            share_id: gone_share.share_id.clone(),
+            name: gone_share.name.clone(),
+            revision: 1,
+            entries: vec![entry("gone.txt", gone_id.clone())],
+        };
+        let stay_manifest = ShareManifest {
+            share_id: stay_share.share_id.clone(),
+            name: stay_share.name.clone(),
+            revision: 1,
+            entries: vec![entry("stay.txt", stay_id.clone())],
+        };
+        save_manifest(&gone_share.share_id, &gone_manifest).expect("save gone manifest");
+        save_manifest(&stay_share.share_id, &stay_manifest).expect("save stay manifest");
+        assert_eq!(
+            queue_apply("gone-peer".into(), None, gone_manifest),
+            vec![gone_id.clone()]
+        );
+        assert_eq!(
+            queue_apply("stay-peer".into(), None, stay_manifest),
+            vec![stay_id.clone()]
+        );
+
+        abandon_pending_from("gone-peer");
+        crate::files::store_outgoing_bytes("gone.txt", b"gone").expect("store gone blob");
+        crate::files::store_outgoing_bytes("stay.txt", b"stay").expect("store stay blob");
+        assert!(note_blob_available(&gone_id).is_empty());
+        assert!(!gone_dir.path().join("gone.txt").exists());
+
+        let applied = note_blob_available(&stay_id);
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].share_id, stay_share.share_id);
+        assert_eq!(
+            std::fs::read(stay_dir.path().join("stay.txt")).expect("stayed"),
+            b"stay"
+        );
     });
 }
 

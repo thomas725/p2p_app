@@ -133,37 +133,6 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[cfg(not(feature = "relay"))]
-#[cfg(feature = "relay")]
-fn build_test_swarm() -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
-    let keypair = Keypair::generate_ed25519();
-    let peer_id = keypair.public().to_peer_id();
-
-    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
-        .with_tokio()
-        .with_tcp(
-            tcp::Config::default().nodelay(true),
-            libp2p::noise::Config::new,
-            yamux::Config::default,
-        )
-        .unwrap()
-        .with_quic()
-        .with_relay_client(libp2p::noise::Config::new, libp2p::yamux::Config::default)
-        .unwrap()
-        .with_behaviour(|key, relay_client| {
-            build_behaviour(key, NetworkSize::Small, relay_client).map_err(
-                |e| -> Box<dyn std::error::Error + Send + Sync> {
-                    Box::new(std::io::Error::other(e))
-                },
-            )
-        })
-        .unwrap()
-        .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_mins(1)))
-        .build();
-
-    (swarm, peer_id)
-}
-
-#[cfg(not(feature = "relay"))]
 fn build_test_swarm_with_identity(
     keypair: Keypair,
 ) -> (libp2p::Swarm<p2p_app::AppBehaviour>, libp2p::PeerId) {
@@ -728,6 +697,183 @@ async fn test_spawn_handler_call_media_roundtrip() {
     assert_eq!(sender, peer_a.to_string());
     assert_eq!(pcm.len(), p2p_app::call_media::SAMPLES_PER_FRAME);
     assert!((i32::from(pcm[0]) - 100).abs() <= 1024);
+}
+
+async fn expect_share_offer(
+    rx: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    share_id: &str,
+) -> p2p_app::shares::ShareOffer {
+    timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::ShareOffered { offer, .. }) = rx.recv().await
+                && offer.share_id == share_id
+            {
+                break offer;
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for share offer")
+}
+
+async fn expect_share_rejection(
+    rx: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    share_id: &str,
+) -> String {
+    timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::ShareRejected {
+                share_id: id,
+                reason,
+                ..
+            }) = rx.recv().await
+                && id == share_id
+            {
+                break reason;
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for share rejection")
+}
+
+async fn expect_share_update(
+    rx: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    share_id: &str,
+) -> (String, u64, usize) {
+    timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(SwarmEvent::ShareUpdated {
+                peer_id,
+                share_id: id,
+                revision,
+                written,
+                ..
+            }) = rx.recv().await
+                && id == share_id
+            {
+                break (peer_id, revision, written);
+            }
+        }
+    })
+    .await
+    .expect("Timeout waiting for share update")
+}
+
+/// A public, writable share goes over the wire end to end: offer, list,
+/// manifest, then a stale submission that is rejected and retried at the
+/// current revision. A current-thread runtime keeps each handler on the same
+/// thread-local test database as the assertions.
+#[tokio::test(flavor = "current_thread")]
+async fn test_spawn_handler_share_offer_manifest_and_revision_retry() {
+    use p2p_app::shares::{self, ShareKind, ShareManifest};
+
+    let (mut swarm_a, peer_a) = build_test_swarm();
+    let (mut swarm_b, peer_b) = build_test_swarm();
+    connect_swarms(&mut swarm_a, &peer_a, &mut swarm_b, &peer_b).await;
+
+    let share = shares::create_share("Wire docs", "owner", ShareKind::Public, true, None)
+        .expect("create share");
+    let initial = ShareManifest {
+        share_id: share.share_id.clone(),
+        name: share.name.clone(),
+        revision: 1,
+        entries: vec![],
+    };
+    shares::save_manifest(&share.share_id, &initial).expect("save initial manifest");
+    let offer = shares::offer_for_share(&share.share_id)
+        .expect("offer")
+        .expect("share present");
+
+    let (_handle_a, mut event_rx_a, cmd_tx_a) =
+        spawn_swarm_handler(swarm_a, CHAT_TOPIC.to_string());
+    let (_handle_b, mut event_rx_b, cmd_tx_b) =
+        spawn_swarm_handler(swarm_b, CHAT_TOPIC.to_string());
+
+    cmd_tx_a
+        .send(SwarmCommand::SendShareOffer {
+            peer_ids: vec![peer_b.to_string()],
+            offer: Box::new(offer),
+        })
+        .await
+        .unwrap();
+    let advertised = expect_share_offer(&mut event_rx_b, &share.share_id).await;
+    assert_eq!(advertised.name, "Wire docs");
+    assert!(advertised.public_write);
+
+    cmd_tx_b
+        .send(SwarmCommand::ListShares {
+            peer_id: peer_a.to_string(),
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        expect_share_offer(&mut event_rx_b, &share.share_id)
+            .await
+            .share_id,
+        share.share_id
+    );
+
+    cmd_tx_b
+        .send(SwarmCommand::RequestShareManifest {
+            peer_id: peer_a.to_string(),
+            share_id: share.share_id.clone(),
+        })
+        .await
+        .unwrap();
+    let received = timeout(Duration::from_secs(10), async {
+        loop {
+            if let Ok(manifest) = shares::load_manifest(&share.share_id) {
+                break manifest;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("Timeout waiting for manifest on B");
+    assert_eq!(received, initial);
+
+    let proposed = ShareManifest {
+        revision: 0,
+        ..initial.clone()
+    };
+    cmd_tx_b
+        .send(SwarmCommand::PublishShareSnapshot {
+            peer_id: peer_a.to_string(),
+            base_revision: 0,
+            manifest: Box::new(proposed.clone()),
+        })
+        .await
+        .unwrap();
+    let reason = expect_share_rejection(&mut event_rx_b, &share.share_id).await;
+    assert!(reason.contains("stale share revision"), "{reason}");
+    assert_eq!(
+        shares::get_share(&share.share_id)
+            .expect("get")
+            .expect("present")
+            .revision,
+        1
+    );
+
+    cmd_tx_b
+        .send(SwarmCommand::PublishShareSnapshot {
+            peer_id: peer_a.to_string(),
+            base_revision: 1,
+            manifest: Box::new(proposed),
+        })
+        .await
+        .unwrap();
+    let (writer, revision, written) = expect_share_update(&mut event_rx_a, &share.share_id).await;
+    assert_eq!(writer, peer_b.to_string());
+    assert_eq!(revision, 2);
+    assert_eq!(written, 0);
+    assert_eq!(
+        shares::get_share(&share.share_id)
+            .expect("get")
+            .expect("present")
+            .revision,
+        2
+    );
 }
 
 /// `SendDm` with a peer ID that doesn't parse as a valid `PeerId` is silently
