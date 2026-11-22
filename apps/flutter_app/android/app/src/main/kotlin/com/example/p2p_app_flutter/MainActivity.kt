@@ -23,6 +23,20 @@ class MainActivity : FlutterActivity() {
             MessageNotifications.handle(call, this, result)
         }
 
+        // Call-media device adapter (US-044): Rust owns framing/jitter/mute,
+        // these channels only move PCM to and from AudioRecord/AudioTrack.
+        val audioEvents = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CallAudio.EVENTS,
+        )
+        CallAudio.attach(this, audioEvents)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CallAudio.CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            CallAudio.handle(call, result)
+        }
+
         val channel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             CHANNEL,
@@ -52,6 +66,15 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        CallAudio.onRequestPermissionsResult(requestCode, grantResults)
     }
 
     private fun startP2pService(dbPath: String) {

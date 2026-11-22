@@ -18,6 +18,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Call media (US-044): microphone capture during an active call. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:label="p2p_app_flutter"
         android:name="${applicationName}"

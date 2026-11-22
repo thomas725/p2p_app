@@ -1,12 +1,15 @@
-// Native no-op device adapter. The web build selects
+// Native device-adapter selection. The web build selects
 // `call_audio_platform_web.dart` through the conditional import in
-// `call_audio_device.dart`; native targets have no browser AudioContext and
-// this is the whole implementation. Android call audio is future work — the
-// Rust media transport itself is available on every platform via FRB.
+// `call_audio_device.dart`; here we pick the Android channel adapter on Android
+// and keep a no-op stub for the other native targets (iOS/desktop), where the
+// Rust media transport still works but no device audio ships yet.
 
 import 'call_audio.dart';
+import 'call_audio_platform_android.dart';
+import 'ui_utils.dart' show isAndroid;
 
-CallAudioAdapter createPlatformCallAudioAdapter() => _NoopCallAudio();
+CallAudioAdapter createPlatformCallAudioAdapter() =>
+    isAndroid ? AndroidCallAudio() : _NoopCallAudio();
 
 class _NoopCallAudio implements CallAudioAdapter {
   @override

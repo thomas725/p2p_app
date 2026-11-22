@@ -9,18 +9,18 @@
 | Total Rust Chars      | 1,332,944 |
 | Avg Lines/Rust File   |       532 |
 | Avg Chars/Rust File   |    20,196 |
-| Total Dart Files      |        43 |
-| Total Dart Lines      |    18,518 |
-| Total Dart Chars      |   599,200 |
-| Avg Lines/Dart File   |       430 |
-| Avg Chars/Dart File   |    13,934 |
-| Total Kotlin Files    |         3 |
-| Total Kotlin Lines    |       303 |
-| Total Kotlin Chars    |    10,990 |
-| Avg Lines/Kotlin File |       101 |
-| Avg Chars/Kotlin File |     3,663 |
+| Total Dart Files      |        44 |
+| Total Dart Lines      |    18,631 |
+| Total Dart Chars      |   603,607 |
+| Avg Lines/Dart File   |       423 |
+| Avg Chars/Dart File   |    13,718 |
+| Total Kotlin Files    |         4 |
+| Total Kotlin Lines    |       612 |
+| Total Kotlin Chars    |    22,089 |
+| Avg Lines/Kotlin File |       153 |
+| Avg Chars/Kotlin File |     5,522 |
 
-**Grand Total:** 112 files, 53,966 lines, 1,943,134 characters
+**Grand Total:** 114 files, 54,388 lines, 1,958,640 characters
 
 ## Rust Source Files
 
@@ -170,53 +170,54 @@
 
 ## Dart Source Files
 
-| Folder       | File                            | Depth | Chars | Lines | Testable | Covered | Purpose                          |
-|:-------------|:--------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
-| lib          | main.dart                       |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
-| lib          | chat_message_ext.dart           |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
-| lib          | frb_node_api.dart               |     5 | 12862 |   433 |        - |       - | In-process FRB transport         |
-| lib          | http_node_api.dart              |     7 | 31834 |   961 |        - |       - | WebSocket/HTTP transport         |
-| lib          | node_api.dart                   |     2 | 11593 |   330 |        - |       - | Transport-agnostic node API      |
-| lib          | node_transport.dart             |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
-| lib/src/rust | api.dart                        |     5 | 25143 |   685 |        - |       - | FRB API bindings (generated)     |
-| lib/src/rust | frb_generated.dart              |     6 | 161103 |  5117 |        - |       - | flutter_rust_bridge codegen      |
-| lib/src/rust | frb_generated.io.dart           |     3 | 21798 |   905 |        - |       - | FRB IO bindings (generated)      |
-| lib/src/rust | frb_generated.web.dart          |     2 | 21718 |   905 |        - |       - | FRB web bindings (generated)     |
-| lib/src/rust | messages.dart                   |     5 |  1067 |    32 |        - |       - | Rust bindings (hand-maintained)  |
-| lib/src/rust | mobile_api.dart                 |     5 | 16684 |   519 |        - |       - | Mobile API bindings (generated)  |
-| lib/src/rust | mobile_node.dart                |     5 | 17594 |   526 |        - |       - | Mobile node bindings (generated) |
-| lib/src/rust | net_diag.dart                   |     5 |  7968 |   256 |        - |       - | Dart source file                 |
-| lib/src/rust | network_config.dart             |     5 |  1182 |    43 |        - |       - | Dart source file                 |
-| lib/src/rust | notifications.dart              |     5 |  2232 |    76 |        - |       - | Dart source file                 |
-| lib/src/rust | reactions.dart                  |     5 |  1113 |    37 |        - |       - | Dart source file                 |
-| lib/src/rust | reply.dart                      |     5 |  1313 |    41 |        - |       - | Dart source file                 |
-| lib/src/rust | theme.dart                      |     5 |  1851 |    68 |        - |       - | Dart source file                 |
-| lib          | call_screen.dart                |    17 | 15740 |   485 |        - |       - | Call overlay screen              |
-| lib          | contact_list.dart               |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
-| lib          | dm_chat.dart                    |     8 | 20097 |   574 |        - |       - | Direct-message chat screen       |
-| lib          | group_chat.dart                 |     8 | 12394 |   366 |        - |       - | Group chat screen                |
-| lib          | group_list.dart                 |    17 |  7931 |   235 |        - |       - | Group list screen                |
-| lib          | home.dart                       |     7 | 41038 |  1224 |        - |       - | App shell & broadcast chat       |
-| lib          | log_tab.dart                    |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
-| lib          | messages.dart                   |    15 | 45231 |  1312 |        - |       - | Shared chat widgets              |
-| lib          | nav_bar.dart                    |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
-| lib          | peer_info.dart                  |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
-| lib          | settings.dart                   |    16 | 39285 |  1141 |        - |       - | Settings screen                  |
-| lib          | attachments.dart                |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
-| lib          | blocklist.dart                  |     2 |   755 |    19 |        - |       - | Dart source file                 |
-| lib          | call_audio.dart                 |     4 |  4139 |   104 |        - |       - | Dart source file                 |
-| lib          | call_audio_device.dart          |     2 |   436 |    11 |        - |       - | Dart source file                 |
-| lib          | call_audio_platform.dart        |     1 |   725 |    23 |        - |       - | Dart source file                 |
-| lib          | call_audio_platform_web.dart    |     5 |  7762 |   212 |        - |       - | Dart source file                 |
-| lib          | event_bus.dart                  |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
-| lib          | notifications.dart              |     3 |  4511 |   121 |        - |       - | Dart source file                 |
-| lib          | notifications_platform.dart     |     0 |   931 |    18 |        - |       - | Dart source file                 |
-| lib          | notifications_platform_web.dart |     3 |  3244 |    83 |        - |       - | Dart source file                 |
-| lib          | reply.dart                      |     3 |  3273 |    73 |        - |       - | Dart source file                 |
-| lib          | theme.dart                      |     2 |  1821 |    49 |        - |       - | Dart source file                 |
-| lib          | ui_utils.dart                   |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
+| Folder       | File                             | Depth | Chars | Lines | Testable | Covered | Purpose                          |
+|:-------------|:---------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
+| lib          | main.dart                        |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
+| lib          | chat_message_ext.dart            |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
+| lib          | frb_node_api.dart                |     5 | 12862 |   433 |        - |       - | In-process FRB transport         |
+| lib          | http_node_api.dart               |     7 | 31834 |   961 |        - |       - | WebSocket/HTTP transport         |
+| lib          | node_api.dart                    |     2 | 11593 |   330 |        - |       - | Transport-agnostic node API      |
+| lib          | node_transport.dart              |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
+| lib/src/rust | api.dart                         |     5 | 25143 |   685 |        - |       - | FRB API bindings (generated)     |
+| lib/src/rust | frb_generated.dart               |     6 | 161103 |  5117 |        - |       - | flutter_rust_bridge codegen      |
+| lib/src/rust | frb_generated.io.dart            |     3 | 21798 |   905 |        - |       - | FRB IO bindings (generated)      |
+| lib/src/rust | frb_generated.web.dart           |     2 | 21718 |   905 |        - |       - | FRB web bindings (generated)     |
+| lib/src/rust | messages.dart                    |     5 |  1067 |    32 |        - |       - | Rust bindings (hand-maintained)  |
+| lib/src/rust | mobile_api.dart                  |     5 | 16684 |   519 |        - |       - | Mobile API bindings (generated)  |
+| lib/src/rust | mobile_node.dart                 |     5 | 17594 |   526 |        - |       - | Mobile node bindings (generated) |
+| lib/src/rust | net_diag.dart                    |     5 |  7968 |   256 |        - |       - | Dart source file                 |
+| lib/src/rust | network_config.dart              |     5 |  1182 |    43 |        - |       - | Dart source file                 |
+| lib/src/rust | notifications.dart               |     5 |  2232 |    76 |        - |       - | Dart source file                 |
+| lib/src/rust | reactions.dart                   |     5 |  1113 |    37 |        - |       - | Dart source file                 |
+| lib/src/rust | reply.dart                       |     5 |  1313 |    41 |        - |       - | Dart source file                 |
+| lib/src/rust | theme.dart                       |     5 |  1851 |    68 |        - |       - | Dart source file                 |
+| lib          | call_screen.dart                 |    17 | 15735 |   485 |        - |       - | Call overlay screen              |
+| lib          | contact_list.dart                |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
+| lib          | dm_chat.dart                     |     8 | 20097 |   574 |        - |       - | Direct-message chat screen       |
+| lib          | group_chat.dart                  |     8 | 12394 |   366 |        - |       - | Group chat screen                |
+| lib          | group_list.dart                  |    17 |  7931 |   235 |        - |       - | Group list screen                |
+| lib          | home.dart                        |     7 | 41038 |  1224 |        - |       - | App shell & broadcast chat       |
+| lib          | log_tab.dart                     |    10 |  3493 |   123 |        - |       - | Log tab screen                   |
+| lib          | messages.dart                    |    15 | 45231 |  1312 |        - |       - | Shared chat widgets              |
+| lib          | nav_bar.dart                     |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
+| lib          | peer_info.dart                   |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
+| lib          | settings.dart                    |    16 | 39285 |  1141 |        - |       - | Settings screen                  |
+| lib          | attachments.dart                 |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
+| lib          | blocklist.dart                   |     2 |   755 |    19 |        - |       - | Dart source file                 |
+| lib          | call_audio.dart                  |     4 |  4139 |   104 |        - |       - | Dart source file                 |
+| lib          | call_audio_device.dart           |     2 |   436 |    11 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform.dart         |     2 |   850 |    26 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform_android.dart |     4 |  4054 |   106 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform_web.dart     |     5 |  7995 |   216 |        - |       - | Dart source file                 |
+| lib          | event_bus.dart                   |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
+| lib          | notifications.dart               |     3 |  4511 |   121 |        - |       - | Dart source file                 |
+| lib          | notifications_platform.dart      |     0 |   931 |    18 |        - |       - | Dart source file                 |
+| lib          | notifications_platform_web.dart  |     3 |  3244 |    83 |        - |       - | Dart source file                 |
+| lib          | reply.dart                       |     3 |  3273 |    73 |        - |       - | Dart source file                 |
+| lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
+| lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 43 files, 18,518 lines, 599,200 characters
+**Total:** 44 files, 18,631 lines, 603,607 characters
 
 ## Dart Test Files
 
@@ -226,11 +227,12 @@
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
+| unit    | call_audio_android_test.dart     |   167 |  5393 |     5 | Dart test file                        |
 | unit    | call_audio_test.dart             |    93 |  3466 |     5 | Dart test file                        |
 | unit    | http_node_api_test.dart          |   768 | 25163 |    10 | Web transport wire-contract tests     |
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
-| widget  | call_screen_test.dart            |   593 | 18894 |    12 | Call screen widget tests              |
+| widget  | call_screen_test.dart            |   593 | 18895 |    12 | Call screen widget tests              |
 | widget  | contact_list_test.dart           |   661 | 22484 |     7 | Contacts roster widget tests          |
 | widget  | device_binding_test.dart         |    72 |  1990 |     5 | Device-binding prompt tests           |
 | widget  | group_list_test.dart             |   233 |  7128 |     5 | Group list widget tests               |
@@ -240,23 +242,25 @@
 | widget  | settings_test.dart               |   285 |  9080 |     6 | Settings widget tests                 |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 17 test files, 5,548 lines, 174,905 characters
+**Total:** 18 test files, 5,715 lines, 180,299 characters
 
 ## Kotlin Source Files
 
 | Folder                      | File                    | Depth | Chars | Lines | Testable | Covered | Purpose                                      |
 |:----------------------------|:------------------------|------:|------:|------:|---------:|--------:|---------------------------------------------:|
-| com/example/p2p_app_flutter | MainActivity.kt         |     5 |  3277 |    91 |        - |       - | Flutter activity & method channel bridge     |
+| com/example/p2p_app_flutter | CallAudio.kt            |     6 | 10240 |   286 |        - |       - | Kotlin source file                           |
+| com/example/p2p_app_flutter | MainActivity.kt         |     5 |  4136 |   114 |        - |       - | Flutter activity & method channel bridge     |
 | com/example/p2p_app_flutter | MessageNotifications.kt |     4 |  3431 |    85 |        - |       - | Kotlin source file                           |
 | com/example/p2p_app_flutter | P2pForegroundService.kt |     4 |  4282 |   127 |        - |       - | Foreground service for background networking |
 
-**Total:** 3 files, 303 lines, 10,990 characters
+**Total:** 4 files, 612 lines, 22,089 characters
 
 ## Kotlin Test Files
 
 | Folder                      | File                           | Lines | Chars | Depth | Description                           |
 |:----------------------------|:-------------------------------|------:|------:|------:|--------------------------------------:|
+| com/example/p2p_app_flutter | CallAudioTest.kt               |    51 |  1765 |     3 | Kotlin test file                      |
 | com/example/p2p_app_flutter | MainActivityTest.kt            |    80 |  2878 |     3 | MainActivity unit tests               |
 | com/example/p2p_app_flutter | P2pForegroundServiceTest.kt    |    99 |  3093 |     3 | ForegroundService unit tests          |
 
-**Total:** 2 test files, 179 lines, 5,971 characters
+**Total:** 3 test files, 230 lines, 7,736 characters
