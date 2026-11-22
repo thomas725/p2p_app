@@ -173,7 +173,12 @@ web server in both cases — the browser bundle is a display client only. `--tui
 
 - Compiling the Rust core to WASM (browser-as-node); revisit only if a fully self-contained
   browser node is ever wanted.
-- Device-level call audio capture/playback. The μ-law media transport and the
-  `startCallMedia`/`stopCallMedia`/`sendCallMedia`/`setCallMediaMute` JSON arms ship
-  like every other frontend (in-process FRB on mobile, WS/HTTP in the browser);
-  only a real microphone/speaker adapter is out of scope.
+- Device-level call audio on the TUI and native Flutter targets. The μ-law media
+  transport and the `startCallMedia`/`stopCallMedia`/`sendCallMedia`/`setCallMediaMute`
+  JSON arms ship like every other frontend (in-process FRB on mobile, WS/HTTP in
+  the browser). The **browser** itself does own a mic/speaker adapter now
+  (`apps/flutter_app/lib/src/util/call_audio*.dart`, raw `dart:js_interop`, no new
+  deps): `getUserMedia` capture resampled to 16 kHz mono i16 frames and
+  `AudioBufferSourceNode` playback. Capture requires a secure context
+  (HTTPS/localhost), so over plain HTTP the browser gets playback only plus an
+  actionable capture-error line on the call screen.

@@ -9,18 +9,18 @@
 | Total Rust Chars      | 1,332,944 |
 | Avg Lines/Rust File   |       532 |
 | Avg Chars/Rust File   |    20,196 |
-| Total Dart Files      |        39 |
-| Total Dart Lines      |    18,133 |
-| Total Dart Chars      |   584,578 |
-| Avg Lines/Dart File   |       464 |
-| Avg Chars/Dart File   |    14,989 |
+| Total Dart Files      |        43 |
+| Total Dart Lines      |    18,518 |
+| Total Dart Chars      |   599,200 |
+| Avg Lines/Dart File   |       430 |
+| Avg Chars/Dart File   |    13,934 |
 | Total Kotlin Files    |         3 |
 | Total Kotlin Lines    |       303 |
 | Total Kotlin Chars    |    10,990 |
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 108 files, 53,581 lines, 1,928,512 characters
+**Grand Total:** 112 files, 53,966 lines, 1,943,134 characters
 
 ## Rust Source Files
 
@@ -191,7 +191,7 @@
 | lib/src/rust | reactions.dart                  |     5 |  1113 |    37 |        - |       - | Dart source file                 |
 | lib/src/rust | reply.dart                      |     5 |  1313 |    41 |        - |       - | Dart source file                 |
 | lib/src/rust | theme.dart                      |     5 |  1851 |    68 |        - |       - | Dart source file                 |
-| lib          | call_screen.dart                |    11 | 14180 |   450 |        - |       - | Call overlay screen              |
+| lib          | call_screen.dart                |    17 | 15740 |   485 |        - |       - | Call overlay screen              |
 | lib          | contact_list.dart               |    15 | 14857 |   429 |        - |       - | Contacts roster screen           |
 | lib          | dm_chat.dart                    |     8 | 20097 |   574 |        - |       - | Direct-message chat screen       |
 | lib          | group_chat.dart                 |     8 | 12394 |   366 |        - |       - | Group chat screen                |
@@ -204,6 +204,10 @@
 | lib          | settings.dart                   |    16 | 39285 |  1141 |        - |       - | Settings screen                  |
 | lib          | attachments.dart                |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
 | lib          | blocklist.dart                  |     2 |   755 |    19 |        - |       - | Dart source file                 |
+| lib          | call_audio.dart                 |     4 |  4139 |   104 |        - |       - | Dart source file                 |
+| lib          | call_audio_device.dart          |     2 |   436 |    11 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform.dart        |     1 |   725 |    23 |        - |       - | Dart source file                 |
+| lib          | call_audio_platform_web.dart    |     5 |  7762 |   212 |        - |       - | Dart source file                 |
 | lib          | event_bus.dart                  |     2 |  1813 |    45 |        - |       - | Node event fan-out               |
 | lib          | notifications.dart              |     3 |  4511 |   121 |        - |       - | Dart source file                 |
 | lib          | notifications_platform.dart     |     0 |   931 |    18 |        - |       - | Dart source file                 |
@@ -212,7 +216,7 @@
 | lib          | theme.dart                      |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                   |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 39 files, 18,133 lines, 584,578 characters
+**Total:** 43 files, 18,518 lines, 599,200 characters
 
 ## Dart Test Files
 
@@ -222,10 +226,11 @@
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
+| unit    | call_audio_test.dart             |    93 |  3466 |     5 | Dart test file                        |
 | unit    | http_node_api_test.dart          |   768 | 25163 |    10 | Web transport wire-contract tests     |
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
-| widget  | call_screen_test.dart            |   474 | 15326 |    12 | Call screen widget tests              |
+| widget  | call_screen_test.dart            |   593 | 18894 |    12 | Call screen widget tests              |
 | widget  | contact_list_test.dart           |   661 | 22484 |     7 | Contacts roster widget tests          |
 | widget  | device_binding_test.dart         |    72 |  1990 |     5 | Device-binding prompt tests           |
 | widget  | group_list_test.dart             |   233 |  7128 |     5 | Group list widget tests               |
@@ -235,7 +240,7 @@
 | widget  | settings_test.dart               |   285 |  9080 |     6 | Settings widget tests                 |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 16 test files, 5,336 lines, 167,871 characters
+**Total:** 17 test files, 5,548 lines, 174,905 characters
 
 ## Kotlin Source Files
 

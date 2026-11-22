@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
+import 'package:p2p_app_flutter/src/util/call_audio_device.dart';
 import 'package:p2p_app_flutter/src/util/event_bus.dart';
 
 /// How far along a call session is, from the local side's perspective.
@@ -28,9 +29,10 @@ typedef SendCallSignalOverride =
 
 /// Test/platform seams for the Rust-owned media session (calls lane, US-044).
 ///
-/// The commands normally go through [NodeApi] to Rust; the `audio` callback is
-/// where a future device adapter would hand decoded peer PCM to a speaker.
-/// Widget tests install all four so they never load the Rust library.
+/// The commands normally go through [NodeApi] to Rust. The `audio` callback is
+/// an extra observer for decoded peer PCM: the real [CallAudioAdapter] always
+/// receives it too, so widget tests can assert the frames without a device.
+/// Tests install these so they never load the Rust library.
 @visibleForTesting
 class CallMediaOverrides {
   const CallMediaOverrides({
@@ -66,6 +68,7 @@ class CallScreen extends StatefulWidget {
     this.currentTab = 1,
     this.sendSignalOverride,
     this.mediaOverrides,
+    this.audioAdapter,
   });
 
   /// The remote peer on the other side of this session.
@@ -96,6 +99,12 @@ class CallScreen extends StatefulWidget {
   @visibleForTesting
   final CallMediaOverrides? mediaOverrides;
 
+  /// Device microphone/speaker adapter. Defaults to the platform
+  /// implementation (browser Web Audio on web, a no-op on native); tests
+  /// inject a fake so no audio device is touched.
+  @visibleForTesting
+  final CallAudioAdapter? audioAdapter;
+
   @override
   State<CallScreen> createState() => CallScreenState();
 }
@@ -108,11 +117,16 @@ class CallScreenState extends State<CallScreen> {
   late CallScreenPhase _phase;
 
   // Media transport is opened only once the call is live and closed on every
-  // exit path. The counter mirrors the TUI overlay: with no device adapter
-  // yet, it is the visible proof that peer audio is actually flowing.
+  // exit path. The counter mirrors the TUI overlay and is the visible proof
+  // that peer audio is flowing even on platforms with no device adapter.
   bool _mediaStarted = false;
   bool _muted = false;
   int _audioFrames = 0;
+
+  /// Microphone/speaker half of the call. Rust still owns framing, jitter and
+  /// mute; this only moves samples to and from the OS/browser.
+  late final CallAudioAdapter _audioAdapter =
+      widget.audioAdapter ?? createCallAudioAdapter();
 
   @override
   void initState() {
@@ -140,25 +154,32 @@ class CallScreenState extends State<CallScreen> {
     }
   }
 
-  Future<void> _startMedia() {
-    if (_mediaStarted) return Future<void>.value();
+  Future<void> _startMedia() async {
+    if (_mediaStarted) return;
     _mediaStarted = true;
     final override = widget.mediaOverrides?.start;
-    return _media(() => override != null
+    await _media(() => override != null
         ? override(widget.callId, widget.peerId)
         : nodeApi.startCallMedia(callId: widget.callId, peerId: widget.peerId));
+    await _media(
+      () => _audioAdapter.start(onPcm: (pcm) => unawaited(sendPcm(pcm))),
+    );
+    // Capture can fail for reasons the user can act on (permission, HTTPS);
+    // surface that in the status line once the adapter has settled.
+    if (mounted) setState(() {});
   }
 
-  Future<void> _stopMedia() {
-    if (!_mediaStarted) return Future<void>.value();
+  Future<void> _stopMedia() async {
+    if (!_mediaStarted) return;
     _mediaStarted = false;
     final override = widget.mediaOverrides?.stop;
-    return _media(
+    await _media(
       () => override != null ? override() : nodeApi.stopCallMedia(),
     );
+    await _media(_audioAdapter.stop);
   }
 
-  /// Hand one 16 kHz mono PCM block from a future microphone adapter to Rust.
+  /// Hand one 16 kHz mono PCM block from the microphone adapter to Rust.
   /// The session filter lives in Rust, so a stale call's audio is ignored
   /// there; this guard just avoids pointless FFI traffic.
   Future<void> sendPcm(List<int> pcm) {
@@ -231,11 +252,12 @@ class CallScreenState extends State<CallScreen> {
     _applySessionEvent(event.eventType);
   }
 
-  /// Deliver decoded peer PCM to the audio adapter (or the test seam) and
-  /// refresh the status line at most once per second — not once per 20 ms frame.
+  /// Deliver decoded peer PCM to the speaker (and the test seam) and refresh
+  /// the status line at most once per second — not once per 20 ms frame.
   void _acceptPeerAudio(List<int>? pcm) {
     if (pcm == null || pcm.isEmpty) return;
     widget.mediaOverrides?.audio?.call(pcm);
+    _audioAdapter.play(pcm);
     _audioFrames++;
     if (_audioFrames % 50 == 1 && mounted) setState(() {});
   }
@@ -309,6 +331,7 @@ class CallScreenState extends State<CallScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final captureError = _audioAdapter.captureError;
     final (lines, buttons) = switch (_phase) {
       CallScreenPhase.ringing => (
         (
@@ -390,10 +413,22 @@ class CallScreenState extends State<CallScreen> {
                 if (_phase == CallScreenPhase.inCall)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Mic ${_muted ? 'muted' : 'on'} · peer frames $_audioFrames',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Mic ${_muted ? 'muted' : 'on'} · peer frames $_audioFrames',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                        if (captureError != null)
+                          Text(
+                            captureError,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                      ],
                     ),
                   ),
               ],

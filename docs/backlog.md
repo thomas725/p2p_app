@@ -76,7 +76,7 @@ per-message E2E lane (US-042) is not it.
 - **Blocked on**: a decision on key management (identity-derived vs.
   passphrase) and whether to ship SQLCipher as a bundled dep.
 
-### Call media transport — **transports shipped, device adapters future**
+### Call media transport — **transport shipped; browser device adapter shipped**
 
 The transport half of US-044 shipped: G.711 μ-law voice frames over a dedicated
 `/p2p-chat/call-media/1.0.0` lane, with Rust owning the session, jitter buffer
@@ -84,11 +84,22 @@ and mute state in `src/call_media.rs`. Both frontends hand raw 16 kHz mono PCM
 to Rust and receive decoded PCM back. Full record:
 [`archive/2026-11-22_call_media_transport.md`](archive/2026-11-22_call_media_transport.md).
 
+The **Flutter web browser** now owns a real device adapter
+(`apps/flutter_app/lib/src/util/call_audio*.dart`, wired in `CallScreen`):
+`getUserMedia` + Web Audio capture resampled to 16 kHz mono i16 frames, and
+`AudioBufferSourceNode` playback of decoded peer PCM. It uses raw
+`dart:js_interop` with no new dependencies; native targets get a no-op stub.
+Microphone capture needs a secure context (HTTPS/localhost), so an HTTP LAN
+deployment gets playback only plus an actionable capture-error line. Rust still
+owns framing, jitter and mute.
+
 Still open (device adapters, not protocol work):
 
-- **Device-level audio capture/playback** — Flutter's `CallMediaOverrides.audio`
-  / `sendPcm` seams and the TUI's frame counter are where a real microphone and
-  speaker would attach. Neither frontend owns an audio device yet.
+- **TUI device audio** — the frame counter in the call overlay is still the
+  only signal; a `cpal` adapter would add Cargo deps and system audio libraries
+  to CI/Android builds.
+- **Flutter native device audio** — the no-op stub in `call_audio_platform.dart`
+  is where an Android `AudioRecord`/`AudioTrack` (or a plugin) would attach.
 - The `calls` Cargo feature is still **empty** — signaling and transport are
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
@@ -140,7 +151,7 @@ here so they are not mistaken for unfinished work.
 |---|---|
 | Group backfill only reaches members that were online | There is no external store-and-forward; a backfill answer is served by a history-holding member that is currently connected. See `archive/2026-09-02_backlog.md` §11.5. |
 | No message sync between a user's own devices | A user's devices are separate peers; syncing them needs one of the user's own devices online within the gap window. Out of scope by decision (`archive/2026-09-02_backlog.md` §11). |
-| Calls have no device audio adapter | The media transport ships (μ-law frames over the calls lane), but neither frontend captures from a microphone or plays to a speaker yet; see US-044 above. |
+| Calls have no device audio on TUI / native Flutter | The media transport ships (μ-law frames over the calls lane) and the Flutter web browser has a real mic/speaker adapter; the TUI and native Flutter targets still have no device audio (see US-044 above). |
 | The browser is a display client, never a node | The Rust core is not compiled to WASM. By decision — see [`web_frontend.md`](web_frontend.md). |
 | Native Flutter desktop builds deliver no notification sound/system alert | The primary desktop path is the browser frontend, which delivers both channels through the WebAudio/`Notification` adapters. Android uses the MethodChannel. The `flutter build linux` artifact is currently a display shell without a native notification plugin; TUI users get bell/OSC 777. |
 | DMs are readable by a store-and-forward holder | US-042 seals DM bodies per recipient; a holder sees only the envelope (see `e2e_encryption.md`). |

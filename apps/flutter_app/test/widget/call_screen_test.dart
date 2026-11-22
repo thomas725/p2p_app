@@ -15,8 +15,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/screens/call_screen.dart';
+import 'package:p2p_app_flutter/src/util/call_audio.dart';
 
 import '../helpers/fake_node_api.dart';
+
+/// Device adapter fake: records start/stop/play and exposes the microphone
+/// callback the screen hands it, so a test can push PCM through the real
+/// `sendPcm` path without touching a browser AudioContext.
+class FakeCallAudio implements CallAudioAdapter {
+  void Function(List<int> pcm)? _onPcm;
+  final played = <List<int>>[];
+  var starts = 0;
+  var stops = 0;
+  String? error;
+
+  @override
+  String? get captureError => error;
+
+  @override
+  Future<void> start({required void Function(List<int>) onPcm}) async {
+    starts++;
+    _onPcm = onPcm;
+  }
+
+  @override
+  void play(List<int> pcm) => played.add(pcm);
+
+  @override
+  Future<void> stop() async => stops++;
+
+  void capture(List<int> pcm) => _onPcm?.call(pcm);
+}
 
 SwarmEventJson callEvent(String type, {required String peerId, required String callId}) =>
     SwarmEventJson(
@@ -470,5 +499,95 @@ void main() {
     expect(sent, hasLength(1));
     expect(sent.single.$1, callId);
     expect(sent.single.$2, pcm);
+  });
+
+  // --- device microphone/speaker adapter ---
+
+  testWidgets('device adapter opens on accept, forwards mic frames, closes on hang-up',
+      (tester) async {
+    final audio = FakeCallAudio();
+    final sent = <List<int>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CallScreen(
+            peerId: peerId,
+            displayName: 'Alice',
+            callId: callId,
+            initialPhase: CallScreenPhase.ringing,
+            sendSignalOverride: (_, _, _) => null,
+            audioAdapter: audio,
+            mediaOverrides: CallMediaOverrides(
+              start: (_, _) => null,
+              stop: () => null,
+              sendPcm: (_, pcm) => sent.add(pcm),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('accept')));
+    await tester.pumpAndSettle();
+    expect(audio.starts, 1);
+
+    final pcm = List<int>.filled(320, 5);
+    audio.capture(pcm);
+    await tester.pumpAndSettle();
+    expect(sent, [pcm]);
+
+    await tester.tap(find.byKey(const Key('hang-up')));
+    await tester.pumpAndSettle();
+    expect(audio.stops, 1);
+  });
+
+  testWidgets('decoded peer PCM is played through the device adapter',
+      (tester) async {
+    final audio = FakeCallAudio();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CallScreen(
+            peerId: peerId,
+            displayName: 'Alice',
+            callId: callId,
+            initialPhase: CallScreenPhase.inCall,
+            sendSignalOverride: (_, _, _) => null,
+            audioAdapter: audio,
+            mediaOverrides: CallMediaOverrides(start: (_, _) => null, stop: () => null),
+          ),
+        ),
+      ),
+    );
+    final state = tester.state<CallScreenState>(find.byType(CallScreen));
+
+    state.deliverEvent(mediaEvent(peerId, callId, [1, 2, 3]));
+    await tester.pump();
+    expect(audio.played, hasLength(1));
+    expect(audio.played.single, [1, 2, 3]);
+  });
+
+  testWidgets('a capture failure reason is shown on the call screen', (tester) async {
+    const reason = 'Mic unavailable (allow access, use HTTPS)';
+    final audio = FakeCallAudio()..error = reason;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CallScreen(
+            peerId: peerId,
+            displayName: 'Alice',
+            callId: callId,
+            initialPhase: CallScreenPhase.inCall,
+            sendSignalOverride: (_, _, _) => null,
+            audioAdapter: audio,
+            mediaOverrides: CallMediaOverrides(start: (_, _) => null, stop: () => null),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Mic on'), findsOneWidget);
+    expect(find.text(reason), findsOneWidget);
   });
 }
