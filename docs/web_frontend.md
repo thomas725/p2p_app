@@ -121,9 +121,10 @@ Implemented and verified end to end:
   `methods::dispatch(name, Null)` routing test asserting `invalid params:`.
 - Feature surface equals the union of the TUI and Flutter feature sets (group leave, per-peer
   local nickname, calls, device binding, files/attachments, backfill, stats), plus the Rust
-  share-store facade (`createShare`, `listShares`, grants, manifests, offers, publish). Web
-  calls cannot pass a server-local path: `createShare`/`bindShare`/`snapshotShare` reject
-  such parameters before touching the DB.
+  share-store facade (`createShare`, `listShares`, grants, manifests, offers, publish),
+  exposed through the same `NodeApi` on both Dart transports via
+  `lib/src/data/shares_json.dart`. Web calls cannot pass a server-local path:
+  `createShare`/`bindShare`/`snapshotShare` reject such parameters before touching the DB.
 
 Verified by the in-module tests in `src/web/mod.rs`: frame protocol, every routed
 method, the HTTP routes, HTTP Basic (denied / wrong pair / accepted + `Set-Cookie`),

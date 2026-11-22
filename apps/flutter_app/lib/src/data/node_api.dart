@@ -15,7 +15,15 @@ library;
 
 import 'dart:typed_data';
 
+// PlatformInt64Util is frb's int<->i64 adapter; same internal import the
+// generated bindings and the other transports use.
+// ignore_for_file: invalid_use_of_internal_member
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64;
+
 import 'package:p2p_app_flutter/src/data/frb_node_api.dart';
+import 'package:p2p_app_flutter/src/rust/api.dart'
+    show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -23,6 +31,7 @@ import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 /// The active transport. Defaults to the in-process FFI bridge; `main()`
@@ -303,6 +312,64 @@ abstract class NodeApi {
 
   /// Mute or unmute outgoing audio; inbound audio keeps playing.
   Future<void> setCallMediaMute({required bool muted});
+
+  // --- Versioned file shares / folder sync ---
+
+  Future<List<MobileShare>> listShares();
+
+  Future<MobileShare?> getShare(String shareId);
+
+  Future<MobileShare> createShare({required CreateShareParams params});
+
+  Future<void> bindShare({required BindShareParams params});
+
+  Future<void> deleteShare(String shareId);
+
+  Future<List<MobileShareGrant>> listShareGrants(String shareId);
+
+  Future<void> setShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  });
+
+  Future<void> removeShareGrant({
+    required String shareId,
+    required String userId,
+  });
+
+  Future<ShareManifest?> loadShareManifest(String shareId);
+
+  Future<void> saveShareManifest({
+    required String shareId,
+    required ShareManifest manifest,
+  });
+
+  Future<MobileShare> acceptShareOffer({required ShareOffer offer});
+
+  /// Native-only: the web transport rejects a server-local [root].
+  Future<ShareManifest> snapshotShare({
+    required String shareId,
+    required String root,
+  });
+
+  Future<void> requestPeerShares(String peerId);
+
+  Future<void> requestShareManifest({
+    required String peerId,
+    required String shareId,
+  });
+
+  Future<void> sendShareOffer({
+    required List<String> peerIds,
+    required ShareOffer offer,
+  });
+
+  Future<void> publishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required ShareManifest manifest,
+  });
 
   // --- Pure UI helpers (executed in Rust on every transport) ---
 

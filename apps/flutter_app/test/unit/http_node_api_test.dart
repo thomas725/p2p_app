@@ -8,14 +8,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+// ignore_for_file: invalid_use_of_internal_member
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64Util;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/http_node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
+import 'package:p2p_app_flutter/src/rust/api.dart'
+    show CreateShareParams, MobileShare;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/shares.dart'
+    show ShareEntry, ShareKind, ShareOffer;
 
 /// In-memory stand-in for `WsRemoteTransport`: records outbound frames and
 /// uploads, and lets tests inject response/event frames.
@@ -763,6 +770,128 @@ void main() {
       expect(connects, 1);
       expect(fake.sentFrames, hasLength(2));
       expect(fake.frame(1)['method'], 'stopNode');
+    });
+  });
+
+  group('HttpNodeApi share facade', () {
+    const shareJson = {
+      'shareId': 'share-1',
+      'ownerUserId': 'user-1',
+      'name': 'Photos',
+      'kind': 'private',
+      'publicWrite': false,
+      'localRoot': null,
+      'revision': 4,
+    };
+    const manifestJson = {
+      'shareId': 'share-1',
+      'name': 'Photos',
+      'revision': 4,
+      'entries': [
+        {'path': 'a.txt', 'fileId': 'sha-a', 'size': 3, 'mime': 'text/plain'},
+      ],
+    };
+
+    test('list/get/create parse the Rust DTOs and forward camelCase params',
+        () async {
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        final request = fake.frame(fake.sentFrames.length - 1);
+        switch (request['method']) {
+          case 'listShares':
+          case 'createShare':
+            fake.respond(request, ok: [shareJson]);
+          case 'getShare':
+            fake.respond(request, ok: shareJson);
+          default:
+            fail('unexpected method ${request['method']}');
+        }
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+
+      final listed = await api.listShares();
+      expect(listed.single, isA<MobileShare>());
+      expect(listed.single.shareId, 'share-1');
+      expect(listed.single.revision.toInt(), 4);
+
+      final one = await api.getShare('share-1');
+      expect(one?.name, 'Photos');
+      expect(fake.frame(1)['params'], {'shareId': 'share-1'});
+
+      // The server answers createShare with one object, not a list.
+      fake.onSend = (frame) {
+        final request = fake.frame(fake.sentFrames.length - 1);
+        fake.respond(request, ok: shareJson);
+      };
+      final created = await api.createShare(
+        params: CreateShareParams(
+          name: 'Photos',
+          kind: 'private',
+          publicWrite: false,
+        ),
+      );
+      expect(created.shareId, 'share-1');
+      expect(fake.frame(2)['params'], {
+        'name': 'Photos',
+        'kind': 'private',
+        'publicWrite': false,
+      });
+    });
+
+    test('manifest/offer/publish shapes round-trip through JSON', () async {
+      final fake = FakeRemoteTransport();
+      fake.onSend = (frame) {
+        final request = fake.frame(fake.sentFrames.length - 1);
+        switch (request['method']) {
+          case 'loadShareManifest':
+          case 'snapshotShare':
+            fake.respond(request, ok: manifestJson);
+          default:
+            fake.respond(request, ok: null);
+        }
+      };
+      final api = HttpNodeApi(connect: () async => fake);
+
+      final manifest = await api.loadShareManifest('share-1');
+      expect(manifest?.revision, BigInt.from(4));
+      expect(manifest?.entries.single.path, 'a.txt');
+      expect(manifest?.entries.single.size, BigInt.from(3));
+
+      final offer = ShareOffer(
+        shareId: 'share-1',
+        name: 'Photos',
+        kind: ShareKind.public,
+        revision: BigInt.from(4),
+        publicWrite: true,
+      );
+      await api.sendShareOffer(peerIds: ['peer-1'], offer: offer);
+      final offerParams = fake.frame(1)['params']! as Map<String, dynamic>;
+      expect(offerParams['peerIds'], ['peer-1']);
+      expect((offerParams['offer'] as Map)['kind'], 'public');
+
+      await api.publishShareSnapshot(
+        peerId: 'peer-1',
+        baseRevision: PlatformInt64Util.from(4),
+        manifest: manifest!,
+      );
+      final publishParams = fake.frame(2)['params']! as Map<String, dynamic>;
+      expect(publishParams['baseRevision'], 4);
+      expect(
+        (publishParams['manifest'] as Map)['entries'],
+        manifestJson['entries'],
+      );
+      expect(publishParams['manifest'], manifestJson);
+
+      // An unused ShareEntry import is a compile-time guard here.
+      expect(
+        ShareEntry(
+          path: 'a.txt',
+          fileId: 'sha-a',
+          size: BigInt.from(3),
+          mime: 'text/plain',
+        ),
+        manifest.entries.single,
+      );
     });
   });
 }

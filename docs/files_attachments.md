@@ -120,7 +120,9 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `requestShareManifest`, `sendShareOffer` and `publishShareSnapshot`.
   `src/web/methods.rs` mirrors all of them; `createShare`/`bindShare`/
   `snapshotShare` reject client-supplied server paths on the web transport.
-  The generated Dart bindings live in `lib/src/rust/shares.dart`.
+  The generated Dart bindings live in `lib/src/rust/shares.dart`; the JSON↔DTO
+  conversion for the browser lives in `lib/src/data/shares_json.dart`, and both
+  transports expose the same methods through `NodeApi`.
 - **Frontend surface (deferred)**: share events are serialized in
   `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
   for a later UI slice; the TUI currently logs them. No share screens exist in

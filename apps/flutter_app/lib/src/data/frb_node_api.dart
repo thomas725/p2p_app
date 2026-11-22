@@ -7,7 +7,7 @@ import 'dart:typed_data';
 // ignore_for_file: invalid_use_of_internal_member
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
-    show PlatformInt64Util;
+    show PlatformInt64, PlatformInt64Util;
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart' as bridge;
@@ -21,6 +21,7 @@ import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/shares.dart' as shares;
 
 /// In-process [NodeApi]: delegates to the generated flutter_rust_bridge
 /// bindings (the historical mobile behavior). This is the default transport
@@ -392,6 +393,91 @@ class FrbNodeApi implements NodeApi {
   @override
   Future<void> setCallMediaMute({required bool muted}) =>
       bridge.setCallMediaMute(muted: muted);
+
+  // ── Versioned file shares ────────────────────────────────────────────────
+
+  @override
+  Future<List<bridge.MobileShare>> listShares() => bridge.listShares();
+
+  @override
+  Future<bridge.MobileShare?> getShare(String shareId) =>
+      bridge.getShare(shareId: shareId);
+
+  @override
+  Future<bridge.MobileShare> createShare({required bridge.CreateShareParams params}) =>
+      bridge.createShare(params: params);
+
+  @override
+  Future<void> bindShare({required bridge.BindShareParams params}) =>
+      bridge.bindShare(params: params);
+
+  @override
+  Future<void> deleteShare(String shareId) =>
+      bridge.deleteShare(shareId: shareId);
+
+  @override
+  Future<List<bridge.MobileShareGrant>> listShareGrants(String shareId) =>
+      bridge.listShareGrants(shareId: shareId);
+
+  @override
+  Future<void> setShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  }) => bridge.setShareGrant(shareId: shareId, userId: userId, mode: mode);
+
+  @override
+  Future<void> removeShareGrant({
+    required String shareId,
+    required String userId,
+  }) => bridge.removeShareGrant(shareId: shareId, userId: userId);
+
+  @override
+  Future<shares.ShareManifest?> loadShareManifest(String shareId) =>
+      bridge.loadShareManifest(shareId: shareId);
+
+  @override
+  Future<void> saveShareManifest({
+    required String shareId,
+    required shares.ShareManifest manifest,
+  }) => bridge.saveShareManifest(shareId: shareId, manifest: manifest);
+
+  @override
+  Future<bridge.MobileShare> acceptShareOffer({required shares.ShareOffer offer}) =>
+      bridge.acceptShareOffer(offer: offer);
+
+  @override
+  Future<shares.ShareManifest> snapshotShare({
+    required String shareId,
+    required String root,
+  }) => bridge.snapshotShare(shareId: shareId, root: root);
+
+  @override
+  Future<void> requestPeerShares(String peerId) =>
+      bridge.requestPeerShares(peerId: peerId);
+
+  @override
+  Future<void> requestShareManifest({
+    required String peerId,
+    required String shareId,
+  }) => bridge.requestShareManifest(peerId: peerId, shareId: shareId);
+
+  @override
+  Future<void> sendShareOffer({
+    required List<String> peerIds,
+    required shares.ShareOffer offer,
+  }) => bridge.sendShareOffer(peerIds: peerIds, offer: offer);
+
+  @override
+  Future<void> publishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required shares.ShareManifest manifest,
+  }) => bridge.publishShareSnapshot(
+    peerId: peerId,
+    baseRevision: baseRevision,
+    manifest: manifest,
+  );
 
   // ── Pure UI helpers (Rust is the single source) ───────────────────────────
 

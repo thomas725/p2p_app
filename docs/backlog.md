@@ -145,8 +145,9 @@ Shipped in core:
 Shipped after the core:
 
 - FRB/web facade parity for create/list/bind/delete/snapshot/grants, manifest
-  load/save, offer acceptance and the four share commands. Web clients cannot
-  pass a server-local path; only native installs can bind or snapshot a folder;
+  load/save, offer acceptance and the four share commands, mirrored in the Dart
+  `NodeApi`/`FrbNodeApi`/`HttpNodeApi` transports. Web clients cannot pass a
+  server-local path; only native installs can bind or snapshot a folder;
 - wire-level coverage for offer → list → manifest → stale rejection → retry
   with the refreshed revision, plus unit coverage for grant revocation,
   superseded/deferred applies and disconnect cleanup.

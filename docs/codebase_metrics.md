@@ -9,18 +9,18 @@
 | Total Rust Chars      | 1,485,131 |
 | Avg Lines/Rust File   |       577 |
 | Avg Chars/Rust File   |    21,840 |
-| Total Dart Files      |        45 |
-| Total Dart Lines      |    20,626 |
-| Total Dart Chars      |   661,425 |
-| Avg Lines/Dart File   |       458 |
-| Avg Chars/Dart File   |    14,698 |
+| Total Dart Files      |        46 |
+| Total Dart Lines      |    21,013 |
+| Total Dart Chars      |   673,121 |
+| Avg Lines/Dart File   |       456 |
+| Avg Chars/Dart File   |    14,633 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
 | Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 117 files, 60,500 lines, 2,168,655 characters
+**Grand Total:** 118 files, 60,887 lines, 2,180,351 characters
 
 ## Rust Source Files
 
@@ -177,10 +177,11 @@
 |:-------------|:---------------------------------|------:|------:|------:|---------:|--------:|---------------------------------:|
 | lib          | main.dart                        |     5 |  3163 |   108 |        - |       - | Flutter app entry point          |
 | lib          | chat_message_ext.dart            |     3 |  2342 |    60 |        - |       - | Hand-written message helpers     |
-| lib          | frb_node_api.dart                |     5 | 12862 |   433 |        - |       - | In-process FRB transport         |
-| lib          | http_node_api.dart               |     7 | 31834 |   961 |        - |       - | WebSocket/HTTP transport         |
-| lib          | node_api.dart                    |     2 | 11593 |   330 |        - |       - | Transport-agnostic node API      |
+| lib          | frb_node_api.dart                |     5 | 15495 |   519 |        - |       - | In-process FRB transport         |
+| lib          | http_node_api.dart               |     7 | 35898 |  1105 |        - |       - | WebSocket/HTTP transport         |
+| lib          | node_api.dart                    |     2 | 13510 |   397 |        - |       - | Transport-agnostic node API      |
 | lib          | node_transport.dart              |     4 |  3396 |   106 |        - |       - | Duplex transport abstraction     |
+| lib          | shares_json.dart                 |     5 |  3082 |    90 |        - |       - | Dart source file                 |
 | lib/src/rust | api.dart                         |     5 | 34188 |   979 |        - |       - | FRB API bindings (generated)     |
 | lib/src/rust | frb_generated.dart               |     6 | 195615 |  6241 |        - |       - | flutter_rust_bridge codegen      |
 | lib/src/rust | frb_generated.io.dart            |     3 | 26933 |  1121 |        - |       - | FRB IO bindings (generated)      |
@@ -221,19 +222,19 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 45 files, 20,626 lines, 661,425 characters
+**Total:** 46 files, 21,013 lines, 673,121 characters
 
 ## Dart Test Files
 
 | Folder  | File                             | Lines | Chars | Depth | Description                           |
 |:--------|:---------------------------------|------:|------:|------:|--------------------------------------:|
-| helpers | fake_node_api.dart               |   694 | 21252 |     4 | In-memory node fake                   |
+| helpers | fake_node_api.dart               |   782 | 23711 |     4 | In-memory node fake                   |
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
 | unit    | call_audio_android_test.dart     |   167 |  5393 |     5 | Dart test file                        |
 | unit    | call_audio_test.dart             |    93 |  3466 |     5 | Dart test file                        |
-| unit    | http_node_api_test.dart          |   768 | 25163 |    10 | Web transport wire-contract tests     |
+| unit    | http_node_api_test.dart          |   897 | 29428 |    10 | Web transport wire-contract tests     |
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
 | widget  | call_screen_test.dart            |   593 | 18895 |    12 | Call screen widget tests              |
@@ -246,7 +247,7 @@
 | widget  | settings_test.dart               |   285 |  9080 |     6 | Settings widget tests                 |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 18 test files, 5,715 lines, 180,299 characters
+**Total:** 18 test files, 5,932 lines, 187,023 characters
 
 ## Kotlin Source Files
 

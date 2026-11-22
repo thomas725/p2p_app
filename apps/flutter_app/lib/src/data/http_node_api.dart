@@ -7,10 +7,13 @@ import 'dart:typed_data';
 // ignore_for_file: invalid_use_of_internal_member
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
-    show PlatformInt64Util;
+    show PlatformInt64, PlatformInt64Util;
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
+import 'package:p2p_app_flutter/src/data/shares_json.dart';
+import 'package:p2p_app_flutter/src/rust/api.dart'
+    show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -19,6 +22,7 @@ import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
 
 /// [NodeApi] over a running `p2p_chat_server`: every call is one JSON
 /// request frame on the WebSocket (`{id, method, params}` answered by
@@ -921,6 +925,146 @@ class HttpNodeApi implements NodeApi {
   @override
   Future<void> setCallMediaMute({required bool muted}) =>
       _call('setCallMediaMute', {'muted': muted});
+
+  // ── Versioned file shares ────────────────────────────────────────────────
+
+  @override
+  Future<List<MobileShare>> listShares() async {
+    final raw = await _call('listShares') as List<dynamic>;
+    return raw
+        .map((row) => mobileShareFromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<MobileShare?> getShare(String shareId) async {
+    final raw = await _call('getShare', {'shareId': shareId});
+    return raw == null
+        ? null
+        : mobileShareFromJson(raw as Map<String, dynamic>);
+  }
+
+  @override
+  Future<MobileShare> createShare({required CreateShareParams params}) async =>
+      mobileShareFromJson(
+        (await _call('createShare', createShareParamsToJson(params))
+            as Map<String, dynamic>),
+      );
+
+  @override
+  Future<void> bindShare({required BindShareParams params}) async {
+    await _call('bindShare', bindShareParamsToJson(params.shareId, params.localRoot));
+  }
+
+  @override
+  Future<void> deleteShare(String shareId) async {
+    await _call('deleteShare', {'shareId': shareId});
+  }
+
+  @override
+  Future<List<MobileShareGrant>> listShareGrants(String shareId) async {
+    final raw = await _call('listShareGrants', {'shareId': shareId}) as List<dynamic>;
+    return raw
+        .map((row) => mobileShareGrantFromJson(row as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<void> setShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  }) async {
+    await _call('setShareGrant', {
+      'shareId': shareId,
+      'userId': userId,
+      'mode': mode,
+    });
+  }
+
+  @override
+  Future<void> removeShareGrant({
+    required String shareId,
+    required String userId,
+  }) async {
+    await _call('removeShareGrant', {'shareId': shareId, 'userId': userId});
+  }
+
+  @override
+  Future<ShareManifest?> loadShareManifest(String shareId) async {
+    final raw = await _call('loadShareManifest', {'shareId': shareId});
+    return raw == null
+        ? null
+        : shareManifestFromJson(raw as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> saveShareManifest({
+    required String shareId,
+    required ShareManifest manifest,
+  }) async {
+    await _call('saveShareManifest', {
+      'shareId': shareId,
+      'manifest': shareManifestToJson(manifest),
+    });
+  }
+
+  @override
+  Future<MobileShare> acceptShareOffer({required ShareOffer offer}) async =>
+      mobileShareFromJson(
+        (await _call('acceptShareOffer', {'offer': shareOfferToJson(offer)})
+            as Map<String, dynamic>),
+      );
+
+  @override
+  Future<ShareManifest> snapshotShare({
+    required String shareId,
+    required String root,
+  }) async =>
+      shareManifestFromJson(
+        (await _call('snapshotShare', {'shareId': shareId, 'root': root})
+            as Map<String, dynamic>),
+      );
+
+  @override
+  Future<void> requestPeerShares(String peerId) async {
+    await _call('requestPeerShares', {'peerId': peerId});
+  }
+
+  @override
+  Future<void> requestShareManifest({
+    required String peerId,
+    required String shareId,
+  }) async {
+    await _call('requestShareManifest', {
+      'peerId': peerId,
+      'shareId': shareId,
+    });
+  }
+
+  @override
+  Future<void> sendShareOffer({
+    required List<String> peerIds,
+    required ShareOffer offer,
+  }) async {
+    await _call('sendShareOffer', {
+      'peerIds': peerIds,
+      'offer': shareOfferToJson(offer),
+    });
+  }
+
+  @override
+  Future<void> publishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required ShareManifest manifest,
+  }) async {
+    await _call('publishShareSnapshot', {
+      'peerId': peerId,
+      'baseRevision': baseRevision.toInt(),
+      'manifest': shareManifestToJson(manifest),
+    });
+  }
 
   // ── Pure UI helpers (Rust is the single source) ───────────────────────────
 

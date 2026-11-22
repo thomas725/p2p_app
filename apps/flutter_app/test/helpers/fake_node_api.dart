@@ -5,7 +5,13 @@
 
 import 'dart:typed_data';
 
+// ignore_for_file: invalid_use_of_internal_member
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
+    show PlatformInt64;
+
 import 'package:p2p_app_flutter/src/data/node_api.dart';
+import 'package:p2p_app_flutter/src/rust/api.dart'
+    show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -13,6 +19,7 @@ import 'package:p2p_app_flutter/src/rust/notifications.dart';
 import 'package:p2p_app_flutter/src/rust/reactions.dart';
 import 'package:p2p_app_flutter/src/rust/network_config.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
+import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/rust/theme.dart';
 
 class FakeNodeApi implements NodeApi {
@@ -691,4 +698,85 @@ class FakeNodeApi implements NodeApi {
   Future<void> setCallMediaMute({required bool muted}) async {
     _record('setCallMediaMute', muted);
   }
+
+  // --- Versioned file shares (recorded; no FFI) ---
+
+  @override
+  Future<List<MobileShare>> listShares() async {
+    _record('listShares');
+    return const [];
+  }
+
+  @override
+  Future<MobileShare?> getShare(String shareId) => throw UnimplementedError();
+
+  @override
+  Future<MobileShare> createShare({required CreateShareParams params}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> bindShare({required BindShareParams params}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteShare(String shareId) => throw UnimplementedError();
+
+  @override
+  Future<List<MobileShareGrant>> listShareGrants(String shareId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> setShareGrant({
+    required String shareId,
+    required String userId,
+    required String mode,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> removeShareGrant({
+    required String shareId,
+    required String userId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ShareManifest?> loadShareManifest(String shareId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> saveShareManifest({
+    required String shareId,
+    required ShareManifest manifest,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<MobileShare> acceptShareOffer({required ShareOffer offer}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ShareManifest> snapshotShare({
+    required String shareId,
+    required String root,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> requestPeerShares(String peerId) => throw UnimplementedError();
+
+  @override
+  Future<void> requestShareManifest({
+    required String peerId,
+    required String shareId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> sendShareOffer({
+    required List<String> peerIds,
+    required ShareOffer offer,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> publishShareSnapshot({
+    required String peerId,
+    required PlatformInt64 baseRevision,
+    required ShareManifest manifest,
+  }) => throw UnimplementedError();
 }
