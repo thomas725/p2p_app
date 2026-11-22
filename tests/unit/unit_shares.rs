@@ -178,6 +178,22 @@ fn manifest_json_roundtrip() {
 }
 
 #[test]
+fn wire_requests_and_responses_decode_with_defaults() {
+    let request: crate::behavior::ShareRequest =
+        serde_json::from_str(r#"{"kind":"list"}"#).expect("decode request");
+    assert_eq!(request.kind, "list");
+    assert_eq!(request.base_revision, 0);
+    assert!(request.manifest.is_none());
+    assert!(request.offer.is_none());
+
+    let response: crate::behavior::ShareResponse =
+        serde_json::from_str(r#"{"ok":true,"kind":"list"}"#).expect("decode response");
+    assert!(response.ok);
+    assert!(response.offers.is_empty());
+    assert!(response.manifest.is_none());
+}
+
+#[test]
 #[serial(db)]
 fn create_list_and_delete_share() {
     with_test_db(|| {
@@ -186,7 +202,12 @@ fn create_list_and_delete_share() {
         assert_eq!(share.name, "Photos");
         assert_eq!(share.kind, ShareKind::Private);
         assert_eq!(share.revision, 0);
-        assert!(list_shares().expect("list").iter().any(|s| s.share_id == share.share_id));
+        assert!(
+            list_shares()
+                .expect("list")
+                .iter()
+                .any(|s| s.share_id == share.share_id)
+        );
 
         let root = "/tmp/not-used";
         set_local_root(&share.share_id, Some(root)).expect("bind root");
@@ -208,8 +229,8 @@ fn create_list_and_delete_share() {
 #[serial(db)]
 fn grants_are_upserted_and_listed() {
     with_test_db(|| {
-        let share = create_share("Docs", "owner", ShareKind::Private, false, None)
-            .expect("create share");
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
         set_grant(&share.share_id, "alice", ShareMode::ReadOnly).expect("read grant");
         set_grant(&share.share_id, "alice", ShareMode::ReadWrite).expect("write grant");
         set_grant(&share.share_id, "bob", ShareMode::ReadOnly).expect("bob grant");
@@ -287,8 +308,8 @@ fn public_share_is_readable_by_default_and_write_is_opt_in() {
 #[serial(db)]
 fn save_manifest_persists_entries_and_revision() {
     with_test_db(|| {
-        let share = create_share("Docs", "owner", ShareKind::Private, false, None)
-            .expect("create share");
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
         let id = crate::files::hash_bytes(b"abc");
         let manifest = ShareManifest {
             share_id: share.share_id.clone(),
@@ -434,7 +455,10 @@ fn accept_submitted_manifest_enforces_permission_and_revision() {
             .expect("first submit");
         assert_eq!(stats.written, 0);
         assert_eq!(
-            get_share(&share.share_id).expect("get").expect("present").revision,
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
             1
         );
 
@@ -443,8 +467,67 @@ fn accept_submitted_manifest_enforces_permission_and_revision() {
         assert!(stale.is_err());
 
         // An unbound peer cannot write even with a stale revision.
-        assert!(
-            accept_submitted_manifest(&share.share_id, "stranger", 1, &first).is_err()
+        assert!(accept_submitted_manifest(&share.share_id, "stranger", 1, &first).is_err());
+    });
+}
+
+#[test]
+#[serial(db)]
+fn accept_offer_keeps_the_remote_id_and_is_idempotent() {
+    with_test_db(|| {
+        let offer = ShareOffer {
+            share_id: "remote-share-42".to_string(),
+            name: "Remote".to_string(),
+            kind: ShareKind::Public,
+            revision: 3,
+            public_write: false,
+            owner_user_id: Some("owner-user".to_string()),
+        };
+        let share = accept_offer(&offer, None).expect("accept");
+        assert_eq!(share.share_id, "remote-share-42");
+        assert_eq!(share.owner_user_id, "owner-user");
+        assert_eq!(share.kind, ShareKind::Public);
+
+        let same = accept_offer(&offer, None).expect("repeat offer");
+        assert_eq!(same.share_id, share.share_id);
+        assert_eq!(list_shares().expect("list").len(), 1);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn queue_apply_waits_for_blobs_then_installs_the_manifest() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        let share = create_share(
+            "Remote",
+            "owner",
+            ShareKind::Public,
+            false,
+            Some(dir.path().to_str().expect("root")),
+        )
+        .expect("create share");
+        let id = crate::files::hash_bytes(b"payload");
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("file.txt", id.clone())],
+        };
+        save_manifest(&share.share_id, &manifest).expect("save manifest");
+
+        let missing = queue_apply("serving-peer".to_string(), None, manifest);
+        assert_eq!(missing, vec![id.clone()]);
+        assert!(!dir.path().join("file.txt").exists());
+
+        crate::files::store_outgoing_bytes("file.txt", b"payload").expect("store blob");
+        let applied = note_blob_available(&id);
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].share_id, share.share_id);
+        assert_eq!(applied[0].stats.written, 1);
+        assert_eq!(
+            std::fs::read(dir.path().join("file.txt")).expect("installed"),
+            b"payload"
         );
     });
 }
@@ -453,19 +536,20 @@ fn accept_submitted_manifest_enforces_permission_and_revision() {
 #[serial(db)]
 fn public_write_accepts_unbound_peer_when_enabled() {
     with_test_db(|| {
-        let share = create_share("Open", "owner", ShareKind::Public, true, None)
-            .expect("create share");
+        let share =
+            create_share("Open", "owner", ShareKind::Public, true, None).expect("create share");
         let manifest = ShareManifest {
             share_id: share.share_id.clone(),
             name: share.name.clone(),
             revision: 0,
             entries: vec![],
         };
-        assert!(
-            accept_submitted_manifest(&share.share_id, "any-peer", 0, &manifest).is_ok()
-        );
+        assert!(accept_submitted_manifest(&share.share_id, "any-peer", 0, &manifest).is_ok());
         assert_eq!(
-            get_share(&share.share_id).expect("get").expect("present").revision,
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
             1
         );
     });

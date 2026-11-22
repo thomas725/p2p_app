@@ -200,6 +200,7 @@ def get_file_purpose(filepath: str) -> str:
         'calls.rs': 'Call session state machine (signaling)',
         'contacts.rs': 'Canonical contacts-roster model',
         'files.rs': 'Content-addressed attachment store',
+        'shares.rs': 'File shares & folder sync (ACLs, manifests, apply)',
         'identity.rs': 'Users, account keys & device bindings',
         'p2p_chat_server.rs': 'Headless node + web server entry point',
     }
@@ -233,6 +234,7 @@ def get_test_file_purpose(filepath: str) -> str:
         'unit_calls.rs': 'calls module tests',
         'unit_contacts.rs': 'contacts module tests',
         'unit_files.rs': 'files module tests',
+        'unit_shares.rs': 'shares module tests',
         'unit_identity.rs': 'identity module tests',
         'queryable_tests.rs': 'Diesel queryable model tests',
         'insertable_tests.rs': 'Diesel insertable model tests',

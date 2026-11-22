@@ -365,6 +365,16 @@ async fn handle_behaviour_event(
             }
             handle_file_transfer(message, peer, event_tx, swarm).await;
         }
+        Libp2pSwarmEvent::Behaviour(AppEv::Shares(libp2p::request_response::Event::Message {
+            peer,
+            message,
+            ..
+        })) => {
+            if drop_blocked_lane("file share", &peer) {
+                return;
+            }
+            handle_share_lane(message, peer, event_tx, swarm).await;
+        }
         other => handle_discovery_event(other, event_tx, swarm).await,
     }
 }
@@ -662,6 +672,7 @@ async fn handle_connection_closed(
         let peer_id_str = peer_id.to_string();
         crate::net_diag::clear_peer_quality(&peer_id_str);
         abandon_transfers_from(&peer_id_str);
+        crate::shares::abandon_pending_from(&peer_id_str);
     }
     #[cfg(feature = "kad")]
     refresh_dht_routing(swarm);
@@ -1772,6 +1783,60 @@ fn handle_command(
         SwarmCommand::UnsubscribeGroup { group_id } => unsubscribe_from_group(&group_id, swarm),
         SwarmCommand::Dial { address } => dial_peer(&address, swarm),
         SwarmCommand::DisconnectPeer { peer_id } => disconnect_peer(&peer_id, swarm),
+        cmd @ (SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. }) => handle_share_command(cmd, swarm),
+    }
+}
+
+/// Dispatch the share-lane subset of [`SwarmCommand`]. Split out of the main
+/// command handler so both stay inside the project's per-function lint budget.
+fn handle_share_command(cmd: SwarmCommand, swarm: &mut Swarm<AppBehaviour>) {
+    match cmd {
+        SwarmCommand::ListShares { peer_id } => send_share_request(
+            &peer_id,
+            crate::behavior::ShareRequest {
+                kind: "list".to_string(),
+                ..Default::default()
+            },
+            swarm,
+        ),
+        SwarmCommand::RequestShareManifest { peer_id, share_id } => send_share_request(
+            &peer_id,
+            crate::behavior::ShareRequest {
+                kind: "manifest".to_string(),
+                share_id,
+                ..Default::default()
+            },
+            swarm,
+        ),
+        SwarmCommand::SendShareOffer { peer_ids, offer } => {
+            let request = crate::behavior::ShareRequest {
+                kind: "offer".to_string(),
+                offer: Some(*offer),
+                ..Default::default()
+            };
+            for peer_id in peer_ids {
+                send_share_request(&peer_id, request.clone(), swarm);
+            }
+        }
+        SwarmCommand::PublishShareSnapshot {
+            peer_id,
+            base_revision,
+            manifest,
+        } => send_share_request(
+            &peer_id,
+            crate::behavior::ShareRequest {
+                kind: "publish".to_string(),
+                share_id: manifest.share_id.clone(),
+                base_revision,
+                manifest: Some(*manifest),
+                offer: None,
+            },
+            swarm,
+        ),
+        other => p2plog_error(format!("unexpected non-share command: {other:?}")),
     }
 }
 
@@ -2082,6 +2147,290 @@ fn send_reaction(
             .reactions
             .send_request(&peer, signal.clone());
     }
+}
+
+/// Dispatch one share-lane message. Requests are ACL-checked; responses feed
+/// offers/manifests back into the canonical share store and the file lane.
+async fn handle_share_lane(
+    message: libp2p::request_response::Message<
+        crate::behavior::ShareRequest,
+        crate::behavior::ShareResponse,
+    >,
+    peer: libp2p::PeerId,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    use libp2p::request_response::Message as RrMessage;
+    let peer_id_str = peer.to_string();
+    match message {
+        RrMessage::Request {
+            request, channel, ..
+        } => {
+            let response = handle_share_request(&request, &peer_id_str, event_tx).await;
+            let _ = swarm
+                .behaviour_mut()
+                .shares
+                .send_response(channel, response);
+        }
+        RrMessage::Response { response, .. } => {
+            handle_share_response(&response, &peer_id_str, event_tx, swarm).await;
+        }
+    }
+}
+
+/// Build a rejected share response carrying a human-readable reason.
+fn share_error(
+    base: crate::behavior::ShareResponse,
+    reason: &str,
+) -> crate::behavior::ShareResponse {
+    crate::behavior::ShareResponse {
+        ok: false,
+        reason: Some(reason.to_string()),
+        ..base
+    }
+}
+
+/// Answer an inbound share request. Every ACL decision uses the connection's
+/// peer id, so a claimed user id in the payload has no effect.
+async fn handle_share_request(
+    request: &crate::behavior::ShareRequest,
+    peer_id: &str,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+) -> crate::behavior::ShareResponse {
+    use crate::behavior::ShareResponse;
+    let base = ShareResponse {
+        kind: request.kind.clone(),
+        share_id: request.share_id.clone(),
+        ..Default::default()
+    };
+    match request.kind.as_str() {
+        "offer" => {
+            let Some(offer) = request.offer.clone() else {
+                return share_error(base, "missing share offer");
+            };
+            if offer.share_id.is_empty() || crate::shares::validate_share_name(&offer.name).is_err()
+            {
+                return share_error(base, "invalid share offer");
+            }
+            let _ = event_tx
+                .send(SwarmEvent::ShareOffered {
+                    peer_id: peer_id.to_string(),
+                    offer,
+                })
+                .await;
+            ShareResponse { ok: true, ..base }
+        }
+        "list" => {
+            let offers = match crate::shares::list_shares() {
+                Ok(shares) => shares
+                    .into_iter()
+                    .filter(|share| crate::shares::can_read(&share.share_id, peer_id))
+                    .filter_map(|share| {
+                        crate::shares::offer_for_share(&share.share_id)
+                            .ok()
+                            .flatten()
+                    })
+                    .collect(),
+                Err(error) => {
+                    p2plog_error(format!("failed to list shares: {error}"));
+                    return share_error(base, "failed to list shares");
+                }
+            };
+            ShareResponse {
+                ok: true,
+                offers,
+                ..base
+            }
+        }
+        "manifest" => {
+            if !crate::shares::can_read(&request.share_id, peer_id) {
+                return share_error(base, "access denied");
+            }
+            match crate::shares::load_manifest(&request.share_id) {
+                Ok(manifest) => ShareResponse {
+                    ok: true,
+                    revision: manifest.revision,
+                    manifest: Some(manifest),
+                    ..base
+                },
+                Err(error) => share_error(base, &format!("no manifest: {error}")),
+            }
+        }
+        "publish" => {
+            let Some(manifest) = request.manifest.clone() else {
+                return share_error(base, "missing manifest");
+            };
+            match crate::shares::accept_submitted_manifest(
+                &request.share_id,
+                peer_id,
+                request.base_revision,
+                &manifest,
+            ) {
+                Ok(stats) => {
+                    let _ = event_tx
+                        .send(SwarmEvent::ShareUpdated {
+                            peer_id: peer_id.to_string(),
+                            share_id: request.share_id.clone(),
+                            revision: request.base_revision.saturating_add(1),
+                            written: stats.written,
+                            removed: stats.removed,
+                        })
+                        .await;
+                    ShareResponse {
+                        ok: true,
+                        revision: request.base_revision.saturating_add(1),
+                        ..base
+                    }
+                }
+                Err(error) => share_error(base, &error.to_string()),
+            }
+        }
+        _ => share_error(
+            base,
+            &format!("unknown share request kind: {}", request.kind),
+        ),
+    }
+}
+
+/// Consume a share-lane response: emit offers, persist a manifest and pull its
+/// blobs, or ask again for the fresh manifest after our write was accepted.
+async fn handle_share_response(
+    response: &crate::behavior::ShareResponse,
+    peer_id: &str,
+    event_tx: &mpsc::Sender<SwarmEvent>,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    use crate::behavior::ShareRequest;
+    if !response.ok {
+        let _ = event_tx
+            .send(SwarmEvent::ShareRejected {
+                peer_id: peer_id.to_string(),
+                share_id: response.share_id.clone(),
+                reason: response
+                    .reason
+                    .clone()
+                    .unwrap_or_else(|| "share request rejected".to_string()),
+            })
+            .await;
+        return;
+    }
+    match response.kind.as_str() {
+        "list" => {
+            for offer in &response.offers {
+                if offer.share_id.is_empty()
+                    || crate::shares::validate_share_name(&offer.name).is_err()
+                {
+                    continue;
+                }
+                let _ = event_tx
+                    .send(SwarmEvent::ShareOffered {
+                        peer_id: peer_id.to_string(),
+                        offer: offer.clone(),
+                    })
+                    .await;
+            }
+        }
+        "manifest" => handle_share_manifest_response(response, peer_id, swarm),
+        "publish" => {
+            // Our submission landed: pull the owner's fresh manifest so all
+            // devices converge on the new revision.
+            send_share_request(
+                peer_id,
+                ShareRequest {
+                    kind: "manifest".to_string(),
+                    share_id: response.share_id.clone(),
+                    ..Default::default()
+                },
+                swarm,
+            );
+        }
+        _ => {}
+    }
+}
+
+/// Persist a received manifest (materialising the share row if its offer was
+/// never seen) and start pulls for every blob the snapshot still needs.
+fn handle_share_manifest_response(
+    response: &crate::behavior::ShareResponse,
+    peer_id: &str,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let Some(manifest) = response.manifest.as_ref() else {
+        return;
+    };
+    if manifest.share_id != response.share_id || crate::shares::validate_manifest(manifest).is_err()
+    {
+        return;
+    }
+    let existing = if let Some(share) = crate::shares::get_share(&manifest.share_id).ok().flatten()
+    {
+        share
+    } else {
+        // A manifest can arrive before the UI materialised its offer. Record a
+        // minimal local row so the snapshot has a home.
+        let owner = crate::identity::find_user_id_for_peer(peer_id)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "unknown".to_string());
+        let offer = crate::shares::ShareOffer {
+            share_id: manifest.share_id.clone(),
+            name: manifest.name.clone(),
+            kind: crate::shares::ShareKind::Private,
+            revision: manifest.revision,
+            public_write: false,
+            owner_user_id: Some(owner),
+        };
+        let Some(share) = crate::shares::accept_offer(&offer, None).ok() else {
+            return;
+        };
+        share
+    };
+    let previous = existing.manifest;
+    if crate::shares::save_manifest(&manifest.share_id, manifest).is_err() {
+        return;
+    }
+    let missing = crate::shares::queue_apply(peer_id.to_string(), previous, manifest.clone());
+    let Ok(peer) = peer_id.parse::<libp2p::PeerId>() else {
+        return;
+    };
+    for file_id in missing {
+        let (name, size, mime) = manifest
+            .entries
+            .iter()
+            .find(|entry| entry.file_id == file_id)
+            .map_or_else(
+                || (file_id.clone(), 0_u64, None),
+                |entry| (entry.path.clone(), entry.size, entry.mime.clone()),
+            );
+        maybe_start_fetch(
+            &peer,
+            &crate::files::MessageAttachment {
+                file_id,
+                name,
+                size,
+                mime,
+            },
+            swarm,
+        );
+    }
+}
+
+/// Send a share-lane request, skipping blocked peers like every other lane.
+fn send_share_request(
+    peer_id: &str,
+    request: crate::behavior::ShareRequest,
+    swarm: &mut Swarm<AppBehaviour>,
+) {
+    let Ok(peer) = peer_id.parse::<libp2p::PeerId>() else {
+        return;
+    };
+    if crate::blocklist::is_blocked(&peer.to_string()) {
+        p2plog_debug(format!(
+            "Refusing to send share request to blocked peer {peer_id}"
+        ));
+        return;
+    }
+    let _ = swarm.behaviour_mut().shares.send_request(&peer, request);
 }
 
 fn unsubscribe_from_group(group_id: &str, swarm: &mut Swarm<AppBehaviour>) {

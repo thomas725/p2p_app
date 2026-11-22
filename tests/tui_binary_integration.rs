@@ -90,7 +90,11 @@ fn test_swarm_command_variants() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("Expected Publish"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("Expected Publish"),
     }
 
     // Test SendDm

@@ -1512,33 +1512,11 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             content: Some(user_id),
             ..event_with_type("device_binding_received")
         },
-        // Call-signaling events (calls lane). `content` carries the
-        // end-to-end `call_id`; Dart keys its call screen/rings on
-        // `event_type` + `peer_id` + the echoed `call_id`.
-        SwarmEvent::CallInvite { call_id, peer_id } => {
-            call_event_json("call_invite", call_id, peer_id)
-        }
-        SwarmEvent::CallAccepted { call_id, peer_id } => {
-            call_event_json("call_accepted", call_id, peer_id)
-        }
-        SwarmEvent::CallRejected { call_id, peer_id } => {
-            call_event_json("call_rejected", call_id, peer_id)
-        }
-        SwarmEvent::CallEnded { call_id, peer_id } => {
-            call_event_json("call_ended", call_id, peer_id)
-        }
-        // Decoded voice frames (calls lane, US-044). `content` is the call id,
-        // `peer_id` the speaker and `audio` the PCM for the local adapter.
-        SwarmEvent::CallMediaFrame {
-            call_id,
-            peer_id,
-            pcm,
-        } => SwarmEventJson {
-            peer_id: Some(peer_id),
-            content: Some(call_id),
-            audio: Some(pcm),
-            ..event_with_type("call_media")
-        },
+        SwarmEvent::CallInvite { .. }
+        | SwarmEvent::CallAccepted { .. }
+        | SwarmEvent::CallRejected { .. }
+        | SwarmEvent::CallEnded { .. }
+        | SwarmEvent::CallMediaFrame { .. } => call_lane_event_json(ev),
         // An attachment finished downloading (files lane §12). `content` is the
         // content address and `nickname` the original filename.
         SwarmEvent::FileReceived {
@@ -1552,6 +1530,84 @@ fn event_to_json(ev: SwarmEvent) -> SwarmEventJson {
             nickname: Some(name),
             ..event_with_type("file_received")
         },
+        SwarmEvent::ShareOffered { .. }
+        | SwarmEvent::ShareUpdated { .. }
+        | SwarmEvent::ShareRejected { .. } => share_event_json(ev),
+    }
+}
+
+/// Share-lane events carry their payload as JSON in `content`; the frontends
+/// consume them in the follow-up UI slice. Kept separate so the main event
+/// dispatcher stays under the project's per-function lint budget.
+fn share_event_json(ev: SwarmEvent) -> SwarmEventJson {
+    match ev {
+        SwarmEvent::ShareOffered { peer_id, offer } => SwarmEventJson {
+            peer_id: Some(peer_id),
+            content: serde_json::to_string(&offer).ok(),
+            ..event_with_type("share_offered")
+        },
+        SwarmEvent::ShareUpdated {
+            peer_id,
+            share_id,
+            revision,
+            written,
+            removed,
+        } => SwarmEventJson {
+            peer_id: Some(peer_id),
+            content: serde_json::to_string(&serde_json::json!({
+                "shareId": share_id,
+                "revision": revision,
+                "written": written,
+                "removed": removed,
+            }))
+            .ok(),
+            ..event_with_type("share_updated")
+        },
+        SwarmEvent::ShareRejected {
+            peer_id,
+            share_id,
+            reason,
+        } => SwarmEventJson {
+            peer_id: Some(peer_id),
+            content: serde_json::to_string(&serde_json::json!({
+                "shareId": share_id,
+                "reason": reason,
+            }))
+            .ok(),
+            ..event_with_type("share_rejected")
+        },
+        other => event_with_type(&format!("unexpected share event: {other:?}")),
+    }
+}
+
+/// Call-signaling and media events. `content` carries the end-to-end `call_id`
+/// (and `audio` the decoded PCM), which Dart keys its call screen on alongside
+/// `event_type` and `peer_id`.
+fn call_lane_event_json(ev: SwarmEvent) -> SwarmEventJson {
+    match ev {
+        SwarmEvent::CallInvite { call_id, peer_id } => {
+            call_event_json("call_invite", call_id, peer_id)
+        }
+        SwarmEvent::CallAccepted { call_id, peer_id } => {
+            call_event_json("call_accepted", call_id, peer_id)
+        }
+        SwarmEvent::CallRejected { call_id, peer_id } => {
+            call_event_json("call_rejected", call_id, peer_id)
+        }
+        SwarmEvent::CallEnded { call_id, peer_id } => {
+            call_event_json("call_ended", call_id, peer_id)
+        }
+        SwarmEvent::CallMediaFrame {
+            call_id,
+            peer_id,
+            pcm,
+        } => SwarmEventJson {
+            peer_id: Some(peer_id),
+            content: Some(call_id),
+            audio: Some(pcm),
+            ..event_with_type("call_media")
+        },
+        other => event_with_type(&format!("unexpected call event: {other:?}")),
     }
 }
 

@@ -465,16 +465,61 @@ async fn process_swarm_event(
                 s.call_audio.play(&pcm);
             }
         }
-        SwarmEvent::FileReceived {
-            peer_id,
-            file_id,
-            name,
-            path,
-        } => {
+        SwarmEvent::FileReceived { .. } => log_file_received_event(swarm_event),
+        SwarmEvent::ShareOffered { .. }
+        | SwarmEvent::ShareUpdated { .. }
+        | SwarmEvent::ShareRejected { .. } => log_share_event(swarm_event),
+    }
+}
+
+fn log_file_received_event(ev: SwarmEvent) {
+    let SwarmEvent::FileReceived {
+        peer_id,
+        file_id,
+        name,
+        path,
+    } = ev
+    else {
+        return;
+    };
+    p2plog_debug(format!(
+        "Received file {name} ({file_id}) from {peer_id} at {path}"
+    ));
+}
+
+/// Share-lane UI lands in a later slice; the core already applied any
+/// downloaded manifest before these events were emitted, so logging is enough
+/// for the TUI until a Shares tab exists.
+fn log_share_event(ev: SwarmEvent) {
+    match ev {
+        SwarmEvent::ShareOffered { peer_id, offer } => {
             p2plog_debug(format!(
-                "Received file {name} ({file_id}) from {peer_id} at {path}"
+                "Share {share_id} ({name}) offered by {peer_id}",
+                share_id = offer.share_id,
+                name = offer.name
             ));
         }
+        SwarmEvent::ShareUpdated {
+            peer_id,
+            share_id,
+            revision,
+            written,
+            removed,
+        } => {
+            p2plog_debug(format!(
+                "Share {share_id} updated to revision {revision} from {peer_id} ({written} written, {removed} removed)"
+            ));
+        }
+        SwarmEvent::ShareRejected {
+            peer_id,
+            share_id,
+            reason,
+        } => {
+            p2plog_debug(format!(
+                "Share {share_id} submission rejected by {peer_id}: {reason}"
+            ));
+        }
+        other => p2plog_debug(format!("unexpected share event: {other:?}")),
     }
 }
 

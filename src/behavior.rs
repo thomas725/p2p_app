@@ -66,6 +66,13 @@ pub const REACTION_PROTOCOL_NAME: &str = "/p2p-chat/reactions/1.0.0";
 /// already on disk when the receiver asks).
 pub const FILE_TRANSFER_PROTOCOL_NAME: &str = "/p2p-chat/files/1.0.0";
 
+/// File-share / folder-sync protocol name (share lane).
+///
+/// A dedicated `request_response` lane for versioned share manifests and ACL
+/// checks. Bytes still move over the attachment file lane; this lane only
+/// carries offers, manifest requests, manifests and write submissions.
+pub const SHARE_PROTOCOL_NAME: &str = "/p2p-chat/shares/1.0.0";
+
 /// Default chat topic
 pub const CHAT_TOPIC: &str = "test-net";
 
@@ -393,6 +400,52 @@ pub struct ReactionAck {
 /// JSON codec for the message-reaction protocol.
 pub type ReactionCodec = libp2p::request_response::json::codec::Codec<ReactionSignal, ReactionAck>;
 
+/// One request on the share lane (file share / folder sync).
+///
+/// `kind` is one of `"offer"` (an unsolicited advertisement), `"list"` (all
+/// shares the requester may read), `"manifest"` (one share's current snapshot)
+/// or `"publish"` (a read-write peer submitting a new snapshot based on
+/// `base_revision`). The requester's identity is taken from the connection's
+/// peer id, never from this payload.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ShareRequest {
+    /// `"offer"`, `"list"`, `"manifest"` or `"publish"`.
+    pub kind: String,
+    /// Share id for `"manifest"` and `"publish"`.
+    pub share_id: String,
+    /// Revision the submitted manifest was built from (`"publish"` only).
+    pub base_revision: u64,
+    /// New snapshot (`"publish"` only).
+    pub manifest: Option<crate::shares::ShareManifest>,
+    /// Advertisement (`"offer"` only).
+    pub offer: Option<crate::shares::ShareOffer>,
+}
+
+/// Response on the share lane. `kind` echoes the request so the caller can
+/// dispatch a manifest back to the right share without extra state.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ShareResponse {
+    /// Whether the request was accepted.
+    pub ok: bool,
+    /// Echo of the request kind.
+    pub kind: String,
+    /// Echo of the requested share id.
+    pub share_id: String,
+    /// Human-readable reason when `ok` is false.
+    pub reason: Option<String>,
+    /// New/current revision after a successful request.
+    pub revision: u64,
+    /// Offers returned by a `"list"` request.
+    pub offers: Vec<crate::shares::ShareOffer>,
+    /// Snapshot returned by a `"manifest"` request.
+    pub manifest: Option<crate::shares::ShareManifest>,
+}
+
+/// JSON codec for the share protocol.
+pub type ShareCodec = libp2p::request_response::json::codec::Codec<ShareRequest, ShareResponse>;
+
 /// Combined network behavior for p2p chat
 #[derive(NetworkBehaviour)]
 pub struct AppBehaviour {
@@ -418,6 +471,9 @@ pub struct AppBehaviour {
     /// (files lane §12): the receiver pulls metadata and chunks, the sender
     /// serves them from its on-disk store.
     pub file_transfer: request_response::Behaviour<FileTransferCodec>,
+    /// Request-response protocol handler for versioned file shares / folder
+    /// sync (share lane): offers, manifests and revision-checked writes.
+    pub shares: request_response::Behaviour<ShareCodec>,
     /// mDNS protocol handler for peer discovery (when mdns feature is enabled)
     #[cfg(feature = "mdns")]
     pub mdns: libp2p::mdns::tokio::Behaviour,
@@ -473,7 +529,7 @@ fn build_gossipsub(
         .map_err(|e| format!("Failed to create gossipsub behavior: {e}"))
 }
 
-/// The seven `request_response` behaviours, one per protocol lane.
+/// The eight `request_response` behaviours, one per protocol lane.
 type RequestResponseLanes = (
     request_response::Behaviour<ChatCodec>,
     request_response::Behaviour<DeviceBindingCodec>,
@@ -482,9 +538,10 @@ type RequestResponseLanes = (
     request_response::Behaviour<TypingCodec>,
     request_response::Behaviour<ReactionCodec>,
     request_response::Behaviour<FileTransferCodec>,
+    request_response::Behaviour<ShareCodec>,
 );
 
-/// Build the seven `request_response` lanes.
+/// Build the eight `request_response` lanes.
 ///
 /// Each lane has its own protocol name so a burst of transient traffic (typing,
 /// reactions, calls, device binding, file chunks) can never occupy a DM request
@@ -515,6 +572,7 @@ fn build_request_response_lanes() -> RequestResponseLanes {
         lane(TYPING_PROTOCOL_NAME),
         lane(REACTION_PROTOCOL_NAME),
         lane(FILE_TRANSFER_PROTOCOL_NAME),
+        lane(SHARE_PROTOCOL_NAME),
     )
 }
 
@@ -547,6 +605,7 @@ pub fn build_behaviour(
         typing,
         reactions,
         file_transfer,
+        shares,
     ) = build_request_response_lanes();
 
     // Liveness checks: ping every 10s, treat a missing pong within 10s as a
@@ -616,6 +675,7 @@ pub fn build_behaviour(
         typing,
         reactions,
         file_transfer,
+        shares,
         #[cfg(feature = "mdns")]
         mdns,
         #[cfg(feature = "kad")]

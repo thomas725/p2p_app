@@ -124,7 +124,11 @@ fn test_swarm_command_publish() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("expected Publish"),
     }
 }
 
@@ -163,7 +167,11 @@ fn test_swarm_command_send_dm() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected SendDm"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("expected SendDm"),
     }
 }
 
@@ -242,7 +250,11 @@ fn test_swarm_command_clone() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("expected Publish"),
     }
 }
 

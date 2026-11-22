@@ -320,7 +320,11 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected Publish"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("expected Publish"),
     }
 
     let send_dm = SwarmCommand::SendDm {
@@ -364,7 +368,11 @@ fn test_swarm_command_variants_all() {
         | SwarmCommand::StartCallMedia { .. }
         | SwarmCommand::StopCallMedia
         | SwarmCommand::SendCallMedia { .. }
-        | SwarmCommand::SetCallMediaMute { .. } => panic!("expected SendDm"),
+        | SwarmCommand::SetCallMediaMute { .. }
+        | SwarmCommand::ListShares { .. }
+        | SwarmCommand::RequestShareManifest { .. }
+        | SwarmCommand::SendShareOffer { .. }
+        | SwarmCommand::PublishShareSnapshot { .. } => panic!("expected SendDm"),
     }
 }
 

@@ -6,8 +6,10 @@ and the web mirror. Both frontends can send and receive file attachments on
 DMs, broadcast, and groups.
 
 This document is the lane's reference: the wire design, the store surface, and
-the blob lifecycle. The code is the authority; open work is listed in
-[`backlog.md`](backlog.md).
+the blob lifecycle. It also covers the versioned file-share/folder-sync
+extension built on the same store; its Rust core has shipped, while the
+TUI/Flutter/web UI is still open work in [`backlog.md`](backlog.md). The code is
+the authority.
 
 ## Wire design
 
@@ -71,6 +73,46 @@ the blob lifecycle. The code is the authority; open work is listed in
   selection-mode tap is inert); full Rust (clippy + `--all-features`) and
   Flutter (analyze + test) suites green.
 
+## Versioned file shares / folder sync (share lane) — 2026-11-22
+
+The share lane layers a versioned tree on top of the attachment store. Single
+files still move over the files lane; the share lane only negotiates *what* to
+fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
+[`backlog.md`](backlog.md).
+
+- **Protocol**: `shares` `request_response` behaviour, protocol name
+  `/p2p-chat/shares/1.0.0`, serde JSON `ShareRequest`/`ShareResponse`. Request
+  kinds are `offer`, `list`, `manifest` and `publish`; responses carry offers, a
+  manifest, or a rejection reason. The lane is blocklist-gated like every other
+  `request_response` lane, and the requester is always the connection's peer id
+  — a claimed user id in the payload is ignored.
+- **Model**: migration `2026-11-22-000002_file_shares` adds `shares`,
+  `share_grants` and `share_entries`. A `ShareManifest` names each file by a
+  validated relative path plus its content address; `ShareKind` is private or
+  public, and `ShareMode` is read-only or read-write. Public shares are readable
+  by any connected peer and write is opt-in via `public_write`; private grants
+  are keyed by verified `user_id` from `identity::find_user_id_for_peer`.
+  `can_read`/`can_write` fail closed on DB errors and unbound peers.
+- **Snapshots and writes**: `shares::snapshot_tree` stores every regular file
+  content-addressed and skips symlinks. `accept_submitted_manifest` rejects a
+  submission whose `base_revision` is no longer current, so a writer refreshes
+  and retries instead of silently overwriting another device's changes.
+- **Bound folders and path safety**: a share may bind a real `local_root`.
+  Applying a manifest writes only through `resolve_share_path`, rejecting
+  absolute paths, `.`/`..` or empty segments, backslashes, colons, control
+  characters, and any symlink component. A blob is re-hashed before it is
+  installed via a temporary file, and only files tracked by the previous
+  manifest are ever removed; untracked local files are left alone.
+- **Deferred application**: `queue_apply` records a received manifest and the
+  blob ids still missing; `note_blob_available` applies it when the last blob
+  lands (and emits `ShareUpdated`), dropping it if the serving peer disappears
+  or a newer revision won. The event fan-out is in `file_transfer.rs` and
+  `swarm_handler.rs`, so folder convergence does not depend on a frontend.
+- **Frontend surface (deferred)**: share events are serialized in
+  `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
+  for a later UI slice; the TUI currently logs them. No FRB methods or web
+  methods exist yet.
+
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 
 Blob cleanup is real and behind an on/off switch: the `attachment-gc` Cargo
@@ -83,6 +125,10 @@ the store never deletes anything.
   orphaned** full blobs no live message references (superseded after DB reset /
   message loss), blobs detached from their `files` row, and `files` rows whose
   blob is missing on disk.
+- `files::referenced_file_ids()` also unions share-entry blobs through
+  `shares::referenced_file_ids()`, so a live manifest's bytes are never swept as
+  orphans. A share-DB error is conservative: the GC pass aborts instead of
+  deleting anything.
 - Runs at startup in both frontends (TUI `main_loop.rs`, mobile
   `start_node_impl`). In-flight transfers are excluded by the active `file_id`
   set; blobs younger than `files::GC_GRACE` (1 min) are skipped.

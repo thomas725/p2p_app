@@ -27,14 +27,16 @@
 use crate::generated::models_insertable::{NewShare, NewShareEntry, NewShareGrant};
 use crate::generated::models_queryable::{ShareGrantRow, ShareRow};
 use crate::generated::schema::{share_entries, share_grants, shares};
+use crate::p2plog_debug;
 use color_eyre::eyre::{Context, eyre};
 use diesel::{
     Connection as _, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl as _,
     SelectableHelper as _,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 /// Maximum number of files in one share manifest. Bounds the wire payload and
 /// the work done applying a hostile manifest.
@@ -155,6 +157,9 @@ pub struct ShareOffer {
     pub revision: u64,
     /// Whether a public share accepts writes.
     pub public_write: bool,
+    /// Owner's verified user id when the receiver can resolve it. Used only for
+    /// local bookkeeping — the owner enforces the ACL itself.
+    pub owner_user_id: Option<String>,
 }
 
 /// One share as the domain layer exposes it (a parsed view of `ShareRow`).
@@ -287,7 +292,10 @@ fn resolve_share_path(root: &Path, relative: &str) -> color_eyre::Result<PathBuf
         candidate.push(part);
         match std::fs::symlink_metadata(&candidate) {
             Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Err(eyre!("share path traverses a symlink: {}", candidate.display()));
+                return Err(eyre!(
+                    "share path traverses a symlink: {}",
+                    candidate.display()
+                ));
             }
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -347,13 +355,19 @@ pub fn validate_manifest(manifest: &ShareManifest) -> color_eyre::Result<()> {
 
 /// Convert a manifest into its advertised offer.
 #[must_use]
-pub fn offer_for(manifest: &ShareManifest, kind: ShareKind, public_write: bool) -> ShareOffer {
+pub fn offer_for(
+    manifest: &ShareManifest,
+    kind: ShareKind,
+    public_write: bool,
+    owner_user_id: Option<&str>,
+) -> ShareOffer {
     ShareOffer {
         share_id: manifest.share_id.clone(),
         name: manifest.name.clone(),
         kind,
         revision: manifest.revision,
         public_write,
+        owner_user_id: owner_user_id.map(str::to_string),
     }
 }
 
@@ -368,10 +382,29 @@ pub fn create_share(
     public_write: bool,
     local_root: Option<&str>,
 ) -> color_eyre::Result<Share> {
+    create_share_with_id(
+        &crate::fmt::gen_msg_id(),
+        name,
+        owner_user_id,
+        kind,
+        public_write,
+        local_root,
+    )
+}
+
+/// Insert a share with an explicit id (used when materialising a remote offer,
+/// whose id is chosen by the owner and must survive verbatim).
+fn create_share_with_id(
+    share_id: &str,
+    name: &str,
+    owner_user_id: &str,
+    kind: ShareKind,
+    public_write: bool,
+    local_root: Option<&str>,
+) -> color_eyre::Result<Share> {
     let name = validate_share_name(name).map_err(|error| eyre!("{error}"))?;
-    let share_id = crate::fmt::gen_msg_id();
     let row = NewShare {
-        share_id: share_id.clone(),
+        share_id: share_id.to_string(),
         owner_user_id: owner_user_id.to_string(),
         name,
         kind: kind.as_i32(),
@@ -385,7 +418,7 @@ pub fn create_share(
         .values(&row)
         .execute(conn)
         .wrap_err("failed to create share")?;
-    get_share(&share_id)?.ok_or_else(|| eyre!("share vanished after insert"))
+    get_share(share_id)?.ok_or_else(|| eyre!("share vanished after insert"))
 }
 
 /// Look up one share by id.
@@ -436,11 +469,7 @@ pub fn set_local_root(share_id: &str, local_root: Option<&str>) -> color_eyre::R
 ///
 /// # Errors
 /// Returns an error if the share is unknown or the DB write fails.
-pub fn set_grant(
-    share_id: &str,
-    user_id: &str,
-    mode: ShareMode,
-) -> color_eyre::Result<()> {
+pub fn set_grant(share_id: &str, user_id: &str, mode: ShareMode) -> color_eyre::Result<()> {
     if get_share(share_id)?.is_none() {
         return Err(eyre!("unknown share: {share_id}"));
     }
@@ -521,8 +550,8 @@ pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Re
         return Err(eyre!("manifest id does not match the share"));
     }
     let json = serde_json::to_string(manifest).wrap_err("failed to encode share manifest")?;
-    let revision = i64::try_from(manifest.revision)
-        .map_err(|_| eyre!("share revision out of range"))?;
+    let revision =
+        i64::try_from(manifest.revision).map_err(|_| eyre!("share revision out of range"))?;
     let entries: Vec<NewShareEntry> = manifest
         .entries
         .iter()
@@ -638,7 +667,48 @@ pub fn offer_for_share(share_id: &str) -> color_eyre::Result<Option<ShareOffer>>
         kind: share.kind,
         revision: share.revision,
         public_write: share.public_write,
+        owner_user_id: Some(share.owner_user_id),
     }))
+}
+
+/// Materialise a received offer as a local share row.
+///
+/// The row gives a later manifest request somewhere to land. Calls are
+/// idempotent by `share_id`: a repeated offer only refreshes the advertised
+/// name/revision, never resets a bound local root or manifest.
+///
+/// # Errors
+/// Returns an error if the offer is invalid or the DB write fails.
+pub fn accept_offer(offer: &ShareOffer, local_root: Option<&str>) -> color_eyre::Result<Share> {
+    validate_share_name(&offer.name).map_err(|error| eyre!("{error}"))?;
+    if offer.share_id.is_empty() {
+        return Err(eyre!("share offer has no id"));
+    }
+    if let Some(existing) = get_share(&offer.share_id)? {
+        let conn = &mut crate::sqlite_connect()?;
+        diesel::update(shares::table.filter(shares::share_id.eq(&offer.share_id)))
+            .set((
+                shares::name.eq(&offer.name),
+                shares::kind.eq(offer.kind.as_i32()),
+                shares::public_write.eq(i32::from(offer.public_write)),
+                shares::updated_at.eq(chrono::Utc::now().naive_utc()),
+            ))
+            .execute(conn)
+            .wrap_err("failed to refresh share offer")?;
+        return Ok(existing);
+    }
+    let owner_user_id = offer
+        .owner_user_id
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string());
+    create_share_with_id(
+        &offer.share_id,
+        &offer.name,
+        &owner_user_id,
+        offer.kind,
+        offer.public_write,
+        local_root,
+    )
 }
 
 /// Snapshot a local directory into the blob store and return its entries.
@@ -679,9 +749,10 @@ pub fn snapshot_tree(root: &Path) -> color_eyre::Result<Vec<ShareEntry>> {
                 let relative = validate_share_path(&relative).map_err(|error| eyre!("{error}"))?;
                 let bytes = std::fs::read(&path)
                     .wrap_err_with(|| format!("failed to read share file {}", path.display()))?;
-                let name = Path::new(&relative)
-                    .file_name()
-                    .map_or_else(|| relative.clone(), |part| part.to_string_lossy().into_owned());
+                let name = Path::new(&relative).file_name().map_or_else(
+                    || relative.clone(),
+                    |part| part.to_string_lossy().into_owned(),
+                );
                 let attachment = crate::files::store_outgoing_bytes(&name, &bytes)?;
                 entries.push(ShareEntry {
                     path: relative,
@@ -732,10 +803,10 @@ pub fn apply_manifest(
     if let Some(previous) = previous {
         let mut removed_paths: BTreeSet<String> = BTreeSet::new();
         for entry in &previous.entries {
-            if let Ok(path) = validate_share_path(&entry.path) {
-                if !next_paths.contains(path.as_str()) {
-                    removed_paths.insert(path);
-                }
+            if let Ok(path) = validate_share_path(&entry.path)
+                && !next_paths.contains(path.as_str())
+            {
+                removed_paths.insert(path);
             }
         }
         for path in removed_paths {
@@ -762,8 +833,9 @@ pub fn apply_manifest(
     for entry in &next.entries {
         let target = resolve_share_path(root, &entry.path)?;
         if let Some(parent) = target.parent() {
-            std::fs::create_dir_all(parent)
-                .wrap_err_with(|| format!("failed to create share directory {}", parent.display()))?;
+            std::fs::create_dir_all(parent).wrap_err_with(|| {
+                format!("failed to create share directory {}", parent.display())
+            })?;
         }
         let blob = crate::files::store_path_for(&entry.file_id)?;
         let bytes = std::fs::read(&blob)
@@ -773,10 +845,7 @@ pub fn apply_manifest(
         }
         // Write through a temporary file so an interrupted apply never leaves a
         // half-written file at the tracked path.
-        let temp = target.with_extension(format!(
-            "{}.part",
-            crate::fmt::gen_msg_id()
-        ));
+        let temp = target.with_extension(format!("{}.part", crate::fmt::gen_msg_id()));
         std::fs::write(&temp, &bytes)
             .wrap_err_with(|| format!("failed to stage share file {}", temp.display()))?;
         std::fs::rename(&temp, &target)
@@ -803,7 +872,7 @@ pub fn accept_submitted_manifest(
         return Err(eyre!("peer {peer_id} may not write share {share_id}"));
     }
     let current = get_share(share_id)?.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
-    let expected = u64::try_from(current.revision).unwrap_or_default();
+    let expected = current.revision;
     if base_revision != expected {
         return Err(eyre!(
             "stale share revision {base_revision} (current {expected})"
@@ -823,6 +892,150 @@ pub fn accept_submitted_manifest(
     )?;
     save_manifest(share_id, &next)?;
     Ok(stats)
+}
+
+/// A manifest waiting for the blobs it references to finish downloading.
+struct PendingApply {
+    /// Peer that served the manifest (and is serving its blobs).
+    peer_id: String,
+    /// Manifest we were on before this one, for safe deletion tracking.
+    previous: Option<ShareManifest>,
+    /// Manifest to apply once every blob is present.
+    manifest: ShareManifest,
+    /// Content addresses still missing from the local store.
+    missing: BTreeSet<String>,
+}
+
+fn pending_applies() -> &'static Mutex<BTreeMap<String, PendingApply>> {
+    static PENDING: OnceLock<Mutex<BTreeMap<String, PendingApply>>> = OnceLock::new();
+    PENDING.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+/// Summary of a deferred manifest application, surfaced as a swarm event so
+/// frontends can refresh the share's local folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShareApplyResult {
+    /// Peer that supplied the last missing blob.
+    pub peer_id: String,
+    /// Share that was applied.
+    pub share_id: String,
+    /// Revision now installed in the local folder.
+    pub revision: u64,
+    /// Files written and removed by the apply.
+    pub stats: ApplyStats,
+}
+
+/// Register a received manifest for application once all of its blobs are
+/// locally available. Returns the content addresses the caller should fetch.
+///
+/// The manifest should already be persisted (so GC sees its blob references);
+/// `previous` is the manifest that was stored before it, captured by the caller
+/// ahead of that write. A later manifest for the same share supersedes an
+/// earlier pending one, so the folder always converges on the newest revision.
+#[must_use]
+pub fn queue_apply(
+    peer_id: String,
+    previous: Option<ShareManifest>,
+    manifest: ShareManifest,
+) -> Vec<String> {
+    let missing: BTreeSet<String> = manifest
+        .entries
+        .iter()
+        .filter(|entry| crate::files::file_path(&entry.file_id).is_none())
+        .map(|entry| entry.file_id.clone())
+        .collect();
+    let ids = missing.iter().cloned().collect();
+    let mut pending = pending_applies()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if missing.is_empty() {
+        pending.remove(&manifest.share_id);
+    } else {
+        pending.insert(
+            manifest.share_id.clone(),
+            PendingApply {
+                peer_id,
+                previous,
+                manifest,
+                missing,
+            },
+        );
+    }
+    ids
+}
+
+/// Note that a blob arrived and apply every share that was waiting on it.
+///
+/// A share whose local root is not bound yet is dropped from the pending set:
+/// there is nowhere to apply it, and the manifest is already persisted for a
+/// later explicit refresh.
+#[must_use]
+pub fn note_blob_available(file_id: &str) -> Vec<ShareApplyResult> {
+    let completed: Vec<PendingApply> = {
+        let mut pending = pending_applies()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let mut ready = Vec::new();
+        for apply in pending.values_mut() {
+            apply.missing.remove(file_id);
+            if apply.missing.is_empty() {
+                ready.push(apply.manifest.share_id.clone());
+            }
+        }
+        let completed = ready
+            .into_iter()
+            .filter_map(|share_id| pending.remove(&share_id))
+            .collect();
+        drop(pending);
+        completed
+    };
+
+    let mut results = Vec::new();
+    for apply in completed {
+        let Some(share) = get_share(&apply.manifest.share_id)
+            .ok()
+            .flatten()
+            .and_then(|share| share.local_root.map(|root| (root, share.revision)))
+        else {
+            continue;
+        };
+        let (root, current_revision) = share;
+        // A newer manifest may have been saved while we were downloading; never
+        // apply an older snapshot over it.
+        let expected = current_revision;
+        if apply.manifest.revision != expected {
+            continue;
+        }
+        match apply_manifest(
+            &apply.manifest.share_id,
+            Path::new(&root),
+            apply.previous.as_ref(),
+            &apply.manifest,
+        ) {
+            Ok(stats) => results.push(ShareApplyResult {
+                peer_id: apply.peer_id,
+                share_id: apply.manifest.share_id,
+                revision: apply.manifest.revision,
+                stats,
+            }),
+            Err(error) => {
+                p2plog_debug(format!(
+                    "failed to apply share {}: {error}",
+                    apply.manifest.share_id
+                ));
+            }
+        }
+    }
+    results
+}
+
+/// Drop pending applications whose serving peer disconnected. Their blobs can
+/// no longer arrive, so leaving them queued would wedge future revisions.
+pub fn abandon_pending_from(peer_id: &str) {
+    let mut pending = pending_applies()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    pending.retain(|_, apply| apply.peer_id != peer_id);
 }
 
 #[cfg(test)]

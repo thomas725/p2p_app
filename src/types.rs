@@ -286,6 +286,38 @@ pub enum SwarmEvent {
         /// Absolute path of the stored blob
         path: String,
     },
+    /// A peer advertised a share (share lane). Frontends materialise it with
+    /// the canonical `shares::accept_offer` API before requesting a manifest.
+    ShareOffered {
+        /// Peer that sent the offer
+        peer_id: String,
+        /// Advertised share
+        offer: crate::shares::ShareOffer,
+    },
+    /// A share manifest was received, all its blobs arrived, and it was applied
+    /// to the bound local folder (share lane).
+    ShareUpdated {
+        /// Peer that served the manifest/blobs
+        peer_id: String,
+        /// Share that changed
+        share_id: String,
+        /// Revision now installed locally
+        revision: u64,
+        /// Files written by the apply
+        written: usize,
+        /// Files removed by the apply
+        removed: usize,
+    },
+    /// A submitted snapshot was rejected (share lane). Usually a stale revision
+    /// — the writer should refresh and retry.
+    ShareRejected {
+        /// Peer that rejected the submission (the share owner)
+        peer_id: String,
+        /// Share whose submission failed
+        share_id: String,
+        /// Human-readable reason from the owner
+        reason: String,
+    },
 }
 
 /// Commands sent to the swarm task
@@ -415,6 +447,35 @@ pub enum SwarmCommand {
     DisconnectPeer {
         /// The peer whose connection should be closed
         peer_id: String,
+    },
+    /// Ask a peer for every share we are allowed to read (share lane).
+    ListShares {
+        /// Peer to query
+        peer_id: String,
+    },
+    /// Ask a peer for one share's current manifest (share lane).
+    RequestShareManifest {
+        /// Peer to query (the share owner)
+        peer_id: String,
+        /// Share whose manifest is wanted
+        share_id: String,
+    },
+    /// Advertise a share to a set of peers (share lane).
+    SendShareOffer {
+        /// Peers that should receive the offer
+        peer_ids: Vec<String>,
+        /// Offer payload (boxed: keeps the command channel small)
+        offer: Box<crate::shares::ShareOffer>,
+    },
+    /// Submit a new snapshot based on `base_revision` (share lane). The owner
+    /// rejects it if a newer revision landed in the meantime.
+    PublishShareSnapshot {
+        /// Share owner to submit to
+        peer_id: String,
+        /// Revision this snapshot was built from
+        base_revision: u64,
+        /// New snapshot (boxed: keeps the command channel small)
+        manifest: Box<crate::shares::ShareManifest>,
     },
 }
 

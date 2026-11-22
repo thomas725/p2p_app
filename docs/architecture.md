@@ -67,6 +67,7 @@ src/
 ├── calls.rs            call session model (caller-minted call_id, state machine)
 ├── call_media.rs       voice media transport: μ-law frames, jitter buffer, mute (US-044)
 ├── files.rs            content-addressed attachment store
+├── shares.rs           versioned file shares / folder sync, grants, ACLs
 ├── connected.rs        ConnectedTracker
 ├── logging.rs          log helpers
 ├── network_config.rs   persisted bootstrap / relay multiaddrs (Settings, node start)
@@ -108,6 +109,7 @@ The libp2p behaviour set (`src/behavior.rs`):
 | `typing` | `/p2p-chat/typing/1.0.0` | fire-and-forget DM typing start/stop (US-009) |
 | `reactions` | `/p2p-chat/reactions/1.0.0` | per-message reaction add/remove sync (US-008) |
 | `file_transfer` | `/p2p-chat/files/1.0.0` | attachment meta / chunk / error (cbor) |
+| `shares` | `/p2p-chat/shares/1.0.0` | share offers, versioned manifests, revision-checked writes (JSON) |
 | `mdns` | — | peer discovery on the LAN |
 | `identify` | — | peer info + listen addresses (feeds Kademlia) |
 | `kad` | — | internet-wide peer discovery over the DHT |
@@ -127,6 +129,13 @@ lifecycle and the limits.
 Gossipsub caps a single message at 256 KiB, so group and broadcast
 attachments travel **by reference**: the message carries a descriptor, and the
 bytes move over the separate `file_transfer` lane.
+
+Versioned file shares reuse that blob store and file lane for their bytes, but
+advertise, request and submit snapshots over the dedicated `shares` lane. ACLs
+are checked at the swarm boundary against verified `user_id`s (never a claimed
+payload id), public write is opt-in, and a submission carrying a stale
+`base_revision` is rejected so the writer must refresh and retry. See
+[`files_attachments.md`](files_attachments.md) for the share invariant set.
 
 Typing indicators (US-009) also get their own `request_response` lane so a
 keystroke burst never occupies a DM request slot. `TypingSignal` is
@@ -312,11 +321,14 @@ SQLite via Diesel. Nineteen tables:
 | `groups` / `group_members` / `group_messages` | the group layer (`group_messages.deleted_at` is a local-only tombstone) |
 | `users` / `device_bindings` / `contacts` | the identity + contact layer |
 | `files` | attachment descriptors (the bytes live on disk, never in SQLite) |
+| `shares` | owned/accepted shares, visibility, bound local root, current revision |
+| `share_grants` | per-user read-only / read-write ACL on private shares |
+| `share_entries` | current manifest entries; also the GC reference set for share blobs |
 | `network_peers` | persisted bootstrap / relay multiaddrs (Settings, read at node start) |
 | `blocked_peers` | muted peer ids; the swarm boundary drops their traffic |
 | `app_settings` | key/value store behind notification channels and LAN-only mode |
 
-Twenty-five migrations in `migrations/`. `db::ensure_columns()` also runs at
+Twenty-six migrations in `migrations/`. `db::ensure_columns()` also runs at
 startup as a belt-and-braces check for older databases.
 
 Multiple instances on one machine never clobber each other: the desktop app

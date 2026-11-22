@@ -122,6 +122,38 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
+### File shares / folder sync UI — **Rust core shipped, UI deferred**
+
+The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
+follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
+hook). Full design and invariants: [`files_attachments.md`](files_attachments.md).
+
+Shipped in core:
+
+- private shares keyed on verified `user_id` device bindings, with per-user
+  read-only/read-write grants; public shares are readable by any connected peer
+  and write is opt-in;
+- versioned `ShareManifest`s over the existing content-addressed blob store,
+  with `base_revision` rejection of stale writes;
+- snapshots and manual refresh only — no background filesystem watcher in the
+  first version;
+- path validation (no absolute paths, `..`, symlink escapes), apply only to a
+  bound real local folder, and deletion only of previously tracked files;
+- blocklist-gated `request_response` lane, fail-closed ACLs, and deferred
+  application once all manifest blobs arrive.
+
+Still open (UI/integration, not protocol work):
+
+- FRB facade and web method parity for create/list/bind/snapshot/grants and the
+  share commands, then FRB regeneration;
+- TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
+  offer/manifest/publish actions, and visible update/rejection events;
+- Flutter/web share screens: list/detail, permission editor, manual refresh and
+  publish. The browser remains a display client — only native installs can bind
+  a real local folder;
+- two-node integration tests for offer → manifest → blob pull → apply, stale
+  write rejection/retry, and grant revocation.
+
 ### Public bootstrap nodes (US-050) — **shipped**
 
 All stages (Kademlia + Identify, NAT traversal, network details view, public
