@@ -28,6 +28,31 @@ thread_local! {
     /// keeps callers fully isolated: no test can observe or stomp another test's
     /// database. The FRB/mobile entry points set this once on their worker thread.
     static DB_URL: RefCell<Option<String>> = const { RefCell::new(None) };
+
+    /// Per-thread directory owning every auto-selected test database file.
+    /// Dropped when the test thread ends, so repeated `cargo test` runs do not
+    /// accumulate thousands of orphaned `.db` files in the system temp dir.
+    #[cfg(any(test, feature = "test-utils"))]
+    static TEST_DB_DIR: RefCell<Option<TestDbDir>> = const { RefCell::new(None) };
+}
+
+/// Owner of one thread's auto-selected test databases.
+///
+/// `unique_test_db_path` places each fresh per-thread SQLite file inside a
+/// dedicated directory held here. When the test thread terminates, [`Drop`]
+/// removes that directory and all of its files. The isolation scheme (pid +
+/// thread id in the name, and a per-selection counter) is unchanged; this only
+/// adds cleanup so test runs are idempotent on disk.
+#[cfg(any(test, feature = "test-utils"))]
+struct TestDbDir(std::path::PathBuf);
+
+#[cfg(any(test, feature = "test-utils"))]
+impl Drop for TestDbDir {
+    fn drop(&mut self) {
+        // Best-effort: a crashed process leaves the dir for the OS temp cleaner,
+        // but a normal test thread exit removes every file it created.
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
 }
 
 /// Process-wide primary database URL.
@@ -121,26 +146,44 @@ thread_local! {
 
 /// The auto-selected test database path for the current thread.
 ///
-/// Tests never share a database across processes or threads: the name embeds
-/// the process id and this thread's unique id, so the lib, bin, and integration
-/// test targets racing under `cargo test --all-features` — and any test threads
-/// within them — each get their own `SQLite` file in the system temp dir. This
+/// Tests never share a database across processes or threads: the directory and
+/// file name embed the process id and this thread's unique id, so the lib, bin,
+/// and integration test targets racing under `cargo test --all-features` — and
+/// any test threads within them — each get their own `SQLite` file. This
 /// eliminates the old behaviour of scanning the shared working directory for
 /// `.db`/`.lock` files, which let parallel processes delete each other's live
 /// lock files and then select the same database. The per-thread counter keeps
 /// each fresh selection (after `reset_db_url`) on a brand-new file, so no test
 /// ever sees rows left over from an earlier test on the same thread.
+///
+/// Every file lives inside a per-thread [`TestDbDir`] that is removed when the
+/// thread ends. The old flat-file layout leaked thousands of databases into the
+/// system temp dir (enough to fill a disk after a few full test runs); the guard
+/// makes repeated runs idempotent without changing the isolation guarantees.
 #[cfg(any(test, feature = "test-utils"))]
 fn unique_test_db_path() -> String {
     let pid = std::process::id();
     let tid = format!("{:?}", std::thread::current().id());
+    let dir = TEST_DB_DIR.with(|slot| {
+        let mut slot = slot.borrow_mut();
+        let owner = slot.get_or_insert_with(|| {
+            let path = std::env::temp_dir().join(format!("p2p-chat-test-{pid}-{tid}"));
+            // A prior process killed before its thread-local guard ran may have
+            // left files behind under a reused pid/thread-id pair. Start clean
+            // so no stale rows leak into this run. If creation fails, the
+            // subsequent connection surfaces the error; do not panic here.
+            let _ = std::fs::remove_dir_all(&path);
+            let _ = std::fs::create_dir_all(&path);
+            TestDbDir(path)
+        });
+        owner.0.clone()
+    });
     let n = TEST_DB_SELECTION_COUNTER.with(|c| {
         let current = c.get();
         c.set(current.saturating_add(1));
         current
     });
-    std::env::temp_dir()
-        .join(format!("p2p-chat-test-{pid}-{tid}-{n}.db"))
+    dir.join(format!("db-{n}.db"))
         .to_string_lossy()
         .into_owned()
 }

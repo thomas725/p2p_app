@@ -271,3 +271,42 @@ fn test_release_db_lock() {
 
     release_db_lock();
 }
+
+/// An auto-selected test DB lives in a dedicated per-thread directory that is
+/// removed when that thread ends. Without this guard every `reset_db_url` +
+/// `get_database_url` pair leaks a `.db` file into the system temp dir; enough
+/// full test runs filled a disk to 100%. Keep the thread alive until the dir is
+/// observed, then assert cleanup happens on exit.
+#[test]
+fn test_auto_selected_test_db_dir_removed_on_thread_exit() {
+    use crate::db::{get_database_url, reset_db_url};
+    use std::sync::mpsc;
+
+    let (path_tx, path_rx) = mpsc::channel();
+    let (hold_tx, hold_rx) = mpsc::channel::<()>();
+
+    let thread = std::thread::spawn(move || {
+        reset_db_url();
+        let url = get_database_url();
+        let dir = std::path::PathBuf::from(url)
+            .parent()
+            .expect("db url has a parent directory")
+            .to_path_buf();
+        path_tx.send(dir).expect("send db dir");
+        // Hold the thread — and therefore its `TestDbDir` guard — alive until
+        // the parent has confirmed the directory exists.
+        let _ = hold_rx.recv();
+    });
+
+    let dir = path_rx.recv().expect("recv db dir");
+    assert!(
+        dir.exists(),
+        "per-thread test DB dir exists while thread runs"
+    );
+    drop(hold_tx);
+    thread.join().expect("join test DB thread");
+    assert!(
+        !dir.exists(),
+        "per-thread test DB dir is removed after thread ends"
+    );
+}

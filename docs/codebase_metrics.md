@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        65 |
-| Total Rust Lines      |    34,862 |
-| Total Rust Chars      | 1,321,028 |
-| Avg Lines/Rust File   |       536 |
-| Avg Chars/Rust File   |    20,323 |
+| Total Rust Lines      |    34,905 |
+| Total Rust Chars      | 1,323,180 |
+| Avg Lines/Rust File   |       537 |
+| Avg Chars/Rust File   |    20,356 |
 | Total Dart Files      |        39 |
 | Total Dart Lines      |    18,013 |
 | Total Dart Chars      |   580,188 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       101 |
 | Avg Chars/Kotlin File |     3,663 |
 
-**Grand Total:** 107 files, 53,178 lines, 1,912,206 characters
+**Grand Total:** 107 files, 53,221 lines, 1,914,358 characters
 
 ## Rust Source Files
 
@@ -34,7 +34,7 @@
 | src                     | chat.rs              |     5 |  6324 |   176 |        - |       - | TUI chat & DM pane renderer            |
 | src                     | connected.rs         |     3 |  2324 |    71 |        - |       - | Connected peers tracking & monitoring  |
 | src                     | contacts.rs          |     4 | 14829 |   395 |        - |       - | Canonical contacts-roster model        |
-| src                     | db.rs                |     5 | 25101 |   643 |        - |       - | Database connection & identity mgmt    |
+| src                     | db.rs                |     5 | 27253 |   686 |        - |       - | Database connection & identity mgmt    |
 | src                     | dm_outbox.rs         |     3 |  5631 |   155 |        - |       - | Source file                            |
 | src                     | e2e.rs               |     4 | 17759 |   443 |        - |       - | Source file                            |
 | src                     | files.rs             |     6 | 29006 |   767 |        - |       - | Content-addressed attachment store     |
@@ -92,7 +92,7 @@
 | src/generated           | models_queryable.rs  |     1 | 12527 |   337 |        - |       - | Queryable data models                  |
 | src/generated           | schema.rs            |     2 |  8761 |   288 |        - |       - | Database schema (Diesel)               |
 
-**Total:** 65 files, 34,862 lines, 1,321,028 characters
+**Total:** 65 files, 34,905 lines, 1,323,180 characters
 
 ## Rust Test Files
 
@@ -139,7 +139,7 @@
 | unit   | unit_calls.rs                     |    90 |  2797 |     1 | calls module tests                    |
 | unit   | unit_connected.rs                 |    65 |  2019 |     1 | Unit tests for connected module       |
 | unit   | unit_contacts.rs                  |   357 | 12111 |     4 | contacts module tests                 |
-| unit   | unit_db.rs                        |   273 |  8611 |     3 | Unit tests for database module        |
+| unit   | unit_db.rs                        |   312 | 10040 |     3 | Unit tests for database module        |
 | unit   | unit_dm_outbox.rs                 |   169 |  5739 |     4 | Test file                             |
 | unit   | unit_e2e.rs                       |   341 | 12479 |     3 | Test file                             |
 | unit   | unit_files.rs                     |   503 | 18713 |     4 | files module tests                    |
@@ -163,7 +163,7 @@
 | unit   | unit_tui_test_state.rs            |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                     |   388 | 11522 |     3 | Unit tests for types module           |
 
-**Total:** 64 test files, 26,146 lines, 869,748 characters
+**Total:** 64 test files, 26,185 lines, 871,177 characters
 
 ## Dart Source Files
 
