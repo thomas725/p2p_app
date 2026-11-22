@@ -3,6 +3,22 @@ use super::state::{MAX_DM_HISTORY, trim_history};
 use p2p_app::p2plog_debug;
 use std::collections::{HashMap, VecDeque};
 
+/// Pick a valid active tab after `closed_idx` is removed.
+///
+/// A tab at or after the closed one shifts down by one; an earlier tab keeps
+/// its position. `saturating_sub` keeps the focus valid when the first tab is
+/// closed. Pure so the close-button handler stays a flat sequence of steps.
+const fn focus_after_close(active_tab: usize, closed_idx: usize) -> usize {
+    // A tab at or after the closed one shifts down by one (when they are equal,
+    // subtracting from `active_tab` is the same as from `closed_idx`); an
+    // earlier tab keeps its place. One comparison stays const and has no chain.
+    if active_tab >= closed_idx {
+        active_tab.saturating_sub(1)
+    } else {
+        active_tab
+    }
+}
+
 /// Handles tab bar clicks and close button.
 ///
 /// Mirrors how ratatui's `Tabs` widget lays a bar out: every tab renders as
@@ -26,13 +42,7 @@ fn handle_tab_click(state: &mut AppState, mouse_column: u16, tab_titles: &[Strin
             if title.contains("[X]") && click_col >= close_start && click_col < title_end {
                 let tab_content = state.dynamic_tabs.tab_index_to_content(idx);
                 if let Some(closed_idx) = state.dynamic_tabs.remove_tab(&tab_content) {
-                    // Keep focus put unless it pointed at (or after) the tab
-                    // that just closed, in which case shift it down by one.
-                    if state.active_tab == closed_idx {
-                        state.active_tab = closed_idx.saturating_sub(1);
-                    } else if state.active_tab > closed_idx {
-                        state.active_tab = state.active_tab.saturating_sub(1);
-                    }
+                    state.active_tab = focus_after_close(state.active_tab, closed_idx);
                     p2plog_debug(format!("Closed tab via mouse: {tab_content:?}"));
                 }
                 return true;

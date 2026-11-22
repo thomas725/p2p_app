@@ -1309,6 +1309,59 @@ fn verify_and_bind_claim(
     )
 }
 
+/// Answer one device-binding request.
+///
+/// Extracted from [`handle_device_binding`] so the nested request/verify/send
+/// chain is one level deep and the response arm of the caller can keep its own
+/// peer id for logging (events derive their own copy instead of moving it).
+/// Synchronous on purpose: the swarm borrow ends before the caller's `.await`,
+/// which keeps the spawned event loop `Send`.
+fn answer_device_binding_request(
+    request: crate::behavior::DeviceBindingRequest,
+    peer: &libp2p::PeerId,
+    swarm: &Swarm<AppBehaviour>,
+) -> (Option<SwarmEvent>, crate::behavior::DeviceBindingAck) {
+    match request.kind.as_str() {
+        // Advertising device, optionally carrying its account. We never
+        // auto-mint a claim here: binding a stranger's device into our user
+        // would route DMs addressed to us to them. Surfacing the intro lets
+        // the operator decide explicitly.
+        "intro" => (
+            Some(SwarmEvent::DeviceBindingIntro {
+                peer_id: peer.to_string(),
+                device_pubkey: request.device_pubkey,
+            }),
+            crate::behavior::DeviceBindingAck {
+                ok: true,
+                reason: None,
+            },
+        ),
+        "claim" => match verify_and_bind_claim(&request, peer, swarm) {
+            Ok(user_id) => (
+                Some(SwarmEvent::DeviceBindingReceived { user_id }),
+                crate::behavior::DeviceBindingAck {
+                    ok: true,
+                    reason: None,
+                },
+            ),
+            Err(e) => (
+                None,
+                crate::behavior::DeviceBindingAck {
+                    ok: false,
+                    reason: Some(format!("{e}")),
+                },
+            ),
+        },
+        other => (
+            None,
+            crate::behavior::DeviceBindingAck {
+                ok: false,
+                reason: Some(format!("unknown device-binding kind: {other}")),
+            },
+        ),
+    }
+}
+
 async fn handle_device_binding(
     message: libp2p::request_response::Message<
         crate::behavior::DeviceBindingRequest,
@@ -1323,43 +1376,10 @@ async fn handle_device_binding(
         libp2p::request_response::Message::Request {
             request, channel, ..
         } => {
-            let response = match request.kind.as_str() {
-                "intro" => {
-                    // Advertising device, optionally carrying its account. We
-                    // never auto-mint a claim here: binding a stranger's device
-                    // into our user would route DMs addressed to us to them.
-                    // Surfacing the intro lets the operator decide explicitly.
-                    let _ = event_tx
-                        .send(SwarmEvent::DeviceBindingIntro {
-                            peer_id: peer_id_str,
-                            device_pubkey: request.device_pubkey.clone(),
-                        })
-                        .await;
-                    crate::behavior::DeviceBindingAck {
-                        ok: true,
-                        reason: None,
-                    }
-                }
-                "claim" => match verify_and_bind_claim(&request, &peer, swarm) {
-                    Ok(user_id) => {
-                        let _ = event_tx
-                            .send(SwarmEvent::DeviceBindingReceived { user_id })
-                            .await;
-                        crate::behavior::DeviceBindingAck {
-                            ok: true,
-                            reason: None,
-                        }
-                    }
-                    Err(e) => crate::behavior::DeviceBindingAck {
-                        ok: false,
-                        reason: Some(format!("{e}")),
-                    },
-                },
-                other => crate::behavior::DeviceBindingAck {
-                    ok: false,
-                    reason: Some(format!("unknown device-binding kind: {other}")),
-                },
-            };
+            let (event, response) = answer_device_binding_request(request, &peer, swarm);
+            if let Some(ev) = event {
+                let _ = event_tx.send(ev).await;
+            }
             let _ = swarm
                 .behaviour_mut()
                 .device_binding
@@ -1367,15 +1387,10 @@ async fn handle_device_binding(
         }
         libp2p::request_response::Message::Response { response, .. } => {
             if let Some(reason) = response.reason {
-                if response.ok {
-                    p2plog_debug(format!(
-                        "device-binding request accepted by {peer_id_str}: {reason}"
-                    ));
-                } else {
-                    p2plog_debug(format!(
-                        "device-binding request rejected by {peer_id_str}: {reason}"
-                    ));
-                }
+                let verdict = if response.ok { "accepted" } else { "rejected" };
+                p2plog_debug(format!(
+                    "device-binding request {verdict} by {peer_id_str}: {reason}"
+                ));
             }
         }
     }
@@ -1397,6 +1412,24 @@ fn media_ends_for_signal(
 ) -> bool {
     matches!(kind, "reject" | "end")
         && media.is_some_and(|session| session.is_for(call_id, peer_id))
+}
+
+/// Map an inbound call-signal kind onto the frontend event it produces.
+///
+/// The four known kinds map one-to-one onto a [`SwarmEvent`]; an unknown kind
+/// yields no event. Kept pure so the wire-to-event mapping is directly testable
+/// and the request handler does not repeat the same struct literal four times.
+#[must_use]
+fn call_event_for_signal(kind: &str, call_id: &str, peer_id: &str) -> Option<SwarmEvent> {
+    let call_id = call_id.to_owned();
+    let peer_id = peer_id.to_owned();
+    match kind {
+        "invite" => Some(SwarmEvent::CallInvite { call_id, peer_id }),
+        "accept" => Some(SwarmEvent::CallAccepted { call_id, peer_id }),
+        "reject" => Some(SwarmEvent::CallRejected { call_id, peer_id }),
+        "end" => Some(SwarmEvent::CallEnded { call_id, peer_id }),
+        _ => None,
+    }
 }
 
 /// Handle a call-signaling exchange (calls lane).
@@ -1428,54 +1461,17 @@ async fn handle_call_signal(
                 &request.call_id,
                 &peer_id_str,
             );
-            let (event, ack) = match request.kind.as_str() {
-                "invite" => (
-                    Some(SwarmEvent::CallInvite {
-                        call_id: request.call_id.clone(),
-                        peer_id: peer_id_str,
-                    }),
-                    crate::behavior::CallSignalAck {
-                        ok: true,
-                        reason: None,
-                    },
-                ),
-                "accept" => (
-                    Some(SwarmEvent::CallAccepted {
-                        call_id: request.call_id.clone(),
-                        peer_id: peer_id_str,
-                    }),
-                    crate::behavior::CallSignalAck {
-                        ok: true,
-                        reason: None,
-                    },
-                ),
-                "reject" => (
-                    Some(SwarmEvent::CallRejected {
-                        call_id: request.call_id.clone(),
-                        peer_id: peer_id_str,
-                    }),
-                    crate::behavior::CallSignalAck {
-                        ok: true,
-                        reason: None,
-                    },
-                ),
-                "end" => (
-                    Some(SwarmEvent::CallEnded {
-                        call_id: request.call_id.clone(),
-                        peer_id: peer_id_str,
-                    }),
-                    crate::behavior::CallSignalAck {
-                        ok: true,
-                        reason: None,
-                    },
-                ),
-                other => (
-                    None,
-                    crate::behavior::CallSignalAck {
-                        ok: false,
-                        reason: Some(format!("unknown call-signal kind: {other}")),
-                    },
-                ),
+            let event = call_event_for_signal(&request.kind, &request.call_id, &peer_id_str);
+            let ack = if event.is_some() {
+                crate::behavior::CallSignalAck {
+                    ok: true,
+                    reason: None,
+                }
+            } else {
+                crate::behavior::CallSignalAck {
+                    ok: false,
+                    reason: Some(format!("unknown call-signal kind: {}", request.kind)),
+                }
             };
             if let Some(ev) = event {
                 let _ = event_tx.send(ev).await;
@@ -1493,11 +1489,8 @@ async fn handle_call_signal(
         }
         libp2p::request_response::Message::Response { response, .. } => {
             if let Some(reason) = response.reason {
-                if response.ok {
-                    p2plog_debug(format!("call signal accepted by {peer_id_str}: {reason}"));
-                } else {
-                    p2plog_debug(format!("call signal rejected by {peer_id_str}: {reason}"));
-                }
+                let verdict = if response.ok { "accepted" } else { "rejected" };
+                p2plog_debug(format!("call signal {verdict} by {peer_id_str}: {reason}"));
             }
         }
     }

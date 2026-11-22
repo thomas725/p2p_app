@@ -18,6 +18,11 @@
 //!
 //! Press `q` to quit (restores the terminal).
 
+use crossterm::{
+    event::{KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode},
+};
 use std::io::{Read, Write};
 
 #[derive(Debug)]
@@ -49,16 +54,36 @@ fn byte_label(b: u8) -> String {
     }
 }
 
+/// Apply one keyboard-encoding mode and print its banner.
+///
+/// Keeping the three protocol switches in one place makes the near-identical
+/// `1`/`2`/`3` arms in [`run`] one line each and guarantees every switch emits
+/// the same banner. `stdout` is passed by mutable reference so `execute!`'s
+/// `by_ref()` flush leaves the caller's handle usable.
+fn switch_mode(stdout: &mut impl Write, mode: &ProbeMode) -> color_eyre::Result<()> {
+    match mode {
+        ProbeMode::Legacy => {
+            execute!(stdout, PopKeyboardEnhancementFlags)?;
+            write!(stdout, "\x1b[>4;0m")?;
+        }
+        ProbeMode::Kitty => {
+            write!(stdout, "\x1b[>4;0m")?;
+            execute!(
+                stdout,
+                PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+            )?;
+        }
+        ProbeMode::ModifyOtherKeys => {
+            execute!(stdout, PopKeyboardEnhancementFlags)?;
+            write!(stdout, "\x1b[>4;2m")?;
+        }
+    }
+    write!(stdout, "\r\nMode: {}\r\n", mode.banner())?;
+    Ok(())
+}
+
 /// Runs the probe until the user presses `q`. Restores the terminal on exit.
 pub fn run() -> color_eyre::Result<()> {
-    use crossterm::{
-        event::{
-            KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
-        },
-        execute,
-        terminal::{disable_raw_mode, enable_raw_mode},
-    };
-
     enable_raw_mode()?;
     let mut stdout = std::io::stdout();
     write!(stdout, "\r\n")?; // leading blank line, then scroll like a normal app
@@ -92,31 +117,16 @@ pub fn run() -> color_eyre::Result<()> {
             if !in_escape {
                 match b {
                     b'1' => {
-                        // Legacy: clear modifyOtherKeys and pop the kitty flags.
-                        execute!(stdout, PopKeyboardEnhancementFlags)?;
-                        write!(stdout, "\x1b[>4;0m")?;
                         mode = ProbeMode::Legacy;
-                        write!(stdout, "\r\nMode: {}\r\n", mode.banner())?;
+                        switch_mode(&mut stdout, &mode)?;
                     }
                     b'2' => {
-                        // Kitty only: clear modifyOtherKeys first so the two
-                        // encodings cannot leak into each other.
-                        write!(stdout, "\x1b[>4;0m")?;
-                        execute!(
-                            stdout,
-                            PushKeyboardEnhancementFlags(
-                                KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                            )
-                        )?;
                         mode = ProbeMode::Kitty;
-                        write!(stdout, "\r\nMode: {}\r\n", mode.banner())?;
+                        switch_mode(&mut stdout, &mode)?;
                     }
                     b'3' => {
-                        // modifyOtherKeys only: pop the kitty flags first.
-                        execute!(stdout, PopKeyboardEnhancementFlags)?;
-                        write!(stdout, "\x1b[>4;2m")?;
                         mode = ProbeMode::ModifyOtherKeys;
-                        write!(stdout, "\r\nMode: {}\r\n", mode.banner())?;
+                        switch_mode(&mut stdout, &mode)?;
                     }
                     b'q' => {
                         quit = true;

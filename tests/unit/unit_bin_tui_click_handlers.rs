@@ -35,6 +35,16 @@ fn tab_span(titles: &[String], idx: usize) -> (usize, usize, usize) {
 }
 
 #[test]
+fn focus_after_close_keeps_a_valid_tab() {
+    // Closing a tab shifts focus down only when it was at or after the closed
+    // one; an earlier tab is unaffected, and closing the first tab lands on 0.
+    assert_eq!(focus_after_close(0, 2), 0); // focus before the closed tab
+    assert_eq!(focus_after_close(2, 2), 1); // focus on the closed tab
+    assert_eq!(focus_after_close(4, 2), 3); // focus after the closed tab
+    assert_eq!(focus_after_close(0, 0), 0); // saturating: closing the first tab
+}
+
+#[test]
 fn test_tab_click_switches_tab() {
     let mut state = test_app_state();
     let titles = state.dynamic_tabs.all_titles();

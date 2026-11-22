@@ -22,6 +22,37 @@ fn with_test_db(f: impl FnOnce()) {
 }
 
 #[test]
+fn call_signal_kinds_map_to_exactly_one_event() {
+    // The four known kinds map one-to-one onto a frontend event carrying the
+    // caller-minted id and the signing peer; a foreign kind maps to nothing so
+    // the handler rejects it with an explanatory ack.
+    type EventCheck = fn(&SwarmEvent) -> bool;
+    let cases: &[(&str, EventCheck)] = &[
+        ("invite", |ev| matches!(ev, SwarmEvent::CallInvite { .. })),
+        ("accept", |ev| matches!(ev, SwarmEvent::CallAccepted { .. })),
+        ("reject", |ev| matches!(ev, SwarmEvent::CallRejected { .. })),
+        ("end", |ev| matches!(ev, SwarmEvent::CallEnded { .. })),
+    ];
+    for &(kind, is_expected) in cases {
+        let event = call_event_for_signal(kind, "call-7", "peer-x")
+            .unwrap_or_else(|| panic!("no event for {kind}"));
+        assert!(is_expected(&event), "wrong event for {kind}: {event:?}");
+        match event {
+            SwarmEvent::CallInvite { call_id, peer_id }
+            | SwarmEvent::CallAccepted { call_id, peer_id }
+            | SwarmEvent::CallRejected { call_id, peer_id }
+            | SwarmEvent::CallEnded { call_id, peer_id } => {
+                assert_eq!(call_id, "call-7");
+                assert_eq!(peer_id, "peer-x");
+            }
+            other => panic!("unexpected event for {kind}: {other:?}"),
+        }
+    }
+    assert!(call_event_for_signal("ring", "call-7", "peer-x").is_none());
+    assert!(call_event_for_signal("", "call-7", "peer-x").is_none());
+}
+
+#[test]
 fn only_the_active_calls_own_reject_or_end_ends_media() {
     // A foreign or stale `reject`/`end` must not tear down a healthy call's
     // audio: both frontends ignore such signals, so doing so would desync the

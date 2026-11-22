@@ -328,6 +328,36 @@ pub fn register_log_callback(callback: LogCallback) {
     callbacks.push(callback);
 }
 
+/// A peekable character stream, shared by the ANSI-sequence consumers below.
+type EscapeChars<'a> = std::iter::Peekable<std::str::Chars<'a>>;
+
+/// Consume a CSI payload: `ESC [` is already read; the sequence ends at its
+/// final byte (`0x40..=0x7E`).
+fn consume_csi(chars: &mut EscapeChars<'_>) {
+    for c in chars.by_ref() {
+        if ('@'..='~').contains(&c) {
+            break;
+        }
+    }
+}
+
+/// Consume an OSC payload: `ESC ]` is already read; the sequence ends at BEL
+/// or `ESC \`.
+fn consume_osc(chars: &mut EscapeChars<'_>) {
+    while let Some(c) = chars.next() {
+        match c {
+            '\x07' => break,
+            '\x1b' => {
+                if chars.peek() == Some(&'\\') {
+                    chars.next();
+                }
+                break;
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Remove ANSI escape codes from a string (e.g., color/formatting codes).
 ///
 /// Understands CSI sequences (`ESC[ params final`), OSC sequences
@@ -347,27 +377,12 @@ pub fn strip_ansi_codes(s: &str) -> String {
             // CSI: ESC [ parameters / intermediates / final (0x40..=0x7E).
             Some('[') => {
                 chars.next();
-                for c in chars.by_ref() {
-                    if ('@'..='~').contains(&c) {
-                        break;
-                    }
-                }
+                consume_csi(&mut chars);
             }
             // OSC: ESC ] … BEL, or … ESC \.
             Some(']') => {
                 chars.next();
-                while let Some(c) = chars.next() {
-                    match c {
-                        '\x07' => break,
-                        '\x1b' => {
-                            if chars.peek() == Some(&'\\') {
-                                chars.next();
-                            }
-                            break;
-                        }
-                        _ => {}
-                    }
-                }
+                consume_osc(&mut chars);
             }
             // Two-character sequences (ESC M, ESC =, …). Character-set
             // designation sequences (ESC ( B, ESC ) 0, …) carry an extra
