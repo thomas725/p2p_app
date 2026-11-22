@@ -417,6 +417,32 @@ fn apply_manifest_rejects_corrupt_blob() {
     });
 }
 
+#[test]
+#[serial(db)]
+fn apply_manifest_cleans_up_staging_file_when_install_fails() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        let id = crate::files::hash_bytes(b"abc");
+        crate::files::store_outgoing_bytes("a.txt", b"abc").expect("store blob");
+        // A directory at the tracked path makes the final rename fail after the
+        // staging file was written. The cleanup must not strand a `.part` file.
+        std::fs::create_dir(dir.path().join("a.txt")).expect("make target a directory");
+        let manifest = ShareManifest {
+            share_id: "s1".to_string(),
+            name: "share".to_string(),
+            revision: 1,
+            entries: vec![entry("a.txt", id)],
+        };
+        assert!(apply_manifest("s1", dir.path(), None, &manifest).is_err());
+        let debris: Vec<_> = std::fs::read_dir(dir.path())
+            .expect("read dir")
+            .filter_map(Result::ok)
+            .filter(|e| e.file_name().to_string_lossy().ends_with(".part"))
+            .collect();
+        assert!(debris.is_empty(), "staging file leaked: {debris:?}");
+    });
+}
+
 #[cfg(unix)]
 #[test]
 #[serial(db)]
@@ -567,23 +593,23 @@ fn newer_manifest_supersedes_a_pending_apply() {
         };
         save_manifest(&share.share_id, &newer).expect("save newest manifest");
 
-        let mut queued = queue_apply("serving-peer".into(), None, old.clone());
+        let mut queued = queue_apply("serving-peer".into(), None, old.clone()).missing;
         queued.sort();
         let mut expected = vec![old_a.clone(), old_b.clone()];
         expected.sort();
         assert_eq!(queued, expected);
         assert_eq!(
-            queue_apply("serving-peer".into(), Some(old), newer.clone()),
+            queue_apply("serving-peer".into(), Some(old), newer.clone()).missing,
             vec![new.clone()]
         );
 
         // Blobs from the superseded snapshot no longer trigger an apply.
-        assert!(note_blob_available(&old_a).is_empty());
-        assert!(note_blob_available(&old_b).is_empty());
+        assert!(note_blob_available(&old_a, "serving-peer").is_empty());
+        assert!(note_blob_available(&old_b, "serving-peer").is_empty());
         assert!(!dir.path().join("a.txt").exists());
 
         crate::files::store_outgoing_bytes("c.txt", b"new").expect("store newest blob");
-        let applied = note_blob_available(&new);
+        let applied = note_blob_available(&new, "serving-peer");
         assert_eq!(applied.len(), 1);
         assert_eq!(applied[0].revision, 2);
         assert_eq!(applied[0].stats.written, 1);
@@ -634,21 +660,21 @@ fn disconnect_abandons_only_that_peers_pending_apply() {
         save_manifest(&gone_share.share_id, &gone_manifest).expect("save gone manifest");
         save_manifest(&stay_share.share_id, &stay_manifest).expect("save stay manifest");
         assert_eq!(
-            queue_apply("gone-peer".into(), None, gone_manifest),
+            queue_apply("gone-peer".into(), None, gone_manifest).missing,
             vec![gone_id.clone()]
         );
         assert_eq!(
-            queue_apply("stay-peer".into(), None, stay_manifest),
+            queue_apply("stay-peer".into(), None, stay_manifest).missing,
             vec![stay_id.clone()]
         );
 
         abandon_pending_from("gone-peer");
         crate::files::store_outgoing_bytes("gone.txt", b"gone").expect("store gone blob");
         crate::files::store_outgoing_bytes("stay.txt", b"stay").expect("store stay blob");
-        assert!(note_blob_available(&gone_id).is_empty());
+        assert!(note_blob_available(&gone_id, "gone-peer").is_empty());
         assert!(!gone_dir.path().join("gone.txt").exists());
 
-        let applied = note_blob_available(&stay_id);
+        let applied = note_blob_available(&stay_id, "stay-peer");
         assert_eq!(applied.len(), 1);
         assert_eq!(applied[0].share_id, stay_share.share_id);
         assert_eq!(
@@ -703,12 +729,12 @@ fn queue_apply_waits_for_blobs_then_installs_the_manifest() {
         };
         save_manifest(&share.share_id, &manifest).expect("save manifest");
 
-        let missing = queue_apply("serving-peer".to_string(), None, manifest);
+        let missing = queue_apply("serving-peer".to_string(), None, manifest).missing;
         assert_eq!(missing, vec![id.clone()]);
         assert!(!dir.path().join("file.txt").exists());
 
         crate::files::store_outgoing_bytes("file.txt", b"payload").expect("store blob");
-        let applied = note_blob_available(&id);
+        let applied = note_blob_available(&id, "serving-peer");
         assert_eq!(applied.len(), 1);
         assert_eq!(applied[0].share_id, share.share_id);
         assert_eq!(applied[0].stats.written, 1);
@@ -738,6 +764,131 @@ fn public_write_accepts_unbound_peer_when_enabled() {
                 .expect("present")
                 .revision,
             1
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn spoofed_offer_cannot_rewrite_local_acl_or_bound_root() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        // A share we own, bound to a folder, with a published manifest.
+        let owned = create_share(
+            "Mine",
+            "my-user",
+            ShareKind::Private,
+            false,
+            Some(dir.path().to_str().expect("root")),
+        )
+        .expect("create share");
+        let id = crate::files::hash_bytes(b"abc");
+        let manifest = ShareManifest {
+            share_id: owned.share_id.clone(),
+            name: owned.name.clone(),
+            revision: 1,
+            entries: vec![entry("a.txt", id.clone())],
+        };
+        save_manifest(&owned.share_id, &manifest).expect("save manifest");
+
+        // A peer claims the same id but tries to flip the ACL and root.
+        let spoof = ShareOffer {
+            share_id: owned.share_id.clone(),
+            name: "Hijacked".to_string(),
+            kind: ShareKind::Public,
+            revision: 99,
+            public_write: true,
+            owner_user_id: Some("attacker".to_string()),
+        };
+        let result = accept_offer(&spoof, None).expect("offer is a no-op, not an error");
+        assert_eq!(result.kind, ShareKind::Private);
+        assert_eq!(result.name, "Mine");
+        assert_eq!(result.owner_user_id, "my-user");
+        assert!(!result.public_write || result.kind == ShareKind::Public);
+
+        let stored = get_share(&owned.share_id).expect("get").expect("present");
+        assert_eq!(stored.name, "Mine");
+        assert_eq!(stored.kind, ShareKind::Private);
+        assert_eq!(stored.owner_user_id, "my-user");
+        assert_eq!(stored.revision, 1);
+        assert_eq!(
+            stored.local_root.as_deref(),
+            Some(dir.path().to_str().expect("root"))
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn save_manifest_rejects_missing_share_and_rollback() {
+    with_test_db(|| {
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        let v1 = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![],
+        };
+        let v2 = ShareManifest {
+            revision: 2,
+            ..v1.clone()
+        };
+
+        // Unknown shares never get orphaned entry rows.
+        let ghost = ShareManifest {
+            share_id: "never-created".to_string(),
+            ..v1.clone()
+        };
+        assert!(save_manifest("never-created", &ghost).is_err());
+
+        save_manifest(&share.share_id, &v2).expect("save newest");
+        // A replayed older response must never roll local state back.
+        assert!(save_manifest(&share.share_id, &v1).is_err());
+        assert_eq!(
+            get_share(&share.share_id)
+                .expect("get")
+                .expect("present")
+                .revision,
+            2
+        );
+        // An equal-revision re-fetch is an idempotent no-op.
+        save_manifest(&share.share_id, &v2).expect("idempotent re-fetch");
+    });
+}
+
+#[test]
+#[serial(db)]
+fn queue_apply_installs_immediately_when_every_blob_is_local() {
+    with_test_db(|| {
+        let dir = TempDir::new().expect("root dir");
+        let share = create_share(
+            "Rename",
+            "owner",
+            ShareKind::Public,
+            false,
+            Some(dir.path().to_str().expect("root")),
+        )
+        .expect("create share");
+        let id = crate::files::hash_bytes(b"payload");
+        crate::files::store_outgoing_bytes("file.txt", b"payload").expect("store blob first");
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("file.txt", id)],
+        };
+        save_manifest(&share.share_id, &manifest).expect("save manifest");
+
+        // No blob is missing, so no fetch will ever trigger `note_blob_available`.
+        // The manifest must still be applied to the bound folder now.
+        let result = queue_apply("serving-peer".to_string(), None, manifest);
+        assert!(result.missing.is_empty());
+        assert_eq!(result.applied.len(), 1);
+        assert_eq!(result.applied[0].peer_id, "serving-peer");
+        assert_eq!(
+            std::fs::read(dir.path().join("file.txt")).expect("installed immediately"),
+            b"payload"
         );
     });
 }

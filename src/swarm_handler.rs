@@ -2330,7 +2330,9 @@ async fn handle_share_response(
                     .await;
             }
         }
-        "manifest" => handle_share_manifest_response(response, peer_id, swarm),
+        "manifest" => {
+            handle_share_manifest_response(response, peer_id, event_tx, swarm).await;
+        }
         "publish" => {
             // Our submission landed: pull the owner's fresh manifest so all
             // devices converge on the new revision.
@@ -2349,10 +2351,12 @@ async fn handle_share_response(
 }
 
 /// Persist a received manifest (materialising the share row if its offer was
-/// never seen) and start pulls for every blob the snapshot still needs.
-fn handle_share_manifest_response(
+/// never seen), apply it when all its blobs are already local, and start pulls
+/// for the rest.
+async fn handle_share_manifest_response(
     response: &crate::behavior::ShareResponse,
     peer_id: &str,
+    event_tx: &mpsc::Sender<SwarmEvent>,
     swarm: &mut Swarm<AppBehaviour>,
 ) {
     let Some(manifest) = response.manifest.as_ref() else {
@@ -2371,7 +2375,7 @@ fn handle_share_manifest_response(
         let owner = crate::identity::find_user_id_for_peer(peer_id)
             .ok()
             .flatten()
-            .unwrap_or_else(|| "unknown".to_string());
+            .unwrap_or_else(|| crate::shares::unknown_owner_id(&manifest.share_id));
         let offer = crate::shares::ShareOffer {
             share_id: manifest.share_id.clone(),
             name: manifest.name.clone(),
@@ -2389,11 +2393,22 @@ fn handle_share_manifest_response(
     if crate::shares::save_manifest(&manifest.share_id, manifest).is_err() {
         return;
     }
-    let missing = crate::shares::queue_apply(peer_id.to_string(), previous, manifest.clone());
+    let queued = crate::shares::queue_apply(peer_id.to_string(), previous, manifest.clone());
+    for applied in queued.applied {
+        let _ = event_tx
+            .send(SwarmEvent::ShareUpdated {
+                peer_id: applied.peer_id,
+                share_id: applied.share_id,
+                revision: applied.revision,
+                written: applied.stats.written,
+                removed: applied.stats.removed,
+            })
+            .await;
+    }
     let Ok(peer) = peer_id.parse::<libp2p::PeerId>() else {
         return;
     };
-    for file_id in missing {
+    for file_id in queued.missing {
         let (name, size, mime) = manifest
             .entries
             .iter()

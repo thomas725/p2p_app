@@ -147,10 +147,21 @@ Shipped after the core:
 - FRB/web facade parity for create/list/bind/delete/snapshot/grants, manifest
   load/save, offer acceptance and the four share commands, mirrored in the Dart
   `NodeApi`/`FrbNodeApi`/`HttpNodeApi` transports. Web clients cannot pass a
-  server-local path; only native installs can bind or snapshot a folder;
+  server-local path; `bindShare` is rejected outright (a null root could clear a
+  native binding), and only native installs can snapshot a folder. Share objects
+  use an explicit camelCase DTO boundary (`src/shares_json.rs`) for the web and
+  mobile event transports, keeping the domain/wire types snake_case;
+- correctness hardening: received manifests are monotonic (a lower revision or
+  unknown share is rejected), `accept_submitted_manifest` checks ACL and base
+  revision in one transaction, untrusted offers can no longer rewrite the ACL,
+  root or revision of a share we own/bound/have materialised, manifests with all
+  blobs local apply immediately, blob-arrival applies are attributed to the
+  delivering peer, `delete_share` is transactional and drops in-flight applies,
+  and a failed file install no longer strands a `.part` staging file;
 - wire-level coverage for offer → list → manifest → stale rejection → retry
   with the refreshed revision, plus unit coverage for grant revocation,
-  superseded/deferred applies and disconnect cleanup.
+  superseded/deferred applies, disconnect cleanup, spoofed offers, manifest
+  rollbacks, immediate applies and staging-file cleanup.
 
 Still open (UI/integration, not protocol work):
 

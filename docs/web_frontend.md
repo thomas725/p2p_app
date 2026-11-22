@@ -124,7 +124,11 @@ Implemented and verified end to end:
   share-store facade (`createShare`, `listShares`, grants, manifests, offers, publish),
   exposed through the same `NodeApi` on both Dart transports via
   `lib/src/data/shares_json.dart`. Web calls cannot pass a server-local path:
-  `createShare`/`bindShare`/`snapshotShare` reject such parameters before touching the DB.
+  `createShare`/`snapshotShare` reject such parameters before touching the DB and
+  `bindShare` is rejected outright (a browser has no folder to bind). Share
+  objects use camelCase at the browser/event boundary — `src/shares_json.rs`
+  converts explicitly so a name mismatch cannot silently default every field;
+  the domain types stay snake_case for the wire protocol and stored JSON.
   `saveShareManifest` is also native-only: the raw store write skips ACLs and
   `base_revision` checks, so web clients must use `publishShareSnapshot`.
 

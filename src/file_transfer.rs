@@ -489,7 +489,7 @@ async fn finish_received_file(
     // A share manifest may have been waiting on this exact blob. Applying it
     // here (rather than in the UI) keeps folder convergence independent of
     // which frontend is running.
-    for applied in crate::shares::note_blob_available(&file_id) {
+    for applied in crate::shares::note_blob_available(&file_id, &peer_id) {
         let _ = event_tx
             .send(SwarmEvent::ShareUpdated {
                 peer_id: applied.peer_id,

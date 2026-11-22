@@ -494,9 +494,12 @@ fn log_share_event(ev: SwarmEvent) {
     match ev {
         SwarmEvent::ShareOffered { peer_id, offer } => {
             p2plog_debug(format!(
-                "Share {share_id} ({name}) offered by {peer_id}",
+                "Share {share_id} ({name}, {kind:?}, write={public_write}, rev {revision}) offered by {peer_id}",
                 share_id = offer.share_id,
-                name = offer.name
+                name = offer.name,
+                kind = offer.kind,
+                public_write = offer.public_write,
+                revision = offer.revision
             ));
         }
         SwarmEvent::ShareUpdated {

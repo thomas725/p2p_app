@@ -205,12 +205,13 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             json(api::get_share(&p.share_id))
         }
         "bindShare" => {
-            let p: WebBindShareParams = parse(params)?;
-            reject_web_share_root(p.local_root.as_deref())?;
-            json(api::bind_share(api::BindShareParams {
-                share_id: p.share_id,
-                local_root: None,
-            }))
+            // A browser has no server-local folder to bind: a non-null root is
+            // a path escape attempt and a null root is a meaningless no-op that
+            // would silently clear a native binding. Validate the share id
+            // first (so malformed params still report `invalid params:`) then
+            // reject the operation outright.
+            let _: ShareIdParams = parse(params)?;
+            Err("server-local share roots are not supported over the web transport".into())
         }
         "deleteShare" => {
             let p: ShareIdParams = parse(params)?;
@@ -233,19 +234,25 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
         }
         "loadShareManifest" => {
             let p: ShareIdParams = parse(params)?;
-            json(api::load_share_manifest(&p.share_id))
+            let manifest = api::load_share_manifest(&p.share_id)?
+                .as_ref()
+                .map(crate::shares_json::ShareManifestJson::from);
+            ok(manifest)
         }
         "saveShareManifest" => {
             // The raw store write bypasses ACLs and base_revision checks. Web
             // clients must use publishShareSnapshot, which goes through the
-            // owner's swarm handler and rejects stale submissions.
+            // owner's swarm handler and rejects stale submissions. Parse first
+            // so a malformed payload still reports `invalid params:`.
             let SaveShareManifestParams { share_id, manifest } = parse(params)?;
-            let _ = (share_id, manifest);
+            let _ = (share_id, crate::shares::ShareManifest::from(manifest));
             Err("direct share manifest writes are not supported over the web transport; use publishShareSnapshot".into())
         }
         "acceptShareOffer" => {
             let p: AcceptShareOfferParams = parse(params)?;
-            json(api::accept_share_offer(p.offer))
+            json(api::accept_share_offer(crate::shares::ShareOffer::from(
+                p.offer,
+            )))
         }
         "snapshotShare" => {
             let _root = parse::<SnapshotShareParams>(params)?.root;
@@ -261,14 +268,17 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
         }
         "sendShareOffer" => {
             let p: SendShareOfferParams = parse(params)?;
-            json(api::send_share_offer(p.peer_ids, p.offer))
+            json(api::send_share_offer(
+                p.peer_ids,
+                crate::shares::ShareOffer::from(p.offer),
+            ))
         }
         "publishShareSnapshot" => {
             let p: PublishShareSnapshotParams = parse(params)?;
             json(api::publish_share_snapshot(
                 &p.peer_id,
                 p.base_revision,
-                p.manifest,
+                crate::shares::ShareManifest::from(p.manifest),
             ))
         }
         other => Err(format!("method not routed to shares: {other}")),
@@ -876,14 +886,6 @@ struct WebCreateShareParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct WebBindShareParams {
-    share_id: String,
-    #[serde(default)]
-    local_root: Option<String>,
-}
-
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct ShareGrantParams {
     share_id: String,
     user_id: String,
@@ -895,13 +897,13 @@ struct ShareGrantParams {
 #[serde(rename_all = "camelCase")]
 struct SaveShareManifestParams {
     share_id: String,
-    manifest: crate::shares::ShareManifest,
+    manifest: crate::shares_json::ShareManifestJson,
 }
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AcceptShareOfferParams {
-    offer: crate::shares::ShareOffer,
+    offer: crate::shares_json::ShareOfferJson,
 }
 
 #[derive(serde::Deserialize)]
@@ -921,7 +923,7 @@ struct RequestShareManifestParams {
 #[serde(rename_all = "camelCase")]
 struct SendShareOfferParams {
     peer_ids: Vec<String>,
-    offer: crate::shares::ShareOffer,
+    offer: crate::shares_json::ShareOfferJson,
 }
 
 #[derive(serde::Deserialize)]
@@ -929,7 +931,7 @@ struct SendShareOfferParams {
 struct PublishShareSnapshotParams {
     peer_id: String,
     base_revision: i64,
-    manifest: crate::shares::ShareManifest,
+    manifest: crate::shares_json::ShareManifestJson,
 }
 
 #[cfg(test)]
@@ -996,6 +998,12 @@ mod tests {
         .expect_err("binding a server directory must fail");
         assert!(err.contains("server-local share roots"), "{err}");
 
+        // A null root is equally meaningless over the web: there is no local
+        // folder to bind, and accepting it would clear a native binding.
+        let err = dispatch("bindShare", json!({"shareId": "s", "localRoot": null}))
+            .expect_err("a null share root must not clear a native binding");
+        assert!(err.contains("server-local share roots"), "{err}");
+
         let err = dispatch(
             "snapshotShare",
             json!({"shareId": "s", "root": "/srv/private"}),
@@ -1006,15 +1014,32 @@ mod tests {
 
     #[test]
     fn web_manifest_writes_must_go_through_the_revision_checked_lane() {
-        let manifest = crate::shares::ShareManifest {
-            share_id: "s".to_string(),
-            name: "S".to_string(),
-            revision: 1,
-            entries: vec![],
-        };
+        // The browser sends camelCase (see `shares_json.dart`). The DTO must
+        // accept that shape with real values, then the arm rejects the raw
+        // write regardless — parsing proves the boundary contract still works.
+        let manifest = json!({
+            "shareId": "s-42",
+            "name": "Docs",
+            "revision": 3,
+            "entries": [{
+                "path": "docs/readme.md",
+                "fileId": "abc123",
+                "size": 12,
+                "mime": "text/markdown"
+            }]
+        });
+        let parsed: crate::shares_json::ShareManifestJson =
+            parse(json!({"shareId": "s-42", "manifest": manifest})["manifest"].clone())
+                .expect("camelCase manifest parses at the web boundary");
+        let domain = crate::shares::ShareManifest::from(parsed);
+        assert_eq!(domain.share_id, "s-42");
+        assert_eq!(domain.revision, 3);
+        assert_eq!(domain.entries[0].file_id, "abc123");
+        assert_eq!(domain.entries[0].size, 12);
+
         let err = dispatch(
             "saveShareManifest",
-            json!({"shareId": "s", "manifest": manifest}),
+            json!({"shareId": "s-42", "manifest": manifest}),
         )
         .expect_err("the raw store write bypasses ACLs and revisions");
         assert!(err.contains("publishShareSnapshot"), "{err}");

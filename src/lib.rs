@@ -88,6 +88,7 @@ pub mod relay;
 pub mod reply;
 pub mod settings;
 pub mod shares;
+mod shares_json;
 pub mod swarm_handler;
 pub mod theme;
 pub mod tui_tabs;

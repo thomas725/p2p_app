@@ -94,20 +94,32 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   are keyed by verified `user_id` from `identity::find_user_id_for_peer`.
   `can_read`/`can_write` fail closed on DB errors and unbound peers.
 - **Snapshots and writes**: `shares::snapshot_tree` stores every regular file
-  content-addressed and skips symlinks. `accept_submitted_manifest` rejects a
-  submission whose `base_revision` is no longer current, so a writer refreshes
-  and retries instead of silently overwriting another device's changes.
+  content-addressed and skips symlinks. `accept_submitted_manifest` checks the
+  ACL and `base_revision` and writes the new manifest in one transaction, so a
+  concurrent submit cannot slip between the two; a writer whose base is stale
+  refreshes and retries instead of silently overwriting another device's
+  changes. A remote `ShareOffer` is untrusted: for a share we own, have bound, or
+  already hold a manifest for, accepting a repeated offer is a no-op — it can
+  never rewrite our ACL, root or revision. Received manifests are monotonic:
+  `save_manifest` rejects a lower revision (and an unknown share) so a replayed
+  peer response cannot roll local state back; an equal revision is an idempotent
+  re-fetch.
 - **Bound folders and path safety**: a share may bind a real `local_root`.
   Applying a manifest writes only through `resolve_share_path`, rejecting
   absolute paths, `.`/`..` or empty segments, backslashes, colons, control
   characters, and any symlink component. A blob is re-hashed before it is
   installed via a temporary file, and only files tracked by the previous
-  manifest are ever removed; untracked local files are left alone.
+  manifest are ever removed; untracked local files are left alone. A failed
+  install removes its `.part` staging file so a synced folder never accumulates
+  debris (blob GC only sweeps the blob store).
 - **Deferred application**: `queue_apply` records a received manifest and the
-  blob ids still missing; `note_blob_available` applies it when the last blob
-  lands (and emits `ShareUpdated`), dropping it if the serving peer disappears
-  or a newer revision won. The event fan-out is in `file_transfer.rs` and
-  `swarm_handler.rs`, so folder convergence does not depend on a frontend.
+  blob ids still missing; `note_blob_available(file_id, peer_id)` applies it when
+  the last blob lands (attributed to that blob's delivering peer and emitting
+  `ShareUpdated`), dropping it if the serving peer disappears or a newer
+  revision won. A manifest whose blobs are all already local (a rename/delete or
+  a repeated fetch) is applied immediately — no blob arrival will ever trigger
+  it. The event fan-out is in `file_transfer.rs` and `swarm_handler.rs`, so
+  folder convergence does not depend on a frontend.
 - **Coverage**: `tests/swarm_handler.rs` drives the offer/list/manifest wire
   handshake and a stale submission followed by a successful retry;
   `tests/unit/unit_shares.rs` covers revocation, stale writes with changed
@@ -118,13 +130,18 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `setShareGrant`, `removeShareGrant`, `loadShareManifest`, `saveShareManifest`,
   `acceptShareOffer`, `snapshotShare`, `requestPeerShares`,
   `requestShareManifest`, `sendShareOffer` and `publishShareSnapshot`.
-  `src/web/methods.rs` mirrors all of them; `createShare`/`bindShare`/
-  `snapshotShare` reject client-supplied server paths on the web transport, and
+  `src/web/methods.rs` mirrors all of them: `createShare`/`snapshotShare` reject
+  client-supplied server paths, `bindShare` is rejected outright (a browser has
+  no folder to bind, and a null root could clear a native binding), and
   `saveShareManifest` is native-only because it skips ACLs and `base_revision`
   checks — web clients use `publishShareSnapshot` instead.
-  The generated Dart bindings live in `lib/src/rust/shares.dart`; the JSON↔DTO
-  conversion for the browser lives in `lib/src/data/shares_json.dart`, and both
-  transports expose the same methods through `NodeApi`.
+  The domain types keep snake_case for the wire protocol and stored JSON; the
+  browser and mobile event boundaries convert explicitly through
+  `src/shares_json.rs` (camelCase) so a field-name mismatch cannot silently
+  default every value. The generated Dart bindings live in
+  `lib/src/rust/shares.dart`; the browser's matching DTO conversion lives in
+  `lib/src/data/shares_json.dart`, and both transports expose the same methods
+  through `NodeApi`.
 - **Frontend surface (deferred)**: share events are serialized in
   `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
   for a later UI slice; the TUI currently logs them. No share screens exist in

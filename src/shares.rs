@@ -371,6 +371,23 @@ pub fn offer_for(
     }
 }
 
+/// Owner id recorded when an offer or manifest has no verifiable owner.
+///
+/// Real account ids are `PeerId` strings (`user_id_from_account_pubkey`), so the
+/// namespaced sentinel can never collide with one. It is local bookkeeping
+/// only — the owner enforces its own ACL.
+#[must_use]
+pub fn unknown_owner_id(share_id: &str) -> String {
+    format!("unknown:share:{share_id}")
+}
+
+/// `public_write` is meaningful only for public shares. Normalising it at the
+/// write boundary keeps a private share from ever granting anonymous writes.
+#[must_use]
+pub const fn effective_public_write(kind: ShareKind, public_write: bool) -> bool {
+    matches!(kind, ShareKind::Public) && public_write
+}
+
 /// Create a new share row and return its domain view.
 ///
 /// # Errors
@@ -408,7 +425,7 @@ fn create_share_with_id(
         owner_user_id: owner_user_id.to_string(),
         name,
         kind: kind.as_i32(),
-        public_write: i32::from(public_write),
+        public_write: i32::from(effective_public_write(kind, public_write)),
         local_root: local_root.map(str::to_string),
         revision: 0,
         manifest_json: None,
@@ -519,32 +536,39 @@ pub fn list_grants(share_id: &str) -> color_eyre::Result<Vec<ShareGrant>> {
     Ok(rows.into_iter().map(ShareGrant::from).collect())
 }
 
-/// Delete a share and its grants/entries. The bound local folder and the
-/// content-addressed blobs are left untouched: deleting a share never deletes
-/// a user's files.
+/// Delete a share and its grants/entries.
+///
+/// The bound local folder and the content-addressed blobs are left untouched:
+/// deleting a share never deletes a user's files. Any in-flight apply for the
+/// share is dropped too, so a late blob cannot materialise files for a share
+/// that no longer exists.
 ///
 /// # Errors
 /// Returns an error if the DB delete fails.
 pub fn delete_share(share_id: &str) -> color_eyre::Result<()> {
     let conn = &mut crate::sqlite_connect()?;
-    diesel::delete(share_entries::table.filter(share_entries::share_id.eq(share_id)))
-        .execute(conn)
-        .wrap_err("failed to delete share entries")?;
-    diesel::delete(share_grants::table.filter(share_grants::share_id.eq(share_id)))
-        .execute(conn)
-        .wrap_err("failed to delete share grants")?;
-    diesel::delete(shares::table.filter(shares::share_id.eq(share_id)))
-        .execute(conn)
-        .wrap_err("failed to delete share")?;
+    conn.transaction::<(), color_eyre::Report, _>(|conn| {
+        diesel::delete(share_entries::table.filter(share_entries::share_id.eq(share_id)))
+            .execute(conn)
+            .wrap_err("failed to delete share entries")?;
+        diesel::delete(share_grants::table.filter(share_grants::share_id.eq(share_id)))
+            .execute(conn)
+            .wrap_err("failed to delete share grants")?;
+        diesel::delete(shares::table.filter(shares::share_id.eq(share_id)))
+            .execute(conn)
+            .wrap_err("failed to delete share")?;
+        Ok(())
+    })?;
+    abandon_pending_for_share(share_id);
     Ok(())
 }
 
-/// Persist an accepted manifest: replace the entry rows, bump the revision and
-/// refresh the cached JSON.
-///
-/// # Errors
-/// Returns an error for an invalid manifest, a missing share, or a DB failure.
-pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Result<()> {
+/// Encode a validated manifest into the rows and cached JSON used by both
+/// [`save_manifest`] and [`accept_submitted_manifest`].
+fn prepare_manifest_rows(
+    share_id: &str,
+    manifest: &ShareManifest,
+) -> color_eyre::Result<(Vec<NewShareEntry>, String, i64)> {
     validate_manifest(manifest)?;
     if manifest.share_id != share_id {
         return Err(eyre!("manifest id does not match the share"));
@@ -552,7 +576,7 @@ pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Re
     let json = serde_json::to_string(manifest).wrap_err("failed to encode share manifest")?;
     let revision =
         i64::try_from(manifest.revision).map_err(|_| eyre!("share revision out of range"))?;
-    let entries: Vec<NewShareEntry> = manifest
+    let entries = manifest
         .entries
         .iter()
         .map(|entry| NewShareEntry {
@@ -563,26 +587,65 @@ pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Re
             mime: entry.mime.clone(),
         })
         .collect();
+    Ok((entries, json, revision))
+}
+
+/// Replace a share's entry rows, revision and cached JSON inside an open
+/// transaction. The share row must already exist (the FK requires it).
+fn write_manifest_rows(
+    conn: &mut diesel::SqliteConnection,
+    share_id: &str,
+    entries: &[NewShareEntry],
+    json: &str,
+    revision: i64,
+) -> color_eyre::Result<()> {
+    diesel::delete(share_entries::table.filter(share_entries::share_id.eq(share_id)))
+        .execute(conn)
+        .wrap_err("failed to clear old share entries")?;
+    for entry in entries {
+        diesel::insert_into(share_entries::table)
+            .values(entry)
+            .execute(conn)
+            .wrap_err("failed to insert share entry")?;
+    }
+    diesel::update(shares::table.filter(shares::share_id.eq(share_id)))
+        .set((
+            shares::revision.eq(revision),
+            shares::manifest_json.eq(Some(json)),
+            shares::updated_at.eq(chrono::Utc::now().naive_utc()),
+        ))
+        .execute(conn)
+        .wrap_err("failed to update share manifest")?;
+    Ok(())
+}
+
+/// Persist a received manifest: replace the entry rows, bump the revision and
+/// refresh the cached JSON.
+///
+/// The share must exist and the manifest revision must not move backwards — a
+/// replayed or stale peer response must never roll local state back. Equal
+/// revisions are accepted as an idempotent re-fetch.
+///
+/// # Errors
+/// Returns an error for an invalid/mismatched manifest, an unknown share, a
+/// rollback attempt, or a DB failure.
+pub fn save_manifest(share_id: &str, manifest: &ShareManifest) -> color_eyre::Result<()> {
+    let (entries, json, revision) = prepare_manifest_rows(share_id, manifest)?;
     let conn = &mut crate::sqlite_connect()?;
     conn.transaction::<(), color_eyre::Report, _>(|conn| {
-        diesel::delete(share_entries::table.filter(share_entries::share_id.eq(share_id)))
-            .execute(conn)
-            .wrap_err("failed to clear old share entries")?;
-        for entry in &entries {
-            diesel::insert_into(share_entries::table)
-                .values(entry)
-                .execute(conn)
-                .wrap_err("failed to insert share entry")?;
+        let current: Option<i64> = shares::table
+            .filter(shares::share_id.eq(share_id))
+            .select(shares::revision)
+            .first(conn)
+            .optional()
+            .wrap_err("failed to check share revision")?;
+        let current = current.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+        if revision < current {
+            return Err(eyre!(
+                "manifest revision {revision} would roll back share {share_id} (current {current})"
+            ));
         }
-        diesel::update(shares::table.filter(shares::share_id.eq(share_id)))
-            .set((
-                shares::revision.eq(revision),
-                shares::manifest_json.eq(Some(&json)),
-                shares::updated_at.eq(chrono::Utc::now().naive_utc()),
-            ))
-            .execute(conn)
-            .wrap_err("failed to update share manifest")?;
-        Ok(())
+        write_manifest_rows(conn, share_id, &entries, &json, revision)
     })
 }
 
@@ -674,36 +737,45 @@ pub fn offer_for_share(share_id: &str) -> color_eyre::Result<Option<ShareOffer>>
 /// Materialise a received offer as a local share row.
 ///
 /// The row gives a later manifest request somewhere to land. Calls are
-/// idempotent by `share_id`: a repeated offer only refreshes the advertised
-/// name/revision, never resets a bound local root or manifest.
+/// idempotent by `share_id`. An offer is untrusted (it came from a peer): for a
+/// share we own, have bound to a folder, or already hold a manifest for, it is
+/// a no-op — it can never rewrite our ACL, root or revision. For a bare remote
+/// stub, only the display name is refreshed.
 ///
 /// # Errors
 /// Returns an error if the offer is invalid or the DB write fails.
 pub fn accept_offer(offer: &ShareOffer, local_root: Option<&str>) -> color_eyre::Result<Share> {
-    validate_share_name(&offer.name).map_err(|error| eyre!("{error}"))?;
+    let name = validate_share_name(&offer.name).map_err(|error| eyre!("{error}"))?;
     if offer.share_id.is_empty() {
         return Err(eyre!("share offer has no id"));
     }
     if let Some(existing) = get_share(&offer.share_id)? {
+        let locally_owned = crate::identity::my_user_id()
+            .ok()
+            .flatten()
+            .is_some_and(|id| id == existing.owner_user_id);
+        if existing.local_root.is_some() || existing.manifest.is_some() || locally_owned {
+            return Ok(existing);
+        }
+        // A pure remote stub: refresh only the cosmetic name, never `kind`,
+        // `public_write`, `revision`, root or owner (all untrusted in an offer).
         let conn = &mut crate::sqlite_connect()?;
         diesel::update(shares::table.filter(shares::share_id.eq(&offer.share_id)))
             .set((
-                shares::name.eq(&offer.name),
-                shares::kind.eq(offer.kind.as_i32()),
-                shares::public_write.eq(i32::from(offer.public_write)),
+                shares::name.eq(&name),
                 shares::updated_at.eq(chrono::Utc::now().naive_utc()),
             ))
             .execute(conn)
             .wrap_err("failed to refresh share offer")?;
-        return Ok(existing);
+        return Ok(Share { name, ..existing });
     }
     let owner_user_id = offer
         .owner_user_id
         .clone()
-        .unwrap_or_else(|| "unknown".to_string());
+        .unwrap_or_else(|| unknown_owner_id(&offer.share_id));
     create_share_with_id(
         &offer.share_id,
-        &offer.name,
+        &name,
         &owner_user_id,
         offer.kind,
         offer.public_write,
@@ -769,6 +841,25 @@ pub fn snapshot_tree(root: &Path) -> color_eyre::Result<Vec<ShareEntry>> {
     }
     entries.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(entries)
+}
+
+/// Install one blob at `target` through a staged temporary file, so an
+/// interrupted write never leaves a half-written tracked file. The staging file
+/// is removed on any failure — otherwise a failed rename would strand a `.part`
+/// file inside the user's synced folder forever (blob GC only sweeps the blob
+/// store, not share roots).
+fn install_share_file(target: &Path, bytes: &[u8]) -> color_eyre::Result<()> {
+    let temp = target.with_extension(format!("{}.part", crate::fmt::gen_msg_id()));
+    std::fs::write(&temp, bytes)
+        .wrap_err_with(|| format!("failed to stage share file {}", temp.display()))
+        .inspect_err(|_| {
+            let _ = std::fs::remove_file(&temp);
+        })?;
+    std::fs::rename(&temp, target)
+        .wrap_err_with(|| format!("failed to install share file {}", target.display()))
+        .inspect_err(|_| {
+            let _ = std::fs::remove_file(&temp);
+        })
 }
 
 /// Apply a manifest to the bound local folder, writing all blobs and removing
@@ -843,13 +934,7 @@ pub fn apply_manifest(
         if crate::files::hash_bytes(&bytes) != entry.file_id {
             return Err(eyre!("share blob {} failed its hash check", entry.file_id));
         }
-        // Write through a temporary file so an interrupted apply never leaves a
-        // half-written file at the tracked path.
-        let temp = target.with_extension(format!("{}.part", crate::fmt::gen_msg_id()));
-        std::fs::write(&temp, &bytes)
-            .wrap_err_with(|| format!("failed to stage share file {}", temp.display()))?;
-        std::fs::rename(&temp, &target)
-            .wrap_err_with(|| format!("failed to install share file {}", target.display()))?;
+        install_share_file(&target, &bytes)?;
         stats.written = stats.written.saturating_add(1);
     }
     Ok(stats)
@@ -858,6 +943,11 @@ pub fn apply_manifest(
 /// Accept a submitted snapshot after checking permission and the base revision.
 /// On success the manifest is persisted and applied to the share's bound local
 /// folder (when one is set).
+///
+/// The permission check and the base-revision check plus the write happen in a
+/// single transaction, so a concurrent submit cannot slip between them and two
+/// writers cannot both claim the same base. The folder is applied only after
+/// the DB commit succeeds — never before a potentially failing write.
 ///
 /// # Errors
 /// Returns an error when the ACL denies the write, the revision is stale, the
@@ -871,27 +961,45 @@ pub fn accept_submitted_manifest(
     if !can_write(share_id, peer_id) {
         return Err(eyre!("peer {peer_id} may not write share {share_id}"));
     }
-    let current = get_share(share_id)?.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
-    let expected = current.revision;
-    if base_revision != expected {
-        return Err(eyre!(
-            "stale share revision {base_revision} (current {expected})"
-        ));
-    }
     if manifest.share_id != share_id {
         return Err(eyre!("manifest id does not match the share"));
     }
-    validate_manifest(manifest)?;
-    let next_revision = expected.saturating_add(1);
+    let next_revision = base_revision.saturating_add(1);
     let mut next = manifest.clone();
     next.revision = next_revision;
-    let previous = current.manifest.as_ref();
-    let stats = current.local_root.as_deref().map_or_else(
+    let (entries, json, revision) = prepare_manifest_rows(share_id, &next)?;
+
+    // Atomic check-and-write: reload the share and verify its revision inside
+    // the same transaction that persists the new manifest.
+    let (previous, local_root) = {
+        let conn = &mut crate::sqlite_connect()?;
+        conn.transaction::<(Option<ShareManifest>, Option<String>), color_eyre::Report, _>(
+            |conn| {
+                let share = shares::table
+                    .filter(shares::share_id.eq(share_id))
+                    .select(ShareRow::as_select())
+                    .first::<ShareRow>(conn)
+                    .optional()
+                    .wrap_err("failed to load share")?
+                    .ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+                let share = Share::from(share);
+                let expected = share.revision;
+                if base_revision != expected {
+                    return Err(eyre!(
+                        "stale share revision {base_revision} (current {expected})"
+                    ));
+                }
+                write_manifest_rows(conn, share_id, &entries, &json, revision)?;
+                Ok((share.manifest, share.local_root))
+            },
+        )?
+    };
+
+    // The manifest is durable now; apply it to the bound folder if there is one.
+    local_root.map_or_else(
         || Ok(ApplyStats::default()),
-        |root| apply_manifest(share_id, Path::new(root), previous, &next),
-    )?;
-    save_manifest(share_id, &next)?;
-    Ok(stats)
+        |root| apply_manifest(share_id, Path::new(&root), previous.as_ref(), &next),
+    )
 }
 
 /// A manifest waiting for the blobs it references to finish downloading.
@@ -925,52 +1033,117 @@ pub struct ShareApplyResult {
     pub stats: ApplyStats,
 }
 
+/// Outcome of registering a received manifest for application.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct QueueApplyResult {
+    /// Content addresses the caller must fetch before the manifest can apply.
+    pub missing: Vec<String>,
+    /// Manifests applied immediately because every blob was already local.
+    pub applied: Vec<ShareApplyResult>,
+}
+
+/// Apply one fully-downloaded manifest to its bound folder, if the share still
+/// exists, is still bound, and is at exactly the revision being applied.
+///
+/// A newer manifest may have been saved while we were downloading; never apply
+/// an older snapshot over it.
+fn apply_ready(apply: PendingApply) -> Option<ShareApplyResult> {
+    let (root, current_revision) = get_share(&apply.manifest.share_id)
+        .ok()
+        .flatten()
+        .and_then(|share| share.local_root.map(|root| (root, share.revision)))?;
+    if apply.manifest.revision != current_revision {
+        return None;
+    }
+    match apply_manifest(
+        &apply.manifest.share_id,
+        Path::new(&root),
+        apply.previous.as_ref(),
+        &apply.manifest,
+    ) {
+        Ok(stats) => Some(ShareApplyResult {
+            peer_id: apply.peer_id,
+            share_id: apply.manifest.share_id,
+            revision: apply.manifest.revision,
+            stats,
+        }),
+        Err(error) => {
+            p2plog_debug(format!(
+                "failed to apply share {}: {error}",
+                apply.manifest.share_id
+            ));
+            None
+        }
+    }
+}
+
 /// Register a received manifest for application once all of its blobs are
-/// locally available. Returns the content addresses the caller should fetch.
+/// locally available.
 ///
 /// The manifest should already be persisted (so GC sees its blob references);
 /// `previous` is the manifest that was stored before it, captured by the caller
 /// ahead of that write. A later manifest for the same share supersedes an
 /// earlier pending one, so the folder always converges on the newest revision.
+///
+/// When every blob is already local (a rename/delete-only snapshot or a repeat
+/// fetch) the manifest is applied immediately rather than waiting forever for
+/// a blob-arrival notification that will never come.
 #[must_use]
 pub fn queue_apply(
     peer_id: String,
     previous: Option<ShareManifest>,
     manifest: ShareManifest,
-) -> Vec<String> {
+) -> QueueApplyResult {
     let missing: BTreeSet<String> = manifest
         .entries
         .iter()
         .filter(|entry| crate::files::file_path(&entry.file_id).is_none())
         .map(|entry| entry.file_id.clone())
         .collect();
-    let ids = missing.iter().cloned().collect();
     let mut pending = pending_applies()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
+    // A later manifest supersedes any earlier pending one for this share.
+    pending.remove(&manifest.share_id);
     if missing.is_empty() {
-        pending.remove(&manifest.share_id);
-    } else {
-        pending.insert(
-            manifest.share_id.clone(),
-            PendingApply {
-                peer_id,
-                previous,
-                manifest,
-                missing,
-            },
-        );
+        drop(pending);
+        let apply = PendingApply {
+            peer_id,
+            previous,
+            manifest,
+            missing,
+        };
+        return QueueApplyResult {
+            missing: Vec::new(),
+            applied: apply_ready(apply).into_iter().collect(),
+        };
     }
-    ids
+    let ids = missing.iter().cloned().collect();
+    pending.insert(
+        manifest.share_id.clone(),
+        PendingApply {
+            peer_id,
+            previous,
+            manifest,
+            missing,
+        },
+    );
+    drop(pending);
+    QueueApplyResult {
+        missing: ids,
+        applied: Vec::new(),
+    }
 }
 
 /// Note that a blob arrived and apply every share that was waiting on it.
+/// `peer_id` is the peer that delivered the blob, attributed to any apply it
+/// completes.
 ///
 /// A share whose local root is not bound yet is dropped from the pending set:
 /// there is nowhere to apply it, and the manifest is already persisted for a
 /// later explicit refresh.
 #[must_use]
-pub fn note_blob_available(file_id: &str) -> Vec<ShareApplyResult> {
+pub fn note_blob_available(file_id: &str, peer_id: &str) -> Vec<ShareApplyResult> {
     let completed: Vec<PendingApply> = {
         let mut pending = pending_applies()
             .lock()
@@ -982,7 +1155,7 @@ pub fn note_blob_available(file_id: &str) -> Vec<ShareApplyResult> {
                 ready.push(apply.manifest.share_id.clone());
             }
         }
-        let completed = ready
+        let completed: Vec<PendingApply> = ready
             .into_iter()
             .filter_map(|share_id| pending.remove(&share_id))
             .collect();
@@ -990,52 +1163,35 @@ pub fn note_blob_available(file_id: &str) -> Vec<ShareApplyResult> {
         completed
     };
 
-    let mut results = Vec::new();
-    for apply in completed {
-        let Some(share) = get_share(&apply.manifest.share_id)
-            .ok()
-            .flatten()
-            .and_then(|share| share.local_root.map(|root| (root, share.revision)))
-        else {
-            continue;
-        };
-        let (root, current_revision) = share;
-        // A newer manifest may have been saved while we were downloading; never
-        // apply an older snapshot over it.
-        let expected = current_revision;
-        if apply.manifest.revision != expected {
-            continue;
-        }
-        match apply_manifest(
-            &apply.manifest.share_id,
-            Path::new(&root),
-            apply.previous.as_ref(),
-            &apply.manifest,
-        ) {
-            Ok(stats) => results.push(ShareApplyResult {
-                peer_id: apply.peer_id,
-                share_id: apply.manifest.share_id,
-                revision: apply.manifest.revision,
-                stats,
-            }),
-            Err(error) => {
-                p2plog_debug(format!(
-                    "failed to apply share {}: {error}",
-                    apply.manifest.share_id
-                ));
-            }
-        }
-    }
-    results
+    completed
+        .into_iter()
+        .map(|apply| PendingApply {
+            peer_id: peer_id.to_string(),
+            ..apply
+        })
+        .filter_map(apply_ready)
+        .collect()
 }
 
 /// Drop pending applications whose serving peer disconnected. Their blobs can
 /// no longer arrive, so leaving them queued would wedge future revisions.
+///
+/// This is deliberately coarse: it drops every pending apply from that peer,
+/// not just ones tied to a specific blob. Pending applies are per-share and
+/// short-lived, so a reconnect re-queues them on the next manifest.
 pub fn abandon_pending_from(peer_id: &str) {
     let mut pending = pending_applies()
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
     pending.retain(|_, apply| apply.peer_id != peer_id);
+}
+
+/// Drop a single share's pending apply (used when the share is deleted).
+fn abandon_pending_for_share(share_id: &str) {
+    let mut pending = pending_applies()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    pending.remove(share_id);
 }
 
 #[cfg(test)]
