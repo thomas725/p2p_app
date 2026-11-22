@@ -3110,13 +3110,27 @@ fn test_enter_persists_reaction_and_refreshes_chips() {
     p2p_app::db::init_database().expect("init db");
     p2p_app::identity::provision_my_user(None, None).expect("provision");
     let local_peer = p2p_app::peers::local_peer_id_string().expect("local peer id");
+    // Seed the wire message so reaction fan-out derives the DM partner from the
+    // message's scope, exactly as a real received DM would be persisted.
+    p2p_app::messages::save_message_with_meta(
+        "hello",
+        Some("react-peer"),
+        "dm",
+        true,
+        None,
+        p2p_app::messages::MessageMeta {
+            msg_id: Some("dm-0".to_string()),
+            ..Default::default()
+        },
+    )
+    .expect("seed dm message");
 
     let rt = tokio::runtime::Runtime::new().expect("runtime");
     rt.block_on(async {
         let mut state = app_state_with_dm_messages("react-peer", 1);
         focus_dm_tab(&mut state);
         let state = Arc::new(Mutex::new(state));
-        let (swarm_cmd_tx, _swarm_cmd_rx) = mpsc::channel(4);
+        let (swarm_cmd_tx, mut swarm_cmd_rx) = mpsc::channel(4);
         let (render_tx, _render_rx) = mpsc::channel(4);
 
         let _ = process_key_event(
@@ -3135,6 +3149,23 @@ fn test_enter_persists_reaction_and_refreshes_chips() {
             &render_tx,
         )
         .await;
+
+        // The network half: a `SendReaction` must fan out to the DM partner
+        // with the trimmed token and this install's peer id, not a broadcast.
+        let cmd = tokio::time::timeout(std::time::Duration::from_millis(100), swarm_cmd_rx.recv())
+            .await
+            .expect("timeout")
+            .expect("expected SendReaction");
+        match cmd {
+            SwarmCommand::SendReaction { peer_ids, signal } => {
+                assert_eq!(peer_ids, vec!["react-peer".to_string()]);
+                assert_eq!(signal.msg_id, "dm-0");
+                assert_eq!(signal.emoji, "🚀");
+                assert_eq!(signal.actor, local_peer);
+                assert!(!signal.remove, "first reaction is an add");
+            }
+            _ => panic!("expected SendReaction"),
+        }
 
         let s = state.lock().await;
         assert!(!s.is_adding_reaction(), "editor consumed on success");
