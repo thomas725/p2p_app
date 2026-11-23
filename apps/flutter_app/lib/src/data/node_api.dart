@@ -89,6 +89,13 @@ abstract class NodeApi {
 
   Future<List<ChatMessage>> loadBroadcastMessages({required int limit});
 
+  /// Broadcasts newer than the persisted viewed marker, for the "N new" badge.
+  /// Rust owns the watermark so every transport agrees after a restart.
+  Future<int> getBroadcastUnreadCount();
+
+  /// Persist that every broadcast currently in history has been viewed.
+  Future<void> markBroadcastViewed();
+
   Future<List<ChatMessage>> loadDmMessages({
     required String peerId,
     required int limit,

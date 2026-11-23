@@ -244,6 +244,10 @@ fn initialize_state(
     // Hydrate stored reaction chips once for the loaded broadcast history
     // (US-008); live events and other chats extend the same map.
     p2p_app::reactions::hydrate_into(&mut state.reactions, state.message_ids.iter().cloned());
+    // Seed the unread badge from the shared DB watermark so a restart agrees
+    // with Flutter/web. The pane opens on the first unread row when there are
+    // any; a fresh install (no marker) reports zero.
+    state.seed_broadcast_unread(p2p_app::messages::broadcast_unread_count());
     state.env.kitty_keyboard_active = keyboard_enhanced;
     state.db_url.clone_from(&db_info);
     state.platform = format!("Terminal ({})", std::env::consts::OS);

@@ -578,3 +578,87 @@ fn save_receipt_backfills_broadcast_recipient_confirmation() {
         assert_eq!(untouched, Some(None));
     });
 }
+
+#[test]
+#[serial(db)]
+fn broadcast_unread_is_zero_without_a_marker() {
+    with_test_db(|| {
+        for body in ["one", "two"] {
+            save_message(body, Some("peer-a"), crate::CHAT_TOPIC, false, None).expect("save");
+        }
+        assert_eq!(
+            broadcast_unread_count(),
+            0,
+            "a fresh install must not flag all of history as new"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
+fn broadcast_unread_counts_only_newer_visible_chat_rows() {
+    with_test_db(|| {
+        let first = save_message("first", None, crate::CHAT_TOPIC, false, None).expect("save");
+        let second = save_message("second", None, crate::CHAT_TOPIC, false, None).expect("save");
+        // A DM, a different topic, and a locally hidden row are all excluded.
+        save_message(
+            "dm",
+            Some("peer-a"),
+            crate::CHAT_TOPIC,
+            true,
+            Some("peer-b"),
+        )
+        .expect("save dm");
+        save_message("other", None, "other-topic", false, None).expect("save other");
+        let hidden = save_message("hidden", None, crate::CHAT_TOPIC, false, None).expect("save");
+        mark_message_sent(hidden.id).expect("mark sent");
+        mark_message_deleted(hidden.id).expect("hide");
+        save_message("after", None, crate::CHAT_TOPIC, false, None).expect("save after");
+
+        crate::settings::set_broadcast_last_viewed_id(first.id).expect("marker");
+        assert_eq!(
+            broadcast_unread_count(),
+            2,
+            "only the visible broadcast rows newer than the marker count"
+        );
+
+        crate::settings::set_broadcast_last_viewed_id(second.id).expect("advance");
+        assert_eq!(broadcast_unread_count(), 1);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn mark_broadcast_viewed_advances_to_newest_id_and_is_idempotent() {
+    with_test_db(|| {
+        save_message("one", None, crate::CHAT_TOPIC, false, None).expect("save");
+        let newest = save_message("two", None, crate::CHAT_TOPIC, false, None).expect("save");
+        mark_broadcast_viewed().expect("mark viewed");
+        assert_eq!(crate::settings::broadcast_last_viewed_id(), Some(newest.id));
+        assert_eq!(broadcast_unread_count(), 0);
+
+        // A redundant call must not rewrite the marker; the value stays stable.
+        mark_broadcast_viewed().expect("mark viewed again");
+        assert_eq!(crate::settings::broadcast_last_viewed_id(), Some(newest.id));
+
+        save_message("three", None, crate::CHAT_TOPIC, false, None).expect("save");
+        assert_eq!(broadcast_unread_count(), 1, "new rows stay unread");
+    });
+}
+
+#[test]
+#[serial(db)]
+fn mark_broadcast_viewed_on_empty_history_switches_to_id_mode() {
+    with_test_db(|| {
+        mark_broadcast_viewed().expect("mark viewed");
+        assert_eq!(
+            crate::settings::broadcast_last_viewed_id(),
+            Some(0),
+            "writing zero marks the chat viewed even with no history"
+        );
+        assert_eq!(broadcast_unread_count(), 0);
+
+        save_message("later", None, crate::CHAT_TOPIC, false, None).expect("save");
+        assert_eq!(broadcast_unread_count(), 1);
+    });
+}

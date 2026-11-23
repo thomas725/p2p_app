@@ -721,7 +721,7 @@ async fn handle_esc_key(state: &SharedState, render_tx: &mpsc::Sender<RenderEven
             s.active_tab = 0;
             s.chat_scroll_offset = 0;
             s.auto_scroll.chat = true;
-            s.chat_unread_count = 0;
+            s.mark_broadcast_viewed();
             p2plog_debug("Returned to Broadcast Chat (Esc)".to_string());
         }
     }

@@ -172,6 +172,22 @@ class FakeNodeApi implements NodeApi {
   /// Returned by [loadBroadcastMessages] when set; otherwise it yields [].
   List<ChatMessage> Function(int limit)? loadBroadcastMessagesOverride;
 
+  /// In-memory broadcast unread watermark. Tests can seed it before pumping
+  /// `HomeScreen`; [markBroadcastViewed] clears it just like the Rust marker.
+  int broadcastUnreadCount = 0;
+
+  @override
+  Future<int> getBroadcastUnreadCount() async {
+    _record('getBroadcastUnreadCount');
+    return broadcastUnreadCount;
+  }
+
+  @override
+  Future<void> markBroadcastViewed() async {
+    _record('markBroadcastViewed');
+    broadcastUnreadCount = 0;
+  }
+
   @override
   Future<List<ChatMessage>> loadDmMessages({
     required String peerId,

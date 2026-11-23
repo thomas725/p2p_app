@@ -100,6 +100,12 @@ class FrbNodeApi implements NodeApi {
       bridge.loadBroadcastMessages(limit: PlatformInt64Util.from(limit));
 
   @override
+  Future<int> getBroadcastUnreadCount() => bridge.getBroadcastUnreadCount();
+
+  @override
+  Future<void> markBroadcastViewed() => bridge.markBroadcastViewed();
+
+  @override
   Future<List<ChatMessage>> loadDmMessages({
     required String peerId,
     required int limit,

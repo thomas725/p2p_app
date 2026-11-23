@@ -41,6 +41,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-23_tui_clipboard.md](2026-11-23_tui_clipboard.md) | TUI `Ctrl+C` copies the newest message via a pure OSC 52 sequence builder | 2026-11-23 |
 | [2026-11-23_tui_log_copy_all.md](2026-11-23_tui_log_copy_all.md) | TUI Log `Ctrl+C` copies the whole buffer like Flutter's "Copy All" | 2026-11-23 |
 | [2026-11-23_tui_dm_group_unread.md](2026-11-23_tui_dm_group_unread.md) | TUI DM/group unread banners and scroll fidelity while reading history | 2026-11-23 |
+| [2026-11-23_broadcast_unread_watermark.md](2026-11-23_broadcast_unread_watermark.md) | Shared DB-backed broadcast unread watermark replacing Dart `SharedPreferences` | 2026-11-23 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

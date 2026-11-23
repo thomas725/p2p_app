@@ -503,6 +503,9 @@ async fn send_broadcast_message(
     if let Some(id) = sent_id {
         attach_sent_db_id(Some(&mut state.message_db_ids), row_idx, id);
     }
+    // Our own message is by definition on screen, so advance the shared
+    // watermark too (matches Flutter's send path).
+    state.mark_broadcast_viewed();
 
     let recipients: Vec<String> = state
         .connected

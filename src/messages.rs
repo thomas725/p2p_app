@@ -529,6 +529,59 @@ pub fn get_all_peer_stats() -> color_eyre::eyre::Result<HashMap<String, PeerMess
     Ok(result)
 }
 
+/// Number of non-deleted broadcast rows newer than the viewed watermark.
+///
+/// A missing marker means this install has never viewed the broadcast chat, so
+/// nothing is reported as unread — a first launch must not flag all of history
+/// as new. Once a frontend writes the marker, only genuinely newer rows count.
+/// A database error degrades to zero rather than breaking startup.
+#[must_use]
+pub fn broadcast_unread_count() -> usize {
+    let Some(last_viewed_id) = crate::settings::broadcast_last_viewed_id() else {
+        return 0;
+    };
+    let Ok(mut conn) = crate::sqlite_connect() else {
+        return 0;
+    };
+    messages
+        .filter(crate::generated::schema::messages::topic.eq(crate::CHAT_TOPIC))
+        .filter(crate::generated::schema::messages::is_direct.eq(0))
+        .filter(crate::generated::schema::messages::deleted_at.is_null())
+        .filter(crate::generated::schema::messages::id.gt(last_viewed_id))
+        .count()
+        .get_result::<i64>(&mut conn)
+        .ok()
+        .and_then(|count| usize::try_from(count).ok())
+        .unwrap_or_default()
+}
+
+/// Advance the viewed watermark to the newest broadcast row currently stored.
+///
+/// Called when a frontend actually shows the latest broadcast (scroll to the
+/// bottom, send, or return to the chat tab). Writing `0` for an empty history
+/// is deliberate: it switches the marker to "viewed" so later rows count as
+/// unread. A redundant write of the same id is skipped.
+///
+/// # Errors
+/// Returns an error if the history query or the settings write fails.
+pub fn mark_broadcast_viewed() -> Result<(), String> {
+    let latest_id = {
+        let conn = &mut crate::sqlite_connect().map_err(|e| e.to_string())?;
+        messages
+            .filter(crate::generated::schema::messages::topic.eq(crate::CHAT_TOPIC))
+            .filter(crate::generated::schema::messages::is_direct.eq(0))
+            .filter(crate::generated::schema::messages::deleted_at.is_null())
+            .select(diesel::dsl::max(crate::generated::schema::messages::id))
+            .first::<Option<i32>>(conn)
+            .map_err(|e| format!("failed to read broadcast history: {e}"))?
+            .unwrap_or_default()
+    };
+    if crate::settings::broadcast_last_viewed_id() == Some(latest_id) {
+        return Ok(());
+    }
+    crate::settings::set_broadcast_last_viewed_id(latest_id)
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_messages.rs"]
 mod tests;

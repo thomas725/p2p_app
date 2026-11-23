@@ -17,7 +17,7 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
             if state.active_tab == 0 {
-                state.chat_unread_count = 0;
+                state.mark_broadcast_viewed();
             }
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
@@ -31,7 +31,7 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
             state.chat_scroll_offset = 0;
             state.cancel_nickname_edit();
             if state.active_tab == 0 {
-                state.chat_unread_count = 0;
+                state.mark_broadcast_viewed();
             }
             p2plog_debug(format!("Switched to tab {}", state.active_tab));
         }
@@ -176,7 +176,7 @@ fn scroll_chat_tab(key_code: crossterm::event::KeyCode, state: &mut AppState) {
         max_offset,
     );
     if state.auto_scroll.chat && !was_auto_scroll {
-        state.chat_unread_count = 0;
+        state.mark_broadcast_viewed();
     }
 }
 
@@ -359,7 +359,7 @@ fn mouse_scroll_chat_tab(state: &mut AppState, scroll_dir: &str) -> bool {
         max_offset,
     );
     if state.auto_scroll.chat && !was_auto_scroll {
-        state.chat_unread_count = 0;
+        state.mark_broadcast_viewed();
     }
     changed
 }

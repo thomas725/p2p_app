@@ -1320,6 +1320,30 @@ impl AppState {
         state
     }
 
+    /// Seed the broadcast badge from the persisted watermark at startup. With
+    /// unread rows the pane opens on the first unread message (as in Flutter)
+    /// instead of auto-scrolling past them while claiming "N new".
+    pub fn seed_broadcast_unread(&mut self, unread: usize) {
+        if unread == 0 || self.messages.is_empty() {
+            return;
+        }
+        self.chat_unread_count = unread;
+        self.auto_scroll.chat = false;
+        self.chat_scroll_offset = self.messages.len().saturating_sub(unread);
+    }
+
+    /// Record that the newest broadcast is on screen: clear the badge and
+    /// advance the shared DB watermark so Flutter/web agree after a restart.
+    ///
+    /// Best-effort by design — a settings write failure must never block input
+    /// or navigation; it only means the badge may reappear next launch.
+    pub fn mark_broadcast_viewed(&mut self) {
+        self.chat_unread_count = 0;
+        if let Err(e) = p2p_app::messages::mark_broadcast_viewed() {
+            p2p_app::p2plog_debug(format!("Failed to persist broadcast viewed marker: {e}"));
+        }
+    }
+
     /// Apply a received typing signal (US-009). Returns whether the visible
     /// state changed, so the caller can request a redraw.
     pub fn receive_typing(&mut self, peer_id: &str, is_typing: bool) -> bool {

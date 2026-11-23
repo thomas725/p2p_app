@@ -568,6 +568,13 @@ class HttpNodeApi implements NodeApi {
       );
 
   @override
+  Future<int> getBroadcastUnreadCount() async =>
+      await _call('getBroadcastUnreadCount') as int;
+
+  @override
+  Future<void> markBroadcastViewed() => _call('markBroadcastViewed');
+
+  @override
   Future<List<ChatMessage>> loadDmMessages({
     required String peerId,
     required int limit,

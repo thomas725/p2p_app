@@ -188,6 +188,19 @@ Future<List<ChatMessage>> loadDmMessages({
   required PlatformInt64 limit,
 }) => RustLib.instance.api.crateApiLoadDmMessages(peerId: peerId, limit: limit);
 
+/// Broadcasts newer than the persisted "last viewed" marker, for the "N new"
+/// badge. The marker lives in Rust `app_settings` so the TUI, Flutter and web
+/// frontends agree after a restart; an install that never viewed reports zero.
+Future<int> getBroadcastUnreadCount() =>
+    RustLib.instance.api.crateApiGetBroadcastUnreadCount();
+
+/// Persist that every broadcast currently in history has been viewed.
+///
+/// # Errors
+/// Returns an error if the database write fails.
+Future<void> markBroadcastViewed() =>
+    RustLib.instance.api.crateApiMarkBroadcastViewed();
+
 /// Locally hide one sent message (broadcast, DM, or group message).
 ///
 /// Writes a tombstone only when the row was sent by us and is not already

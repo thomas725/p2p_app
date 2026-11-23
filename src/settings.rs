@@ -24,6 +24,8 @@ const KEY_THEME_ACCENT: &str = "theme_accent";
 const KEY_NOTIFICATION_SOUND: &str = "notification_sound";
 /// `app_settings.key` for the desktop notification channel (US-028).
 const KEY_NOTIFICATION_DESKTOP: &str = "notification_desktop";
+/// `app_settings.key` for the broadcast viewed watermark (highest row id read).
+const KEY_BROADCAST_LAST_VIEWED_ID: &str = "broadcast_last_viewed_id";
 
 /// Read a raw setting value. Returns `None` when the key is absent or the DB
 /// cannot be read (a broken settings table must not break the caller).
@@ -139,6 +141,26 @@ pub fn notification_desktop() -> bool {
 /// Returns a human-readable error if the database write fails.
 pub fn set_notification_desktop(enabled: bool) -> Result<(), String> {
     set(KEY_NOTIFICATION_DESKTOP, if enabled { "1" } else { "0" })
+}
+
+/// Highest broadcast row id the user has viewed, or `None` on a fresh install.
+///
+/// [`crate::messages::broadcast_unread_count`] counts non-deleted rows above
+/// this id. The marker is an *id*, not a loaded-list length: history caps,
+/// tombstones and trimming cannot shift it. `None` means "never viewed", which
+/// deliberately reports **zero** unread so a first launch does not flag all of
+/// history as new; writing the marker (even `0`) switches to id-based counting.
+#[must_use]
+pub fn broadcast_last_viewed_id() -> Option<i32> {
+    get(KEY_BROADCAST_LAST_VIEWED_ID).and_then(|value| value.parse().ok())
+}
+
+/// Persist the broadcast viewed watermark (the highest viewed row id).
+///
+/// # Errors
+/// Returns a human-readable error if the database write fails.
+pub fn set_broadcast_last_viewed_id(id: i32) -> Result<(), String> {
+    set(KEY_BROADCAST_LAST_VIEWED_ID, &id.to_string())
 }
 
 #[cfg(test)]

@@ -207,6 +207,23 @@ pub fn load_dm_messages(peer_id: String, limit: i64) -> Result<Vec<ChatMessage>,
     crate::mobile_node::load_dm_messages(peer_id, limit)
 }
 
+/// Count unread broadcasts for the "N new" badge.
+///
+/// The marker lives in Rust `app_settings` so TUI, Flutter and web agree after
+/// a restart; an install that never viewed reports zero.
+#[must_use]
+pub fn get_broadcast_unread_count() -> i32 {
+    i32::try_from(crate::messages::broadcast_unread_count()).unwrap_or(i32::MAX)
+}
+
+/// Persist that every broadcast currently in history has been viewed.
+///
+/// # Errors
+/// Returns an error if the database write fails.
+pub fn mark_broadcast_viewed() -> Result<(), String> {
+    crate::messages::mark_broadcast_viewed()
+}
+
 /// Locally hide one sent message (broadcast, DM, or group message).
 ///
 /// Writes a tombstone only when the row was sent by us and is not already

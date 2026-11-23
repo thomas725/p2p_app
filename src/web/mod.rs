@@ -1045,6 +1045,8 @@ mod tests {
             "getMyUserId",
             "listNetworkPeers",
             "getLanOnly",
+            "getBroadcastUnreadCount",
+            "markBroadcastViewed",
             "getTheme",
             "getNotificationSettings",
             "listBlockedPeers",

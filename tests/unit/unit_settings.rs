@@ -51,6 +51,22 @@ fn set_lan_only_is_an_upsert_not_a_second_row() {
 
 #[test]
 #[serial]
+fn broadcast_last_viewed_id_is_none_until_written_and_roundtrips() {
+    with_test_db(|| {
+        assert_eq!(
+            broadcast_last_viewed_id(),
+            None,
+            "a fresh install has never viewed the broadcast chat"
+        );
+        set_broadcast_last_viewed_id(0).expect("write the zero marker");
+        assert_eq!(broadcast_last_viewed_id(), Some(0));
+        set_broadcast_last_viewed_id(42).expect("advance");
+        assert_eq!(broadcast_last_viewed_id(), Some(42));
+    });
+}
+
+#[test]
+#[serial]
 fn theme_defaults_to_dark_teal_and_roundtrips() {
     with_test_db(|| {
         assert!(theme_dark(), "a fresh install keeps the dark palette");

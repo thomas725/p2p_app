@@ -5,7 +5,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
@@ -462,7 +461,6 @@ void main() {
   testWidgets('a receipt event ticks the acknowledged broadcast', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
     final fake = FakeNodeApi(isRemoteTransport: true)
       ..mobilePeerStatus = const MobilePeerStatus(
         databaseUrl: ':memory:',
@@ -487,6 +485,38 @@ void main() {
     );
     await tester.pump();
     expect(find.byIcon(Icons.done_all), findsOneWidget);
+  });
+
+  testWidgets('cold start shows the DB-backed unread banner', (tester) async {
+    final fake = FakeNodeApi(isRemoteTransport: true)
+      ..mobilePeerStatus = const MobilePeerStatus(
+        databaseUrl: ':memory:',
+        localPeerId: 'me',
+      )
+      ..broadcastUnreadCount = 2
+      ..loadBroadcastMessagesOverride = (_) => [
+            chatMessage(id: 1, msgId: 'old', content: 'old'),
+            chatMessage(id: 2, msgId: 'new-1', content: 'new one'),
+            chatMessage(id: 3, msgId: 'new-2', content: 'new two'),
+          ];
+    nodeApi = fake;
+
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    // Init chains status -> history -> roster -> groups -> unread count.
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('2 new messages'), findsOneWidget);
+    expect(
+      fake.calls.map((call) => call.method),
+      contains('getBroadcastUnreadCount'),
+    );
+    // Showing unread rows must not silently clear the shared marker.
+    expect(
+      fake.calls.map((call) => call.method),
+      isNot(contains('markBroadcastViewed')),
+    );
   });
 
   testWidgets('an incoming bubble renders its live latency', (tester) async {
@@ -520,7 +550,6 @@ void main() {
   testWidgets('a live broadcast carries its latency into the chat', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
     final fake = FakeNodeApi(isRemoteTransport: true);
     fake.mobilePeerStatus = const MobilePeerStatus(
       databaseUrl: ':memory:',
@@ -672,7 +701,6 @@ void main() {
   testWidgets('a live broadcast carries its reply snapshot into the chat', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
     const quote = ReplyRef(
       msgId: 'quoted-wire-id',
       sender: 'Bob',
@@ -1198,7 +1226,6 @@ void main() {
   testWidgets('a live reaction event refreshes the broadcast chips', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({});
     final fake = FakeNodeApi(isRemoteTransport: true);
     fake.mobilePeerStatus = const MobilePeerStatus(
       databaseUrl: ':memory:',

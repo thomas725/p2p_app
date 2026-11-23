@@ -233,6 +233,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Shared DB-backed broadcast unread watermark | 2026-11-23 | [`archive/2026-11-23_broadcast_unread_watermark.md`](archive/2026-11-23_broadcast_unread_watermark.md) |
 | TUI DM/group unread banners + scroll fidelity | 2026-11-23 | [`archive/2026-11-23_tui_dm_group_unread.md`](archive/2026-11-23_tui_dm_group_unread.md) |
 | TUI Log "Copy All" parity (`Ctrl+C`, OSC 52) | 2026-11-23 | [`archive/2026-11-23_tui_log_copy_all.md`](archive/2026-11-23_tui_log_copy_all.md) |
 | TUI clipboard parity (`Ctrl+C`, OSC 52) | 2026-11-23 | [`archive/2026-11-23_tui_clipboard.md`](archive/2026-11-23_tui_clipboard.md) |

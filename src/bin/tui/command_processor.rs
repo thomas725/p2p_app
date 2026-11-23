@@ -379,15 +379,18 @@ fn handle_incoming_message(s: &mut AppState, msg: p2p_app::MessageEvent, is_dire
         reply_to,
         encrypted,
     };
-    if let Err(e) = p2p_app::save_message_with_meta(
+    let saved = p2p_app::save_message_with_meta(
         &content,
         Some(&peer_id),
         &s.topic_str,
         is_direct,
         is_direct.then_some(&peer_id),
         meta,
-    ) {
-        p2plog_debug(format!("Failed to save: {e}"));
+    );
+    match saved {
+        Ok(_) if !is_direct && s.auto_scroll.chat => s.mark_broadcast_viewed(),
+        Ok(_) => {}
+        Err(e) => p2plog_debug(format!("Failed to save: {e}")),
     }
     upsert_peer_last_seen(s, &peer_id, chrono::Utc::now().naive_utc());
     // The Contacts rows carry last-seen too; rebuild and re-sort so an incoming

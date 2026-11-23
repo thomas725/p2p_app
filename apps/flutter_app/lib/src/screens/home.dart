@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
@@ -236,9 +235,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_atBottom) _unreadCount = 0;
     });
     // The user has actually read up to the newest broadcast: persist the
-    // viewed-count watermark so the next launch's unread-skip is right even
-    // when they got here by natural scrolling (not the jump-to-bottom button).
-    if (atBottom) _saveViewedCount();
+    // viewed watermark in Rust so every frontend agrees on the next launch,
+    // even when they got here by natural scrolling (not the jump button).
+    if (atBottom) unawaited(nodeApi.markBroadcastViewed());
   }
 
   void _onBubbleDoubleTap(int index) {
@@ -312,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectionMode = false;
       _selectedIndices.clear();
     });
-    if (_atBottom) unawaited(_saveViewedCount());
+    if (_atBottom) unawaited(nodeApi.markBroadcastViewed());
   }
 
   /// Show an operational failure without replacing the whole app. Startup
@@ -775,20 +774,13 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     });
-    _saveViewedCount();
-  }
-
-  static const _lastViewedKey = 'broadcast_last_viewed_count';
-
-  Future<void> _saveViewedCount() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_lastViewedKey, _messages.length);
+    unawaited(nodeApi.markBroadcastViewed());
   }
 
   Future<void> _scrollToFirstUnread() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastViewed = prefs.getInt(_lastViewedKey) ?? 0;
-    final unreadCount = _messages.length - lastViewed;
+    // Rust owns the watermark, so every transport agrees after a restart. The
+    // count is DB-backed: it cannot drift when history is capped or trimmed.
+    final unreadCount = await nodeApi.getBroadcastUnreadCount();
 
     if (unreadCount > 0 && _messages.isNotEmpty) {
       // This read happens after an `await`, so a frame may already show zero
@@ -798,7 +790,12 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _unreadCount = unreadCount);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
-          final firstUnreadIndex = lastViewed.clamp(0, _messages.length - 1);
+          // Unread rows are the newest ones, so they sit at the tail of the
+          // loaded window. Clamp covers a window shorter than the count.
+          final firstUnreadIndex = (_messages.length - unreadCount).clamp(
+            0,
+            _messages.length - 1,
+          );
           final targetOffset = (firstUnreadIndex * 70.0) - 20.0;
           _scrollController.jumpTo(
             targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
