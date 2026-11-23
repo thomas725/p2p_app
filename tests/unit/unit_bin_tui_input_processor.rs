@@ -3055,6 +3055,69 @@ async fn test_ctrl_o_is_inert_on_non_chat_tabs() {
     assert!(s.popup.is_none());
 }
 
+// ── Ctrl+C copy newest message to clipboard (Flutter parity) ─────────────
+
+#[tokio::test]
+async fn test_ctrl_c_copies_newest_message_in_chat() {
+    let state = Arc::new(Mutex::new(reply_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    let s = state.lock().await;
+    assert_eq!(
+        s.pending_clipboard,
+        vec!["12:00 [Alice] older line".to_string()]
+    );
+    // The modifier must keep `c` out of the composer.
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_ctrl_c_without_messages_queues_nothing() {
+    let state = Arc::new(Mutex::new(test_app_state()));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    assert_eq!(state.lock().await.pending_clipboard, Vec::<String>::new());
+}
+
+#[tokio::test]
+async fn test_ctrl_c_is_inert_on_non_chat_tabs() {
+    let mut s = test_app_state();
+    s.active_tab = 4; // the Log fixed tab (Chat, Contacts, Groups, ... Log)
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let _ = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert_eq!(state.lock().await.pending_clipboard, Vec::<String>::new());
+}
+
 // ── Reaction editor (US-008) ────────────────────────────────────────────
 //
 // These drive the real interactive key path (`process_key_event`), mirroring

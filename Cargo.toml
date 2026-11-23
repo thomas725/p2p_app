@@ -93,7 +93,7 @@ tracing = { version = "=0.1.44", optional = true }
 tracing-subscriber = { version = "=0.3.23", optional = true }
 ratatui = { version = "=0.30.2", optional = true }
 ratatui-textarea = { version = "0.9", optional = true, default-features = false, features = ["crossterm"] }
-crossterm = { version = "=0.29", optional = true }
+crossterm = { version = "=0.29", optional = true, features = ["osc52"] }
 cpal = { version = "0.18", optional = true }
 # ORM mapper we use to access our SQLite database
 diesel = { version = "^2.3", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "chrono" ] }

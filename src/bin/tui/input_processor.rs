@@ -1500,6 +1500,16 @@ fn handle_chat_action_shortcut(
         // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
         // the modifier keeps the chat composer untouched.
         crossterm::event::KeyCode::Char('o') if is_ctrl => open_newest_attachment(s, tab),
+        // `Ctrl+C` copies the newest message's rendered line to the terminal
+        // clipboard (OSC 52), matching Flutter's per-message copy action. Raw
+        // mode delivers this as a key event, not SIGINT; the render loop emits
+        // the queued sequence after the frame so stdout stays single-threaded.
+        crossterm::event::KeyCode::Char('c') if is_ctrl => {
+            if let Some(line) = s.newest_message_line(tab) {
+                s.pending_clipboard.push(line);
+                p2plog_debug("Copied newest message to clipboard".to_string());
+            }
+        }
         _ => return false,
     }
     true

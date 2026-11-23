@@ -233,6 +233,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI clipboard parity (`Ctrl+C`, OSC 52) | 2026-11-23 | [`archive/2026-11-23_tui_clipboard.md`](archive/2026-11-23_tui_clipboard.md) |
 | Notification sounds + desktop alerts (US-027/US-028) | 2026-11-21 | [`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md) |
 | LAN-only mode toggle (US-051) | 2026-11-21 | [`archive/2026-11-21_lan_only_mode.md`](archive/2026-11-21_lan_only_mode.md) |
 | Public bootstrap nodes / internet discovery (US-050) | 2026-11-12 | [`archive/2026-11-12_public_bootstrap_discovery.md`](archive/2026-11-12_public_bootstrap_discovery.md) |

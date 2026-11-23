@@ -115,6 +115,56 @@ fn test_reply_capture_keeps_multiline_body_and_collapses_preview() {
 }
 
 #[test]
+fn test_newest_message_line_returns_last_row_per_chat_tab() {
+    use p2p_app::tui_tabs::TabContent;
+
+    let mut s = test_app_state();
+    assert_eq!(s.newest_message_line(&TabContent::Chat), None);
+
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "first".to_string(),
+        sender_peer_id: None,
+    });
+    s.messages.push_back(p2p_app::DisplayMessage {
+        text: "12:00 [Alice] second\ncontinuation".to_string(),
+        sender_peer_id: None,
+    });
+    assert_eq!(
+        s.newest_message_line(&TabContent::Chat).as_deref(),
+        Some("12:00 [Alice] second\ncontinuation"),
+        "the full rendered line - including continuation rows - is copied"
+    );
+
+    s.dm_messages.insert(
+        "peer-b".to_string(),
+        std::collections::VecDeque::from(["dm old".to_string(), "dm new".to_string()]),
+    );
+    assert_eq!(
+        s.newest_message_line(&TabContent::Direct("peer-b".to_string()))
+            .as_deref(),
+        Some("dm new")
+    );
+
+    s.group_messages.insert(
+        "group-c".to_string(),
+        std::collections::VecDeque::from(["group old".to_string(), "group new".to_string()]),
+    );
+    assert_eq!(
+        s.newest_message_line(&TabContent::GroupChat("group-c".to_string()))
+            .as_deref(),
+        Some("group new")
+    );
+
+    // Non-chat tabs own no message queue, so they must never yield a copy.
+    assert_eq!(s.newest_message_line(&TabContent::Contacts), None);
+    assert_eq!(s.newest_message_line(&TabContent::Log), None);
+    assert_eq!(
+        s.newest_message_line(&TabContent::Direct("missing".to_string())),
+        None
+    );
+}
+
+#[test]
 fn test_reply_drafts_are_scoped_to_a_conversation() {
     let mut s = test_app_state();
     s.messages.push_back(p2p_app::DisplayMessage {

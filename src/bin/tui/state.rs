@@ -229,6 +229,12 @@ pub struct AppState {
     /// OSC notification can never interleave with ratatui's frame drawing.
     pub pending_notifications: Vec<p2p_app::notifications::Notification>,
 
+    /// Clipboard payloads queued by chat actions and emitted as OSC 52
+    /// sequences by the render loop *after* the frame, so a copy can never
+    /// interleave with ratatui's stdout writes (mirrors
+    /// [`Self::pending_notifications`]).
+    pub pending_clipboard: Vec<String>,
+
     /// Per-conversation reply drafts (US-006). Keyed by `chat`, `dm:<peer>` or
     /// `group:<id>` so a draft survives switching tabs but never leaks into a
     /// different conversation. `Ctrl+R` captures the newest row; sending or
@@ -710,6 +716,31 @@ impl AppState {
             TabContent::GroupChat(group_id) => Some(format!("group:{group_id}")),
             _ => None,
         }
+    }
+
+    /// Rendered text of the newest message in a chat tab, if any.
+    ///
+    /// This is the exact transcript line (time, sender tag, body) the user
+    /// sees, so `Ctrl+C` copies the same row that `Ctrl+R`/`Ctrl+Y` target.
+    /// Returns an owned string so the caller can queue it while mutating state.
+    #[must_use]
+    pub fn newest_message_line(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        use p2p_app::tui_tabs::TabContent;
+        let line = match tab {
+            TabContent::Chat => self.messages.back().map(|m| m.text.as_str()),
+            TabContent::Direct(peer_id) => self
+                .dm_messages
+                .get(peer_id)
+                .and_then(VecDeque::back)
+                .map(String::as_str),
+            TabContent::GroupChat(group_id) => self
+                .group_messages
+                .get(group_id)
+                .and_then(VecDeque::back)
+                .map(String::as_str),
+            _ => None,
+        }?;
+        Some(line.to_string())
     }
 
     /// Capture the newest replyable message in `tab` as a reply draft.
@@ -1256,6 +1287,7 @@ impl AppState {
             editing_nickname_peer: None,
             popup: None,
             pending_notifications: Vec::new(),
+            pending_clipboard: Vec::new(),
             reply_drafts: HashMap::new(),
             device_binding_prompt: None,
             group_leave_prompt: None,

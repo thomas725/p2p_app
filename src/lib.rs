@@ -60,6 +60,8 @@ pub mod behavior;
 pub mod blocklist;
 pub mod call_media;
 pub mod calls;
+#[cfg(feature = "tui")]
+pub mod clipboard;
 pub mod connected;
 pub mod contacts;
 pub mod db;

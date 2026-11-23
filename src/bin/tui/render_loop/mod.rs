@@ -361,19 +361,25 @@ pub fn spawn_render_loop(
                 render_frame(f, &s);
             });
 
-            // Drain notifications queued by the command processor *after* the
-            // frame is drawn so a bell or OSC sequence can never interleave
-            // with ratatui's screen writes. A single locked stdout handle is
-            // reused for the whole drain.
+            // Drain notifications and clipboard payloads queued by the command
+            // processor *after* the frame is drawn so a bell or OSC sequence
+            // can never interleave with ratatui's screen writes. Both queues
+            // are taken before dropping the state lock, and a single locked
+            // stdout handle is reused for the whole drain.
             let pending = std::mem::take(&mut s.pending_notifications);
+            let clipboard = std::mem::take(&mut s.pending_clipboard);
             drop(s);
-            if !pending.is_empty() {
+            if !pending.is_empty() || !clipboard.is_empty() {
                 let mut stdout = std::io::stdout().lock();
                 for notification in &pending {
                     let sequence = p2p_app::notifications::terminal_sequence(notification);
                     if !sequence.is_empty() {
                         let _ = stdout.write_all(sequence.as_bytes());
                     }
+                }
+                for content in &clipboard {
+                    let sequence = p2p_app::clipboard::copy_sequence(content);
+                    let _ = stdout.write_all(sequence.as_bytes());
                 }
                 let _ = stdout.flush();
             }

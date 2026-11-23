@@ -68,6 +68,7 @@ newest message; the counter clears.
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
+| `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the newest message's rendered line to the terminal clipboard |
 | `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
@@ -91,6 +92,17 @@ to the message's recipients over the swarm, so it appears as a chip after the
 message body in the TUI and Flutter. `Esc` cancels without saving. Only the
 newest message can be reacted to from the TUI; Flutter's per-message chips can
 target any message.
+
+### Clipboard
+
+`Ctrl+C` copies the full rendered line of the newest message in the current
+conversation (time, sender tag and body, including continuation lines) to the
+terminal clipboard via OSC 52. Raw mode means this arrives as a key event, not
+SIGINT. The sequence is emitted after the frame, so it never corrupts the
+screen. OSC 52 support depends on the terminal (kitty, iTerm2, WezTerm,
+Alacritty, foot and modern xterm work; tmux needs clipboard passthrough
+enabled). This is the TUI's counterpart to Flutter's per-message copy action —
+just limited to the newest message, like the other "newest message" shortcuts.
 
 ### Local message deletion
 
@@ -210,6 +222,7 @@ of the history.
 | `Ctrl+P` | Open the DM partner's Peer Info — **works on every terminal** |
 | `Ctrl+R` | Quote the newest DM in this conversation (Esc clears) |
 | `Ctrl+Y` | Add or remove an emoji reaction on the newest DM in this conversation |
+| `Ctrl+C` | Copy the newest DM's rendered line to the terminal clipboard (OSC 52) |
 | `Delete` | Hide your most recent sent DM locally (with confirmation) |
 | `Ctrl+E` | Edit your most recent sent DM locally (Enter saves, Esc cancels) |
 
