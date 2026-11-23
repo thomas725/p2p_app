@@ -1335,6 +1335,9 @@ async fn handle_key_dispatch(
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {
         return;
     }
+    if handle_clipboard_shortcut(key_event.code, is_ctrl, s, &tab) {
+        return;
+    }
     if handle_chat_action_shortcut(key_event.code, is_ctrl, s, &tab) {
         return;
     }
@@ -1453,6 +1456,46 @@ async fn handle_global_navigation(
     false
 }
 
+/// `Ctrl+C` clipboard ownership, shared by chat tabs and the Log tab so the
+/// policy lives in one place: copy the newest rendered message on a chat tab
+/// (the same row `Ctrl+R`/`Ctrl+Y` target), or every log line on the Log tab —
+/// Flutter's "Copy All". Raw mode delivers `Ctrl+C` as a key event, not SIGINT,
+/// and the render loop emits queued sequences after the frame so stdout stays
+/// single-threaded. Returns `true` when the key was consumed.
+fn handle_clipboard_shortcut(
+    code: crossterm::event::KeyCode,
+    is_ctrl: bool,
+    s: &mut super::state::AppState,
+    tab: &p2p_app::tui_tabs::TabContent,
+) -> bool {
+    use p2p_app::tui_tabs::TabContent;
+
+    if !is_ctrl || code != crossterm::event::KeyCode::Char('c') {
+        return false;
+    }
+    match tab {
+        TabContent::Log => {
+            if let Some(payload) = p2p_app::clipboard::copy_all_logs(&p2p_app::get_tui_logs()) {
+                s.pending_clipboard.push(payload);
+                p2plog_debug("Copied all logs to clipboard".to_string());
+            }
+            true
+        }
+        TabContent::Chat | TabContent::Direct(_) | TabContent::GroupChat(_)
+            if s.input_mode == p2p_app::InputMode::Chat =>
+        {
+            if let Some(line) = s.newest_message_line(tab) {
+                s.pending_clipboard.push(line);
+                p2plog_debug("Copied newest message to clipboard".to_string());
+            }
+            true
+        }
+        // Keep `c` available to the tab's own shortcuts (and to text editors)
+        // everywhere else.
+        _ => false,
+    }
+}
+
 /// Chat composer actions that must not consume a bare printable key.
 /// Returns `true` when the key was consumed.
 fn handle_chat_action_shortcut(
@@ -1500,16 +1543,8 @@ fn handle_chat_action_shortcut(
         // Flutter's tappable attachment chip. Bare `o` is a Settings toggle, so
         // the modifier keeps the chat composer untouched.
         crossterm::event::KeyCode::Char('o') if is_ctrl => open_newest_attachment(s, tab),
-        // `Ctrl+C` copies the newest message's rendered line to the terminal
-        // clipboard (OSC 52), matching Flutter's per-message copy action. Raw
-        // mode delivers this as a key event, not SIGINT; the render loop emits
-        // the queued sequence after the frame so stdout stays single-threaded.
-        crossterm::event::KeyCode::Char('c') if is_ctrl => {
-            if let Some(line) = s.newest_message_line(tab) {
-                s.pending_clipboard.push(line);
-                p2plog_debug("Copied newest message to clipboard".to_string());
-            }
-        }
+        // `Ctrl+C` is owned by `handle_clipboard_shortcut`, which runs first so
+        // it can also serve the Log tab without this function's chat-only guard.
         _ => return false,
     }
     true

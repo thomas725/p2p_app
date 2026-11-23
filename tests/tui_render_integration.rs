@@ -533,11 +533,12 @@ mod render_tests {
                 "missing copy hint for {tab:?}"
             );
         }
+        // The Log tab has its own variant of the copy action ("Copy All").
+        assert!(shortcuts_text(&TabContent::Log, false).contains("Ctrl+C: copy all"));
         for tab in [
             TabContent::Contacts,
             TabContent::Groups,
             TabContent::Settings,
-            TabContent::Log,
             TabContent::PeerInfo("peer-1".to_string()),
         ] {
             assert!(
@@ -594,6 +595,7 @@ mod render_tests {
             "Del -> delete newest sent message",
             "Ctrl+O -> open newest downloaded attachment",
             "Ctrl+C -> copy newest message (OSC 52)",
+            "Ctrl+C copy all logs",
             "Ctrl+I (kitty) / Ctrl+P",
             "i Info",
             "g create/join",

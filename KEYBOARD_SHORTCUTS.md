@@ -69,6 +69,7 @@ newest message; the counter clears.
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
 | `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the newest message's rendered line to the terminal clipboard |
+| `Ctrl+C` in **Log** | Copy all log lines to the terminal clipboard (same as Flutter's "Copy All") |
 | `Ctrl+O` in **Chat** / **DM** / **Group chat** | Open the newest downloaded attachment with the system default app |
 | `Esc` in **Chat** / **DM** / **Group chat** | Clear the pending reply draft |
 | `Delete` in **Chat** / **DM** / **Group chat** | Hide your most recent sent message in that conversation (local only) |
@@ -103,6 +104,8 @@ screen. OSC 52 support depends on the terminal (kitty, iTerm2, WezTerm,
 Alacritty, foot and modern xterm work; tmux needs clipboard passthrough
 enabled). This is the TUI's counterpart to Flutter's per-message copy action —
 just limited to the newest message, like the other "newest message" shortcuts.
+On the **Log** tab the same key copies every buffered log line joined with
+newlines, matching Flutter's "Copy All"; an empty buffer is a no-op.
 
 ### Local message deletion
 
@@ -209,6 +212,7 @@ of the history.
 |------------|----------|
 | `PgUp` / `PgDn` | Page the log lines |
 | `Home` / `End` | Jump to the first / last line |
+| `Ctrl+C` | Copy all log lines to the clipboard (same action as Flutter's Log tab "Copy All") |
 | `c` | Clear the in-memory log buffer (same action as Flutter's Log tab "Clear") |
 | `Mouse wheel` | Scroll the log lines |
 

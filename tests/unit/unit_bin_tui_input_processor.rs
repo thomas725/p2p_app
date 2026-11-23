@@ -3100,9 +3100,14 @@ async fn test_ctrl_c_without_messages_queues_nothing() {
 }
 
 #[tokio::test]
-async fn test_ctrl_c_is_inert_on_non_chat_tabs() {
+async fn test_ctrl_c_is_inert_on_settings_tab() {
     let mut s = test_app_state();
-    s.active_tab = 4; // the Log fixed tab (Chat, Contacts, Groups, ... Log)
+    // No dynamic tabs: Chat=0, Contacts=1, Groups=2, Log=3, Settings=4.
+    s.active_tab = 4;
+    assert!(matches!(
+        s.dynamic_tabs.tab_index_to_content(s.active_tab),
+        TabContent::Settings
+    ));
     let state = Arc::new(Mutex::new(s));
     let (swarm_cmd_tx, _) = mpsc::channel(4);
     let (render_tx, _) = mpsc::channel(4);
@@ -3115,6 +3120,74 @@ async fn test_ctrl_c_is_inert_on_non_chat_tabs() {
     )
     .await;
 
+    assert_eq!(state.lock().await.pending_clipboard, Vec::<String>::new());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_ctrl_c_copies_all_logs_on_log_tab() {
+    p2p_app::init_logging();
+    // `test_app_state` provisions a DB identity, which itself logs two lines —
+    // construct it first, then clear so the snapshot is deterministic.
+    let mut s = test_app_state();
+    p2p_app::clear_tui_logs();
+    p2p_app::p2plog_info("first log line");
+    p2p_app::p2plog_error("second log line");
+
+    s.active_tab = 3; // Log (no dynamic tabs)
+    assert!(matches!(
+        s.dynamic_tabs.tab_index_to_content(s.active_tab),
+        TabContent::Log
+    ));
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
+    // The pure helper owns the exact join semantics; here we only need to see
+    // that dispatch captured the whole buffer. `contains` keeps this robust
+    // against unrelated tests appending to the global log buffer.
+    let pending = &state.lock().await.pending_clipboard;
+    assert_eq!(pending.len(), 1, "{pending:?}");
+    assert!(pending[0].contains("first log line"), "{pending:?}");
+    assert!(pending[0].contains("second log line"), "{pending:?}");
+    assert!(
+        pending[0].contains('\n'),
+        "lines must be joined: {pending:?}"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_ctrl_c_with_empty_logs_queues_nothing() {
+    p2p_app::init_logging();
+    // As above: construct state before clearing, so provisioning logs cannot
+    // race into the snapshot the handler reads.
+    let mut s = test_app_state();
+    p2p_app::clear_tui_logs();
+
+    s.active_tab = 3; // Log
+    let state = Arc::new(Mutex::new(s));
+    let (swarm_cmd_tx, _) = mpsc::channel(4);
+    let (render_tx, _) = mpsc::channel(4);
+
+    let exited = process_key_event(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+        &state,
+        &swarm_cmd_tx,
+        &render_tx,
+    )
+    .await;
+
+    assert!(!exited);
     assert_eq!(state.lock().await.pending_clipboard, Vec::<String>::new());
 }
 

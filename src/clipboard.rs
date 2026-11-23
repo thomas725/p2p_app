@@ -28,6 +28,14 @@ pub fn copy_sequence(content: &str) -> String {
     out
 }
 
+/// Join every log line into one clipboard payload, mirroring Flutter's Log-tab
+/// "Copy All" action (`_logs.join('\n')`). Returns `None` for an empty buffer so
+/// the caller never emits a pointless OSC sequence.
+#[must_use]
+pub fn copy_all_logs(logs: &[String]) -> Option<String> {
+    (!logs.is_empty()).then(|| logs.join("\n"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,5 +70,29 @@ mod tests {
     #[test]
     fn copy_sequence_differs_for_different_content() {
         assert_ne!(copy_sequence("one"), copy_sequence("two"));
+    }
+
+    #[test]
+    fn copy_all_logs_returns_none_for_an_empty_buffer() {
+        assert_eq!(copy_all_logs(&[]), None);
+    }
+
+    #[test]
+    fn copy_all_logs_joins_every_line_with_newlines() {
+        let logs = vec![
+            "[INFO] first".to_string(),
+            String::new(),
+            "[ERROR] third".to_string(),
+        ];
+        assert_eq!(
+            copy_all_logs(&logs).as_deref(),
+            Some("[INFO] first\n\n[ERROR] third")
+        );
+    }
+
+    #[test]
+    fn copy_all_logs_keeps_a_single_line_verbatim() {
+        let logs = vec!["[DEBUG] only".to_string()];
+        assert_eq!(copy_all_logs(&logs).as_deref(), Some("[DEBUG] only"));
     }
 }
