@@ -39,6 +39,19 @@ pub async fn handle_navigation_key(key_code: crossterm::event::KeyCode, state: &
     }
 }
 
+/// Clear a conversation's unread marker once scrolling re-engages auto-scroll
+/// (the user reached the newest message), mirroring the broadcast path.
+fn clear_unread_on_bottom(
+    unread: &mut std::collections::HashMap<String, usize>,
+    key: &str,
+    was_auto_scroll: bool,
+    auto_scroll: bool,
+) {
+    if auto_scroll && !was_auto_scroll {
+        unread.remove(key);
+    }
+}
+
 /// Handle a single scroll key press for broadcast/DM section with mutable state
 fn handle_scroll_key_for_section(
     key_code: crossterm::event::KeyCode,
@@ -140,7 +153,14 @@ fn scroll_dm_section(key_code: crossterm::event::KeyCode, state: &mut AppState, 
     let line_counts = string_line_counts(msgs.iter());
     let max_offset = p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state));
     if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(peer_id) {
+        let was_auto_scroll = *auto_scroll;
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+        clear_unread_on_bottom(
+            &mut state.dm_unread_count,
+            peer_id,
+            was_auto_scroll,
+            *auto_scroll,
+        );
     }
 }
 
@@ -252,7 +272,14 @@ fn scroll_group_chat_tab(
     let line_counts = string_line_counts(msgs.iter());
     let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
     if let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) {
+        let was_auto_scroll = *auto_scroll;
         handle_scroll_key_for_section(key_code, scroll_offset, auto_scroll, max_offset);
+        clear_unread_on_bottom(
+            &mut state.group_unread_count,
+            group_id,
+            was_auto_scroll,
+            *auto_scroll,
+        );
     }
 }
 
@@ -394,7 +421,16 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
                     p2p_app::max_list_scroll_offset(&line_counts, dm_pane_visible_lines(state))
                 });
                 if let Some((scroll_offset, auto_scroll)) = state.dm_scroll_state.get_mut(pid) {
-                    mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset)
+                    let was_auto_scroll = *auto_scroll;
+                    let changed =
+                        mouse_scroll_dm_section(scroll_offset, auto_scroll, scroll_dir, max_offset);
+                    clear_unread_on_bottom(
+                        &mut state.dm_unread_count,
+                        pid,
+                        was_auto_scroll,
+                        *auto_scroll,
+                    );
+                    changed
                 } else {
                     false
                 }
@@ -408,7 +444,16 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
             let line_counts = string_line_counts(msgs.iter());
             let max_offset = p2p_app::max_list_scroll_offset(&line_counts, state.chat_area_height);
             if let Some((scroll_offset, auto_scroll)) = state.group_scroll_state.get_mut(group_id) {
-                apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset)
+                let was_auto_scroll = *auto_scroll;
+                let changed =
+                    apply_mouse_scroll(scroll_offset, auto_scroll, scroll_dir, max_offset);
+                clear_unread_on_bottom(
+                    &mut state.group_unread_count,
+                    group_id,
+                    was_auto_scroll,
+                    *auto_scroll,
+                );
+                changed
             } else {
                 false
             }

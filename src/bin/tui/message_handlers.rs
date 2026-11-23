@@ -170,6 +170,9 @@ fn push_outgoing_group_message_to_state(state: &mut AppState, group: OutgoingGro
         let len = msgs.len();
         (len, true)
     });
+    // Sending our own message jumps to the tail, so anything previously
+    // counted as unread in this group has now been seen.
+    state.group_unread_count.remove(group_id);
     state
         .group_message_db_ids
         .get(group_id)

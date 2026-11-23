@@ -92,6 +92,8 @@ pub struct TuiRenderState {
     pub group_message_peer_ids: BTreeMap<String, VecDeque<Option<String>>>,
     /// Scroll state per group chat: (offset, `auto_scroll`)
     pub group_scroll_state: BTreeMap<String, (usize, bool)>,
+    /// Unread group messages per group while that chat is scrolled up
+    pub group_unread_count: BTreeMap<String, usize>,
     /// Index of selected group in the Groups list tab
     pub group_selection: usize,
     /// Scroll offset for chat tab
@@ -104,6 +106,8 @@ pub struct TuiRenderState {
     pub log_scroll_offset: usize,
     /// Scroll state per DM peer: (offset, `auto_scroll`)
     pub dm_scroll_state: BTreeMap<String, (usize, bool)>,
+    /// Unread DMs per peer while that conversation is scrolled up
+    pub dm_unread_count: BTreeMap<String, usize>,
     /// Scroll state for DM+broadcast view per peer
     pub dm_broadcast_scroll_state: BTreeMap<String, (usize, bool)>,
     /// Index of selected peer in peer list
@@ -191,6 +195,7 @@ impl TuiRenderState {
             group_message_ids: BTreeMap::new(),
             group_message_peer_ids: BTreeMap::new(),
             group_scroll_state: BTreeMap::new(),
+            group_unread_count: BTreeMap::new(),
             group_selection: 0,
             input_text: String::new(),
             log_messages: VecDeque::new(),
@@ -213,6 +218,7 @@ impl TuiRenderState {
             chat_unread_count: 0,
             log_scroll_offset: 0,
             dm_scroll_state: BTreeMap::new(),
+            dm_unread_count: BTreeMap::new(),
             dm_broadcast_scroll_state: BTreeMap::new(),
             peer_selection: 0,
             peer_sort_column: 3,

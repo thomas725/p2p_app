@@ -488,6 +488,82 @@ fn test_scroll_dm_section_end_clamps_at_last_visible_line() {
 }
 
 #[test]
+fn test_scroll_dm_section_end_clears_unread() {
+    let mut state = app_state_with_dm_messages("peer-dm", 10);
+    state.chat_area_height = 20;
+    state
+        .dm_scroll_state
+        .insert("peer-dm".to_string(), (0, false));
+    state.dm_unread_count.insert("peer-dm".to_string(), 4);
+
+    scroll_dm_section(KeyCode::End, &mut state, "peer-dm");
+
+    assert!(
+        state
+            .dm_scroll_state
+            .get("peer-dm")
+            .is_some_and(|(_, a)| *a)
+    );
+    assert_eq!(state.dm_unread_count.get("peer-dm").copied(), None);
+}
+
+#[test]
+fn test_scroll_dm_section_up_keeps_unread() {
+    let mut state = app_state_with_dm_messages("peer-dm", 10);
+    state.chat_area_height = 20;
+    state
+        .dm_scroll_state
+        .insert("peer-dm".to_string(), (5, false));
+    state.dm_unread_count.insert("peer-dm".to_string(), 2);
+
+    scroll_dm_section(KeyCode::Up, &mut state, "peer-dm");
+
+    assert!(
+        !state
+            .dm_scroll_state
+            .get("peer-dm")
+            .is_some_and(|(_, a)| *a)
+    );
+    assert_eq!(state.dm_unread_count.get("peer-dm").copied(), Some(2));
+}
+
+#[test]
+fn test_scroll_group_chat_end_clears_unread() {
+    let mut state = test_app_state();
+    state.group_messages.insert(
+        "g1".to_string(),
+        (0..10).map(|i| format!("Group {i}")).collect(),
+    );
+    state
+        .group_scroll_state
+        .insert("g1".to_string(), (0, false));
+    state.group_unread_count.insert("g1".to_string(), 3);
+
+    scroll_group_chat_tab(KeyCode::End, &mut state, "g1");
+
+    assert!(state.group_scroll_state.get("g1").is_some_and(|(_, a)| *a));
+    assert_eq!(state.group_unread_count.get("g1").copied(), None);
+}
+
+#[test]
+fn test_scroll_group_chat_up_keeps_unread() {
+    let mut state = test_app_state();
+    state.group_messages.insert(
+        "g1".to_string(),
+        (0..10).map(|i| format!("Group {i}")).collect(),
+    );
+    state
+        .group_scroll_state
+        .insert("g1".to_string(), (5, false));
+    state.group_unread_count.insert("g1".to_string(), 3);
+
+    scroll_group_chat_tab(KeyCode::Up, &mut state, "g1");
+
+    assert!(!state.group_scroll_state.get("g1").is_some_and(|(_, a)| *a));
+    assert_eq!(state.group_unread_count.get("g1").copied(), Some(3));
+}
+
+#[test]
 fn test_scroll_broadcast_section_noop_when_empty() {
     let mut state = test_app_state();
     let peer_id = "peer-empty";
@@ -654,4 +730,58 @@ fn test_handle_mouse_scroll_dm_tab_dm_section() {
     // offset 1 (bottom-aligned) rather than stepping a full wheel page.
     let (offset, _) = state.dm_scroll_state.get("peer-dm-scroll-2").unwrap();
     assert_eq!(*offset, 1);
+}
+
+#[test]
+fn test_handle_mouse_scroll_dm_bottom_clears_unread() {
+    let mut state = app_state_with_dm_messages("peer-dm-scroll-3", 10);
+    state.chat_area_height = 20;
+    state
+        .dm_scroll_state
+        .insert("peer-dm-scroll-3".to_string(), (0, false));
+    state
+        .dm_unread_count
+        .insert("peer-dm-scroll-3".to_string(), 5);
+    state.active_tab = state
+        .dynamic_tabs
+        .add_dm_tab("peer-dm-scroll-3".to_string());
+    state.last_mouse_row = 15; // DM (bottom) pane
+
+    handle_mouse_scroll(&mut state, "down", Some("peer-dm-scroll-3"));
+
+    assert!(
+        state
+            .dm_scroll_state
+            .get("peer-dm-scroll-3")
+            .is_some_and(|(_, a)| *a)
+    );
+    assert_eq!(state.dm_unread_count.get("peer-dm-scroll-3").copied(), None);
+}
+
+#[test]
+fn test_handle_mouse_scroll_group_bottom_clears_unread() {
+    let mut state = test_app_state();
+    state.group_messages.insert(
+        "g-mouse".to_string(),
+        (0..10).map(|i| format!("Group {i}")).collect(),
+    );
+    // With `chat_area_height = 0` the pane shows one item, so 10 messages give
+    // a max offset of 9; starting at 8 lets a wheel-down reach the tail.
+    state
+        .group_scroll_state
+        .insert("g-mouse".to_string(), (8, false));
+    state.group_unread_count.insert("g-mouse".to_string(), 4);
+    state.active_tab = state
+        .dynamic_tabs
+        .add_group_tab("g-mouse".to_string(), "Group".to_string());
+
+    handle_mouse_scroll(&mut state, "down", None);
+
+    assert!(
+        state
+            .group_scroll_state
+            .get("g-mouse")
+            .is_some_and(|(_, a)| *a)
+    );
+    assert_eq!(state.group_unread_count.get("g-mouse").copied(), None);
 }

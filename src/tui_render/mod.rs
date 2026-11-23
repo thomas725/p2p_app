@@ -23,6 +23,35 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Paragraph, Tabs, Wrap},
 };
 
+/// Render the shared "N new — End: jump to latest" overlay at the bottom of a
+/// message pane. Broadcast chat, DM and group panes all call this so the
+/// wording and placement cannot drift. A count of zero is a no-op.
+pub(crate) fn render_unread_banner(
+    f: &mut ratatui::Frame,
+    area: Rect,
+    count: usize,
+    accent: ratatui::style::Color,
+) {
+    if count == 0 {
+        return;
+    }
+    let label = if count == 1 {
+        "▼ 1 new message — End: jump to latest".to_string()
+    } else {
+        format!("▼ {count} new messages — End: jump to latest")
+    };
+    let banner_y = area.y.saturating_add(area.height.saturating_sub(2));
+    let banner_area = Rect::new(
+        area.x.saturating_add(1),
+        banner_y,
+        area.width.saturating_sub(2),
+        1,
+    );
+    let banner =
+        Paragraph::new(label).style(Style::default().fg(accent).add_modifier(Modifier::BOLD));
+    f.render_widget(banner, banner_area);
+}
+
 /// Render a full TUI frame
 pub fn render_frame(f: &mut ratatui::Frame, state: &mut TuiRenderState) {
     let chunks = Layout::default()

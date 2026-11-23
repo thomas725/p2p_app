@@ -1,13 +1,12 @@
 //! Broadcast-chat and direct-message pane rendering.
 
-use crate::tui_render::bordered_block;
+use crate::tui_render::{bordered_block, render_unread_banner};
 use crate::tui_render_state::{
     TuiRenderState, broadcast_receipt_prefix, calc_visible_list_items, dm_receipt_prefix,
     reaction_suffix,
 };
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use std::collections::VecDeque;
@@ -48,27 +47,7 @@ pub fn render_chat_content(f: &mut ratatui::Frame, area: Rect, state: &mut TuiRe
     );
     f.render_widget(messages_list, area);
 
-    if state.chat_unread_count > 0 {
-        let n = state.chat_unread_count;
-        let label = if n == 1 {
-            "▼ 1 new message — End: jump to latest".to_string()
-        } else {
-            format!("▼ {n} new messages — End: jump to latest")
-        };
-        let banner_y = area.y.saturating_add(area.height.saturating_sub(2));
-        let banner_area = Rect::new(
-            area.x.saturating_add(1),
-            banner_y,
-            area.width.saturating_sub(2),
-            1,
-        );
-        let banner = Paragraph::new(label).style(
-            Style::default()
-                .fg(state.palette.accent())
-                .add_modifier(Modifier::BOLD),
-        );
-        f.render_widget(banner, banner_area);
-    }
+    render_unread_banner(f, area, state.chat_unread_count, state.palette.accent());
 }
 
 /// Render DM conversation with split view (broadcast messages on top, DM on bottom)
@@ -173,4 +152,11 @@ pub fn render_dm_content(
         let dm_para = Paragraph::new("No direct messages").block(bordered_block(dm_title));
         f.render_widget(dm_para, dm_area);
     }
+
+    render_unread_banner(
+        f,
+        dm_area,
+        state.dm_unread_count.get(peer_id).copied().unwrap_or(0),
+        state.palette.accent(),
+    );
 }

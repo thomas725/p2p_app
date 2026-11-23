@@ -50,12 +50,15 @@ Which section that is, per tab:
 
 Peer Info and Settings do not scroll.
 
-### Unread broadcast banner
+### Unread banners
 
-When broadcasts arrive while you are scrolled up, a cyan
+When messages arrive while you are scrolled up, a cyan
 `▼ N new message(s) — End: jump to latest` banner appears at the bottom of
-the broadcast pane. Press `End` (or scroll to the bottom) to jump to the
-newest message; the counter clears.
+that conversation's pane — the broadcast pane, a DM pane, or a group chat.
+Messages for a conversation you are actively reading follow the tail as usual;
+only conversations left scrolled up accumulate a count. Press `End` (or scroll
+to the bottom) to jump to the newest message; the counter clears. This mirrors
+Flutter's "N new" jump button in DM and group chats.
 
 ## Message interaction
 

@@ -85,6 +85,73 @@ mod render_tests {
     }
 
     #[test]
+    fn test_render_dm_shows_unread_banner_for_that_peer_only() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.add_dm_message("Alice", "<Alice> Hello!");
+        state.dm_unread_count.insert("Alice".to_string(), 3);
+        state.dm_unread_count.insert("Bob".to_string(), 9);
+
+        terminal
+            .draw(|f| render_dm_content(f, f.area(), "Alice", &mut state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("3 new messages"), "buffer: {text}");
+        assert!(!text.contains("9 new messages"), "buffer: {text}");
+    }
+
+    #[test]
+    fn test_render_dm_no_unread_banner_when_zero() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        state.add_dm_message("Alice", "<Alice> Hello!");
+
+        terminal
+            .draw(|f| render_dm_content(f, f.area(), "Alice", &mut state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(!text.contains("new message"), "buffer: {text}");
+    }
+
+    #[test]
+    fn test_render_group_shows_unread_banner() {
+        use std::collections::VecDeque;
+
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::new();
+        let group_id = "g-render";
+        state.group_messages.insert(
+            group_id.to_string(),
+            VecDeque::from(vec!["hello".to_string()]),
+        );
+        state.group_unread_count.insert(group_id.to_string(), 2);
+
+        terminal
+            .draw(|f| render_group_chat_content(f, f.area(), group_id, &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("2 new messages"), "buffer: {text}");
+    }
+
+    #[test]
     fn test_render_peers_content_library() {
         let mut terminal = create_test_terminal();
         let state = TuiRenderState::with_sample_data();

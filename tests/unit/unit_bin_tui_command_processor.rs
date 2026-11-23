@@ -273,6 +273,68 @@ fn test_apply_dm_to_state_multiple_peers() {
     assert_eq!(state.dm_messages["pb"].len(), 1);
 }
 
+#[test]
+fn test_apply_dm_increments_unread_only_when_scrolled_up() {
+    let mut state = test_app_state();
+    // No scroll state yet: the conversation is implicitly pinned to the tail.
+    apply_dm_to_state(&mut state, "first", "p1", None, None, None);
+    assert_eq!(state.dm_unread_count.get("p1").copied(), None);
+
+    state.dm_scroll_state.insert("p1".to_string(), (0, false));
+    apply_dm_to_state(&mut state, "second", "p1", None, None, None);
+    apply_dm_to_state(&mut state, "third", "p1", None, None, None);
+    assert_eq!(state.dm_unread_count.get("p1").copied(), Some(2));
+
+    // A different peer at the bottom must not inherit the marker.
+    apply_dm_to_state(&mut state, "other", "p2", None, None, None);
+    assert_eq!(state.dm_unread_count.get("p2").copied(), None);
+}
+
+// ── apply_group_message_to_state ─────────────────────────────────────────
+
+#[test]
+fn test_group_message_preserves_scroll_position_when_scrolled_up() {
+    let mut state = test_app_state();
+    state
+        .dynamic_tabs
+        .add_group_tab("g1".to_string(), "Group".to_string());
+    state
+        .group_scroll_state
+        .insert("g1".to_string(), (3, false));
+
+    apply_group_message_to_state(&mut state, "g1", "hello", "peer", None, None);
+
+    // The reader's position is untouched and the message is counted unread.
+    assert_eq!(
+        state.group_scroll_state.get("g1").copied(),
+        Some((3, false))
+    );
+    assert_eq!(state.group_unread_count.get("g1").copied(), Some(1));
+    assert_eq!(state.group_messages["g1"].len(), 1);
+}
+
+#[test]
+fn test_group_message_follows_tail_without_unread_when_at_bottom() {
+    let mut state = test_app_state();
+    state
+        .dynamic_tabs
+        .add_group_tab("g1".to_string(), "Group".to_string());
+
+    apply_group_message_to_state(&mut state, "g1", "hello", "peer", None, None);
+
+    // No forced state write: auto-scroll rendering follows the tail on its own.
+    assert!(!state.group_scroll_state.contains_key("g1"));
+    assert_eq!(state.group_unread_count.get("g1").copied(), None);
+}
+
+#[test]
+fn test_group_message_ignored_for_closed_group() {
+    let mut state = test_app_state();
+    apply_group_message_to_state(&mut state, "g1", "hello", "peer", None, None);
+    assert!(!state.group_messages.contains_key("g1"));
+    assert!(state.group_unread_count.is_empty());
+}
+
 // ── is_dm_receipt ────────────────────────────────────────────────────────
 
 #[test]

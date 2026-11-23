@@ -180,6 +180,8 @@ pub struct AppState {
     pub group_message_peer_ids: HashMap<String, VecDeque<Option<String>>>,
     // Scroll state per group chat: group_id -> (scroll_offset, auto_scroll).
     pub group_scroll_state: HashMap<String, (usize, bool)>,
+    // Unread group messages per group while that chat is scrolled up
+    pub group_unread_count: HashMap<String, usize>,
     // Selected group in the Groups list tab.
     pub group_selection: usize,
 
@@ -204,6 +206,8 @@ pub struct AppState {
 
     // Per-DM scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_scroll_state: HashMap<String, (usize, bool)>,
+    // Unread DMs per peer while that conversation is scrolled up
+    pub dm_unread_count: HashMap<String, usize>,
     // Per-DM broadcast scroll state: peer_id -> (scroll_offset, auto_scroll)
     pub dm_broadcast_scroll_state: HashMap<String, (usize, bool)>,
 
@@ -955,6 +959,7 @@ impl AppState {
         self.group_message_db_ids.remove(group_id);
         self.group_message_peer_ids.remove(group_id);
         self.group_scroll_state.remove(group_id);
+        self.group_unread_count.remove(group_id);
         self.reply_drafts.remove(&format!("group:{group_id}"));
         if let Some(closed) = self.dynamic_tabs.remove_group_tab(group_id) {
             if closed == self.active_tab {
@@ -1250,6 +1255,7 @@ impl AppState {
             group_message_db_ids: HashMap::new(),
             group_message_peer_ids: HashMap::new(),
             group_scroll_state: HashMap::new(),
+            group_unread_count: HashMap::new(),
             group_selection: 0,
             input_mode: p2p_app::InputMode::Chat,
             dynamic_tabs: DynamicTabs::new(),
@@ -1277,6 +1283,7 @@ impl AppState {
             terminal_width: 0,
             log_scroll_offset: 0,
             dm_scroll_state: HashMap::new(),
+            dm_unread_count: HashMap::new(),
             dm_broadcast_scroll_state: HashMap::new(),
             own_nickname,
             local_peer_id,

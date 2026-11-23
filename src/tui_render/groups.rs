@@ -1,7 +1,7 @@
 //! Groups-list and group-chat rendering.
 
 use crate::tui_helpers::peer_table_visible_range;
-use crate::tui_render::bordered_block;
+use crate::tui_render::{bordered_block, render_unread_banner};
 use crate::tui_render_state::{TuiRenderState, calc_visible_list_items, reaction_suffix};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -121,4 +121,11 @@ pub fn render_group_chat_content(
         let para = Paragraph::new("No messages in this group yet").block(bordered_block(title));
         f.render_widget(para, area);
     }
+
+    render_unread_banner(
+        f,
+        area,
+        state.group_unread_count.get(group_id).copied().unwrap_or(0),
+        state.palette.accent(),
+    );
 }

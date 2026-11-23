@@ -187,12 +187,14 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         log_scroll_offset: state.log_scroll_offset,
 
         dm_scroll_state: cloned_log(&state.dm_scroll_state),
+        dm_unread_count: cloned_log(&state.dm_unread_count),
         dm_broadcast_scroll_state: cloned_log(&state.dm_broadcast_scroll_state),
         group_summaries: state.group_summaries.clone(),
         group_messages: cloned_log(&state.group_messages),
         group_message_ids: cloned_log(&state.group_message_ids),
         group_message_peer_ids: cloned_log(&state.group_message_peer_ids),
         group_scroll_state: cloned_log(&state.group_scroll_state),
+        group_unread_count: cloned_log(&state.group_unread_count),
         group_selection: state.group_selection,
 
         peer_selection: state.peer_selection,

@@ -233,6 +233,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| TUI DM/group unread banners + scroll fidelity | 2026-11-23 | [`archive/2026-11-23_tui_dm_group_unread.md`](archive/2026-11-23_tui_dm_group_unread.md) |
 | TUI Log "Copy All" parity (`Ctrl+C`, OSC 52) | 2026-11-23 | [`archive/2026-11-23_tui_log_copy_all.md`](archive/2026-11-23_tui_log_copy_all.md) |
 | TUI clipboard parity (`Ctrl+C`, OSC 52) | 2026-11-23 | [`archive/2026-11-23_tui_clipboard.md`](archive/2026-11-23_tui_clipboard.md) |
 | Notification sounds + desktop alerts (US-027/US-028) | 2026-11-21 | [`archive/2026-11-21_notifications.md`](archive/2026-11-21_notifications.md) |

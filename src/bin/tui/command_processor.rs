@@ -4,6 +4,7 @@ use super::main_loop::RenderEvent;
 use super::state::{AppState, CallMediaStatus, SharedState};
 use super::state::{MAX_DM_HISTORY, MAX_MESSAGE_HISTORY, trim_history};
 use p2p_app::{DisplayMessage, PeerRecord, SwarmCommand, SwarmEvent, p2plog_debug};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -28,6 +29,16 @@ fn upsert_peer_last_seen(state: &mut AppState, peer_id: &str, seen_at: chrono::N
         peer_id,
         &seen_str,
     );
+}
+
+/// Whether a conversation's pane is scrolled away from the newest message.
+///
+/// A missing scroll-state entry means the pane was never scrolled, so it is
+/// effectively pinned to the bottom and must not accrue unread markers.
+fn is_scrolled_up(scroll_state: &HashMap<String, (usize, bool)>, key: &str) -> bool {
+    scroll_state
+        .get(key)
+        .is_some_and(|&(_, auto_scroll)| !auto_scroll)
 }
 
 /// Pure state mutation for incoming broadcast messages. Returns the formatted message string.
@@ -102,6 +113,13 @@ fn apply_dm_to_state(
     }
     if let Some(ids) = state.dm_message_db_ids.get_mut(peer_id) {
         trim_history(ids, MAX_DM_HISTORY);
+    }
+    if is_scrolled_up(&state.dm_scroll_state, peer_id) {
+        let unread = state
+            .dm_unread_count
+            .entry(peer_id.to_string())
+            .or_default();
+        *unread = unread.saturating_add(1);
     }
     state.dynamic_tabs.add_dm_tab(peer_id.to_string());
     msg
@@ -187,10 +205,17 @@ fn apply_group_message_to_state(
     if let Some(ids) = state.group_message_peer_ids.get_mut(group_id) {
         trim_history(ids, MAX_MESSAGE_HISTORY);
     }
-    state.group_scroll_state.insert(group_id.to_string(), {
-        let len = group_msgs.len();
-        (len, true)
-    });
+    // Flutter's `scrollToBottom` follows the tail only while `atBottom`; a
+    // reader who scrolled up must keep their position and be offered the
+    // unread banner. Auto-scroll rendering already follows the tail without a
+    // state write, so forcing `(len, true)` here would only yank that reader.
+    if is_scrolled_up(&state.group_scroll_state, group_id) {
+        let unread = state
+            .group_unread_count
+            .entry(group_id.to_string())
+            .or_default();
+        *unread = unread.saturating_add(1);
+    }
 }
 
 /// State mutation: increment connected peer count. Returns new count.
