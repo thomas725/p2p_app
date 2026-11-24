@@ -21,7 +21,7 @@ aws-lc-rs->zeroize                               1.9.0               1.9.2      
 aws-lc-sys->cc                                   1.4.7               1.11.3              1.11.3              Build        ---
 axum->bytes                                      1.12.1              1.12.2              1.12.2              Normal       ---
 axum->form_urlencoded                            1.2.2               1.2.3               1.2.3               Normal       ---
-axum->hyper                                      1.11.1              1.12.0              1.12.0              Normal       ---
+axum->hyper                                      1.11.1              1.13.0              1.13.0              Normal       ---
 axum->hyper-util                                 0.1.20              0.1.21              0.1.21              Normal       ---
 axum->itoa                                       1.0.18              1.0.19              1.0.19              Normal       ---
 axum->mime                                       0.3.17              0.3.18              0.3.18              Normal       ---
@@ -127,7 +127,7 @@ hyper->pin-project-lite                          0.2.17              0.2.18     
 hyper->smallvec                                  1.16.1              1.16.6              1.16.6              Normal       ---
 hyper->want                                      0.3.1               0.3.2               0.3.2               Normal       ---
 hyper-util->bytes                                1.12.1              1.12.2              1.12.2              Normal       ---
-hyper-util->hyper                                1.11.1              1.12.0              1.12.0              Normal       ---
+hyper-util->hyper                                1.11.1              1.13.0              1.13.0              Normal       ---
 hyper-util->libc                                 0.2.189             0.2.191             0.2.191             Normal       ---
 hyper-util->pin-project-lite                     0.2.17              0.2.18              0.2.18              Normal       ---
 iana-time-zone->log                              0.4.34              0.4.35              0.4.35              Normal       cfg(all(target_arch = "wasm32", target_os = "unknown"))
@@ -158,7 +158,7 @@ idna_adapter->icu_properties                     2.3.0               2.4.0      
 if-addrs->libc                                   0.2.189             0.2.191             0.2.191             Normal       cfg(not(target_os = "windows"))
 if-watch->log                                    0.4.34              0.4.35              0.4.35              Normal       ---
 igd-next->bytes                                  1.12.1              1.12.2              1.12.2              Normal       ---
-igd-next->hyper                                  1.11.1              1.12.0              1.12.0              Normal       ---
+igd-next->hyper                                  1.11.1              1.13.0              1.13.0              Normal       ---
 igd-next->hyper-util                             0.1.20              0.1.21              0.1.21              Normal       ---
 igd-next->log                                    0.4.34              0.4.35              0.4.35              Normal       ---
 igd-next->rand                                   0.10.3              0.10.4              0.10.4              Normal       ---
