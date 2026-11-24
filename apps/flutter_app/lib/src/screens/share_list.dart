@@ -120,16 +120,20 @@ class ShareListScreen extends StatelessWidget {
   }
 }
 
-/// Read-only detail route: share metadata, per-user grants and the files in
-/// the current manifest. Loaders are injected (like `PeerInfoScreen`) so the
-/// page needs no Rust library in widget tests; Home supplies the `NodeApi`
-/// calls in the app.
+/// Detail route: share metadata, per-user grants and the files in the current
+/// manifest. Loaders are injected (like `PeerInfoScreen`) so the page needs no
+/// Rust library in widget tests; Home supplies the `NodeApi` calls in the app.
+/// The grant editor is optional: with no edit callbacks the page stays
+/// read-only, and with them it uses the same `setShareGrant`/`removeShareGrant`
+/// facade over both FRB and web transports.
 class ShareDetailScreen extends StatefulWidget {
   const ShareDetailScreen({
     super.key,
     required this.share,
     required this.loadManifest,
     required this.loadGrants,
+    this.onSetGrant,
+    this.onRemoveGrant,
     this.onNavigate,
     this.currentTab = 4,
   });
@@ -137,6 +141,12 @@ class ShareDetailScreen extends StatefulWidget {
   final MobileShare share;
   final Future<ShareManifest?> Function(String shareId) loadManifest;
   final Future<List<MobileShareGrant>> Function(String shareId) loadGrants;
+
+  /// Optional permission editor seams. When omitted the page stays purely
+  /// read-only (widget tests and transports that cannot edit a share).
+  final Future<void> Function(String shareId, String userId, String mode)?
+  onSetGrant;
+  final Future<void> Function(String shareId, String userId)? onRemoveGrant;
   final void Function(int)? onNavigate;
   final int currentTab;
 
@@ -149,6 +159,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
   List<MobileShareGrant> _grants = const [];
   bool _loading = true;
   String? _error;
+  String? _actionError;
 
   @override
   void initState() {
@@ -160,6 +171,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _actionError = null;
     });
     try {
       final manifest = await widget.loadManifest(widget.share.shareId);
@@ -235,13 +247,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                     widget.share.localRoot ?? 'Not bound on this device',
                   ),
                 ]),
-                if (widget.share.kind == 'private')
-                  _section(
-                    'Grants',
-                    _grants.isEmpty
-                        ? const [Text('No explicit grants.')]
-                        : _grants.map((g) => _row(g.userId, g.mode)).toList(),
-                  ),
+                if (widget.share.kind == 'private') _grantsSection(),
                 _section(
                   'Manifest files',
                   _manifest == null
@@ -264,6 +270,86 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
               ],
             ),
     );
+  }
+
+  /// Private-share grants, with revoke/add controls only when Home supplied
+  /// the corresponding `NodeApi` callbacks. Public shares have no ACL rows.
+  Widget _grantsSection() {
+    final children = <Widget>[];
+    if (_grants.isEmpty) {
+      children.add(const Text('No explicit grants.'));
+    } else {
+      for (final grant in _grants) {
+        children.add(
+          Row(
+            key: Key('share-grant-${grant.userId}'),
+            children: [
+              Expanded(child: _row(grant.userId, grant.mode)),
+              if (widget.onRemoveGrant != null)
+                IconButton(
+                  key: Key('share-grant-revoke-${grant.userId}'),
+                  icon: const Icon(Icons.person_remove_outlined),
+                  tooltip: 'Revoke ${grant.userId}',
+                  onPressed: () => _removeGrant(grant),
+                ),
+            ],
+          ),
+        );
+      }
+    }
+    if (widget.onSetGrant != null) {
+      children.add(
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonalIcon(
+            key: const Key('share-grant-add'),
+            icon: const Icon(Icons.person_add_outlined),
+            label: const Text('Add grant'),
+            onPressed: _showAddGrantDialog,
+          ),
+        ),
+      );
+    }
+    if (_actionError != null) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            _actionError!,
+            key: const Key('share-grant-error'),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ),
+      );
+    }
+    return _section('Grants', children);
+  }
+
+  Future<void> _removeGrant(MobileShareGrant grant) async {
+    final remove = widget.onRemoveGrant;
+    if (remove == null) return;
+    setState(() => _actionError = null);
+    try {
+      await remove(widget.share.shareId, grant.userId);
+      if (!mounted) return;
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _actionError = 'Failed to revoke ${grant.userId}: $e');
+    }
+  }
+
+  Future<void> _showAddGrantDialog() async {
+    final setGrant = widget.onSetGrant;
+    if (setGrant == null) return;
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (_) => _AddGrantDialog(
+        onSubmit: (userId, mode) =>
+            setGrant(widget.share.shareId, userId, mode),
+      ),
+    );
+    if (added == true && mounted) await _reload();
   }
 
   Widget _section(String title, List<Widget> children) {
@@ -298,4 +384,114 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
 
   /// Content addresses are 64 hex characters; keep the subtitle readable.
   String _shortId(String id) => id.length > 8 ? '${id.substring(0, 8)}…' : id;
+}
+
+/// Adds one grant to a private share. The user ID must be a verified account
+/// ID known to Rust; only the canonical `readonly`/`readwrite` modes are
+/// offered because `parse_share_mode` rejects anything else.
+class _AddGrantDialog extends StatefulWidget {
+  const _AddGrantDialog({required this.onSubmit});
+
+  final Future<void> Function(String userId, String mode) onSubmit;
+
+  @override
+  State<_AddGrantDialog> createState() => _AddGrantDialogState();
+}
+
+class _AddGrantDialogState extends State<_AddGrantDialog> {
+  final _controller = TextEditingController();
+  String _mode = 'readonly';
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final userId = _controller.text.trim();
+    if (userId.isEmpty || _submitting) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(userId, _mode);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Failed to add grant: $e';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add share grant'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            key: const Key('share-grant-user-id'),
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Verified user ID',
+              hintText: 'user-…',
+            ),
+            enabled: !_submitting,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            key: const Key('share-grant-mode'),
+            initialValue: _mode,
+            decoration: const InputDecoration(labelText: 'Access'),
+            items: const [
+              DropdownMenuItem(value: 'readonly', child: Text('readonly')),
+              DropdownMenuItem(value: 'readwrite', child: Text('readwrite')),
+            ],
+            onChanged: _submitting
+                ? null
+                : (mode) {
+                    if (mode != null) setState(() => _mode = mode);
+                  },
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _error!,
+                key: const Key('share-grant-dialog-error'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          key: const Key('share-grant-cancel'),
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          key: const Key('share-grant-submit'),
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Add grant'),
+        ),
+      ],
+    );
+  }
 }

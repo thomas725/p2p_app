@@ -1104,9 +1104,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Open the read-only share list from Settings. Both detail loaders come
-  /// from the active `NodeApi`, so this works unchanged over FRB and over the
-  /// browser's JSON transport.
+  /// Open the share list from Settings. The detail loaders and grant editor
+  /// callbacks all come from the active `NodeApi`, so this works unchanged over
+  /// FRB and over the browser's JSON transport.
   void _openShares() {
     Navigator.push(
       context,
@@ -1131,6 +1131,13 @@ class _HomeScreenState extends State<HomeScreen> {
           share: share,
           loadManifest: nodeApi.loadShareManifest,
           loadGrants: nodeApi.listShareGrants,
+          onSetGrant: (shareId, userId, mode) => nodeApi.setShareGrant(
+            shareId: shareId,
+            userId: userId,
+            mode: mode,
+          ),
+          onRemoveGrant: (shareId, userId) =>
+              nodeApi.removeShareGrant(shareId: shareId, userId: userId),
           onNavigate: _navigateToTab,
           currentTab: 4,
         ),

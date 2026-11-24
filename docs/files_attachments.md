@@ -7,9 +7,10 @@ DMs, broadcast, and groups.
 
 This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
-extension built on the same store; its Rust core has shipped, while the
-TUI/Flutter/web UI is still open work in [`backlog.md`](backlog.md). The code is
-the authority.
+extension built on the same store; its Rust core and the Flutter/web share
+list, detail and private-share grant editor have shipped, while the TUI share
+UI and creation/binding/publishing screens are still open work in
+[`backlog.md`](backlog.md). The code is the authority.
 
 ## Wire design
 
@@ -124,7 +125,8 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   handshake and a stale submission followed by a successful retry;
   `tests/unit/unit_shares.rs` covers revocation, stale writes with changed
   entries, superseded pending applies and disconnect cleanup. A real blob-pull
-  → apply test with separate per-node databases is still open.
+  → apply test drives two nodes on separate OS threads with per-thread DB and
+  blob stores, covering blob delivery, manifest apply and folder contents.
 - **Facade**: `src/api/mod.rs` exposes the share store as `createShare`,
   `listShares`, `getShare`, `bindShare`, `deleteShare`, `listShareGrants`,
   `setShareGrant`, `removeShareGrant`, `loadShareManifest`, `saveShareManifest`,
@@ -144,10 +146,13 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   through `NodeApi`.
 - **Frontend surface**: share events are serialized in `mobile_node.rs` as
   `share_offered`, `share_updated` and `share_rejected`. Flutter handles them by
-  reloading the read-only share list (`lib/src/screens/share_list.dart`, opened
-  from Settings → File shares); the browser gets the same route through the JSON
-  transport because both use the existing `NodeApi` facade. The TUI still just
-  logs them, and editing/binding/publishing screens remain deferred.
+  reloading the share list (`lib/src/screens/share_list.dart`, opened from
+  Settings → File shares); the browser gets the same route through the JSON
+  transport because both use the existing `NodeApi` facade. The detail page can
+  add/revoke private-share grants through `setShareGrant`/`removeShareGrant`
+  (optional callbacks keep it read-only in tests); public shares have no ACL
+  rows. The TUI still just logs them, and creation/binding/publishing screens
+  remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

@@ -1,8 +1,9 @@
-// Widget tests for the read-only file-share list and detail routes.
+// Widget tests for the file-share list and detail routes, including the
+// optional private-share grant editor.
 //
 // Both widgets are pure UI: the list takes share rows from Home, and the detail
-// page takes injected manifest/grant loaders (the same seam pattern as
-// PeerInfoScreen). No Rust library or NodeApi is needed here.
+// page takes injected manifest/grant loaders and edit callbacks (the same seam
+// pattern as PeerInfoScreen). No Rust library or NodeApi is needed here.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,20 @@ Widget listApp({
 }) => MaterialApp(
   home: Scaffold(
     body: ShareList(shares: shares, onOpenShare: onOpen),
+  ),
+);
+
+Widget detailApp({
+  required Future<List<MobileShareGrant>> Function(String) loadGrants,
+  Future<void> Function(String, String, String)? onSetGrant,
+  Future<void> Function(String, String)? onRemoveGrant,
+}) => MaterialApp(
+  home: ShareDetailScreen(
+    share: makeShare('share-a', name: 'Docs', kind: 'private'),
+    loadManifest: (_) async => null,
+    loadGrants: loadGrants,
+    onSetGrant: onSetGrant,
+    onRemoveGrant: onRemoveGrant,
   ),
 );
 
@@ -170,5 +185,150 @@ void main() {
     await tester.pumpAndSettle();
     expect(manifestLoads, 2);
     expect(grantLoads, 2);
+  });
+
+  testWidgets('detail without edit callbacks stays read-only', (tester) async {
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [
+          MobileShareGrant(userId: 'user-friend', mode: 'readonly'),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Grants'), findsOneWidget);
+    expect(find.byKey(const Key('share-grant-add')), findsNothing);
+    expect(
+      find.byKey(const Key('share-grant-revoke-user-friend')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('add grant sends the trimmed user and selected mode', (
+    tester,
+  ) async {
+    final calls = <List<String>>[];
+    var grants = <MobileShareGrant>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => List.unmodifiable(grants),
+        onSetGrant: (shareId, userId, mode) async {
+          calls.add([shareId, userId, mode]);
+          grants = [MobileShareGrant(userId: userId, mode: mode)];
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-grant-add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('share-grant-user-id')),
+      '  user-friend  ',
+    );
+    await tester.tap(find.byKey(const Key('share-grant-mode')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('readwrite').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-grant-submit')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', 'user-friend', 'readwrite'],
+    ]);
+    expect(find.text('user-friend'), findsOneWidget);
+    expect(find.text('readwrite'), findsOneWidget);
+  });
+
+  testWidgets('empty user ID never calls the editor', (tester) async {
+    final calls = <List<String>>[];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onSetGrant: (shareId, userId, mode) async {
+          calls.add([shareId, userId, mode]);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-grant-add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('share-grant-user-id')), '   ');
+    await tester.tap(find.byKey(const Key('share-grant-submit')));
+    await tester.pumpAndSettle();
+
+    expect(calls, isEmpty);
+    expect(find.text('Add share grant'), findsOneWidget);
+  });
+
+  testWidgets('revoke grant calls the editor and reloads the list', (
+    tester,
+  ) async {
+    final calls = <List<String>>[];
+    var grants = [
+      const MobileShareGrant(userId: 'user-friend', mode: 'readonly'),
+    ];
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => List.unmodifiable(grants),
+        onRemoveGrant: (shareId, userId) async {
+          calls.add([shareId, userId]);
+          grants = [];
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-grant-revoke-user-friend')));
+    await tester.pumpAndSettle();
+
+    expect(calls, [
+      ['share-a', 'user-friend'],
+    ]);
+    expect(find.text('No explicit grants.'), findsOneWidget);
+  });
+
+  testWidgets('add failure stays in the dialog with an error', (tester) async {
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [],
+        onSetGrant: (_, _, _) async => throw Exception('unknown user'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-grant-add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('share-grant-user-id')),
+      'user-friend',
+    );
+    await tester.tap(find.byKey(const Key('share-grant-submit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add share grant'), findsOneWidget);
+    expect(find.byKey(const Key('share-grant-dialog-error')), findsOneWidget);
+    expect(find.textContaining('Failed to add grant'), findsOneWidget);
+  });
+
+  testWidgets('revoke failure shows an inline error', (tester) async {
+    await tester.pumpWidget(
+      detailApp(
+        loadGrants: (_) async => const [
+          MobileShareGrant(userId: 'user-friend', mode: 'readonly'),
+        ],
+        onRemoveGrant: (_, _) async => throw Exception('database locked'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('share-grant-revoke-user-friend')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('share-grant-error')), findsOneWidget);
+    expect(find.textContaining('Failed to revoke user-friend'), findsOneWidget);
+    expect(find.text('user-friend'), findsOneWidget);
   });
 }

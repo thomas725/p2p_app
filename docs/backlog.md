@@ -122,7 +122,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core + read-only Flutter UI shipped; editing UI deferred**
+### File shares / folder sync UI — **Rust core + Flutter/web list, detail and grant editor shipped; creation/binding/publishing deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -167,15 +167,21 @@ Shipped after the core:
   page shows overview, private-share grants and manifest files. Widget tests
   cover both routes without FFI. Record:
   [`archive/2026-11-24_flutter_readonly_shares_ui.md`](archive/2026-11-24_flutter_readonly_shares_ui.md).
+- a private-share permission editor on that detail route (add/revoke grants with
+  the canonical `readonly`/`readwrite` modes, inline failures), wired through
+  the existing `NodeApi` grant methods on both transports. Its callbacks are
+  optional, so the route stays read-only in FFI-free widget tests; widget
+  coverage includes add, revoke, empty-ID and failure paths. Record:
+  [`archive/2026-11-24_flutter_share_grant_editor.md`](archive/2026-11-24_flutter_share_grant_editor.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
   offer/manifest/publish actions, and visible update/rejection events;
-- Flutter/web share editing: permission editor, manual network refresh
-  (re-request manifest / re-advertise) and publish. The read-only list/detail
-  already ships on both transports; the browser remains a display client — only
-  native installs can bind a real local folder.
+- Flutter/web share actions: manual network refresh (re-request manifest /
+  re-advertise) and publish. The list, detail and permission editor already
+  ship on both transports; the browser remains a display client — only native
+  installs can bind a real local folder.
 
 The two-node blob-pull → apply test shipped with separate per-thread databases
 and blob stores; see
@@ -241,6 +247,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Flutter/web private-share grant editor | 2026-11-24 | [`archive/2026-11-24_flutter_share_grant_editor.md`](archive/2026-11-24_flutter_share_grant_editor.md) |
 | Read-only Flutter/web share list + detail | 2026-11-24 | [`archive/2026-11-24_flutter_readonly_shares_ui.md`](archive/2026-11-24_flutter_readonly_shares_ui.md) |
 | Two-node share blob pull → folder apply test | 2026-11-24 | [`archive/2026-11-24_two_node_share_blob_pull.md`](archive/2026-11-24_two_node_share_blob_pull.md) |
 | Share offers stop leaking the local unknown-owner marker | 2026-11-24 | [`archive/2026-11-24_share_offer_owner_marker.md`](archive/2026-11-24_share_offer_owner_marker.md) |
