@@ -876,6 +876,284 @@ async fn test_spawn_handler_share_offer_manifest_and_revision_retry() {
     );
 }
 
+/// Wait for the handler's connection event from a specific peer.
+async fn wait_for_peer_connected(
+    events: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    peer: &libp2p::PeerId,
+) -> Result<(), String> {
+    timeout(Duration::from_secs(20), async {
+        loop {
+            if let Some(SwarmEvent::PeerConnected(id)) = events.recv().await
+                && id == peer.to_string()
+            {
+                break;
+            }
+        }
+    })
+    .await
+    .map_err(|_| format!("never saw {peer} connect"))
+}
+
+/// Owner-side setup: stage one real blob, publish a one-file public manifest,
+/// and return the offer for the share lane. No blob is copied to the receiver.
+fn owner_share_offer(payload: &[u8]) -> Result<p2p_app::shares::ShareOffer, String> {
+    use p2p_app::shares::{self, ShareEntry, ShareKind, ShareManifest};
+
+    let attachment = p2p_app::files::store_outgoing_bytes("shared.txt", payload)
+        .map_err(|e| format!("store blob: {e}"))?;
+    let share = shares::create_share("Two-node docs", "owner", ShareKind::Public, false, None)
+        .map_err(|e| format!("create share: {e}"))?;
+    let manifest = ShareManifest {
+        share_id: share.share_id.clone(),
+        name: share.name.clone(),
+        revision: 1,
+        entries: vec![ShareEntry {
+            path: "shared.txt".to_string(),
+            file_id: attachment.file_id,
+            size: attachment.size,
+            mime: attachment.mime,
+        }],
+    };
+    shares::save_manifest(&share.share_id, &manifest).map_err(|e| format!("save manifest: {e}"))?;
+    shares::offer_for_share(&share.share_id)
+        .map_err(|e| format!("offer: {e}"))?
+        .ok_or_else(|| "share missing after create".to_string())
+}
+
+fn spawn_share_owner_node(
+    db_path: String,
+    keypair: Keypair,
+    peer_b: libp2p::PeerId,
+    addr_b_rx: std::sync::mpsc::Receiver<libp2p::Multiaddr>,
+    release_rx: tokio::sync::oneshot::Receiver<()>,
+    done_tx: std::sync::mpsc::Sender<Result<(), String>>,
+    payload: Vec<u8>,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let outcome = (|| -> Result<(), String> {
+            p2p_app::db::set_db_url(&db_path);
+            p2p_app::db::init_database().map_err(|e| format!("init A db: {e}"))?;
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| format!("A runtime: {e}"))?;
+            let addr_b = addr_b_rx.recv().map_err(|_| "B never sent its address")?;
+
+            runtime.block_on(async {
+                // mDNS binds a netlink socket at construction time, so the swarm
+                // itself must be built inside the Tokio runtime.
+                let (mut swarm, _) = build_test_swarm_with_identity(keypair);
+                swarm
+                    .listen_on("/ip4/127.0.0.1/tcp/0".parse().expect("listen addr"))
+                    .map_err(|e| format!("listen A: {e}"))?;
+                let (_handle, mut events, commands) =
+                    spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+                commands
+                    .send(SwarmCommand::Dial {
+                        address: addr_b.to_string(),
+                    })
+                    .await
+                    .map_err(|e| format!("dial B: {e}"))?;
+                wait_for_peer_connected(&mut events, &peer_b).await?;
+
+                let offer = owner_share_offer(&payload)?;
+                commands
+                    .send(SwarmCommand::SendShareOffer {
+                        peer_ids: vec![peer_b.to_string()],
+                        offer: Box::new(offer),
+                    })
+                    .await
+                    .map_err(|e| format!("send offer: {e}"))?;
+
+                // Keep the handler serving meta/chunk requests until B is done.
+                release_rx
+                    .await
+                    .map_err(|_| "A released before B finished".to_string())
+            })
+        })();
+        let _ = done_tx.send(outcome);
+    })
+}
+
+async fn wait_for_share_offer(
+    events: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    peer: &libp2p::PeerId,
+) -> Result<p2p_app::shares::ShareOffer, String> {
+    timeout(Duration::from_secs(20), async {
+        loop {
+            if let Some(SwarmEvent::ShareOffered { peer_id, offer }) = events.recv().await
+                && peer_id == peer.to_string()
+            {
+                break offer;
+            }
+        }
+    })
+    .await
+    .map_err(|_| "never saw the share offer".to_string())
+}
+
+async fn wait_for_share_apply(
+    events: &mut tokio::sync::mpsc::Receiver<SwarmEvent>,
+    share_id: &str,
+) -> Result<(u64, usize), String> {
+    timeout(Duration::from_secs(30), async {
+        loop {
+            if let Some(SwarmEvent::ShareUpdated {
+                share_id: id,
+                revision,
+                written,
+                ..
+            }) = events.recv().await
+                && id == share_id
+            {
+                break (revision, written);
+            }
+        }
+    })
+    .await
+    .map_err(|_| "never applied the pulled manifest".to_string())
+}
+
+fn spawn_share_receiver_node(
+    db_path: String,
+    keypair: Keypair,
+    peer_a: libp2p::PeerId,
+    addr_tx: std::sync::mpsc::Sender<libp2p::Multiaddr>,
+    done_tx: std::sync::mpsc::Sender<Result<(), String>>,
+    root: std::path::PathBuf,
+    payload: Vec<u8>,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let outcome = (|| -> Result<(), String> {
+            p2p_app::db::set_db_url(&db_path);
+            p2p_app::db::init_database().map_err(|e| format!("init B db: {e}"))?;
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| format!("B runtime: {e}"))?;
+            runtime.block_on(async {
+                use libp2p::futures::StreamExt as _;
+                let (mut swarm, _) = build_test_swarm_with_identity(keypair);
+                swarm
+                    .listen_on("/ip4/127.0.0.1/tcp/0".parse().expect("listen addr"))
+                    .map_err(|e| format!("listen B: {e}"))?;
+                let addr = timeout(Duration::from_secs(20), async {
+                    loop {
+                        if let Libp2pSwarmEvent::NewListenAddr { address, .. } =
+                            swarm.select_next_some().await
+                        {
+                            break address;
+                        }
+                    }
+                })
+                .await
+                .map_err(|_| "B never got a listen address".to_string())?;
+                addr_tx.send(addr).map_err(|_| "A stopped listening")?;
+
+                let (_handle, mut events, commands) =
+                    spawn_swarm_handler(swarm, CHAT_TOPIC.to_string());
+                wait_for_peer_connected(&mut events, &peer_a).await?;
+                let offer = wait_for_share_offer(&mut events, &peer_a).await?;
+                let share = p2p_app::shares::accept_offer(
+                    &offer,
+                    Some(root.to_str().ok_or("non-UTF-8 share root")?),
+                )
+                .map_err(|e| format!("accept offer: {e}"))?;
+                commands
+                    .send(SwarmCommand::RequestShareManifest {
+                        peer_id: peer_a.to_string(),
+                        share_id: share.share_id.clone(),
+                    })
+                    .await
+                    .map_err(|e| format!("request manifest: {e}"))?;
+
+                let (revision, written) =
+                    wait_for_share_apply(&mut events, &share.share_id).await?;
+                assert_eq!(revision, 1);
+                assert_eq!(written, 1);
+                let manifest = p2p_app::shares::load_manifest(&share.share_id)
+                    .map_err(|e| format!("load B manifest: {e}"))?;
+                let entry = manifest.entries.first().ok_or("manifest has no entry")?;
+                assert_eq!(entry.path, "shared.txt");
+                assert_eq!(
+                    std::fs::read(root.join(&entry.path))
+                        .map_err(|e| format!("read apply: {e}"))?,
+                    payload
+                );
+                let blob = p2p_app::files::file_path(&entry.file_id)
+                    .ok_or("pulled blob not in B's store")?;
+                assert!(std::path::Path::new(&blob).exists());
+                Ok(())
+            })
+        })();
+        let _ = done_tx.send(outcome);
+    })
+}
+
+/// A public share's manifest references a blob that only the owner holds. Two
+/// nodes with separate per-thread databases and blob stores connect over gossip,
+/// so the receiver must discover the missing file, pull it over the files lane,
+/// and only then apply the manifest into its bound local folder.
+///
+/// The DB URL is thread-local in test builds, so each node gets a current-thread
+/// runtime on its own OS thread: no `set_db_url` race and no pre-seeded blob on
+/// the receiver.
+#[test]
+fn test_share_blob_pull_applies_with_separate_node_databases() {
+    let dir_a = tempfile::tempdir().expect("temp dir A");
+    let dir_b = tempfile::tempdir().expect("temp dir B");
+    let db_a = dir_a
+        .path()
+        .join("a.db")
+        .to_str()
+        .expect("UTF-8 path")
+        .to_string();
+    let db_b = dir_b
+        .path()
+        .join("b.db")
+        .to_str()
+        .expect("UTF-8 path")
+        .to_string();
+    let root_b = dir_b.path().join("incoming");
+    std::fs::create_dir_all(&root_b).expect("create B share root");
+
+    let keypair_a = Keypair::generate_ed25519();
+    let keypair_b = Keypair::generate_ed25519();
+    let peer_a = keypair_a.public().to_peer_id();
+    let peer_b = keypair_b.public().to_peer_id();
+    let payload = b"two-node share payload".to_vec();
+
+    let (addr_b_tx, addr_b_rx) = std::sync::mpsc::channel::<libp2p::Multiaddr>();
+    let (done_a_tx, done_a_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let (done_b_tx, done_b_rx) = std::sync::mpsc::channel::<Result<(), String>>();
+    let (release_tx, release_rx) = tokio::sync::oneshot::channel::<()>();
+
+    let handle_a = spawn_share_owner_node(
+        db_a,
+        keypair_a,
+        peer_b,
+        addr_b_rx,
+        release_rx,
+        done_a_tx,
+        payload.clone(),
+    );
+    let handle_b = spawn_share_receiver_node(
+        db_b, keypair_b, peer_a, addr_b_tx, done_b_tx, root_b, payload,
+    );
+
+    let result_b = done_b_rx
+        .recv_timeout(Duration::from_secs(90))
+        .expect("B thread timed out");
+    let _ = release_tx.send(());
+    let result_a = done_a_rx
+        .recv_timeout(Duration::from_secs(30))
+        .expect("A thread timed out");
+    handle_a.join().expect("A thread panicked");
+    handle_b.join().expect("B thread panicked");
+    assert_eq!(result_a, Ok(()));
+    assert_eq!(result_b, Ok(()));
+}
+
 /// `SendDm` with a peer ID that doesn't parse as a valid `PeerId` is silently
 /// ignored: no request is sent and the handler keeps running.
 #[tokio::test]

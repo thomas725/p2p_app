@@ -169,9 +169,11 @@ Still open (UI/integration, not protocol work):
   offer/manifest/publish actions, and visible update/rejection events;
 - Flutter/web share screens: list/detail, permission editor, manual refresh and
   publish. The browser remains a display client — only native installs can bind
-  a real local folder;
-- a true two-node blob-pull → apply test with separate per-node databases, so
-  the files lane is exercised instead of pre-seeded local blobs.
+  a real local folder.
+
+The two-node blob-pull → apply test shipped with separate per-thread databases
+and blob stores; see
+[`archive/2026-11-24_two_node_share_blob_pull.md`](archive/2026-11-24_two_node_share_blob_pull.md).
 
 ### Public bootstrap nodes (US-050) — **shipped**
 
@@ -233,6 +235,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Two-node share blob pull → folder apply test | 2026-11-24 | [`archive/2026-11-24_two_node_share_blob_pull.md`](archive/2026-11-24_two_node_share_blob_pull.md) |
 | Share offers stop leaking the local unknown-owner marker | 2026-11-24 | [`archive/2026-11-24_share_offer_owner_marker.md`](archive/2026-11-24_share_offer_owner_marker.md) |
 | Shared DB-backed broadcast unread watermark | 2026-11-23 | [`archive/2026-11-23_broadcast_unread_watermark.md`](archive/2026-11-23_broadcast_unread_watermark.md) |
 | TUI DM/group unread banners + scroll fidelity | 2026-11-23 | [`archive/2026-11-23_tui_dm_group_unread.md`](archive/2026-11-23_tui_dm_group_unread.md) |
