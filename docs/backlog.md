@@ -122,7 +122,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core shipped, UI deferred**
+### File shares / folder sync UI — **Rust core + read-only Flutter UI shipped; editing UI deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -161,15 +161,21 @@ Shipped after the core:
 - wire-level coverage for offer → list → manifest → stale rejection → retry
   with the refreshed revision, plus unit coverage for grant revocation,
   superseded/deferred applies, disconnect cleanup, spoofed offers, manifest
-  rollbacks, immediate applies and staging-file cleanup.
+  rollbacks, immediate applies and staging-file cleanup;
+- a read-only Flutter/web share list and detail route (Settings → File shares),
+  refreshed from `share_*` events over the existing `NodeApi` facade; the detail
+  page shows overview, private-share grants and manifest files. Widget tests
+  cover both routes without FFI. Record:
+  [`archive/2026-11-24_flutter_readonly_shares_ui.md`](archive/2026-11-24_flutter_readonly_shares_ui.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
   offer/manifest/publish actions, and visible update/rejection events;
-- Flutter/web share screens: list/detail, permission editor, manual refresh and
-  publish. The browser remains a display client — only native installs can bind
-  a real local folder.
+- Flutter/web share editing: permission editor, manual network refresh
+  (re-request manifest / re-advertise) and publish. The read-only list/detail
+  already ships on both transports; the browser remains a display client — only
+  native installs can bind a real local folder.
 
 The two-node blob-pull → apply test shipped with separate per-thread databases
 and blob stores; see
@@ -235,6 +241,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Read-only Flutter/web share list + detail | 2026-11-24 | [`archive/2026-11-24_flutter_readonly_shares_ui.md`](archive/2026-11-24_flutter_readonly_shares_ui.md) |
 | Two-node share blob pull → folder apply test | 2026-11-24 | [`archive/2026-11-24_two_node_share_blob_pull.md`](archive/2026-11-24_two_node_share_blob_pull.md) |
 | Share offers stop leaking the local unknown-owner marker | 2026-11-24 | [`archive/2026-11-24_share_offer_owner_marker.md`](archive/2026-11-24_share_offer_owner_marker.md) |
 | Shared DB-backed broadcast unread watermark | 2026-11-23 | [`archive/2026-11-23_broadcast_unread_watermark.md`](archive/2026-11-23_broadcast_unread_watermark.md) |

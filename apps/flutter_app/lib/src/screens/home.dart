@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
+import 'package:p2p_app_flutter/src/rust/api.dart' show MobileShare;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -18,6 +19,7 @@ import 'package:p2p_app_flutter/src/screens/log_tab.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
+import 'package:p2p_app_flutter/src/screens/share_list.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
 import 'package:p2p_app_flutter/src/util/blocklist.dart';
@@ -94,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// roster and keep their history; the Contacts table just marks them.
   Set<String> _blockedPeerIds = <String>{};
   List<MobileGroup> _groups = [];
+  List<MobileShare> _shares = [];
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
@@ -355,6 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _loadHistory();
       await _refreshRoster();
       await _refreshGroups();
+      await _refreshShares();
       await _scrollToFirstUnread();
       // Auto-start the node (on Android this also starts the foreground service)
       if (!_serviceRunning) {
@@ -427,6 +431,15 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final groups = await nodeApi.listGroups();
       setState(() => _groups = groups);
+    } catch (_) {}
+  }
+
+  /// Refresh the read-only share list. New manifests arrive on the event bus;
+  /// the loader itself is the same Rust facade both transports expose.
+  Future<void> _refreshShares() async {
+    try {
+      final shares = await nodeApi.listShares();
+      if (mounted) setState(() => _shares = shares);
     } catch (_) {}
   }
 
@@ -557,6 +570,13 @@ class _HomeScreenState extends State<HomeScreen> {
         if (event.groupId != null) {
           _acceptInvite(event.groupId!);
         }
+        break;
+      // Share events only mutate persisted share rows in Rust; the read-only
+      // list/detail UI just reloads them instead of mirroring event contents.
+      case 'share_offered':
+      case 'share_updated':
+      case 'share_rejected':
+        _refreshShares();
         break;
       case 'device_binding_intro':
         // A peer advertises its device for binding into our account. Prompt
@@ -1084,6 +1104,40 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Open the read-only share list from Settings. Both detail loaders come
+  /// from the active `NodeApi`, so this works unchanged over FRB and over the
+  /// browser's JSON transport.
+  void _openShares() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShareListScreen(
+          shares: _shares,
+          onOpenShare: _openShareDetail,
+          onNavigate: _navigateToTab,
+          currentTab: 4,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) _refreshShares();
+    });
+  }
+
+  void _openShareDetail(MobileShare share) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShareDetailScreen(
+          share: share,
+          loadManifest: nodeApi.loadShareManifest,
+          loadGrants: nodeApi.listShareGrants,
+          onNavigate: _navigateToTab,
+          currentTab: 4,
+        ),
+      ),
+    );
+  }
+
   // Open the info page for the sender of a broadcast message. If the peer
   // isn't in the discovered list yet, synthesize a record from what we know.
   void _openPeerInfoForPeerId(String peerId) {
@@ -1191,6 +1245,8 @@ class _HomeScreenState extends State<HomeScreen> {
         userId: _ownUserId,
         devices: _ownDevices,
         networkDetails: _networkNotifier,
+        onOpenShares: _openShares,
+        shareCount: _shares.length,
       ),
     ];
 

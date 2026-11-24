@@ -44,6 +44,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-23_broadcast_unread_watermark.md](2026-11-23_broadcast_unread_watermark.md) | Shared DB-backed broadcast unread watermark replacing Dart `SharedPreferences` | 2026-11-23 |
 | [2026-11-24_share_offer_owner_marker.md](2026-11-24_share_offer_owner_marker.md) | Share offers never advertise the local unknown-owner sentinel; dead offer builder reused | 2026-11-24 |
 | [2026-11-24_two_node_share_blob_pull.md](2026-11-24_two_node_share_blob_pull.md) | Two-node integration coverage for share manifest blob pulls and folder apply | 2026-11-24 |
+| [2026-11-24_flutter_readonly_shares_ui.md](2026-11-24_flutter_readonly_shares_ui.md) | Read-only Flutter/web share list and detail route over the existing facade | 2026-11-24 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

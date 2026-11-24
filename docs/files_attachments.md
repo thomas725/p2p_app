@@ -142,10 +142,12 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `lib/src/rust/shares.dart`; the browser's matching DTO conversion lives in
   `lib/src/data/shares_json.dart`, and both transports expose the same methods
   through `NodeApi`.
-- **Frontend surface (deferred)**: share events are serialized in
-  `mobile_node.rs` as `share_offered`, `share_updated` and `share_rejected`
-  for a later UI slice; the TUI currently logs them. No share screens exist in
-  either frontend yet.
+- **Frontend surface**: share events are serialized in `mobile_node.rs` as
+  `share_offered`, `share_updated` and `share_rejected`. Flutter handles them by
+  reloading the read-only share list (`lib/src/screens/share_list.dart`, opened
+  from Settings → File shares); the browser gets the same route through the JSON
+  transport because both use the existing `NodeApi` facade. The TUI still just
+  logs them, and editing/binding/publishing screens remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

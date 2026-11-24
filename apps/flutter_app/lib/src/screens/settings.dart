@@ -66,6 +66,10 @@ const Map<String, List<String>> _helpSections = {
     'Accept, Decline, Cancel and Hang up are on-screen buttons.',
     'Device-binding requests show an explicit Allow / Decline dialog.',
   ],
+  'Shares': [
+    'Settings → File shares lists local shares; tap one for its grants and manifest files.',
+    'Creating, binding and publishing shares are not exposed in this UI yet.',
+  ],
   'Keyboard': [
     'No custom letter or Ctrl shortcuts are installed here.',
     'Standard text editing and clipboard keys work in text fields.',
@@ -90,6 +94,8 @@ class Settings extends StatefulWidget {
     required this.userId,
     required this.devices,
     this.networkDetails,
+    this.onOpenShares,
+    this.shareCount = 0,
   });
 
   final ValueNotifier<LiveStatus> liveStatus;
@@ -108,6 +114,13 @@ class Settings extends StatefulWidget {
   /// DCUtR reachability, relay reservations, DHT state). Optional so widget
   /// tests without a node keep compiling; when null the card is hidden.
   final ValueNotifier<NetworkDetails?>? networkDetails;
+
+  /// Opens the read-only share list. Optional so Settings widget tests without
+  /// a host node keep compiling; when null the entry is hidden.
+  final VoidCallback? onOpenShares;
+
+  /// Count shown on the share entry, refreshed by Home on share events.
+  final int shareCount;
 
   @override
   State<Settings> createState() => _SettingsState();
@@ -735,6 +748,22 @@ class _SettingsState extends State<Settings> {
         if (_network != null) ...[
           const SizedBox(height: 8),
           _networkDetailsCard(_network!),
+        ],
+        if (widget.onOpenShares != null) ...[
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              key: const Key('settings-shares'),
+              leading: const Icon(Icons.folder_shared),
+              title: const Text('File shares'),
+              subtitle: Text(
+                widget.shareCount == 1
+                    ? '1 share'
+                    : '${widget.shareCount} shares',
+              ),
+              onTap: widget.onOpenShares,
+            ),
+          ),
         ],
         const SizedBox(height: 8),
         Card(
