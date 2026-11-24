@@ -353,23 +353,29 @@ pub fn validate_manifest(manifest: &ShareManifest) -> color_eyre::Result<()> {
     Ok(())
 }
 
-/// Convert a manifest into its advertised offer.
+/// Convert a share into its advertised offer.
+///
+/// The share row is the authority for id/name/revision even when no manifest has
+/// been published yet, so an ownerless remote stub can still be advertised.
 #[must_use]
 pub fn offer_for(
-    manifest: &ShareManifest,
+    share: &Share,
     kind: ShareKind,
     public_write: bool,
     owner_user_id: Option<&str>,
 ) -> ShareOffer {
     ShareOffer {
-        share_id: manifest.share_id.clone(),
-        name: manifest.name.clone(),
+        share_id: share.share_id.clone(),
+        name: share.name.clone(),
         kind,
-        revision: manifest.revision,
+        revision: share.revision,
         public_write,
         owner_user_id: owner_user_id.map(str::to_string),
     }
 }
+
+/// Prefix of the local-only marker for a share with no verifiable owner.
+const UNKNOWN_OWNER_PREFIX: &str = "unknown:share:";
 
 /// Owner id recorded when an offer or manifest has no verifiable owner.
 ///
@@ -378,7 +384,17 @@ pub fn offer_for(
 /// only — the owner enforces its own ACL.
 #[must_use]
 pub fn unknown_owner_id(share_id: &str) -> String {
-    format!("unknown:share:{share_id}")
+    format!("{UNKNOWN_OWNER_PREFIX}{share_id}")
+}
+
+/// Whether an owner id is the local-only "unknown owner" marker.
+///
+/// The marker must never leave this install: it identifies no real user, so
+/// advertising it would make a peer store a meaningless owner id. Ownership
+/// claims on the wire stay `None` until they can be verified.
+#[must_use]
+pub fn is_unknown_owner_id(owner_user_id: &str) -> bool {
+    owner_user_id.starts_with(UNKNOWN_OWNER_PREFIX)
 }
 
 /// `public_write` is meaningful only for public shares. Normalising it at the
@@ -724,14 +740,14 @@ pub fn offer_for_share(share_id: &str) -> color_eyre::Result<Option<ShareOffer>>
     let Some(share) = get_share(share_id)? else {
         return Ok(None);
     };
-    Ok(Some(ShareOffer {
-        share_id: share.share_id,
-        name: share.name,
-        kind: share.kind,
-        revision: share.revision,
-        public_write: share.public_write,
-        owner_user_id: Some(share.owner_user_id),
-    }))
+    let owner =
+        (!is_unknown_owner_id(&share.owner_user_id)).then_some(share.owner_user_id.as_str());
+    Ok(Some(offer_for(
+        &share,
+        share.kind,
+        share.public_write,
+        owner,
+    )))
 }
 
 /// Materialise a received offer as a local share row.

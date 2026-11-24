@@ -708,6 +708,85 @@ fn accept_offer_keeps_the_remote_id_and_is_idempotent() {
 }
 
 #[test]
+fn offer_for_maps_share_and_owner_without_inventing_ownership() {
+    let manifest = ShareManifest {
+        share_id: "share-1".to_string(),
+        name: "Docs".to_string(),
+        revision: 7,
+        entries: vec![],
+    };
+    let share = Share {
+        share_id: manifest.share_id.clone(),
+        owner_user_id: "owner-user".to_string(),
+        name: manifest.name.clone(),
+        kind: ShareKind::Public,
+        public_write: true,
+        local_root: None,
+        revision: manifest.revision,
+        manifest: Some(manifest),
+    };
+
+    let offer = offer_for(
+        &share,
+        share.kind,
+        share.public_write,
+        Some(&share.owner_user_id),
+    );
+    assert_eq!(offer.share_id, "share-1");
+    assert_eq!(offer.name, "Docs");
+    assert_eq!(offer.kind, ShareKind::Public);
+    assert!(offer.public_write);
+    assert_eq!(offer.revision, 7);
+    assert_eq!(offer.owner_user_id.as_deref(), Some("owner-user"));
+
+    let anonymous = offer_for(&share, ShareKind::Private, false, None);
+    assert_eq!(anonymous.kind, ShareKind::Private);
+    assert!(!anonymous.public_write);
+    assert_eq!(anonymous.owner_user_id, None);
+}
+
+#[test]
+#[serial(db)]
+fn offer_for_share_never_advertises_the_unknown_owner_marker() {
+    with_test_db(|| {
+        let owned = create_share("Owned", "owner-user", ShareKind::Private, false, None)
+            .expect("create owned share");
+        let owned_offer = offer_for_share(&owned.share_id)
+            .expect("read owned share")
+            .expect("owned share exists");
+        assert_eq!(owned_offer.owner_user_id.as_deref(), Some("owner-user"));
+        assert_eq!(owned_offer.kind, ShareKind::Private);
+        assert_eq!(owned_offer.revision, owned.revision);
+
+        let anonymous_offer = ShareOffer {
+            share_id: "remote-share".to_string(),
+            name: "Remote".to_string(),
+            kind: ShareKind::Public,
+            revision: 3,
+            public_write: false,
+            owner_user_id: None,
+        };
+        let remote = accept_offer(&anonymous_offer, None).expect("accept anonymous offer");
+        assert_eq!(remote.owner_user_id, unknown_owner_id("remote-share"));
+        assert!(is_unknown_owner_id(&remote.owner_user_id));
+
+        let advertised = offer_for_share("remote-share")
+            .expect("read remote share")
+            .expect("remote share exists");
+        assert_eq!(advertised.share_id, "remote-share");
+        assert_eq!(advertised.name, "Remote");
+        assert_eq!(advertised.kind, ShareKind::Public);
+        // A stub has no local manifest yet: revision 0 leaves room for the
+        // owner's first manifest to be accepted (see `create_share_with_id`).
+        assert_eq!(advertised.revision, 0);
+        assert_eq!(
+            advertised.owner_user_id, None,
+            "a local-only marker is not an ownership claim peers can verify"
+        );
+    });
+}
+
+#[test]
 #[serial(db)]
 fn queue_apply_waits_for_blobs_then_installs_the_manifest() {
     with_test_db(|| {
