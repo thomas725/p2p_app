@@ -50,7 +50,10 @@ cipher->crypto-common                            0.1.7               ---        
 cipher->inout                                    0.1.4               ---                 0.2.6               Normal       ---
 cipher->zeroize                                  1.9.0               1.9.2               1.9.2               Normal       ---
 cipher->zeroize                                  1.9.0               1.9.2               Removed             Normal       ---
+clap                                             4.6.9               4.6.10              4.6.10              Normal       ---
+clap->clap_builder                               4.6.7               4.6.10              4.6.10              Normal       ---
 clap_builder->clap_lex                           1.1.1               1.1.2               1.1.2               Normal       ---
+clap_complete->clap                              4.6.9               4.6.10              4.6.10              Normal       ---
 cmake->cc                                        1.4.7               1.11.3              1.11.3              Normal       ---
 color-eyre->backtrace                            0.3.76              0.3.77              0.3.77              Normal       ---
 combine->bytes                                   1.12.1              1.12.2              1.12.2              Normal       ---
@@ -72,7 +75,7 @@ digest->const-oid                                0.10.2              0.10.3     
 digest->crypto-common                            0.1.7               ---                 0.2.2               Normal       ---
 digest->ctutils                                  0.4.7               0.4.8               0.4.8               Normal       ---
 digest->subtle                                   2.6.1               ---                 Removed             Normal       ---
-document-features->litrs                         1.0.0               1.0.1               1.0.1               Normal       ---
+document-features->litrs                         1.0.0               1.1.0               1.1.0               Normal       ---
 dsl_auto_type->either                            1.18.0              1.19.0              1.19.0              Normal       ---
 ed25519-dalek->zeroize                           1.9.0               1.9.2               1.9.2               Normal       ---
 env_filter->log                                  0.4.34              0.4.35              0.4.35              Normal       ---
@@ -106,14 +109,19 @@ hashbrown->equivalent                            1.0.2               1.0.3      
 hashbrown->equivalent                            1.0.2               Removed             Removed             Normal       ---
 hashbrown->foldhash                              0.2.0               Removed             Removed             Normal       ---
 hashlink->hashbrown                              0.17.1              0.17.2              0.17.2              Normal       ---
+hickory-net->hickory-proto                       0.26.3              0.26.4              0.26.4              Normal       ---
 hickory-net->rand                                0.10.3              0.10.4              0.10.4              Normal       ---
 hickory-net->thiserror                           2.0.20              2.0.21              2.0.21              Normal       ---
 hickory-net->url                                 2.5.8               2.5.9               2.5.9               Normal       ---
+hickory-proto->prefix-trie                       0.8.4               0.10.2              0.10.2              Normal       ---
 hickory-proto->rand                              0.10.3              0.10.4              0.10.4              Normal       ---
 hickory-proto->thiserror                         2.0.20              2.0.21              2.0.21              Normal       ---
 hickory-proto->url                               2.5.8               2.5.9               2.5.9               Normal       ---
+hickory-resolver->hickory-net                    0.26.3              0.26.4              0.26.4              Normal       ---
+hickory-resolver->hickory-proto                  0.26.3              0.26.4              0.26.4              Normal       ---
 hickory-resolver->rand                           0.10.3              0.10.4              0.10.4              Normal       ---
 hickory-resolver->smallvec                       1.16.1              1.16.6              1.16.6              Normal       ---
+hickory-resolver->system-configuration           0.7.0               0.8.0               0.8.0               Normal       cfg(target_vendor = "apple")
 hickory-resolver->thiserror                      2.0.20              2.0.21              2.0.21              Normal       ---
 http->bytes                                      1.12.1              1.12.2              1.12.2              Normal       ---
 http->itoa                                       1.0.18              1.0.19              1.0.19              Normal       ---
@@ -121,7 +129,7 @@ http-body->bytes                                 1.12.1              1.12.2     
 http-body-util->bytes                            1.12.1              1.12.2              1.12.2              Normal       ---
 http-body-util->pin-project-lite                 0.2.17              0.2.18              0.2.18              Normal       ---
 hyper->bytes                                     1.12.1              1.12.2              1.12.2              Normal       ---
-hyper->h2                                        0.4.19              0.4.20              0.4.20              Normal       ---
+hyper->h2                                        0.4.19              0.4.21              0.4.21              Normal       ---
 hyper->itoa                                      1.0.18              1.0.19              1.0.19              Normal       ---
 hyper->pin-project-lite                          0.2.17              0.2.18              0.2.18              Normal       ---
 hyper->smallvec                                  1.16.1              1.16.6              1.16.6              Normal       ---
@@ -205,6 +213,7 @@ libp2p-dcutr->futures-bounded                    0.3.0               0.3.1      
 libp2p-dcutr->libp2p-identity                    0.3.0               ---                 0.3.1               Normal       ---
 libp2p-dcutr->prost                              0.14.4              0.14.6              0.14.6              Normal       ---
 libp2p-dcutr->thiserror                          2.0.20              2.0.21              2.0.21              Normal       ---
+libp2p-dns->hickory-resolver                     0.26.3              0.26.4              0.26.4              Normal       ---
 libp2p-dns->libp2p-identity                      0.3.0               ---                 0.3.1               Normal       ---
 libp2p-dns->smallvec                             1.16.1              1.16.6              1.16.6              Normal       ---
 libp2p-gossipsub->bytes                          1.12.1              1.12.2              1.12.2              Normal       ---
@@ -233,6 +242,7 @@ libp2p-kad->rand                                 0.10.3              0.10.4     
 libp2p-kad->smallvec                             1.16.1              1.16.6              1.16.6              Normal       ---
 libp2p-kad->thiserror                            2.0.20              2.0.21              2.0.21              Normal       ---
 libp2p-kad->uint                                 0.10.1              0.10.2              0.10.2              Normal       ---
+libp2p-mdns->hickory-proto                       0.26.3              0.26.4              0.26.4              Normal       ---
 libp2p-mdns->libp2p-identity                     0.3.0               ---                 0.3.1               Normal       ---
 libp2p-mdns->rand                                0.10.3              0.10.4              0.10.4              Normal       ---
 libp2p-mdns->smallvec                            1.16.1              1.16.6              1.16.6              Normal       ---
@@ -280,7 +290,7 @@ mac_address->nix                                 0.29.0              0.31.4     
 mac_address->winapi                              0.3.9               Removed             Removed             Normal       cfg(windows)
 matchers->regex-automata                         0.4.18              0.4.19              0.4.19              Normal       ---
 memoffset->autocfg                               1.5.1               Removed             Removed             Build        ---
-migrations_internals->toml                       1.2.1+spec-1.1.0    1.2.2+spec-1.1.0    1.2.2+spec-1.1.0    Normal       ---
+migrations_internals->toml                       1.2.1+spec-1.1.0    1.2.3+spec-1.1.0    1.2.3+spec-1.1.0    Normal       ---
 mime_guess->mime                                 0.3.17              0.3.18              0.3.18              Normal       ---
 mio->libc                                        0.2.189             0.2.191             0.2.191             Normal       cfg(any(unix, target_os = "hermit", target_os = "wasi"))
 mio->log                                         0.4.34              0.4.35              0.4.35              Normal       ---
@@ -322,12 +332,13 @@ oslog->log                                       0.4.34              0.4.35     
 parking_lot_core->libc                           0.2.189             0.2.191             0.2.191             Normal       cfg(unix)
 parking_lot_core->smallvec                       1.16.1              1.16.6              1.16.6              Normal       ---
 pest->ucd-trie                                   0.1.7               0.1.8               0.1.8               Normal       ---
-pest_derive->pest                                2.9.1               2.9.6               2.9.6               Normal       ---
-pest_derive->pest_generator                      2.9.1               2.9.6               2.9.6               Normal       ---
-pest_generator->pest                             2.9.1               2.9.6               2.9.6               Normal       ---
-pest_generator->pest_meta                        2.9.1               2.9.6               2.9.6               Normal       ---
+pest_derive->pest                                2.9.1               2.9.7               2.9.7               Normal       ---
+pest_derive->pest_generator                      2.9.1               2.9.7               2.9.7               Normal       ---
+pest_generator->pest                             2.9.1               2.9.7               2.9.7               Normal       ---
+pest_generator->pest_meta                        2.9.1               2.9.7               2.9.7               Normal       ---
 pest_generator->syn                              2.0.119             3.0.10              3.0.10              Normal       ---
-pest_meta->pest                                  2.9.1               2.9.6               2.9.6               Normal       ---
+pest_meta->pest                                  2.9.1               2.9.7               2.9.7               Normal       ---
+petname->clap                                    4.6.9               4.6.10              4.6.10              Normal       ---
 petname->clap_complete                           4.6.11              4.6.12              4.6.12              Normal       ---
 petname->rand                                    0.10.3              0.10.4              0.10.4              Normal       ---
 phf_shared->siphasher                            1.0.3               1.0.4               1.0.4               Normal       ---
@@ -338,10 +349,10 @@ poly1305->cpufeatures                            0.2.17              ---        
 poly1305->opaque-debug                           0.3.1               ---                 Removed             Normal       ---
 poly1305->universal-hash                         0.5.1               ---                 0.6.1               Normal       ---
 potential_utf->zerovec                           0.11.8              0.11.9              0.11.9              Normal       ---
-ppv-lite86->zerocopy                             0.8.63              0.8.64              0.8.64              Normal       ---
-ppv-lite86->zerocopy                             0.8.63              0.8.64              Removed             Normal       ---
+ppv-lite86->zerocopy                             0.8.63              0.8.65              0.8.65              Normal       ---
+ppv-lite86->zerocopy                             0.8.63              0.8.65              Removed             Normal       ---
 prefix-trie->either                              1.18.0              1.19.0              1.19.0              Normal       ---
-proc-macro-crate->toml_edit                      0.25.19+spec-1.1.0  0.25.20+spec-1.1.0  0.25.20+spec-1.1.0  Normal       ---
+proc-macro-crate->toml_edit                      0.25.19+spec-1.1.0  0.25.21+spec-1.1.0  0.25.21+spec-1.1.0  Normal       ---
 proc-macro2->unicode-ident                       1.0.26              1.0.27              1.0.27              Normal       ---
 proc-macro2->unicode-ident                       1.0.26              1.0.27              Removed             Normal       ---
 proc-macro2->unicode-ident                       1.0.26              Removed             Removed             Normal       ---
@@ -424,6 +435,7 @@ syn->quote                                       1.0.47              Removed    
 syn->unicode-ident                               1.0.26              1.0.27              1.0.27              Normal       ---
 syn->unicode-ident                               1.0.26              1.0.27              Removed             Normal       ---
 syn->unicode-ident                               1.0.26              Removed             Removed             Normal       ---
+system-configuration->core-foundation            0.9.4               0.10.1              0.10.1              Normal       ---
 system-configuration-sys->libc                   0.2.189             0.2.191             0.2.191             Normal       ---
 termios->libc                                    0.2.189             0.2.191             0.2.191             Normal       ---
 termwiz->anyhow                                  1.0.104             1.0.105             1.0.105             Normal       ---
@@ -431,8 +443,8 @@ termwiz->finl_unicode                            1.5.0               1.5.1      
 termwiz->lazy_static                             1.5.0               1.5.1               1.5.1               Normal       ---
 termwiz->libc                                    0.2.189             0.2.191             0.2.191             Normal       ---
 termwiz->log                                     0.4.34              0.4.35              0.4.35              Normal       ---
-termwiz->pest                                    2.9.1               2.9.6               2.9.6               Normal       ---
-termwiz->pest_derive                             2.9.1               2.9.6               2.9.6               Normal       ---
+termwiz->pest                                    2.9.1               2.9.7               2.9.7               Normal       ---
+termwiz->pest_derive                             2.9.1               2.9.7               2.9.7               Normal       ---
 termwiz->siphasher                               1.0.3               1.0.4               1.0.4               Normal       ---
 termwiz->ucd-trie                                0.1.7               0.1.8               0.1.8               Normal       ---
 thiserror->thiserror-impl                        2.0.20              2.0.21              2.0.21              Normal       ---
@@ -451,9 +463,9 @@ tokio-tungstenite->tungstenite                   0.29.0              ---        
 tokio-util->bytes                                1.12.1              1.12.2              1.12.2              Normal       ---
 tokio-util->libc                                 0.2.189             0.2.191             0.2.191             Normal       cfg(unix)
 tokio-util->pin-project-lite                     0.2.17              0.2.18              0.2.18              Normal       ---
-toml->toml_parser                                1.1.5+spec-1.1.0    1.1.6+spec-1.1.0    1.1.6+spec-1.1.0    Normal       ---
+toml->toml_parser                                1.1.5+spec-1.1.0    1.1.7+spec-1.1.0    1.1.7+spec-1.1.0    Normal       ---
 toml->winnow                                     1.0.4               1.0.5               1.0.5               Normal       ---
-toml_edit->toml_parser                           1.1.5+spec-1.1.0    1.1.6+spec-1.1.0    1.1.6+spec-1.1.0    Normal       ---
+toml_edit->toml_parser                           1.1.5+spec-1.1.0    1.1.7+spec-1.1.0    1.1.7+spec-1.1.0    Normal       ---
 toml_edit->winnow                                1.0.4               1.0.5               1.0.5               Normal       ---
 toml_parser->winnow                              1.0.4               1.0.5               1.0.5               Normal       ---
 tower->pin-project-lite                          0.2.17              0.2.18              0.2.18              Normal       ---
@@ -518,8 +530,8 @@ x509-parser->thiserror                           2.0.20              2.0.21     
 yamux->log                                       0.4.34              0.4.35              0.4.35              Normal       ---
 yamux->pin-project                               1.1.13              1.2.0               1.2.0               Normal       ---
 yoke->yoke-derive                                0.8.3               0.8.4               0.8.4               Normal       ---
-zerocopy->zerocopy-derive                        0.8.63              0.8.64              0.8.64              Normal       ---
-zerocopy->zerocopy-derive                        0.8.63              0.8.64              Removed             Normal       ---
+zerocopy->zerocopy-derive                        0.8.63              0.8.65              0.8.65              Normal       ---
+zerocopy->zerocopy-derive                        0.8.63              0.8.65              Removed             Normal       ---
 zerocopy-derive->proc-macro2                     1.0.107             ---                 Removed             Normal       ---
 zerocopy-derive->quote                           1.0.47              ---                 Removed             Normal       ---
 zerocopy-derive->syn                             2.0.119             ---                 Removed             Normal       ---
