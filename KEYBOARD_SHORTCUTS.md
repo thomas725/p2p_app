@@ -280,10 +280,12 @@ are Flutter/web actions only for now.
 | `↑` / `↓` | Move the share selection |
 | `PgUp` / `PgDn` | Page the selection |
 | `Home` / `End` | Jump to the first / last share |
+| `Click` in the list pane | Select that share (the detail pane follows) |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
 
-`r` is tab-specific: on Settings it adds a relay, on Shares it refreshes.
+Clicking the detail pane does not change the selection. `r` is tab-specific:
+on Settings it adds a relay, on Shares it refreshes.
 Share events also refresh the list automatically, so `r` is only needed after
 an action whose result arrives asynchronously.
 

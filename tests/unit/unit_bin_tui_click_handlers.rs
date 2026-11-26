@@ -656,3 +656,70 @@ fn test_load_dm_messages_existing_no_scroll_state_initializes_scroll() {
         None
     );
 }
+
+// ── Shares tab click-to-select ─────────────────────────────────────────
+
+fn app_state_with_shares(count: usize) -> AppState {
+    let mut state = test_app_state();
+    state.shares = (0..count)
+        .map(|i| p2p_app::shares::Share {
+            share_id: format!("share-{i}"),
+            owner_user_id: "owner".to_string(),
+            name: format!("Share {i}"),
+            kind: p2p_app::shares::ShareKind::Private,
+            public_write: false,
+            local_root: None,
+            revision: 1,
+            manifest: None,
+        })
+        .collect();
+    state.chat_area_height = 20;
+    // Mirror the render loop: the 40/60 split gives the list pane 40 columns.
+    state.terminal_width = 100;
+    state.active_tab = (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(idx),
+                p2p_app::tui_tabs::TabContent::Shares
+            )
+        })
+        .expect("Shares tab present");
+    state
+}
+
+#[test]
+fn test_share_row_click_selects_clicked_share() {
+    let mut state = app_state_with_shares(3);
+    // Data rows begin at global row 2 (tab bar + block border).
+    assert!(handle_mouse_left_click(&mut state, 2, 1, false));
+    assert_eq!(state.share_selection, 0);
+    assert!(handle_mouse_left_click(&mut state, 4, 1, false));
+    assert_eq!(state.share_selection, 2);
+}
+
+#[test]
+fn test_share_row_click_ignores_border_and_out_of_range() {
+    let mut state = app_state_with_shares(3);
+    state.share_selection = 1;
+    // Row 1 is the block border; row 5 maps past the three shares.
+    assert!(!handle_mouse_left_click(&mut state, 1, 1, false));
+    assert_eq!(state.share_selection, 1);
+    assert!(!handle_mouse_left_click(&mut state, 5, 1, false));
+    assert_eq!(state.share_selection, 1);
+}
+
+#[test]
+fn test_share_row_click_empty_list_noop() {
+    let mut state = app_state_with_shares(0);
+    assert!(!handle_mouse_left_click(&mut state, 2, 1, false));
+    assert_eq!(state.share_selection, 0);
+}
+
+#[test]
+fn test_share_row_click_ignores_detail_pane() {
+    let mut state = app_state_with_shares(3);
+    state.share_selection = 1;
+    // The detail pane begins at column 40; clicking there must not select.
+    assert!(!handle_mouse_left_click(&mut state, 2, 60, false));
+    assert_eq!(state.share_selection, 1);
+}

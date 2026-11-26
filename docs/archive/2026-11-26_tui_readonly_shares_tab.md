@@ -30,9 +30,13 @@ remain deliberately out of this UI slice.
   any downloaded manifest before emitting the event, so this is a notification
   plus a re-read — never a second apply. The notice wording is a pure function
   with focused unit tests.
-- `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` navigate the list; mouse scroll is
-  deliberately disabled there (the list follows the selection). The `r` refresh
-  works only on the Shares tab so it cannot shadow Settings' `r` (add relay).
+- `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` navigate the list; a click in the left
+  list pane selects that share so the detail pane follows, mirroring Flutter's
+  tap-through. Clicks in the read-only detail pane leave the selection alone
+  (the 40/60 split is resolved with ratatui's own `Layout`, matching the
+  renderer). Mouse scroll is deliberately disabled there (the list follows the
+  selection). The `r` refresh works only on the Shares tab so it cannot shadow
+  Settings' `r` (add relay).
 
 ## Test upkeep
 

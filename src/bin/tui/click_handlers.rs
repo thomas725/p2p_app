@@ -436,8 +436,10 @@ pub fn handle_mouse_left_click(
     } else {
         state.chat_area_height.saturating_add(1)
     };
+    let is_shares_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Shares);
     let clickable = is_peers_tab
         || is_groups_tab
+        || is_shares_tab
         || matches!(
             tab_content,
             p2p_app::tui_tabs::TabContent::Chat
@@ -457,7 +459,51 @@ pub fn handle_mouse_left_click(
         if is_groups_tab {
             return handle_group_row_click(state, mouse_row);
         }
+        if is_shares_tab {
+            return handle_share_row_click(state, mouse_row, mouse_column);
+        }
         return handle_message_click(state, mouse_row, &tab_content);
+    }
+    false
+}
+
+/// Handles a click on a share row in the read-only Shares tab: the detail pane
+/// follows the highlight, mirroring Flutter's list → detail tap-through without
+/// opening a second tab. Only the left list pane is interactive; clicks in the
+/// read-only detail pane leave the selection alone.
+fn handle_share_row_click(state: &mut AppState, row: u16, column: u16) -> bool {
+    // Resolve the list pane's right edge with ratatui's own `Layout` so the
+    // clickable region matches `render_shares_content`'s 40/60 split exactly.
+    let width = u16::try_from(state.terminal_width.max(1)).unwrap_or(u16::MAX);
+    let panes = ratatui::layout::Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints([
+            ratatui::layout::Constraint::Percentage(40),
+            ratatui::layout::Constraint::Percentage(60),
+        ])
+        .split(ratatui::layout::Rect::new(0, 0, width, 1));
+    let list_end = panes
+        .first()
+        .map_or(0, |pane| pane.x.saturating_add(pane.width));
+    if column >= list_end {
+        return false;
+    }
+
+    let total = state.shares.len();
+    if total == 0 {
+        return false;
+    }
+    // Data rows start at global row 2 (tab bar + block border). Match
+    // `render_shares_content`: the list has no hint row, so its viewport is
+    // `chat_area_height` and its window starts at the current selection.
+    let page_height = state.chat_area_height.max(1);
+    let selected = state.share_selection.min(total.saturating_sub(1));
+    let (start, _end) =
+        p2p_app::tui_helpers::peer_table_visible_range(0, Some(selected), total, page_height);
+    let share_row = start.saturating_add(usize::from(row).saturating_sub(2));
+    if share_row < total {
+        state.share_selection = share_row;
+        return true;
     }
     false
 }
