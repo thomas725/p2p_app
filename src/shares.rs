@@ -329,9 +329,15 @@ fn resolve_share_path(root: &Path, relative: &str) -> color_eyre::Result<PathBuf
 }
 
 /// Serialize a manifest for the `manifest_json` column.
-#[must_use]
-pub fn manifest_to_json(manifest: &ShareManifest) -> Option<String> {
-    serde_json::to_string(manifest).ok()
+///
+/// Canonical encoder for both the persistence path and tests; unlike the
+/// fail-soft reader, a write error must be reported rather than silently
+/// dropping the manifest.
+///
+/// # Errors
+/// Returns the `serde_json` error if serialization fails.
+pub fn manifest_to_json(manifest: &ShareManifest) -> serde_json::Result<String> {
+    serde_json::to_string(manifest)
 }
 
 /// Deserialize a manifest from its persisted JSON form.
@@ -630,7 +636,7 @@ fn prepare_manifest_rows(
     if manifest.share_id != share_id {
         return Err(eyre!("manifest id does not match the share"));
     }
-    let json = serde_json::to_string(manifest).wrap_err("failed to encode share manifest")?;
+    let json = manifest_to_json(manifest).wrap_err("failed to encode share manifest")?;
     let revision =
         i64::try_from(manifest.revision).map_err(|_| eyre!("share revision out of range"))?;
     let entries = manifest

@@ -68,7 +68,9 @@ const Map<String, List<String>> _helpSections = {
   ],
   'Shares': [
     'Settings → File shares lists local shares; tap one for its grants and manifest files.',
-    'Creating, binding and publishing shares are not exposed in this UI yet.',
+    'Discover peer offers, accept one, refresh or re-advertise a manifest, '
+    'and publish deletions here.',
+    'Creating, binding and native folder snapshots remain Rust operations.',
   ],
   'Keyboard': [
     'No custom letter or Ctrl shortcuts are installed here.',

@@ -10,10 +10,10 @@ import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
 import 'package:p2p_app_flutter/src/screens/share_publish.dart';
 
-/// List of this install's file shares. The list itself is read-only; creation,
+/// List of this install's file shares. The list itself is read-only; creating,
 /// binding and native folder snapshots stay in Rust (see `docs/backlog.md`).
-/// Both the FRB and browser transports can inspect shares and submit a
-/// revision of a loaded manifest.
+/// Both transports can inspect shares, discover and accept peer offers,
+/// re-advertise manifests and publish deletion revisions.
 class ShareList extends StatelessWidget {
   const ShareList({super.key, required this.shares, required this.onOpenShare});
 

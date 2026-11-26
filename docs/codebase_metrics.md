@@ -5,22 +5,22 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    40,536 |
-| Total Rust Chars      | 1,536,649 |
+| Total Rust Lines      |    40,539 |
+| Total Rust Chars      | 1,536,771 |
 | Avg Lines/Rust File   |       570 |
-| Avg Chars/Rust File   |    21,642 |
+| Avg Chars/Rust File   |    21,644 |
 | Total Dart Files      |        50 |
-| Total Dart Lines      |    22,521 |
-| Total Dart Chars      |   724,100 |
+| Total Dart Lines      |    22,523 |
+| Total Dart Chars      |   724,235 |
 | Avg Lines/Dart File   |       450 |
-| Avg Chars/Dart File   |    14,482 |
+| Avg Chars/Dart File   |    14,484 |
 | Total Kotlin Files    |         4 |
 | Total Kotlin Lines    |       612 |
 | Total Kotlin Chars    |    22,099 |
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 63,669 lines, 2,282,848 characters
+**Grand Total:** 125 files, 63,674 lines, 2,283,105 characters
 
 ## Rust Source Files
 
@@ -29,7 +29,7 @@
 | /                       | build.rs             |     5 |  4068 |   117 |        - |       - | Build script                                       |
 | src                     | behavior.rs          |     6 | 30694 |   757 |        - |       - | Network behavior definitions                       |
 | src                     | blocklist.rs         |     2 |  4185 |   110 |        - |       - | Source file                                        |
-| src                     | call_media.rs        |     3 |  8393 |   236 |        - |       - | Source file                                        |
+| src                     | call_media.rs        |     3 |  8270 |   233 |        - |       - | Source file                                        |
 | src                     | calls.rs             |     3 |  3221 |    90 |        - |       - | Call session state machine (signaling)             |
 | src                     | chat.rs              |     5 |  5821 |   162 |        - |       - | TUI chat & DM pane renderer                        |
 | src                     | clipboard.rs         |     3 |  3617 |    98 |        - |       - | Source file                                        |
@@ -68,7 +68,7 @@
 | src                     | reply.rs             |     4 |  5781 |   157 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     3 |  6614 |   168 |        - |       - | Source file                                        |
 | src                     | settings.rs          |     4 |  8302 |   225 |        - |       - | TUI settings renderer                              |
-| src                     | shares.rs            |     6 | 46585 |  1256 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
+| src                     | shares.rs            |     6 | 46830 |  1262 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares.rs            |     5 |  4709 |   122 |        - |       - | File shares & folder sync (ACLs, manifests, apply) |
 | src                     | shares_json.rs       |     4 |  6336 |   195 |        - |       - | Source file                                        |
 | src                     | swarm_handler.rs     |     7 | 100219 |  2616 |        - |       - | Network event translation                          |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 40,536 lines, 1,536,649 characters
+**Total:** 71 files, 40,539 lines, 1,536,771 characters
 
 ## Rust Test Files
 
@@ -209,9 +209,9 @@
 | lib          | messages.dart                    |    15 | 45724 |  1320 |        - |       - | Shared chat widgets              |
 | lib          | nav_bar.dart                     |     3 |  1252 |    34 |        - |       - | Tab navigation bar               |
 | lib          | peer_info.dart                   |    11 | 17257 |   500 |        - |       - | Peer Info screen                 |
-| lib          | settings.dart                    |    16 | 40337 |  1170 |        - |       - | Settings screen                  |
+| lib          | settings.dart                    |    16 | 40447 |  1172 |        - |       - | Settings screen                  |
 | lib          | share_discovery.dart             |    15 |  9090 |   270 |        - |       - | Dart source file                 |
-| lib          | share_list.dart                  |    17 | 18017 |   546 |        - |       - | Dart source file                 |
+| lib          | share_list.dart                  |    17 | 18042 |   546 |        - |       - | Dart source file                 |
 | lib          | share_network.dart               |    12 |  5528 |   165 |        - |       - | Dart source file                 |
 | lib          | share_publish.dart               |    14 |  8238 |   252 |        - |       - | Dart source file                 |
 | lib          | attachments.dart                 |     4 |  3656 |    92 |        - |       - | File picker & opener seams       |
@@ -229,7 +229,7 @@
 | lib          | theme.dart                       |     2 |  1821 |    49 |        - |       - | Dart source file                 |
 | lib          | ui_utils.dart                    |     2 |  1603 |    37 |        - |       - | Shared formatting & env helpers  |
 
-**Total:** 50 files, 22,521 lines, 724,100 characters
+**Total:** 50 files, 22,523 lines, 724,235 characters
 
 ## Dart Test Files
 

@@ -14,9 +14,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Protocol name for the dedicated voice-frame lane.
-pub const MEDIA_PROTOCOL_NAME: &str = "/p2p-chat/call-media/1.0.0";
-
 /// Number of PCM samples in one 20 ms frame at 16 kHz.
 pub const SAMPLES_PER_FRAME: usize = 320;
 
