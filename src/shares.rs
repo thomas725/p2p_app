@@ -34,7 +34,7 @@ use diesel::{
     SelectableHelper as _,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Mutex, OnceLock, PoisonError};
 
@@ -107,6 +107,25 @@ impl ShareMode {
             1 => Self::ReadWrite,
             _ => Self::ReadOnly,
         }
+    }
+}
+
+/// Canonical user-facing label for a share kind (`serde` has no `Display`).
+/// Shared by the FRB/web facade and the TUI so both frontends print the same.
+#[must_use]
+pub const fn kind_label(kind: ShareKind) -> &'static str {
+    match kind {
+        ShareKind::Private => "private",
+        ShareKind::Public => "public",
+    }
+}
+
+/// Canonical user-facing label for a grant mode.
+#[must_use]
+pub const fn mode_label(mode: ShareMode) -> &'static str {
+    match mode {
+        ShareMode::ReadOnly => "readonly",
+        ShareMode::ReadWrite => "readwrite",
     }
 }
 
@@ -550,6 +569,28 @@ pub fn list_grants(share_id: &str) -> color_eyre::Result<Vec<ShareGrant>> {
         .load::<ShareGrantRow>(conn)
         .wrap_err("failed to list share grants")?;
     Ok(rows.into_iter().map(ShareGrant::from).collect())
+}
+
+/// All grants grouped by share id in one query. Read-only frontends render a
+/// grant summary for every share, so this avoids one `list_grants` call per
+/// share (and its per-call connection).
+///
+/// # Errors
+/// Returns an error if the DB query fails.
+pub fn list_all_grants() -> color_eyre::Result<HashMap<String, Vec<ShareGrant>>> {
+    let conn = &mut crate::sqlite_connect()?;
+    let rows = share_grants::table
+        .select(ShareGrantRow::as_select())
+        .load::<ShareGrantRow>(conn)
+        .wrap_err("failed to list share grants")?;
+    let mut by_share: HashMap<String, Vec<ShareGrant>> = HashMap::new();
+    for row in rows {
+        by_share
+            .entry(row.share_id.clone())
+            .or_default()
+            .push(ShareGrant::from(row));
+    }
+    Ok(by_share)
 }
 
 /// Delete a share and its grants/entries.

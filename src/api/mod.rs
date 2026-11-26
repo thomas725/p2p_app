@@ -774,7 +774,7 @@ impl From<crate::shares::Share> for MobileShare {
             share_id: share.share_id,
             owner_user_id: share.owner_user_id,
             name: share.name,
-            kind: share_kind_label(share.kind).to_string(),
+            kind: crate::shares::kind_label(share.kind).to_string(),
             public_write: share.public_write,
             local_root: share.local_root,
             revision: i64::try_from(share.revision).unwrap_or(i64::MAX),
@@ -796,22 +796,8 @@ impl From<crate::shares::ShareGrant> for MobileShareGrant {
     fn from(grant: crate::shares::ShareGrant) -> Self {
         Self {
             user_id: grant.user_id,
-            mode: share_mode_label(grant.mode).to_string(),
+            mode: crate::shares::mode_label(grant.mode).to_string(),
         }
-    }
-}
-
-const fn share_kind_label(kind: crate::shares::ShareKind) -> &'static str {
-    match kind {
-        crate::shares::ShareKind::Private => "private",
-        crate::shares::ShareKind::Public => "public",
-    }
-}
-
-const fn share_mode_label(mode: crate::shares::ShareMode) -> &'static str {
-    match mode {
-        crate::shares::ShareMode::ReadOnly => "readonly",
-        crate::shares::ShareMode::ReadWrite => "readwrite",
     }
 }
 

@@ -9,9 +9,9 @@ mod render_tests {
         tui_render::{
             render_chat_content, render_dm_content, render_frame, render_group_chat_content,
             render_input_section, render_log_content, render_peer_info_content,
-            render_peers_content, render_popup, render_settings_content, render_shortcuts,
-            render_shortcuts_help_popup, render_status_bar, render_tabs, shortcuts_help_text,
-            shortcuts_text,
+            render_peers_content, render_popup, render_settings_content, render_shares_content,
+            render_shortcuts, render_shortcuts_help_popup, render_status_bar, render_tabs,
+            shortcuts_help_text, shortcuts_text,
         },
         tui_tabs::TabContent,
     };
@@ -1213,6 +1213,81 @@ mod render_tests {
             .map(ratatui::buffer::Cell::symbol)
             .collect();
         assert!(text.contains("Blocked: yes (b: unblock)"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_shares_shows_grants_for_private_share() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        let share = p2p_app::shares::Share {
+            share_id: "share-1".to_string(),
+            owner_user_id: "owner".to_string(),
+            name: "Docs".to_string(),
+            kind: p2p_app::shares::ShareKind::Private,
+            public_write: false,
+            local_root: None,
+            revision: 3,
+            manifest: None,
+        };
+        state.shares = vec![share.clone()];
+        state.share_selection = 0;
+        state.share_grants.insert(
+            share.share_id,
+            vec![p2p_app::shares::ShareGrant {
+                user_id: "alice".to_string(),
+                mode: p2p_app::shares::ShareMode::ReadOnly,
+            }],
+        );
+
+        terminal
+            .draw(|f| render_shares_content(f, f.area(), &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(text.contains("Grants (1)"), "got: {text:?}");
+        assert!(text.contains("alice (readonly)"), "got: {text:?}");
+    }
+
+    #[test]
+    fn test_render_shares_public_share_hides_grants() {
+        let mut terminal = create_test_terminal();
+        let mut state = TuiRenderState::with_sample_data();
+        let share = p2p_app::shares::Share {
+            share_id: "share-2".to_string(),
+            owner_user_id: "owner".to_string(),
+            name: "Public".to_string(),
+            kind: p2p_app::shares::ShareKind::Public,
+            public_write: false,
+            local_root: None,
+            revision: 1,
+            manifest: None,
+        };
+        state.shares = vec![share.clone()];
+        state.share_grants.insert(
+            share.share_id,
+            vec![p2p_app::shares::ShareGrant {
+                user_id: "bob".to_string(),
+                mode: p2p_app::shares::ShareMode::ReadWrite,
+            }],
+        );
+
+        terminal
+            .draw(|f| render_shares_content(f, f.area(), &state))
+            .unwrap();
+        let text: String = terminal
+            .backend()
+            .buffer()
+            .content
+            .iter()
+            .map(ratatui::buffer::Cell::symbol)
+            .collect();
+        assert!(!text.contains("Grants ("), "got: {text:?}");
+        assert!(!text.contains("bob"), "got: {text:?}");
     }
 }
 

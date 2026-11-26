@@ -189,6 +189,8 @@ pub struct AppState {
     /// Shares known to this install, loaded from the canonical store at
     /// startup, on `share_*` events and on a manual `r` refresh.
     pub shares: Vec<p2p_app::shares::Share>,
+    /// Grants by share id, re-read alongside the share list.
+    pub share_grants: HashMap<String, Vec<p2p_app::shares::ShareGrant>>,
     /// Highlighted share in the Shares list.
     pub share_selection: usize,
     /// Latest share-lane event text, shown on the Shares tab.
@@ -503,6 +505,10 @@ impl AppState {
         match p2p_app::shares::list_shares() {
             Ok(shares) => self.shares = shares,
             Err(error) => p2p_app::p2plog_debug(format!("Failed to reload shares: {error}")),
+        }
+        match p2p_app::shares::list_all_grants() {
+            Ok(grants) => self.share_grants = grants,
+            Err(error) => p2p_app::p2plog_debug(format!("Failed to reload share grants: {error}")),
         }
         self.share_selection = self
             .share_selection
@@ -1280,6 +1286,7 @@ impl AppState {
             group_unread_count: HashMap::new(),
             group_selection: 0,
             shares: Vec::new(),
+            share_grants: HashMap::new(),
             share_selection: 0,
             share_event_notice: None,
             input_mode: p2p_app::InputMode::Chat,

@@ -197,6 +197,7 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         group_unread_count: cloned_log(&state.group_unread_count),
         group_selection: state.group_selection,
         shares: state.shares.clone(),
+        share_grants: state.share_grants.clone(),
         share_selection: state.share_selection,
         share_event_notice: state.share_event_notice.clone(),
 

@@ -227,6 +227,42 @@ fn create_list_and_delete_share() {
 
 #[test]
 #[serial(db)]
+fn bulk_grant_listing_groups_by_share() {
+    with_test_db(|| {
+        let first = create_share("First", "owner", ShareKind::Private, false, None)
+            .expect("create first share");
+        let second = create_share("Second", "owner", ShareKind::Private, false, None)
+            .expect("create second share");
+        set_grant(&first.share_id, "alice", ShareMode::ReadOnly).expect("alice grant");
+        set_grant(&first.share_id, "bob", ShareMode::ReadWrite).expect("bob grant");
+        set_grant(&second.share_id, "carol", ShareMode::ReadOnly).expect("carol grant");
+
+        let all = list_all_grants().expect("bulk grants");
+        assert_eq!(all.len(), 2);
+        let first_grants = all.get(&first.share_id).expect("first grants");
+        assert_eq!(first_grants.len(), 2);
+        assert_eq!(
+            first_grants
+                .iter()
+                .find(|g| g.user_id == "alice")
+                .map(|g| g.mode),
+            Some(ShareMode::ReadOnly)
+        );
+        assert_eq!(
+            first_grants
+                .iter()
+                .find(|g| g.user_id == "bob")
+                .map(|g| g.mode),
+            Some(ShareMode::ReadWrite)
+        );
+        let second_grants = all.get(&second.share_id).expect("second grants");
+        assert_eq!(second_grants.len(), 1);
+        assert_eq!(second_grants[0].user_id, "carol");
+    });
+}
+
+#[test]
+#[serial(db)]
 fn grants_are_upserted_and_listed() {
     with_test_db(|| {
         let share =

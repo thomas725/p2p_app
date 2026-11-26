@@ -2,7 +2,7 @@
 //! manifest on the right. Mirrors Flutter's list → detail flow without any
 //! mutable actions; creation/binding/snapshots stay native operations.
 
-use crate::shares::{Share, ShareKind};
+use crate::shares::{Share, ShareGrant, ShareKind, kind_label};
 use crate::tui_helpers::peer_table_visible_range;
 use crate::tui_render::bordered_block;
 use crate::tui_render_state::TuiRenderState;
@@ -11,14 +11,6 @@ use ratatui::{
     style::{Modifier, Style},
     widgets::{List, ListItem, ListState, Paragraph, Wrap},
 };
-
-/// Wire value as the user-facing label (`serde` has no `Display` impl).
-const fn kind_label(kind: ShareKind) -> &'static str {
-    match kind {
-        ShareKind::Private => "private",
-        ShareKind::Public => "public",
-    }
-}
 
 /// One compact row in the shares list.
 fn share_row(share: &Share) -> String {
@@ -31,7 +23,7 @@ fn share_row(share: &Share) -> String {
 }
 
 /// Detail pane lines for the selected share, plus the latest share-lane event.
-fn detail_lines(share: Option<&Share>, notice: Option<&str>) -> Vec<String> {
+fn detail_lines(share: Option<&Share>, grants: &[ShareGrant], notice: Option<&str>) -> Vec<String> {
     let mut lines = Vec::new();
     if let Some(notice) = notice {
         lines.push(format!("Last event: {notice}"));
@@ -54,6 +46,21 @@ fn detail_lines(share: Option<&Share>, notice: Option<&str>) -> Vec<String> {
         share.local_root.as_deref().unwrap_or("not bound")
     ));
     lines.push(format!("Revision: {}", share.revision));
+    // Public shares have no ACL rows; mirror Flutter, which hides the Grants
+    // section unless the share is private.
+    if share.kind == ShareKind::Private {
+        lines.push(format!("Grants ({}):", grants.len()));
+        if grants.is_empty() {
+            lines.push("  none".to_string());
+        }
+        for grant in grants {
+            lines.push(format!(
+                "  {} ({})",
+                grant.user_id,
+                crate::shares::mode_label(grant.mode)
+            ));
+        }
+    }
     match share.manifest.as_ref() {
         Some(manifest) => {
             lines.push(format!("Files ({}):", manifest.entries.len()));
@@ -104,7 +111,10 @@ pub fn render_shares_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRend
     f.render_stateful_widget(list, list_area, &mut list_state);
 
     let chosen = selected.and_then(|sel| state.shares.get(sel));
-    let lines = detail_lines(chosen, state.share_event_notice.as_deref());
+    let grants: &[ShareGrant] = chosen
+        .and_then(|share| state.share_grants.get(&share.share_id))
+        .map_or(&[], Vec::as_slice);
+    let lines = detail_lines(chosen, grants, state.share_event_notice.as_deref());
     let para = Paragraph::new(lines.join("\n"))
         .block(bordered_block("Share details".to_string()))
         .wrap(Wrap { trim: false });

@@ -18,8 +18,12 @@ remain deliberately out of this UI slice.
 - `src/tui_render/shares.rs` renders a two-pane view: a selectable left list
   (`Name [kind] rev N`) using the same windowing math as the Contacts table, and
   a wrapped detail pane with the name, id, kind/write flag, owner, local root,
-  revision, the latest share-lane notice and the manifest's files. File sizes
-  come from the canonical `files::format_file_size`.
+  revision, the latest share-lane notice and the manifest's files. Private
+  shares also show a `Grants (N)` list (`user (readonly|readwrite)`), matching
+  Flutter's detail route; public shares hide it because they have no ACL rows.
+  File sizes come from the canonical `files::format_file_size`, and the kind /
+  mode labels are shared with the FRB/web facade via `shares::kind_label` /
+  `mode_label`.
 - `AppState` owns `shares`, `share_selection` and `share_event_notice`.
   `reload_shares()` re-reads `shares::list_shares()`, clamps the selection and
   keeps the last good snapshot on a DB error (fail-open, like the other

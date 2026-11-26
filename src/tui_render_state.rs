@@ -100,6 +100,8 @@ pub struct TuiRenderState {
     pub shares: Vec<crate::shares::Share>,
     /// Highlighted share in the Shares list.
     pub share_selection: usize,
+    /// Grants by share id, used by the read-only Shares tab detail pane.
+    pub share_grants: HashMap<String, Vec<crate::shares::ShareGrant>>,
     /// Latest share-lane event (offer/update/rejection), shown on the Shares
     /// tab so swarm activity is visible without the Log tab.
     pub share_event_notice: Option<String>,
@@ -206,6 +208,7 @@ impl TuiRenderState {
             group_unread_count: BTreeMap::new(),
             group_selection: 0,
             shares: Vec::new(),
+            share_grants: HashMap::new(),
             share_selection: 0,
             share_event_notice: None,
             input_text: String::new(),
