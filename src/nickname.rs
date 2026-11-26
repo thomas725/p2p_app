@@ -153,9 +153,13 @@ pub fn get_peer_local_nickname(peer_id: &str) -> color_eyre::Result<Option<Strin
 
 /// Get the nickname we last sent to this peer for ourselves, if any.
 ///
+/// Test-only: production reads the column directly when building the nickname
+/// maps, so exposing this getter on the crate API would only widen the surface.
+///
 /// # Errors
 /// Returns an error if the database query fails.
-pub fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
+#[cfg(test)]
+fn get_peer_self_nickname_for_peer(peer_id: &str) -> color_eyre::Result<Option<String>> {
     get_peer_field(peer_id, |p| p.self_nickname_for_peer)
 }
 
@@ -168,15 +172,17 @@ pub fn get_peer_received_nickname(peer_id: &str) -> color_eyre::Result<Option<St
 }
 
 /// An archived previous nickname for a peer, kept so we retain a timeline of
-/// the names we knew them by before the current one.
+/// the names we knew them by before the current one. Read only by the in-crate
+/// history test; the write path is production and stays public.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PeerNameHistoryEntry {
+struct PeerNameHistoryEntry {
     /// The nickname value that was superseded.
-    pub name: String,
+    name: String,
     /// Origin of the superseded name (currently `received`).
-    pub name_kind: String,
+    name_kind: String,
     /// When this entry was archived.
-    pub set_at: chrono::NaiveDateTime,
+    set_at: chrono::NaiveDateTime,
 }
 
 /// Persist a superseded nickname into the `peer_name_history` table.
@@ -216,9 +222,13 @@ pub fn record_peer_received_name_change(peer_id: &str, new_name: &str) -> color_
 
 /// Read the archived nickname history for a peer (most recent first).
 ///
+/// Test-only: archiving is production behaviour, but nothing outside the
+/// in-crate history test needs to read the rows back.
+///
 /// # Errors
 /// Returns an error if the database query fails.
-pub fn get_peer_name_history(peer_id: &str) -> color_eyre::Result<Vec<PeerNameHistoryEntry>> {
+#[cfg(test)]
+fn get_peer_name_history(peer_id: &str) -> color_eyre::Result<Vec<PeerNameHistoryEntry>> {
     let conn = &mut sqlite_connect()?;
     let rows = peer_name_history::table
         .filter(peer_name_history::peer_id.eq(peer_id))

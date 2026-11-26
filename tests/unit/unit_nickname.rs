@@ -110,6 +110,69 @@ fn peer_self_nickname_for_peer_roundtrip() {
 
 #[test]
 #[serial(db)]
+fn peer_self_nickname_for_peer_none_initially() {
+    with_test_db(|| {
+        let loaded = get_peer_self_nickname_for_peer("nobody").expect("get");
+        assert!(loaded.is_none());
+    });
+}
+
+#[test]
+#[serial(db)]
+fn peer_self_nickname_for_peer_overwrite() {
+    with_test_db(|| {
+        set_peer_self_nickname_for_peer("peer-overwrite", "old-name").expect("set old");
+        set_peer_self_nickname_for_peer("peer-overwrite", "new-name").expect("set new");
+        let loaded = get_peer_self_nickname_for_peer("peer-overwrite").expect("get");
+        assert_eq!(loaded.as_deref(), Some("new-name"));
+    });
+}
+
+#[test]
+#[serial(db)]
+fn peer_self_nickname_for_peer_multiple_peers() {
+    with_test_db(|| {
+        set_peer_self_nickname_for_peer("peer-a", "My1").expect("set first");
+        set_peer_self_nickname_for_peer("peer-b", "My2").expect("set second");
+        let first = get_peer_self_nickname_for_peer("peer-a").expect("get first");
+        let second = get_peer_self_nickname_for_peer("peer-b").expect("get second");
+        assert_eq!(first.as_deref(), Some("My1"));
+        assert_eq!(second.as_deref(), Some("My2"));
+    });
+}
+
+#[test]
+#[serial(db)]
+fn received_name_changes_archive_previous_names() {
+    with_test_db(|| {
+        // The first announced name is the current one, with nothing archived.
+        record_peer_received_name_change("peer-hist", "Alice").expect("record Alice");
+        let empty = get_peer_name_history("peer-hist").expect("empty history");
+        assert_eq!(empty, Vec::new());
+
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        record_peer_received_name_change("peer-hist", "Bob").expect("record Bob");
+        let history = get_peer_name_history("peer-hist").expect("history after Bob");
+        let names: Vec<&str> = history.iter().map(|entry| entry.name.as_str()).collect();
+        assert_eq!(names, vec!["Alice"]);
+        assert!(history.iter().all(|entry| entry.name_kind == "received"));
+
+        // A second change archives Bob too; the newest entry comes first.
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        record_peer_received_name_change("peer-hist", "Carol").expect("record Carol");
+        let history = get_peer_name_history("peer-hist").expect("history after Carol");
+        let names: Vec<&str> = history.iter().map(|entry| entry.name.as_str()).collect();
+        assert_eq!(names, vec!["Bob", "Alice"]);
+
+        // Re-announcing the same name is a no-op, not another history row.
+        record_peer_received_name_change("peer-hist", "Carol").expect("record Carol again");
+        let history = get_peer_name_history("peer-hist").expect("history after repeat");
+        assert_eq!(history.len(), 2);
+    });
+}
+
+#[test]
+#[serial(db)]
 fn peer_display_name_received_then_fallback() {
     with_test_db(|| {
         set_peer_received_nickname("peer-r", "recv").expect("set received");

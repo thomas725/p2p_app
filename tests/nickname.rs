@@ -223,72 +223,6 @@ fn test_set_peer_received_nickname_overwrite() {
     });
 }
 
-#[serial]
-#[test]
-fn test_received_name_change_archives_history() {
-    with_test_db(|| {
-        p2p_app::save_peer("peer-hist", &[]).unwrap();
-
-        // First received name: nothing to archive yet.
-        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Alice").unwrap();
-        let hist1 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
-        assert!(hist1.is_empty(), "no history before a name changes");
-
-        // Change to Bob: Alice is archived.
-        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Bob").unwrap();
-        let hist2 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
-        assert_eq!(hist2.len(), 1);
-        assert_eq!(hist2[0].name, "Alice");
-        assert_eq!(hist2[0].name_kind, "received");
-
-        // Change to Carol: Bob is archived (most recent first).
-        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Carol").unwrap();
-        let hist3 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
-        assert_eq!(hist3.len(), 2);
-        assert_eq!(hist3[0].name, "Bob");
-        assert_eq!(hist3[1].name, "Alice");
-
-        // Setting the same name again must not create a new history entry.
-        p2p_app::nickname::record_peer_received_name_change("peer-hist", "Carol").unwrap();
-        let hist4 = p2p_app::nickname::get_peer_name_history("peer-hist").unwrap();
-        assert_eq!(hist4.len(), 2);
-    });
-}
-
-// ── self nickname for peer ────────────────────────────────────────────────────
-
-#[serial]
-#[test]
-fn test_get_peer_self_nickname_for_peer_none_initially() {
-    with_test_db(|| {
-        let nick = p2p_app::nickname::get_peer_self_nickname_for_peer("nobody").unwrap();
-        assert!(nick.is_none());
-    });
-}
-
-#[serial]
-#[test]
-fn test_set_and_get_peer_self_nickname_for_peer() {
-    with_test_db(|| {
-        p2p_app::save_peer("peer-sn", &[]).unwrap();
-        p2p_app::nickname::set_peer_self_nickname_for_peer("peer-sn", "MyNameForThem").unwrap();
-        let nick = p2p_app::nickname::get_peer_self_nickname_for_peer("peer-sn").unwrap();
-        assert_eq!(nick.as_deref(), Some("MyNameForThem"));
-    });
-}
-
-#[serial]
-#[test]
-fn test_set_peer_self_nickname_for_peer_overwrite() {
-    with_test_db(|| {
-        p2p_app::save_peer("peer-snw", &[]).unwrap();
-        p2p_app::nickname::set_peer_self_nickname_for_peer("peer-snw", "old-name").unwrap();
-        p2p_app::nickname::set_peer_self_nickname_for_peer("peer-snw", "new-name").unwrap();
-        let nick = p2p_app::nickname::get_peer_self_nickname_for_peer("peer-snw").unwrap();
-        assert_eq!(nick.as_deref(), Some("new-name"));
-    });
-}
-
 // ── get_peer_display_name ─────────────────────────────────────────────────────
 
 #[serial]
@@ -474,23 +408,6 @@ fn test_get_peer_display_name_all_none() {
         let peer = "peer-noinfo";
         let display = p2p_app::nickname::get_peer_display_name(peer).unwrap();
         assert_ne!(display, "");
-    });
-}
-
-#[serial]
-#[test]
-fn test_get_peer_self_nickname_multiple_peers() {
-    with_test_db(|| {
-        p2p_app::save_peer("peer1", &[]).unwrap();
-        p2p_app::save_peer("peer2", &[]).unwrap();
-        p2p_app::nickname::set_peer_self_nickname_for_peer("peer1", "My1").unwrap();
-        p2p_app::nickname::set_peer_self_nickname_for_peer("peer2", "My2").unwrap();
-
-        let nick1 = p2p_app::nickname::get_peer_self_nickname_for_peer("peer1").unwrap();
-        let nick2 = p2p_app::nickname::get_peer_self_nickname_for_peer("peer2").unwrap();
-
-        assert_eq!(nick1.as_deref(), Some("My1"));
-        assert_eq!(nick2.as_deref(), Some("My2"));
     });
 }
 

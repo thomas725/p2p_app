@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    40,565 |
-| Total Rust Chars      | 1,537,804 |
+| Total Rust Lines      |    40,574 |
+| Total Rust Chars      | 1,538,123 |
 | Avg Lines/Rust File   |       571 |
-| Avg Chars/Rust File   |    21,659 |
+| Avg Chars/Rust File   |    21,663 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,523 |
 | Total Dart Chars      |   724,235 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 63,700 lines, 2,284,138 characters
+**Grand Total:** 125 files, 63,709 lines, 2,284,457 characters
 
 ## Rust Source Files
 
@@ -45,7 +45,7 @@
 | src                     | groups.rs            |     3 | 23346 |   618 |        - |       - | Group management & persistence                     |
 | src                     | groups.rs            |     5 |  4846 |   131 |        - |       - | TUI groups renderer                                |
 | src                     | identity.rs          |     4 | 28935 |   763 |        - |       - | Users, account keys & device bindings              |
-| src                     | lib.rs               |     1 |  7558 |   202 |        - |       - | Module declarations & re-exports                   |
+| src                     | lib.rs               |     1 |  7474 |   201 |        - |       - | Module declarations & re-exports                   |
 | src                     | log.rs               |     2 |   907 |    31 |        - |       - | TUI log renderer                                   |
 | src                     | logging.rs           |     5 | 13949 |   426 |        - |       - | Logging utilities & setup                          |
 | src                     | messages.rs          |     5 | 22794 |   587 |        - |       - | Message persistence & retrieval                    |
@@ -58,7 +58,7 @@
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
 | src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
-| src                     | nickname.rs          |     5 | 12838 |   333 |        - |       - | Nickname management                                |
+| src                     | nickname.rs          |     5 | 13241 |   343 |        - |       - | Nickname management                                |
 | src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                                        |
 | src                     | peer_info.rs         |     3 |  3104 |    88 |        - |       - | TUI peer-info renderer                             |
 | src                     | peers.rs             |     4 | 10590 |   294 |        - |       - | Peer management & tracking                         |
@@ -98,7 +98,7 @@
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 40,565 lines, 1,537,804 characters
+**Total:** 71 files, 40,574 lines, 1,538,123 characters
 
 ## Rust Test Files
 
@@ -116,7 +116,7 @@
 | tests  | logging.rs                         |   335 |  9679 |     3 | logging module tests                  |
 | tests  | messages.rs                        |   495 | 15274 |     4 | messages module tests                 |
 | tests  | network.rs                         |    49 |  1638 |     1 | network module tests                  |
-| tests  | nickname.rs                        |   516 | 17397 |     4 | nickname module tests                 |
+| tests  | nickname.rs                        |   433 | 14063 |     4 | nickname module tests                 |
 | tests  | p2p_integration.rs                 |  1099 | 39657 |    10 | P2P integration tests                 |
 | tests  | peers.rs                           |   317 |  9240 |     4 | peers module tests                    |
 | tests  | swarm_handler.rs                   |  1292 | 44723 |     8 | swarm_handler module tests            |
@@ -159,7 +159,7 @@
 | unit   | unit_net_diag.rs                   |   483 | 15776 |     3 | Test file                             |
 | unit   | unit_network.rs                    |    38 |  1098 |     2 | Unit tests for network module         |
 | unit   | unit_network_config.rs             |   167 |  5564 |     4 | Test file                             |
-| unit   | unit_nickname.rs                   |   173 |  5791 |     3 | Unit tests for nickname module        |
+| unit   | unit_nickname.rs                   |   236 |  8550 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                      |   113 |  3428 |     3 | Unit tests for peers module           |
 | unit   | unit_relay.rs                      |    51 |  1450 |     2 | Test file                             |
 | unit   | unit_reply.rs                      |   134 |  4907 |     3 | Test file                             |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 29,383 lines, 986,129 characters
+**Total:** 67 test files, 29,363 lines, 985,554 characters
 
 ## Dart Source Files
 
