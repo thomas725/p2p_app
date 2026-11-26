@@ -5,7 +5,7 @@ use crate::tui_tabs::TabContent;
 fn test_tui_render_state_default() {
     let state = TuiRenderState::default();
     assert_eq!(state.active_tab, 0);
-    assert_eq!(state.tab_titles.len(), 5);
+    assert_eq!(state.tab_titles.len(), 6);
     assert!(state.messages.is_empty());
     assert_eq!(state.peers.len(), 0);
     assert!(state.log_messages.is_empty());

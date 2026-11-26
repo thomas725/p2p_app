@@ -47,7 +47,7 @@ fn test_dm_tab_new() {
 #[test]
 fn test_dynamic_tabs_new() {
     let tabs = p2p_app::tui_tabs::DynamicTabs::new();
-    assert_eq!(tabs.total_tab_count(), 5);
+    assert_eq!(tabs.total_tab_count(), 6); // +Shares
     assert_eq!(tabs.dm_tab_count(), 0);
 }
 
@@ -156,17 +156,17 @@ fn test_dynamic_tabs_all_titles() {
     let titles = tabs.all_titles();
     assert_eq!(titles[0], "Chat");
     assert_eq!(titles[1], "Contacts");
-    assert_eq!(*titles.last().unwrap(), "Settings");
-    assert_eq!(titles.len(), 6); // Chat, Peers, Groups, 1 DM, Log, Settings
+    assert_eq!(*titles.last().unwrap(), "Shares");
+    assert_eq!(titles.len(), 7); // Chat, Peers, Groups, 1 DM, Log, Settings, Shares
 }
 
 #[test]
 fn test_dynamic_tabs_total_tab_count() {
     use p2p_app::tui_tabs::DynamicTabs;
     let mut tabs = DynamicTabs::new();
-    assert_eq!(tabs.total_tab_count(), 5); // Chat, Peers, Groups, Log, Settings
+    assert_eq!(tabs.total_tab_count(), 6); // +Shares
     tabs.add_dm_tab("p".to_string());
-    assert_eq!(tabs.total_tab_count(), 6);
+    assert_eq!(tabs.total_tab_count(), 7);
 }
 
 #[test]

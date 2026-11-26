@@ -122,7 +122,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core + Flutter/web list, detail, grant editor, discovery, network actions and deletion publishing shipped; creation/binding/native snapshots deferred**
+### File shares / folder sync UI — **Rust core, Flutter/web list, detail, grant editor, discovery, network actions and deletion publishing, plus a read-only TUI Shares tab shipped; creation/binding/native snapshots deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -189,11 +189,18 @@ Shipped after the core:
   manifests and selections are blocked client-side, while Rust remains the ACL
   and optimistic-concurrency authority. Record:
   [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md).
+- a read-only TUI Shares tab (after Settings): a selectable list with each
+  share's kind/write flag, owner, local root, revision and manifest files, plus
+  a "Last event" line fed by `share_offered`/`share_updated`/`share_rejected`.
+  `r` re-reads `shares::list_shares()`; events also reload and leave a notice,
+  never a second manifest apply. Record:
+  [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
-  offer/manifest/publish actions, and visible update/rejection events;
+- TUI Shares tab actions: create/bind/snapshot, grant editor, public/write
+  toggles and offer/manifest/publish actions (the list, detail and event notice
+  already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local
@@ -263,6 +270,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Read-only TUI Shares tab + visible share events | 2026-11-26 | [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md) |
 | Flutter/web manifest-deletion publishing | 2026-11-26 | [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md) |
 | Flutter/web peer-share discovery + explicit acceptance | 2026-11-26 | [`archive/2026-11-26_flutter_share_discovery.md`](archive/2026-11-26_flutter_share_discovery.md) |
 | Flutter/web share manifest refresh + re-advertise | 2026-11-26 | [`archive/2026-11-26_flutter_share_network_actions.md`](archive/2026-11-26_flutter_share_network_actions.md) |

@@ -12,10 +12,11 @@ fn peer_display_label(peer_id: &str) -> String {
 /// tab, `FIXED_TAB_COUNT - 1`).
 pub const FIXED_TAB_COUNT: usize = 3;
 
-/// Fixed tabs that always appear after any dynamic tabs (Log, Settings)
-const SUFFIX_TAB_COUNT: usize = 2;
+/// Fixed tabs that always appear after any dynamic tabs (Log, Settings, Shares)
+const SUFFIX_TAB_COUNT: usize = 3;
 const LOG_TITLE: &str = "Log";
 const SETTINGS_TITLE: &str = "Settings";
+const SHARES_TITLE: &str = "Shares";
 const GROUPS_TITLE: &str = "Groups";
 
 /// Group chat tab: a marker for an open group conversation.
@@ -227,7 +228,7 @@ impl DynamicTabs {
     }
 
     /// Get display titles for all tabs (Chat, Contacts, Groups, Group chats,
-    /// DMs..., Info..., Log, Settings)
+    /// DMs..., Info..., Log, Settings, Shares)
     #[must_use]
     pub fn all_titles(&self) -> Vec<String> {
         let mut titles = vec![
@@ -240,6 +241,7 @@ impl DynamicTabs {
         titles.extend(self.peer_info_tab_titles());
         titles.push(LOG_TITLE.to_string());
         titles.push(SETTINGS_TITLE.to_string());
+        titles.push(SHARES_TITLE.to_string());
         titles
     }
 
@@ -254,6 +256,7 @@ impl DynamicTabs {
             .saturating_add(dm_count)
             .saturating_add(info_count);
         let settings_index = log_index.saturating_add(1);
+        let shares_index = settings_index.saturating_add(1);
         let dm_start = FIXED_TAB_COUNT.saturating_add(group_count);
         let info_start = dm_start.saturating_add(dm_count);
         match tab_idx {
@@ -262,6 +265,7 @@ impl DynamicTabs {
             2 => TabContent::Groups,
             idx if idx == log_index => TabContent::Log,
             idx if idx == settings_index => TabContent::Settings,
+            idx if idx == shares_index => TabContent::Shares,
             idx if idx >= FIXED_TAB_COUNT && idx < dm_start => {
                 let group_idx = idx.saturating_sub(FIXED_TAB_COUNT);
                 self.group_tabs
@@ -316,6 +320,8 @@ pub enum TabContent {
     Log,
     /// Settings view
     Settings,
+    /// Read-only file-shares view (list plus the selected share's manifest)
+    Shares,
     /// Peer info view for the given peer ID
     PeerInfo(String),
 }

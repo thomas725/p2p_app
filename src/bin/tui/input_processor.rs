@@ -1616,6 +1616,15 @@ fn handle_tab_specific_shortcut(
             p2p_app::clear_tui_logs();
             true
         }
+        // `r` re-reads the shares table on the Shares tab. Live share events
+        // also reload it, but a manual refresh keeps the view authoritative
+        // after an action whose result arrives asynchronously.
+        crossterm::event::KeyCode::Char('r')
+            if matches!(tab, p2p_app::tui_tabs::TabContent::Shares) =>
+        {
+            s.reload_shares();
+            true
+        }
         _ => false,
     }
 }

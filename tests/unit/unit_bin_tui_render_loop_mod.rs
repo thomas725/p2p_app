@@ -20,7 +20,7 @@ fn app_state() -> AppState {
 fn test_app_state_to_render_state_defaults() {
     let state = app_state();
     let rs = app_state_to_render_state(&state);
-    assert_eq!(rs.tab_titles.len(), 5); // Chat, Peers, Groups, Log, Settings
+    assert_eq!(rs.tab_titles.len(), 6); // Chat, Peers, Groups, Log, Settings, Shares
     assert_eq!(rs.active_tab, 0);
     assert!(rs.messages.is_empty());
     assert_eq!(rs.peers.len(), 0);

@@ -185,6 +185,15 @@ pub struct AppState {
     // Selected group in the Groups list tab.
     pub group_selection: usize,
 
+    // File shares (read-only Shares tab)
+    /// Shares known to this install, loaded from the canonical store at
+    /// startup, on `share_*` events and on a manual `r` refresh.
+    pub shares: Vec<p2p_app::shares::Share>,
+    /// Highlighted share in the Shares list.
+    pub share_selection: usize,
+    /// Latest share-lane event text, shown on the Shares tab.
+    pub share_event_notice: Option<String>,
+
     // UI State (TUI-specific)
     pub active_tab: usize,
     pub dynamic_tabs: DynamicTabs,
@@ -485,6 +494,19 @@ impl AppState {
         self.network_peer_selection = self
             .network_peer_selection
             .min(self.network_peers.len().saturating_sub(1));
+    }
+
+    /// Re-read the shares table. A DB failure keeps the last good snapshot and
+    /// is logged, so a broken DB never blanks the tab (fail-open, like the
+    /// other best-effort UI reloads).
+    pub fn reload_shares(&mut self) {
+        match p2p_app::shares::list_shares() {
+            Ok(shares) => self.shares = shares,
+            Err(error) => p2p_app::p2plog_debug(format!("Failed to reload shares: {error}")),
+        }
+        self.share_selection = self
+            .share_selection
+            .min(self.shares.len().saturating_sub(1));
     }
 
     /// Move the network-peers highlight with the Settings Up/Down/Home/End keys.
@@ -1257,6 +1279,9 @@ impl AppState {
             group_scroll_state: HashMap::new(),
             group_unread_count: HashMap::new(),
             group_selection: 0,
+            shares: Vec::new(),
+            share_selection: 0,
+            share_event_notice: None,
             input_mode: p2p_app::InputMode::Chat,
             dynamic_tabs: DynamicTabs::new(),
             active_tab: 0,
@@ -1315,6 +1340,7 @@ impl AppState {
             own_user_devices: Vec::new(),
         };
         state.reload_blocked_peers();
+        state.reload_shares();
         state.rebuild_contacts();
         state.contacts_all.clone_from(&state.contacts);
         state

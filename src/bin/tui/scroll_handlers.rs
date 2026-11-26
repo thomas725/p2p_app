@@ -314,6 +314,17 @@ pub async fn handle_scroll_key(key_code: crossterm::event::KeyCode, state: &mut 
         p2p_app::tui_tabs::TabContent::Settings => {
             state.move_network_peer_selection(key_code);
         }
+        p2p_app::tui_tabs::TabContent::Shares => {
+            // The shares list is a bordered pane with no hint row, so its inner
+            // height is `chat_area_height` (the Groups list loses one more row
+            // to its hint).
+            state.share_selection = compute_new_peer_selection(
+                key_code,
+                state.share_selection,
+                state.shares.len(),
+                state.chat_area_height.max(1),
+            );
+        }
         p2p_app::tui_tabs::TabContent::PeerInfo(_) => {}
     }
 }
@@ -460,7 +471,8 @@ pub fn handle_mouse_scroll(state: &mut AppState, scroll_dir: &str, peer_id: Opti
         }
         p2p_app::tui_tabs::TabContent::PeerInfo(_)
         | p2p_app::tui_tabs::TabContent::Groups
-        | p2p_app::tui_tabs::TabContent::Settings => false,
+        | p2p_app::tui_tabs::TabContent::Settings
+        | p2p_app::tui_tabs::TabContent::Shares => false,
         _ => mouse_scroll_chat_tab(state, scroll_dir),
     }
 }

@@ -496,7 +496,7 @@ async fn process_swarm_event(
         SwarmEvent::FileReceived { .. } => log_file_received_event(swarm_event),
         SwarmEvent::ShareOffered { .. }
         | SwarmEvent::ShareUpdated { .. }
-        | SwarmEvent::ShareRejected { .. } => log_share_event(swarm_event),
+        | SwarmEvent::ShareRejected { .. } => handle_share_event(state, swarm_event).await,
     }
 }
 
@@ -515,43 +515,43 @@ fn log_file_received_event(ev: SwarmEvent) {
     ));
 }
 
-/// Share-lane UI lands in a later slice; the core already applied any
-/// downloaded manifest before these events were emitted, so logging is enough
-/// for the TUI until a Shares tab exists.
-fn log_share_event(ev: SwarmEvent) {
+/// Human-readable line a share event leaves on the Shares tab. Kept pure so
+/// the wording is testable without a live swarm or state lock.
+fn share_event_notice(ev: &SwarmEvent) -> String {
     match ev {
-        SwarmEvent::ShareOffered { peer_id, offer } => {
-            p2plog_debug(format!(
-                "Share {share_id} ({name}, {kind:?}, write={public_write}, rev {revision}) offered by {peer_id}",
-                share_id = offer.share_id,
-                name = offer.name,
-                kind = offer.kind,
-                public_write = offer.public_write,
-                revision = offer.revision
-            ));
-        }
+        SwarmEvent::ShareOffered { peer_id, offer } => format!(
+            "{} offered by {peer_id} ({}, rev {})",
+            offer.name, offer.share_id, offer.revision
+        ),
         SwarmEvent::ShareUpdated {
             peer_id,
             share_id,
             revision,
             written,
             removed,
-        } => {
-            p2plog_debug(format!(
-                "Share {share_id} updated to revision {revision} from {peer_id} ({written} written, {removed} removed)"
-            ));
-        }
+        } => format!(
+            "{share_id} updated to rev {revision} by {peer_id} ({written} written, {removed} removed)"
+        ),
         SwarmEvent::ShareRejected {
             peer_id,
             share_id,
             reason,
-        } => {
-            p2plog_debug(format!(
-                "Share {share_id} submission rejected by {peer_id}: {reason}"
-            ));
-        }
-        other => p2plog_debug(format!("unexpected share event: {other:?}")),
+        } => format!("{share_id} rejected by {peer_id}: {reason}"),
+        other => format!("unexpected share event: {other:?}"),
     }
+}
+
+/// Share events refresh the read-only Shares tab and leave a visible notice.
+/// The core already applied any downloaded manifest before the event was
+/// emitted, so this is a notification plus a re-read of the canonical store —
+/// never a second apply.
+async fn handle_share_event(state: &SharedState, ev: SwarmEvent) {
+    let notice = share_event_notice(&ev);
+    let mut s = state.lock().await;
+    s.share_event_notice = Some(notice.clone());
+    s.reload_shares();
+    drop(s);
+    p2plog_debug(notice);
 }
 
 /// Refresh the aggregated reactions for a message after a live event. Fetching

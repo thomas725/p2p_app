@@ -1375,3 +1375,68 @@ fn test_handle_group_invite_keeps_an_existing_group_name() {
     });
     p2p_app::db::reset_db_url();
 }
+
+// ── share-event notices on the read-only Shares tab ──────────────────────
+
+fn share_offer() -> p2p_app::shares::ShareOffer {
+    p2p_app::shares::ShareOffer {
+        share_id: "share-1".to_string(),
+        name: "Holiday photos".to_string(),
+        kind: p2p_app::shares::ShareKind::Private,
+        revision: 7,
+        public_write: false,
+        owner_user_id: None,
+    }
+}
+
+#[test]
+fn test_share_event_notice_offered() {
+    let ev = SwarmEvent::ShareOffered {
+        peer_id: "peer-offer".to_string(),
+        offer: share_offer(),
+    };
+    let notice = share_event_notice(&ev);
+    assert!(notice.contains("Holiday photos"), "got: {notice}");
+    assert!(notice.contains("share-1"), "got: {notice}");
+    assert!(notice.contains("peer-offer"), "got: {notice}");
+    assert!(notice.contains("rev 7"), "got: {notice}");
+}
+
+#[test]
+fn test_share_event_notice_updated() {
+    let ev = SwarmEvent::ShareUpdated {
+        peer_id: "peer-update".to_string(),
+        share_id: "share-2".to_string(),
+        revision: 9,
+        written: 3,
+        removed: 1,
+    };
+    let notice = share_event_notice(&ev);
+    assert!(notice.contains("share-2"), "got: {notice}");
+    assert!(notice.contains("rev 9"), "got: {notice}");
+    assert!(notice.contains("peer-update"), "got: {notice}");
+    assert!(notice.contains("3 written"), "got: {notice}");
+    assert!(notice.contains("1 removed"), "got: {notice}");
+}
+
+#[test]
+fn test_share_event_notice_rejected() {
+    let ev = SwarmEvent::ShareRejected {
+        peer_id: "peer-owner".to_string(),
+        share_id: "share-3".to_string(),
+        reason: "stale revision".to_string(),
+    };
+    let notice = share_event_notice(&ev);
+    assert!(notice.contains("share-3"), "got: {notice}");
+    assert!(notice.contains("peer-owner"), "got: {notice}");
+    assert!(notice.contains("stale revision"), "got: {notice}");
+}
+
+#[test]
+fn test_share_event_notice_fallback_never_panics() {
+    let notice = share_event_notice(&SwarmEvent::PeerConnected("peer-x".to_string()));
+    assert!(
+        notice.starts_with("unexpected share event:"),
+        "got: {notice}"
+    );
+}

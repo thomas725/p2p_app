@@ -96,6 +96,13 @@ pub struct TuiRenderState {
     pub group_unread_count: BTreeMap<String, usize>,
     /// Index of selected group in the Groups list tab
     pub group_selection: usize,
+    /// Known file shares (owned and accepted) for the read-only Shares tab.
+    pub shares: Vec<crate::shares::Share>,
+    /// Highlighted share in the Shares list.
+    pub share_selection: usize,
+    /// Latest share-lane event (offer/update/rejection), shown on the Shares
+    /// tab so swarm activity is visible without the Log tab.
+    pub share_event_notice: Option<String>,
     /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
     /// Whether chat tab and log tab auto-scroll to bottom
@@ -172,6 +179,7 @@ impl TuiRenderState {
                 "Groups".into(),
                 "Log".into(),
                 "Settings".into(),
+                "Shares".into(),
             ],
             active_tab: 0,
             messages: VecDeque::new(),
@@ -197,6 +205,9 @@ impl TuiRenderState {
             group_scroll_state: BTreeMap::new(),
             group_unread_count: BTreeMap::new(),
             group_selection: 0,
+            shares: Vec::new(),
+            share_selection: 0,
+            share_event_notice: None,
             input_text: String::new(),
             log_messages: VecDeque::new(),
             input_mode: crate::InputMode::Chat,
@@ -680,6 +691,8 @@ pub fn get_tab_content(state: &TuiRenderState) -> crate::tui_tabs::TabContent {
         crate::tui_tabs::TabContent::Log
     } else if tab_title == "Settings" {
         crate::tui_tabs::TabContent::Settings
+    } else if tab_title == "Shares" {
+        crate::tui_tabs::TabContent::Shares
     } else {
         crate::tui_tabs::TabContent::Chat
     }

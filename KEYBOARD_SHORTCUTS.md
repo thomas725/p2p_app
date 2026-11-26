@@ -20,8 +20,9 @@ a **Help / controls** dialog describing the on-screen actions instead.
 | `Ctrl+W` | Close the current DM, Peer Info, or Group chat tab |
 
 Tabs are ordered: **Chat**, **Contacts**, **Groups**, group chats, DMs,
-Peer Info tabs, **Log**, **Settings**. Peer Info and DM tabs are transient —
-they are inserted, deduplicated by peer, and closed with `Ctrl+W`.
+Peer Info tabs, **Log**, **Settings**, **Shares**. Peer Info and DM tabs are
+transient — they are inserted, deduplicated by peer, and closed with `Ctrl+W`.
+Shares is a permanent suffix tab after Settings.
 
 ## Scrolling
 
@@ -47,8 +48,11 @@ Which section that is, per tab:
 | Log | the log lines |
 | Contacts | the contact table |
 | Groups | the group list |
+| Shares | the share list (arrow keys move the selection) |
 
-Peer Info and Settings do not scroll.
+Peer Info and Settings do not scroll. On the Shares tab `↑`/`↓`,
+`PgUp`/`PgDn` and `Home`/`End` move the highlighted share; the detail pane wraps
+to show the selected share's manifest.
 
 ### Unread banners
 
@@ -262,6 +266,26 @@ The same box serves `b`/`r`; saved network peers are only read when the node
 starts, so an added or removed entry applies on the next start. Outside the
 add prompt these keys act immediately, so `b`/`r`/`x` cannot be typed into a
 message while the Settings tab is active.
+
+## Shares tab
+
+A read-only view of this install's shares: a selectable list on the left and
+the highlighted share's details (owner, local root, revision, manifest files)
+on the right. The latest `share_offered` / `share_updated` / `share_rejected`
+event appears as a "Last event" line. Creation, binding, grants and publishing
+are Flutter/web actions only for now.
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move the share selection |
+| `PgUp` / `PgDn` | Page the selection |
+| `Home` / `End` | Jump to the first / last share |
+| `r` | Re-read the share list from Rust |
+| `Esc` | Return to the Chat tab |
+
+`r` is tab-specific: on Settings it adds a relay, on Shares it refreshes.
+Share events also refresh the list automatically, so `r` is only needed after
+an action whose result arrives asynchronously.
 
 ## Input and editing
 

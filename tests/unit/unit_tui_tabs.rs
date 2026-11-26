@@ -12,7 +12,7 @@ fn test_dynamic_tabs_new() {
     let tabs = DynamicTabs::new();
     assert_eq!(tabs.dm_tab_count(), 0);
     assert_eq!(tabs.group_tab_count(), 0);
-    assert_eq!(tabs.total_tab_count(), 5); // Chat, Peers, Groups, Log, Settings
+    assert_eq!(tabs.total_tab_count(), 6); // Chat, Peers, Groups, Log, Settings, Shares
 }
 
 #[test]
@@ -117,6 +117,8 @@ fn test_tab_content_peer_id() {
     assert_eq!(TabContent::Groups.peer_id(), None);
     assert_eq!(TabContent::GroupChat("g1".to_string()).peer_id(), None);
     assert_eq!(TabContent::Log.peer_id(), None);
+    assert_eq!(TabContent::Settings.peer_id(), None);
+    assert_eq!(TabContent::Shares.peer_id(), None);
 }
 
 #[test]
@@ -127,16 +129,18 @@ fn test_tab_content_is_input_enabled() {
     assert!(!TabContent::Contacts.is_input_enabled());
     assert!(!TabContent::Groups.is_input_enabled());
     assert!(!TabContent::Log.is_input_enabled());
+    assert!(!TabContent::Settings.is_input_enabled());
+    assert!(!TabContent::Shares.is_input_enabled());
 }
 
 #[test]
 fn test_dynamic_tabs_total_tab_count() {
     let mut tabs = DynamicTabs::new();
-    assert_eq!(tabs.total_tab_count(), 5);
+    assert_eq!(tabs.total_tab_count(), 6); // +Shares
     tabs.add_dm_tab("peer1".to_string());
-    assert_eq!(tabs.total_tab_count(), 6);
-    tabs.add_group_tab("g1".to_string(), "G".to_string());
     assert_eq!(tabs.total_tab_count(), 7);
+    tabs.add_group_tab("g1".to_string(), "G".to_string());
+    assert_eq!(tabs.total_tab_count(), 8);
 }
 
 #[test]
@@ -151,6 +155,8 @@ fn test_dynamic_tabs_tab_index_to_content() {
         TabContent::Direct("peer1".to_string())
     );
     assert_eq!(tabs.tab_index_to_content(4), TabContent::Log);
+    assert_eq!(tabs.tab_index_to_content(5), TabContent::Settings);
+    assert_eq!(tabs.tab_index_to_content(6), TabContent::Shares);
 }
 
 #[test]
@@ -168,6 +174,8 @@ fn test_tab_index_to_content_group_chat() {
         TabContent::Direct("peer1".to_string())
     );
     assert_eq!(tabs.tab_index_to_content(5), TabContent::Log);
+    assert_eq!(tabs.tab_index_to_content(6), TabContent::Settings);
+    assert_eq!(tabs.tab_index_to_content(7), TabContent::Shares);
 }
 
 #[test]
@@ -211,8 +219,8 @@ fn test_tab_index_to_content_multiple_dms() {
 fn test_tab_index_to_content_out_of_bounds_dm() {
     let mut tabs = DynamicTabs::new();
     tabs.add_dm_tab("peer1".to_string());
-    // Index 4 is Log (3 fixed + 1 DM), index 5+ should be Chat
-    assert_eq!(tabs.tab_index_to_content(6), TabContent::Chat);
+    // Indices: 0-2 fixed, 3 DM, 4 Log, 5 Settings, 6 Shares; index 7+ is Chat
+    assert_eq!(tabs.tab_index_to_content(7), TabContent::Chat);
 }
 
 #[test]
@@ -222,7 +230,7 @@ fn test_dynamic_tabs_peer_info_tab() {
     assert_eq!(idx, 3); // Chat, Peers, Groups, then Info
     assert_eq!(tabs.peer_info_tab_count(), 1);
     let titles = tabs.all_titles();
-    assert_eq!(titles.len(), 6);
+    assert_eq!(titles.len(), 7); // +Shares
     assert!(titles.iter().any(|t| t.starts_with("Info:")));
     assert_eq!(
         tabs.tab_index_to_content(idx),
@@ -288,11 +296,11 @@ fn test_all_titles_with_dms() {
     let titles = tabs.all_titles();
     assert_eq!(
         titles,
-        vec!["Chat", "Contacts", "Groups", "Log", "Settings"]
+        vec!["Chat", "Contacts", "Groups", "Log", "Settings", "Shares"]
     );
     tabs.add_dm_tab(peer_id.to_string());
     let titles = tabs.all_titles();
-    assert_eq!(titles.len(), 6);
+    assert_eq!(titles.len(), 7);
     assert_eq!(titles[0], "Chat");
     assert_eq!(titles[1], "Contacts");
     assert_eq!(titles[2], "Groups");
@@ -301,6 +309,7 @@ fn test_all_titles_with_dms() {
     assert_eq!(titles[3], format!("{expected_label} [X]"));
     assert_eq!(titles[4], "Log");
     assert_eq!(titles[5], "Settings");
+    assert_eq!(titles[6], "Shares");
 }
 
 #[test]
@@ -316,7 +325,8 @@ fn test_all_titles_with_group_chat() {
             "Groups",
             "Group: Rust Devs [X]",
             "Log",
-            "Settings"
+            "Settings",
+            "Shares"
         ]
     );
 }
@@ -326,5 +336,5 @@ fn test_dynamic_tabs_default_is_empty() {
     let tabs = DynamicTabs::default();
     assert_eq!(tabs.dm_tab_count(), 0);
     assert_eq!(tabs.group_tab_count(), 0);
-    assert_eq!(tabs.total_tab_count(), 5);
+    assert_eq!(tabs.total_tab_count(), 6);
 }

@@ -2977,7 +2977,15 @@ fn test_network_peer_submission_reports_validation_errors() {
 // ── persisted network peers: the add prompt owns printable keys ──────────
 
 fn settings_tab_index(state: &AppState) -> usize {
-    state.dynamic_tabs.total_tab_count().saturating_sub(1)
+    // Find Settings by content; it is a suffix tab but Shares sits after it.
+    (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(idx),
+                TabContent::Settings
+            )
+        })
+        .unwrap_or(0)
 }
 
 #[tokio::test]

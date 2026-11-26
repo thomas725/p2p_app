@@ -196,6 +196,9 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
         group_scroll_state: cloned_log(&state.group_scroll_state),
         group_unread_count: cloned_log(&state.group_unread_count),
         group_selection: state.group_selection,
+        shares: state.shares.clone(),
+        share_selection: state.share_selection,
+        share_event_notice: state.share_event_notice.clone(),
 
         peer_selection: state.peer_selection,
         peer_sort_column: state.peer_sort_column,
@@ -224,6 +227,46 @@ fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
     }
 }
 
+/// Render the active tab's content pane. Split out of [`render_frame`] so the
+/// per-tab dispatch does not push the frame orchestration over clippy's line
+/// budget.
+fn render_active_tab(
+    f: &mut Frame,
+    area: ratatui::layout::Rect,
+    tab_content: &TabContent,
+    render_state: &mut p2p_app::TuiRenderState,
+) {
+    match tab_content {
+        TabContent::Chat => {
+            tui_render::render_chat_content(f, area, render_state);
+        }
+        TabContent::Contacts => {
+            tui_render::render_peers_content(f, area, render_state);
+        }
+        TabContent::Direct(peer_id) => {
+            tui_render::render_dm_content(f, area, peer_id, render_state);
+        }
+        TabContent::Log => {
+            tui_render::render_log_content(f, area, render_state);
+        }
+        TabContent::Settings => {
+            tui_render::render_settings_content(f, area, render_state);
+        }
+        TabContent::PeerInfo(peer_id) => {
+            tui_render::render_peer_info_content(f, area, peer_id, render_state);
+        }
+        TabContent::Groups => {
+            tui_render::render_groups_content(f, area, render_state);
+        }
+        TabContent::GroupChat(group_id) => {
+            tui_render::render_group_chat_content(f, area, group_id, render_state);
+        }
+        TabContent::Shares => {
+            tui_render::render_shares_content(f, area, render_state);
+        }
+    }
+}
+
 /// Orchestrate the frame layout and dispatch to appropriate tab renderers
 fn render_frame(f: &mut Frame, state: &AppState) {
     let chunks = Layout::default()
@@ -246,67 +289,12 @@ fn render_frame(f: &mut Frame, state: &AppState) {
     );
 
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
-    match &tab_content {
-        TabContent::Chat => {
-            tui_render::render_chat_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                &mut render_state,
-            );
-        }
-        TabContent::Contacts => {
-            tui_render::render_peers_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                &render_state,
-            );
-        }
-        TabContent::Direct(peer_id) => {
-            tui_render::render_dm_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                peer_id,
-                &mut render_state,
-            );
-        }
-        TabContent::Log => {
-            tui_render::render_log_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                &render_state,
-            );
-        }
-        TabContent::Settings => {
-            tui_render::render_settings_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                &render_state,
-            );
-        }
-        TabContent::PeerInfo(peer_id) => {
-            tui_render::render_peer_info_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                peer_id,
-                &render_state,
-            );
-        }
-        TabContent::Groups => {
-            tui_render::render_groups_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                &render_state,
-            );
-        }
-        TabContent::GroupChat(group_id) => {
-            tui_render::render_group_chat_content(
-                f,
-                chunks.get(1).copied().unwrap_or_default(),
-                group_id,
-                &render_state,
-            );
-        }
-    }
+    render_active_tab(
+        f,
+        chunks.get(1).copied().unwrap_or_default(),
+        &tab_content,
+        &mut render_state,
+    );
 
     layout::render_input_section(
         f,

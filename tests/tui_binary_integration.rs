@@ -199,7 +199,7 @@ fn test_dynamic_tabs_operations() {
 
     let mut tabs = DynamicTabs::new();
 
-    assert_eq!(tabs.total_tab_count(), 5); // Chat, Peers, Groups, Log, Settings
+    assert_eq!(tabs.total_tab_count(), 6); // Chat, Peers, Groups, Log, Settings, Shares
     assert_eq!(tabs.dm_tab_count(), 0);
 
     // Add DM tab
@@ -217,8 +217,8 @@ fn test_dynamic_tabs_operations() {
     assert!(removed.is_some());
     assert_eq!(tabs.dm_tab_count(), 1);
 
-    // Total should be 6 (Chat, Peers, Groups, Log, Settings, + 1 DM)
-    assert_eq!(tabs.total_tab_count(), 6);
+    // Total should be 7 (Chat, Peers, Groups, Log, Settings, Shares, + 1 DM)
+    assert_eq!(tabs.total_tab_count(), 7);
 }
 
 #[test]

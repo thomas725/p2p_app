@@ -6,6 +6,7 @@ mod log;
 mod peer_info;
 mod peers;
 mod settings;
+mod shares;
 
 pub use chat::{render_chat_content, render_dm_content};
 pub use groups::{render_group_chat_content, render_groups_content};
@@ -13,6 +14,7 @@ pub use log::render_log_content;
 pub use peer_info::render_peer_info_content;
 pub use peers::render_peers_content;
 pub use settings::render_settings_content;
+pub use shares::render_shares_content;
 
 use crate::fmt::short_peer_id;
 use crate::tui_render_state::{TuiRenderState, get_tab_content};
@@ -119,6 +121,7 @@ pub fn render_tab_content(
         TabContent::Direct(peer_id) => render_dm_content(f, area, peer_id, state),
         TabContent::Log => render_log_content(f, area, state),
         TabContent::Settings => render_settings_content(f, area, state),
+        TabContent::Shares => render_shares_content(f, area, state),
         TabContent::PeerInfo(peer_id) => render_peer_info_content(f, area, peer_id, state),
     }
 }
@@ -212,6 +215,9 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
         TabContent::Log => {
             "Tab: next | PgUp/PgDn: scroll | Home/End: jump | Ctrl+C: copy all | c: clear logs | F12: mouse | ?: help | Ctrl+Q: quit"
         }
+        TabContent::Shares => {
+            "Tab: next | Up/Down: select share | PgUp/PgDn: page | Home/End: first/last | r: refresh | F12: mouse | ?: help | Ctrl+Q: quit"
+        }
     }
 }
 
@@ -241,6 +247,7 @@ DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave
 Peer Info: n local nickname | c call | d link device | b block / unblock
+Shares: Up/Down select | r refresh
 Log: Ctrl+C copy all logs | c clear logs
 Settings: n own nickname | d dial | b/r add peer | x remove | l LAN only | t dark/light | c accent | s sound | o desktop alert
 
