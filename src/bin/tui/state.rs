@@ -1130,9 +1130,10 @@ impl AppState {
     /// Peer whose info a Peer Info shortcut should show on `tab`.
     ///
     /// Contacts uses the selected device, Direct its partner, Chat/GroupChat
-    /// the newest row with a known sender (our own rows have none), and every
-    /// other tab has no target. Keeping the rule here means the keyboard
-    /// binding and the mouse-click handler agree on what "the sender" is.
+    /// the newest row with a known sender (our own rows have none), Settings
+    /// the first connected peer (else first bound device), and every other tab
+    /// has no target. Keeping the rule here means the keyboard binding and the
+    /// mouse-click handler agree on what "the sender" is.
     #[must_use]
     pub fn peer_info_target(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
         use p2p_app::tui_tabs::TabContent;
@@ -1149,6 +1150,14 @@ impl AppState {
                 .group_message_peer_ids
                 .get(group_id)
                 .and_then(|ids| ids.iter().rev().find_map(Clone::clone)),
+            TabContent::Settings => {
+                let connected: HashSet<String> = self
+                    .connected
+                    .connected_peer_ids()
+                    .map(str::to_owned)
+                    .collect();
+                p2p_app::tui_render::settings_peer_target(&connected, &self.own_user_devices)
+            }
             _ => None,
         }
     }

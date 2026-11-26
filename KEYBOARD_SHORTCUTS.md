@@ -74,6 +74,7 @@ Flutter's "N new" jump button in DM and group chats.
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
 | `Ctrl+P` in **Chat** / **Group chat** | Open the newest known sender's Peer Info |
+| `Ctrl+P` in **Settings** | Open the first connected peer's Peer Info, or the first bound device when nobody is connected |
 | `Ctrl+P` in **Log** | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
@@ -248,6 +249,8 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 | Key | Action |
 |-----|--------|
 | `n` | Edit your own nickname |
+| `Ctrl+P` | Open the first connected peer's Peer Info (or the first bound device if none are connected) |
+| `Click` a connected-peer or bound-device row | Open that peer's Peer Info |
 | `d` | Open the "Dial peer" prompt — type a multiaddr (`/ip4/1.2.3.4/tcp/4001/p2p/<peer-id>`) and press `Enter` to dial it |
 | `b` | Add a bootstrap multiaddr to the persisted network-peer list |
 | `r` | Add a relay multiaddr (must end in `/p2p/<peer-id>`) |
@@ -258,6 +261,12 @@ is the universal fallback; use it if `Ctrl+I` does nothing.
 | `c` | Cycle the accent color |
 | `s` | Toggle the notification sound |
 | `o` | Toggle desktop notifications (OSC 777 on supported terminals) |
+
+Connected-peer and bound-device rows are ordered by peer ID, and each opens that
+peer's Peer Info even when its display name wraps onto several lines. When nobody
+is connected, the `Last connected` line is informational — it does not open a
+stale peer's info. `Ctrl+P` uses the same ordering: the first connected peer,
+else the first bound device.
 
 Incoming messages fire a notification only when their conversation is not the
 active tab; the payload and the two delivery flags are Rust-owned and shared

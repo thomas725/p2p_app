@@ -13,7 +13,10 @@ pub use groups::{render_group_chat_content, render_groups_content};
 pub use log::render_log_content;
 pub use peer_info::render_peer_info_content;
 pub use peers::render_peers_content;
-pub use settings::render_settings_content;
+pub use settings::{
+    SettingsLine, render_settings_content, settings_peer_target, settings_visual_lines,
+    sorted_settings_device_ids, sorted_settings_peer_ids,
+};
 pub use shares::render_shares_content;
 
 use crate::fmt::short_peer_id;
@@ -186,9 +189,9 @@ pub fn render_input_section(
 /// Shortcut hint line for the given tab.
 ///
 /// Bindings are documented only where they are active: Ctrl+P on every tab
-/// with a peer target (Contacts, Direct, Chat, Group), Ctrl+I (kitty) on a
-/// Direct/DM tab, `i` on Contacts, `n` (local nickname) on a Peer Info tab,
-/// `Del` on the three chat tabs.
+/// with a peer target (Contacts, Direct, Chat, Group, Settings), Ctrl+I
+/// (kitty) on a Direct/DM tab, `i` on Contacts, `n` (local nickname) on a Peer
+/// Info tab, `Del` on the three chat tabs.
 #[must_use]
 pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static str {
     match tab_content {
@@ -202,7 +205,7 @@ pub const fn shortcuts_text(tab_content: &TabContent, kitty: bool) -> &'static s
             "Tab: next | Up/Down: select | Enter: open chat | g: create/join | d: leave | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Settings => {
-            "Tab: next | n: nickname | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
+            "Tab: next | n: nickname | Ctrl+P: peer info | d: dial | b/r: add bootstrap/relay | x: remove | l: LAN | t: theme | c: accent | s: sound | o: desktop alert | F12: mouse | ?: help | Ctrl+Q: quit"
         }
         TabContent::Direct(_) if kitty => {
             "Tab: next | Ctrl+I/Ctrl+P: Peer Info | Ctrl+R: reply | Ctrl+Y: react | Ctrl+C: copy | Ctrl+O: open file | PgUp/PgDn: scroll | Home/End: jump | Enter: send | Del: delete sent | Ctrl+E: edit sent | F12: mouse | ?: help | Ctrl+Q: quit"
@@ -242,6 +245,7 @@ Chat / DM / Group: Ctrl+E -> edit newest sent message (local only)
 Chat / DM / Group: /file <path> -> attach and send a local file
 DM: Ctrl+I (kitty) / Ctrl+P -> partner's Peer Info
 Chat / Group: Ctrl+P -> newest sender's Peer Info | Contacts: Ctrl+P -> selected peer
+Settings: Ctrl+P -> connected peer / bound device | click a peer row for its Peer Info
 
 Contacts: i Info | e expand | c call | d link device | / search | 1-5 sort | o reverse
 Groups: g create/join | d leave | y confirm leave

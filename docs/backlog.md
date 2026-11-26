@@ -270,6 +270,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Settings peer rows open Peer Info + Settings `Ctrl+P` | 2026-11-26 | [`archive/2026-11-26_tui_settings_peer_rows.md`](archive/2026-11-26_tui_settings_peer_rows.md) |
 | Read-only TUI Shares tab + visible share events | 2026-11-26 | [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md) |
 | Flutter/web manifest-deletion publishing | 2026-11-26 | [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md) |
 | Flutter/web peer-share discovery + explicit acceptance | 2026-11-26 | [`archive/2026-11-26_flutter_share_discovery.md`](archive/2026-11-26_flutter_share_discovery.md) |

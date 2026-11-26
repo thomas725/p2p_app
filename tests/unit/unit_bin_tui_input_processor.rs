@@ -888,6 +888,118 @@ async fn test_ctrl_p_is_noop_on_log_tab() {
 }
 
 #[tokio::test]
+async fn test_ctrl_p_on_settings_prefers_first_connected_peer() {
+    // Settings has two peer-bearing sections. Ctrl+P targets the first
+    // connected peer by ID, not the first bound device or a HashSet order.
+    let initial = {
+        let _guard = p2p_app::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("settings-ctrl-p.db");
+        p2p_app::db::set_db_url(db_path.to_str().unwrap());
+        p2p_app::db::init_database().unwrap();
+
+        let mut s = test_app_state();
+        s.active_tab = settings_tab_index(&s);
+        s.connected.on_peer_connected("peer-z".to_string());
+        s.connected.on_peer_connected("peer-a".to_string());
+        s.own_user_devices = vec![
+            ("device-z".to_string(), "later".to_string()),
+            ("device-a".to_string(), "earlier".to_string()),
+        ];
+        s
+    };
+    let state = Arc::new(Mutex::new(initial));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "peer-a"),
+        "unexpected tab: {content:?}"
+    );
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 1);
+    assert_eq!(s.chat_input.lines().join(""), "");
+    drop(s);
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
+async fn test_ctrl_p_on_settings_falls_back_to_bound_device() {
+    let initial = {
+        let _guard = p2p_app::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("settings-ctrl-p.db");
+        p2p_app::db::set_db_url(db_path.to_str().unwrap());
+        p2p_app::db::init_database().unwrap();
+
+        let mut s = test_app_state();
+        s.active_tab = settings_tab_index(&s);
+        s.own_user_devices = vec![
+            ("device-z".to_string(), "later".to_string()),
+            ("device-a".to_string(), "earlier".to_string()),
+        ];
+        s
+    };
+    let state = Arc::new(Mutex::new(initial));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "device-a"),
+        "unexpected tab: {content:?}"
+    );
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 1);
+    drop(s);
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
+async fn test_ctrl_p_on_settings_without_targets_is_noop() {
+    let initial = {
+        let _guard = p2p_app::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("settings-ctrl-p.db");
+        p2p_app::db::set_db_url(db_path.to_str().unwrap());
+        p2p_app::db::init_database().unwrap();
+
+        let mut s = test_app_state();
+        s.active_tab = settings_tab_index(&s);
+        s
+    };
+    let state = Arc::new(Mutex::new(initial));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert!(matches!(
+        s.dynamic_tabs.tab_index_to_content(s.active_tab),
+        TabContent::Settings
+    ));
+    assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
+    assert_eq!(s.chat_input.lines().join(""), "");
+    drop(s);
+    p2p_app::db::reset_db_url();
+}
+
+#[tokio::test]
 async fn test_bare_tab_on_chat_tab_still_navigates() {
     // The bare Tab byte keeps cycling tabs on non-Direct tabs.
     let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));

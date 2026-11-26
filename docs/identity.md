@@ -234,13 +234,16 @@ proposal above are bolded):
 - Verification gate: `cargo ct` clean, `cargo test --all-features` green (lib 299, bin 244,
   integration suites incl. new identity provisioning/mint/hostile-claim tests), `flutter analyze`
   clean, `flutter test` 18/18. Committed as its own slice.
-- **Settings exposure of the account (current slice, 2026-09-25):** both frontends show the
-  account's `user_id` and its bound devices (peer_id + bound-at) on the Settings tab. TUI renders
-  `User ID: —` / `Bound devices: N` + `  {display} (bound {at})` rows via
+- **Settings exposure of the account (added 2026-09-25, peer navigation 2026-11-26):** both
+  frontends show the account's `user_id` and its bound devices (peer_id + bound-at) on the
+  Settings tab. TUI renders `User ID: —` / `Bound devices: N` + `› {display} (bound {at})` rows via
   `identity::{my_user_id, my_user_devices}` (no FRB regen needed — `getMyUserId`/`getUserDevices`/
   `MobileDeviceInfo` were already in the generated Dart); Flutter shows User ID (`Not provisioned`
-  when null) and a Bound-devices card whose rows open the device's PeerInfo. Identity refresh
-  triggers are shared: at startup after auto-provision, after accepting an intro (mint), on
+  when null) and a Bound-devices card whose rows open the device's PeerInfo. Both frontends now
+  make connected-peer and bound-device rows clickable, ordered by peer ID; the TUI shares the
+  exact visual rows between rendering and mouse hit-testing, and `Ctrl+P` targets the first
+  connected peer else the first bound device. Identity refresh triggers are shared: at startup
+  after auto-provision, after accepting an intro (mint), on
   `DeviceBindingReceived`, and (Flutter) on Settings-tab open. The TUI device-binding slice also
   fixed a latent bin-suite DB race: two click-handler tests called `handle_mouse_left_click`
   (which DB-reads via `resort_peers`/`load_dm_messages`) without `shared_db_test_lock()` — they

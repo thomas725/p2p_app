@@ -11,15 +11,35 @@ mod render_tests {
             render_input_section, render_log_content, render_peer_info_content,
             render_peers_content, render_popup, render_settings_content, render_shares_content,
             render_shortcuts, render_shortcuts_help_popup, render_status_bar, render_tabs,
-            shortcuts_help_text, shortcuts_text,
+            settings_visual_lines, shortcuts_help_text, shortcuts_text,
         },
         tui_tabs::TabContent,
     };
     use ratatui::layout::Rect;
     use ratatui::{Terminal, backend::TestBackend};
+    #[cfg(feature = "test-utils")]
+    use std::collections::HashSet;
+    #[cfg(feature = "test-utils")]
+    use tempfile::TempDir;
 
     fn create_test_terminal() -> Terminal<TestBackend> {
         Terminal::new(TestBackend::new(80, 24)).unwrap()
+    }
+
+    /// Isolate the DB-backed display-name lookups made by Settings rows.
+    #[cfg(feature = "test-utils")]
+    fn with_settings_db<T>(f: impl FnOnce() -> T) -> T {
+        let _guard = p2p_app::db::shared_db_test_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let dir = TempDir::new().unwrap();
+        let db_path = dir.path().join("settings.db");
+        p2p_app::db::set_db_url(db_path.to_str().unwrap());
+        p2p_app::db::init_database().unwrap();
+        let result = f();
+        p2p_app::db::release_db_lock();
+        p2p_app::db::reset_db_url();
+        result
     }
 
     #[test]
@@ -531,6 +551,7 @@ mod render_tests {
             TabContent::Direct("peer-1".to_string()),
             TabContent::Chat,
             TabContent::GroupChat("group-1".to_string()),
+            TabContent::Settings,
         ] {
             assert!(
                 shortcuts_text(&tab, false).contains("Ctrl+P"),
@@ -544,7 +565,6 @@ mod render_tests {
         for tab in [
             TabContent::PeerInfo("peer-1".to_string()),
             TabContent::Groups,
-            TabContent::Settings,
             TabContent::Log,
             TabContent::Shares,
         ] {
@@ -651,7 +671,6 @@ mod render_tests {
         for tab in [
             TabContent::Groups,
             TabContent::Log,
-            TabContent::Settings,
             TabContent::Shares,
             TabContent::PeerInfo("peer-1".to_string()),
         ] {
@@ -696,6 +715,8 @@ mod render_tests {
             "Ctrl+C -> copy newest message (OSC 52)",
             "Ctrl+C copy all logs",
             "Ctrl+I (kitty) / Ctrl+P",
+            "Settings: Ctrl+P -> connected peer / bound device",
+            "click a peer row for its Peer Info",
             "i Info",
             "g create/join",
             "b block / unblock",
@@ -804,6 +825,107 @@ mod render_tests {
             "got: {text:?}"
         );
         assert!(!text.contains("last seen:"), "got: {text:?}");
+    }
+
+    #[test]
+    #[cfg(feature = "test-utils")]
+    fn test_settings_visual_lines_orders_peer_rows_by_peer_id() {
+        with_settings_db(|| {
+            let mut state = TuiRenderState::new();
+            state.connected_peer_ids = HashSet::from([
+                "peer-z".to_string(),
+                "peer-a".to_string(),
+                "peer-m".to_string(),
+            ]);
+            state.own_user_devices = vec![
+                ("device-z".to_string(), "2026-11-26 12:00:00".to_string()),
+                ("device-a".to_string(), "2026-11-26 11:00:00".to_string()),
+            ];
+
+            let lines = settings_visual_lines(&state, 120);
+            let targets: Vec<&str> = lines
+                .iter()
+                .filter_map(|line| line.peer_id.as_deref())
+                .collect();
+            assert_eq!(
+                targets,
+                ["device-a", "device-z", "peer-a", "peer-m", "peer-z"],
+                "bound devices and connected peers must each be sorted by peer ID"
+            );
+            assert!(
+                lines
+                    .iter()
+                    .filter(|line| line.peer_id.is_some())
+                    .all(|line| line.text.starts_with("› ")),
+                "every peer row carries Flutter's click affordance"
+            );
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "test-utils")]
+    fn test_settings_visual_lines_wrapped_peer_rows_keep_their_target() {
+        with_settings_db(|| {
+            let peer_id = "peer-wrap-target";
+            p2p_app::set_peer_local_nickname(
+                peer_id,
+                "aVeryLongLocalNicknameThatWillDefinitelyWrapAcrossSeveralRows",
+            )
+            .unwrap();
+            let mut state = TuiRenderState::new();
+            state.connected_peer_ids.insert(peer_id.to_string());
+            state.peer_count = 1;
+
+            let lines = settings_visual_lines(&state, 20);
+            let wrapped: Vec<&p2p_app::tui_render::SettingsLine> = lines
+                .iter()
+                .filter(|line| line.peer_id.as_deref() == Some(peer_id))
+                .collect();
+            assert!(
+                wrapped.len() > 1,
+                "the long nickname should wrap at width 20: {lines:?}"
+            );
+            assert!(
+                wrapped
+                    .first()
+                    .is_some_and(|line| line.text.starts_with("› ")),
+                "the first visual row keeps the click affordance"
+            );
+            assert!(
+                wrapped
+                    .iter()
+                    .all(|line| line.peer_id.as_deref() == Some(peer_id)),
+                "continuation rows stay clickable"
+            );
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "test-utils")]
+    fn test_settings_visual_lines_informational_rows_have_no_target() {
+        with_settings_db(|| {
+            let mut state = TuiRenderState::new();
+            state.last_connection_peer = Some("peer-disconnected".to_string());
+            state.last_connection_lost = Some(1_756_481_201.0);
+
+            let lines = settings_visual_lines(&state, 120);
+            for prefix in [
+                "Nickname:",
+                "Network peers (",
+                "Connected peers:",
+                "  Last connected",
+                "Network details:",
+            ] {
+                let line = lines
+                    .iter()
+                    .find(|line| line.text.starts_with(prefix))
+                    .unwrap_or_else(|| panic!("missing {prefix:?} row in {lines:?}"));
+                assert_eq!(
+                    line.peer_id, None,
+                    "informational row {prefix:?} must not look clickable"
+                );
+            }
+        });
     }
 
     #[test]

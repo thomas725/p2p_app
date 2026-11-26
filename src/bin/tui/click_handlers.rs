@@ -414,6 +414,26 @@ fn handle_message_click(
     }
 }
 
+/// Open the Peer Info tab for a clickable Settings row.
+///
+/// Settings pre-wraps its rows in the library renderer, so hit-testing must use
+/// the exact same visual lines (and width) as `render_settings_content`.
+fn handle_settings_row_click(state: &mut AppState, mouse_row: u16) -> bool {
+    let render_state = super::render_loop::app_state_to_render_state(state);
+    let width = state.terminal_width.saturating_sub(2);
+    let line_index = usize::from(mouse_row).saturating_sub(2);
+    let Some(peer_id) = p2p_app::tui_render::settings_visual_lines(&render_state, width)
+        .get(line_index)
+        .and_then(|line| line.peer_id.clone())
+    else {
+        return false;
+    };
+    let idx = state.dynamic_tabs.add_peer_info_tab(peer_id.clone());
+    state.active_tab = idx;
+    p2plog_debug(format!("Opened Peer Info from Settings: {peer_id}"));
+    true
+}
+
 /// Handles left mouse button clicks
 pub fn handle_mouse_left_click(
     state: &mut AppState,
@@ -437,9 +457,11 @@ pub fn handle_mouse_left_click(
         state.chat_area_height.saturating_add(1)
     };
     let is_shares_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Shares);
+    let is_settings_tab = matches!(tab_content, p2p_app::tui_tabs::TabContent::Settings);
     let clickable = is_peers_tab
         || is_groups_tab
         || is_shares_tab
+        || is_settings_tab
         || matches!(
             tab_content,
             p2p_app::tui_tabs::TabContent::Chat
@@ -461,6 +483,9 @@ pub fn handle_mouse_left_click(
         }
         if is_shares_tab {
             return handle_share_row_click(state, mouse_row, mouse_column);
+        }
+        if is_settings_tab {
+            return handle_settings_row_click(state, mouse_row);
         }
         return handle_message_click(state, mouse_row, &tab_content);
     }

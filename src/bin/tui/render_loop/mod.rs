@@ -137,8 +137,11 @@ fn cloned_log<V: Clone>(log: &HashMap<String, V>) -> BTreeMap<String, V> {
     log.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
 }
 
-/// Convert `AppState` to `TuiRenderState` for library rendering
-fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
+/// Convert `AppState` to `TuiRenderState` for library rendering.
+///
+/// `pub(super)` so the Settings mouse handler can hit-test the exact same
+/// visual rows the renderer draws.
+pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderState {
     let tab_titles = state.dynamic_tabs.all_titles();
     let active_tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
     let reply_preview = state

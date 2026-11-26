@@ -12,8 +12,56 @@
 
 use super::*;
 use crate::tui::test_helpers::{app_state_with_dm_messages, app_state_with_peers, test_app_state};
+use p2p_app::tui_tabs::TabContent;
 use std::collections::HashMap;
 use tempfile::TempDir;
+
+/// Build a state parked on Settings with enough room for every Settings row.
+fn settings_click_state() -> (TempDir, AppState) {
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("settings-click.db");
+    p2p_app::db::set_db_url(db_path.to_str().unwrap());
+    p2p_app::db::init_database().unwrap();
+    let mut state = test_app_state();
+    state.active_tab = (0..state.dynamic_tabs.total_tab_count())
+        .find(|&idx| {
+            matches!(
+                state.dynamic_tabs.tab_index_to_content(idx),
+                TabContent::Settings
+            )
+        })
+        .unwrap();
+    state.terminal_width = 120;
+    state.chat_area_height = 100;
+    (dir, state)
+}
+
+/// Global terminal row of the `nth` visual Settings row targeting `peer_id`.
+fn settings_peer_row(state: &AppState, peer_id: &str, nth: usize) -> u16 {
+    let render_state = crate::tui::render_loop::app_state_to_render_state(state);
+    let width = state.terminal_width.saturating_sub(2);
+    let index = p2p_app::tui_render::settings_visual_lines(&render_state, width)
+        .iter()
+        .enumerate()
+        .filter(|(_, line)| line.peer_id.as_deref() == Some(peer_id))
+        .nth(nth)
+        .map_or_else(
+            || panic!("no Settings row for {peer_id}"),
+            |(index, _)| index,
+        );
+    u16::try_from(index.saturating_add(2)).unwrap()
+}
+
+/// Global terminal row of the first informational Settings row with `prefix`.
+fn settings_info_row(state: &AppState, prefix: &str) -> u16 {
+    let render_state = crate::tui::render_loop::app_state_to_render_state(state);
+    let width = state.terminal_width.saturating_sub(2);
+    let index = p2p_app::tui_render::settings_visual_lines(&render_state, width)
+        .iter()
+        .position(|line| line.text.starts_with(prefix) && line.peer_id.is_none())
+        .unwrap_or_else(|| panic!("no informational Settings row {prefix:?}"));
+    u16::try_from(index.saturating_add(2)).unwrap()
+}
 
 // ── handle_tab_click ──────────────────────────────────────────────────
 
@@ -432,6 +480,99 @@ fn test_message_click_autoscroll_maps_to_first_visible_peer() {
         content,
         p2p_app::tui_tabs::TabContent::PeerInfo(id) if id == "peer-10"
     ));
+}
+
+// ── Settings peer rows ─────────────────────────────────────────────────
+
+#[test]
+fn test_settings_click_opens_connected_peer_info() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (_dir, mut state) = settings_click_state();
+    state.connected.on_peer_connected("peer-z".to_string());
+    state.connected.on_peer_connected("peer-a".to_string());
+    state.own_user_devices = vec![("device-a".to_string(), "bound at".to_string())];
+
+    let row = settings_peer_row(&state, "peer-a", 0);
+    let handled = handle_mouse_left_click(&mut state, row, 0, false);
+
+    assert!(handled);
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "peer-a"),
+        "unexpected tab: {content:?}"
+    );
+    assert_eq!(state.dynamic_tabs.peer_info_tab_count(), 1);
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_settings_click_opens_bound_device_info() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (_dir, mut state) = settings_click_state();
+    state.own_user_devices = vec![
+        ("device-z".to_string(), "later".to_string()),
+        ("device-a".to_string(), "earlier".to_string()),
+    ];
+
+    let row = settings_peer_row(&state, "device-z", 0);
+    let handled = handle_mouse_left_click(&mut state, row, 0, false);
+
+    assert!(handled);
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "device-z"),
+        "unexpected tab: {content:?}"
+    );
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_settings_click_on_wrapped_peer_row_opens_peer_info() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (_dir, mut state) = settings_click_state();
+    let peer_id = "peer-wrap-target";
+    p2p_app::set_peer_local_nickname(
+        peer_id,
+        "aVeryLongLocalNicknameThatWillDefinitelyWrapAcrossSeveralRows",
+    )
+    .unwrap();
+    state.connected.on_peer_connected(peer_id.to_string());
+    state.terminal_width = 30;
+
+    let row = settings_peer_row(&state, peer_id, 1);
+    let handled = handle_mouse_left_click(&mut state, row, 0, false);
+
+    assert!(handled, "continuation rows must be clickable");
+    let content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == peer_id),
+        "unexpected tab: {content:?}"
+    );
+    p2p_app::db::reset_db_url();
+}
+
+#[test]
+fn test_settings_click_on_informational_row_is_noop() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let (_dir, mut state) = settings_click_state();
+    let active = state.active_tab;
+    state.connected.on_peer_connected("peer-a".to_string());
+
+    let row = settings_info_row(&state, "Connected peers:");
+    let handled = handle_mouse_left_click(&mut state, row, 0, false);
+
+    assert!(!handled);
+    assert_eq!(state.active_tab, active);
+    assert_eq!(state.dynamic_tabs.peer_info_tab_count(), 0);
+    p2p_app::db::reset_db_url();
 }
 
 // ── format_dm_messages_from_db ─────────────────────────────────────────
