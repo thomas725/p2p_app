@@ -492,7 +492,7 @@ mod render_tests {
     fn test_shortcuts_peers_tab_documents_dm_and_info() {
         let text = shortcuts_text(&TabContent::Contacts, false);
         assert!(text.contains("Enter: open DM"));
-        assert!(text.contains("i: Peer Info"));
+        assert!(text.contains("i/Ctrl+P: Peer Info"));
         assert!(text.contains("c: call"));
         assert!(text.contains("/: search"));
         assert!(!text.contains("Ctrl+I: Peer Info"));
@@ -522,6 +522,37 @@ mod render_tests {
         let text = shortcuts_text(&TabContent::Direct("peer-1".to_string()), false);
         assert!(text.contains("Ctrl+P: Peer Info"));
         assert!(!text.contains("Ctrl+I: Peer Info"));
+    }
+
+    #[test]
+    fn test_shortcuts_ctrl_p_hint_only_on_tabs_with_a_peer_target() {
+        for tab in [
+            TabContent::Contacts,
+            TabContent::Direct("peer-1".to_string()),
+            TabContent::Chat,
+            TabContent::GroupChat("group-1".to_string()),
+        ] {
+            assert!(
+                shortcuts_text(&tab, false).contains("Ctrl+P"),
+                "missing Ctrl+P hint for {tab:?}"
+            );
+            assert!(
+                shortcuts_text(&tab, true).contains("Ctrl+P"),
+                "missing Ctrl+P hint for {tab:?} on kitty"
+            );
+        }
+        for tab in [
+            TabContent::PeerInfo("peer-1".to_string()),
+            TabContent::Groups,
+            TabContent::Settings,
+            TabContent::Log,
+            TabContent::Shares,
+        ] {
+            assert!(
+                !shortcuts_text(&tab, false).contains("Ctrl+P"),
+                "Ctrl+P hint must stay off {tab:?}"
+            );
+        }
     }
 
     #[test]
@@ -616,11 +647,12 @@ mod render_tests {
     }
 
     #[test]
-    fn test_shortcuts_plain_tabs_have_no_peer_info_hint() {
+    fn test_shortcuts_tabs_without_a_peer_target_have_no_peer_info_hint() {
         for tab in [
-            TabContent::Chat,
+            TabContent::Groups,
             TabContent::Log,
             TabContent::Settings,
+            TabContent::Shares,
             TabContent::PeerInfo("peer-1".to_string()),
         ] {
             assert!(!shortcuts_text(&tab, false).contains("Peer Info"));

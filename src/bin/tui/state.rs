@@ -1127,6 +1127,32 @@ impl AppState {
         plan.get(self.peer_selection).copied()
     }
 
+    /// Peer whose info a Peer Info shortcut should show on `tab`.
+    ///
+    /// Contacts uses the selected device, Direct its partner, Chat/GroupChat
+    /// the newest row with a known sender (our own rows have none), and every
+    /// other tab has no target. Keeping the rule here means the keyboard
+    /// binding and the mouse-click handler agree on what "the sender" is.
+    #[must_use]
+    pub fn peer_info_target(&self, tab: &p2p_app::tui_tabs::TabContent) -> Option<String> {
+        use p2p_app::tui_tabs::TabContent;
+
+        match tab {
+            TabContent::Contacts => self.selected_contact_peer_id(),
+            TabContent::Direct(peer_id) => Some(peer_id.clone()),
+            TabContent::Chat => self
+                .messages
+                .iter()
+                .rev()
+                .find_map(|message| message.sender_peer_id.clone()),
+            TabContent::GroupChat(group_id) => self
+                .group_message_peer_ids
+                .get(group_id)
+                .and_then(|ids| ids.iter().rev().find_map(Clone::clone)),
+            _ => None,
+        }
+    }
+
     /// The peer ID the current selection targets: the contact's best device, or
     /// the exact device of a selected device row.
     pub fn selected_contact_peer_id(&self) -> Option<String> {

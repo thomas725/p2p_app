@@ -73,6 +73,8 @@ Flutter's "N new" jump button in DM and group chats.
 | `Click` a message in the **DM** tab's conversation pane | Open the partner's Peer Info |
 | `Click` a message in a **Group chat** tab | Open the sender's Peer Info |
 | `Click` a line in the **Log** tab | Nothing — log lines have no sender |
+| `Ctrl+P` in **Chat** / **Group chat** | Open the newest known sender's Peer Info |
+| `Ctrl+P` in **Log** | Nothing — log lines have no sender |
 | `Ctrl+R` in **Chat** / **DM** / **Group chat** | Quote the newest message in that conversation |
 | `Ctrl+Y` in **Chat** / **DM** / **Group chat** | Add or remove an emoji reaction on the newest message in that conversation |
 | `Ctrl+C` in **Chat** / **DM** / **Group chat** | Copy the newest message's rendered line to the terminal clipboard |
@@ -150,7 +152,7 @@ expandable device sub-rows.
 | `PgUp` / `PgDn` | Page the selection |
 | `Home` / `End` | Jump to the first / last row |
 | `Enter` | Open a DM with the selected contact or device |
-| `i` | Open the selected row's Peer Info |
+| `i` / `Ctrl+P` | Open the selected row's Peer Info |
 | `e` | Expand / collapse the selected contact's device rows |
 | `c` | Call the selected contact's best device |
 | `d` | Send this install's device-binding intro to the selected device (see [Sending a device intro](#sending-a-device-intro)) |

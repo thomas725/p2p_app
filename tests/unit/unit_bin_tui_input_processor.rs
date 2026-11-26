@@ -13,7 +13,9 @@
 use super::*;
 use crate::tui::state::AppState;
 use crate::tui::test_helpers::app_state_with_peers;
-use crate::tui::test_helpers::{app_state_with_dm_messages, test_app_state};
+use crate::tui::test_helpers::{
+    app_state_with_chat_messages, app_state_with_dm_messages, test_app_state,
+};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use p2p_app::tui_tabs::TabContent;
 use serial_test::serial;
@@ -793,15 +795,10 @@ async fn test_ctrl_p_in_direct_tab_opens_peer_info_kitty() {
 }
 
 #[tokio::test]
-async fn test_ctrl_p_is_noop_on_non_direct_tabs() {
-    // Ctrl+P must never be typed as literal 'p' text: on a non-Direct tab (and
-    // even on a kitty terminal) it is consumed as a no-op.
-    let state = Arc::new(Mutex::new(app_state_with_dm_messages("peer-dm", 3)));
-    {
-        let mut s = state.lock().await;
-        s.active_tab = 0; // Chat tab (input enabled)
-        s.env.kitty_keyboard_active = true; // kitty terminal
-    }
+async fn test_ctrl_p_in_chat_opens_newest_sender_peer_info() {
+    // Chat has no single partner: Ctrl+P targets the newest row with a known
+    // sender, and must never type a literal 'p' into the composer.
+    let state = Arc::new(Mutex::new(app_state_with_chat_messages(3)));
     let (swarm_cmd_tx, _) = mpsc::channel(1);
     let (render_tx, _render_rx) = mpsc::channel(1);
 
@@ -809,7 +806,83 @@ async fn test_ctrl_p_is_noop_on_non_direct_tabs() {
     let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
 
     let s = state.lock().await;
-    assert_eq!(s.active_tab, 0);
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "peer2"),
+        "unexpected tab: {content:?}"
+    );
+    assert_eq!(s.chat_input.lines().join(""), "");
+}
+
+#[tokio::test]
+async fn test_ctrl_p_in_group_chat_opens_newest_known_sender() {
+    let mut initial = app_state_with_dm_messages("peer-dm", 3);
+    let group_tab = initial
+        .dynamic_tabs
+        .add_group_tab("g-1".to_string(), "Group".to_string());
+    initial.active_tab = group_tab;
+    initial.group_messages.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from([
+            "own".to_string(),
+            "from A".to_string(),
+            "from B".to_string(),
+        ]),
+    );
+    initial.group_message_ids.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from([None, Some("m-1".to_string()), Some("m-2".to_string())]),
+    );
+    initial.group_message_db_ids.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from([None, None, None]),
+    );
+    initial.group_message_peer_ids.insert(
+        "g-1".to_string(),
+        std::collections::VecDeque::from([
+            None,
+            Some("sender-a".to_string()),
+            Some("sender-b".to_string()),
+        ]),
+    );
+    let state = Arc::new(Mutex::new(initial));
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    let content = s.dynamic_tabs.tab_index_to_content(s.active_tab);
+    assert!(
+        matches!(&content, TabContent::PeerInfo(id) if id == "sender-b"),
+        "unexpected tab: {content:?}"
+    );
+}
+
+#[tokio::test]
+async fn test_ctrl_p_is_noop_on_log_tab() {
+    // Log lines have no sender, so Ctrl+P is consumed as a no-op and never
+    // typed as literal 'p'.
+    let initial = app_state_with_dm_messages("peer-dm", 3);
+    let log_tab = (0..initial.dynamic_tabs.total_tab_count())
+        .find(|&i| {
+            matches!(
+                initial.dynamic_tabs.tab_index_to_content(i),
+                TabContent::Log
+            )
+        })
+        .expect("test state has a Log tab");
+    let state = Arc::new(Mutex::new(initial));
+    state.lock().await.active_tab = log_tab;
+    let (swarm_cmd_tx, _) = mpsc::channel(1);
+    let (render_tx, _render_rx) = mpsc::channel(1);
+
+    let key = KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL);
+    let _ = process_key_event(key, &state, &swarm_cmd_tx, &render_tx).await;
+
+    let s = state.lock().await;
+    assert_eq!(s.active_tab, log_tab);
     assert_eq!(s.chat_input.lines().join(""), "");
     assert_eq!(s.dynamic_tabs.peer_info_tab_count(), 0);
 }

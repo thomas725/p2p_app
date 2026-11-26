@@ -781,18 +781,16 @@ pub async fn accept_device_binding_prompt(
     }
 }
 
-/// Opens the Peer Info tab for the selected contact (Contacts tab) or the
-/// active DM partner (Direct tab).
-fn open_peer_info_for_active_tab(state: &mut super::state::AppState) {
+/// Opens the Peer Info tab for the current tab's target peer (see
+/// [`super::state::AppState::peer_info_target`]). Returns `false` when the
+/// active tab has no peer to inspect, so callers can avoid a misleading log.
+fn open_peer_info_for_active_tab(state: &mut super::state::AppState) -> bool {
     let tab_content = state.dynamic_tabs.tab_index_to_content(state.active_tab);
-    let peer = match &tab_content {
-        p2p_app::tui_tabs::TabContent::Contacts => state.selected_contact_peer_id(),
-        p2p_app::tui_tabs::TabContent::Direct(pid) => Some(pid.clone()),
-        _ => None,
+    let Some(peer_id) = state.peer_info_target(&tab_content) else {
+        return false;
     };
-    if let Some(peer_id) = peer {
-        state.active_tab = state.dynamic_tabs.add_peer_info_tab(peer_id);
-    }
+    state.active_tab = state.dynamic_tabs.add_peer_info_tab(peer_id);
+    true
 }
 
 /// Sets the peers-table sort column, toggling direction if the same column is
@@ -894,28 +892,29 @@ fn parse_file_command(input: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
-/// Open the DM partner's Peer Info when a `Ctrl+I` / `Ctrl+P` chord lands on a
-/// Direct tab.
+/// Open the active tab's Peer Info target for a `Ctrl+I` / `Ctrl+P` chord.
 ///
-/// `Ctrl+P` is the cross-terminal binding: `p` is 0x70, so Ctrl+P sends 0x10
-/// (`DLE`), a distinct control byte crossterm uniformly reports as
-/// `Char('p')`+CONTROL (the `b'\x01'..=b'\x1A'` arm) whether or not the kitty
-/// protocol is active. `Ctrl+I` works only on kitty terminals
-/// (`WezTerm`), where it arrives as `Char('i')`+CONTROL; on non-kitty terminals
-/// Ctrl+I collapses to the bare Tab byte, which always cycles tabs (see
-/// [`process_key_event`]). Exactly one chord is the Peer Info binding on either
-/// setup.
+/// `Ctrl+P` is the cross-terminal, tab-agnostic binding: `p` is 0x70, so
+/// Ctrl+P sends 0x10 (`DLE`), a distinct control byte crossterm uniformly
+/// reports as `Char('p')`+CONTROL (the `b'\x01'..=b'\x1A'` arm) whether or not
+/// the kitty protocol is active. `Ctrl+I` works only on kitty terminals
+/// (`WezTerm`) and only on a Direct tab; on non-kitty terminals Ctrl+I
+/// collapses to the bare Tab byte, which always cycles tabs (see
+/// [`process_key_event`]).
 fn handle_peer_info_control_chord(
     key_event: &crossterm::event::KeyEvent,
     s: &mut super::state::AppState,
 ) {
-    open_peer_info_for_active_tab(s);
     let chord = if key_event.code == crossterm::event::KeyCode::Char('p') {
         "Ctrl+P"
     } else {
         "Ctrl+I"
     };
-    p2plog_debug(format!("Opened Peer Info tab ({chord})"));
+    if open_peer_info_for_active_tab(s) {
+        p2plog_debug(format!("Opened Peer Info tab ({chord})"));
+    } else {
+        p2plog_debug(format!("Peer Info {chord} ignored (no peer on this tab)"));
+    }
 }
 
 /// Processes keyboard input events, returns the exit signal (true = quit).
@@ -1410,15 +1409,16 @@ async fn handle_global_navigation(
 ) -> bool {
     let editing = s.is_editing_nickname() || s.is_editing_message() || s.is_adding_reaction();
     match key_event.code {
-        // Ctrl+I / Ctrl+P both open the DM partner's Peer Info on a Direct tab.
-        crossterm::event::KeyCode::Char('i' | 'p') if !editing && is_ctrl && on_direct => {
+        // Ctrl+P is universal: it opens the active tab's Peer Info target when
+        // there is one and is consumed everywhere (never literal 'p' text).
+        crossterm::event::KeyCode::Char('p') if !editing && is_ctrl => {
             handle_peer_info_control_chord(key_event, s);
             return true;
         }
-        // Consume Ctrl+P on non-Direct tabs too (never literal text). Ctrl+I on
-        // non-Direct tabs falls through to the chat-input branch, as before.
-        crossterm::event::KeyCode::Char('p') if !editing && is_ctrl => {
-            p2plog_debug("Peer Info Ctrl+P ignored (no Direct tab)".to_string());
+        // Ctrl+I stays Direct-only and kitty-only. On other tabs it falls
+        // through to the chat-input branch, as before.
+        crossterm::event::KeyCode::Char('i') if !editing && is_ctrl && on_direct => {
+            handle_peer_info_control_chord(key_event, s);
             return true;
         }
         crossterm::event::KeyCode::BackTab => {
@@ -1680,8 +1680,9 @@ async fn handle_contacts_action_key(
     }
     match key_event.code {
         crossterm::event::KeyCode::Char('i') if on_contacts => {
-            open_peer_info_for_active_tab(s);
-            p2plog_debug("Opened Peer Info tab".to_string());
+            if open_peer_info_for_active_tab(s) {
+                p2plog_debug("Opened Peer Info tab".to_string());
+            }
             true
         }
         // `e` expands/collapses the selected contact's device rows (no-op on
