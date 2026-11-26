@@ -48,6 +48,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-24_flutter_share_grant_editor.md](2026-11-24_flutter_share_grant_editor.md) | Private-share permission editor in Flutter/web over the existing grant facade | 2026-11-24 |
 | [2026-11-26_flutter_share_network_actions.md](2026-11-26_flutter_share_network_actions.md) | Flutter/web manifest refresh and offer re-advertise from the share detail route | 2026-11-26 |
 | [2026-11-26_flutter_share_discovery.md](2026-11-26_flutter_share_discovery.md) | Flutter/web peer-share discovery with explicit offer acceptance | 2026-11-26 |
+| [2026-11-26_flutter_share_publish.md](2026-11-26_flutter_share_publish.md) | Flutter/web manifest-deletion publishing through `publishShareSnapshot` | 2026-11-26 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

@@ -6,7 +6,7 @@
 // a JSON number and is widened through FRB's platform adapter.
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
-    show PlatformInt64Util;
+    show PlatformInt64, PlatformInt64Util;
 
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show CreateShareParams, MobileShare, MobileShareGrant;
@@ -59,10 +59,7 @@ Map<String, dynamic> createShareParamsToJson(CreateShareParams params) => {
 };
 
 Map<String, dynamic> bindShareParamsToJson(String shareId, String? localRoot) =>
-    {
-      'shareId': shareId,
-      'localRoot': ?localRoot,
-    };
+    {'shareId': shareId, 'localRoot': ?localRoot};
 
 Map<String, dynamic> shareManifestToJson(ShareManifest manifest) => {
   'shareId': manifest.shareId,
@@ -88,3 +85,9 @@ Map<String, dynamic> shareOfferToJson(ShareOffer offer) => {
   'publicWrite': offer.publicWrite,
   if (offer.ownerUserId != null) 'ownerUserId': offer.ownerUserId,
 };
+
+/// The manifest model uses `BigInt` on every platform; FRB uses the platform's
+/// native 64-bit integer. Keep that conversion at the facade boundary so widget
+/// code can stay platform-independent.
+PlatformInt64 shareRevisionToPlatformInt64(BigInt revision) =>
+    PlatformInt64Util.from(revision.toInt());

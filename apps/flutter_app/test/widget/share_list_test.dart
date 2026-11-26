@@ -224,6 +224,7 @@ void main() {
       findsNothing,
     );
     expect(find.text('Network'), findsNothing);
+    expect(find.text('Publish revision'), findsNothing);
   });
 
   testWidgets('network actions reload the detail after success', (
@@ -263,6 +264,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(manifestLoads, 2);
     expect(grantLoads, 2);
+  });
+
+  testWidgets('publish editor submits the loaded manifest revision', (
+    tester,
+  ) async {
+    final manifest = ShareManifest(
+      shareId: 'share-a',
+      name: 'Docs',
+      revision: BigInt.from(2),
+      entries: [
+        ShareEntry(
+          path: 'docs/readme.md',
+          fileId: 'abcdef0123456789',
+          size: BigInt.from(12),
+        ),
+        ShareEntry(
+          path: 'docs/old.md',
+          fileId: 'abcdef0123456788',
+          size: BigInt.from(3),
+        ),
+      ],
+    );
+    final calls = <(String, BigInt, ShareManifest)>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareDetailScreen(
+          share: makeShare(
+            'share-a',
+            name: 'Docs',
+            kind: 'private',
+            revision: 2,
+          ),
+          loadManifest: (_) async => manifest,
+          loadGrants: (_) async => const [],
+          peerIds: const ['peer-1'],
+          onPublish: (peerId, baseRevision, revised) async {
+            calls.add((peerId, baseRevision, revised));
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Publish revision'), findsOneWidget);
+    await tester.ensureVisible(
+      find.byKey(const Key('share-publish-delete-docs/old.md')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-publish-delete-docs/old.md')));
+    await tester.ensureVisible(find.byKey(const Key('share-publish-submit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-publish-submit')));
+    await tester.pumpAndSettle();
+
+    expect(calls, hasLength(1));
+    expect(calls.single.$1, 'peer-1');
+    expect(calls.single.$2, BigInt.from(2));
+    expect(calls.single.$3.entries.map((e) => e.path), ['docs/readme.md']);
   });
 
   testWidgets('add grant sends the trimmed user and selected mode', (

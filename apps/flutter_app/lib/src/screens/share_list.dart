@@ -8,11 +8,12 @@ import 'package:p2p_app_flutter/src/rust/shares.dart'
     show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/share_network.dart';
+import 'package:p2p_app_flutter/src/screens/share_publish.dart';
 
-/// Read-only list of this install's file shares. Creation, binding and
-/// publishing stay in Rust for now (see `docs/backlog.md`); this slice only
-/// surfaces what the node already knows so both the FRB and browser transports
-/// can inspect shares and their manifests.
+/// List of this install's file shares. The list itself is read-only; creation,
+/// binding and native folder snapshots stay in Rust (see `docs/backlog.md`).
+/// Both the FRB and browser transports can inspect shares and submit a
+/// revision of a loaded manifest.
 class ShareList extends StatelessWidget {
   const ShareList({super.key, required this.shares, required this.onOpenShare});
 
@@ -138,9 +139,9 @@ class ShareListScreen extends StatelessWidget {
 /// Detail route: share metadata, per-user grants and the files in the current
 /// manifest. Loaders are injected (like `PeerInfoScreen`) so the page needs no
 /// Rust library in widget tests; Home supplies the `NodeApi` calls in the app.
-/// The grant editor and network actions are optional: with no callbacks the
-/// page stays read-only, and with them it uses the same facade over both FRB
-/// and web transports.
+/// The grant editor, network actions and publish editor are optional: with no
+/// callbacks the page stays read-only, and with them it uses the same facade
+/// over both FRB and web transports.
 class ShareDetailScreen extends StatefulWidget {
   const ShareDetailScreen({
     super.key,
@@ -152,6 +153,7 @@ class ShareDetailScreen extends StatefulWidget {
     this.peerIds = const [],
     this.onRequestManifest,
     this.onReadvertise,
+    this.onPublish,
     this.onNavigate,
     this.currentTab = 4,
   });
@@ -171,6 +173,12 @@ class ShareDetailScreen extends StatefulWidget {
   final List<String> peerIds;
   final Future<void> Function(String shareId, String peerId)? onRequestManifest;
   final Future<void> Function(String peerId, ShareOffer offer)? onReadvertise;
+  final Future<void> Function(
+    String peerId,
+    BigInt baseRevision,
+    ShareManifest manifest,
+  )?
+  onPublish;
   final void Function(int)? onNavigate;
   final int currentTab;
 
@@ -279,6 +287,14 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                     peerIds: widget.peerIds,
                     onRequestManifest: widget.onRequestManifest!,
                     onReadvertise: widget.onReadvertise!,
+                    onCompleted: _reload,
+                  ),
+                if (widget.onPublish != null)
+                  SharePublishSection(
+                    share: widget.share,
+                    manifest: _manifest,
+                    peerIds: widget.peerIds,
+                    onPublish: widget.onPublish!,
                     onCompleted: _reload,
                   ),
                 _section(

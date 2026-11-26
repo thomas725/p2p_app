@@ -157,8 +157,11 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   tests); public shares have no ACL rows. `lib/src/screens/share_network.dart`
   adds manifest refresh and offer re-advertise from a chosen connected peer;
   its offer is rebuilt from the share row so the local unknown-owner sentinel
-  is never advertised. The TUI still just logs them, and creation/binding/
-  publishing screens remain deferred.
+  is never advertised. `lib/src/screens/share_publish.dart` submits a deletion
+  revision through `publishShareSnapshot` with the loaded manifest revision as
+  `baseRevision`; stale manifests/selections are blocked before the call, and a
+  caller still cannot bypass the owner's ACL check. The TUI still just logs
+  these events, and native creation/binding/folder snapshots remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 
