@@ -77,6 +77,7 @@ digest->ctutils                                  0.4.7               0.4.8      
 digest->subtle                                   2.6.1               ---                 Removed             Normal       ---
 document-features->litrs                         1.0.0               1.1.0               1.1.0               Normal       ---
 dsl_auto_type->either                            1.18.0              1.19.0              1.19.0              Normal       ---
+ed25519-dalek->sha2                              0.11.1              0.11.2              0.11.2              Normal       ---
 ed25519-dalek->zeroize                           1.9.0               1.9.2               1.9.2               Normal       ---
 env_filter->log                                  0.4.34              0.4.35              0.4.35              Normal       ---
 env_filter->regex                                1.13.1              1.13.2              1.13.2              Normal       ---
@@ -104,6 +105,7 @@ getrandom->wasip2                                1.0.4+wasi-0.2.12   ---        
 getrandom->wasm-bindgen                          0.2.108             ---                 Removed             Normal       cfg(all(target_arch = "wasm32", any(target_os = "unknown", target_os = "none")))
 h2->bytes                                        1.12.1              1.12.2              1.12.2              Normal       ---
 h2->tokio-util                                   0.7.19              0.7.20              0.7.20              Normal       ---
+hashbrown->allocator-api2                        0.2.21              0.2.22              0.2.22              Normal       ---
 hashbrown->allocator-api2                        0.2.21              Removed             Removed             Normal       ---
 hashbrown->equivalent                            1.0.2               1.0.3               1.0.3               Normal       ---
 hashbrown->equivalent                            1.0.2               Removed             Removed             Normal       ---
@@ -222,6 +224,7 @@ libp2p-gossipsub->libp2p-identity                0.3.0               ---        
 libp2p-gossipsub->prost                          0.14.4              0.14.6              0.14.6              Normal       ---
 libp2p-gossipsub->rand                           0.10.3              0.10.4              0.10.4              Normal       ---
 libp2p-gossipsub->regex                          1.13.1              1.13.2              1.13.2              Normal       ---
+libp2p-gossipsub->sha2                           0.11.1              0.11.2              0.11.2              Normal       ---
 libp2p-identify->either                          1.18.0              1.19.0              1.19.0              Normal       ---
 libp2p-identify->futures-bounded                 0.3.0               0.3.1               0.3.1               Normal       ---
 libp2p-identify->libp2p-identity                 0.3.0               ---                 0.3.1               Normal       ---
@@ -231,6 +234,7 @@ libp2p-identify->thiserror                       2.0.20              2.0.21     
 libp2p-identity                                  0.3.0               ---                 0.3.1               Normal       ---
 libp2p-identity->prost                           0.14.4              0.14.6              0.14.6              Normal       ---
 libp2p-identity->rand                            0.10.3              0.10.4              0.10.4              Normal       ---
+libp2p-identity->sha2                            0.11.1              0.11.2              0.11.2              Normal       ---
 libp2p-identity->thiserror                       2.0.20              2.0.21              2.0.21              Normal       ---
 libp2p-identity->zeroize                         1.9.0               1.9.2               1.9.2               Normal       ---
 libp2p-kad->bytes                                1.12.1              1.12.2              1.12.2              Normal       ---
@@ -239,6 +243,7 @@ libp2p-kad->futures-bounded                      0.3.0               0.3.1      
 libp2p-kad->libp2p-identity                      0.3.0               ---                 0.3.1               Normal       ---
 libp2p-kad->prost                                0.14.4              0.14.6              0.14.6              Normal       ---
 libp2p-kad->rand                                 0.10.3              0.10.4              0.10.4              Normal       ---
+libp2p-kad->sha2                                 0.11.1              0.11.2              0.11.2              Normal       ---
 libp2p-kad->smallvec                             1.16.1              1.16.6              1.16.6              Normal       ---
 libp2p-kad->thiserror                            2.0.20              2.0.21              2.0.21              Normal       ---
 libp2p-kad->uint                                 0.10.1              0.10.2              0.10.2              Normal       ---
@@ -349,8 +354,8 @@ poly1305->cpufeatures                            0.2.17              ---        
 poly1305->opaque-debug                           0.3.1               ---                 Removed             Normal       ---
 poly1305->universal-hash                         0.5.1               ---                 0.6.1               Normal       ---
 potential_utf->zerovec                           0.11.8              0.11.9              0.11.9              Normal       ---
-ppv-lite86->zerocopy                             0.8.63              0.8.65              0.8.65              Normal       ---
-ppv-lite86->zerocopy                             0.8.63              0.8.65              Removed             Normal       ---
+ppv-lite86->zerocopy                             0.8.63              0.8.66              0.8.66              Normal       ---
+ppv-lite86->zerocopy                             0.8.63              0.8.66              Removed             Normal       ---
 prefix-trie->either                              1.18.0              1.19.0              1.19.0              Normal       ---
 proc-macro-crate->toml_edit                      0.25.19+spec-1.1.0  0.25.21+spec-1.1.0  0.25.21+spec-1.1.0  Normal       ---
 proc-macro2->unicode-ident                       1.0.26              1.0.27              1.0.27              Normal       ---
@@ -417,6 +422,7 @@ serde_urlencoded->itoa                           1.0.18              1.0.19     
 serial_test->log                                 0.4.34              0.4.35              0.4.35              Normal       ---
 sha1->cpufeatures                                0.2.17              ---                 0.3.1               Normal       cfg(any(target_arch = "aarch64", target_arch = "x86", target_arch = "x86_64"))
 sha1->digest                                     0.10.7              ---                 0.11.3              Normal       ---
+sha2                                             0.11.1              0.11.2              0.11.2              Normal       ---
 sharded-slab->lazy_static                        1.5.0               1.5.1               1.5.1               Normal       ---
 signal-hook->libc                                0.2.189             0.2.191             0.2.191             Normal       ---
 signal-hook-mio->libc                            0.2.189             0.2.191             0.2.191             Normal       ---
@@ -530,8 +536,8 @@ x509-parser->thiserror                           2.0.20              2.0.21     
 yamux->log                                       0.4.34              0.4.35              0.4.35              Normal       ---
 yamux->pin-project                               1.1.13              1.2.0               1.2.0               Normal       ---
 yoke->yoke-derive                                0.8.3               0.8.4               0.8.4               Normal       ---
-zerocopy->zerocopy-derive                        0.8.63              0.8.65              0.8.65              Normal       ---
-zerocopy->zerocopy-derive                        0.8.63              0.8.65              Removed             Normal       ---
+zerocopy->zerocopy-derive                        0.8.63              0.8.66              0.8.66              Normal       ---
+zerocopy->zerocopy-derive                        0.8.63              0.8.66              Removed             Normal       ---
 zerocopy-derive->proc-macro2                     1.0.107             ---                 Removed             Normal       ---
 zerocopy-derive->quote                           1.0.47              ---                 Removed             Normal       ---
 zerocopy-derive->syn                             2.0.119             ---                 Removed             Normal       ---
