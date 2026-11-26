@@ -95,6 +95,26 @@ void main() {
     expect(opened.single.shareId, 'share-b');
   });
 
+  testWidgets('list screen exposes discovery when Home supplies a callback', (
+    tester,
+  ) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareListScreen(
+          shares: const [],
+          onOpenShare: (_) {},
+          onDiscoverShares: () => taps++,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('shares-discover')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('shares-discover')));
+    expect(taps, 1);
+  });
+
   testWidgets('detail shows overview, grants and manifest files', (
     tester,
   ) async {

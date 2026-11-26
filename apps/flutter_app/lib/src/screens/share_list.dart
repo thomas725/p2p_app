@@ -95,19 +95,32 @@ class ShareListScreen extends StatelessWidget {
     super.key,
     required this.shares,
     required this.onOpenShare,
+    this.onDiscoverShares,
     this.onNavigate,
     this.currentTab = 4,
   });
 
   final List<MobileShare> shares;
   final void Function(MobileShare) onOpenShare;
+  final void Function()? onDiscoverShares;
   final void Function(int)? onNavigate;
   final int currentTab;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('File shares')),
+      appBar: AppBar(
+        title: const Text('File shares'),
+        actions: [
+          if (onDiscoverShares != null)
+            IconButton(
+              key: const Key('shares-discover'),
+              icon: const Icon(Icons.search),
+              tooltip: 'Discover peer shares',
+              onPressed: onDiscoverShares,
+            ),
+        ],
+      ),
       body: ShareList(shares: shares, onOpenShare: onOpenShare),
       bottomNavigationBar: onNavigate == null
           ? null

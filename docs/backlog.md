@@ -122,7 +122,7 @@ Still open (device adapters, not protocol work):
   both un-gated. Do **not** gate either behind it; that happened once and was
   corrected.
 
-### File shares / folder sync UI — **Rust core + Flutter/web list, detail, grant editor and network actions shipped; creation/binding/publishing deferred**
+### File shares / folder sync UI — **Rust core + Flutter/web list, detail, grant editor, discovery and network actions shipped; creation/binding/publishing deferred**
 
 The Rust core landed in `7dfaefe` (domain, DB, ACLs) and the share-lane
 follow-up (`/p2p-chat/shares/1.0.0` wire protocol, swarm handlers, events, GC
@@ -178,15 +178,20 @@ Shipped after the core:
   rebuilt from the share row (no local owner sentinel), stale peer selections
   reset when the roster changes, and failures appear inline. Record:
   [`archive/2026-11-26_flutter_share_network_actions.md`](archive/2026-11-26_flutter_share_network_actions.md).
+- peer-share discovery from the share list: ask a connected peer for its
+  offers, keep them keyed by peer/share id in a notifier, and explicitly accept
+  one into the local list. The advertised owner is shown as unverified;
+  malformed event payloads are dropped. Record:
+  [`archive/2026-11-26_flutter_share_discovery.md`](archive/2026-11-26_flutter_share_discovery.md).
 
 Still open (UI/integration, not protocol work):
 
 - TUI Shares tab: create/bind/snapshot, grant editor, public/write toggles,
   offer/manifest/publish actions, and visible update/rejection events;
-- Flutter/web share actions: peer discovery (`requestPeerShares`) and publish.
-  Manifest refresh and re-advertise already ship on both transports; the
-  browser remains a display client — only native installs can bind a real local
-  folder, and a browser has no new filesystem snapshot to publish.
+- Flutter/web share publishing. Discovery, manifest refresh and re-advertise
+  already ship on both transports; the browser remains a display client — only
+  native installs can bind a real local folder, and a browser has no new
+  filesystem snapshot to publish.
 
 The two-node blob-pull → apply test shipped with separate per-thread databases
 and blob stores; see
@@ -252,6 +257,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Flutter/web peer-share discovery + explicit acceptance | 2026-11-26 | [`archive/2026-11-26_flutter_share_discovery.md`](archive/2026-11-26_flutter_share_discovery.md) |
 | Flutter/web share manifest refresh + re-advertise | 2026-11-26 | [`archive/2026-11-26_flutter_share_network_actions.md`](archive/2026-11-26_flutter_share_network_actions.md) |
 | Flutter/web private-share grant editor | 2026-11-24 | [`archive/2026-11-24_flutter_share_grant_editor.md`](archive/2026-11-24_flutter_share_grant_editor.md) |
 | Read-only Flutter/web share list + detail | 2026-11-24 | [`archive/2026-11-24_flutter_readonly_shares_ui.md`](archive/2026-11-24_flutter_readonly_shares_ui.md) |

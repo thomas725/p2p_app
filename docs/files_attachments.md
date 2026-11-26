@@ -148,13 +148,17 @@ fetch and *who may change it*. Its Rust core is shipped; UI work is tracked in
   `share_offered`, `share_updated` and `share_rejected`. Flutter handles them by
   reloading the share list (`lib/src/screens/share_list.dart`, opened from
   Settings → File shares); the browser gets the same route through the JSON
-  transport because both use the existing `NodeApi` facade. The detail page can
-  add/revoke private-share grants through `setShareGrant`/`removeShareGrant`
-  (optional callbacks keep it read-only in tests); public shares have no ACL
-  rows. `lib/src/screens/share_network.dart` adds manifest refresh and offer
-  re-advertise from a chosen connected peer; its offer is rebuilt from the
-  share row so the local unknown-owner sentinel is never advertised. The TUI
-  still just logs them, and creation/binding/publishing screens remain deferred.
+  transport because both use the existing `NodeApi` facade. The list's app bar
+  opens `lib/src/screens/share_discovery.dart`, which asks a connected peer for
+  its offers and explicitly accepts one through `acceptShareOffer` — an offer
+  is untrusted until that step, and the advertised owner is shown as
+  unverified. The detail page can add/revoke private-share grants through
+  `setShareGrant`/`removeShareGrant` (optional callbacks keep it read-only in
+  tests); public shares have no ACL rows. `lib/src/screens/share_network.dart`
+  adds manifest refresh and offer re-advertise from a chosen connected peer;
+  its offer is rebuilt from the share row so the local unknown-owner sentinel
+  is never advertised. The TUI still just logs them, and creation/binding/
+  publishing screens remain deferred.
 
 ## Blob lifecycle / GC (`attachment-gc` feature) — 2026-10-04
 

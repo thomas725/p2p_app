@@ -19,6 +19,7 @@ import 'package:p2p_app_flutter/src/screens/log_tab.dart';
 import 'package:p2p_app_flutter/src/screens/messages.dart';
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
 import 'package:p2p_app_flutter/src/screens/peer_info.dart';
+import 'package:p2p_app_flutter/src/screens/share_discovery.dart';
 import 'package:p2p_app_flutter/src/screens/share_list.dart';
 import 'package:p2p_app_flutter/src/screens/settings.dart';
 import 'package:p2p_app_flutter/src/util/ui_utils.dart';
@@ -97,6 +98,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Set<String> _blockedPeerIds = <String>{};
   List<MobileGroup> _groups = [];
   List<MobileShare> _shares = [];
+
+  /// Offers announced by peers, keyed by peer/share id in
+  /// [mergeDiscoveredShares]. A notifier lets an open discovery route see new
+  /// `share_offered` events without being rebuilt.
+  final ValueNotifier<List<DiscoveredShare>> _discoveredShares = ValueNotifier(
+    const [],
+  );
+
   int _connectedCount = 0;
   final List<String> _connectedPeerIds = [];
   final List<String> _listenAddresses = [];
@@ -226,6 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _liveStatus.dispose();
     _statusNotifier.dispose();
     _networkNotifier.dispose();
+    _discoveredShares.dispose();
     super.dispose();
   }
 
@@ -443,6 +453,19 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
+  /// Keep the offer from a `share_offered` event in the discovery notifier.
+  /// Parsing/dedup live beside the discovery widget so both are testable
+  /// without a live node.
+  void _recordDiscoveredOffer(SwarmEventJson event) {
+    final discovered = discoveredShareFromEvent(event.peerId, event.content);
+    if (discovered == null) return;
+    _discoveredShares.value = mergeDiscoveredShares(
+      _discoveredShares.value,
+      discovered.peerId,
+      discovered.offer,
+    );
+  }
+
   Future<void> _createGroup(String name) async {
     await nodeApi.createGroup(name: name);
     await _refreshGroups();
@@ -571,9 +594,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _acceptInvite(event.groupId!);
         }
         break;
-      // Share events only mutate persisted share rows in Rust; the read-only
-      // list/detail UI just reloads them instead of mirroring event contents.
+      // Updated/rejected events mutate persisted rows in Rust, so the UI just
+      // reloads. An offer is different: nothing is persisted until the user
+      // accepts it, so Home keeps it for the discovery route.
       case 'share_offered':
+        _recordDiscoveredOffer(event);
+        _refreshShares();
+        break;
       case 'share_updated':
       case 'share_rejected':
         _refreshShares();
@@ -1104,9 +1131,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Open the share list from Settings. Detail loaders, grant editor and
-  /// network actions all come from the active `NodeApi`, so this works unchanged
-  /// over FRB and over the browser's JSON transport.
+  /// Open the share list from Settings. Discovery, detail loaders, grant
+  /// editor and network actions all come from the active `NodeApi`, so this
+  /// works unchanged over FRB and over the browser's JSON transport.
   void _openShares() {
     Navigator.push(
       context,
@@ -1114,6 +1141,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => ShareListScreen(
           shares: _shares,
           onOpenShare: _openShareDetail,
+          onDiscoverShares: _openShareDiscovery,
           onNavigate: _navigateToTab,
           currentTab: 4,
         ),
@@ -1121,6 +1149,43 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) {
       if (mounted) _refreshShares();
     });
+  }
+
+  /// Open peer-share discovery. Clearing here (rather than after the request)
+  /// avoids wiping offers that arrive while the queue call is still in flight.
+  void _openShareDiscovery() {
+    _discoveredShares.value = const [];
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShareDiscoveryScreen(
+          peerIds: List<String>.from(_connectedPeerIds),
+          offers: _discoveredShares,
+          onDiscover: _discoverPeerShares,
+          onAccept: _acceptDiscoveredShare,
+          onNavigate: _navigateToTab,
+          currentTab: 4,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _discoverPeerShares(String peerId) =>
+      nodeApi.requestPeerShares(peerId);
+
+  /// Accepting an offer only materialises a local stub; Rust still enforces
+  /// ACLs when the manifest is fetched. Drop the accepted row and reload the
+  /// list so the user lands back on the local share list with the new entry.
+  Future<void> _acceptDiscoveredShare(DiscoveredShare discovered) async {
+    await nodeApi.acceptShareOffer(offer: discovered.offer);
+    _discoveredShares.value = _discoveredShares.value
+        .where(
+          (entry) =>
+              entry.peerId != discovered.peerId ||
+              entry.offer.shareId != discovered.offer.shareId,
+        )
+        .toList();
+    await _refreshShares();
   }
 
   void _openShareDetail(MobileShare share) {
