@@ -83,13 +83,18 @@ final _network = NetworkDetails(
   dhtAnnounceAt: 1700000000,
 );
 
-final _device = MobileDeviceInfo(
-  claimId: 'c1',
-  userId: 'user-abc',
-  peerId: '12D3KooWpeer-1',
-  devicePubkey: Uint8List.fromList([1, 2, 3]),
-  boundAt: '2026-09-25 10:00:00',
-);
+MobileDeviceInfo _device({
+  String peerId = '12D3KooWpeer-1',
+  String boundAt = '2026-09-25 10:00:00',
+}) {
+  return MobileDeviceInfo(
+    claimId: 'c1',
+    userId: 'user-abc',
+    peerId: peerId,
+    devicePubkey: Uint8List.fromList([1, 2, 3]),
+    boundAt: boundAt,
+  );
+}
 
 /// Give the test a tall viewport so the whole Settings list (including the
 /// network-details card near the bottom) is laid out without scrolling.
@@ -172,7 +177,7 @@ void main() {
   testWidgets('Bound devices listed and open PeerInfo on tap', (tester) async {
     final opened = <String>[];
     await tester.pumpWidget(
-      _app(userId: 'user-abc', devices: [_device], peerInfoOpened: opened),
+      _app(userId: 'user-abc', devices: [_device()], peerInfoOpened: opened),
     );
     await tester.pump();
     expect(find.text('Bound devices (1)'), findsOneWidget);
@@ -183,7 +188,86 @@ void main() {
     expect(opened, ['12D3KooWpeer-1']);
   });
 
-  testWidgets('Last connection lost names the peer from the event', (tester) async {
+  testWidgets('Settings orders bound devices by peer ID', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        userId: 'user-abc',
+        devices: [
+          _device(peerId: 'peer-z', boundAt: '2026-01-03 00:00:00'),
+          _device(peerId: 'peer-a', boundAt: '2026-01-01 00:00:00'),
+          _device(peerId: 'peer-m', boundAt: '2026-01-02 00:00:00'),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    final rows = tester
+        .widgetList<Text>(find.textContaining(' · bound '))
+        .map((text) => text.data ?? '')
+        .toList();
+    expect(rows, [
+      'peer-a · bound 2026-01-01 00:00:00',
+      'peer-m · bound 2026-01-02 00:00:00',
+      'peer-z · bound 2026-01-03 00:00:00',
+    ]);
+  });
+
+  testWidgets('Settings orders connected peers by peer ID', (tester) async {
+    _useTallSurface(tester);
+    final opened = <String>[];
+    await tester.pumpWidget(
+      _app(
+        userId: null,
+        devices: const [],
+        peerInfoOpened: opened,
+        liveStatus: const LiveStatus(
+          connectedCount: 3,
+          connectedPeerIds: ['peer-z', 'peer-a', 'peer-m'],
+          listenAddresses: [],
+          lastConnectionAt: null,
+        ),
+        peers: const [
+          MobilePeerRecord(
+            peerId: 'peer-a',
+            firstSeen: '',
+            lastSeen: '',
+            displayName: 'Zulu peer',
+          ),
+          MobilePeerRecord(
+            peerId: 'peer-m',
+            firstSeen: '',
+            lastSeen: '',
+            displayName: 'Alpha peer',
+          ),
+          MobilePeerRecord(
+            peerId: 'peer-z',
+            firstSeen: '',
+            lastSeen: '',
+            displayName: 'Middle peer',
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    final labels = {'Zulu peer', 'Alpha peer', 'Middle peer'};
+    final rows = tester
+        .widgetList<Text>(
+          find.byWidgetPredicate((widget) {
+            return widget is Text && labels.contains(widget.data);
+          }),
+        )
+        .map((text) => text.data)
+        .toList();
+    expect(rows, ['Zulu peer', 'Alpha peer', 'Middle peer']);
+
+    await tester.tap(find.text('Zulu peer'));
+    expect(opened, ['peer-a']);
+  });
+
+  testWidgets('Last connection lost names the peer from the event', (
+    tester,
+  ) async {
     _useTallSurface(tester);
     await tester.pumpWidget(
       _app(
@@ -248,38 +332,39 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('Notification toggles persist both channels through the transport', (
-    tester,
-  ) async {
-    _useTallSurface(tester);
-    final fake = FakeNodeApi();
-    nodeApi = fake;
-    await tester.pumpWidget(_app(userId: 'user-abc', devices: const []));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'Notification toggles persist both channels through the transport',
+    (tester) async {
+      _useTallSurface(tester);
+      final fake = FakeNodeApi();
+      nodeApi = fake;
+      await tester.pumpWidget(_app(userId: 'user-abc', devices: const []));
+      await tester.pumpAndSettle();
 
-    // Defaults from the persisted settings (sound on, desktop off).
-    final sound = find.byKey(const Key('notification-sound-toggle'));
-    final desktop = find.byKey(const Key('notification-desktop-toggle'));
-    expect(sound, findsOneWidget);
-    expect(desktop, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(sound).value, isTrue);
-    expect(tester.widget<SwitchListTile>(desktop).value, isFalse);
+      // Defaults from the persisted settings (sound on, desktop off).
+      final sound = find.byKey(const Key('notification-sound-toggle'));
+      final desktop = find.byKey(const Key('notification-desktop-toggle'));
+      expect(sound, findsOneWidget);
+      expect(desktop, findsOneWidget);
+      expect(tester.widget<SwitchListTile>(sound).value, isTrue);
+      expect(tester.widget<SwitchListTile>(desktop).value, isFalse);
 
-    // Toggle the desktop channel on; only that flag changes.
-    await tester.tap(desktop);
-    await tester.pumpAndSettle();
-    expect(fake.notificationSettings.sound, isTrue);
-    expect(fake.notificationSettings.desktop, isTrue);
+      // Toggle the desktop channel on; only that flag changes.
+      await tester.tap(desktop);
+      await tester.pumpAndSettle();
+      expect(fake.notificationSettings.sound, isTrue);
+      expect(fake.notificationSettings.desktop, isTrue);
 
-    // Toggle sound off; both writes go through the shared transport.
-    await tester.tap(sound);
-    await tester.pumpAndSettle();
-    expect(fake.notificationSettings.sound, isFalse);
-    expect(fake.notificationSettings.desktop, isTrue);
+      // Toggle sound off; both writes go through the shared transport.
+      await tester.tap(sound);
+      await tester.pumpAndSettle();
+      expect(fake.notificationSettings.sound, isFalse);
+      expect(fake.notificationSettings.desktop, isTrue);
 
-    expect(
-      fake.calls.where((c) => c.method == 'setNotificationSettings').length,
-      2,
-    );
-  });
+      expect(
+        fake.calls.where((c) => c.method == 'setNotificationSettings').length,
+        2,
+      );
+    },
+  );
 }

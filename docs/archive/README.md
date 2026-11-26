@@ -52,6 +52,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-26_tui_readonly_shares_tab.md](2026-11-26_tui_readonly_shares_tab.md) | Read-only TUI Shares tab with a selectable list, manifest detail and visible share events | 2026-11-26 |
 | [2026-11-26_tui_ctrl_p_peer_info_parity.md](2026-11-26_tui_ctrl_p_peer_info_parity.md) | `Ctrl+P` opens the active tab's Peer Info target, including Chat/Group senders | 2026-11-26 |
 | [2026-11-26_tui_settings_peer_rows.md](2026-11-26_tui_settings_peer_rows.md) | Clickable Settings connected/bound-device rows and Settings `Ctrl+P`, with wrapped-row hit testing | 2026-11-26 |
+| [2026-11-27_flutter_settings_peer_order.md](2026-11-27_flutter_settings_peer_order.md) | Flutter Settings connected/bound-device rows ordered by peer ID like the TUI | 2026-11-27 |
 | [2026-11-02_sibling_device_claims.md](2026-11-02_sibling_device_claims.md) | Sibling devices may sign device-binding claims for the same user (P0 decision) | 2026-11-02 |
 | [2026-11-12_public_bootstrap_discovery.md](2026-11-12_public_bootstrap_discovery.md) | Internet-wide discovery: Kademlia DHT, NAT traversal, network details, configurable bootstrap/relay peers (US-050) | 2026-11-12 |
 

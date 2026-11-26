@@ -40,6 +40,27 @@ class LiveStatus {
   final String? lastConnectionPeerId;
 }
 
+/// Peer IDs in the same lexicographic order as the TUI's Settings rows.
+///
+/// Peer IDs are ASCII, so Dart's [String.compareTo] matches Rust's `str::sort`.
+/// Sorting here keeps event-arrival order out of the UI without an FFI round
+/// trip for a plain list of strings.
+List<String> _sortedPeerIds(Iterable<String> peerIds) {
+  final sorted = peerIds.toList();
+  sorted.sort();
+  return sorted;
+}
+
+/// Bound devices in TUI order: peer ID, then bound-at as a stable tiebreak.
+List<MobileDeviceInfo> _sortedDevices(Iterable<MobileDeviceInfo> devices) {
+  final sorted = devices.toList();
+  sorted.sort((a, b) {
+    final byPeer = a.peerId.compareTo(b.peerId);
+    return byPeer != 0 ? byPeer : a.boundAt.compareTo(b.boundAt);
+  });
+  return sorted;
+}
+
 /// Honest controls reference for the touch-first Flutter/Web UI.
 ///
 /// This app installs no custom keyboard handlers, so the dialog describes the
@@ -69,7 +90,7 @@ const Map<String, List<String>> _helpSections = {
   'Shares': [
     'Settings → File shares lists local shares; tap one for its grants and manifest files.',
     'Discover peer offers, accept one, refresh or re-advertise a manifest, '
-    'and publish deletions here.',
+        'and publish deletions here.',
     'Creating, binding and native folder snapshots remain Rust operations.',
   ],
   'Keyboard': [
@@ -172,7 +193,10 @@ class _SettingsState extends State<Settings> {
   }
 
   /// Persist both notification channels in one round trip, reverting on error.
-  Future<void> _setNotifications({required bool sound, required bool desktop}) async {
+  Future<void> _setNotifications({
+    required bool sound,
+    required bool desktop,
+  }) async {
     final previous = _notifications;
     setState(() {
       _notifications = NotificationSettings(sound: sound, desktop: desktop);
@@ -233,12 +257,15 @@ class _SettingsState extends State<Settings> {
 
   /// Persist a theme choice through the shared notifier helper. Rust owns the
   /// palette; this only forwards the validated choice and shows errors.
-  Future<void> _applyTheme({required bool dark, required String accentName}) async {
+  Future<void> _applyTheme({
+    required bool dark,
+    required String accentName,
+  }) async {
     final error = await setTheme(dark: dark, accentName: accentName);
     if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Theme not saved: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Theme not saved: $error')));
     }
   }
 
@@ -379,6 +406,7 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext context) {
     final platformLabel = widget.isAndroid ? 'Android' : 'Desktop';
     final status = _statusData;
+    final devices = _sortedDevices(widget.devices);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -445,7 +473,7 @@ class _SettingsState extends State<Settings> {
             subtitle: SelectableText(widget.userId ?? 'Not provisioned'),
           ),
         ),
-        if (widget.userId != null && widget.devices.isNotEmpty) ...[
+        if (widget.userId != null && devices.isNotEmpty) ...[
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -454,11 +482,11 @@ class _SettingsState extends State<Settings> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bound devices (${widget.devices.length})',
+                    'Bound devices (${devices.length})',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: 8),
-                  for (final device in widget.devices)
+                  for (final device in devices)
                     InkWell(
                       onTap: () => widget.onOpenPeerInfo(device.peerId),
                       child: Padding(
@@ -528,7 +556,10 @@ class _SettingsState extends State<Settings> {
                       _applyTheme(dark: v, accentName: _theme.accentName),
                 ),
                 const SizedBox(height: 8),
-                Text('Accent color', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  'Accent color',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -572,10 +603,8 @@ class _SettingsState extends State<Settings> {
                   'Needs a one-time permission on web/Android.',
                 ),
                 value: _notifications.desktop,
-                onChanged: (v) => _setNotifications(
-                  sound: _notifications.sound,
-                  desktop: v,
-                ),
+                onChanged: (v) =>
+                    _setNotifications(sound: _notifications.sound, desktop: v),
               ),
             ],
           ),
@@ -719,7 +748,11 @@ class _SettingsState extends State<Settings> {
                 else
                   ..._connectedPeerRows(),
                 if (_live.connectedCount == 0)
-                  _statusRow(Icons.history, 'Last connection lost', _lastConnectionLabel()),
+                  _statusRow(
+                    Icons.history,
+                    'Last connection lost',
+                    _lastConnectionLabel(),
+                  ),
                 _statusRow(
                   Icons.network_cell,
                   'Network name',
@@ -939,7 +972,7 @@ class _SettingsState extends State<Settings> {
 
   List<Widget> _connectedPeerRows() {
     return [
-      for (final id in _live.connectedPeerIds)
+      for (final id in _sortedPeerIds(_live.connectedPeerIds))
         InkWell(
           onTap: () => widget.onOpenPeerInfo(id),
           child: Padding(
@@ -1162,7 +1195,10 @@ class _AccentSwatch extends StatelessWidget {
             color: Color(swatch.argb),
             shape: BoxShape.circle,
             border: selected
-                ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    width: 3,
+                  )
                 : null,
           ),
         ),
