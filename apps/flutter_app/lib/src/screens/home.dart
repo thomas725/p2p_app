@@ -1104,9 +1104,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Open the share list from Settings. The detail loaders and grant editor
-  /// callbacks all come from the active `NodeApi`, so this works unchanged over
-  /// FRB and over the browser's JSON transport.
+  /// Open the share list from Settings. Detail loaders, grant editor and
+  /// network actions all come from the active `NodeApi`, so this works unchanged
+  /// over FRB and over the browser's JSON transport.
   void _openShares() {
     Navigator.push(
       context,
@@ -1138,6 +1138,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           onRemoveGrant: (shareId, userId) =>
               nodeApi.removeShareGrant(shareId: shareId, userId: userId),
+          peerIds: _peers.map((p) => p.peerId).toList(),
+          onRequestManifest: (shareId, peerId) =>
+              nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),
+          onReadvertise: (peerId, offer) =>
+              nodeApi.sendShareOffer(peerIds: [peerId], offer: offer),
           onNavigate: _navigateToTab,
           currentTab: 4,
         ),

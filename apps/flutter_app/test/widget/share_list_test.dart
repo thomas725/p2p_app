@@ -203,6 +203,46 @@ void main() {
       find.byKey(const Key('share-grant-revoke-user-friend')),
       findsNothing,
     );
+    expect(find.text('Network'), findsNothing);
+  });
+
+  testWidgets('network actions reload the detail after success', (
+    tester,
+  ) async {
+    var manifestLoads = 0;
+    var grantLoads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ShareDetailScreen(
+          share: makeShare('share-a', name: 'Docs', kind: 'private'),
+          loadManifest: (_) async {
+            manifestLoads++;
+            return null;
+          },
+          loadGrants: (_) async {
+            grantLoads++;
+            return const [];
+          },
+          peerIds: const ['peer-1'],
+          onRequestManifest: (_, _) async {},
+          onReadvertise: (_, _) async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Network'), findsOneWidget);
+    expect(find.byKey(const Key('share-network-refresh')), findsOneWidget);
+    expect(find.byKey(const Key('share-network-readvertise')), findsOneWidget);
+    expect(manifestLoads, 1);
+    expect(grantLoads, 1);
+
+    await tester.ensureVisible(find.byKey(const Key('share-network-refresh')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('share-network-refresh')));
+    await tester.pumpAndSettle();
+    expect(manifestLoads, 2);
+    expect(grantLoads, 2);
   });
 
   testWidgets('add grant sends the trimmed user and selected mode', (

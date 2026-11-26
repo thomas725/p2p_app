@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import 'package:p2p_app_flutter/src/rust/api.dart'
     show MobileShare, MobileShareGrant;
-import 'package:p2p_app_flutter/src/rust/shares.dart' show ShareManifest;
+import 'package:p2p_app_flutter/src/rust/shares.dart'
+    show ShareManifest, ShareOffer;
 import 'package:p2p_app_flutter/src/screens/nav_bar.dart';
+import 'package:p2p_app_flutter/src/screens/share_network.dart';
 
 /// Read-only list of this install's file shares. Creation, binding and
 /// publishing stay in Rust for now (see `docs/backlog.md`); this slice only
@@ -123,9 +125,9 @@ class ShareListScreen extends StatelessWidget {
 /// Detail route: share metadata, per-user grants and the files in the current
 /// manifest. Loaders are injected (like `PeerInfoScreen`) so the page needs no
 /// Rust library in widget tests; Home supplies the `NodeApi` calls in the app.
-/// The grant editor is optional: with no edit callbacks the page stays
-/// read-only, and with them it uses the same `setShareGrant`/`removeShareGrant`
-/// facade over both FRB and web transports.
+/// The grant editor and network actions are optional: with no callbacks the
+/// page stays read-only, and with them it uses the same facade over both FRB
+/// and web transports.
 class ShareDetailScreen extends StatefulWidget {
   const ShareDetailScreen({
     super.key,
@@ -134,6 +136,9 @@ class ShareDetailScreen extends StatefulWidget {
     required this.loadGrants,
     this.onSetGrant,
     this.onRemoveGrant,
+    this.peerIds = const [],
+    this.onRequestManifest,
+    this.onReadvertise,
     this.onNavigate,
     this.currentTab = 4,
   });
@@ -147,6 +152,12 @@ class ShareDetailScreen extends StatefulWidget {
   final Future<void> Function(String shareId, String userId, String mode)?
   onSetGrant;
   final Future<void> Function(String shareId, String userId)? onRemoveGrant;
+
+  /// Optional network seams. Both are needed for [ShareNetworkSection] to
+  /// appear; Home supplies the currently connected peer IDs alongside them.
+  final List<String> peerIds;
+  final Future<void> Function(String shareId, String peerId)? onRequestManifest;
+  final Future<void> Function(String peerId, ShareOffer offer)? onReadvertise;
   final void Function(int)? onNavigate;
   final int currentTab;
 
@@ -248,6 +259,15 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                   ),
                 ]),
                 if (widget.share.kind == 'private') _grantsSection(),
+                if (widget.onRequestManifest != null &&
+                    widget.onReadvertise != null)
+                  ShareNetworkSection(
+                    share: widget.share,
+                    peerIds: widget.peerIds,
+                    onRequestManifest: widget.onRequestManifest!,
+                    onReadvertise: widget.onReadvertise!,
+                    onCompleted: _reload,
+                  ),
                 _section(
                   'Manifest files',
                   _manifest == null
