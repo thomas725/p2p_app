@@ -8,7 +8,6 @@ use crate::mobile_api::{
 use crate::mobile_node::{
     ChatMessage, MobileGroup, MobileGroupMessage, MobilePeerRecord, SwarmEventJson,
 };
-use crate::network::NetworkSize;
 
 /// Initialize the mobile database at the given path and return peer info.
 ///
@@ -530,12 +529,7 @@ pub fn validate_emoji(emoji: &str) -> bool {
 /// re-derive the thresholds in Dart.
 #[must_use]
 pub fn network_size_label(peer_count: i64) -> String {
-    match peer_count {
-        0..=3 => NetworkSize::Small,
-        4..=15 => NetworkSize::Medium,
-        _ => NetworkSize::Large,
-    }
-    .to_string()
+    crate::network::network_size_label(peer_count)
 }
 
 // --- Identity lane ---

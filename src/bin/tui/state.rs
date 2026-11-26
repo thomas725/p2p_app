@@ -300,7 +300,6 @@ pub struct AppState {
     // Settings tab (read-only node/network diagnostics)
     pub db_url: String,
     pub platform: String,
-    pub network_size: String,
 
     /// Persisted bootstrap/relay multiaddrs (Settings tab), loaded at startup
     /// and after every add/remove. The node reads this list once at start.
@@ -1373,7 +1372,6 @@ impl AppState {
             call_audio: TuiAudioHandle::default(),
             db_url: String::new(),
             platform: String::new(),
-            network_size: String::new(),
             network_peers: Vec::new(),
             palette: p2p_app::theme::Palette::current(),
             network_peer_selection: 0,

@@ -29,6 +29,19 @@ fn display_outputs_expected_labels() {
 }
 
 #[test]
+fn network_size_label_uses_live_connected_count_boundaries() {
+    assert_eq!(network_size_label(0), "Small");
+    assert_eq!(network_size_label(3), "Small");
+    assert_eq!(network_size_label(4), "Medium");
+    assert_eq!(network_size_label(15), "Medium");
+    assert_eq!(network_size_label(16), "Large");
+    assert_eq!(network_size_label(i64::MAX), "Large");
+    // FRB/web callers can pass a negative count; the historical boundary rule
+    // treats it as "Large" rather than panicking.
+    assert_eq!(network_size_label(-1), "Large");
+}
+
+#[test]
 #[serial(db)]
 fn get_network_size_defaults_small_when_no_sessions() {
     with_test_db(|| {

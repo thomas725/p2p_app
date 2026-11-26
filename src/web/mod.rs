@@ -703,6 +703,14 @@ mod tests {
         let response =
             frame(r#"{"id": 6, "method": "networkSizeLabel", "params": {"peerCount": 40}}"#).await;
         assert_eq!(response, json!({"id": 6, "ok": "Large"}));
+        // Both boundaries follow the live connected count, not the historical
+        // average used to tune gossipsub.
+        let response =
+            frame(r#"{"id": 9, "method": "networkSizeLabel", "params": {"peerCount": 4}}"#).await;
+        assert_eq!(response, json!({"id": 9, "ok": "Medium"}));
+        let response =
+            frame(r#"{"id": 10, "method": "networkSizeLabel", "params": {"peerCount": 15}}"#).await;
+        assert_eq!(response, json!({"id": 10, "ok": "Medium"}));
 
         // Nickname validation (canonical Rust rule).
         let response =

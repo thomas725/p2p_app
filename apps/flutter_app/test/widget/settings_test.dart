@@ -24,11 +24,12 @@ Widget _app({
   List<String> peerInfoOpened = const [],
   ValueNotifier<NetworkDetails?>? networkDetails,
   LiveStatus liveStatus = _live,
+  ValueNotifier<LiveStatus>? liveStatusNotifier,
   List<MobilePeerRecord> peers = const [],
 }) {
   return MaterialApp(
     home: Settings(
-      liveStatus: ValueNotifier(liveStatus),
+      liveStatus: liveStatusNotifier ?? ValueNotifier(liveStatus),
       status: ValueNotifier<MobilePeerStatus?>(null),
       serviceRunning: false,
       onToggleService: () {},
@@ -367,4 +368,59 @@ void main() {
       );
     },
   );
+
+  testWidgets('Network size follows the live connected peer count', (
+    tester,
+  ) async {
+    _useTallSurface(tester);
+    final previousApi = nodeApi;
+    addTearDown(() => nodeApi = previousApi);
+    final fake = FakeNodeApi();
+    final requestedCounts = <int>[];
+    fake.networkSizeLabelOverride = (peerCount) async {
+      requestedCounts.add(peerCount);
+      if (peerCount < 4) return 'Small';
+      if (peerCount < 16) return 'Medium';
+      return 'Large';
+    };
+    nodeApi = fake;
+
+    final notifier = ValueNotifier(
+      const LiveStatus(
+        connectedCount: 4,
+        connectedPeerIds: [],
+        listenAddresses: [],
+        lastConnectionAt: null,
+      ),
+    );
+    addTearDown(notifier.dispose);
+    await tester.pumpWidget(
+      _app(userId: 'user-abc', devices: const [], liveStatusNotifier: notifier),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Network size'), findsOneWidget);
+    expect(find.text('Medium'), findsOneWidget);
+    expect(requestedCounts, [4]);
+
+    notifier.value = const LiveStatus(
+      connectedCount: 16,
+      connectedPeerIds: [],
+      listenAddresses: [],
+      lastConnectionAt: null,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Large'), findsOneWidget);
+    expect(requestedCounts, [4, 16]);
+
+    notifier.value = const LiveStatus(
+      connectedCount: 0,
+      connectedPeerIds: [],
+      listenAddresses: [],
+      lastConnectionAt: null,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Small'), findsOneWidget);
+    expect(requestedCounts, [4, 16, 0]);
+  });
 }

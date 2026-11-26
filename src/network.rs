@@ -62,6 +62,23 @@ pub fn get_network_size() -> color_eyre::Result<NetworkSize> {
     Ok(NetworkSize::from_peer_count(avg))
 }
 
+/// Human-readable class for the *currently connected* peer count.
+///
+/// This is the display rule shared by the TUI and Flutter Settings tabs. It is
+/// deliberately distinct from [`get_network_size`]: that historical average
+/// tunes gossipsub at node start, while this label follows live connections.
+/// Negative counts are treated as "Large" to preserve the existing FRB/web
+/// boundary behavior; real frontends only pass non-negative counts.
+#[must_use]
+pub fn network_size_label(peer_count: i64) -> String {
+    match peer_count {
+        0..=3 => NetworkSize::Small,
+        4..=15 => NetworkSize::Medium,
+        _ => NetworkSize::Large,
+    }
+    .to_string()
+}
+
 #[cfg(test)]
 #[path = "../tests/unit/unit_network.rs"]
 mod tests;

@@ -270,6 +270,7 @@ here so they are not mistaken for unfinished work.
 
 | Item | When | Where |
 |---|---|---|
+| Settings "Network size" follows live connected peers | 2026-11-27 | [`archive/2026-11-27_network_size_display_parity.md`](archive/2026-11-27_network_size_display_parity.md) |
 | Flutter Settings peer-row ordering matches the TUI | 2026-11-27 | [`archive/2026-11-27_flutter_settings_peer_order.md`](archive/2026-11-27_flutter_settings_peer_order.md) |
 | Settings peer rows open Peer Info + Settings `Ctrl+P` | 2026-11-26 | [`archive/2026-11-26_tui_settings_peer_rows.md`](archive/2026-11-26_tui_settings_peer_rows.md) |
 | Read-only TUI Shares tab + visible share events | 2026-11-26 | [`archive/2026-11-26_tui_readonly_shares_tab.md`](archive/2026-11-26_tui_readonly_shares_tab.md) |

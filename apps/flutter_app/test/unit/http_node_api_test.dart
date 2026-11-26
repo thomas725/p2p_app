@@ -655,7 +655,7 @@ void main() {
           case 'validateNickname':
             fake.respond(request, ok: true);
           case 'networkSizeLabel':
-            fake.respond(request, ok: '3 peers connected');
+            fake.respond(request, ok: 'Small');
           default:
             fail('unexpected method ${request['method']}');
         }
@@ -674,7 +674,7 @@ void main() {
 
       expect(await api.getMyUserId(), 'user-42');
       expect(await api.validateNickname(nickname: 'ok'), isTrue);
-      expect(await api.networkSizeLabel(peerCount: 3), '3 peers connected');
+      expect(await api.networkSizeLabel(peerCount: 3), 'Small');
     });
   });
 

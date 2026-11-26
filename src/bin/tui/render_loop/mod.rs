@@ -150,6 +150,10 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
     let (messages, message_peer_ids) = message_texts(&state.messages);
     let (last_connection_lost, last_connection_peer) = last_disconnection(state);
     let peers = render_peer_records(&state.peers);
+    let connected_peer_count = state.connected.len();
+    let network_size = p2p_app::network::network_size_label(
+        i64::try_from(connected_peer_count).unwrap_or(i64::MAX),
+    );
 
     p2p_app::TuiRenderState {
         tab_titles,
@@ -211,7 +215,7 @@ pub(super) fn app_state_to_render_state(state: &AppState) -> p2p_app::TuiRenderS
         local_peer_id: state.local_peer_id.clone(),
         db_url: state.db_url.clone(),
         platform: state.platform.clone(),
-        network_size: state.network_size.clone(),
+        network_size,
         network: p2p_app::net_diag::snapshot(),
         network_peers: state.network_peers.clone(),
         palette: state.palette,

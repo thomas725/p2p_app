@@ -625,9 +625,17 @@ class FakeNodeApi implements NodeApi {
     return Future.value(emoji.trim().isNotEmpty && emoji.trim().length <= 32);
   }
 
+  /// Override the network-size label returned by the Rust boundary helper.
+  /// Defaults to throwing so an unconfigured test fails loudly.
+  Future<String> Function(int peerCount)? networkSizeLabelOverride;
+
   @override
-  Future<String> networkSizeLabel({required int peerCount}) =>
-      throw UnimplementedError();
+  Future<String> networkSizeLabel({required int peerCount}) {
+    _record('networkSizeLabel', peerCount);
+    final override = networkSizeLabelOverride;
+    if (override != null) return override(peerCount);
+    throw UnimplementedError('set networkSizeLabelOverride in this test');
+  }
 
   @override
   Future<String?> getMyUserId() => throw UnimplementedError();

@@ -5,10 +5,10 @@
 | Metric                |     Value |
 |:----------------------|:----------|
 | Total Rust Files      |        71 |
-| Total Rust Lines      |    40,859 |
-| Total Rust Chars      | 1,548,109 |
+| Total Rust Lines      |    40,878 |
+| Total Rust Chars      | 1,549,113 |
 | Avg Lines/Rust File   |       575 |
-| Avg Chars/Rust File   |    21,804 |
+| Avg Chars/Rust File   |    21,818 |
 | Total Dart Files      |        50 |
 | Total Dart Lines      |    22,559 |
 | Total Dart Chars      |   725,228 |
@@ -20,7 +20,7 @@
 | Avg Lines/Kotlin File |       153 |
 | Avg Chars/Kotlin File |     5,524 |
 
-**Grand Total:** 125 files, 64,030 lines, 2,295,436 characters
+**Grand Total:** 125 files, 64,049 lines, 2,296,440 characters
 
 ## Rust Source Files
 
@@ -52,11 +52,11 @@
 | src                     | methods.rs           |     4 | 34326 |  1070 |        - |       - | Web JSON method dispatch                           |
 | src                     | mobile_api.rs        |     4 | 36782 |  1049 |        - |       - | Mobile FRB API surface                             |
 | src                     | mobile_node.rs       |     5 | 96435 |  2565 |        - |       - | Mobile node lifecycle & swarm                      |
-| src                     | mod.rs               |     5 | 45007 |  1296 |        - |       - | FRB API surface                                    |
+| src                     | mod.rs               |     5 | 44870 |  1290 |        - |       - | FRB API surface                                    |
 | src                     | mod.rs               |     4 | 12814 |   329 |        - |       - | TUI render chrome & dispatch                       |
-| src                     | mod.rs               |     7 | 63897 |  1673 |        - |       - | Web server (axum HTTP+WS)                          |
+| src                     | mod.rs               |     7 | 64394 |  1681 |        - |       - | Web server (axum HTTP+WS)                          |
 | src                     | net_diag.rs          |     4 | 21449 |   596 |        - |       - | Source file                                        |
-| src                     | network.rs           |     3 |  1979 |    67 |        - |       - | Network size classification                        |
+| src                     | network.rs           |     3 |  2655 |    84 |        - |       - | Network size classification                        |
 | src                     | network_config.rs    |     3 |  7751 |   216 |        - |       - | Source file                                        |
 | src                     | nickname.rs          |     5 | 13241 |   343 |        - |       - | Nickname management                                |
 | src                     | notifications.rs     |     4 |  8213 |   241 |        - |       - | Source file                                        |
@@ -86,19 +86,19 @@
 | src/bin/tui             | event_source.rs      |     4 |  1227 |    40 |        - |       - | Terminal event polling (60 FPS)                    |
 | src/bin/tui             | input_processor.rs   |     7 | 73500 |  1891 |        - |       - | Input event routing & processing                   |
 | src/bin/tui             | key_probe.rs         |     6 |  6272 |   172 |        - |       - | Keyboard enhancement probe                         |
-| src/bin/tui             | main_loop.rs         |     6 | 16099 |   402 |        - |       - | Task orchestration & async                         |
+| src/bin/tui             | main_loop.rs         |     6 | 15979 |   400 |        - |       - | Task orchestration & async                         |
 | src/bin/tui             | message_handlers.rs  |     4 | 17117 |   522 |        - |       - | Message sending logic                              |
 | src/bin/tui             | scroll_handlers.rs   |     6 | 18157 |   482 |        - |       - | Scroll & hover-aware navigation                    |
-| src/bin/tui             | state.rs             |     8 | 66263 |  1562 |        - |       - | Shared application state                           |
+| src/bin/tui             | state.rs             |     8 | 66192 |  1560 |        - |       - | Shared application state                           |
 | src/bin/tui/render_loop | layout.rs            |     5 |  3173 |    89 |        - |       - | UI layout component rendering                      |
-| src/bin/tui/render_loop | mod.rs               |     6 | 15139 |   386 |        - |       - | Render loop orchestration (60 FPS)                 |
+| src/bin/tui/render_loop | mod.rs               |     6 | 15298 |   390 |        - |       - | Render loop orchestration (60 FPS)                 |
 | src/generated           | columns.rs           |     1 |  4561 |   108 |        - |       - | Auto-generated column definitions                  |
 | src/generated           | mod.rs               |     0 |   488 |    11 |        - |       - | Module declarations                                |
 | src/generated           | models_insertable.rs |     1 | 11215 |   317 |        - |       - | Insertable data models                             |
 | src/generated           | models_queryable.rs  |     1 | 14539 |   397 |        - |       - | Queryable data models                              |
 | src/generated           | schema.rs            |     2 |  9786 |   330 |        - |       - | Database schema (Diesel)                           |
 
-**Total:** 71 files, 40,859 lines, 1,548,109 characters
+**Total:** 71 files, 40,878 lines, 1,549,113 characters
 
 ## Rust Test Files
 
@@ -137,7 +137,7 @@
 | unit   | unit_bin_tui_main_loop.rs          |   233 |  7007 |     3 | Unit tests for TUI main loop          |
 | unit   | unit_bin_tui_message_handlers.rs   |   467 | 15073 |     5 | Unit tests for TUI message handlers   |
 | unit   | unit_bin_tui_render_loop_layout.rs |    70 |  2251 |     2 | Test file                             |
-| unit   | unit_bin_tui_render_loop_mod.rs    |   408 | 14574 |     3 | Unit tests for TUI render loop        |
+| unit   | unit_bin_tui_render_loop_mod.rs    |   440 | 15559 |     3 | Unit tests for TUI render loop        |
 | unit   | unit_bin_tui_scroll_handlers.rs    |   787 | 25481 |     3 | Unit tests for TUI scroll handlers    |
 | unit   | unit_bin_tui_state.rs              |  1120 | 37039 |     3 | Unit tests for TUI state              |
 | unit   | unit_bin_tui_test_helpers.rs       |    66 |  2330 |     3 | Unit tests for TUI test helpers       |
@@ -157,7 +157,7 @@
 | unit   | unit_logging.rs                    |   205 |  5217 |     4 | Unit tests for logging module         |
 | unit   | unit_messages.rs                   |   664 | 25132 |     4 | Unit tests for messages module        |
 | unit   | unit_net_diag.rs                   |   483 | 15776 |     3 | Test file                             |
-| unit   | unit_network.rs                    |    38 |  1098 |     2 | Unit tests for network module         |
+| unit   | unit_network.rs                    |    51 |  1650 |     2 | Unit tests for network module         |
 | unit   | unit_network_config.rs             |   167 |  5564 |     4 | Test file                             |
 | unit   | unit_nickname.rs                   |   236 |  8550 |     3 | Unit tests for nickname module        |
 | unit   | unit_peers.rs                      |   113 |  3428 |     3 | Unit tests for peers module           |
@@ -172,7 +172,7 @@
 | unit   | unit_tui_test_state.rs             |    99 |  3105 |     2 | Unit tests for TUI test state         |
 | unit   | unit_types.rs                      |   400 | 12098 |     3 | Unit tests for types module           |
 
-**Total:** 67 test files, 29,738 lines, 999,715 characters
+**Total:** 67 test files, 29,783 lines, 1,001,252 characters
 
 ## Dart Source Files
 
@@ -235,13 +235,13 @@
 
 | Folder  | File                             | Lines | Chars | Depth | Description                           |
 |:--------|:---------------------------------|------:|------:|------:|--------------------------------------:|
-| helpers | fake_node_api.dart               |   798 | 24166 |     4 | In-memory node fake                   |
+| helpers | fake_node_api.dart               |   813 | 24595 |     4 | In-memory node fake                   |
 | unit    | api_test.dart                    |    61 |  2389 |     4 | Dart API layer unit tests             |
 | unit    | attachments_test.dart            |   132 |  4053 |     5 | Attachment helper tests               |
 | unit    | blocklist_test.dart              |    47 |  1429 |     4 | Dart test file                        |
 | unit    | call_audio_android_test.dart     |   167 |  5393 |     5 | Dart test file                        |
 | unit    | call_audio_test.dart             |    93 |  3466 |     5 | Dart test file                        |
-| unit    | http_node_api_test.dart          |   897 | 29428 |    10 | Web transport wire-contract tests     |
+| unit    | http_node_api_test.dart          |   904 | 29576 |    10 | Web transport wire-contract tests     |
 | unit    | notifications_test.dart          |    99 |  3572 |     3 | Dart test file                        |
 | widget  | attachment_chip_test.dart        |    91 |  2630 |     7 | Attachment chip widget tests          |
 | widget  | call_screen_test.dart            |   593 | 18895 |    12 | Call screen widget tests              |
@@ -251,14 +251,14 @@
 | widget  | messages_test.dart               |  1352 | 40012 |    10 | Chat widget tests                     |
 | widget  | peer_info_test.dart              |   306 |  9464 |     6 | Peer Info widget tests                |
 | widget  | settings_network_peers_test.dart |   128 |  4028 |     3 | Dart test file                        |
-| widget  | settings_test.dart               |   370 | 11451 |     6 | Settings widget tests                 |
+| widget  | settings_test.dart               |   426 | 13105 |     6 | Settings widget tests                 |
 | widget  | share_discovery_test.dart        |   231 |  7265 |     4 | Dart test file                        |
 | widget  | share_list_test.dart             |   453 | 14040 |     6 | Dart test file                        |
 | widget  | share_network_test.dart          |   176 |  5225 |     7 | Dart test file                        |
 | widget  | share_publish_test.dart          |   292 |  8500 |     6 | Dart test file                        |
 | test    | widget_test.dart                 |    21 |   624 |     2 | Widget smoke tests                    |
 
-**Total:** 22 test files, 7,273 lines, 227,632 characters
+**Total:** 22 test files, 7,351 lines, 229,863 characters
 
 ## Kotlin Source Files
 

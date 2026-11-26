@@ -59,6 +59,38 @@ fn test_app_state_to_render_state_connected_peer_ids() {
 }
 
 #[test]
+fn test_app_state_to_render_state_network_size_follows_connections() {
+    let mut state = app_state();
+    assert_eq!(app_state_to_render_state(&state).network_size, "Small");
+
+    for idx in 0..4 {
+        state.connected.on_peer_connected(format!("peer-{idx}"));
+    }
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.peer_count, 4);
+    assert_eq!(rs.network_size, "Medium");
+
+    for idx in 4..16 {
+        state.connected.on_peer_connected(format!("peer-{idx}"));
+    }
+    assert_eq!(app_state_to_render_state(&state).network_size, "Large");
+
+    for idx in 4..16 {
+        state
+            .connected
+            .on_peer_disconnected(&format!("peer-{idx}"), 1.0);
+    }
+    assert_eq!(app_state_to_render_state(&state).network_size, "Medium");
+
+    for idx in 0..4 {
+        state
+            .connected
+            .on_peer_disconnected(&format!("peer-{idx}"), 2.0);
+    }
+    assert_eq!(app_state_to_render_state(&state).network_size, "Small");
+}
+
+#[test]
 fn test_app_state_to_render_state_last_disconnection() {
     let mut state = app_state();
     state.connected.on_peer_connected("p1".to_string());
