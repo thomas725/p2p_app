@@ -126,10 +126,12 @@ Implemented and verified end to end:
 - Feature surface equals the union of the TUI and Flutter feature sets (group leave, per-peer
   local nickname, calls, device binding, files/attachments, backfill, stats), plus the Rust
   share-store facade (`createShare`, `listShares`, visibility, grants, manifests,
-  offer re-advertising, publish), exposed through the same `NodeApi` on both
-  Dart transports via `lib/src/data/shares_json.dart`. Re-advertising takes only
-  IDs: Rust builds the canonical offer, so the browser never authors a
-  `ShareOffer`. Web calls cannot pass a server-local path:
+  `reviseShareManifestForDeletion`, offer re-advertising, publish), exposed
+  through the same `NodeApi` on both Dart transports via
+  `lib/src/data/shares_json.dart`. Re-advertising takes only IDs and deletion
+  revisions take only a share id plus selected paths: Rust builds the canonical
+  offer and the next manifest, so the browser never authors a `ShareOffer` or a
+  manifest revision. Web calls cannot pass a server-local path:
   `createShare`/`snapshotShare` reject such parameters before touching the DB and
   `bindShare` is rejected outright (a browser has no folder to bind). Share
   objects use camelCase at the browser/event boundary — `src/shares_json.rs`

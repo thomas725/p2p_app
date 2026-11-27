@@ -569,6 +569,11 @@ class FrbNodeApi implements NodeApi {
       bridge.loadShareManifest(shareId: shareId);
 
   @override
+  Future<shares.ShareManifest> reviseShareManifestForDeletion({
+    required bridge.ReviseShareManifestForDeletionParams params,
+  }) => bridge.reviseShareManifestForDeletion(params: params);
+
+  @override
   Future<void> saveShareManifest({
     required String shareId,
     required shares.ShareManifest manifest,

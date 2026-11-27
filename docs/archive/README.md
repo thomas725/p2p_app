@@ -74,6 +74,7 @@ record. Every file carries an `ARCHIVED` banner at the top.
 | [2026-11-27_rust_owned_reply_drafts.md](2026-11-27_rust_owned_reply_drafts.md) | Reply snapshots frozen in Rust via FRB/web `replyDraft`; Dart only renders them | 2026-11-27 |
 | [2026-11-27_share_visibility_toggles.md](2026-11-27_share_visibility_toggles.md) | Owner-only private/public + anonymous-write setters in TUI and Flutter/web | 2026-11-27 |
 | [2026-11-27_rust_owned_share_readvertise.md](2026-11-27_rust_owned_share_readvertise.md) | Share re-advertising builds canonical offers in Rust; raw frontend offer-send binding removed | 2026-11-27 |
+| [2026-11-27_rust_owned_share_deletion_revisions.md](2026-11-27_rust_owned_share_deletion_revisions.md) | Deletion revisions built in Rust and exposed to Flutter/web; Dart keeps only path selection | 2026-11-27 |
 | [2026-11-27_incoming_attachment_descriptors.md](2026-11-27_incoming_attachment_descriptors.md) | Live broadcast/DM attachment descriptors survive Flutter/web persistence and reload | 2026-11-27 |
 | [2026-11-27_tui_share_network_actions.md](2026-11-27_tui_share_network_actions.md) | TUI Shares manifest refresh and canonical re-advertise from one sorted connected-peer list | 2026-11-27 |
 | [2026-11-27_tui_share_creation.md](2026-11-27_tui_share_creation.md) | Modal TUI share creation through the canonical Rust store with private/read-only defaults | 2026-11-27 |

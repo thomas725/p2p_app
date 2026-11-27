@@ -56,13 +56,16 @@ Widget detailApp({
 );
 
 void main() {
-  test('share action peers are the connected set in deterministic ID order', () {
-    expect(
-      connectedShareActionPeerIds(const ['peer-b', 'peer-a', 'peer-b']),
-      ['peer-a', 'peer-b'],
-    );
-    expect(connectedShareActionPeerIds(const <String>[]), isEmpty);
-  });
+  test(
+    'share action peers are the connected set in deterministic ID order',
+    () {
+      expect(
+        connectedShareActionPeerIds(const ['peer-b', 'peer-a', 'peer-b']),
+        ['peer-a', 'peer-b'],
+      );
+      expect(connectedShareActionPeerIds(const <String>[]), isEmpty);
+    },
+  );
 
   testWidgets('empty state explains where shares come from', (tester) async {
     await tester.pumpWidget(listApp(shares: const [], onOpen: (_) {}));
@@ -366,6 +369,7 @@ void main() {
       ],
     );
     final calls = <(String, BigInt, ShareManifest)>[];
+    final revisions = <(String, List<String>)>[];
     await tester.pumpWidget(
       MaterialApp(
         home: ShareDetailScreen(
@@ -378,6 +382,21 @@ void main() {
           loadManifest: (_) async => manifest,
           loadGrants: (_) async => const [],
           peerIds: const ['peer-1'],
+          onReviseManifest: (shareId, removedPaths) async {
+            revisions.add((shareId, removedPaths));
+            return ShareManifest(
+              shareId: shareId,
+              name: 'Docs',
+              revision: BigInt.from(3),
+              entries: [
+                ShareEntry(
+                  path: 'docs/readme.md',
+                  fileId: 'abcdef0123456789',
+                  size: BigInt.from(12),
+                ),
+              ],
+            );
+          },
           onPublish: (peerId, baseRevision, revised) async {
             calls.add((peerId, baseRevision, revised));
           },

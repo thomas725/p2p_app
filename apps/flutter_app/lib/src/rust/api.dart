@@ -18,7 +18,7 @@ import 'shares.dart';
 import 'theme.dart';
 
 // These functions are ignored because they are not marked as `pub`: `local_share_owner`, `parse_share_kind`, `parse_share_mode`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`
 
 /// Initialize the mobile database at the given path and return peer info.
 ///
@@ -898,6 +898,21 @@ Future<void> removeShareGrant({
 Future<ShareManifest?> loadShareManifest({required String shareId}) =>
     RustLib.instance.api.crateApiLoadShareManifest(shareId: shareId);
 
+/// Build the next revision of a share manifest after deleting selected paths.
+///
+/// The share id and paths are the only client input; Rust reads the canonical
+/// snapshot and preserves its name, id and remaining entries before bumping the
+/// revision. The returned manifest still goes through the owner's ACL and base
+/// revision check when published.
+///
+/// # Errors
+/// Returns an error for an unknown share without a manifest, an empty or unsafe
+/// selection, paths absent from the manifest, or a DB failure.
+Future<ShareManifest> reviseShareManifestForDeletion({
+  required ReviseShareManifestForDeletionParams params,
+}) =>
+    RustLib.instance.api.crateApiReviseShareManifestForDeletion(params: params);
+
 /// Persist a validated manifest and bump the share's revision.
 ///
 /// # Errors
@@ -1117,6 +1132,31 @@ class MobileShareGrant {
           runtimeType == other.runtimeType &&
           userId == other.userId &&
           mode == other.mode;
+}
+
+/// Inputs for building a deletion revision of a share manifest.
+class ReviseShareManifestForDeletionParams {
+  /// Share whose canonical stored manifest is revised.
+  final String shareId;
+
+  /// Paths to remove; Rust validates them against the stored snapshot.
+  final List<String> removedPaths;
+
+  const ReviseShareManifestForDeletionParams({
+    required this.shareId,
+    required this.removedPaths,
+  });
+
+  @override
+  int get hashCode => shareId.hashCode ^ removedPaths.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReviseShareManifestForDeletionParams &&
+          runtimeType == other.runtimeType &&
+          shareId == other.shareId &&
+          removedPaths == other.removedPaths;
 }
 
 /// Fields for persisting one incoming broadcast or DM.

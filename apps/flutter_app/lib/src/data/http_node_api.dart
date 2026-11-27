@@ -14,7 +14,12 @@ import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/data/shares_json.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
-    show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
+    show
+        BindShareParams,
+        CreateShareParams,
+        MobileShare,
+        MobileShareGrant,
+        ReviseShareManifestForDeletionParams;
 import 'package:p2p_app_flutter/src/rust/location.dart'
     show LocationRecipient, LocationShareInput, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
@@ -1205,6 +1210,17 @@ class HttpNodeApi implements NodeApi {
         ? null
         : shareManifestFromJson(raw as Map<String, dynamic>);
   }
+
+  @override
+  Future<ShareManifest> reviseShareManifestForDeletion({
+    required ReviseShareManifestForDeletionParams params,
+  }) async => shareManifestFromJson(
+    (await _call('reviseShareManifestForDeletion', {
+          'shareId': params.shareId,
+          'removedPaths': params.removedPaths,
+        }))
+        as Map<String, dynamic>,
+  );
 
   @override
   Future<void> saveShareManifest({

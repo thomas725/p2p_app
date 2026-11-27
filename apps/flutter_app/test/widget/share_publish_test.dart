@@ -45,6 +45,7 @@ Widget publishApp({
   MobileShare? share,
   required ShareManifest? manifest,
   required List<String> peerIds,
+  Future<ShareManifest> Function(String, List<String>)? onReviseManifest,
   required Future<void> Function(String, BigInt, ShareManifest) onPublish,
   Future<void> Function()? onCompleted,
 }) => MaterialApp(
@@ -54,6 +55,9 @@ Widget publishApp({
         share: share ?? makeShare(),
         manifest: manifest,
         peerIds: peerIds,
+        onReviseManifest:
+            onReviseManifest ??
+            (_, _) async => throw Exception('unexpected revision call'),
         onPublish: onPublish,
         onCompleted: onCompleted,
       ),
@@ -83,27 +87,6 @@ Future<void> submit(WidgetTester tester) async {
 void main() {
   test('revision conversion stays at the transport boundary', () {
     expect(shareRevisionToPlatformInt64(BigInt.from(42)), 42);
-  });
-
-  test('revision helper drops selected entries and rejects no-ops', () {
-    final base = makeManifest();
-    final revised = revisedManifestForDeletion(base, {'docs/b.md'});
-
-    expect(revised, isNotNull);
-    expect(revised!.shareId, 'share-a');
-    expect(revised.name, 'Docs');
-    expect(revised.revision, BigInt.from(3));
-    expect(revised.entries.map((e) => e.path), ['docs/a.md']);
-
-    expect(revisedManifestForDeletion(base, const {}), isNull);
-    expect(
-      revisedManifestForDeletion(makeManifest(revision: 0), {'docs/a.md'}),
-      isNull,
-    );
-    expect(
-      revisedManifestForDeletion(makeManifest(id: ''), {'docs/a.md'}),
-      isNull,
-    );
   });
 
   testWidgets('missing manifest is not publishable', (tester) async {
@@ -163,11 +146,16 @@ void main() {
     tester,
   ) async {
     final calls = <(String, BigInt, ShareManifest)>[];
+    final revisions = <(String, List<String>)>[];
     var completions = 0;
     await tester.pumpWidget(
       publishApp(
         manifest: makeManifest(),
         peerIds: const ['peer-1', 'peer-2'],
+        onReviseManifest: (shareId, removedPaths) async {
+          revisions.add((shareId, removedPaths));
+          return makeManifest(revision: 3, paths: const ['docs/a.md']);
+        },
         onPublish: (peerId, base, manifest) async {
           calls.add((peerId, base, manifest));
         },
@@ -180,6 +168,9 @@ void main() {
     await selectFile(tester, 'docs/b.md');
     await submit(tester);
 
+    expect(revisions, hasLength(1));
+    expect(revisions.single.$1, 'share-a');
+    expect(revisions.single.$2, orderedEquals(['docs/b.md']));
     expect(calls, hasLength(1));
     expect(calls.single.$1, 'peer-2');
     expect(calls.single.$2, BigInt.from(2));
@@ -197,6 +188,8 @@ void main() {
       publishApp(
         manifest: makeManifest(),
         peerIds: const ['peer-1', 'peer-2'],
+        onReviseManifest: (_, paths) async =>
+            makeManifest(revision: 3, paths: paths),
         onPublish: (peerId, _, _) async {
           calls.add((peerId, BigInt.zero, makeManifest()));
         },
@@ -209,6 +202,8 @@ void main() {
       publishApp(
         manifest: makeManifest(),
         peerIds: const ['peer-3', 'peer-4'],
+        onReviseManifest: (_, paths) async =>
+            makeManifest(revision: 3, paths: paths),
         onPublish: (peerId, _, _) async {
           calls.add((peerId, BigInt.zero, makeManifest()));
         },
@@ -263,6 +258,38 @@ void main() {
     );
   });
 
+  testWidgets('revision failure blocks publishing and keeps the selection', (
+    tester,
+  ) async {
+    final calls = <(String, BigInt, ShareManifest)>[];
+    await tester.pumpWidget(
+      publishApp(
+        manifest: makeManifest(),
+        peerIds: const ['peer-1'],
+        onReviseManifest: (_, _) async => throw Exception('unsafe path'),
+        onPublish: (peerId, base, manifest) async {
+          calls.add((peerId, base, manifest));
+        },
+      ),
+    );
+    await tester.pump();
+    await selectFile(tester, 'docs/a.md');
+    await submit(tester);
+
+    expect(calls, isEmpty);
+    expect(find.byKey(const Key('share-publish-error')), findsOneWidget);
+    expect(find.textContaining('Publish failed'), findsOneWidget);
+    expect(find.textContaining('unsafe path'), findsOneWidget);
+    expect(
+      tester
+          .widget<CheckboxListTile>(
+            find.byKey(const Key('share-publish-delete-docs/a.md')),
+          )
+          .value,
+      isTrue,
+    );
+  });
+
   testWidgets('publish failure shows an inline error and keeps the selection', (
     tester,
   ) async {
@@ -270,6 +297,8 @@ void main() {
       publishApp(
         manifest: makeManifest(),
         peerIds: const ['peer-1'],
+        onReviseManifest: (_, paths) async =>
+            makeManifest(revision: 3, paths: paths),
         onPublish: (_, _, _) async => throw Exception('stale revision'),
       ),
     );

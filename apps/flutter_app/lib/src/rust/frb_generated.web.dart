@@ -80,6 +80,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef dco_decode_box_autoadd_reply_ref(dynamic raw);
 
   @protected
+  ReviseShareManifestForDeletionParams
+  dco_decode_box_autoadd_revise_share_manifest_for_deletion_params(dynamic raw);
+
+  @protected
   SaveIncomingMessageParams dco_decode_box_autoadd_save_incoming_message_params(
     dynamic raw,
   );
@@ -309,6 +313,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef dco_decode_reply_ref(dynamic raw);
 
   @protected
+  ReviseShareManifestForDeletionParams
+  dco_decode_revise_share_manifest_for_deletion_params(dynamic raw);
+
+  @protected
   SaveIncomingMessageParams dco_decode_save_incoming_message_params(
     dynamic raw,
   );
@@ -402,6 +410,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ReplyRef sse_decode_box_autoadd_reply_ref(SseDeserializer deserializer);
+
+  @protected
+  ReviseShareManifestForDeletionParams
+  sse_decode_box_autoadd_revise_share_manifest_for_deletion_params(
+    SseDeserializer deserializer,
+  );
 
   @protected
   SaveIncomingMessageParams sse_decode_box_autoadd_save_incoming_message_params(
@@ -693,6 +707,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReplyRef sse_decode_reply_ref(SseDeserializer deserializer);
 
   @protected
+  ReviseShareManifestForDeletionParams
+  sse_decode_revise_share_manifest_for_deletion_params(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   SaveIncomingMessageParams sse_decode_save_incoming_message_params(
     SseDeserializer deserializer,
   );
@@ -799,6 +819,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_reply_ref(
     ReplyRef self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_revise_share_manifest_for_deletion_params(
+    ReviseShareManifestForDeletionParams self,
     SseSerializer serializer,
   );
 
@@ -1194,6 +1220,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_reply_ref(ReplyRef self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_revise_share_manifest_for_deletion_params(
+    ReviseShareManifestForDeletionParams self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_save_incoming_message_params(

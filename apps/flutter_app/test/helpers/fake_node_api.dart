@@ -11,7 +11,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart'
 
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
-    show BindShareParams, CreateShareParams, MobileShare, MobileShareGrant;
+    show
+        BindShareParams,
+        CreateShareParams,
+        MobileShare,
+        MobileShareGrant,
+        ReviseShareManifestForDeletionParams;
 import 'package:p2p_app_flutter/src/rust/location.dart'
     show LocationRecipient, LocationShareInput, LocationTrackPoint;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
@@ -1047,6 +1052,11 @@ class FakeNodeApi implements NodeApi {
   @override
   Future<ShareManifest?> loadShareManifest(String shareId) =>
       throw UnimplementedError();
+
+  @override
+  Future<ShareManifest> reviseShareManifestForDeletion({
+    required ReviseShareManifestForDeletionParams params,
+  }) => throw UnimplementedError();
 
   @override
   Future<void> saveShareManifest({

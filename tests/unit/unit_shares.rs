@@ -432,6 +432,89 @@ fn save_manifest_persists_entries_and_revision() {
 
 #[test]
 #[serial(db)]
+fn manifest_with_deletions_builds_a_validated_next_revision_from_the_store() {
+    with_test_db(|| {
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        let ids = [
+            crate::files::hash_bytes(b"a"),
+            crate::files::hash_bytes(b"b"),
+            crate::files::hash_bytes(b"c"),
+        ];
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 7,
+            entries: vec![
+                entry("docs/a.md", ids[0].clone()),
+                entry("docs/b.md", ids[1].clone()),
+                entry("docs/c.md", ids[2].clone()),
+            ],
+        };
+        save_manifest(&share.share_id, &manifest).expect("save");
+
+        let revised = manifest_with_deletions(
+            &share.share_id,
+            &["docs/b.md".to_string(), "docs/b.md".to_string()],
+        )
+        .expect("revise");
+        assert_eq!(revised.share_id, share.share_id);
+        assert_eq!(revised.name, "Docs");
+        assert_eq!(revised.revision, 8);
+        assert_eq!(
+            revised
+                .entries
+                .iter()
+                .map(|e| e.path.as_str())
+                .collect::<Vec<_>>(),
+            ["docs/a.md", "docs/c.md"]
+        );
+        assert!(validate_manifest(&revised).is_ok());
+
+        // The helper only builds the snapshot; publishing still owns the write.
+        assert_eq!(load_manifest(&share.share_id).expect("load"), manifest);
+    });
+}
+
+#[test]
+#[serial(db)]
+fn manifest_with_deletions_rejects_empty_unsafe_and_unmatched_selections() {
+    with_test_db(|| {
+        let share =
+            create_share("Docs", "owner", ShareKind::Private, false, None).expect("create share");
+        let id = crate::files::hash_bytes(b"abc");
+        let manifest = ShareManifest {
+            share_id: share.share_id.clone(),
+            name: share.name.clone(),
+            revision: 1,
+            entries: vec![entry("docs/a.md", id)],
+        };
+        save_manifest(&share.share_id, &manifest).expect("save");
+
+        for removed in [
+            Vec::new(),
+            vec!["../secret".to_string()],
+            vec!["docs/missing.md".to_string()],
+        ] {
+            assert!(
+                manifest_with_deletions(&share.share_id, &removed).is_err(),
+                "accepted selection {removed:?}"
+            );
+        }
+        assert!(manifest_with_deletions("never-created", &["a".to_string()]).is_err());
+
+        // A share without a manifest offers no canonical base to revise.
+        let empty = create_share("Empty", "owner", ShareKind::Private, false, None)
+            .expect("create empty share");
+        assert!(
+            manifest_with_deletions(&empty.share_id, &["a".to_string()]).is_err(),
+            "revised a share with no manifest"
+        );
+    });
+}
+
+#[test]
+#[serial(db)]
 fn save_manifest_rejects_same_revision_with_different_content() {
     with_test_db(|| {
         let share =

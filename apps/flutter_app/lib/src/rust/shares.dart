@@ -109,8 +109,8 @@ class ShareOffer {
   /// Whether a public share accepts writes.
   final bool publicWrite;
 
-  /// Owner's verified user id when the receiver can resolve it. Used only for
-  /// local bookkeeping — the owner enforces the ACL itself.
+  /// Claimed owner id. The receiver never treats it as verified until Rust
+  /// resolves the peer serving the share to that same user id.
   final String? ownerUserId;
 
   const ShareOffer({

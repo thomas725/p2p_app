@@ -7,7 +7,8 @@ import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/node_api.dart';
 import 'package:p2p_app_flutter/src/data/shares_json.dart'
     show shareRevisionToPlatformInt64;
-import 'package:p2p_app_flutter/src/rust/api.dart' show MobileShare;
+import 'package:p2p_app_flutter/src/rust/api.dart'
+    show MobileShare, ReviseShareManifestForDeletionParams;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/net_diag.dart';
@@ -1236,6 +1237,13 @@ class _HomeScreenState extends State<HomeScreen> {
               nodeApi.requestShareManifest(peerId: peerId, shareId: shareId),
           onReadvertise: (shareId, peerId) =>
               nodeApi.readvertiseShare(shareId: shareId, peerId: peerId),
+          onReviseManifest: (shareId, removedPaths) =>
+              nodeApi.reviseShareManifestForDeletion(
+                params: ReviseShareManifestForDeletionParams(
+                  shareId: shareId,
+                  removedPaths: removedPaths,
+                ),
+              ),
           onPublish: (peerId, baseRevision, manifest) =>
               nodeApi.publishShareSnapshot(
                 peerId: peerId,

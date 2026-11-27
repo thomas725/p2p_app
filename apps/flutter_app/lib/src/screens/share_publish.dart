@@ -4,46 +4,22 @@ import 'package:p2p_app_flutter/src/rust/api.dart' show MobileShare;
 import 'package:p2p_app_flutter/src/rust/shares.dart'
     show ShareEntry, ShareManifest;
 
-/// Build the snapshot submitted to a share's owner after removing files.
-///
-/// `null` means "nothing publishable": no selection, a corrupt base revision,
-/// or an empty share id. Rust remains the authority for path/file-id validation
-/// and for the ACL, so this helper only changes the entry list and advances the
-/// optimistic-concurrency revision by one.
-ShareManifest? revisedManifestForDeletion(
-  ShareManifest base,
-  Set<String> removedPaths,
-) {
-  if (base.shareId.isEmpty || base.revision <= BigInt.zero) {
-    return null;
-  }
-  final entries = base.entries
-      .where((entry) => !removedPaths.contains(entry.path))
-      .toList(growable: false);
-  if (entries.length == base.entries.length) {
-    return null;
-  }
-  return ShareManifest(
-    shareId: base.shareId,
-    name: base.name,
-    revision: base.revision + BigInt.one,
-    entries: entries,
-  );
-}
-
 /// Publish a deletion back to the peer that owns a share.
 ///
-/// The manifest loaded in the detail route is the base revision. The selected
-/// peer is only a destination: Rust checks its verified user id against the
-/// share's ACL and rejects a stale `baseRevision` atomically. A browser can
-/// publish a deletion because it needs no new filesystem snapshot; adding new
-/// files stays a native snapshot/binding operation.
+/// The manifest loaded in the detail route is the base revision. Rust builds
+/// the next revision from its canonical snapshot, so Dart only collects the
+/// paths to remove. The selected peer is just the destination: Rust checks its
+/// verified user id against the share's ACL and rejects a stale `baseRevision`
+/// atomically. A browser can publish a deletion because it needs no new
+/// filesystem snapshot; adding new files stays a native snapshot/binding
+/// operation.
 class SharePublishSection extends StatefulWidget {
   const SharePublishSection({
     super.key,
     required this.share,
     required this.manifest,
     required this.peerIds,
+    required this.onReviseManifest,
     required this.onPublish,
     this.onCompleted,
   });
@@ -51,6 +27,15 @@ class SharePublishSection extends StatefulWidget {
   final MobileShare share;
   final ShareManifest? manifest;
   final List<String> peerIds;
+
+  /// Rust-owned deletion policy: canonicalizes the paths, preserves the rest
+  /// of the snapshot and bumps the revision. Errors abort the submission.
+  final Future<ShareManifest> Function(
+    String shareId,
+    List<String> removedPaths,
+  )
+  onReviseManifest;
+
   final Future<void> Function(
     String peerId,
     BigInt baseRevision,
@@ -123,8 +108,7 @@ class _SharePublishSectionState extends State<SharePublishSection> {
     if (base == null || peerId == null || _busy || !_matchesShare(base)) {
       return;
     }
-    final revised = revisedManifestForDeletion(base, _removed);
-    if (revised == null) return;
+    if (_removed.isEmpty) return;
 
     setState(() {
       _busy = true;
@@ -132,6 +116,10 @@ class _SharePublishSectionState extends State<SharePublishSection> {
       _status = null;
     });
     try {
+      final revised = await widget.onReviseManifest(
+        base.shareId,
+        _removed.toList(),
+      );
       await widget.onPublish(peerId, base.revision, revised);
       if (!mounted) return;
       setState(() {

@@ -17,7 +17,7 @@ import 'package:p2p_app_flutter/src/data/chat_message_ext.dart';
 import 'package:p2p_app_flutter/src/data/http_node_api.dart';
 import 'package:p2p_app_flutter/src/data/node_transport.dart';
 import 'package:p2p_app_flutter/src/rust/api.dart'
-    show CreateShareParams, MobileShare;
+    show CreateShareParams, MobileShare, ReviseShareManifestForDeletionParams;
 import 'package:p2p_app_flutter/src/rust/mobile_api.dart';
 import 'package:p2p_app_flutter/src/rust/mobile_node.dart';
 import 'package:p2p_app_flutter/src/rust/reply.dart';
@@ -898,6 +898,32 @@ void main() {
           'kind': 'public',
           'publicWrite': true,
         });
+      },
+    );
+
+    test(
+      'deletion revision forwards camelCase params and parses the result',
+      () async {
+        final fake = FakeRemoteTransport();
+        fake.onSend = (frame) {
+          final request = fake.frame(fake.sentFrames.length - 1);
+          expect(request['method'], 'reviseShareManifestForDeletion');
+          expect(request['params'], {
+            'shareId': 'share-1',
+            'removedPaths': ['docs/a.md', 'docs/b.md'],
+          });
+          fake.respond(request, ok: manifestJson);
+        };
+        final api = HttpNodeApi(connect: () async => fake);
+
+        final revised = await api.reviseShareManifestForDeletion(
+          params: ReviseShareManifestForDeletionParams(
+            shareId: 'share-1',
+            removedPaths: const ['docs/a.md', 'docs/b.md'],
+          ),
+        );
+        expect(revised.revision, BigInt.from(4));
+        expect(revised.entries.single.path, 'a.txt');
       },
     );
 

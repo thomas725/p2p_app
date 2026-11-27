@@ -203,6 +203,10 @@ Shipped after the core:
   manifests and selections are blocked client-side, while Rust remains the ACL
   and optimistic-concurrency authority. Record:
   [`archive/2026-11-26_flutter_share_publish.md`](archive/2026-11-26_flutter_share_publish.md).
+  Deletion revisions are now built by `shares::manifest_with_deletions` through
+  FRB/web `reviseShareManifestForDeletion`; Dart only passes the share id and
+  selected paths. Record:
+  [`archive/2026-11-27_rust_owned_share_deletion_revisions.md`](archive/2026-11-27_rust_owned_share_deletion_revisions.md).
 - a TUI Shares tab (after Settings): a selectable list with each share's
   kind/write flag, owner, local root, revision, private-share grants and
   manifest files, plus a "Last event" line fed by

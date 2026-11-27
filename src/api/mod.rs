@@ -1132,6 +1132,36 @@ pub fn load_share_manifest(share_id: &str) -> Result<Option<crate::shares::Share
     }
 }
 
+/// Inputs for building a deletion revision of a share manifest.
+#[derive(Debug, Clone)]
+pub struct ReviseShareManifestForDeletionParams {
+    /// Share whose canonical stored manifest is revised.
+    pub share_id: String,
+    /// Paths to remove; Rust validates them against the stored snapshot.
+    pub removed_paths: Vec<String>,
+}
+
+/// Build the next revision of a share manifest after deleting selected paths.
+///
+/// The share id and paths are the only client input; Rust reads the canonical
+/// snapshot and preserves its name, id and remaining entries before bumping the
+/// revision. The returned manifest still goes through the owner's ACL and base
+/// revision check when published.
+///
+/// # Errors
+/// Returns an error for an unknown share without a manifest, an empty or unsafe
+/// selection, paths absent from the manifest, or a DB failure.
+pub fn revise_share_manifest_for_deletion(
+    params: ReviseShareManifestForDeletionParams,
+) -> Result<crate::shares::ShareManifest, String> {
+    let ReviseShareManifestForDeletionParams {
+        share_id,
+        removed_paths,
+    } = params;
+    crate::shares::manifest_with_deletions(&share_id, &removed_paths)
+        .map_err(|error| error.to_string())
+}
+
 /// Persist a validated manifest and bump the share's revision.
 ///
 /// # Errors

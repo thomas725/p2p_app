@@ -165,6 +165,7 @@ class ShareDetailScreen extends StatefulWidget {
     this.peerIds = const [],
     this.onRequestManifest,
     this.onReadvertise,
+    this.onReviseManifest,
     this.onPublish,
     this.onNavigate,
     this.currentTab = 4,
@@ -198,6 +199,14 @@ class ShareDetailScreen extends StatefulWidget {
   final List<String> peerIds;
   final Future<void> Function(String shareId, String peerId)? onRequestManifest;
   final Future<void> Function(String shareId, String peerId)? onReadvertise;
+
+  /// Both publish seams are needed before the deletion editor appears. Rust
+  /// builds the revised manifest; this transport only submits it to a peer.
+  final Future<ShareManifest> Function(
+    String shareId,
+    List<String> removedPaths,
+  )?
+  onReviseManifest;
   final Future<void> Function(
     String peerId,
     BigInt baseRevision,
@@ -318,11 +327,12 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
                     onReadvertise: widget.onReadvertise!,
                     onCompleted: _reload,
                   ),
-                if (widget.onPublish != null)
+                if (widget.onReviseManifest != null && widget.onPublish != null)
                   SharePublishSection(
                     share: _share,
                     manifest: _manifest,
                     peerIds: widget.peerIds,
+                    onReviseManifest: widget.onReviseManifest!,
                     onPublish: widget.onPublish!,
                     onCompleted: _reload,
                   ),
@@ -365,12 +375,16 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
         children: [
           FilledButton(
             key: const Key('share-visibility-private'),
-            onPressed: isPrivate ? null : () => _setVisibility('private', false),
+            onPressed: isPrivate
+                ? null
+                : () => _setVisibility('private', false),
             child: const Text('Private'),
           ),
           FilledButton.tonal(
             key: const Key('share-visibility-public'),
-            onPressed: !isPrivate ? null : () => _setVisibility('public', false),
+            onPressed: !isPrivate
+                ? null
+                : () => _setVisibility('public', false),
             child: const Text('Public'),
           ),
         ],
@@ -482,8 +496,7 @@ class _ShareDetailScreenState extends State<ShareDetailScreen> {
     final added = await showDialog<bool>(
       context: context,
       builder: (_) => _AddGrantDialog(
-        onSubmit: (userId, mode) =>
-            setGrant(_share.shareId, userId, mode),
+        onSubmit: (userId, mode) => setGrant(_share.shareId, userId, mode),
       ),
     );
     if (added == true && mounted) await _reload();

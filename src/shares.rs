@@ -837,6 +837,54 @@ pub fn load_manifest(share_id: &str) -> color_eyre::Result<ShareManifest> {
         .ok_or_else(|| eyre!("share {share_id} has no published manifest"))
 }
 
+/// Build the next manifest revision by removing selected paths from the share's
+/// canonical stored snapshot.
+///
+/// The caller supplies only a share id and paths: the id, name, remaining
+/// entries and base revision all come from the DB, so a frontend cannot smuggle
+/// a hand-built snapshot past the owner's ACL check. Empty selections, unsafe
+/// paths, and paths that are not in the current manifest are rejected rather
+/// than turning a mistaken click into a no-op revision.
+///
+/// # Errors
+/// Returns an error for an unknown share without a manifest, an empty or
+/// invalid selection, no matching entries, or a revised manifest that fails
+/// validation.
+pub fn manifest_with_deletions(
+    share_id: &str,
+    removed_paths: &[String],
+) -> color_eyre::Result<ShareManifest> {
+    if removed_paths.is_empty() {
+        return Err(eyre!("no paths selected for deletion"));
+    }
+    let share = get_share(share_id)?.ok_or_else(|| eyre!("unknown share: {share_id}"))?;
+    let mut manifest = share
+        .manifest
+        .ok_or_else(|| eyre!("share {share_id} has no published manifest"))?;
+    if manifest.revision != share.revision {
+        return Err(eyre!(
+            "cached manifest revision {} does not match share revision {}",
+            manifest.revision,
+            share.revision
+        ));
+    }
+    let mut removed = BTreeSet::new();
+    for path in removed_paths {
+        let normalized = validate_share_path(path).map_err(|error| eyre!("{error}"))?;
+        removed.insert(normalized);
+    }
+    let before = manifest.entries.len();
+    manifest
+        .entries
+        .retain(|entry| !removed.contains(&entry.path));
+    if manifest.entries.len() == before {
+        return Err(eyre!("no selected paths exist in the share manifest"));
+    }
+    manifest.revision = manifest.revision.saturating_add(1);
+    validate_manifest(&manifest)?;
+    Ok(manifest)
+}
+
 /// Content addresses referenced by any live share. Used by attachment GC so a
 /// manifest's blobs are never swept as orphans.
 ///

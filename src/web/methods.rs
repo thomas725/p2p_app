@@ -23,6 +23,9 @@ use serde_json::Value;
 /// Returns the method's error string (mirrors the `Result<_, String>` shape
 /// of the FRB surface), a parameter-parse error, or "unknown method".
 pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
+    if let Some(result) = no_param_helpers(method) {
+        return result;
+    }
     match method {
         m @ ("getMobilePeerStatus"
         | "startNode"
@@ -74,10 +77,6 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         m @ ("listNetworkPeers" | "addNetworkPeer" | "removeNetworkPeer" | "setLanOnly") => {
             network_config(m, params)
         }
-        "getLanOnly" => ok(api::get_lan_only()),
-        "quickReactions" => ok(api::quick_reactions()),
-        "getBroadcastUnreadCount" => ok(api::get_broadcast_unread_count()),
-        "markBroadcastViewed" => json(api::mark_broadcast_viewed()),
         m @ ("isPeerBlocked" | "blockPeer" | "unblockPeer" | "listBlockedPeers") => {
             blocklist(m, params)
         }
@@ -91,6 +90,7 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "setShareGrant"
         | "removeShareGrant"
         | "loadShareManifest"
+        | "reviseShareManifestForDeletion"
         | "saveShareManifest"
         | "acceptShareOffer"
         | "snapshotShare"
@@ -98,10 +98,6 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "requestShareManifest"
         | "readvertiseShare"
         | "publishShareSnapshot") => shares(m, params),
-        "getTheme" => ok(api::get_theme()),
-        "getNotificationSettings" => ok(api::get_notification_settings()),
-        "getLocationDefaults" => ok(api::get_location_defaults()),
-        "listLocationRecipients" => json(api::list_location_recipients()),
         m @ ("locationMapUrl"
         | "buildLocationMessage"
         | "isLocationMessage"
@@ -123,6 +119,22 @@ pub fn dispatch(method: &str, params: Value) -> Result<Value, String> {
         | "setNotificationSettings") => ui_helpers(m, params),
         other => Err(format!("unknown method: {other}")),
     }
+}
+
+/// Small no-parameter helpers, split out to keep [`dispatch`] readable.
+fn no_param_helpers(method: &str) -> Option<Result<Value, String>> {
+    let result = match method {
+        "getLanOnly" => ok(api::get_lan_only()),
+        "quickReactions" => ok(api::quick_reactions()),
+        "getBroadcastUnreadCount" => ok(api::get_broadcast_unread_count()),
+        "markBroadcastViewed" => json(api::mark_broadcast_viewed()),
+        "getTheme" => ok(api::get_theme()),
+        "getNotificationSettings" => ok(api::get_notification_settings()),
+        "getLocationDefaults" => ok(api::get_location_defaults()),
+        "listLocationRecipients" => json(api::list_location_recipients()),
+        _ => return None,
+    };
+    Some(result)
 }
 
 // --- Domain sub-dispatchers ---
@@ -220,9 +232,8 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             }))
         }
         "listShares" => json(api::list_shares()),
-        "getShare" => {
-            let p: ShareIdParams = parse(params)?;
-            json(api::get_share(&p.share_id))
+        m @ ("getShare" | "deleteShare" | "listShareGrants" | "loadShareManifest") => {
+            share_id_methods(m, params)
         }
         "bindShare" => {
             // A browser has no server-local folder to bind: a non-null root is
@@ -233,10 +244,6 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             let _: ShareIdParams = parse(params)?;
             Err("server-local share roots are not supported over the web transport".into())
         }
-        "deleteShare" => {
-            let p: ShareIdParams = parse(params)?;
-            json(api::delete_share(&p.share_id))
-        }
         "setShareVisibility" => {
             let p: ShareVisibilityParams = parse(params)?;
             json(api::set_share_visibility(
@@ -244,10 +251,6 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
                 &p.kind,
                 p.public_write,
             ))
-        }
-        "listShareGrants" => {
-            let p: ShareIdParams = parse(params)?;
-            json(api::list_share_grants(&p.share_id))
         }
         "setShareGrant" => {
             let p: ShareGrantParams = parse(params)?;
@@ -260,12 +263,15 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             let p: ShareGrantParams = parse(params)?;
             json(api::remove_share_grant(&p.share_id, &p.user_id))
         }
-        "loadShareManifest" => {
-            let p: ShareIdParams = parse(params)?;
-            let manifest = api::load_share_manifest(&p.share_id)?
-                .as_ref()
-                .map(crate::shares_json::ShareManifestJson::from);
-            ok(manifest)
+        "reviseShareManifestForDeletion" => {
+            let p: WebReviseShareManifestForDeletionParams = parse(params)?;
+            let manifest = api::revise_share_manifest_for_deletion(
+                api::ReviseShareManifestForDeletionParams {
+                    share_id: p.share_id,
+                    removed_paths: p.removed_paths,
+                },
+            )?;
+            json(Ok(crate::shares_json::ShareManifestJson::from(&manifest)))
         }
         "saveShareManifest" => {
             // The raw store write bypasses ACLs and base_revision checks. Web
@@ -307,6 +313,23 @@ fn shares(method: &str, params: Value) -> Result<Value, String> {
             ))
         }
         other => Err(format!("method not routed to shares: {other}")),
+    }
+}
+
+/// Share methods whose only input is a share id.
+fn share_id_methods(method: &str, params: Value) -> Result<Value, String> {
+    let p: ShareIdParams = parse(params)?;
+    match method {
+        "getShare" => json(api::get_share(&p.share_id)),
+        "deleteShare" => json(api::delete_share(&p.share_id)),
+        "listShareGrants" => json(api::list_share_grants(&p.share_id)),
+        "loadShareManifest" => {
+            let manifest = api::load_share_manifest(&p.share_id)?
+                .as_ref()
+                .map(crate::shares_json::ShareManifestJson::from);
+            ok(manifest)
+        }
+        other => Err(format!("method not routed to share-id methods: {other}")),
     }
 }
 
@@ -1174,6 +1197,13 @@ struct ShareGrantParams {
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct WebReviseShareManifestForDeletionParams {
+    share_id: String,
+    removed_paths: Vec<String>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct SaveShareManifestParams {
     share_id: String,
     manifest: crate::shares_json::ShareManifestJson,
@@ -1297,6 +1327,7 @@ mod tests {
             "setShareGrant",
             "removeShareGrant",
             "loadShareManifest",
+            "reviseShareManifestForDeletion",
             "saveShareManifest",
             "acceptShareOffer",
             "snapshotShare",
@@ -1374,6 +1405,17 @@ mod tests {
         )
         .expect_err("the raw store write bypasses ACLs and revisions");
         assert!(err.contains("publishShareSnapshot"), "{err}");
+    }
+
+    #[test]
+    fn deletion_revision_params_use_the_camel_case_web_shape() {
+        let parsed: WebReviseShareManifestForDeletionParams = parse(json!({
+            "shareId": "s-42",
+            "removedPaths": ["docs/a.md", "docs/b.md"],
+        }))
+        .expect("camelCase params");
+        assert_eq!(parsed.share_id, "s-42");
+        assert_eq!(parsed.removed_paths, ["docs/a.md", "docs/b.md"]);
     }
 
     #[test]
