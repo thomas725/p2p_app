@@ -1484,3 +1484,73 @@ fn queue_apply_installs_immediately_when_every_blob_is_local() {
         );
     });
 }
+
+// ── peer-share discovery rows (Flutter/TUI parity) ─────────────────────────
+
+fn discovered_offer(share_id: &str, name: &str, revision: u64) -> ShareOffer {
+    ShareOffer {
+        share_id: share_id.to_string(),
+        name: name.to_string(),
+        kind: ShareKind::Private,
+        revision,
+        public_write: false,
+        owner_user_id: None,
+    }
+}
+
+#[test]
+fn merge_discovered_share_dedups_by_peer_and_share_and_keeps_newest_offer() {
+    let mut discovered = Vec::new();
+    merge_discovered_share(
+        &mut discovered,
+        "peer-a".to_string(),
+        discovered_offer("share-1", "Old name", 1),
+    );
+    merge_discovered_share(
+        &mut discovered,
+        "peer-a".to_string(),
+        discovered_offer("share-1", "New name", 2),
+    );
+    assert_eq!(discovered.len(), 1);
+    assert_eq!(discovered[0].peer_id, "peer-a");
+    assert_eq!(discovered[0].offer.name, "New name");
+    assert_eq!(discovered[0].offer.revision, 2);
+}
+
+#[test]
+fn merge_discovered_share_keeps_the_same_id_from_different_peers_separate() {
+    let mut discovered = Vec::new();
+    for peer_id in ["peer-b", "peer-a"] {
+        merge_discovered_share(
+            &mut discovered,
+            peer_id.to_string(),
+            discovered_offer("share-1", "Shared id", 3),
+        );
+    }
+    assert_eq!(discovered.len(), 2);
+    assert_eq!(
+        discovered
+            .iter()
+            .map(DiscoveredShare::key)
+            .collect::<Vec<_>>(),
+        vec![
+            ("peer-b".to_string(), "share-1".to_string()),
+            ("peer-a".to_string(), "share-1".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn merge_discovered_share_ignores_offers_without_an_id() {
+    let mut discovered = vec![DiscoveredShare {
+        peer_id: "peer-a".to_string(),
+        offer: discovered_offer("share-1", "Keep me", 1),
+    }];
+    merge_discovered_share(
+        &mut discovered,
+        "peer-a".to_string(),
+        discovered_offer("", "Invalid", 9),
+    );
+    assert_eq!(discovered.len(), 1);
+    assert_eq!(discovered[0].offer.name, "Keep me");
+}

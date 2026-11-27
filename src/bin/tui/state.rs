@@ -240,6 +240,12 @@ pub struct AppState {
     /// Peer targeted by the Shares tab's network actions. Indexes the canonical
     /// sorted connected-peer list, never the `HashSet` iteration order.
     pub share_peer_selection: usize,
+    /// Offers announced by peers, keyed by `(peer_id, share_id)`. Nothing is
+    /// persisted until the user explicitly accepts one with `Enter`.
+    pub discovered_shares: Vec<p2p_app::shares::DiscoveredShare>,
+    /// Highlighted discovered offer. Bare `j`/`k` move it without touching the
+    /// share, grant, manifest or peer cursors.
+    pub share_discovery_selection: usize,
 
     // UI State (TUI-specific)
     pub active_tab: usize,
@@ -763,6 +769,74 @@ impl AppState {
             KeyCode::Right => self.share_peer_selection.saturating_add(1).min(last),
             _ => self.share_peer_selection,
         };
+    }
+
+    /// Merge a `share_offered` event into the discovery pane. The highlighted
+    /// row follows its `(peer, share)` key across a retransmit so a new offer
+    /// cannot silently retarget `Enter`.
+    pub fn record_discovered_share(&mut self, peer_id: String, offer: p2p_app::shares::ShareOffer) {
+        let selected_key = self
+            .discovered_shares
+            .get(self.share_discovery_selection)
+            .map(p2p_app::shares::DiscoveredShare::key);
+        p2p_app::shares::merge_discovered_share(&mut self.discovered_shares, peer_id, offer);
+        self.clamp_share_discovery_selection();
+        self.restore_discovered_selection(selected_key);
+    }
+
+    /// Drop a discovered row after it has been accepted, following the same
+    /// key as the offer list so only that peer's announcement disappears.
+    pub fn remove_discovered_share(&mut self, peer_id: &str, share_id: &str) {
+        let selected_key = self
+            .discovered_shares
+            .get(self.share_discovery_selection)
+            .map(p2p_app::shares::DiscoveredShare::key);
+        self.discovered_shares
+            .retain(|row| row.peer_id != peer_id || row.offer.share_id != share_id);
+        self.clamp_share_discovery_selection();
+        self.restore_discovered_selection(selected_key);
+    }
+
+    /// Highlighted discovered offer, if any.
+    #[must_use]
+    pub fn selected_discovered_share(&self) -> Option<&p2p_app::shares::DiscoveredShare> {
+        self.discovered_shares.get(self.share_discovery_selection)
+    }
+
+    /// Keep the discovery cursor inside the current offer list.
+    pub fn clamp_share_discovery_selection(&mut self) {
+        let last = self.discovered_shares.len().saturating_sub(1);
+        self.share_discovery_selection = self.share_discovery_selection.min(last);
+    }
+
+    /// Move the discovered-offer cursor with `j`/`k` without changing any
+    /// other Shares tab selection.
+    pub fn move_share_discovery_selection(&mut self, delta: isize) {
+        self.clamp_share_discovery_selection();
+        if self.discovered_shares.is_empty() {
+            return;
+        }
+        let last = self.discovered_shares.len().saturating_sub(1);
+        self.share_discovery_selection = if delta < 0 {
+            self.share_discovery_selection.saturating_sub(1)
+        } else {
+            self.share_discovery_selection.saturating_add(1).min(last)
+        };
+    }
+
+    /// Follow a previously selected offer across a merge or removal.
+    fn restore_discovered_selection(&mut self, selected_key: Option<(String, String)>) {
+        let Some(key) = selected_key else {
+            return;
+        };
+        let Some(index) = self
+            .discovered_shares
+            .iter()
+            .position(|row| row.key() == key)
+        else {
+            return;
+        };
+        self.share_discovery_selection = index;
     }
 
     /// Clamp the grant cursor after a store reload changes the selected share's
@@ -2028,6 +2102,8 @@ impl AppState {
             share_grant_prompt: None,
             share_event_notice: None,
             share_peer_selection: 0,
+            discovered_shares: Vec::new(),
+            share_discovery_selection: 0,
             input_mode: p2p_app::InputMode::Chat,
             location_export_peer_id: None,
             dynamic_tabs: DynamicTabs::new(),
@@ -2086,11 +2162,16 @@ impl AppState {
             own_user_id: None,
             own_user_devices: Vec::new(),
         };
-        state.reload_blocked_peers();
-        state.reload_shares();
-        state.rebuild_contacts();
-        state.contacts_all.clone_from(&state.contacts);
+        state.finish_initialization();
         state
+    }
+
+    /// Load the derived views that depend on the canonical DB after construction.
+    fn finish_initialization(&mut self) {
+        self.reload_blocked_peers();
+        self.reload_shares();
+        self.rebuild_contacts();
+        self.contacts_all.clone_from(&self.contacts);
     }
 
     /// Seed the broadcast badge from the persisted watermark at startup. With

@@ -6317,3 +6317,208 @@ fn test_share_manifest_deletion_keys_are_inert_while_a_modal_prompt_is_open() {
     });
     close_share_grant_db();
 }
+
+// ── peer-share discovery (Flutter parity) ─────────────────────────────────
+
+fn discovered_offer(share_id: &str, name: &str, revision: u64) -> p2p_app::shares::ShareOffer {
+    p2p_app::shares::ShareOffer {
+        share_id: share_id.to_string(),
+        name: name.to_string(),
+        kind: p2p_app::shares::ShareKind::Private,
+        revision,
+        public_write: false,
+        owner_user_id: None,
+    }
+}
+
+/// Canonical sorted connected peers plus three discovered offers, landed on the
+/// Shares tab with independent cursors at their defaults.
+fn discovered_offers_state() -> AppState {
+    let mut state = test_app_state();
+    state.active_tab = shares_tab_index(&state);
+    // Reverse insertion order proves the network target comes from the sorted list.
+    for peer in ["peer-c", "peer-a", "peer-b"] {
+        state.connected.on_peer_connected(peer.to_string());
+    }
+    for (peer, id, name, rev) in [
+        ("peer-a", "a", "Alpha", 1),
+        ("peer-b", "b", "Bravo", 2),
+        ("peer-c", "c", "Charlie", 3),
+    ] {
+        state.record_discovered_share(peer.to_string(), discovered_offer(id, name, rev));
+    }
+    state
+}
+
+#[tokio::test]
+async fn test_share_discovery_f_sends_list_shares_to_canonical_selected_peer() {
+    // `f` only queues a command; it never touches the DB, so no serial guard
+    // or isolated database is needed here.
+    let mut session = KeySession::new(discovered_offers_state());
+
+    assert!(!session.press_char('f').await);
+    let commands = session.drain_commands();
+    assert_eq!(commands.len(), 1, "commands: {commands:?}");
+    match &commands[0] {
+        SwarmCommand::ListShares { peer_id } => assert_eq!(peer_id, "peer-a"),
+        other => panic!("unexpected command: {other:?}"),
+    }
+    let s = session.state.lock().await;
+    assert_eq!(
+        s.share_event_notice.as_deref(),
+        Some("Share discovery requested from peer-a")
+    );
+    assert_eq!(s.discovered_shares.len(), 3, "asking never mutates offers");
+}
+
+#[tokio::test]
+async fn test_share_discovery_f_without_peer_shows_hint_and_sends_nothing() {
+    let mut state = test_app_state();
+    state.active_tab = shares_tab_index(&state);
+    let mut session = KeySession::new(state);
+
+    assert!(!session.press_char('f').await);
+    assert!(session.drain_commands().is_empty());
+    assert_eq!(
+        session.state.lock().await.popup.as_deref(),
+        Some("Connect a peer before discovering shares")
+    );
+}
+
+#[tokio::test]
+async fn test_share_discovery_cursor_keys_move_only_the_offer_selection() {
+    let mut session = KeySession::new(discovered_offers_state());
+
+    let frame = session.frame_text().await;
+    assert!(frame.contains("Discovered offers (3):"), "frame: {frame}");
+    assert!(
+        frame.contains("> Alpha [private] rev 1 from peer-a"),
+        "frame: {frame}"
+    );
+
+    assert!(!session.press_char('j').await);
+    assert_eq!(session.state.lock().await.share_discovery_selection, 1);
+    assert!(!session.press_char('j').await);
+    assert_eq!(session.state.lock().await.share_discovery_selection, 2);
+    let frame = session.frame_text().await;
+    assert!(
+        frame.contains("> Charlie [private] rev 3 from peer-c"),
+        "frame: {frame}"
+    );
+
+    assert!(!session.press_char('j').await);
+    assert_eq!(
+        session.state.lock().await.share_discovery_selection,
+        2,
+        "clamped"
+    );
+    assert!(!session.press_char('k').await);
+    assert_eq!(session.state.lock().await.share_discovery_selection, 1);
+    assert!(!session.press_char('k').await);
+    assert_eq!(session.state.lock().await.share_discovery_selection, 0);
+    assert!(!session.press_char('k').await);
+    assert_eq!(
+        session.state.lock().await.share_discovery_selection,
+        0,
+        "clamped"
+    );
+
+    {
+        let s = session.state.lock().await;
+        assert_eq!(s.share_selection, 0);
+        assert_eq!(s.share_grant_selection, 0);
+        assert_eq!(s.share_manifest_selection, 0);
+        assert_eq!(s.share_peer_selection, 0);
+    }
+    assert!(session.drain_commands().is_empty());
+}
+
+#[tokio::test]
+async fn test_share_discovery_keys_are_inert_while_a_modal_editor_is_open() {
+    let mut session = KeySession::new(discovered_offers_state());
+
+    assert!(!session.press_char('c').await);
+    assert!(session.state.lock().await.is_creating_share());
+    assert!(!session.press_char('j').await);
+    assert!(!session.press_char('f').await);
+    assert!(!session.press_char('k').await);
+
+    {
+        let s = session.state.lock().await;
+        assert!(s.is_creating_share());
+        assert_eq!(s.share_discovery_selection, 0);
+        assert_eq!(s.discovered_shares.len(), 3);
+        assert_eq!(s.chat_input.lines().join("\n"), "jfk");
+        assert!(s.share_event_notice.is_none());
+    }
+    assert!(session.drain_commands().is_empty());
+}
+
+#[test]
+#[serial]
+fn test_share_discovery_enter_accepts_offer_through_the_canonical_store() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, mut state) = empty_share_db_state();
+        state.record_discovered_share(
+            "peer-a".to_string(),
+            discovered_offer("remote-1", "Remote docs", 3),
+        );
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_code(KeyCode::Enter).await);
+        {
+            let s = session.state.lock().await;
+            assert!(s.discovered_shares.is_empty(), "accepted offer is consumed");
+            assert_eq!(s.shares.len(), 1);
+            assert_eq!(s.shares[0].share_id, "remote-1");
+            assert_eq!(s.share_selection, 0);
+            assert_eq!(
+                s.share_event_notice.as_deref(),
+                Some("Added Remote docs from peer-a")
+            );
+        }
+        let stored = p2p_app::shares::get_share("remote-1")
+            .expect("get share")
+            .expect("share stored canonically");
+        assert_eq!(stored.name, "Remote docs");
+        // A stub starts at revision 0: the advertised revision is untrusted
+        // metadata, so the canonical store never adopts it.
+        assert_eq!(stored.revision, 0);
+        assert!(
+            p2p_app::shares::is_unknown_owner_id(&stored.owner_user_id),
+            "an unclaimed owner must never become a real account id"
+        );
+        // Accepting is a local store write; no network command is queued.
+        assert!(session.drain_commands().is_empty());
+    });
+    close_share_grant_db();
+}
+
+#[test]
+#[serial]
+fn test_share_discovery_enter_without_offer_does_not_accept_any_share() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let (_dir, state) = empty_share_db_state();
+        let mut session = KeySession::new(state);
+
+        assert!(!session.press_code(KeyCode::Enter).await);
+        assert_eq!(
+            session.state.lock().await.popup.as_deref(),
+            Some("No discovered share selected")
+        );
+        assert!(session.drain_commands().is_empty());
+        assert_eq!(
+            p2p_app::shares::list_shares().expect("list shares"),
+            Vec::new()
+        );
+    });
+    close_share_grant_db();
+}

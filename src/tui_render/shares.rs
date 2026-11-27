@@ -1,6 +1,7 @@
-//! Shares tab: known shares on the left, the highlighted share's grants and
-//! manifest on the right. Mirrors Flutter's list → detail flow; grant editing
-//! uses the shared modal input, while creation/binding/snapshots stay native.
+//! Shares tab: known shares on the left, the highlighted share's grants,
+//! manifest, connected peers and discovered offers on the right. Mirrors
+//! Flutter's list → detail/discovery flow; grant editing uses the shared modal
+//! input, while binding/snapshots stay native.
 
 use crate::shares::{Share, ShareGrant, ShareKind, kind_label};
 use crate::tui_helpers::peer_table_visible_range;
@@ -30,37 +31,38 @@ fn detail_lines(share: Option<&Share>, state: &TuiRenderState) -> Vec<String> {
         lines.push(String::new());
     }
     lines.push("c: create a private share".to_string());
-    let Some(share) = share else {
+    if let Some(share) = share {
+        let grants: &[ShareGrant] = state
+            .share_grants
+            .get(&share.share_id)
+            .map_or(&[], Vec::as_slice);
+        lines.push(format!("Name: {}", share.name));
+        lines.push(format!("ID: {}", share.share_id));
+        lines.push(format!(
+            "Kind: {} (writes: {})",
+            kind_label(share.kind),
+            if share.public_write { "allowed" } else { "no" },
+        ));
+        lines.push(format!("Owner: {}", share.owner_user_id));
+        lines.push(format!(
+            "Local root: {}",
+            share.local_root.as_deref().unwrap_or("not bound")
+        ));
+        lines.push(format!("Revision: {}", share.revision));
+        if state
+            .own_user_id
+            .as_deref()
+            .is_some_and(|id| id == share.owner_user_id)
+        {
+            lines.push("Access: p: toggle visibility | w: toggle public writes".to_string());
+        }
+        push_grant_lines(&mut lines, share, grants, state);
+        push_manifest_lines(&mut lines, share, state);
+    } else {
         lines.push("No shares known to this install.".to_string());
-        return lines;
-    };
-    let grants: &[ShareGrant] = state
-        .share_grants
-        .get(&share.share_id)
-        .map_or(&[], Vec::as_slice);
-    lines.push(format!("Name: {}", share.name));
-    lines.push(format!("ID: {}", share.share_id));
-    lines.push(format!(
-        "Kind: {} (writes: {})",
-        kind_label(share.kind),
-        if share.public_write { "allowed" } else { "no" },
-    ));
-    lines.push(format!("Owner: {}", share.owner_user_id));
-    lines.push(format!(
-        "Local root: {}",
-        share.local_root.as_deref().unwrap_or("not bound")
-    ));
-    lines.push(format!("Revision: {}", share.revision));
-    if state
-        .own_user_id
-        .as_deref()
-        .is_some_and(|id| id == share.owner_user_id)
-    {
-        lines.push("Access: p: toggle visibility | w: toggle public writes".to_string());
     }
-    push_grant_lines(&mut lines, share, grants, state);
-    push_manifest_lines(&mut lines, share, state);
     push_peer_lines(&mut lines, state);
+    push_discovered_lines(&mut lines, state);
     lines
 }
 
@@ -149,8 +151,44 @@ fn push_peer_lines(lines: &mut Vec<String>, state: &TuiRenderState) {
     lines.push("  Left/Right select | m: refresh manifest | o: re-advertise".to_string());
 }
 
+/// Offers advertised by connected peers, kept separate from accepted shares
+/// until the user explicitly commits one through the canonical Rust store.
+fn push_discovered_lines(lines: &mut Vec<String>, state: &TuiRenderState) {
+    lines.push(String::new());
+    lines.push(format!(
+        "Discovered offers ({}):",
+        state.discovered_shares.len()
+    ));
+    if state.discovered_shares.is_empty() {
+        lines.push("  none | f: ask selected peer for shares".to_string());
+        return;
+    }
+    let last = state.discovered_shares.len().saturating_sub(1);
+    for (index, discovered) in state.discovered_shares.iter().enumerate() {
+        let marker = if index == state.share_discovery_selection.min(last) {
+            ">"
+        } else {
+            " "
+        };
+        let offer = &discovered.offer;
+        lines.push(format!(
+            " {marker} {} [{}] rev {} from {}",
+            offer.name,
+            kind_label(offer.kind),
+            offer.revision,
+            discovered.peer_id
+        ));
+        lines.push(format!(
+            "     id {} | claimed owner {} (unverified)",
+            offer.share_id,
+            offer.owner_user_id.as_deref().unwrap_or("none")
+        ));
+    }
+    lines.push("  j/k: offer | Enter: accept | f: discover".to_string());
+}
+
 /// Render the Shares tab: a selectable share list and the selected share's
-/// metadata, grants summary and manifest file list.
+/// metadata, grants summary, manifest and discovery panes.
 pub fn render_shares_content(f: &mut ratatui::Frame, area: Rect, state: &TuiRenderState) {
     let total = state.shares.len();
     let selected = (total > 0).then(|| state.share_selection.min(total.saturating_sub(1)));

@@ -250,12 +250,18 @@ Shipped after the core:
   and `shares::manifest_matches_share` plus a canonical-store revision check
   block stale writes before a command is queued. Record:
   [`archive/2026-11-27_tui_share_deletion_publishing.md`](archive/2026-11-27_tui_share_deletion_publishing.md).
+- TUI share discovery: `f` asks the selected connected peer to list shares,
+  `j`/`k` move a transient discovered-offer cursor and `Enter` accepts the
+  highlighted offer through `shares::accept_offer`. Offers are deduplicated by
+  `(peer, share id)` in Rust, never persisted until accepted, and keep an
+  advertised owner claim as a local-only marker. Record:
+  [`archive/2026-11-27_tui_share_discovery.md`](archive/2026-11-27_tui_share_discovery.md).
 
 Still open (UI/integration, not protocol work):
 
-- TUI Shares tab actions: bind/snapshot and discovery actions (the list, detail,
-  event notice, creation, grant/visibility editors, network refresh/re-advertise
-  and deletion publishing already ship);
+- TUI Shares tab actions: bind/snapshot and adding files (the list, detail,
+  event notice, creation, grant/visibility editors, network refresh/re-advertise,
+  deletion publishing and discovery already ship);
 - Native share creation/binding and folder snapshot UI. Deletion publishing,
   discovery, manifest refresh and re-advertise already ship on both transports;
   the browser remains a display client — adding new files needs a real local

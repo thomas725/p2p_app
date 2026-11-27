@@ -1649,3 +1649,76 @@ fn share_peer_selection_uses_canonical_order_and_clamps() {
     assert_eq!(s.share_peer_selection, 0);
     assert!(s.selected_share_peer_id().is_none());
 }
+
+// ── discovered peer shares ────────────────────────────────────────────────
+
+fn discovered_offer(share_id: &str, name: &str, revision: u64) -> p2p_app::shares::ShareOffer {
+    p2p_app::shares::ShareOffer {
+        share_id: share_id.to_string(),
+        name: name.to_string(),
+        kind: p2p_app::shares::ShareKind::Private,
+        revision,
+        public_write: false,
+        owner_user_id: None,
+    }
+}
+
+#[test]
+fn discovered_share_selection_follows_rows_across_merge_and_removal() {
+    let mut s = test_app_state();
+    assert_eq!(s.discovered_shares, Vec::new());
+    assert!(s.selected_discovered_share().is_none());
+
+    s.record_discovered_share("peer-a".to_string(), discovered_offer("a", "Alpha", 1));
+    s.record_discovered_share("peer-b".to_string(), discovered_offer("b", "Bravo", 2));
+    s.record_discovered_share("peer-c".to_string(), discovered_offer("c", "Charlie", 3));
+    assert_eq!(s.discovered_shares.len(), 3);
+    assert_eq!(
+        s.selected_discovered_share()
+            .expect("first offer selected")
+            .peer_id,
+        "peer-a"
+    );
+
+    s.move_share_discovery_selection(1);
+    s.move_share_discovery_selection(1);
+    assert_eq!(s.share_discovery_selection, 2);
+    s.move_share_discovery_selection(1);
+    assert_eq!(s.share_discovery_selection, 2);
+
+    // A retransmit replaces the row but must not retarget the highlighted offer.
+    s.record_discovered_share("peer-c".to_string(), discovered_offer("c", "Charlie v2", 4));
+    assert_eq!(s.discovered_shares.len(), 3);
+    assert_eq!(s.share_discovery_selection, 2);
+    assert_eq!(
+        s.selected_discovered_share()
+            .expect("selected offer survives")
+            .offer
+            .revision,
+        4
+    );
+
+    s.remove_discovered_share("peer-a", "a");
+    assert_eq!(s.share_discovery_selection, 1);
+    assert_eq!(
+        s.selected_discovered_share()
+            .expect("selected offer follows its key")
+            .peer_id,
+        "peer-c"
+    );
+
+    s.remove_discovered_share("peer-c", "c");
+    assert_eq!(s.share_discovery_selection, 0);
+    assert_eq!(
+        s.selected_discovered_share()
+            .expect("clamped to remaining offer")
+            .peer_id,
+        "peer-b"
+    );
+
+    s.move_share_discovery_selection(-1);
+    assert_eq!(s.share_discovery_selection, 0);
+    s.share_discovery_selection = usize::MAX;
+    s.clamp_share_discovery_selection();
+    assert_eq!(s.share_discovery_selection, 0);
+}

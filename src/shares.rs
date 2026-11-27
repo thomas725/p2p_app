@@ -184,6 +184,48 @@ pub struct ShareOffer {
     pub owner_user_id: Option<String>,
 }
 
+/// One advertised share and the peer that announced it.
+///
+/// Rows stay distinct per peer/share pair. The owner claim is untrusted here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscoveredShare {
+    /// Peer that answered the discovery request.
+    pub peer_id: String,
+    /// Advertisement as received from that peer.
+    pub offer: ShareOffer,
+}
+
+impl DiscoveredShare {
+    /// Stable identity of a discovery row: one share per announcing peer.
+    #[must_use]
+    pub fn key(&self) -> (String, String) {
+        (self.peer_id.clone(), self.offer.share_id.clone())
+    }
+}
+
+/// Merge one `share_offered` event into a discovery list.
+///
+/// The newest announcement replaces the same `(peer_id, share_id)` row. Rows
+/// with no share id are ignored because they cannot be accepted or used for a
+/// follow-up manifest request.
+pub fn merge_discovered_share(
+    discovered: &mut Vec<DiscoveredShare>,
+    peer_id: String,
+    offer: ShareOffer,
+) {
+    if offer.share_id.is_empty() {
+        return;
+    }
+    if let Some(existing) = discovered
+        .iter_mut()
+        .find(|row| row.peer_id == peer_id && row.offer.share_id == offer.share_id)
+    {
+        existing.offer = offer;
+        return;
+    }
+    discovered.push(DiscoveredShare { peer_id, offer });
+}
+
 /// One share as the domain layer exposes it (a parsed view of `ShareRow`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Share {

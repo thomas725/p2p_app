@@ -338,14 +338,15 @@ message while the Settings tab is active.
 A selectable list of this install's shares on the left and the highlighted
 share's details on the right: owner, local root, revision, visibility,
 private-share grants, manifest files and the connected peers available for
-network actions. The latest `share_offered` / `share_updated` /
-`share_rejected` event appears as a "Last event" line. Locally owned shares can
-be toggled between private/public and can allow anonymous writes while public;
-the canonical store refuses changes to accepted peer shares. Grants are
-editable here too, and connected peers are ordered by peer ID. `c` creates a
-private, read-only share. Manifest files can be marked for deletion and the
-next revision submitted to a connected peer; binding, snapshots, discovery and
-adding files remain Flutter/web actions.
+network actions. Advertised offers from peers appear in a "Discovered offers"
+pane and stay transient until accepted with `Enter`. The latest
+`share_offered` / `share_updated` / `share_rejected` event appears as a "Last
+event" line. Locally owned shares can be toggled between private/public and can
+allow anonymous writes while public; the canonical store refuses changes to
+accepted peer shares. Grants are editable here too, and connected peers are
+ordered by peer ID. `c` creates a private, read-only share. Manifest files can
+be marked for deletion and the next revision submitted to a connected peer;
+binding, snapshots and adding files remain Flutter/web actions.
 
 | Key | Action |
 |-----|--------|
@@ -365,6 +366,9 @@ adding files remain Flutter/web actions.
 | `w` | Toggle anonymous writes on the selected owned public share |
 | `m` | Ask the selected peer for the share's current manifest |
 | `o` | Re-advertise the share to the selected peer with a Rust-built offer |
+| `f` | Ask the selected peer to list the shares it offers |
+| `j` / `k` | Move the discovered-offer selection |
+| `Enter` | Accept the highlighted discovered share into the local store |
 | `r` | Re-read the share list from Rust |
 | `Esc` | Return to the Chat tab |
 
@@ -387,6 +391,16 @@ revision as the base; a stale snapshot, a vanished path, or a store that moved
 meanwhile blocks the submission with a popup. Changing shares, reloading,
 advancing the revision, or publishing clears the marks. These keys are inert
 while a modal prompt owns the input.
+
+`f` asks the highlighted connected peer to list the shares it will serve; with
+no peer connected it shows a hint instead of queueing a command. Announced
+offers are kept in the discovered pane, deduplicated by `(peer, share id)`, and
+survive retransmits without retargeting the highlight. `j`/`k` move that
+highlight independently of the share, grant, manifest and peer cursors; `Enter`
+accepts it through the canonical Rust store, which validates the name, keeps an
+unverified owner claim as a local-only marker and starts the stub at revision 0.
+Accepting consumes the offer, selects the new row and never trusts the advertised
+revision or owner as a verified identity.
 
 `m` and `o` target the highlighted connected peer; both require a selected
 share and fail with a popup when no peer is connected. Re-advertising uses the

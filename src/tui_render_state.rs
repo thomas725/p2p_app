@@ -126,6 +126,10 @@ pub struct TuiRenderState {
     pub share_peer_ids: Vec<String>,
     /// Highlighted connected peer for Shares network actions.
     pub share_peer_selection: usize,
+    /// Offers advertised by peers and not yet accepted into the local list.
+    pub discovered_shares: Vec<crate::shares::DiscoveredShare>,
+    /// Highlighted advertised offer on the Shares tab.
+    pub share_discovery_selection: usize,
     /// Scroll offset for chat tab
     pub chat_scroll_offset: usize,
     /// Whether chat tab and log tab auto-scroll to bottom
@@ -240,6 +244,8 @@ impl TuiRenderState {
             share_event_notice: None,
             share_peer_ids: Vec::new(),
             share_peer_selection: 0,
+            discovered_shares: Vec::new(),
+            share_discovery_selection: 0,
             input_text: String::new(),
             log_messages: VecDeque::new(),
             input_mode: crate::InputMode::Chat,

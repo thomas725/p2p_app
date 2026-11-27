@@ -492,3 +492,42 @@ fn test_app_state_to_render_state_network_peers() {
     assert_eq!(rs.network_peer_kind.as_deref(), Some("relay"));
     assert!(rs.is_adding_network_peer());
 }
+
+#[test]
+fn test_app_state_to_render_state_projected_discovered_shares() {
+    use p2p_app::shares::{DiscoveredShare, ShareKind, ShareOffer};
+
+    fn offer(id: &str, name: &str, revision: u64) -> ShareOffer {
+        ShareOffer {
+            share_id: id.to_string(),
+            name: name.to_string(),
+            kind: ShareKind::Private,
+            revision,
+            public_write: false,
+            owner_user_id: None,
+        }
+    }
+
+    let mut state = app_state();
+    assert_eq!(
+        app_state_to_render_state(&state).discovered_shares,
+        Vec::new()
+    );
+    state.discovered_shares = vec![
+        DiscoveredShare {
+            peer_id: "peer-a".to_string(),
+            offer: offer("a", "Alpha", 1),
+        },
+        DiscoveredShare {
+            peer_id: "peer-b".to_string(),
+            offer: offer("b", "Bravo", 2),
+        },
+    ];
+    state.share_discovery_selection = 1;
+
+    let rs = app_state_to_render_state(&state);
+    assert_eq!(rs.discovered_shares.len(), 2);
+    assert_eq!(rs.discovered_shares[0].peer_id, "peer-a");
+    assert_eq!(rs.discovered_shares[1].offer.name, "Bravo");
+    assert_eq!(rs.share_discovery_selection, 1);
+}

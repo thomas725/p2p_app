@@ -1507,6 +1507,105 @@ fn handle_share_peer_selection_key(
     true
 }
 
+/// `j`/`k` move the discovered-offer cursor. They are the only unclaimed
+/// navigation keys on the Shares tab: bare arrows already own the share list
+/// and the peer target, while the Ctrl variants own grants and manifest files.
+fn handle_share_discovery_cursor_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+) -> bool {
+    use crossterm::event::KeyCode;
+    use p2p_app::tui_tabs::TabContent;
+
+    if is_ctrl || s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    let delta = match key_event.code {
+        KeyCode::Char('k') => -1,
+        KeyCode::Char('j') => 1,
+        _ => return false,
+    };
+    s.move_share_discovery_selection(delta);
+    true
+}
+
+/// `f` asks the selected peer to list shares it is willing to serve. `Enter`
+/// accepts the highlighted offer through the canonical Rust store, creating a
+/// local stub; the advertised owner stays unverified until a manifest arrives.
+fn handle_share_discovery_action_key(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    use crossterm::event::{KeyCode, KeyModifiers};
+    use p2p_app::tui_tabs::TabContent;
+
+    if is_ctrl || s.is_modal_editor() || !matches!(tab, TabContent::Shares) {
+        return false;
+    }
+    match key_event.code {
+        KeyCode::Char('f') => {
+            discover_peer_shares(s, swarm_cmd_tx);
+            true
+        }
+        KeyCode::Enter if !key_event.modifiers.contains(KeyModifiers::SHIFT) => {
+            accept_discovered_share(s);
+            true
+        }
+        _ => false,
+    }
+}
+
+/// Queue `ListShares` for the canonical connected-peer target.
+fn discover_peer_shares(s: &mut super::state::AppState, swarm_cmd_tx: &mpsc::Sender<SwarmCommand>) {
+    let Some(peer_id) = s.selected_share_peer_id() else {
+        s.popup = Some("Connect a peer before discovering shares".to_string());
+        return;
+    };
+    match swarm_cmd_tx.try_send(SwarmCommand::ListShares {
+        peer_id: peer_id.clone(),
+    }) {
+        Ok(()) => {
+            s.share_event_notice = Some(format!("Share discovery requested from {peer_id}"));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not request share list: {error}"));
+        }
+    }
+}
+
+/// Materialise the highlighted remote offer. Rust validates the name and id and
+/// refuses to let an untrusted owner claim rewrite a share we already own or
+/// have bound to a folder.
+fn accept_discovered_share(s: &mut super::state::AppState) {
+    let Some(discovered) = s.selected_discovered_share().cloned() else {
+        s.popup = Some("No discovered share selected".to_string());
+        return;
+    };
+    match p2p_app::shares::accept_offer(&discovered.offer, None) {
+        Ok(share) => {
+            s.remove_discovered_share(&discovered.peer_id, &discovered.offer.share_id);
+            s.reload_shares();
+            let position = s
+                .shares
+                .iter()
+                .position(|row| row.share_id == share.share_id)
+                .unwrap_or(s.share_selection);
+            s.select_share(position);
+            s.share_event_notice =
+                Some(format!("Added {} from {}", share.name, discovered.peer_id));
+            p2plog_debug(format!("Accepted share offer: {}", share.share_id));
+        }
+        Err(error) => {
+            s.popup = Some(format!("Could not add discovered share: {error}"));
+        }
+    }
+}
+
 /// Share id plus canonical connected peer selected for a Shares network action.
 fn share_action_target(s: &super::state::AppState) -> Option<(String, String)> {
     let share_id = s
@@ -1810,6 +1909,38 @@ fn confirm_share_grant(s: &mut super::state::AppState) {
     }
 }
 
+/// Route the Shares-tab shortcut helpers in precedence order.
+///
+/// Keeping this pre-dispatch in one helper leaves `handle_key_dispatch` focused
+/// on tab-wide routing and preserves modal-editor ownership.
+fn handle_shares_tab_keys(
+    key_event: &crossterm::event::KeyEvent,
+    is_ctrl: bool,
+    tab: &p2p_app::tui_tabs::TabContent,
+    s: &mut super::state::AppState,
+    swarm_cmd_tx: &mpsc::Sender<SwarmCommand>,
+) -> bool {
+    if handle_share_grant_prompt_key(key_event, is_ctrl, s) {
+        return true;
+    }
+    if handle_share_grant_selection_key(key_event, is_ctrl, tab, s) {
+        return true;
+    }
+    if handle_share_manifest_cursor_key(key_event, is_ctrl, tab, s) {
+        return true;
+    }
+    if handle_share_manifest_action_key(key_event, is_ctrl, tab, s, swarm_cmd_tx) {
+        return true;
+    }
+    if handle_share_discovery_cursor_key(key_event, is_ctrl, tab, s) {
+        return true;
+    }
+    if handle_share_discovery_action_key(key_event, is_ctrl, tab, s, swarm_cmd_tx) {
+        return true;
+    }
+    handle_share_peer_selection_key(key_event, s, tab)
+}
+
 /// Dispatch a fully-unlocked key event against the active tab.
 ///
 /// Tab lookups and modifier flags are computed once up front; shared
@@ -1841,19 +1972,7 @@ async fn handle_key_dispatch(
     if handle_message_selection_key(&key_event, is_ctrl, &tab, s) {
         return;
     }
-    if handle_share_grant_prompt_key(&key_event, is_ctrl, s) {
-        return;
-    }
-    if handle_share_grant_selection_key(&key_event, is_ctrl, &tab, s) {
-        return;
-    }
-    if handle_share_manifest_cursor_key(&key_event, is_ctrl, &tab, s) {
-        return;
-    }
-    if handle_share_manifest_action_key(&key_event, is_ctrl, &tab, s, swarm_cmd_tx) {
-        return;
-    }
-    if handle_share_peer_selection_key(&key_event, s, &tab) {
+    if handle_shares_tab_keys(&key_event, is_ctrl, &tab, s, swarm_cmd_tx) {
         return;
     }
     if handle_global_navigation(&key_event, is_ctrl, on_direct, s).await {

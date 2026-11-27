@@ -1619,3 +1619,46 @@ fn test_shares_tab_refresh_and_event_session() {
     p2p_app::db::release_db_lock();
     p2p_app::db::reset_db_url();
 }
+
+#[test]
+#[serial]
+fn test_share_offered_event_records_discovery_without_persisting() {
+    let _guard = p2p_app::db::shared_db_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let dir = TempDir::new().expect("tempdir");
+    let db_path = dir.path().join("test.db");
+    p2p_app::db::set_db_url(db_path.to_str().expect("db path"));
+    p2p_app::db::init_database().expect("init database");
+
+    let rt = tokio::runtime::Runtime::new().expect("runtime");
+    rt.block_on(async {
+        let state = Arc::new(Mutex::new(test_app_state()));
+        let (tx, _rx) = mpsc::channel(1);
+        process_swarm_event(
+            SwarmEvent::ShareOffered {
+                peer_id: "peer-offer".to_string(),
+                offer: share_offer(),
+            },
+            &state,
+            &tx,
+        )
+        .await;
+
+        let s = state.lock().await;
+        assert_eq!(s.discovered_shares.len(), 1);
+        assert_eq!(s.discovered_shares[0].peer_id, "peer-offer");
+        assert_eq!(s.discovered_shares[0].offer.share_id, "share-1");
+        assert_eq!(
+            s.share_event_notice.as_deref(),
+            Some("Holiday photos offered by peer-offer (share-1, rev 7)")
+        );
+        assert!(
+            s.shares.is_empty(),
+            "an offer stays transient until explicitly accepted"
+        );
+    });
+
+    p2p_app::db::release_db_lock();
+    p2p_app::db::reset_db_url();
+}

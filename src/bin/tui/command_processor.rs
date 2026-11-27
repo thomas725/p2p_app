@@ -555,6 +555,12 @@ fn share_event_notice(ev: &SwarmEvent) -> String {
 async fn handle_share_event(state: &SharedState, ev: SwarmEvent) {
     let notice = share_event_notice(&ev);
     let mut s = state.lock().await;
+    // An offer is untrusted metadata and is not persisted until the user
+    // accepts it. Keep it keyed by announcing peer so one peer cannot replace
+    // another peer's row with the same share id.
+    if let SwarmEvent::ShareOffered { peer_id, offer } = &ev {
+        s.record_discovered_share(peer_id.clone(), offer.clone());
+    }
     s.share_event_notice = Some(notice.clone());
     s.reload_shares();
     drop(s);

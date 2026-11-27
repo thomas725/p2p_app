@@ -9,9 +9,9 @@ This document is the lane's reference: the wire design, the store surface, and
 the blob lifecycle. It also covers the versioned file-share/folder-sync
 extension built on the same store. Its Rust core and both frontends' list,
 detail, private-share grant and visibility editors have shipped, along with
-Flutter/web discovery, network actions and deletion publishing; native
-creation/binding/snapshot UI and TUI offer/manifest/publish actions stay open
-in [`backlog.md`](backlog.md). The code is the authority.
+discovery, network actions and deletion publishing in both frontends; native
+creation/binding/snapshot UI and adding files stay open in
+[`backlog.md`](backlog.md). The code is the authority.
 
 ## Wire design
 

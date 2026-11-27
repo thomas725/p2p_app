@@ -2188,3 +2188,65 @@ mod contacts_blocklist_render_tests {
         );
     }
 }
+
+#[test]
+fn test_render_shares_shows_discovered_offers_even_without_a_local_share() {
+    use p2p_app::shares::{DiscoveredShare, ShareKind, ShareOffer};
+    use p2p_app::tui_render::render_shares_content;
+    use p2p_app::tui_render_state::TuiRenderState;
+    use ratatui::{Terminal, backend::TestBackend};
+
+    let mut terminal = Terminal::new(TestBackend::new(160, 40)).expect("terminal");
+    let mut state = TuiRenderState::with_sample_data();
+    state.shares.clear();
+    state.discovered_shares = vec![
+        DiscoveredShare {
+            peer_id: "peer-a".to_string(),
+            offer: ShareOffer {
+                share_id: "remote-1".to_string(),
+                name: "Shared photos".to_string(),
+                kind: ShareKind::Private,
+                revision: 4,
+                public_write: false,
+                owner_user_id: None,
+            },
+        },
+        DiscoveredShare {
+            peer_id: "peer-b".to_string(),
+            offer: ShareOffer {
+                share_id: "remote-2".to_string(),
+                name: "Team docs".to_string(),
+                kind: ShareKind::Public,
+                revision: 2,
+                public_write: true,
+                owner_user_id: Some("claimed-user".to_string()),
+            },
+        },
+    ];
+    state.share_discovery_selection = 1;
+    state.share_peer_ids = vec!["peer-a".to_string(), "peer-b".to_string()];
+
+    terminal
+        .draw(|f| render_shares_content(f, f.area(), &state))
+        .expect("draw");
+    let text: String = terminal
+        .backend()
+        .buffer()
+        .content
+        .iter()
+        .map(ratatui::buffer::Cell::symbol)
+        .collect();
+    assert!(text.contains("Discovered offers (2):"), "got: {text:?}");
+    assert!(text.contains("Shared photos"), "got: {text:?}");
+    assert!(
+        text.contains("> Team docs [public] rev 2 from peer-b"),
+        "got: {text:?}"
+    );
+    assert!(text.contains("claimed-user (unverified)"), "got: {text:?}");
+    assert!(text.contains("j/k: offer | Enter: accept"), "got: {text:?}");
+    assert!(
+        text.contains("No shares known to this install."),
+        "the local and discovered panes are independent: {text:?}"
+    );
+    assert!(text.contains("Connected peers (2):"), "got: {text:?}");
+}
